@@ -1,0 +1,61 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "mode": "guided",
+  "status": "in_progress",
+  "current_section": "product_discovery_recovery",
+  "questions_asked": 40,
+  "last_completed_decision": "D-040",
+  "accepted_answers": [
+    {
+      "decision_id": "D-040",
+      "topic": "map_system",
+      "answer": "fog_of_war_exploration_map",
+      "constraints": [
+        "Reveal rooms, corridors, and connections through exploration",
+        "Do not reveal undiscovered secrets automatically",
+        "Keep objective guidance light",
+        "Avoid GPS-style navigation"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "recovered_state": {
+    "decision_range": "D-001-D-039",
+    "artifact": "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
+    "verification_status": "unverified",
+    "rule": "Re-verify reconstructed details before final requirements"
+  },
+  "assumptions": [],
+  "open_questions": [
+    "Primary and secondary target users",
+    "Connectivity model: offline, online, or hybrid",
+    "Participation model: solo, local multi-user, asynchronous multi-user, or real-time multiplayer",
+    "Target platform order for MVP and post-MVP",
+    "Exact level size and expected session length",
+    "Remaining level-design and exploration details",
+    "Economy and shop rules",
+    "Story and world",
+    "Accessibility requirements",
+    "Monetization and release model",
+    "Stack and technical architecture after product scope is mature",
+    "Team and AI-agent parallelization",
+    "Proof and testing requirements"
+  ],
+  "readiness": {
+    "can_generate_intake": false,
+    "reason": "High-weight Product Discovery decisions and recovery verification remain incomplete"
+  },
+  "next_action": {
+    "type": "ask_question",
+    "decision_weight": 5,
+    "topic": "target_users",
+    "instruction": "Ask exactly one A/B/C decision card identifying the primary target-player strategy, persist the accepted answer, update the handoff, then continue with the next highest-weight unresolved question."
+  },
+  "persistence": {
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "active_branch": "assembly/bootstrap-shooter-mover",
+    "last_persisted_decision": "D-040"
+  }
+}
