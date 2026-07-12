@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-040
+- Last persisted decision: D-041
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 was re-verified directly by the user after recovery.
+D-040 and D-041 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -32,11 +32,22 @@ D-040 was re-verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-041 — Primary target-player strategy
+
+- Status: accepted
+- Choice: B — core-action-first, broadly accessible
+- Accepted requirement: Design primarily for players who enjoy skill-based top-down combat, while providing many meaningfully tailored difficulty settings so casual, intermediate, expert, and mastery-focused players can all have an appropriate experience.
+- User-supplied constraints: Difficulty options should genuinely tailor the game for different player types rather than merely applying simple health or damage multipliers.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+## Guided intake presentation preference
+
+- Place the agent recommendation after all A/B/C options, at the end of each decision card.
+
 ## Next discovery state
 
-Do not resume from the previously invented objective-guidance question. It was identified as a new question rather than part of the lost original sequence.
-
-Continue by selecting the highest-weight unresolved Product Discovery question from the recovered open areas. Major unresolved scope questions such as target users, participation, connectivity, target platforms, and MVP technical boundaries outrank additional low-level level-design details.
+Continue with the highest-weight unresolved Product Discovery question. Connectivity and participation scope now outrank lower-level level-design details, economy, story, and technical stack selection.
 
 ## Revision rules
 
