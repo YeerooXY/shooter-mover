@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 42,
-  "last_completed_decision": "D-042",
+  "questions_asked": 43,
+  "last_completed_decision": "D-043",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -41,6 +41,19 @@
         "Preserve clean extension boundaries for later online and multiplayer systems without implementing their operational complexity in the MVP"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-043",
+      "topic": "primary_post_mvp_multiplayer_experience",
+      "answer": "real_time_cooperative_play_first",
+      "constraints": [
+        "Real-time cooperative campaign-style play is the first major multiplayer direction after a successful MVP",
+        "Co-op should support shared combat, exploration, objectives, and bosses",
+        "Leaderboards are also desired later but remain post-MVP",
+        "Do not implement multiplayer networking, multiplayer scaling, shared progression, or leaderboard services in the MVP",
+        "Avoid unnecessary single-player-only hard-coding where clean extension boundaries are practical"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -51,7 +64,6 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Participation model: solo, local multi-user, asynchronous multi-user, or real-time multiplayer",
     "Target platform order for MVP and post-MVP",
     "Exact level size and expected session length",
     "Remaining level-design and exploration details",
@@ -70,13 +82,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 5,
-    "topic": "post_mvp_participation_model",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting the primary post-MVP multiplayer experience. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "target_platform_order",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting the MVP target platform order and post-MVP expansion path. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-042"
+    "last_persisted_decision": "D-043"
   }
 }
