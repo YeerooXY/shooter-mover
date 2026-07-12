@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 40,
-  "last_completed_decision": "D-040",
+  "questions_asked": 41,
+  "last_completed_decision": "D-041",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -18,6 +18,17 @@
         "Avoid GPS-style navigation"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-041",
+      "topic": "primary_target_player_strategy",
+      "answer": "core_action_first_broadly_accessible",
+      "constraints": [
+        "Target players who enjoy skill-based top-down combat",
+        "Provide many meaningfully tailored difficulty settings for casual through mastery-focused players",
+        "Do not rely only on simple health or damage multipliers to differentiate difficulty"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -28,7 +39,6 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Primary and secondary target users",
     "Connectivity model: offline, online, or hybrid",
     "Participation model: solo, local multi-user, asynchronous multi-user, or real-time multiplayer",
     "Target platform order for MVP and post-MVP",
@@ -49,13 +59,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 5,
-    "topic": "target_users",
-    "instruction": "Ask exactly one A/B/C decision card identifying the primary target-player strategy, persist the accepted answer, update the handoff, then continue with the next highest-weight unresolved question."
+    "topic": "connectivity_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting the core connectivity model. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-040"
+    "last_persisted_decision": "D-041"
   }
 }
