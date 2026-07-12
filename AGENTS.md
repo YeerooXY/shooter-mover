@@ -2,41 +2,90 @@
 
 This product repository uses the AI Assembly Line repository-first lifecycle.
 
-## Select the role from committed artifacts
+## Start from committed state
 
-Before responding, inspect:
+Before responding, read:
 
-- `project_workspace.json`
-- `assembly/intake/project_intake.json`
-- `assembly/requirements/REQUIREMENTS.md`
-- `assembly/generated/project_spec.json`
-- `assembly/generated/repo_plan.json`
-- `assembly/generated/task_backlog.json`
-- relevant pull-request state when available
+1. `project_workspace.json`
+2. `assembly/context/CURRENT_HANDOFF.json`
+3. `assembly/context/NEW_CHAT_RESUME.md`
+4. every path listed in `authoritative_artifacts`
+5. the complete active-role prompt under `assembly/prompts/`
+6. relevant branch and pull-request state
 
-Then route:
+Do not reconstruct project state from remembered chat.
 
-- no accepted `project_intake.json`: read `assembly/prompts/00-intake-interviewer.md`
-- requirements accepted, no planning package: read `assembly/prompts/00-planning-agent.md`
-- planning accepted, no canonical backlog: read `assembly/prompts/06-task-splitter.md`
-- backlog accepted: use Dispatch or `assembly/prompts/07-task-executor.md`
+## Active lifecycle routing
 
-## Intake hard stop
+- No accepted `project_intake.json`: Product Discovery / Intake Interviewer
+- Requirements merged, no planning package: Planning Agent
+- Planning merged, no canonical backlog: Task Splitter
+- Backlog merged: Dispatch / Task Executor
 
-While intake is incomplete, ask exactly one high-impact question per turn and stop after it.
+The current handoff selects the exact active role and next action.
 
-Do not turn a rough idea into a complete MVP, feature list, stack, architecture, repository layout, or task plan. Record only answers the user actually supplied. Do not silently choose recommendations.
+## Product Discovery order
 
-A normal intake response contains only:
+Ask the highest-impact unresolved question first:
 
-1. a brief acknowledgement or record of the last answer
-2. compact status showing known facts and the current missing decision
-3. exactly one next question or decision card
+```text
+product identity
+  -> target users
+  -> core experience
+  -> connectivity and participation
+  -> other scope multipliers
+  -> MVP boundary
+  -> required systems
+  -> stack and architecture
+```
 
-Then stop.
+Do not continue into low-level mechanics while unresolved questions about target users, offline/online scope, solo/multiplayer scope, platform, or MVP boundary could invalidate them.
 
-## Durable state
+## Guided-response lock
+
+While Product Discovery is incomplete:
+
+1. record the accepted answer in one concise line;
+2. show compact status only when materially useful;
+3. ask exactly one A/B/C decision card or one focused question;
+4. stop.
+
+If the user answers only `A`, `B`, `C`, `recommended`, or another clear short selection, do not praise, re-explain, summarize, or expand it. Persist it and move directly to the next question.
+
+Decision cards should include concise pros, cons, MVP risk, later scaling/refactor risk when relevant, and one recommendation that may be a hybrid.
+
+## Per-decision persistence
+
+Before asking the next question, update and commit:
+
+- `assembly/intake/LIVE_DECISIONS.md`
+- `assembly/intake/intake_session.json`
+- `assembly/context/CURRENT_HANDOFF.json`
+- `assembly/context/NEW_CHAT_RESUME.md` when its instructions change
+
+Unsaved accepted decisions must remain at zero. Chat-only state is not durable.
+
+## Recovery boundary
+
+Decisions D-001 through D-039 are recovered but not fully re-verified. Do not silently promote reconstructed details into final requirements.
+
+D-040 is verified: fog-of-war exploration map with light objective guidance and no automatic secret revelation.
+
+If a recovered decision becomes relevant, either rely only on the clearly preserved requirement or ask the user to re-verify it.
+
+## Lifecycle gates
+
+```text
+Product Discovery
+  -> requirements/bootstrap PR merge
+  -> planning and architecture PR merge
+  -> task-splitting and dependency-audit PR merge
+  -> canonical backlog
+  -> development waves
+```
+
+Do not blur stages.
+
+## Durable-state rule
 
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
-
-Do not claim a lifecycle stage is complete without reading the corresponding committed artifacts or PR state.
