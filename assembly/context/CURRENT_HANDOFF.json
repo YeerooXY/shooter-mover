@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "f4133abcadca8c598050a953ea935da1676270e1",
+  "last_verified_commit": "45f65a916d8f0265af0bf54ca949b045645f6656",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
@@ -14,9 +14,9 @@
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-041 — Core-action-first, broadly accessible target-player strategy",
-  "current_item": "D-042 — Core connectivity model",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting the core connectivity model. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-042 — Offline core with optional online features; multiplayer deferred until after a successful MVP",
+  "current_item": "D-043 — Primary post-MVP multiplayer experience",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting the primary post-MVP multiplayer experience. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +24,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-12T20:13:20+02:00"
+    "last_persisted_at": "2026-07-12T20:26:22+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-12T20:13:20+02:00"
+  "updated_at": "2026-07-12T20:26:22+02:00"
 }
