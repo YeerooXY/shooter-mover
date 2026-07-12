@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-044
+- Last persisted decision: D-045
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-044 were verified directly by the user after recovery.
+D-040 through D-045 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -71,13 +71,23 @@ D-040 through D-044 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-045 — Level size and expected session length
+
+- Status: accepted
+- Choice: B — substantial, checkpoint-segmented levels
+- Accepted requirement: Each MVP level should target roughly 45–75 minutes for an exploratory first clear and 20–35 minutes for a mastered run, divided into natural 10–20 minute checkpoint sections.
+- User-supplied constraints: Every level must remain interesting throughout and should later be genuinely worth replaying and grinding rather than becoming repetitive filler.
+- Design implication: Level production must prioritize distinct encounters, routes, secrets, objectives, progression opportunities, and mastery depth over raw floor area or inflated runtime.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Exact level size and expected session length now outrank remaining level-design details, economy, story, accessibility, monetization, and technical stack decisions.
+Continue with the highest-weight unresolved Product Discovery question. The repeat-run variation model now outranks other remaining level-design details because it defines how handcrafted levels stay grindable without undermining mastery and speedrunning.
 
 ## Revision rules
 
