@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-043
+- Last persisted decision: D-044
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-043 were verified directly by the user after recovery.
+D-040 through D-044 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -61,13 +61,23 @@ D-040 through D-043 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-044 — Target platform order
+
+- Status: accepted
+- Choice: A — Windows PC first
+- Accepted requirement: Build and release the polished MVP for Windows PC first with keyboard/mouse and gamepad support. Android is the next intended platform after the PC version is stable; other platforms may follow later.
+- User-supplied constraints: Keep gameplay actions platform-neutral, use scalable UI, support suspend saves, and avoid needless PC-specific assumptions so later mobile expansion remains practical.
+- Design implication: Touch controls, mobile performance validation, and app-store release work are post-MVP rather than simultaneous MVP requirements.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Target platform order now outranks lower-level level-design, economy, story, accessibility, monetization, and technical stack decisions.
+Continue with the highest-weight unresolved Product Discovery question. Exact level size and expected session length now outrank remaining level-design details, economy, story, accessibility, monetization, and technical stack decisions.
 
 ## Revision rules
 
