@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 44,
-  "last_completed_decision": "D-044",
+  "questions_asked": 45,
+  "last_completed_decision": "D-045",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -68,6 +68,20 @@
         "Touch controls, mobile performance validation, and app-store release work are post-MVP"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-045",
+      "topic": "level_size_and_session_length",
+      "answer": "substantial_checkpoint_segmented_levels",
+      "constraints": [
+        "Target roughly 45 to 75 minutes for an exploratory first clear of each MVP level",
+        "Target roughly 20 to 35 minutes for a mastered run",
+        "Divide levels into natural checkpoint sections of roughly 10 to 20 minutes",
+        "Every level must remain interesting throughout",
+        "Levels should later be genuinely worth replaying and grinding rather than relying on repetitive filler",
+        "Prioritize distinct encounters, routes, secrets, objectives, progression opportunities, and mastery depth over raw floor area"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -78,7 +92,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Exact level size and expected session length",
+    "Repeat-run variation model for handcrafted levels",
     "Remaining level-design and exploration details",
     "Economy and shop rules",
     "Story and world",
@@ -95,13 +109,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "level_size_and_session_length",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting the intended MVP level size and expected first-clear versus repeat-run session length. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "repeat_run_variation_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting how handcrafted levels remain interesting and grindable on repeat runs while preserving mastery and speedrunning. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-044"
+    "last_persisted_decision": "D-045"
   }
 }
