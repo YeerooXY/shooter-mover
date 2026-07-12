@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 41,
-  "last_completed_decision": "D-041",
+  "questions_asked": 42,
+  "last_completed_decision": "D-042",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -29,6 +29,18 @@
         "Do not rely only on simple health or damage multipliers to differentiate difficulty"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-042",
+      "topic": "connectivity_model",
+      "answer": "offline_core_optional_online_features",
+      "constraints": [
+        "The complete MVP campaign, saves, progression, and difficulty modes must work offline",
+        "Optional online systems must not make the core game connectivity-dependent",
+        "Multiplayer is post-MVP and should follow only after a successful MVP",
+        "Preserve clean extension boundaries for later online and multiplayer systems without implementing their operational complexity in the MVP"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -39,7 +51,6 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Connectivity model: offline, online, or hybrid",
     "Participation model: solo, local multi-user, asynchronous multi-user, or real-time multiplayer",
     "Target platform order for MVP and post-MVP",
     "Exact level size and expected session length",
@@ -59,13 +70,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 5,
-    "topic": "connectivity_model",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting the core connectivity model. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "post_mvp_participation_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting the primary post-MVP multiplayer experience. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-041"
+    "last_persisted_decision": "D-042"
   }
 }
