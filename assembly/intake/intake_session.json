@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 45,
-  "last_completed_decision": "D-045",
+  "questions_asked": 46,
+  "last_completed_decision": "D-046",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -82,6 +82,18 @@
         "Prioritize distinct encounters, routes, secrets, objectives, progression opportunities, and mastery depth over raw floor area"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-046",
+      "topic": "repeat_run_variation_model",
+      "answer": "stable_levels_with_controlled_variations",
+      "constraints": [
+        "Keep core layouts, bosses, major encounters, and official competitive categories deterministic",
+        "Allow optional curated modifiers, difficulty-specific enemy variants, challenge contracts, rotating bonuses, and limited reward variation",
+        "Preserve learnable mastery and fair speedrunning",
+        "Do not turn the handcrafted campaign into heavily randomized roguelike runs"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -92,9 +104,8 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Repeat-run variation model for handcrafted levels",
+    "Repeat-run reward and economy model",
     "Remaining level-design and exploration details",
-    "Economy and shop rules",
     "Story and world",
     "Accessibility requirements",
     "Monetization and release model",
@@ -109,13 +120,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "repeat_run_variation_model",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting how handcrafted levels remain interesting and grindable on repeat runs while preserving mastery and speedrunning. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "repeat_run_reward_and_economy_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting how first-clear rewards, repeat-run rewards, currency, and random drops should make grinding worthwhile without making it mandatory. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-045"
+    "last_persisted_decision": "D-046"
   }
 }
