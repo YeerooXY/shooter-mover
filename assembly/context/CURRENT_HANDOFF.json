@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "repository": "YeerooXY/shooter-mover",
+  "lifecycle_phase": "product_discovery",
+  "active_role": "intake_interviewer",
+  "active_branch": "assembly/bootstrap-shooter-mover",
+  "active_pr": null,
+  "last_verified_commit": "b1fbff9ceacca3ff8ef9a5e06c242987243d9c5e",
+  "authoritative_artifacts": [
+    "AGENTS.md",
+    "assembly/intake/LIVE_DECISIONS.md",
+    "assembly/intake/intake_session.json",
+    "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
+  ],
+  "current_section": "product_discovery_recovery",
+  "last_completed_item": "D-040 — Fog-of-war map",
+  "current_item": "D-041 — Primary target-player strategy",
+  "next_action": "Ask exactly one concise A/B/C decision card about the primary target-player strategy. Target users are the highest-weight unresolved Product Discovery area. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "blockers": [
+    "Recovered decisions D-001 through D-039 require re-verification before final requirements",
+    "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
+  ],
+  "persistence": {
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_at": "2026-07-12T17:45:00+02:00"
+  },
+  "framework": {
+    "repository": "YeerooXY/ai-assembly-line",
+    "installed_ref": "main after merged PRs 31-34",
+    "kit_version": "0.1.0-plus-direct-handoff-upgrade"
+  },
+  "updated_at": "2026-07-12T17:45:00+02:00"
+}
