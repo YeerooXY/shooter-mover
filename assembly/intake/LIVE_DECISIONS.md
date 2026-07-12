@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-045
+- Last persisted decision: D-046
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-045 were verified directly by the user after recovery.
+D-040 through D-046 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -81,13 +81,23 @@ D-040 through D-045 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-046 — Repeat-run variation model
+
+- Status: accepted
+- Choice: B — stable levels with controlled variations
+- Accepted requirement: Core layouts, bosses, major encounters, and official competitive categories remain deterministic, while optional curated modifiers, difficulty-specific enemy variants, challenge contracts, rotating bonuses, and limited reward variation may refresh repeat runs.
+- User-supplied constraints: Preserve learnable mastery and fair speedrunning while making repeated play meaningfully varied.
+- Design implication: Repeat-run variation must be authored and bounded rather than turning the campaign into heavily randomized roguelike runs.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The repeat-run variation model now outranks other remaining level-design details because it defines how handcrafted levels stay grindable without undermining mastery and speedrunning.
+Continue with the highest-weight unresolved Product Discovery question. The repeat-run reward and economy model now outranks other remaining level-design details because it determines whether grinding feels rewarding without becoming mandatory or exploitative.
 
 ## Revision rules
 
