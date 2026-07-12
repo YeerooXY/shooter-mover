@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 43,
-  "last_completed_decision": "D-043",
+  "questions_asked": 44,
+  "last_completed_decision": "D-044",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -54,6 +54,20 @@
         "Avoid unnecessary single-player-only hard-coding where clean extension boundaries are practical"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-044",
+      "topic": "target_platform_order",
+      "answer": "windows_pc_first_android_post_mvp",
+      "constraints": [
+        "Release the polished MVP for Windows PC first",
+        "Support keyboard and mouse plus gamepad in the MVP",
+        "Android is the next intended platform after the PC version is stable",
+        "Keep gameplay actions platform-neutral and UI scalable",
+        "Suspend saves and data-driven content should remain compatible with later mobile expansion",
+        "Touch controls, mobile performance validation, and app-store release work are post-MVP"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -64,7 +78,6 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Target platform order for MVP and post-MVP",
     "Exact level size and expected session length",
     "Remaining level-design and exploration details",
     "Economy and shop rules",
@@ -81,14 +94,14 @@
   },
   "next_action": {
     "type": "ask_question",
-    "decision_weight": 5,
-    "topic": "target_platform_order",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting the MVP target platform order and post-MVP expansion path. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "decision_weight": 4,
+    "topic": "level_size_and_session_length",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting the intended MVP level size and expected first-clear versus repeat-run session length. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-043"
+    "last_persisted_decision": "D-044"
   }
 }
