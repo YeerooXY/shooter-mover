@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-170.
+- Product Discovery is active after verified decision D-180.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -41,6 +41,9 @@ Before responding:
 - Decisions D-161 through D-170 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D161_D170.md`
   - `assembly/intake/batches/intake_session_D161_D170.json`
+- Decisions D-171 through D-180 were batch-persisted in:
+  - `assembly/intake/batches/LIVE_DECISIONS_D171_D180.md`
+  - `assembly/intake/batches/intake_session_D171_D180.json`
 - The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
 - The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
 - The central hub is a fast menu interface, not an explorable base.
@@ -68,9 +71,18 @@ Before responding:
 - The first factory level is an interconnected authored room map inspired broadly by the navigation feel of `Robokill` and `Red Storm`.
 - Cleared rooms remain enemy-free during the run. Environmental machinery and hazards may remain dangerous and must be clearly telegraphed.
 - Ordinary death respawns the player at the latest activated checkpoint. Full-mission restart remains a possible post-MVP rule for nightmare or sadistic modes and record challenges.
-- Checkpoints are recognizable automatic teleports placed initially about every six or seven rooms, subject to playtesting. Their map state is visible and the model must remain adaptable to later co-op.
-- The next decision is D-171: decide whether activated teleports are only respawn checkpoints, also permit fast travel, or provide broader services.
-- The user requested persistence every ten discovery questions. Queue D-171 through D-180 and persist at D-180 unless this instruction changes or another context handoff is requested.
+- Checkpoints are recognizable automatic teleports placed initially about every six or seven rooms, subject to playtesting.
+- Activated teleports support fast travel among discovered teleports. Only a few authored teleports per map also host shops.
+- Teleport-shop stock is rolled once per run. Optional rerolls consume scarce refresh tokens earned during that run; tokens cannot be banked between missions.
+- Mission loot remains provisional until deposited in a few dedicated secure-storage rooms. Completed teleport-shop purchases are secured immediately.
+- Defeated enemies, explored rooms, objectives, and permanent route changes persist after death. Unsecured loot and explicitly temporary post-checkpoint state roll back.
+- Solo play supports a single automatic suspend snapshot from safe or cleared rooms outside combat. Co-op runs cannot be suspended.
+- Future co-op must allow remaining players to continue when the original host leaves through host migration, transferable authority, or an equivalent continuity design.
+- Co-op uses separate personal life allowances. A player with no lives remaining spectates while surviving teammates may clutch the run; the run fails when no active player remains.
+- The first co-op implementation consumes a life immediately at zero health and respawns the player. A revivable downed state remains a later experiment.
+- Personal co-op lives are fixed for the mission, cannot be replenished during the run, and use difficulty-dependent starting allowances.
+- The next decision is D-181: choose how co-op loot ownership and reward distribution work while preserving personal progression and provisional banking rules.
+- The user requested persistence every ten discovery questions. Queue D-181 through D-190 and persist at D-190 unless this instruction changes or another context handoff is requested.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -85,16 +97,16 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: queue D-171 through D-180 and commit the complete batch before asking D-181. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Honour the ten-question persistence cadence: queue D-181 through D-190 and commit the complete batch before asking D-191. Persist earlier if another context handoff becomes necessary or the user requests it.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
-- Continue prioritizing high-level product, campaign, level structure, content boundary, accessibility, production-pipeline, architecture-policy, proof, and MVP-delivery decisions before returning to micro-level combat tuning.
+- Continue prioritizing high-level product, campaign, level structure, progression, co-op policy, content boundary, accessibility, production-pipeline, architecture-policy, proof, and MVP-delivery decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Preserve Windows PC as the first target and Android as a later target rather than expanding the internal MVP to mobile now.
-- Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, and frequent teleport checkpoint cadence.
-- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, and animation counts as prototype-and-playtest variables unless explicitly fixed.
+- Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, frequent teleport checkpoint cadence, dedicated banking rooms, and clear secured-versus-unsecured loot semantics.
+- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, and animation counts as prototype-and-playtest variables unless explicitly fixed.
 
 ## Expected first action
 
-Ask D-171 exactly as directed by `CURRENT_HANDOFF.json`: determine what services an activated teleport provides during a mission while preserving its checkpoint role.
+Ask D-181 exactly as directed by `CURRENT_HANDOFF.json`: determine whether future co-op rewards are shared, individually instanced, or use a hybrid ownership model.
 
-Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher level-structure, checkpoint, progression, accessibility, production, proof, and MVP-delivery level.
+Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher level-structure, progression, co-op, accessibility, production, proof, and MVP-delivery level.
