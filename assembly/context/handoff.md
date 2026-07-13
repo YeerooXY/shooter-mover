@@ -6,6 +6,8 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 also merged the first partial Unity Foundation batch, so its branch is permanently closed. Contract Steward and Evidence Harness work was recovered onto the fresh branch `ai/task-split-shooter-mover-v1-continuation-1`. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
+The recovered state is open for human review in draft pull request #4. Do not append another batch to that branch after the PR merges.
+
 ## Durable task state
 
 - Batch index: `assembly/generated/task_batch_index.json`
@@ -54,6 +56,6 @@ Dispatch therefore requires a human decision to re-estimate, resequence, cut non
 
 ## Exact next action
 
-Review and merge the recovery PR. In a fresh context after merge, present the proposed `MT-001` through `MT-012` titles and exact dependencies to the human lead and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/movement-thruster.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
+Review and merge recovery PR #4. In a fresh context after merge, present the proposed `MT-001` through `MT-012` titles and exact dependencies to the human lead and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/movement-thruster.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

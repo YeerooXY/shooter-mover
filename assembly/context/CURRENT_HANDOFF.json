@@ -2,12 +2,12 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "task_decomposition",
+  "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
   "active_branch": "ai/task-split-shooter-mover-v1-continuation-1",
-  "active_pr": null,
-  "last_verified_commit": "a104dec042c95645f44639bf3655832efc2360c3",
+  "active_pr": 4,
+  "last_verified_commit": "42ffcc8",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -41,8 +41,8 @@
   "current_section": "guided_task_batch_generation",
   "handoff_status": "task_split_in_progress",
   "last_completed_item": "Recovered the Contract Steward and Stage 1 Evidence Harness batches from the closed PR #3 branch onto a fresh continuation branch, narrowed generated-task ownership to remove all current path overlaps, and preserved the no-implementation boundary.",
-  "current_item": "Open and review the recovery pull request for the three validated generated batches.",
-  "next_action": "Review and merge the recovery pull request. In the next fresh Task Splitter context, first present the proposed MT-001 through MT-012 titles and exact dependencies to the human lead and stop. Only after explicit human continuation may the agent create a fresh branch from current main, generate movement-thruster, validate it, update deterministic handoffs, open a draft batch-continuation pull request, and stop.",
+  "current_item": "Human review of recovery pull request #4 for the three validated generated batches.",
+  "next_action": "Review and merge pull request #4. In the next fresh Task Splitter context after merge, first present the proposed MT-001 through MT-012 titles and exact dependencies to the human lead and stop. Only after explicit human continuation may the agent create a fresh branch from current main, generate movement-thruster, validate it, update deterministic handoffs, open a draft batch-continuation pull request, and stop.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Thirteen planned agent batches remain to be proposed, approved and generated one at a time.",
@@ -54,7 +54,7 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T20:54:59+02:00",
+    "last_persisted_at": "2026-07-13T20:59:36+02:00",
     "planning_run": "shooter-mover-v1",
     "task_decomposition": "3 of 16 batches generated and validated",
     "generated_batches": [
@@ -95,5 +95,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T20:54:59+02:00"
+  "updated_at": "2026-07-13T20:59:36+02:00"
 }

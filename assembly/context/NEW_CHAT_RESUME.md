@@ -17,7 +17,7 @@ Continue from merged repository state in `YeerooXY/shooter-mover`. Never continu
 ## Current durable state
 
 - Planning PR #2 is merged at `320b7fee260743f0db250a8e14f46ddd8fdf7b24`.
-- Recovery branch: `ai/task-split-shooter-mover-v1-continuation-1`; its recovery PR must be reviewed and merged before the movement proposal proceeds.
+- Recovery branch: `ai/task-split-shooter-mover-v1-continuation-1`; draft recovery PR #4 must be reviewed and merged before the movement proposal proceeds.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
@@ -48,6 +48,6 @@ Keep each batch at 10–13 small tasks. Never append commits to a merged branch.
 
 ## Next action
 
-Review and merge the recovery PR. Then start a fresh Task Splitter context. Its first response must propose `MT-001` through `MT-012` with titles and exact dependencies and must not write files. After explicit human continuation, it may generate only `assembly/generated/task_batches/movement-thruster.json` on a fresh branch and open its draft continuation PR. Do not jump ahead to combat, weapons, enemies, or later agents.
+Review and merge recovery PR #4. Then start a fresh Task Splitter context. Its first response must propose `MT-001` through `MT-012` with titles and exact dependencies and must not write files. After explicit human continuation, it may generate only `assembly/generated/task_batches/movement-thruster.json` on a fresh branch and open its draft continuation PR. Do not jump ahead to combat, weapons, enemies, or later agents.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, or begin Dispatch until all 16 batches are generated and validated.
