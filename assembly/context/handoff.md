@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6, Combat PR #7, weapon amendment PR #8, weapon task-split PR #9, enemy amendment PR #10 and enemy/route task-split PR #11 are merged. PR #11 merged at `60df89d6d8bdc3afb5390bb292551c1e8d169253`; all corresponding branches are permanently closed. The validated accessibility/reliability batch is on fresh branch `ai/task-split-shooter-mover-v1-continuation-7` in draft PR #12 for human review.
+Task-split PRs through accessibility/reliability PR #12 are merged. PR #12 merged at `6dc427949e15d76a0764cc1598663e783b833b7c`; all corresponding branches are permanently closed. The validated final Stage 1 gate batch is on fresh branch `ai/task-split-shooter-mover-v1-continuation-8` in draft PR #13 for end-of-day human review.
 
 ## Durable task state
 
@@ -21,8 +21,10 @@ Movement PR #6, Combat PR #7, weapon amendment PR #8, weapon task-split PR #9, e
 - Generated batch: `assembly/generated/task_batches/stage1-weapons.json`
 - Generated batch: `assembly/generated/task_batches/stage1-enemies-route.json`
 - Generated batch: `assembly/generated/task_batches/stage1-accessibility-reliability.json`
-- Progress: 8 of 16 batches generated
-- Next batch: `stage1-gate`
+- Generated batch: `assembly/generated/task_batches/stage1-gate.json`
+- Progress: 9 of 16 batches generated
+- Stage 1 decomposition: complete
+- Next batch: `mission-state-continuity`
 - Canonical backlog: not generated
 - Collaboration assignments and claims: not finalized
 
@@ -47,6 +49,8 @@ The prior six-batch 68-task dependency graph was acyclic and topologically order
 With the enemy/route batch, the executable validator passes 81 tasks in topological order. The 261 exact path claims have no duplicates. EN-009 never edits generated registry outputs, and EN-010/EN-011 never edit the evidence-owned scenes. Direct S1.3 spend is 5.75 of 10 days, preserving 4.25 days for review and bounded follow-up.
 
 With the accessibility/reliability batch, the executable validator passes 93 tasks in topological order and 300 exact path claims have no duplicates. AR-001 isolates the settings profile, AR-005 isolates settings-only atomic persistence, AR-011 assembles immutable evidence and AR-012 has no approval authority. The batch spends 1.70 remaining S1.3 days and 2.90 S1.4 days, leaving 2.55 and 2.10 days respectively.
+
+With the gate batch, the executable validator passes 103 tasks in topological order and 322 exact path claims have no duplicates. GATE-010 is the sole Stage 2 unlock and can complete only for a signed advance decision with `stage2_unlocked=true`. No sessions, human decisions or implementation were performed. Planned gate spend is 1.90 S1.4 days and 3.40 S1.5 days, preserving 0.20 and 1.60 days respectively.
 
 The weapon batch records 4.60 focused lead days. Combined with combat-four-mount, S1.2 direct spend is 9.10 of 10 days, preserving 0.90 day for review reserve and bounded approved follow-up. WP-012 requires recorded human playable review before downstream work may claim weapon identity, audiovisual feedback or readability acceptance.
 
@@ -81,6 +85,6 @@ The one remaining Stage 2 ordinary enemy identity is also deferred until Stage 1
 
 ## Exact next action
 
-Review and merge the Stage 1 accessibility/reliability task-split draft PR. After it merges, start a fresh context from current `main`, present proposed `GATE-001` through `GATE-010` titles, owner lanes and exact dependencies for the Stage 1 developer and external formal gate, and stop. Generate that one batch only after explicit human continuation.
+Review and merge the Stage 1 gate task-split draft PR. Next session, start fresh from current `main`, present proposed `MS-001` through `MS-013` titles, owner lanes and exact dependencies for mission-state-continuity, and stop. Generate that one batch only after explicit human continuation. Stage 2 implementation remains blocked until GATE-010 is genuinely approved.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

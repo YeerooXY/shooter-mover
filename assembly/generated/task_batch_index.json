@@ -117,8 +117,8 @@
       "expected_task_ids": ["GATE-001", "GATE-002", "GATE-003", "GATE-004", "GATE-005", "GATE-006", "GATE-007", "GATE-008", "GATE-009", "GATE-010"],
       "depends_on_batches": ["stage1-accessibility-reliability", "stage1-enemies-route", "stage1-weapons", "combat-four-mount", "movement-thruster"],
       "output_path": "assembly/generated/task_batches/stage1-gate.json",
-      "status": "planned",
-      "notes": "Explicit human Stage 1 gate; all Stage 2 work depends on its approval task."
+      "status": "validated",
+      "notes": "Validated 10-task explicit human Stage 1 gate. GATE-010 is the sole Stage 2 unlock and can complete only after a valid advance decision. S1.4 gate allocation is 1.90 days and S1.5 external-round allocation is 3.40 days."
     },
     {
       "batch_id": "mission-state-continuity",
