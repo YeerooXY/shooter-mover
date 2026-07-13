@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-140.
+- Product Discovery is active after verified decision D-141.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -29,6 +29,9 @@ Before responding:
 - Decisions D-131 through D-140 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D131_D140.md`
   - `assembly/intake/batches/intake_session_D131_D140.json`
+- D-141 was persisted early because the user explicitly requested a context handoff:
+  - `assembly/intake/batches/LIVE_DECISIONS_D141_D141.md`
+  - `assembly/intake/batches/intake_session_D141_D141.json`
 - The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform rather than a heavily characterized mascot.
 - The world uses a stylized action-science-fiction tone: sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor without full parody.
 - The central hub is a fast menu interface, not an explorable base.
@@ -38,7 +41,9 @@ Before responding:
 - The first milestone is internal, not a public demo, Early Access release, or paid episode.
 - The internal MVP is a thin but complete one-level vertical slice covering launch, movement, four-weapon combat, a small enemy roster, rewards or loot, basic loadout or progression, completion, and replay.
 - The runtime is fully 2D with dimensional-looking artwork. The viewpoint is shallow angled top-down while movement, aiming, navigation, and collision remain on one flat gameplay plane.
-- The user requested batching repository persistence every ten discovery questions; queue D-141 through D-150 and persist at D-150 unless this instruction changes.
+- The eventual setting may contain several distinct enemy factions, but the one-level MVP must use one cohesive opposing faction only. Do not build content pipelines or assets for future factions before the first faction and level are complete and enjoyable.
+- The next decision is D-142: select the specific opposing faction used by the one-level internal MVP.
+- The user requested batching repository persistence every ten discovery questions. D-141 is already safely persisted because of this handoff; continue queuing D-142 through D-150 and persist at D-150 unless the instruction changes.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -53,8 +58,8 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the user-requested ten-question persistence batch: track accepted D-141 through D-150 in the active conversation, then commit the full batch before asking D-151. Persist earlier if a context handoff becomes necessary or the user requests it.
-- Keep already committed checkpoints at `unsaved_decisions: 0`; while an explicit batch is in progress, clearly track the queued decision range and never claim queued decisions are committed.
+- Honour the ten-question persistence cadence: D-141 has already been persisted for handoff safety; queue D-142 through D-150 and commit the remaining batch before asking D-151. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
 - Continue prioritizing high-level world identity, campaign content, MVP boundaries, platform, participation, and production-pipeline decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Treat advanced ricochet extensions as prototype-dependent and defer deep commitment until a usable core build exists.
@@ -63,6 +68,6 @@ Before responding:
 
 ## Expected first action
 
-Ask D-141 exactly as directed by `CURRENT_HANDOFF.json`: decide the primary world conflict and enemy-faction scope while keeping the one-level MVP tightly bounded.
+Ask D-142 exactly as directed by `CURRENT_HANDOFF.json`: choose the specific enemy faction used in the one-level internal MVP while keeping the broader multi-faction future setting out of immediate production scope.
 
-Do not begin with detailed projectile, collision, AI-timing, weapon-stat, or animation-count questions. D-141 onward should remain at the higher product, world, content-boundary, and MVP-production level until those major layers are sufficiently established.
+Do not begin with detailed projectile, collision, AI-timing, weapon-stat, or animation-count questions. Continue at the higher product, world, content-boundary, and MVP-production level.
