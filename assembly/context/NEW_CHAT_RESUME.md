@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-130.
+- Product Discovery is active after verified decision D-140.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -26,17 +26,19 @@ Before responding:
 - Decisions D-121 through D-130 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D121_D130.md`
   - `assembly/intake/batches/intake_session_D121_D130.json`
-- Normal enemy pressure uses readable aimed attacks, melee, flanking, and area denial, with bounded dense barrages reserved for selected units, elites, events, and bosses.
-- Encounters begin from authored visible formations with limited deterministic and telegraphed reinforcements.
-- Combat lockdowns are selective rather than universal. Ordinary encounters usually allow retreat, while major fights may clearly seal exits.
-- Enemy pursuit is role-based and bounded. Hunters may chase; defensive and objective-bound units usually hold their encounter area; shops and checkpoints remain safe.
-- Specialised ranged enemies may predict current movement, but cannot foresee sudden boost reversals. Selected attacks track during wind-up and visibly lock before firing.
-- Ordinary projectiles respect cover, with clearly communicated arcing, piercing, ricocheting, cover-destroying, or area-denial exceptions.
-- Only selected physical threats such as rockets, mines, drones, or slow plasma spheres are destructible. Exact interception tuning is deferred.
-- The user explicitly requested that discovery return to higher-level topics before more detailed combat rules.
-- The campaign has a light but meaningful narrative delivered through concise, replay-friendly methods.
-- Overall campaign structure uses a central hub with controlled branching main and optional missions rather than an open world.
-- The user requested batching future repository persistence every ten discovery questions; queue D-131 through D-140 and persist at D-140 unless this instruction changes.
+- Decisions D-131 through D-140 were batch-persisted in:
+  - `assembly/intake/batches/LIVE_DECISIONS_D131_D140.md`
+  - `assembly/intake/batches/intake_session_D131_D140.json`
+- The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform rather than a heavily characterized mascot.
+- The world uses a stylized action-science-fiction tone: sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor without full parody.
+- The central hub is a fast menu interface, not an explorable base.
+- Missions are handcrafted with bounded controlled variation. Comparable challenge runs may use fixed seeds or standardized conditions.
+- The game is campaign-first with deep mission replay for records, difficulty clears, loot, challenges, achievements, alternate objectives, and build experimentation.
+- Production begins with one genuinely good, replayable level. A second level follows only after shared systems and workflow are in place; a compact six-to-ten-mission campaign is a later possible expansion, not the immediate commitment.
+- The first milestone is internal, not a public demo, Early Access release, or paid episode.
+- The internal MVP is a thin but complete one-level vertical slice covering launch, movement, four-weapon combat, a small enemy roster, rewards or loot, basic loadout or progression, completion, and replay.
+- The runtime is fully 2D with dimensional-looking artwork. The viewpoint is shallow angled top-down while movement, aiming, navigation, and collision remain on one flat gameplay plane.
+- The user requested batching repository persistence every ten discovery questions; queue D-141 through D-150 and persist at D-150 unless this instruction changes.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -51,9 +53,9 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the user-requested ten-question persistence batch: track accepted D-131 through D-140 in the active conversation, then commit the full batch before asking D-141. Persist earlier if a context handoff becomes necessary or the user requests it.
+- Honour the user-requested ten-question persistence batch: track accepted D-141 through D-150 in the active conversation, then commit the full batch before asking D-151. Persist earlier if a context handoff becomes necessary or the user requests it.
 - Keep already committed checkpoints at `unsaved_decisions: 0`; while an explicit batch is in progress, clearly track the queued decision range and never claim queued decisions are committed.
-- Prioritize high-level product identity, protagonist, hub, world, campaign scope, platform, participation, and MVP-boundary decisions before returning to micro-level combat tuning.
+- Continue prioritizing high-level world identity, campaign content, MVP boundaries, platform, participation, and production-pipeline decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Treat advanced ricochet extensions as prototype-dependent and defer deep commitment until a usable core build exists.
 - Treat exact combat timing, projectile health, boost coefficients, collision coefficients, and similar numeric details as later prototype-and-playtest variables unless explicitly fixed.
@@ -61,6 +63,6 @@ Before responding:
 
 ## Expected first action
 
-Ask D-131 exactly as directed by `CURRENT_HANDOFF.json`: decide the player protagonist and mech identity model.
+Ask D-141 exactly as directed by `CURRENT_HANDOFF.json`: decide the primary world conflict and enemy-faction scope while keeping the one-level MVP tightly bounded.
 
-Do not begin with another detailed projectile, collision, AI-timing, or weapon-handling question. D-131 onward should remain at the higher product and campaign level until those major layers are sufficiently established.
+Do not begin with detailed projectile, collision, AI-timing, weapon-stat, or animation-count questions. D-141 onward should remain at the higher product, world, content-boundary, and MVP-production level until those major layers are sufficiently established.
