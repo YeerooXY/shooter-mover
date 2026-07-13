@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-194.
+- Product Discovery is active after verified decision D-200.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -50,6 +50,9 @@ Before responding:
 - D-191 through D-194 were persisted early because the user explicitly requested a context handoff:
   - `assembly/intake/batches/LIVE_DECISIONS_D191_D194.md`
   - `assembly/intake/batches/intake_session_D191_D194.json`
+- Decisions D-195 through D-200 were batch-persisted in:
+  - `assembly/intake/batches/LIVE_DECISIONS_D195_D200.md`
+  - `assembly/intake/batches/intake_session_D195_D200.json`
 - The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
 - The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
 - The central hub is a fast menu interface, not an explorable base.
@@ -67,7 +70,7 @@ Before responding:
 - The internal MVP includes a minimal real strongbox and randomized-shop loop using the base-weapon pool, without the mature economy's advanced systems.
 - Art production uses a hybrid pipeline: offline 3D sources rendered into 2D sprites for mechs, enemies, weapons, and major machinery, combined with painted, procedural, or directly authored 2D environments, effects, shadows, interface work, and finishing passes.
 - The internal MVP is led by one human developer, supported by AI agents and occasional specialist outsourcing. The workflow supports four or more parallel agents through isolated task branches and gameplay-domain ownership.
-- The engine is Unity with C#. Gameplay uses a hybrid plain-C# domain core with Unity-facing adapters, ScriptableObject definitions, URP 2D lighting, additive scenes, modular prefabs, and layered automated validation plus playable proof.
+- The engine remains Unity with C#. Gameplay uses a hybrid plain-C# domain core with Unity-facing adapters, ScriptableObject definitions, URP 2D lighting, additive scenes, modular prefabs, and layered automated validation plus playable proof.
 - Windows implementation and tuning begin with keyboard and mouse, while Unity Input System actions remain device-independent for later gamepad, touch, and other platform inputs.
 - The MVP includes a practical accessibility baseline: scalable interface and text, color-independent warnings, reduced-effect controls, aim assistance, input alternatives, and configurable camera feedback.
 - Saves are versioned and local-first with atomic writes, validation, rolling backups, recovery, and manual export or import. Permanent offline play remains complete.
@@ -87,9 +90,7 @@ Before responding:
 - Co-op uses separate personal life allowances. A player with no lives remaining spectates while surviving teammates may clutch the run; the run fails when no active player remains.
 - The first co-op implementation consumes a life immediately at zero health and respawns the player. A revivable downed state remains a later experiment.
 - Personal co-op lives are fixed for the mission, cannot be replenished during the run, and use difficulty-dependent starting allowances.
-- Routine co-op loot, currency, shops, unsecured rewards, banking, and permanent progression remain personal. Major authored rewards grant every eligible player a strongbox simultaneously, with rarity rolled independently per player.
-- Active players and life-exhausted spectators receive major rewards when still connected. Players who left the live session do not receive them under the initial rule.
-- Each player's strongbox rarity is based on the mission settings and that player's own account level. Teammate account levels never modify another player's odds.
+- Routine co-op loot, currency, shops, unsecured rewards, banking, and permanent progression remain personal. Major authored rewards create an independently rolled personal strongbox opportunity for every eligible connected player, including life-exhausted spectators.
 - Co-op uses one fixed selected mission difficulty and preserves each player's real equipment and account power. Veteran carrying is allowed; later challenge rules may constrain levels or loadouts explicitly.
 - Solo and co-op completions are tracked separately. Co-op has its own campaign progression track and does not automatically advance the solo campaign.
 - The party leader may launch missions from the leader's co-op track. Less-progressed participants join with visible guest-run status, keep personal rewards, and advance only when their own prerequisites are satisfied.
@@ -99,8 +100,14 @@ Before responding:
 - Networking uses a relay-backed player-hosted PvE model with explicit latency tolerance. Cross-region play should feel responsive but cannot be promised as literally lag-free; latency, jitter, packet loss, and severe divergent enemy-state cases require deliberate testing.
 - The trusted co-op model resolves each player's movement, firing, incoming damage, pickups, loot, and immediate inventory or combat feedback locally. Strict shared team-objective synchronization is deferred beyond the first co-op MVP.
 - A lightweight shared layer confirms room identity, doors, coarse completion, map access, teleports, and major rewards. Players may join a teammate's active room instance or enter their own local version of an available room.
-- The next decision is D-195: determine how global room completion, doors, and rewards settle when teammates use joined or separate local room instances.
-- D-191 through D-194 are safely persisted. Queue D-195 through D-200 and persist the remaining partial batch at D-200 unless this instruction changes or another context handoff is requested.
+- The first valid local-instance clear globally unlocks the room's coarse shared progress. Other already-active instances may finish or withdraw, while later entrants find the room cleared.
+- A player may miss XP from a room they did not fight in, but qualifying non-XP reward events create independent personal rolls for every eligible connected player.
+- Each personal reward remains a physical owned drop at the original event location and must normally be collected by its owner. Other players cannot steal it.
+- Major transition points may use a warned party vote and countdown to force rendezvous. A teleported player's remaining owned boxes travel with them or safely reappear at the destination.
+- A disconnected player's uncollected drops remain exclusively reserved during a bounded reconnect grace period. Exact timeout and forfeiture rules require serious testing across reconnects, crashes, host migration, packet loss, spectator state, teleport transitions, and duplication attempts.
+- Detailed post-MVP co-op settlement is now sufficiently bounded for Product Discovery. Return to MVP proof, delivery, content, and acceptance gates before further networking micro-decisions.
+- The next decision is D-201: define what the one-level vertical slice must prove before broader content production begins.
+- D-195 through D-200 are safely persisted. Begin a new D-201 through D-210 batch unless the cadence changes or another context handoff is requested.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -115,18 +122,18 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: D-191 through D-194 were persisted early for handoff safety; queue D-195 through D-200 and commit the remaining partial batch before asking D-201. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Honour the ten-question persistence cadence: begin the next batch at D-201 and persist through D-210. Persist earlier if another context handoff becomes necessary or the user requests it.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
-- Continue prioritizing high-level product, campaign, level structure, progression, co-op policy, content boundary, accessibility, production-pipeline, architecture-policy, proof, and MVP-delivery decisions before returning to micro-level combat tuning.
+- Continue prioritizing high-level product, campaign, level structure, progression, content boundary, accessibility, production pipeline, architecture policy, proof, and MVP-delivery decisions before returning to micro-level combat or networking tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Preserve Windows PC as the first target and Android as a later target rather than expanding the internal MVP to mobile now.
 - Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, frequent teleport checkpoint cadence, dedicated banking rooms, and clear secured-versus-unsecured loot semantics.
 - Preserve fixed mission difficulty across mixed-level co-op while scaling encounter pressure only from active player count and explicit mission settings.
 - Preserve the local-first trusted co-op direction while maintaining coarse canonical navigation and durable progression facts.
-- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, player-count scaling coefficients, network thresholds, and animation counts as prototype-and-playtest variables unless explicitly fixed.
+- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, player-count scaling coefficients, network thresholds, grace periods, vote thresholds, countdowns, and animation counts as prototype-and-playtest variables unless explicitly fixed.
 
 ## Expected first action
 
-Ask D-195 exactly as directed by `CURRENT_HANDOFF.json`: decide how global room completion, doors, and rewards settle when players may join a teammate's room instance or enter their own local instance.
+Ask D-201 exactly as directed by `CURRENT_HANDOFF.json`: decide what the one-level internal vertical slice must prove before broader content production begins.
 
-Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or exact networking coefficients. Continue at the higher room-state, progression, co-op, accessibility, production, proof, and MVP-delivery level.
+Do not return to detailed co-op edge cases, enemy attack statistics, weapon coefficients, boss patterns, collision coefficients, or exact networking thresholds until the higher-level MVP proof and delivery gates are settled.
