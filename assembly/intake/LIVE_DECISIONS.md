@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-046
+- Last persisted decision: D-047
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-046 were verified directly by the user after recovery.
+D-040 through D-047 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -91,13 +91,23 @@ D-040 through D-046 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-047 — Repeat-run reward and weapon-acquisition economy
+
+- Status: accepted
+- Choice: custom — randomized floor strongboxes plus randomized shop inventory
+- Accepted requirement: Weapons are acquired primarily from level-floor pickups, potentially represented as tiered strongboxes with random contents, and from shops that offer a randomized loadout or inventory for purchase.
+- User-supplied constraints: Random weapon discovery should be a central source of excitement during play, while shops provide a second paid chance to obtain useful weapons from a random selection.
+- Open balancing detail: Duplicate handling, bad-luck protection, strongbox tier odds, shop refresh rules, pricing, and deterministic fallback rewards are not yet decided.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The repeat-run reward and economy model now outranks other remaining level-design details because it determines whether grinding feels rewarding without becoming mandatory or exploitative.
+Continue with the highest-weight unresolved Product Discovery question. RNG fairness and duplicate handling now outrank the remaining economy details because they determine whether randomized strongboxes and shop inventories feel exciting or frustrating.
 
 ## Revision rules
 
