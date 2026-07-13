@@ -24,7 +24,8 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - Stage 1 weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`; its branch is permanently closed.
 - Stage 1 enemy planning-amendment PR #10 is merged at `ef4a6bbed6940d472ce29cde7bb5ecd658c85c87`; its branch is permanently closed.
 - Stage 1 enemy/route task-split PR #11 is merged at `60df89d6d8bdc3afb5390bb292551c1e8d169253`; its branch is permanently closed.
-- Active task-split branch: `ai/task-split-shooter-mover-v1-continuation-7`; draft PR #12 contains the validated accessibility/reliability batch and awaits human review.
+- Stage 1 accessibility/reliability task-split PR #12 is merged at `6dc427949e15d76a0764cc1598663e783b833b7c`; its branch is permanently closed.
+- Active task-split branch: `ai/task-split-shooter-mover-v1-continuation-8`; draft PR #13 contains the validated final Stage 1 gate batch and awaits human review.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
@@ -34,8 +35,10 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - Generated and executable-validator-validated: `stage1-weapons` with 12 tasks using `WP-001` through `WP-012`.
 - Generated and executable-validator-validated: `stage1-enemies-route` with 13 tasks using `EN-001` through `EN-013`.
 - Generated and executable-validator-validated: `stage1-accessibility-reliability` with 12 tasks using `AR-001` through `AR-012`.
-- Progress: 8 of 16 batches generated and validated, 93 generated tasks total.
-- Next batch: `stage1-gate` with 10 tasks.
+- Generated and executable-validator-validated: `stage1-gate` with 10 tasks using `GATE-001` through `GATE-010`.
+- Progress: 9 of 16 batches generated and validated, 103 generated tasks total.
+- Stage 1 task decomposition is complete; seven Stage 2 batches remain.
+- Next batch: `mission-state-continuity` with 13 tasks.
 - No Unity/game implementation, canonical backlog, or collaboration assignment exists.
 - Recorded S1.0 blocker: Foundation, Contract Steward, and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
 - S1.1 movement-thruster tasks estimate 6.15 focused lead days against the accepted eight-day cap, leaving 1.85 days for human review and bounded evidence-led iteration.
@@ -49,6 +52,8 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - The enemy/route batch consumes 5.75 of the S1.3 ten-day cap, preserving 4.25 days for review and bounded evidence-led follow-up.
 - The accessibility/reliability batch allocates 1.70 days to S1.3 and 2.90 days to S1.4. Remaining capacity is 2.55 S1.3 days and 2.10 S1.4 days for review and the developer gate.
 - AR-011 assembles immutable readiness evidence; AR-012 reports pass/block readiness but cannot approve Stage 1.
+- GATE-004 completes only on a developer-gate pass. GATE-010 is the sole Stage 2 unlock and completes only on a genuine signed advance decision with `stage2_unlocked=true`.
+- No gate sessions or human decisions have been executed; this repository contains task decomposition only.
 - Full graph validation remains pending until every planned batch file exists; forward references to predeclared later IDs are not evidence of a complete validated backlog.
 
 ## Guided rule
@@ -71,6 +76,6 @@ Keep each batch at 10–13 small tasks. Never append commits to a merged branch.
 
 ## Next action
 
-Review and merge the Stage 1 accessibility/reliability task-split draft PR. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `GATE-001` through `GATE-010` titles, owner lanes and exact dependencies for the Stage 1 developer and external formal gate, then stop without writing files. Generate that batch only after explicit human continuation.
+Review and merge the Stage 1 gate task-split draft PR. In the next session, start a fresh Task Splitter context from current `main`. Its first response must propose `MS-001` through `MS-013` titles, owner lanes and exact dependencies for mission state, room projection, saves, snapshots, journal, checkpoints, banking, suspension and recovery, then stop without writing files. Generate that batch only after explicit human continuation. Stage 2 implementation remains blocked until GATE-010 is genuinely approved.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, or begin Dispatch until all 16 batches are generated and validated.
