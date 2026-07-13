@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-069
+- Last persisted decision: D-080
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -120,13 +120,137 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-070 — Puzzle, key, lock, and environmental-interaction complexity
+
+- Status: accepted
+- Choice: B — straightforward mandatory routing with deeper optional puzzles
+- Accepted requirement: Main-path keys, locks, switches, destructible generators, power-routing tasks, and comparable interactions remain quick, readable, and subordinate to combat pacing. Optional secrets, shortcuts, rare rewards, lore spaces, and side encounters may use moderate multi-step environmental puzzles.
+- Replay rule: Mandatory interactions must remain fast on repeat runs, while optional puzzles may reward route knowledge and permit efficient solutions once mastered.
+- Difficulty rule: Puzzle logic remains fixed and deterministic across difficulties. Easier modes may provide clearer visual hints or reminders; harder modes may reduce hints or add combat pressure but must not secretly change the correct logical solution.
+- Accessibility rule: Required interactions need clear visual and audio language, remappable controls, and practical PC, gamepad, and later Android input paths. Avoid obscure pixel hunting or solutions that depend only on colour, sound, or precise timing without alternatives.
+- Co-op rule: Optional puzzles may support coordination later, but ordinary campaign progress cannot depend on fragile simultaneous-input sequences or create co-op deadlocks.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-071 — Mission objectives and kill-based XP progression
+
+- Status: accepted
+- Choice: custom B — mixed authored mission objectives with robot-kill XP
+- Accepted requirement: Each campaign level or major section has authored mission-wide goals that define success, such as destroying targets, activating systems, retrieving an object, defending a position, escaping, or defeating a boss. Combat remains the dominant moment-to-moment activity.
+- XP rule: Destroying enemy robots grants XP toward the player’s persistent level, making ordinary combat a primary progression source even when clearing every enemy is not itself the mission objective.
+- Objective rule: Objectives structure routes and pacing without replacing combat as the game’s core. Optional objectives may grant additional XP, currency, strongbox-quality influence, mastery credit, or other bounded rewards.
+- Anti-farming rule: XP rewards, reclaimed enemies, repeat clears, and objective resets must be controlled so repeatedly cycling restored rooms cannot become the dominant progression strategy.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-072 — XP accrual and checkpoint-activated level-ups
+
+- Status: accepted
+- Choice: B — earn XP immediately and activate level-ups at checkpoints
+- Accepted requirement: Kills and objectives add XP to the visible progression bar immediately. Crossing a threshold provides immediate feedback, but the actual player-level increase, baseline stat changes, unlocks, and new loot eligibility activate only upon reaching or using the next valid checkpoint.
+- Encounter rule: Player power and loot eligibility do not change unexpectedly during an active fight.
+- Loot rule: Strongboxes already collected retain the immutable progression snapshot committed at pickup under D-062. Pickups after checkpoint activation use the newly active player level.
+- Failure rule: XP already earned is not erased merely because the player dies before checkpoint activation; reclaimed-enemy reward suppression is handled separately under D-075.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-073 — Fixed core growth with authored milestone choices
+
+- Status: accepted
+- Choice: C — deterministic baseline progression plus occasional permanent upgrade choices
+- Accepted requirement: Ordinary player levels provide predictable authored baseline growth, unlocks, and loot-pool progression. Specific milestone levels offer a choice among a small set of balanced permanent upgrades, such as shield behaviour, movement efficiency, weapon handling, or recovery characteristics.
+- Balance rule: Random weapon rolls already provide frequent variation, so foundational character growth remains sufficiently stable for encounter tuning, comparison, and deterministic mastery.
+- Choice rule: Milestone options must represent understandable trade-offs rather than obvious traps or strictly superior picks.
+- Competitive rule: Verified runs record the active milestone build, and categories may normalize or constrain builds where necessary.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-074 — Paid milestone respec at checkpoints
+
+- Status: accepted
+- Choice: B — checkpoint respec using gameplay resources
+- Accepted requirement: Milestone upgrade choices may be reset and reassigned at activated checkpoints or equivalent safe progression interfaces by paying a bounded gameplay-currency or material cost.
+- UX rule: The complete resulting build and cost are previewed before confirmation. The first respecs should remain affordable enough to support learning and experimentation.
+- Economy rule: Respec costs must remain meaningful without becoming punitive, permanently trapping a profile, or pressuring real-money spending.
+- Run rule: Milestone choices cannot be changed during active combat. Verified runs record or lock the selected build according to category rules.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-075 — Permanent earned XP with reclaimed-enemy suppression
+
+- Status: accepted
+- Choice: C — keep earned XP and reduce repeated reclaimed-enemy rewards
+- Accepted requirement: Legitimately earned XP is retained immediately and is not removed by death or abandonment. Enemies restored through the same death-and-reclamation cycle grant sharply reduced or zero additional XP until genuine progression resets their reward eligibility.
+- Reset rule: Reward eligibility may reset through reaching a new checkpoint, starting a fresh level attempt, or another clearly defined legitimate progression boundary, not by repeatedly dying or teleporting.
+- Communication rule: Suppressed or reduced XP must be clearly signalled so the player understands that the enemy is a repeated reclaimed target rather than a bugged reward.
+- Difficulty rule: Reward-reduction values may vary by ruleset, but already earned XP is not deleted to create difficulty.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-076 — Authored level bands with optional player-scaled modes
+
+- Status: accepted
+- Choice: custom C — fixed approachable modes plus bounded scaled replay modes
+- Accepted requirement: Each campaign level has an authored intended power band. Easier and ordinary modes preserve fixed approachable enemy tuning so newer players can progress without every level automatically matching a highly levelled profile.
+- Scaled-mode rule: Separate replay, challenge, or mastery modes may scale earlier levels toward the player’s current level within authored bounds, keeping old content challenging and economically relevant without blindly equalizing every stat.
+- Power-fantasy rule: Returning to ordinary earlier content while overlevelled should still communicate real progression and increased power.
+- Reward rule: Scaled modes may provide appropriately improved challenge rewards, while fixed easy modes must not become the optimal high-level farming route.
+- Competitive rule: Fixed authored and scaled variants use explicit separate rulesets and leaderboard or challenge categories.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-077 — Per-attempt difficulty commitment
+
+- Status: accepted
+- Choice: B — choose difficulty at level start and commit for the full attempt
+- Accepted requirement: The player selects one difficulty or ruleset when starting or replaying a level. That selection remains fixed until the attempt ends or is deliberately restarted.
+- Progress rule: Different campaign levels may be completed on different difficulties. Completion records, rewards, achievements, mastery results, and verification data store the selected ruleset for each run.
+- Anti-exploit rule: Difficulty cannot be lowered for one troublesome room or increased only before a reward. Changing it requires ending or restarting the attempt.
+- Speedrun rule: Verified categories retain one deterministic ruleset for the entire run.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-078 — Immediate core difficulties with unlockable extreme mastery modes
+
+- Status: accepted
+- Choice: C — normal spectrum available immediately; transformative extremes unlock through achievement
+- Accepted requirement: New players may immediately choose from the ordinary difficulty spectrum, including accessible, standard, hard, and an appropriately demanding expert option, without being forced to clear easier settings first.
+- Unlock rule: The most transformative mastery rulesets—such as severe room reclamation, near-zero recovery, expanded encounter compositions, or specialised challenge modifiers—unlock after the player demonstrates familiarity through campaign progress, level completion, or relevant achievements.
+- UX rule: Extreme modes must be clearly labelled as specialised mastery experiences rather than ordinary recommended first-play options.
+- Speedrun rule: Main categories remain available without mandatory low-difficulty grinding; specialised unlocked categories use predictable requirements.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-079 — Difficulty-scaled between-room health recovery
+
+- Status: accepted
+- Choice: custom B — health recovery varies from generous to nearly absent by difficulty
+- Accepted requirement: Clearing a legitimate room or encounter may restore a difficulty-dependent amount of health while shield recovery follows its own rules. Easier modes provide substantial recovery and may make attrition almost trivial for inexperienced players; standard modes provide modest recovery; hard modes sharply reduce it; extreme modes may provide almost none or zero.
+- Abuse rule: Reclaimed rooms and repeatedly restored encounters cannot repeatedly grant full health recovery. Recovery is tied to legitimate first-clear or progression eligibility.
+- Balance rule: Pickups, shops, upgrades, perks, and checkpoints may provide additional authored healing, but the complete system must avoid both infinite recovery loops and unwinnable no-resource states on modes intended for ordinary completion.
+- Communication rule: The selected difficulty clearly explains its health-recovery rules before the level begins.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-080 — Capped passive shield recovery with difficulty and perk scaling
+
+- Status: accepted
+- Choice: custom — minimal capped baseline recovery, extensible through skills and rulesets
+- Accepted requirement: Passive shield recovery between or after encounters is deliberately limited by default rather than automatically restoring a full shield after every room. Recovery may stop at a maximum percentage cap and should remain small enough that ordinary mistakes still matter.
+- Perk rule: Authored skills, perks, or milestone upgrades may raise the passive recovery cap, improve regeneration speed, enable additional recovery conditions, or add aggression-driven recharge as an optional build mechanic rather than a universal baseline requirement.
+- Difficulty rule: Accessible modes may override the baseline with generous or near-complete shield recovery and substantial health recovery, making the game intentionally easy for newer players. Standard modes provide restrained recovery. Hard and extreme modes reduce passive shield and between-room health recovery toward almost zero or zero.
+- Anti-stalling rule: Recovery timing and caps must avoid making doorway waiting the optimal rhythm. The game may complete eligible recovery quickly once a room is secure rather than rewarding prolonged inactivity.
+- Abuse rule: Reclaimed or repeatedly cleared rooms cannot repeatedly restore shield or health beyond the active ruleset’s legitimate recovery allowance.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue the core-experience recovery by deciding the role and complexity of keys, locks, power-routing tasks, and environmental puzzles within the combat-first campaign.
+Continue the core-experience recovery by deciding when the player may change the equipped four-weapon loadout during a level.
 
 ## Revision rules
 
@@ -134,4 +258,4 @@ Continue the core-experience recovery by deciding the role and complexity of key
 - Mark changed decisions as superseded and add a new entry.
 - Do not record unchosen options as requirements.
 - Keep reconstructed decisions unverified until confirmed.
-- Commit every newly accepted answer before asking the next question.
+- Product Discovery decisions may be batch-persisted every ten questions when explicitly requested by the user; the next planned batch boundary is D-090.
