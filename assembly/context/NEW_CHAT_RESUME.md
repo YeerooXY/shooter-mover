@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-190.
+- Product Discovery is active after verified decision D-194.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -47,6 +47,9 @@ Before responding:
 - Decisions D-181 through D-190 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D181_D190.md`
   - `assembly/intake/batches/intake_session_D181_D190.json`
+- D-191 through D-194 were persisted early because the user explicitly requested a context handoff:
+  - `assembly/intake/batches/LIVE_DECISIONS_D191_D194.md`
+  - `assembly/intake/batches/intake_session_D191_D194.json`
 - The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
 - The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
 - The central hub is a fast menu interface, not an explorable base.
@@ -92,8 +95,12 @@ Before responding:
 - The party leader may launch missions from the leader's co-op track. Less-progressed participants join with visible guest-run status, keep personal rewards, and advance only when their own prerequisites are satisfied.
 - Teleport-based late joining is the desired end state, but the first co-op MVP may use lobby-only entry plus reconnection. Late joiners eventually receive fewer lives according to a simple mission-progress or teleport-segment rule.
 - Co-op encounter pressure scales modestly with active player count and selected mission settings, not account level. Party-size scaling is locked when a room engagement begins; exact curves remain playtest variables.
-- The next decision is D-191: establish the supported co-op party-size target and whether four-player delivery is staged through an earlier two-player validation step.
-- The user requested persistence every ten discovery questions. Queue D-191 through D-200 and persist at D-200 unless this instruction changes or another context handoff is requested.
+- Co-op targets up to four players, with staged two-player validation before three- and four-player completion testing. Architecture must not assume a permanent two-player limit.
+- Networking uses a relay-backed player-hosted PvE model with explicit latency tolerance. Cross-region play should feel responsive but cannot be promised as literally lag-free; latency, jitter, packet loss, and severe divergent enemy-state cases require deliberate testing.
+- The trusted co-op model resolves each player's movement, firing, incoming damage, pickups, loot, and immediate inventory or combat feedback locally. Strict shared team-objective synchronization is deferred beyond the first co-op MVP.
+- A lightweight shared layer confirms room identity, doors, coarse completion, map access, teleports, and major rewards. Players may join a teammate's active room instance or enter their own local version of an available room.
+- The next decision is D-195: determine how global room completion, doors, and rewards settle when teammates use joined or separate local room instances.
+- D-191 through D-194 are safely persisted. Queue D-195 through D-200 and persist the remaining partial batch at D-200 unless this instruction changes or another context handoff is requested.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -108,17 +115,18 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: queue D-191 through D-200 and commit the complete batch before asking D-201. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Honour the ten-question persistence cadence: D-191 through D-194 were persisted early for handoff safety; queue D-195 through D-200 and commit the remaining partial batch before asking D-201. Persist earlier if another context handoff becomes necessary or the user requests it.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
 - Continue prioritizing high-level product, campaign, level structure, progression, co-op policy, content boundary, accessibility, production-pipeline, architecture-policy, proof, and MVP-delivery decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Preserve Windows PC as the first target and Android as a later target rather than expanding the internal MVP to mobile now.
 - Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, frequent teleport checkpoint cadence, dedicated banking rooms, and clear secured-versus-unsecured loot semantics.
 - Preserve fixed mission difficulty across mixed-level co-op while scaling encounter pressure only from active player count and explicit mission settings.
-- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, player-count scaling coefficients, and animation counts as prototype-and-playtest variables unless explicitly fixed.
+- Preserve the local-first trusted co-op direction while maintaining coarse canonical navigation and durable progression facts.
+- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, player-count scaling coefficients, network thresholds, and animation counts as prototype-and-playtest variables unless explicitly fixed.
 
 ## Expected first action
 
-Ask D-191 exactly as directed by `CURRENT_HANDOFF.json`: determine whether future co-op is capped at two players, targets four players through staged two-player validation, or requires full four-player support from the first co-op MVP.
+Ask D-195 exactly as directed by `CURRENT_HANDOFF.json`: decide how global room completion, doors, and rewards settle when players may join a teammate's room instance or enter their own local instance.
 
-Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher level-structure, progression, co-op, accessibility, production, proof, and MVP-delivery level.
+Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or exact networking coefficients. Continue at the higher room-state, progression, co-op, accessibility, production, proof, and MVP-delivery level.
