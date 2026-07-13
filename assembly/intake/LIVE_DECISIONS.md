@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-080
+- Last persisted decision: D-090
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -244,13 +244,128 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-081 — Checkpoint and shop loadout changes
+
+- Status: accepted
+- Choice: B — full loadout changes at activated checkpoints and shops
+- Accepted requirement: The player selects a four-weapon loadout before beginning a level attempt. During the attempt, stored armory weapons may be reassigned to those four slots only at activated checkpoints or physical shops while no combat or encounter lock is active.
+- Shop rule: A weapon purchased from a shop may be equipped immediately at that shop, including replacing an equipped weapon through a clear confirmation flow.
+- Routing rule: Checkpoint fast travel may support deliberate returns for reconfiguration without refreshing shops, enemies, loot, or other state.
+- Competitive rule: Loadout changes are deterministic run events. Verified or extreme categories may lock the starting loadout for the full attempt when explicitly stated.
+- Platform rule: The interface must remain practical for keyboard, gamepad, later Android, and future co-op without opening disruptive inventory menus during combat.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-082 — Background weapon recovery without default magazines
+
+- Status: accepted
+- Choice: custom C — weapon-specific holstered recovery with no conventional magazine requirement
+- Accepted requirement: Ordinary guns do not require traditional clip-by-clip magazine reloads as the universal baseline. Holstered weapons may cool, recharge, vent, or recover readiness in the background according to their authored mechanics.
+- Combat rule: Sustained firing is controlled mainly through fire rate, heat, spread, recoil, energy demand, ammunition consumption, recovery windows, or weapon-specific behaviour rather than routine small magazine sizes.
+- Identity rule: Individual weapons may still use authored charge, vent, reload, chamber, or downtime mechanics when those mechanics meaningfully support their fantasy.
+- Communication rule: The HUD must make background recovery and readiness legible across the four-weapon rotation.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-083 — Shared normal and power ammunition pools
+
+- Status: accepted
+- Choice: B — generous shared normal ammunition plus scarce shared power ammunition
+- Accepted requirement: Compatible weapons draw from transferable shared ammunition pools rather than carrying separate per-gun magazines. A generous normal-ammo pool supports frequent arcade-style firing, while a much scarcer shared power-ammo pool enables empowered fire.
+- Consumption rule: Different weapons consume each pool at authored rates. Rapid weapons may spend small units continuously, while cannons, beams, launchers, or comparable weapons may consume larger amounts per shot or per second.
+- Balance rule: Fire rate, heat, spread, recoil, handling, and ammo efficiency remain major balancing levers; ammunition scarcity must not be the only control on powerful weapons.
+- Exception rule: Truly exotic weapons may use clearly communicated authored resource exceptions, but the MVP should avoid a cluttered family-by-family ammo inventory.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-084 — Guaranteed supply, random surplus, and anywhere normal-ammo purchases
+
+- Status: accepted
+- Choice: custom B — deterministic baseline supply with random bonuses and emergency purchasing
+- Accepted requirement: Authored rooms, crates, checkpoints, shops, and objectives provide enough normal ammunition for reasonable play. Enemies may drop additional normal ammo and occasional power ammo as surplus rather than as the sole survival source.
+- Purchase rule: Normal ammunition may be purchased through a fast emergency interface from anywhere, including during combat, using gameplay currency only.
+- Anti-farming rule: Reclaimed enemies and repeatedly restored encounters provide reduced or zero repeat ammo drops according to clear eligibility state.
+- Difficulty rule: Accessible modes may provide extremely generous refills; hard and extreme modes may reduce guarantees and make efficiency more important without creating unavoidable empty-weapon states in ordinary completion modes.
+- Platform rule: Emergency purchasing must be fast and practical for keyboard, gamepad, Android, and later co-op.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-085 — Combat purchases limited to normal ammunition
+
+- Status: accepted
+- Choice: A — normal ammo purchasable anywhere; power ammo remains earned
+- Accepted requirement: The emergency anywhere-purchase system may replenish normal ammunition only. Power ammunition cannot be freely bought during combat and is acquired through authored pickups, drops, objectives, exploration rewards, checkpoints, or eligible physical-shop supply.
+- Completion rule: Regular ammunition and ordinary weapon fire must remain sufficient to defeat every required encounter and boss. Power ammo is extremely effective and exciting but not mandatory for normal completion.
+- Economy rule: Currency stockpiles cannot be converted directly into unlimited empowered damage during a difficult fight.
+- Difficulty rule: Power-ammo supply may become scarcer on stronger modes, but required encounter tuning must not assume the player possesses it unless a specialised ruleset explicitly says so.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-086 — Hold modifier for empowered fire
+
+- Status: accepted
+- Choice: B — hold a power-ammo modifier while firing
+- Accepted requirement: Normal fire remains the default. Holding a dedicated power-ammo modifier causes eligible weapons to produce empowered shots and consume power ammunition; releasing the modifier immediately returns to normal firing.
+- Accessibility rule: Controls may support equivalent hold or toggle behaviour without changing output, consumption, timing, or competitive rules.
+- Input rule: Controller and later Android layouts require a comfortable dedicated action rather than an unreliable multi-button chord.
+- Feedback rule: Empowered state, shot transformation, ammo consumption, depletion, and fallback must have unmistakable audiovisual and HUD feedback so using power ammo feels dramatic rather than like an invisible damage multiplier.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-087 — Shared empowered-fire archetypes with later bespoke effects
+
+- Status: accepted
+- Choice: C — small shared archetype set for MVP, extensible toward unique late-game behaviour
+- Accepted requirement: MVP power ammo uses a deliberately small set of approximately three or four polished empowerment archetypes, such as overcharge, fragmentation or explosive effect, piercing, rapid surge, homing, or chaining behaviour.
+- Weapon rule: Individual weapons tune or modestly reinterpret their assigned archetype so shared implementation does not erase weapon identity.
+- Scope rule: Do not double the complete weapon-design burden by requiring a bespoke alternate attack for every MVP weapon.
+- Extension rule: Iconic, complex, or late-game weapons may receive fully bespoke empowered-fire behaviours after the foundation is proven.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-088 — Power ammo replaces normal-ammo consumption while empowered
+
+- Status: accepted
+- Choice: A — empowered fire consumes only power ammunition
+- Accepted requirement: While the power modifier is active, eligible fire consumes the shared power-ammo pool instead of also draining normal ammunition. Releasing the modifier returns consumption to the normal-ammo pool.
+- Clarity rule: Only one ammunition pool is actively consumed by a shot at a time, keeping HUD feedback and mental accounting straightforward.
+- Depletion rule: If power ammo reaches zero, the weapon automatically and clearly falls back to normal fire rather than becoming unable to shoot or consuming both pools unexpectedly.
+- Balance rule: Power-ammo costs remain weapon-specific so particularly strong empowered attacks may consume several units or drain the pool rapidly.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-089 — Scarce but regularly usable power ammunition
+
+- Status: accepted
+- Choice: B — several meaningful empowered bursts per checkpoint section
+- Accepted requirement: A typical player should find enough power ammunition to use empowered fire several times during each checkpoint section rather than treating it as a once-per-level emergency resource.
+- Reward rule: Exploration, secrets, optional objectives, difficult encounters, bosses, and eligible physical shops may provide additional power ammo, rewarding mastery without making it the default firing mode.
+- Hoarding rule: Supply and encounter design should encourage confident use instead of teaching players to save every unit indefinitely.
+- Difficulty rule: Accessible modes may provide more frequent use, while extreme modes may make each burst significantly more precious.
+- Completion rule: Encounters remain completable with ordinary ammunition even when the player spends power ammo inefficiently or arrives without it.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-090 — Capped persistent power-ammo reserve with authored minimums
+
+- Status: accepted
+- Choice: C — limited carry-over plus a guaranteed per-level starting floor
+- Accepted requirement: Unused power ammunition persists between ordinary campaign level attempts only up to a relatively small profile-wide storage cap. This preserves the value of pickups without allowing unlimited stockpiling through easy-level farming.
+- Starting rule: Each level and ruleset defines an authored minimum starting amount. At attempt start, the player receives whichever is higher: the carried capped reserve or that authored minimum, without duplicating or permanently generating additional reserve through repeated restarts.
+- Failure rule: Remaining carried power ammo may survive failed or abandoned attempts within the cap, subject to atomic save handling that prevents rollback or restart duplication.
+- Excess rule: Power ammo above the cap cannot create an ever-growing reserve. Any later conversion or overflow reward must be minor, bounded, and non-exploitable rather than a second farming economy.
+- Competitive rule: Verified challenge and speedrun categories may use a fixed authored starting amount and ignore profile carry-over when fair comparison requires it.
+- Balance rule: Required encounters must remain completable with the guaranteed minimum or with no power ammo where the ruleset explicitly allows that condition.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue the core-experience recovery by deciding when the player may change the equipped four-weapon loadout during a level.
+Continue the core-experience recovery by deciding the exact interaction for buying normal ammunition anywhere, including during combat.
 
 ## Revision rules
 
@@ -258,4 +373,4 @@ Continue the core-experience recovery by deciding when the player may change the
 - Mark changed decisions as superseded and add a new entry.
 - Do not record unchosen options as requirements.
 - Keep reconstructed decisions unverified until confirmed.
-- Product Discovery decisions may be batch-persisted every ten questions when explicitly requested by the user; the next planned batch boundary is D-090.
+- Product Discovery decisions may be batch-persisted every ten questions when explicitly requested by the user; the next planned batch boundary is D-100.
