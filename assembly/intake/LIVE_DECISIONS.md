@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-057
+- Last persisted decision: D-058
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-057 were verified directly by the user after recovery.
+D-040 through D-058 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -216,13 +216,26 @@ D-040 through D-057 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-058 — Inventory capacity and in-run loot timing
+
+- Status: accepted
+- Choice: custom B — forgiving universal inventory with expandable limits and deferred strongbox opening
+- Accepted requirement: Use one profile-wide universal weapon inventory or armory with generous but finite capacity. Inventory limits should exist, remain forgiving during ordinary play, and allow later expansion through progression upgrades.
+- Shop rule: Weapons bought from an in-level shop enter the player's usable inventory immediately and may provide an intentional mid-run power increase.
+- Strongbox rule: Strongboxes earned or collected during a round remain sealed and are awarded for opening after the round rather than immediately granting their weapon contents during combat.
+- Pacing rule: The shop supplies controlled immediate upgrades, while the strongest randomized floor rewards are delayed so a lucky high-tier box does not instantly trivialize the remainder of the current run.
+- Safety rule: Capacity and overflow handling must avoid silent item deletion and should remain practical for later Android interfaces.
+- Open detail: Exact run-end box banking, failure retention, and opening flow remain unresolved.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Persistent armory and carried-in-level storage rules now outrank remaining economy details because the game needs generous collection support without letting players swap an unlimited arsenal anywhere or interrupt combat for constant loot triage.
+Continue with the highest-weight unresolved Product Discovery question. Strongbox banking on success, checkpointing, death, and abandonment now outranks remaining inventory details because delayed opening must create tension without turning a long level failure into excessive lost progress.
 
 ## Revision rules
 
