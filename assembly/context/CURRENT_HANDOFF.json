@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "14f7dcbefc3617b3ab8b178fe531220a717a2a03",
+  "last_verified_commit": "94449437b1a9b057ca312d817b9ccc1eeaa4909b",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -19,6 +19,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D131_D140.md",
     "assembly/intake/batches/LIVE_DECISIONS_D141_D141.md",
     "assembly/intake/batches/LIVE_DECISIONS_D142_D150.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D151_D160.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -26,27 +27,28 @@
     "assembly/intake/batches/intake_session_D131_D140.json",
     "assembly/intake/batches/intake_session_D141_D141.json",
     "assembly/intake/batches/intake_session_D142_D150.json",
+    "assembly/intake/batches/intake_session_D151_D160.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-150 — Hybrid offline-3D and painted-2D art-production pipeline",
-  "current_item": "D-151 — Internal MVP production team and participation model",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the internal MVP is produced primarily by one human developer supported by AI agents and occasional outsourced specialist work, by a committed small human team with AI support, or as an early open or community-collaboration project. Preserve the one-level internal milestone, hybrid offline-3D and painted-2D pipeline, Windows PC first, fully offline campaign, future Android and co-op directions, and repository-first AI Assembly Line workflow. Include decision speed, workload, code and asset ownership, art audio and design coverage, review and integration overhead, parallelization, contributor onboarding, budget exposure, continuity risk, and implications for later stack architecture and task splitting. Put the recommendation after all A/B/C options at the end of the card. Queue D-151 through D-160 and persist at D-160 unless the user changes the batching rule or requests a context handoff.",
+  "last_completed_item": "D-160 — Layered automated validation plus playable proof",
+  "current_item": "D-161 — Windows MVP input and rebinding baseline",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the Windows-first internal MVP supports keyboard and mouse only, keyboard and mouse plus gamepad with fully rebindable actions, or keyboard mouse gamepad and an early touch-control abstraction for future Android. Preserve Unity with C#, the hybrid domain-core architecture, four simultaneously equipped weapons, directional thruster burst, shallow angled top-down flat-plane play, permanent offline play, Windows-first delivery, and future Android support. Include aiming precision, twin-stick suitability, accessibility, rebinding, UI prompt switching, test burden, Unity Input System architecture, future touch adaptation, scope cost, and risk of delaying mobile-specific work. Put the recommendation after all A/B/C options at the end of the card. Queue D-161 through D-170 and persist at D-170 unless the user changes the batching rule or requests a context handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-150 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-160 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-150",
-    "last_persisted_at": "2026-07-13T14:33:13+02:00",
-    "batching_rule": "Queue D-151 through D-160 and persist at D-160",
+    "last_persisted_decision": "D-160",
+    "last_persisted_at": "2026-07-13T14:55:00+02:00",
+    "batching_rule": "Queue D-161 through D-170 and persist at D-170",
     "queued_decisions": []
   },
   "framework": {
@@ -54,5 +56,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T14:33:13+02:00"
+  "updated_at": "2026-07-13T14:55:00+02:00"
 }
