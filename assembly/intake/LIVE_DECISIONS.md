@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-060
+- Last persisted decision: D-061
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-060 were verified directly by the user after recovery.
+D-040 through D-061 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -225,7 +225,6 @@ D-040 through D-060 were verified directly by the user after recovery.
 - Strongbox rule: Strongboxes earned or collected during a round remain sealed and are awarded for opening after the round rather than immediately granting their weapon contents during combat.
 - Pacing rule: The shop supplies controlled immediate upgrades, while the strongest randomized floor rewards are delayed so a lucky high-tier box does not instantly trivialize the remainder of the current run.
 - Safety rule: Capacity and overflow handling must avoid silent item deletion and should remain practical for later Android interfaces.
-- Open detail: Exact run-end box banking, failure retention, and opening flow remain unresolved.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
@@ -250,7 +249,18 @@ D-040 through D-060 were verified directly by the user after recovery.
 - Review rule: Opened rewards enter a temporary capacity-safe review tray where players may inspect, compare, favourite, keep, sell, or dismantle them before final transfer.
 - Capacity rule: The review tray does not consume normal inventory slots while rewards are being processed, and no reward may be silently deleted because the permanent inventory is full.
 - Pacing rule: High-tier boxes retain ceremony and screenshot-worthy reveals, while routine lower-tier hauls can be processed efficiently.
-- Open detail: Rules for exiting the vault with unresolved rewards remain undecided.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-061 — Reward-vault exit and unresolved-reward handling
+
+- Status: accepted
+- Choice: B for MVP, with opt-in C-style automation after MVP
+- Accepted requirement: The player may leave the reward vault with unresolved opened weapons. Those items remain exactly as rolled in a persistent, capacity-exempt pending-reward inbox that survives menu navigation, game closure, crashes, and save reloads.
+- Progression gate: The pending inbox must be resolved before the player may open additional strongboxes or begin another reward-generating level run, preventing it from becoming unlimited long-term storage.
+- Safety rule: Pending rewards may be kept, sold, dismantled, compared, or favourited later, and no unresolved reward may be silently deleted or automatically converted in the MVP.
+- Post-MVP direction: Add optional configurable auto-processing rules for experienced grinders after the MVP. Automation must be explicitly enabled, clearly previewed, reversible where practical, and protect favourites, locked items, exceptional rarity, unusual contextual rolls, and other user-defined exclusions.
+- UX rule: Provide quick bulk actions and clear blocking messages so resolving the inbox is fast rather than punitive.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
@@ -260,7 +270,7 @@ D-040 through D-060 were verified directly by the user after recovery.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Reward-vault exit and unresolved-reward handling now outrank remaining inventory details because the capacity-safe tray must protect interrupted sessions without becoming permanent unlimited storage or enabling reward hoarding.
+Continue with the highest-weight unresolved Product Discovery question. Strongbox outcome commitment timing now outranks remaining loot details because delayed opening, save persistence, collection ordering, and future verification all depend on when the exact weapon roll becomes immutable.
 
 ## Revision rules
 
