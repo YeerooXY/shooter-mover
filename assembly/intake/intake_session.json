@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 46,
-  "last_completed_decision": "D-046",
+  "questions_asked": 47,
+  "last_completed_decision": "D-047",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -94,6 +94,19 @@
         "Do not turn the handcrafted campaign into heavily randomized roguelike runs"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-047",
+      "topic": "repeat_run_reward_and_weapon_acquisition_economy",
+      "answer": "randomized_floor_strongboxes_and_randomized_shop_inventory",
+      "constraints": [
+        "Weapons are acquired primarily from level-floor pickups",
+        "Floor pickups may be represented as tiered strongboxes with random contents",
+        "Shops provide a second weapon-acquisition path through a randomized purchasable inventory",
+        "Random weapon discovery should be a central source of excitement during play",
+        "Duplicate handling, bad-luck protection, strongbox tier odds, shop refresh rules, pricing, and deterministic fallback rewards remain unresolved"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -104,7 +117,8 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Repeat-run reward and economy model",
+    "RNG fairness, duplicate handling, and bad-luck protection",
+    "Remaining economy and shop rules",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -120,13 +134,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "repeat_run_reward_and_economy_model",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting how first-clear rewards, repeat-run rewards, currency, and random drops should make grinding worthwhile without making it mandatory. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "rng_fairness_and_duplicate_handling",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting the fairness model for random strongboxes and randomized shop inventories, including duplicate handling and bad-luck protection. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-046"
+    "last_persisted_decision": "D-047"
   }
 }
