@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-064
+- Last persisted decision: D-065
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -52,7 +52,17 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Strongbox boundary: Strongboxes, weapons, stars, augments, enchantments, currencies, materials, rerolls, reservation tokens, inventory capacity, player levels, and progression advantages cannot be purchased with real money. Randomized in-game strongboxes remain earned through gameplay and are not real-money loot boxes.
 - Fairness rule: Free and paying players use the same gameplay balance, reward tables, progression rules, difficulty systems, and competitive rules. Spending may change appearance only.
 - Readability rule: Cosmetic effects must preserve enemy, projectile, weapon-state, hitbox, and telegraph readability. Competitive or verified modes may normalize or restrict visually disruptive cosmetics when necessary.
-- Open detail: The exact free-content boundary—complete gameplay free, paid authored expansions, or a later one-time content unlock—remains unresolved and is the next discovery decision.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-065 — Free-content boundary
+
+- Status: accepted
+- Choice: A — complete gameplay remains free
+- Accepted requirement: Every campaign level, boss, weapon family, difficulty option, progression system, challenge, and gameplay update is available without payment. No authored gameplay content is placed behind a paid expansion, starter-campaign paywall, or one-time full-game unlock.
+- Revenue rule: Revenue comes from optional direct-purchase cosmetics and cosmetic supporter bundles only. Paid offerings may alter appearance, presentation, or supporter recognition but cannot contain exclusive gameplay functionality or progression value.
+- Community rule: Free and paying players always retain access to the same playable levels, modes, co-op content, challenges, weapon families, and balance rules, avoiding content-fragmented matchmaking or progression.
+- Sustainability note: Cosmetic production, pricing, storefront presentation, and content cadence must be scoped honestly around team capacity; monetization pressure must never be solved by weakening free progression or introducing paid advantages.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
@@ -62,7 +72,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Define what every free player receives and whether any authored gameplay content may be sold separately, while preserving the cosmetic-only no-paid-power rule.
+Continue with the highest-weight unresolved Product Discovery question. Define cosmetic ownership, account linkage, purchase restoration, and future PC-to-Android portability while preserving immediate guest and offline play with no login gate.
 
 ## Revision rules
 
