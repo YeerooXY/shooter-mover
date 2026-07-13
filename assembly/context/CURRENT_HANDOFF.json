@@ -5,8 +5,8 @@
   "lifecycle_phase": "requirements_review",
   "active_role": "requirements_reviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
-  "active_pr": null,
-  "last_verified_commit": "441c3560ccb89c8baddc0a1025e7f3e6e893a586",
+  "active_pr": 1,
+  "last_verified_commit": "d93efc2c9498eef54129731b075f4ad95a6a1fde",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -53,13 +53,13 @@
     "assembly/intake/batches/intake_session_D231_D233.json"
   ],
   "current_section": "requirements_handoff",
-  "handoff_status": "requirements_review_ready",
-  "last_completed_item": "Product Discovery closed through verified D-233 and requirements package generated",
-  "current_item": "Requirements/bootstrap pull-request review and merge",
-  "next_action": "Review the requirements package for blocking inconsistencies and open or update the requirements/bootstrap pull request from assembly/bootstrap-shooter-mover to main. Merge only with explicit human approval. After merge, start a fresh Planning Agent context from merged main and create the architecture and repository planning package in a separate planning pull request. Do not create the canonical task backlog during Planning.",
+  "handoff_status": "draft_requirements_pr_open",
+  "last_completed_item": "Product Discovery closed through verified D-233, requirements package generated, and draft requirements PR #1 opened",
+  "current_item": "Review and approve draft requirements PR #1",
+  "next_action": "Review draft pull request #1, Finalize Shooter Mover requirements and Planning handoff, for blocking inconsistencies. Merge only with explicit human approval. After merge, start a fresh Planning Agent context from merged main and create the architecture and repository planning package in a separate planning pull request. Do not create the canonical task backlog during Planning.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "The requirements/bootstrap pull request must be reviewed and merged before Planning artifacts become authoritative"
+    "Draft requirements pull request #1 must be reviewed and merged before Planning artifacts become authoritative"
   ],
   "persistence": {
     "status": "requirements_persisted",
@@ -80,5 +80,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:48:50+02:00"
+  "updated_at": "2026-07-13T18:51:00+02:00"
 }
