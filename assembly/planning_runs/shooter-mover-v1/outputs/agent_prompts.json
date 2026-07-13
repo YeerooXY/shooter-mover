@@ -1,0 +1,93 @@
+{
+  "project_name": "Shooter Mover",
+  "prompts": [
+    {
+      "prompt_id": "planning-agent",
+      "role": "Planning Agent",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/generated/agent_prompts.json", "assembly/generated/slots_db.json", "assembly/generated/planning_runs_index.json", "assembly/planning_runs/shooter-mover-v1/", "assembly/context/", "project_workspace.json"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/", "Packages/", "ProjectSettings/"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Maintain planning artifacts and handoff only.", "Do not implement or create stable executable task IDs.", "Preserve merged requirements and defer the canonical backlog."],
+      "output_required": ["Schema-valid planning package", "Planning trace", "Task Splitter handoff"],
+      "verification_required": ["Four required JSON artifacts validate.", "No task backlog exists.", "Planning remains a separate PR."]
+    },
+    {
+      "prompt_id": "contract-steward",
+      "role": "Contract Steward",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["Assets/ShooterMover/Runtime/Contracts/", "Assets/ShooterMover/Runtime/Domain/Common/", "Assets/ShooterMover/Generated/", "tools/content-validation/", "tools/save-validation/", "docs/architecture/contracts/", "Assets/ShooterMover/Tests/EditMode/Contracts/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/ContentPackages/", "Assets/ShooterMover/UI/"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Own stable IDs, commands/events, DTOs, registries, save envelopes, and cross-lane interfaces.", "Define contracts before consumers.", "Do not own balance or presentation."],
+      "output_required": ["Versioned contracts", "Deterministic registry formats", "Compatibility tests"],
+      "verification_required": ["Contracts avoid scene authority.", "Duplicate IDs and missing references fail.", "Persistence and reward transitions are idempotent."]
+    },
+    {
+      "prompt_id": "movement-combat-builder",
+      "role": "Movement and Combat Builder",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["Assets/ShooterMover/Runtime/Domain/Movement/", "Assets/ShooterMover/Runtime/Domain/Combat/", "Assets/ShooterMover/Runtime/UnityAdapters/Input/", "Assets/ShooterMover/Runtime/UnityAdapters/Physics/", "Assets/ShooterMover/Runtime/UnityAdapters/Combat/", "Assets/ShooterMover/ContentPackages/Weapons/", "Assets/ShooterMover/Tests/EditMode/Movement/", "Assets/ShooterMover/Tests/EditMode/Combat/", "Assets/ShooterMover/Tests/PlayMode/Movement/", "Assets/ShooterMover/Tests/PlayMode/Combat/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/Runtime/Domain/Persistence/", "Assets/ShooterMover/UI/Rewards/"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Own responsive locomotion, thruster, collision, shared aim, four independent mounts, unlimited normal fire, and per-weapon power banks.", "Treat coefficients as frozen tuning profiles per evidence round.", "Do not add item modifiers or economy depth."],
+      "output_required": ["Stage 1 movement and combat foundation", "Six representative weapons", "Playable benchmark evidence"],
+      "verification_required": ["Movement and four-mount invariants have automated tests.", "Power depletion falls back per mount.", "Feel and readability receive human review."]
+    },
+    {
+      "prompt_id": "enemy-encounter-builder",
+      "role": "Enemy and Encounter Builder",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["Assets/ShooterMover/Runtime/Domain/Enemies/", "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/", "Assets/ShooterMover/Content/Definitions/Enemies/", "Assets/ShooterMover/Content/Definitions/Encounters/", "Assets/ShooterMover/ContentPackages/Enemies/", "Assets/ShooterMover/ContentPackages/Encounters/", "Assets/ShooterMover/Tests/EditMode/Enemies/", "Assets/ShooterMover/Tests/PlayMode/Encounters/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/Runtime/Domain/Persistence/", "Assets/ShooterMover/ContentPackages/Weapons/"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Own reusable roles, telegraphs, targeting, reinforcements, pursuit, lockdowns, and composition.", "Keep baseline pressure readable and deterministic.", "Do not own durable mission state or rewards."],
+      "output_required": ["Enemy modules and packages", "Encounter definitions", "Mixed-pressure playable evidence"],
+      "verification_required": ["No unfair spawning or clairvoyance.", "Threats remain readable beside four weapons.", "Mission state remains authoritative."]
+    },
+    {
+      "prompt_id": "mission-rewards-ui-builder",
+      "role": "Mission, Persistence, Rewards, and UI Builder",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["Assets/ShooterMover/Runtime/Domain/Mission/", "Assets/ShooterMover/Runtime/Domain/Persistence/", "Assets/ShooterMover/Runtime/Domain/Rewards/", "Assets/ShooterMover/Runtime/Domain/Progression/", "Assets/ShooterMover/Runtime/Application/", "Assets/ShooterMover/Runtime/Presentation/", "Assets/ShooterMover/UI/", "Assets/ShooterMover/Localization/", "Assets/ShooterMover/Tests/EditMode/Mission/", "Assets/ShooterMover/Tests/EditMode/Persistence/", "Assets/ShooterMover/Tests/EditMode/Rewards/", "Assets/ShooterMover/Tests/PlayMode/UI/", "Assets/ShooterMover/Tests/PlayMode/SaveRecovery/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/ContentPackages/Weapons/", "Assets/ShooterMover/ContentPackages/Enemies/"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Own MissionRunState, snapshots/journal, checkpoints, banking, suspension, deterministic rewards, stable-per-run shop, run-only refreshes, hub, HUD, map, loadout, settings, and records.", "Scenes and UI never own durable truth.", "Implement only the minimal real economy."],
+      "output_required": ["Complete local continuity model", "Connected replay loop", "Accessible localization-ready UI"],
+      "verification_required": ["Interrupted transitions recover safely.", "Rewards grant once and shops cannot refresh for free.", "Critical information remains readable without color."]
+    },
+    {
+      "prompt_id": "content-pipeline-builder",
+      "role": "Content and Art Pipeline Builder",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["Assets/ShooterMover/Content/", "Assets/ShooterMover/ContentPackages/", "Assets/ShooterMover/Generated/", "source-assets/", "docs/art-pipeline/", "docs/provenance/", "tools/content-validation/", "tools/content-generation/", "Assets/ShooterMover/Tests/EditMode/Content/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/Runtime/Domain/Persistence/", "Packages/manifest.json", "ProjectSettings/ProjectVersion.txt"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Own package shape, provenance, export recipes, deterministic registries, review snapshots, and rendered-sprite pipeline.", "Do not modify foundations for one content item.", "Never hand-edit generated output."],
+      "output_required": ["Documented reference pipeline", "Representative final-art subset", "Independent reproduction package"],
+      "verification_required": ["Every release-bound asset has provenance.", "Imports and budgets validate.", "An isolated contributor succeeds without foundational rescue."]
+    },
+    {
+      "prompt_id": "verification-release-builder",
+      "role": "Verification, Performance, and Release Builder",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["Assets/ShooterMover/Tests/", "Assets/ShooterMover/TestSupport/", "tools/", "docs/verification/", "docs/release/", "docs/performance/", ".github/workflows/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/Runtime/Domain/", "Assets/ShooterMover/ContentPackages/"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Own layered validation, stress scenes, build smoke, artifact identity, evidence classification, and dependency inventory.", "Do not rewrite gameplay to make tests easy.", "Treat flaky tests as defects."],
+      "output_required": ["Layered validation", "Immutable Windows artifacts", "Reliability and performance evidence"],
+      "verification_required": ["Formal evidence uses frozen rules.", "Technical failures are separate from fun evidence.", "Artifacts are reproducible and checksummed."]
+    },
+    {
+      "prompt_id": "red-team-verifier",
+      "role": "Red Team Verifier",
+      "target_repo": "YeerooXY/shooter-mover",
+      "allowed_files": ["assembly/", "docs/verification/", "Assets/ShooterMover/Tests/", "tools/"],
+      "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Production implementation except approved regression tests"],
+      "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
+      "task_boundaries": ["Probe state divergence, duplicate grants, rollback abuse, farming, invalid evidence, asset conflicts, accessibility regressions, performance cliffs, and scope drift.", "Do not invent features.", "Cite the violated requirement or contract."],
+      "output_required": ["Reproducible attack cases", "Blocking and non-blocking findings", "Regression recommendations"],
+      "verification_required": ["Every finding is traceable.", "Post-MVP exclusions are not treated as blockers.", "Compilation-only confidence is rejected."]
+    }
+  ]
+}

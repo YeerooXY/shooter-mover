@@ -1,0 +1,37 @@
+{
+  "project_name": "Shooter Mover",
+  "repos": [
+    {
+      "name": "YeerooXY/shooter-mover",
+      "purpose": "Single product repository containing the Unity project, engine-independent domain core, Unity adapters, modular content packages, source-asset manifests, verification tooling, lifecycle artifacts, and review evidence.",
+      "contains": [
+        "Assets/ShooterMover/Runtime/Domain/ — engine-independent authoritative rules and state",
+        "Assets/ShooterMover/Runtime/Application/ — use-case orchestration and local service interfaces",
+        "Assets/ShooterMover/Runtime/UnityAdapters/ — Input System, 2D physics, scenes, rendering, audio, and platform adapters",
+        "Assets/ShooterMover/Runtime/Presentation/ and Assets/ShooterMover/UI/ — HUD and menu flows",
+        "Assets/ShooterMover/Content/ — shared typed definitions and reusable modules",
+        "Assets/ShooterMover/ContentPackages/ — independently owned weapons, enemies, rooms, encounters, and environment packages",
+        "Assets/ShooterMover/Generated/ — rebuilt registries and deterministic review snapshots; never hand edited",
+        "Assets/ShooterMover/Tests/ and Assets/ShooterMover/TestSupport/ — edit-mode, play-mode, performance, recovery, and build smoke coverage",
+        "Packages/ and ProjectSettings/ — pinned Unity LTS project baseline and locked packages",
+        "tools/ and .github/workflows/ — deterministic validation, generation, build, and artifact tooling",
+        "docs/ — architecture decisions, verification plans, toolchain lock, art pipeline, provenance, debt register, and operational policies",
+        "source-assets/ — lightweight manifests, export recipes, references, and Git-LFS-tracked production source files approved for repository storage",
+        "assembly/ — requirements, planning package, later task state, handoffs, and review traces"
+      ],
+      "depends_on": [
+        "Pinned Unity LTS editor and package lock",
+        "Approved offline source-art tools recorded in docs/toolchain/TOOLCHAIN_LOCK.md",
+        "Git LFS only for approved large repository assets; separate encrypted backup for full source-art history",
+        "GitHub pull requests and layered validation"
+      ],
+      "excludes": [
+        "Separate backend, database, account, analytics, cloud-save, storefront, networking, relay, or mobile repositories during the internal MVP",
+        "Canonical task backlog, task batches, claims, or implementation run reports in the planning PR",
+        "Generated build artifacts, Library/, Temp/, Logs/, Obj/, local caches, credentials, signing keys, and private service secrets",
+        "Unlicensed, provenance-unknown, or release-bound source assets without recorded approval",
+        "Future Android, co-op, additional factions, full campaign, and mature economy implementation"
+      ]
+    }
+  ]
+}
