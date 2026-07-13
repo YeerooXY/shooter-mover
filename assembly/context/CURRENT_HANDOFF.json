@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "941483f8e3f7260a1cde5a5cf101f95e6b23e091",
+  "last_verified_commit": "66b0f8552e41558f043c932c65082932a3def7a6",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
@@ -14,9 +14,9 @@
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-049 — Recurring upgraded weapon families with later complex archetypes and deliberate power inflation",
-  "current_item": "D-050 — Shop inventory persistence and rerolls",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how a broad randomized shop inventory persists, refreshes, and permits rerolls without allowing trivial infinite fishing for perfect weapons. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-050 — Persistent shop inventory with limited escalating paid rerolls and item locks",
+  "current_item": "D-051 — High-rarity source weighting",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether extreme high-augment jackpot weapons are equally available from shops and boxes, primarily guaranteed by top-tier floor strongboxes with ultra-rare shop appearances, or primarily acquired through expensive shop rolls. Include the proposed eight strongbox tiers and two-star ten-level augment scale as context. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +24,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T09:17:00+02:00"
+    "last_persisted_at": "2026-07-13T09:26:29+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T09:17:00+02:00"
+  "updated_at": "2026-07-13T09:26:29+02:00"
 }
