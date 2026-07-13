@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 48,
-  "last_completed_decision": "D-048",
+  "questions_asked": 49,
+  "last_completed_decision": "D-049",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -124,6 +124,21 @@
         "The progression window, enchantments, probabilities, and power curve must be carefully balanced"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-049",
+      "topic": "weapon_power_curve",
+      "answer": "level_scaled_recurring_weapon_families_with_later_complex_archetypes",
+      "constraints": [
+        "Core weapon families may return at later progression milestones as stronger counterparts",
+        "Successor variants may improve statistics and introduce modest mechanical changes",
+        "Some more complex, interesting, and inherently powerful weapon types only enter the loot pool at higher levels",
+        "A basic machine gun may appear at level 1, return as an improved family counterpart around level 11, and receive another stronger variant around level 39",
+        "Deliberate power inflation is acceptable but must be planned, balanced, and paced",
+        "Early individual drops may become obsolete while their broader weapon family remains relevant through authored successors",
+        "Late-game archetypes must justify their later unlock through added complexity, novelty, or power"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -134,8 +149,8 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Weapon power curve: linear replacement, level-scaled archetypes, or fixed side-grades",
-    "Remaining shop pricing and refresh rules",
+    "Shop inventory persistence and reroll rules",
+    "Remaining shop pricing rules",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -151,13 +166,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "weapon_power_curve",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether weapon progression uses linear replacement, level-scaled recurring archetypes, or fixed side-grade weapons. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "shop_inventory_persistence_and_rerolls",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting how a broad randomized shop inventory persists, refreshes, and permits rerolls without allowing trivial infinite fishing for perfect weapons. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-048"
+    "last_persisted_decision": "D-049"
   }
 }
