@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 52,
-  "last_completed_decision": "D-052",
+  "questions_asked": 53,
+  "last_completed_decision": "D-053",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -185,6 +185,23 @@
         "Exact tier weights quality penalties and performance multipliers require playtesting"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-053",
+      "topic": "strongbox_tier_to_augment_quality_mapping",
+      "answer": "overlapping_weighted_quality_bands_with_cross_level_jackpot_variants",
+      "constraints": [
+        "Each strongbox tier has a dependable minimum quality floor and a strongly weighted expected star-and-augment range",
+        "Neighboring box tiers overlap and retain limited upper-tail jackpot chances",
+        "A box may roll an older lower-base-level weapon with unusually strong stars and augments",
+        "Around player level 10 a Tier 2 crate may produce a level-2-to-4 base weapon with a rare high-star high-augment roll",
+        "Base weapon level weapon-family power stars augment level and enchantment synergy must be balanced together",
+        "Exceptional older weapons may remain exciting and temporarily competitive",
+        "Common low-tier farming must not reliably overpower current progression",
+        "Higher box tiers raise minimums and expected quality without making every top-tier result perfect",
+        "Exact quality ranges overlap and jackpot tails require playtesting"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -195,7 +212,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Mapping from eight strongbox tiers to two-star ten-level augment quality",
+    "How strongly stars and augments may compensate for a lower base weapon level",
     "Remaining shop pricing rules",
     "Remaining level-design and exploration details",
     "Story and world",
@@ -212,13 +229,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "strongbox_tier_to_augment_quality_mapping",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether strongbox tiers use rigid non-overlapping augment brackets, overlapping weighted quality bands with minimum guarantees, or primarily increase choice quantity rather than item quality. Preserve the accepted eight-tier and two-star ten-level direction. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "modifier_compensation_for_lower_base_weapon_level",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether strong stars and augments provide only minor bonuses, may bridge a bounded base-level gap and make exceptional older weapons temporarily competitive, or may preserve old weapons as permanent endgame contenders. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-052"
+    "last_persisted_decision": "D-053"
   }
 }
