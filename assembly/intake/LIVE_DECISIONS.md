@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-051
+- Last persisted decision: D-052
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-051 were verified directly by the user after recovery.
+D-040 through D-052 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -147,13 +147,25 @@ D-040 through D-051 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-052 — Strongbox tier unlock and acquisition rules
+
+- Status: accepted
+- Choice: B — progression gates plus challenge-weighted odds across all unlocked levels
+- Accepted requirement: Player level and campaign progress impose a hard maximum on eligible strongbox tiers. Difficulty, optional objectives, bosses, challenge performance, and other mastery signals improve the probability of finding the highest currently eligible tiers but cannot bypass progression gates.
+- Cross-level rule: Once a strongbox tier is unlocked, every level may retain a non-zero chance to produce it so the full campaign remains replayable.
+- Anti-farming rule: Earlier or easier levels must be substantially less likely to produce high unlocked tiers and should skew toward slightly weaker item-quality rolls, preventing them from becoming the optimal farming route.
+- User-supplied constraints: Earlier levels should remain worth revisiting, but later and more difficult content must provide materially better expected rewards. Exact weights and quality penalties require playtesting.
+- Design implication: Reward tables must combine progression eligibility, level position, difficulty, and challenge performance rather than scaling from player level alone.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Strongbox tier unlock rules now outrank remaining pricing details because progression gates, challenge gates, and level availability determine how the eight-tier reward ladder motivates campaign advancement and difficult replay.
+Continue with the highest-weight unresolved Product Discovery question. The mapping from the eight strongbox tiers to the two-star, ten-level augment-quality scale now outranks remaining shop pricing details because it defines how predictable, surprising, and valuable each box tier feels.
 
 ## Revision rules
 
