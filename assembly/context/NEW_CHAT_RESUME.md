@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-141.
+- Product Discovery is active after verified decision D-150.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -29,21 +29,30 @@ Before responding:
 - Decisions D-131 through D-140 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D131_D140.md`
   - `assembly/intake/batches/intake_session_D131_D140.json`
-- D-141 was persisted early because the user explicitly requested a context handoff:
+- D-141 was persisted early for handoff safety in:
   - `assembly/intake/batches/LIVE_DECISIONS_D141_D141.md`
   - `assembly/intake/batches/intake_session_D141_D141.json`
-- The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform rather than a heavily characterized mascot.
-- The world uses a stylized action-science-fiction tone: sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor without full parody.
+- Decisions D-142 through D-150 were batch-persisted in:
+  - `assembly/intake/batches/LIVE_DECISIONS_D142_D150.md`
+  - `assembly/intake/batches/intake_session_D142_D150.json`
+- The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
+- The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
 - The central hub is a fast menu interface, not an explorable base.
 - Missions are handcrafted with bounded controlled variation. Comparable challenge runs may use fixed seeds or standardized conditions.
 - The game is campaign-first with deep mission replay for records, difficulty clears, loot, challenges, achievements, alternate objectives, and build experimentation.
-- Production begins with one genuinely good, replayable level. A second level follows only after shared systems and workflow are in place; a compact six-to-ten-mission campaign is a later possible expansion, not the immediate commitment.
-- The first milestone is internal, not a public demo, Early Access release, or paid episode.
-- The internal MVP is a thin but complete one-level vertical slice covering launch, movement, four-weapon combat, a small enemy roster, rewards or loot, basic loadout or progression, completion, and replay.
+- Production begins with one genuinely good, replayable level. The internal MVP is not a public demo, Early Access release, or paid episode.
+- The internal MVP is a thin but complete one-level vertical slice covering launch, movement, four-weapon combat, a compact enemy roster, rewards or loot, basic loadout or progression, completion, and replay.
 - The runtime is fully 2D with dimensional-looking artwork. The viewpoint is shallow angled top-down while movement, aiming, navigation, and collision remain on one flat gameplay plane.
-- The eventual setting may contain several distinct enemy factions, but the one-level MVP must use one cohesive opposing faction only. Do not build content pipelines or assets for future factions before the first faction and level are complete and enjoyable.
-- The next decision is D-142: select the specific opposing faction used by the one-level internal MVP.
-- The user requested batching repository persistence every ten discovery questions. D-141 is already safely persisted because of this handoff; continue queuing D-142 through D-150 and persist at D-150 unless the instruction changes.
+- The eventual setting may contain several distinct enemy factions, but the one-level MVP focuses entirely on rogue automated industrial machines.
+- The first level is an automated weapons factory. Its direct mission objective is to shut down the production core.
+- The first climax is a level-appropriate upgraded droid with somewhat more advanced shooting, not a giant multi-phase spectacle. Detailed enemy and boss design is deferred.
+- The first level uses approximately four or five complementary ordinary enemy roles plus the upgraded droid.
+- The internal MVP uses approximately six to eight authored base weapons, with four equipped simultaneously.
+- Copies of the same MVP weapon behave identically. Stars, augments, enchantments, and randomized item statistics are deferred.
+- The internal MVP includes a minimal real strongbox and randomized-shop loop using the base-weapon pool, without the mature economy's advanced systems.
+- Art production uses a hybrid pipeline: offline 3D sources rendered into 2D sprites for mechs, enemies, weapons, and major machinery, combined with painted, procedural, or directly authored 2D environments, effects, shadows, interface work, and finishing passes.
+- The next decision is D-151: establish the committed human and AI-agent production model for the internal MVP before choosing the stack or splitting implementation work.
+- The user requested persistence every ten discovery questions. Queue D-151 through D-160 and persist at D-160 unless this instruction changes or another context handoff is requested.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -58,16 +67,16 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: D-141 has already been persisted for handoff safety; queue D-142 through D-150 and commit the remaining batch before asking D-151. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Honour the ten-question persistence cadence: queue D-151 through D-160 and commit the complete batch before asking D-161. Persist earlier if another context handoff becomes necessary or the user requests it.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
-- Continue prioritizing high-level world identity, campaign content, MVP boundaries, platform, participation, and production-pipeline decisions before returning to micro-level combat tuning.
+- Continue prioritizing high-level world identity, campaign content, MVP boundaries, platform, participation, production-pipeline, accessibility, and proof decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Treat advanced ricochet extensions as prototype-dependent and defer deep commitment until a usable core build exists.
-- Treat exact combat timing, projectile health, boost coefficients, collision coefficients, and similar numeric details as later prototype-and-playtest variables unless explicitly fixed.
+- Treat exact combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, and animation counts as later prototype-and-playtest variables unless explicitly fixed.
 - Do not choose a stack until product identity, users, core experience, connectivity, participation, platform scope, and MVP boundary are sufficiently clear.
 
 ## Expected first action
 
-Ask D-142 exactly as directed by `CURRENT_HANDOFF.json`: choose the specific enemy faction used in the one-level internal MVP while keeping the broader multi-faction future setting out of immediate production scope.
+Ask D-151 exactly as directed by `CURRENT_HANDOFF.json`: establish whether the internal MVP is primarily a solo human-plus-AI effort, a committed small human team with AI support, or an early open/community collaboration project.
 
-Do not begin with detailed projectile, collision, AI-timing, weapon-stat, or animation-count questions. Continue at the higher product, world, content-boundary, and MVP-production level.
+Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher participation, production, accessibility, proof, and MVP-delivery level.
