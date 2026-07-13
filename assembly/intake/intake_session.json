@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 55,
-  "last_completed_decision": "D-055",
+  "questions_asked": 56,
+  "last_completed_decision": "D-056",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -230,8 +230,22 @@
         "Selling or dismantling equipment returns only partial value",
         "Weapon purchases inventory rerolls and other shop services compete for the same core currency",
         "The shop supports experimentation without replacing floor strongboxes as the primary elite-loot path",
-        "Income resale values rarity multipliers and reroll costs require playtesting",
-        "A rare token that reserves an unaffordable shop item is proposed but its persistence capacity and expiry rules remain unresolved"
+        "Income resale values rarity multipliers and reroll costs require playtesting"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-056",
+      "topic": "rare_shop_item_reservation_token",
+      "answer": "extremely_rare_consumed_token_with_one_long_term_layaway_slot",
+      "constraints": [
+        "Consuming the token reserves one exact shop item in a dedicated long-term slot",
+        "The reserved item survives rerolls shop refreshes future visits and completed runs",
+        "Only one item may be reserved at a time across the player profile",
+        "The token is consumed immediately when the reservation is made",
+        "The item keeps its original price and reservation does not accelerate currency earning",
+        "The reservation has no expiry and remains until purchase or deliberate discard",
+        "Ordinary reroll locks remain separate and only protect current shop stock during limited rerolls"
       ],
       "verification_status": "verified"
     }
@@ -244,8 +258,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Rare shop-item reservation token persistence capacity and expiry rules",
-    "Remaining duplicate conversion and inventory management details",
+    "Duplicate conversion and inventory cleanup rules",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -261,13 +274,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "rare_shop_item_reservation_token",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether miracle shop items cannot be preserved beyond normal reroll locks, may be reserved through a very rare consumed token with a tightly limited layaway slot, or may be permanently reserved through a broader long-term wishlist system. Distinguish the rare reservation token from ordinary reroll locks. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "duplicate_conversion_and_inventory_cleanup",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether unwanted weapons are mainly sold for currency, may be either sold or dismantled into bounded upgrade and crafting materials, or are fused directly into matching weapons to raise their power. Include inventory cleanup and anti-farming implications. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-055"
+    "last_persisted_decision": "D-056"
   }
 }
