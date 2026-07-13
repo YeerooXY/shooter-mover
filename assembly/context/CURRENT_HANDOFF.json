@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "967592490a61d7730e1b821e588077bef9462d42",
+  "last_verified_commit": "d2f751a7e6094db83896217e3c93754055dd62da",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -24,6 +24,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D171_D180.md",
     "assembly/intake/batches/LIVE_DECISIONS_D181_D190.md",
     "assembly/intake/batches/LIVE_DECISIONS_D191_D194.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D195_D200.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -36,66 +37,34 @@
     "assembly/intake/batches/intake_session_D171_D180.json",
     "assembly/intake/batches/intake_session_D181_D190.json",
     "assembly/intake/batches/intake_session_D191_D194.json",
+    "assembly/intake/batches/intake_session_D195_D200.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
-  "current_section": "product_discovery_recovery",
-  "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-196 — Permanently clear new entries with mirrored non-XP reward drops",
-  "current_item": "D-197 — Mirrored non-XP reward roll identity",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting what is replicated when one player causes a qualifying non-XP reward drop such as a strongbox: every eligible player receives the same reward class and tier but owns an independently seeded personal item outcome; every eligible player independently rerolls the complete reward including tier from their own progression state; or every eligible player receives an exact duplicate of the same rolled reward. Preserve D-196's rule that new entries find globally completed rooms permanently clear, personal XP may therefore be missed, and qualifying non-XP drops are mirrored immediately so players do not lose box-like rewards; D-181 personal ownership; D-182 connected-player major-reward eligibility; D-183 personal account-level reward influence; deterministic pickup seeds and reload-proof single granting; unsecured loot and dedicated banking; local-first room simulation; split-party play; spectators, disconnects, and anti-farming. Include fairness, shared excitement, mixed-level parties, rarity consistency, jackpot envy, duplicate exploits, banking and death-loss semantics, deterministic save transactions, synchronization cost, and future matchmaking. Put the recommendation after all A/B/C options at the end of the card. D-195 and D-196 are queued but not yet batch-persisted; queue D-197 through D-200 and persist the complete D-195 through D-200 partial batch at D-200 unless the user changes the rule or requests another handoff.",
+  "current_section": "mvp_proof_and_delivery",
+  "handoff_status": "resume_ready",
+  "last_completed_item": "D-200 — Temporary reconnect reservation for uncollected owned physical drops, requiring serious validation",
+  "current_item": "D-201 — Vertical-slice proof gate",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting what the one-level internal vertical slice must prove before broader content production begins: basic end-to-end feature completeness; exceptional movement combat feel and repeat-run desire even with temporary content; or a staged hybrid gate requiring both a repeated-play fun benchmark and one thin reliable end-to-end production loop. Preserve the one-level automated weapons factory slice, approximately six to eight base weapons, four or five ordinary enemy roles plus an upgraded-droid climax, minimal real strongbox and randomized-shop loop, Unity with C#, Windows-first offline play, deterministic replay and difficulty direction, solo-led AI-assisted production, and the rule that exact tuning coefficients remain playtest variables. Include explicit kill criteria, repeated sessions, external testers, placeholder tolerance, content polish, performance stability, save reliability, diagnostic evidence, scope-expansion risk, and what may remain deferred. Put the recommendation after all A/B/C options at the end of the card. Begin a new persistence batch D-201 through D-210 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-194 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-200 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "batch_in_progress",
-    "unsaved_decisions": 2,
-    "last_persisted_decision": "D-194",
-    "last_persisted_at": "2026-07-13T16:47:23+02:00",
-    "batching_rule": "D-191 through D-194 persisted early for handoff safety; queue D-195 through D-200 and persist at D-200",
-    "queued_decisions": [
-      {
-        "decision_id": "D-195",
-        "topic": "shared_room_completion_across_local_instances",
-        "choice": "C",
-        "answer": "hybrid_personal_resolution_with_one_clear_shared_progress",
-        "constraints": [
-          "The first valid local-instance clear marks the room globally complete and unlocks coarse shared doors, map access, and teleports",
-          "Grant the room's one-time major reward to every eligible connected player, including life-exhausted spectators, without duplicate granting from later instance clears",
-          "Players already fighting in another local instance may finish for remaining personal ordinary loot or withdraw to the newly unlocked route",
-          "Personal enemies, pickups, unsecured loot, deaths, lives, banking state, and immediate feedback resolve locally",
-          "A local death or withdrawal cannot relock globally completed progress",
-          "Prevent farming, duplicate major rewards, and permanent disagreement about durable campaign state",
-          "Allow future deep shared-objective rooms to opt into stricter synchronization rules separately"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-196",
-        "topic": "entry_into_already_globally_completed_room",
-        "choice": "custom_A",
-        "answer": "new_entries_find_room_permanently_clear_with_mirrored_non_xp_reward_drops",
-        "constraints": [
-          "After the first valid global clear, players who were not already fighting cannot start a new combat instance in that room during the same run",
-          "Players already inside an active local instance may still finish or withdraw under D-195",
-          "A player who did not participate may miss the encounter's personal XP because the globally cleared room does not replay for them",
-          "When any player triggers a qualifying non-XP reward drop such as a strongbox, matching personal reward drops or grants occur immediately for the other eligible players so they do not miss box-like rewards",
-          "Mirrored rewards remain individually owned and must follow each player's unsecured-loot, death-loss, banking, deterministic grant, and save-transaction rules",
-          "Global completion, respawn, teleport travel, reconnects, and later entry must consistently preserve the permanently cleared state",
-          "Do not allow mirrored drops or parallel instances to duplicate the same reward event more than once per eligible player"
-        ],
-        "verification_status": "verified"
-      }
-    ]
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_decision": "D-200",
+    "last_persisted_at": "2026-07-13T17:30:25+02:00",
+    "batching_rule": "Begin a new Product Discovery batch at D-201 and persist through D-210 unless an earlier handoff is requested",
+    "queued_decisions": []
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:04:00+02:00"
+  "updated_at": "2026-07-13T17:30:25+02:00"
 }
