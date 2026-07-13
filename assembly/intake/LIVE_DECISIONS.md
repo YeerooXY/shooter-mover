@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-065
+- Last persisted decision: D-066
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -66,13 +66,26 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-066 — Cosmetic ownership and optional accounts
+
+- Status: accepted
+- Choice: B — optional account linkage with permanent guest and offline play
+- Accepted requirement: Players may begin, continue, and complete ordinary offline gameplay as guests without creating or linking an account. Login must never gate quick play, campaign access, progression, inventory, or difficulty settings.
+- Account rule: An optional game account may link purchased cosmetic entitlements, cosmetic loadouts, favourites, cloud backup, device migration, and eventual PC-to-Android ownership portability where platform rules permit.
+- Restoration rule: Purchases made through a platform storefront must remain restorable from valid storefront receipts on that original platform without requiring the optional game account.
+- Portability rule: Linking an account may unify supported cosmetic ownership across devices and platforms, but must never turn gameplay progression or offline access into an always-online service.
+- Privacy rule: Account creation is voluntary, requests only necessary data, supports recovery and unlinking, and clearly explains entitlement-merging and conflict behavior before committing changes.
+- Implementation note: Entitlement merging, account recovery, cross-platform purchase recognition, and platform-policy differences require explicit testing and backend boundaries; Android portability is post-PC rather than an MVP release blocker.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Define cosmetic ownership, account linkage, purchase restoration, and future PC-to-Android portability while preserving immediate guest and offline play with no login gate.
+Continue with the highest-weight unresolved Product Discovery question. Define whether optional account linkage also provides gameplay cross-progression, and how divergent offline saves are resolved without duplicating weapons, currency, or strongboxes.
 
 ## Revision rules
 
