@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "809f12fd44d4c4a32f3965a3f698187526b189f3",
+  "last_verified_commit": "11a83d3f80eb92a4af6f362f56fe603b493883df",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -17,32 +17,34 @@
     "assembly/intake/batches/LIVE_DECISIONS_D111_D120.md",
     "assembly/intake/batches/LIVE_DECISIONS_D121_D130.md",
     "assembly/intake/batches/LIVE_DECISIONS_D131_D140.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D141_D141.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
     "assembly/intake/batches/intake_session_D121_D130.json",
     "assembly/intake/batches/intake_session_D131_D140.json",
+    "assembly/intake/batches/intake_session_D141_D141.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-140 — Shallow angled top-down viewpoint on a flat 2D gameplay plane",
-  "current_item": "D-141 — Primary world conflict and enemy-faction scope",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the game's main opposition is primarily a rogue-machine or automated industrial force, a biological or alien infestation, or a broader multi-faction science-fiction conflict whose one-level MVP focuses tightly on a single faction. Preserve the stylized action-science-fiction tone, mostly silent protagonist, menu-based hub, handcrafted missions with controlled variation, campaign-first replay, one-level internal vertical slice, fully 2D runtime, shallow angled top-down presentation, and the user's request to remain at the higher product and MVP level. Include enemy visual readability, weapon and loot fantasy, narrative flexibility, roster variety, asset reuse, boss potential, faction identity, future campaign expansion, and the danger of over-scoping the first level. Put the recommendation after all A/B/C options, at the end of the card. Queue accepted decisions D-141 through D-150 and persist the complete batch at D-150 unless a context handoff or explicit user instruction requires earlier persistence.",
+  "last_completed_item": "D-141 — Broad multi-faction science-fiction setting with a one-faction MVP focus",
+  "current_item": "D-142 — Specific enemy faction identity for the one-level MVP",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the one-level internal MVP fights an automated industrial or rogue-machine faction, a human corporate-security or mercenary faction, or a biological or alien infestation faction. Preserve the broader multi-faction future setting while keeping the first level entirely focused on one production-ready faction. Include visual readability, animation and asset cost, fit with four-weapon mech combat and loot, enemy-role variety, boss potential, environmental cohesion, story flexibility, and reuse into later missions. Put the recommendation after all A/B/C options, at the end of the card. Continue queuing D-142 through D-150 and persist the complete remaining batch at D-150 unless another context handoff or explicit user instruction requires earlier persistence.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-140 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-141 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-140",
-    "last_persisted_at": "2026-07-13T14:13:05+02:00",
-    "batching_rule": "Queue ten Product Discovery decisions per batch; next persistence boundary D-150",
+    "last_persisted_decision": "D-141",
+    "last_persisted_at": "2026-07-13T14:16:23+02:00",
+    "batching_rule": "D-141 persisted early for handoff safety; queue D-142 through D-150 and persist at D-150",
     "queued_decisions": []
   },
   "framework": {
@@ -50,5 +52,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T14:13:05+02:00"
+  "updated_at": "2026-07-13T14:16:23+02:00"
 }
