@@ -4,249 +4,133 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 56,
-  "last_completed_decision": "D-056",
+  "questions_asked": 57,
+  "last_completed_decision": "D-057",
   "accepted_answers": [
     {
       "decision_id": "D-040",
       "topic": "map_system",
       "answer": "fog_of_war_exploration_map",
-      "constraints": [
-        "Reveal rooms, corridors, and connections through exploration",
-        "Do not reveal undiscovered secrets automatically",
-        "Keep objective guidance light",
-        "Avoid GPS-style navigation"
-      ],
+      "constraints": ["Reveal rooms and connections through exploration", "Do not reveal undiscovered secrets", "Keep guidance light and avoid GPS-style navigation"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-041",
       "topic": "primary_target_player_strategy",
       "answer": "core_action_first_broadly_accessible",
-      "constraints": [
-        "Target players who enjoy skill-based top-down combat",
-        "Provide many meaningfully tailored difficulty settings for casual through mastery-focused players",
-        "Do not rely only on simple health or damage multipliers to differentiate difficulty"
-      ],
+      "constraints": ["Target skill-based top-down combat players", "Support casual through mastery players with meaningful difficulty tailoring", "Do not rely only on health and damage multipliers"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-042",
       "topic": "connectivity_model",
       "answer": "offline_core_optional_online_features",
-      "constraints": [
-        "The complete MVP campaign, saves, progression, and difficulty modes must work offline",
-        "Optional online systems must not make the core game connectivity-dependent",
-        "Multiplayer is post-MVP and should follow only after a successful MVP",
-        "Preserve clean extension boundaries for later online and multiplayer systems without implementing their operational complexity in the MVP"
-      ],
+      "constraints": ["Complete MVP campaign saves progression and difficulty work offline", "Multiplayer follows only after a successful MVP", "Preserve clean extension boundaries without MVP networking complexity"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-043",
       "topic": "primary_post_mvp_multiplayer_experience",
       "answer": "real_time_cooperative_play_first",
-      "constraints": [
-        "Real-time cooperative campaign-style play is the first major multiplayer direction after a successful MVP",
-        "Co-op should support shared combat, exploration, objectives, and bosses",
-        "Leaderboards are also desired later but remain post-MVP",
-        "Do not implement multiplayer networking, multiplayer scaling, shared progression, or leaderboard services in the MVP",
-        "Avoid unnecessary single-player-only hard-coding where clean extension boundaries are practical"
-      ],
+      "constraints": ["Co-op campaign combat exploration objectives and bosses are the first multiplayer direction", "Leaderboards remain post-MVP", "No networking scaling shared progression or leaderboard service in MVP"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-044",
       "topic": "target_platform_order",
       "answer": "windows_pc_first_android_post_mvp",
-      "constraints": [
-        "Release the polished MVP for Windows PC first",
-        "Support keyboard and mouse plus gamepad in the MVP",
-        "Android is the next intended platform after the PC version is stable",
-        "Keep gameplay actions platform-neutral and UI scalable",
-        "Suspend saves and data-driven content should remain compatible with later mobile expansion",
-        "Touch controls, mobile performance validation, and app-store release work are post-MVP"
-      ],
+      "constraints": ["Windows PC polished MVP first", "Keyboard mouse and gamepad support", "Android follows after PC stability", "Keep actions platform-neutral UI scalable and saves mobile-compatible"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-045",
       "topic": "level_size_and_session_length",
       "answer": "substantial_checkpoint_segmented_levels",
-      "constraints": [
-        "Target roughly 45 to 75 minutes for an exploratory first clear of each MVP level",
-        "Target roughly 20 to 35 minutes for a mastered run",
-        "Divide levels into natural checkpoint sections of roughly 10 to 20 minutes",
-        "Every level must remain interesting throughout",
-        "Levels should later be genuinely worth replaying and grinding rather than relying on repetitive filler",
-        "Prioritize distinct encounters, routes, secrets, objectives, progression opportunities, and mastery depth over raw floor area"
-      ],
+      "constraints": ["Exploratory first clear roughly 45 to 75 minutes", "Mastered run roughly 20 to 35 minutes", "Natural checkpoint sections roughly 10 to 20 minutes", "Prioritize distinct replayable content over filler"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-046",
       "topic": "repeat_run_variation_model",
       "answer": "stable_levels_with_controlled_variations",
-      "constraints": [
-        "Keep core layouts, bosses, major encounters, and official competitive categories deterministic",
-        "Allow optional curated modifiers, difficulty-specific enemy variants, challenge contracts, rotating bonuses, and limited reward variation",
-        "Preserve learnable mastery and fair speedrunning",
-        "Do not turn the handcrafted campaign into heavily randomized roguelike runs"
-      ],
+      "constraints": ["Core layouts bosses major encounters and competitive categories remain deterministic", "Allow bounded authored modifiers and variants", "Preserve mastery and fair speedrunning", "Do not convert campaign into a heavily randomized roguelike"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-047",
       "topic": "repeat_run_reward_and_weapon_acquisition_economy",
       "answer": "randomized_floor_strongboxes_and_randomized_shop_inventory",
-      "constraints": [
-        "Weapons are acquired primarily from level-floor pickups",
-        "Floor pickups may be represented as tiered strongboxes with random contents",
-        "Shops provide a second weapon-acquisition path through a randomized purchasable inventory",
-        "Random weapon discovery should be a central source of excitement during play"
-      ],
+      "constraints": ["Weapons mainly come from floor pickups and tiered random strongboxes", "Shops provide a randomized purchasable inventory", "Random discovery is a central source of excitement"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-048",
       "topic": "rng_fairness_progression_bounds_and_duplicate_handling",
       "answer": "rng_with_soft_protection_and_progression_bounded_loot",
-      "constraints": [
-        "Strongboxes and shops remain genuinely random but are bounded by player progression",
-        "Duplicate weapons remain possible and can be sold or dismantled into useful value",
-        "A shop may expose up to roughly 40 randomized weapon slots and should let the player realistically buy almost any progression-appropriate weapon",
-        "Base weapon types enter the loot pool gradually as player levels unlock them",
-        "Strongboxes roll from a bounded nearby progression window rather than the full game-wide weapon pool",
-        "Eligible weapons may roll enchantments or affixes that create meaningful variants",
-        "Higher-tier boxes guarantee an appropriate minimum quality",
-        "Repeated misses may softly improve relevant odds",
-        "Limited shop rerolls or equivalent fallback mechanisms may prevent pathological unlucky streaks",
-        "The progression window, enchantments, probabilities, and power curve must be carefully balanced"
-      ],
+      "constraints": ["Random results are bounded by progression", "Duplicates remain possible and useful", "Shops may expose roughly 40 progression-appropriate slots", "Weapon types enter the pool gradually", "Boxes use nearby progression windows", "Stars augments and enchantments create variants", "Use soft protection against pathological bad luck"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-049",
       "topic": "weapon_power_curve",
       "answer": "level_scaled_recurring_weapon_families_with_later_complex_archetypes",
-      "constraints": [
-        "Core weapon families may return at later progression milestones as stronger counterparts",
-        "Successor variants may improve statistics and introduce modest mechanical changes",
-        "Some more complex, interesting, and inherently powerful weapon types only enter the loot pool at higher levels",
-        "A basic machine gun may appear at level 1, return as an improved family counterpart around level 11, and receive another stronger variant around level 39",
-        "Deliberate power inflation is acceptable but must be planned, balanced, and paced",
-        "Early individual drops may become obsolete while their broader weapon family remains relevant through authored successors",
-        "Late-game archetypes must justify their later unlock through added complexity, novelty, or power"
-      ],
+      "constraints": ["Weapon families return as authored stronger successors", "Successors may add modest mechanical changes", "Complex and inherently stronger archetypes unlock later", "Deliberate power inflation is planned and paced", "Late archetypes must add novelty complexity or power"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-050",
       "topic": "shop_inventory_persistence_and_rerolls",
       "answer": "persistent_inventory_with_limited_paid_rerolls_and_item_locks",
-      "constraints": [
-        "A shop's randomized inventory remains stable until deliberately refreshed",
-        "Players may purchase only a limited number of rerolls",
-        "Reroll costs escalate",
-        "Players may lock a small number of selected items so those items survive a refresh",
-        "The system must prevent cheap or unlimited fishing for perfect weapon rolls",
-        "Shop reroll economics must remain balanced against floor strongbox acquisition"
-      ],
+      "constraints": ["Shop stock remains stable until deliberately refreshed", "Rerolls are limited and increasingly expensive", "A small number of items may be locked through rerolls", "Prevent cheap infinite perfect-roll fishing"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-051",
       "topic": "high_rarity_source_weighting",
       "answer": "floor_biased_jackpots_with_ultra_rare_shop_miracles",
-      "constraints": [
-        "Use eight strongbox tiers and a two-star ten-level augment scale as the current design direction",
-        "The strongest high-star high-augment weapons primarily come from high-tier floor strongboxes",
-        "Tier 7 and Tier 8 boxes are heavily weighted toward or nearly guarantee high-quality high-augment items",
-        "The exact weapon family and enchantments remain random even from top-tier boxes",
-        "Shops may roll exceptional two-star augment-level-seven-or-higher weapons only at screenshot-worthy rarity",
-        "Higher strongbox tiers are unavailable at low player levels and unlock progressively",
-        "Progressive box-tier availability must create continued motivation to reach and replay later levels",
-        "Exact odds guarantees level gates and availability require playtesting",
-        "Prevent both early progression-breaking jackpots and unrewarding endgame droughts"
-      ],
+      "constraints": ["Current direction uses eight strongbox tiers and two-star ten-level augments", "Elite high-augment gear primarily comes from high-tier floor boxes", "Exact weapon and enchantments remain random", "Extreme shop rolls occur only at screenshot-worthy rarity", "High box tiers unlock progressively", "Exact odds require playtesting"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-052",
       "topic": "strongbox_tier_unlock_and_acquisition_rules",
       "answer": "progression_gates_with_challenge_weighted_odds_across_all_unlocked_levels",
-      "constraints": [
-        "Player level and campaign progress impose a hard maximum on eligible strongbox tiers",
-        "Difficulty optional objectives bosses challenge performance and other mastery signals improve high-tier odds without bypassing progression gates",
-        "Once a strongbox tier is unlocked every level retains a non-zero chance to produce it",
-        "Earlier or easier levels are substantially less likely to produce high unlocked tiers",
-        "Earlier levels skew toward slightly weaker item-quality rolls so they do not become the optimal farming route",
-        "Later and more difficult content must provide materially better expected rewards",
-        "Exact tier weights quality penalties and performance multipliers require playtesting"
-      ],
+      "constraints": ["Player level and campaign progress hard-cap eligible box tiers", "Difficulty objectives bosses and mastery improve high-tier odds", "Every level retains a non-zero chance for unlocked tiers", "Earlier levels have lower odds and weaker quality distributions", "Later difficult content provides materially better expected rewards"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-053",
       "topic": "strongbox_tier_to_augment_quality_mapping",
       "answer": "overlapping_weighted_quality_bands_with_cross_level_jackpot_variants",
-      "constraints": [
-        "Each strongbox tier has a dependable minimum quality floor and a strongly weighted expected star-and-augment range",
-        "Neighboring box tiers overlap and retain limited upper-tail jackpot chances",
-        "A box may roll an older lower-base-level weapon with unusually strong stars and augments",
-        "Around player level 10 a Tier 2 crate may produce a level-2-to-4 base weapon with a rare high-star high-augment roll",
-        "Base weapon level weapon-family power stars augment level and enchantment synergy must be balanced together",
-        "Exceptional older weapons may remain exciting and temporarily competitive",
-        "Common low-tier farming must not reliably overpower current progression",
-        "Higher box tiers raise minimums and expected quality without making every top-tier result perfect",
-        "Exact quality ranges overlap and jackpot tails require playtesting"
-      ],
+      "constraints": ["Each box tier has a quality floor and weighted expected band", "Neighboring tiers overlap with limited jackpot tails", "Older lower-base-level weapons may roll excellent stars and augments", "Balance base level family power modifiers and synergy together", "Low-tier farming must not overpower current progression"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-054",
       "topic": "modifier_compensation_for_lower_base_weapon_level",
       "answer": "bounded_bridge_weapons_with_contextual_older_weapon_value",
-      "constraints": [
-        "Exceptional stars augments and enchantment synergy may bridge several progression levels",
-        "A strong authored successor should eventually overtake an older jackpot weapon",
-        "Every newly introduced weapon or successor should feel meaningful",
-        "Older weapons should retain situational value through handling range damage profile status effects efficiency encounter matchups or build synergy",
-        "Modifier power must use explicit budgets and bounded level-gap compensation",
-        "Older jackpot weapons may remain contextually useful after losing raw-stat leadership",
-        "Do not allow permanent universal best-in-slot outliers",
-        "Weapon comparisons must communicate contextual strengths rather than only one damage number"
-      ],
+      "constraints": ["Exceptional modifiers may bridge several progression levels", "Strong successors eventually overtake older jackpots", "New weapons remain meaningful", "Older weapons retain situational value through handling effects matchups or synergy", "No permanent universal best-in-slot outliers", "Comparison UI communicates contextual strengths"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-055",
       "topic": "shop_pricing_philosophy",
       "answer": "meaningful_investments_with_rarity_scaled_prices",
-      "constraints": [
-        "Ordinary shop weapons are reasonably affordable but still require meaningful spending choices",
-        "Strong stars augment levels desirable enchantments later weapon families and exceptional combinations increase price sharply",
-        "Screenshot-worthy jackpot weapons may require savings from several runs",
-        "Selling or dismantling equipment returns only partial value",
-        "Weapon purchases inventory rerolls and other shop services compete for the same core currency",
-        "The shop supports experimentation without replacing floor strongboxes as the primary elite-loot path",
-        "Income resale values rarity multipliers and reroll costs require playtesting"
-      ],
+      "constraints": ["Ordinary shop weapons are attainable but consequential purchases", "Stars augments enchantments and later families sharply raise prices", "Jackpots may require several runs of savings", "Selling and dismantling return partial value", "Purchases rerolls and services compete for core currency", "Exact prices and income require playtesting"],
       "verification_status": "verified"
     },
     {
       "decision_id": "D-056",
       "topic": "rare_shop_item_reservation_token",
       "answer": "extremely_rare_consumed_token_with_one_long_term_layaway_slot",
-      "constraints": [
-        "Consuming the token reserves one exact shop item in a dedicated long-term slot",
-        "The reserved item survives rerolls shop refreshes future visits and completed runs",
-        "Only one item may be reserved at a time across the player profile",
-        "The token is consumed immediately when the reservation is made",
-        "The item keeps its original price and reservation does not accelerate currency earning",
-        "The reservation has no expiry and remains until purchase or deliberate discard",
-        "Ordinary reroll locks remain separate and only protect current shop stock during limited rerolls"
-      ],
+      "constraints": ["One consumed token reserves one exact shop item", "The reservation survives rerolls visits and completed runs", "Only one profile-wide reservation exists", "Reserved item keeps its original price", "No expiry until purchase or deliberate discard", "Ordinary reroll locks remain separate and short-term"],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-057",
+      "topic": "duplicate_conversion_and_inventory_cleanup",
+      "answer": "choose_between_selling_and_dismantling_with_bounded_materials",
+      "constraints": ["Unwanted weapons may be sold for currency or dismantled for bounded materials", "Material yields reflect level rarity stars augments and enchantment categories", "Materials support controlled improvement rerolling utility crafting or later systems", "Do not allow free perfect-item manufacturing", "Both paths return partial value and resist farming exploits", "Provide favourites locks bulk marking auto-junk sorting comparison and keep-best-copy tools", "Do not make direct duplicate fusion the primary upgrade path"],
       "verification_status": "verified"
     }
   ],
@@ -258,7 +142,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Duplicate conversion and inventory cleanup rules",
+    "Persistent armory and carried-in-level storage model",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -274,13 +158,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "duplicate_conversion_and_inventory_cleanup",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether unwanted weapons are mainly sold for currency, may be either sold or dismantled into bounded upgrade and crafting materials, or are fused directly into matching weapons to raise their power. Include inventory cleanup and anti-farming implications. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "persistent_armory_and_carried_storage_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether weapon storage is tightly limited everywhere, uses a generous persistent armory with a smaller carried field inventory and checkpoint transfer rules, or allows unlimited universal storage and swapping anywhere. Include loot-flow, combat interruption, collection, and mobile-interface implications. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-056"
+    "last_persisted_decision": "D-057"
   }
 }
