@@ -1,0 +1,164 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-221-D-230",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-221",
+      "topic": "unity_ci_and_build_validation_policy",
+      "answer": "layered_validation_with_escalating_gates",
+      "constraints": [
+        "Ordinary branches run compilation fast deterministic edit-mode tests content validation generated-registry checks and affected-system tests",
+        "Integration requires relevant play-mode smoke tests and a Windows player smoke build",
+        "Milestones run full regression performance memory save recovery migration clean-machine offline-launch and settings checks",
+        "Flaky tests are quarantined and repaired",
+        "Android networking and full co-op pipelines remain deferred"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-222",
+      "topic": "windows_build_promotion_and_release_artifacts",
+      "answer": "immutable_artifacts_promoted_through_release_channels",
+      "constraints": [
+        "Each artifact records build content source Unity dependency generated-content test symbol checksum and save-schema identity",
+        "The same artifact is promoted through test and release channels",
+        "Any change creates a new artifact",
+        "Keep current and previous known-good builds plus migration and rollback support",
+        "Formal external and Stage 2 builds are immutable and identifiable"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-223",
+      "topic": "diagnostic_and_playtest_data_collection",
+      "answer": "privacy_safe_local_diagnostics_with_explicit_export",
+      "constraints": [
+        "Bounded local logs capture build session mission performance error and save-recovery outcomes",
+        "Logs remain local unless the tester explicitly exports them",
+        "Personal and unrelated system information is excluded or redacted",
+        "Logs rotate and support one-click diagnostic bundles",
+        "Remote telemetry is deferred and opt-in only if scale justifies it"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-224",
+      "topic": "update_save_migration_and_rollback_policy",
+      "answer": "versioned_migrations_with_protected_rollback",
+      "constraints": [
+        "Saves record game content schema migration and stable-ID information",
+        "Newer builds back up validate migrate and atomically commit supported older saves",
+        "Failed migrations restore safely and older builds refuse newer schemas",
+        "Rollback uses clones or compatible backups",
+        "Removed content uses tombstones replacements refunds or compensation",
+        "Development resets archive old profiles while public compatibility promises remain explicit"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-225",
+      "topic": "debug_tools_cheats_and_developer_commands",
+      "answer": "capability_gated_auditable_diagnostic_command_framework",
+      "constraints": [
+        "Developer builds expose reproducible setup inspection performance and fault-injection commands",
+        "Formal test builds expose only needed commands and log use",
+        "Altered sessions are excluded from ordinary evidence achievements and records",
+        "Public builds exclude progression-altering commands and retain safe support diagnostics",
+        "Save-changing diagnostics use cloned or temporary profiles",
+        "Practice accessibility and speedrun tools are legitimate product features"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-226",
+      "topic": "unity_and_third_party_dependency_policy",
+      "answer": "pinned_baseline_with_controlled_upgrade_windows",
+      "constraints": [
+        "Pin Unity LTS packages and approved dependencies with license source version and purpose",
+        "Reject incompatible environments and automatic upgrades",
+        "Upgrades use isolated tasks with comprehensive validation and rollback",
+        "Prefer small maintained dependencies behind owned adapters",
+        "Defer analytics storefront networking and mobile SDKs until needed",
+        "Retain metadata required to reproduce promoted artifacts"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-227",
+      "topic": "windows_hardware_and_performance_support_policy",
+      "answer": "explicit_target_tier_minimum_floor_and_scalable_effects",
+      "constraints": [
+        "Primary target sustains stable 60 FPS at 1080p in representative heavy combat",
+        "Minimum floor preserves complete readable gameplay with reduced visuals",
+        "High-end options add no gameplay advantage",
+        "Expose transparent scalable visual and display controls",
+        "Validate a small representative hardware and driver matrix",
+        "Track explicit CPU GPU allocation memory loading atlas particle enemy and projectile budgets"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-228",
+      "topic": "windows_distribution_installation_and_update_model",
+      "answer": "channel_specific_packaging_without_custom_launcher",
+      "constraints": [
+        "Test builds use immutable checksummed portable artifacts and support side-by-side versions",
+        "Public release uses a storefront or conventional installer with optional updates and complete offline launch",
+        "Campaign play requires no account",
+        "Storefront features remain adapters and a manual or DRM-free path may be offered",
+        "Updates uninstall and rollback preserve saves",
+        "Public artifacts should be signed when practical"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-229",
+      "topic": "windows_security_trust_and_anti_tamper_policy",
+      "answer": "least_privilege_trustworthy_offline_application",
+      "constraints": [
+        "Normal play requires no administrator rights and writes only to documented locations",
+        "Do not ship secrets and defensively validate files saves journals archives and support bundles",
+        "Sanitize exported diagnostics",
+        "Track dependencies licenses vulnerabilities and promoted-build manifests",
+        "Avoid mandatory DRM kernel anti-cheat and online activation",
+        "Modified profiles may lose protected competitive eligibility without losing campaign access"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-230",
+      "topic": "branching_and_integration_policy",
+      "answer": "short_lived_scoped_branches_with_protected_integration",
+      "constraints": [
+        "Each task uses one small declared-scope owned-file branch and one revertable change",
+        "Merges require current integration state layered CI tests documentation and generated snapshots",
+        "Shared systems saves dependencies balance and build configuration receive stronger review",
+        "Human and AI work follows the same gates and ownership rules",
+        "Generated files are rebuilt rather than manually conflict-resolved",
+        "Failures are fixed on task branches and releases come only from protected validated commits"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Explicit Stage 1 and Stage 2 milestone budgets and timebox review rules",
+    "Definition of done for AI-agent work items and handoffs",
+    "Asset provenance and licensing policy for generated and outsourced content",
+    "Recovery and disaster-backup policy for repository and production assets",
+    "Recovered D-001 through D-039 re-verification"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-231",
+    "topic": "proof_stage_timebox_and_budget_policy",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting how Stage 1 and Stage 2 are bounded against indefinite expansion: no hard timebox and continue until quality is satisfactory; one fixed calendar deadline for each whole stage; or milestone budgets with predeclared review caps for core mechanics environment external validation and Stage 2 end-to-end production proof, where missed caps trigger scope reduction diagnosis or stop review rather than automatic overtime. Preserve the two-stage evidence gates pivot-or-stop rule solo-led AI-assisted production one-level slice and exact thresholds as planning variables. Include calendar uncertainty part-time work hidden technical risk architecture overbuilding quality pressure sunk-cost behavior and how to handle justified extensions. Put the recommendation after all options. Begin a new D-231 through D-240 batch unless cadence changes."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-230",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-240"
+  }
+}
