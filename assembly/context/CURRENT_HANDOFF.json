@@ -5,9 +5,9 @@
   "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
-  "active_branch": "ai/task-split-shooter-mover-v1-continuation-6",
-  "active_pr": 11,
-  "last_verified_commit": "ef4a6bbed6940d472ce29cde7bb5ecd658c85c87",
+  "active_branch": "ai/task-split-shooter-mover-v1-continuation-7",
+  "active_pr": 12,
+  "last_verified_commit": "60df89d6d8bdc3afb5390bb292551c1e8d169253",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -42,22 +42,24 @@
     "assembly/generated/task_batches/combat-four-mount.json",
     "assembly/generated/task_batches/stage1-weapons.json",
     "assembly/generated/task_batches/stage1-enemies-route.json",
+    "assembly/generated/task_batches/stage1-accessibility-reliability.json",
     "assembly/intake/LIVE_DECISIONS.md"
   ],
   "current_section": "guided_task_batch_generation",
   "handoff_status": "task_split_in_progress",
-  "last_completed_item": "Generated and executable-validator-validated EN-001 through EN-013 for the amended four-role enemy roster, easy Four-Blaster Elite, benchmark and short-route encounter composition, formal evidence and explicit human quality gate; no game implementation was performed.",
-  "current_item": "Human review of draft PR #11 for the validated stage1-enemies-route batch on ai/task-split-shooter-mover-v1-continuation-6.",
-  "next_action": "Review and merge the stage1-enemies-route draft PR. After it merges, start a fresh Task Splitter context from current main, present AR-001 through AR-012 titles, owner lanes and exact dependencies for stage1-accessibility-reliability, then stop. Generate that batch only after explicit human continuation.",
+  "last_completed_item": "Generated and executable-validator-validated AR-001 through AR-012 for Stage 1 accessibility, reliability, diagnostics, performance, clean-machine builds and immutable gate-readiness evidence; no game implementation was performed.",
+  "current_item": "Human review of draft PR #12 for the validated stage1-accessibility-reliability batch on ai/task-split-shooter-mover-v1-continuation-7.",
+  "next_action": "Review and merge the stage1-accessibility-reliability draft PR. After it merges, start a fresh Task Splitter context from current main, present GATE-001 through GATE-010 titles, owner lanes and exact dependencies for the Stage 1 developer and external formal gate, then stop. Generate that batch only after explicit human continuation.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "Nine planned agent batches remain to be proposed, approved and generated one at a time.",
+    "Eight planned agent batches remain to be proposed, approved and generated one at a time.",
     "Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 cap of 5 days; Dispatch requires human re-estimation, scope sequencing or an approved milestone-cap amendment. Evidence-critical contracts, accessibility, diagnostics, reliability and performance may not be cut to hide the overrun.",
     "Movement-thruster estimates 6.15 focused lead days against the accepted S1.1 cap of 8 days, leaving 1.85 days for human review and bounded evidence-led iteration; Dispatch must preserve that reserve.",
     "Combat-four-mount plus stage1-weapons consume 9.10 focused lead days of the accepted S1.2 ten-day cap, leaving only 0.90 day for review reserve and bounded approved follow-up; Dispatch may not add generalized tooling, mature balance depth or extra weapon breadth.",
     "The three remaining Stage 2 weapon identities are deliberately deferred until Stage 1 evidence and require a later planning amendment before Stage 2 combat-content generation or dispatch.",
     "The one remaining Stage 2 ordinary enemy role is deliberately deferred until Stage 1 evidence and requires a later planning amendment before Stage 2 combat-content generation or dispatch.",
     "Stage1-enemies-route consumes 5.75 focused lead days of the S1.3 ten-day cap, preserving 4.25 days for human review and bounded evidence-led follow-up.",
+    "Stage1-accessibility-reliability allocates 1.70 focused lead days to S1.3 and 2.90 to S1.4, leaving 2.55 S1.3 days and 2.10 S1.4 days for review and the developer gate.",
     "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
     "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
   ],
@@ -65,9 +67,9 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T23:05:15+02:00",
+    "last_persisted_at": "2026-07-13T23:18:48+02:00",
     "planning_run": "shooter-mover-v1",
-    "task_decomposition": "7 of 16 batches generated and validated",
+    "task_decomposition": "8 of 16 batches generated and validated",
     "generated_batches": [
       "unity-foundation",
       "shared-contracts-core",
@@ -75,9 +77,10 @@
       "movement-thruster",
       "combat-four-mount",
       "stage1-weapons",
-      "stage1-enemies-route"
+      "stage1-enemies-route",
+      "stage1-accessibility-reliability"
     ],
-    "next_batch": "stage1-accessibility-reliability",
+    "next_batch": "stage1-gate",
     "queued_decisions": []
   },
   "verification_boundary": {
@@ -109,8 +112,12 @@
       "stage1-enemies-route.json contains exactly EN-001 through EN-013 and all 13 tasks pass the current executable task-batch validator",
       "EN-004 through EN-008 own separate package folders and may run in parallel after the shared EN-001 through EN-003 foundation",
       "EN-010 and EN-011 read but never edit EH-004 and EH-005 scenes; EN-009 validates registry inputs without editing CS-011-owned outputs",
-      "the seven generated batches contain 81 tasks with an acyclic topologically ordered dependency graph and 261 non-overlapping exact path claims",
       "the enemy/route batch records 5.75 focused lead days against the S1.3 ten-day cap and preserves 4.25 days for review and bounded follow-up",
+      "stage1-accessibility-reliability.json contains exactly AR-001 through AR-012 and all 12 tasks pass the current executable task-batch validator",
+      "AR-001 isolates the accessibility profile, AR-005 isolates settings persistence, and no task edits movement/combat input assets, gameplay packages or evidence-owned scenes",
+      "AR-011 assembles immutable readiness evidence while AR-012 explicitly lacks Stage 1 approval authority",
+      "the eight generated batches contain 93 tasks with an acyclic topologically ordered dependency graph and 300 non-overlapping exact path claims",
+      "the accessibility/reliability batch allocates 1.70 days to S1.3 and 2.90 to S1.4, preserving 2.55 S1.3 days and 2.10 S1.4 days",
       "no Unity game implementation, canonical backlog, collaboration assignment, mission, reward, persistence or later-stage task batch was created"
     ],
     "task_split_blockers": [
@@ -118,6 +125,7 @@
       "S1.1 reserve: movement-thruster direct task estimates consume 6.15 of 8 focused lead days, leaving 1.85 days for review and evidence-led iteration",
       "S1.2 reserve: combat-four-mount plus stage1-weapons consume 9.10 of 10 focused lead days, leaving 0.90 day for review reserve and bounded approved follow-up",
       "S1.3 reserve: stage1-enemies-route consumes 5.75 of 10 focused lead days, leaving 4.25 days for review and bounded evidence-led follow-up",
+      "Stage 1 capacity after accessibility/reliability: 2.55 S1.3 days and 2.10 S1.4 days remain for review and the developer gate",
       "Stage 2 roster blocker: the three remaining weapon identities require an evidence-backed planning amendment after the Stage 1 gate",
       "Stage 2 enemy blocker: the one remaining ordinary enemy identity requires an evidence-backed planning amendment after the Stage 1 gate"
     ]
@@ -128,5 +136,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T23:07:17+02:00"
+  "updated_at": "2026-07-13T23:20:25+02:00"
 }
