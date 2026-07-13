@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "d2f751a7e6094db83896217e3c93754055dd62da",
+  "last_verified_commit": "a147a7545006030bcef710a2f24b00769bb471a6",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -42,10 +42,10 @@
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "resume_ready",
-  "last_completed_item": "D-200 — Temporary reconnect reservation for uncollected owned physical drops, requiring serious validation",
-  "current_item": "D-201 — Vertical-slice proof gate",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting what the one-level internal vertical slice must prove before broader content production begins: basic end-to-end feature completeness; exceptional movement combat feel and repeat-run desire even with temporary content; or a staged hybrid gate requiring both a repeated-play fun benchmark and one thin reliable end-to-end production loop. Preserve the one-level automated weapons factory slice, approximately six to eight base weapons, four or five ordinary enemy roles plus an upgraded-droid climax, minimal real strongbox and randomized-shop loop, Unity with C#, Windows-first offline play, deterministic replay and difficulty direction, solo-led AI-assisted production, and the rule that exact tuning coefficients remain playtest variables. Include explicit kill criteria, repeated sessions, external testers, placeholder tolerance, content polish, performance stability, save reliability, diagnostic evidence, scope-expansion risk, and what may remain deferred. Put the recommendation after all A/B/C options at the end of the card. Begin a new persistence batch D-201 through D-210 unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "active_batch_in_progress",
+  "last_completed_item": "D-204 — Predeclared pivot-or-stop review after repeated core-fun test failure",
+  "current_item": "D-205 — Reward and progression content inside the Stage 1 core-fun prototype",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how much loot and progression should exist during the Stage 1 core-fun test: no reward loop and only curated fixed loadouts to isolate movement and combat; the complete minimal strongbox shop and progression loop from the start; or a controlled hybrid using a fixed-loadout benchmark first and a thin randomized loadout or reward wrapper only after the baseline combat loop is demonstrably readable. Preserve the staged proof gate, developer-then-external validation, predeclared behavioral pass signals, pivot-or-stop review, four simultaneous mounted weapons, six to eight eventual MVP base weapons, temporary-content tolerance, replay and mastery goals, and the need not to confuse extrinsic loot compulsion with intrinsic movement and combat quality. Include test validity, replay motivation, loadout experimentation, implementation delay, onboarding, data comparability, sunk-cost risk, and transition into the full factory vertical slice. Put the recommendation after all A/B/C options at the end of the card. D-201 through D-204 are checkpointed as queued but not formally batch-persisted; continue through D-210 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -54,17 +54,73 @@
     "The D-101 through D-200 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "ready",
-    "unsaved_decisions": 0,
+    "status": "batch_in_progress",
+    "unsaved_decisions": 4,
     "last_persisted_decision": "D-200",
     "last_persisted_at": "2026-07-13T17:30:25+02:00",
-    "batching_rule": "Begin a new Product Discovery batch at D-201 and persist through D-210 unless an earlier handoff is requested",
-    "queued_decisions": []
+    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-201 through D-210 at D-210 unless an earlier handoff is requested",
+    "queued_decisions": [
+      {
+        "decision_id": "D-201",
+        "topic": "vertical_slice_proof_gate",
+        "choice": "C",
+        "answer": "two_stage_core_fun_then_thin_end_to_end_production_gate",
+        "constraints": [
+          "Stage 1 must prove movement aiming four-weapon combat enemy readability room traversal quick restart and voluntary repeat-run desire with temporary content",
+          "Stage 2 must turn the proven loop into one complete factory level with reliable saves checkpoints loot risk shop strongboxes completion replay scalable effects and diagnostic evidence",
+          "Broader content production begins only after both replay desire and a stable extensible production loop are demonstrated",
+          "Define evidence and kill criteria before testing rather than moving the goalposts afterward",
+          "Exact thresholds and tuning coefficients remain prototype and playtest variables"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-202",
+        "topic": "core_fun_validation_audience",
+        "choice": "C",
+        "answer": "staged_developer_then_external_target_player_validation",
+        "constraints": [
+          "The developer must first find the prototype compelling enough to replay voluntarily and pursue mastery or better execution",
+          "A small external target-player group must then demonstrate genuine repeat-play interest despite temporary visuals and limited progression",
+          "Failure at either stage keeps the project in prototype iteration rather than advancing to full vertical-slice production",
+          "Tester counts and exact replay thresholds must be declared before each formal test round"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-203",
+        "topic": "external_core_fun_pass_evidence",
+        "choice": "C",
+        "answer": "predeclared_behavioral_gate_plus_explanatory_feedback",
+        "constraints": [
+          "Actual replay behavior determines whether the external fun gate passes while interviews and ratings explain why",
+          "Observe voluntary restarts alternate loadout trials mastery or record chasing and later-session return interest",
+          "Replay must be motivated by enjoyment experimentation or mastery rather than merely helping the developer test",
+          "Major frustration must not consistently overwhelm the desire to continue",
+          "Thresholds may change between formal rounds with written justification but never retroactively to declare a weak result successful"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-204",
+        "topic": "repeated_core_fun_gate_failure_policy",
+        "choice": "C",
+        "answer": "predeclared_pivot_or_stop_review",
+        "constraints": [
+          "After a limited predeclared number of failed formal rounds, likely two or three, pause for a written diagnosis",
+          "Identify whether failure comes from movement aiming four-weapon readability enemy design level pacing onboarding or replay incentives",
+          "Permit one substantial evidence-backed pivot with a fresh predeclared test gate",
+          "Stop or shelve the project if the revised prototype still fails",
+          "Do not enter full vertical-slice production while the result remains ambiguous"
+        ],
+        "verification_status": "verified"
+      }
+    ]
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:30:25+02:00"
+  "updated_at": "2026-07-13T17:36:11+02:00"
 }
