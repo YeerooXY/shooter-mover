@@ -16,11 +16,11 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-210.
-- Decisions D-101 through D-210 are persisted in authoritative batch-extension markdown and JSON files under `assembly/intake/batches/`.
+- Product Discovery is active after verified decision D-220.
+- Decisions D-101 through D-220 are persisted in authoritative batch-extension markdown and JSON files under `assembly/intake/batches/`.
 - The latest completed batch is:
-  - `assembly/intake/batches/LIVE_DECISIONS_D201_D210.md`
-  - `assembly/intake/batches/intake_session_D201_D210.json`
+  - `assembly/intake/batches/LIVE_DECISIONS_D211_D220.md`
+  - `assembly/intake/batches/intake_session_D211_D220.json`
 - D-001 through D-039 remain recovered but unverified and must not be presented as final requirements until explicitly re-verified.
 - D-040 through D-063 are archived verbatim.
 - D-064 through D-100 remain in the primary live decision log.
@@ -53,6 +53,19 @@ Before responding:
 - External tests use readability-complete temporary presentation: representative telegraphs, hit feedback, silhouettes, HUD, audio, reduced-effects controls, and performance instrumentation, while final art and polish remain deferred.
 - Formal external builds must reliably support repeated complete prototype sessions. Technically ruined sessions are excluded from fun-gate evidence and recorded as reliability failures.
 
+## Production pipeline and state direction through D-220
+
+- Stage 2 passes only when the complete reliable factory slice also proves that a new room or encounter, enemy, and weapon can be added through documented repeatable pipelines without foundational rewrites.
+- Most slice content may use coherent temporary art, but a representative player, enemy, elite, weapon, and factory subset must pass through the intended final rendered-sprite pipeline.
+- The primary developer establishes reference content pipelines, then an isolated AI-agent branch or collaborator independently reproduces a representative addition.
+- Every content contribution uses layered validation: automated technical checks first, then playable review for feel, readability, purpose, interaction, and accessibility.
+- Ordinary content uses typed `ScriptableObject` definitions and reusable modules; genuinely novel mechanics may add isolated reusable tested extensions.
+- `ScriptableObject` assets are canonical for ordinary authoring, with stable IDs, generated registries, deterministic text review snapshots, and selective CSV or JSON import.
+- Content contributions live mainly in isolated owned feature packages. Shared indexes are generated, and foundational systems have explicit owners.
+- Meaningful rooms are independently testable prefab or additive-scene packages assembled through a lightweight authored level graph.
+- Authoritative mission state lives in a typed plain-C# `MissionRunState` keyed by stable IDs. Unity rooms project that state and request validated transitions rather than directly mutating durable progress.
+- Mission persistence uses atomic versioned snapshots plus a compact idempotent transactional journal for checkpoints, banking, unique rewards, route or objective changes, completion, and suspend boundaries.
+
 ## Non-negotiable interview behavior
 
 - Do not reconstruct state from chat memory.
@@ -61,7 +74,7 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling or refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition and immediately continue.
-- Commit decisions in grouped batches rather than after every answer. D-201 through D-210 are fully persisted; begin the next batch at D-211 and persist through D-220 unless an earlier handoff is requested.
+- Commit decisions in grouped batches rather than after every answer. D-211 through D-220 are fully persisted; begin the next batch at D-221 and persist through D-230 unless an earlier handoff is requested.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is active, track queued decisions and never claim they are committed before a repository write.
 - Prioritize product, vertical-slice boundaries, proof, content-production pipeline, architecture policy, accessibility, testing, and delivery decisions before micro-level coefficients.
 - Preserve complete offline campaign and permanent guest play.
@@ -71,4 +84,4 @@ Before responding:
 
 ## Expected next action
 
-Ask D-211 exactly as directed by `CURRENT_HANDOFF.json`: define what the complete Stage 2 production slice must demonstrate before broader content production begins.
+Ask D-221 exactly as directed by `CURRENT_HANDOFF.json`: define the layered Unity CI and build-validation policy for parallel human and AI-assisted production.
