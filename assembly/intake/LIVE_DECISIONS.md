@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-059
+- Last persisted decision: D-060
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-059 were verified directly by the user after recovery.
+D-040 through D-060 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -241,13 +241,26 @@ D-040 through D-059 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-060 — Post-run strongbox opening and reward-review flow
+
+- Status: accepted
+- Choice: B — collection-ordered reward vault with individual and batch opening
+- Accepted requirement: After a run ends, all secured sealed strongboxes enter a reward-vault flow in the exact order they were collected during the run. The default reveal sequence preserves that collection order.
+- Opening rule: Players may open important boxes individually with a full reveal presentation or batch-open ordinary boxes quickly, but batch processing must still resolve and display results in original collection order.
+- Review rule: Opened rewards enter a temporary capacity-safe review tray where players may inspect, compare, favourite, keep, sell, or dismantle them before final transfer.
+- Capacity rule: The review tray does not consume normal inventory slots while rewards are being processed, and no reward may be silently deleted because the permanent inventory is full.
+- Pacing rule: High-tier boxes retain ceremony and screenshot-worthy reveals, while routine lower-tier hauls can be processed efficiently.
+- Open detail: Rules for exiting the vault with unresolved rewards remain undecided.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The post-run strongbox opening and reward-review flow now outranks remaining inventory details because players may return with several sealed boxes and need an exciting, fast, capacity-safe way to reveal and process them.
+Continue with the highest-weight unresolved Product Discovery question. Reward-vault exit and unresolved-reward handling now outrank remaining inventory details because the capacity-safe tray must protect interrupted sessions without becoming permanent unlimited storage or enabling reward hoarding.
 
 ## Revision rules
 
