@@ -1,0 +1,149 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-201-D-210",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-201",
+      "topic": "vertical_slice_proof_gate",
+      "answer": "two_stage_core_fun_then_thin_end_to_end_production_gate",
+      "constraints": [
+        "Stage 1 proves movement aiming four-weapon combat enemy readability room traversal quick restart and voluntary repeat-run desire with temporary content",
+        "Stage 2 produces one complete factory level with reliable saves checkpoints loot risk shop strongboxes completion replay scalable effects and diagnostic evidence",
+        "Broader content production begins only after both gates pass",
+        "Predeclare evidence and kill criteria before testing"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-202",
+      "topic": "core_fun_validation_audience",
+      "answer": "staged_developer_then_external_target_player_validation",
+      "constraints": [
+        "Developer voluntary replay and mastery pursuit comes first",
+        "A small external target-player group must then demonstrate genuine repeat-play interest",
+        "Failure at either stage keeps the project in prototype iteration",
+        "Declare tester counts and thresholds before each formal round"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-203",
+      "topic": "external_core_fun_pass_evidence",
+      "answer": "predeclared_behavioral_gate_plus_explanatory_feedback",
+      "constraints": [
+        "Replay behavior determines pass or fail while feedback explains causes",
+        "Observe voluntary restarts loadout trials mastery or record chasing and later return interest",
+        "Do not count testing-obligation behavior as genuine replay desire",
+        "Do not retroactively weaken thresholds"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-204",
+      "topic": "repeated_core_fun_gate_failure_policy",
+      "answer": "predeclared_pivot_or_stop_review",
+      "constraints": [
+        "After a limited predeclared number of failed rounds perform a written diagnosis",
+        "Allow one substantial evidence-backed pivot with a fresh gate",
+        "Stop or shelve if the pivot still fails",
+        "Do not advance while evidence remains ambiguous"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-205",
+      "topic": "stage_one_reward_and_progression_scope",
+      "answer": "controlled_fixed_loadout_then_tiny_nonpersistent_random_reward_pass",
+      "constraints": [
+        "First test curated fixed four-weapon loadouts",
+        "Then add a tiny nonpersistent randomized reward layer",
+        "Use the second pass to measure added discovery and experimentation value",
+        "Defer mature economy inventory rarity progression shop strongbox and save integration to Stage 2"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-206",
+      "topic": "stage_one_test_environment",
+      "answer": "repeatable_benchmark_arena_plus_short_interconnected_route",
+      "constraints": [
+        "Use a rapidly resettable arena for controlled mechanical comparison",
+        "Use a compact interconnected route for navigation pacing and route mastery",
+        "Reuse temporary weapons enemies and art",
+        "Neither environment must become the final factory level"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-207",
+      "topic": "stage_one_weapon_roster",
+      "answer": "five_or_six_representative_mechanically_distinct_weapons",
+      "constraints": [
+        "Support several meaningful four-weapon combinations",
+        "Cover representative automatic heavy spread or burst beam charge or heat homing or utility and unusual synergy behavior",
+        "Gameplay behavior and readability must be representative despite temporary assets",
+        "Do not require the full authored MVP roster before the fun gate"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-208",
+      "topic": "stage_one_enemy_roster",
+      "answer": "three_representative_roles_plus_one_elite",
+      "constraints": [
+        "Include close pressure ranged projectile and area denial roles",
+        "Add one tougher elite without building the full climax",
+        "Use mixed encounters to test priority readability movement and synergy",
+        "Defer remaining roles and upgraded droid climax to Stage 2"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-209",
+      "topic": "external_test_presentation_fidelity",
+      "answer": "readability_complete_temporary_presentation",
+      "constraints": [
+        "Use coherent temporary art and audio",
+        "Make telegraphs hit feedback silhouettes projectiles hazards pickups HUD and weapon readiness representative",
+        "Include reduced effects camera feedback controls and performance instrumentation",
+        "Defer final assets music cinematics and cosmetic polish"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-210",
+      "topic": "external_test_reliability_bar",
+      "answer": "playable_session_stability",
+      "constraints": [
+        "Formal builds support repeated complete runs without routine crashes or progression blockers",
+        "Restart loadout controls and settings persistence work consistently",
+        "Representative combat remains near target frame rate with diagnostics for major failures",
+        "Technically ruined sessions are excluded from fun-gate evidence and counted as reliability failures",
+        "Minor visual and noncritical defects remain acceptable"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Exact Stage 2 production-gate acceptance criteria",
+    "How much representative polish the complete factory slice requires",
+    "Content-addition throughput proof before broader production",
+    "Stage 2 save interruption and recovery test matrix",
+    "Target-player recruitment and formal test-round sizes",
+    "Recovered D-001 through D-039 re-verification"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-211",
+    "topic": "stage_two_production_gate_definition",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting what the complete one-level Stage 2 slice must demonstrate before broader content production: end-to-end feature completeness only; near-public-demo polish; or a representative production-ready slice that is complete and reliable while also proving that a new room enemy and weapon can be added through documented repeatable pipelines without core-system rework. Preserve the automated-weapons-factory level, real saves checkpoints banking loot shop strongboxes difficulty completion replay performance diagnostics and offline Windows requirements. Include content throughput maintainability automated tests placeholder tolerance performance and save reliability scope risk and what may remain deferred. Put the recommendation after all options. Begin a new D-211 through D-220 batch unless the cadence changes."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-210",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-220"
+  }
+}
