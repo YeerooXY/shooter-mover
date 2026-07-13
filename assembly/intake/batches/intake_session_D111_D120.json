@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-111-D-120",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {"decision_id":"D-111","topic":"base_locomotion_acceleration_and_inertia","answer":"responsive_hybrid_with_quick_acceleration_and_bounded_inertia","constraints":["Keep ordinary movement precise for projectile dodging and aiming","Use rapid predictable counter-steering and braking","Retain a small readable amount of physical momentum","Allow recoil boosts ricochets and weapon effects to influence movement without slippery controls","Keep exact values as playtest variables"],"verification_status":"verified"},
+    {"decision_id":"D-112","topic":"boost_exit_momentum","answer":"brief_momentum_carry_with_controlled_decay","constraints":["Carry boost and ricochet speed briefly into ordinary movement","Let steering and counter-input restore normal limits quickly","Allow bounded route and corner-cut mastery","Do not make momentum tech mandatory for ordinary play"],"verification_status":"verified"},
+    {"decision_id":"D-113","topic":"boost_collision_with_enemies","answer":"shove_light_enemies_heavy_enemies_remain_solid","constraints":["Do not let small enemies constantly interrupt clean boost paths","Keep heavy enemies elites and bosses as blockers or strong deflectors","Do not make baseline boost contact major free damage","Keep offensive ramming as a possible later build direction","Make enemy weight classes legible"],"verification_status":"verified"},
+    {"decision_id":"D-114","topic":"ordinary_enemy_contact_damage","answer":"discrete_contact_hit_with_brief_same_enemy_grace","constraints":["Avoid frame-by-frame overlap damage","Keep careless boosting into crowds potentially lethal","Expect players to shoot routes open route around or boost precisely","Allow enemy-specific contact effects such as knockback grabs slows shield disruption or heavy impact","Provide clear damage feedback"],"verification_status":"verified"},
+    {"decision_id":"D-115","topic":"contact_grace_scope","answer":"per_enemy_contact_grace","constraints":["Prevent one enemy from repeatedly grinding the player during overlap","Allow different enemies to each inflict a discrete hit","Keep dense crowds dangerous","Use only a tiny aggregation window to prevent frame-order nonsense","Preserve deterministic collision outcomes"],"verification_status":"verified"},
+    {"decision_id":"D-116","topic":"light_enemy_collision_effect_on_boost","answer":"progressive_momentum_loss_per_collision","constraints":["Allow a thin formation to be punched through","Reduce speed steering and remaining distance after repeated light-enemy impacts","Let dense crowds absorb the boost and surround reckless players","Keep heavy units as strong stops or deflectors","Communicate momentum loss clearly"],"verification_status":"verified"},
+    {"decision_id":"D-117","topic":"shoved_enemy_collision_consequences","answer":"bounded_impact_damage_and_stagger","constraints":["Keep direct shove damage low","Allow wall hazard or unit impacts to add modest damage or stagger based on momentum and weight","Do not let ramming replace four-weapon combat","Permit first playable to implement displacement and stagger before detailed impact damage","Cap and deterministically resolve collision chains"],"verification_status":"verified"},
+    {"decision_id":"D-118","topic":"weapon_fire_during_thruster_burst","answer":"full_four_weapon_fire_with_unchanged_baseline_accuracy","constraints":["Keep all four mounted weapons active during boosts","Do not apply a universal spread or aim-lag penalty","Preserve independent aim and movement directions","Support the fantasy of boosting sideways or backward while all guns fire","Allow only explicit exceptional weapon-specific deviations"],"verification_status":"verified"},
+    {"decision_id":"D-119","topic":"boost_speed_scaling","answer":"build_movement_speed_plus_selected_physical_modifiers","constraints":["Scale burst speed closely with the mech build's movement speed","Make faster builds boost faster and heavier builds slower","Override ordinary weapon drag and mild temporary slows","Allow clearly communicated severe slows immobilization or anchored states to reduce boosting","Classify and expose modifier interactions consistently"],"verification_status":"verified"},
+    {"decision_id":"D-120","topic":"boost_activation_momentum_resolution","answer":"immediately_replace_current_velocity","constraints":["Treat boost activation as a hard directional command","Allow instant back-and-forth perpendicular and reverse boost chains","Prioritize arcade responsiveness over strict momentum conservation","Keep D-112 boost-exit carry and decay after the new burst ends","Let prior momentum matter only until another charge is activated"],"verification_status":"verified"}
+  ],
+  "open_questions_added": [
+    "Baseline enemy projectile and attack-density philosophy",
+    "Enemy telegraph and target-priority rules",
+    "Crowd composition and anti-boost enemy archetypes",
+    "Exact boost count recharge timing distance and speed scaling curves",
+    "Exact per-enemy contact grace and simultaneous-hit aggregation timing"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-121",
+    "topic": "baseline_enemy_attack_and_projectile_density",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether ordinary combat pressure is based mainly on sparse deliberate aimed attacks, dense bullet-hell-style patterns, or a hybrid of readable aimed threats with bounded authored barrages. Preserve responsive movement, chainable arcade boosts, four simultaneous weapons, dangerous physical crowds, Windows PC first and later Android controls, broad difficulty accessibility, deterministic replay and speedrunning, enemy variety, and visual readability amid heavy player fire. Include movement relevance, aiming and target-priority demands, screen clutter, enemy identity, difficulty scaling, mobile viability, performance and content-authoring cost, and the risk of either making boosts unnecessary or mandatory. Put the recommendation after all A/B/C options at the end of the card. Queue D-121 through D-130 and persist at D-130 unless the user changes the batching rule."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-120",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-130"
+  }
+}
