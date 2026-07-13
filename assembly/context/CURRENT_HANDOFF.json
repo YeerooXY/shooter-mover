@@ -5,9 +5,9 @@
   "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
-  "active_branch": "ai/task-split-shooter-mover-v1-continuation-3",
-  "active_pr": 6,
-  "last_verified_commit": "dde90cb09aa04e44f593de1a0eab447d009d9472",
+  "active_branch": "ai/task-split-shooter-mover-v1-continuation-4",
+  "active_pr": 7,
+  "last_verified_commit": "cf838e0",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -37,18 +37,20 @@
     "assembly/generated/task_batches/shared-contracts-core.json",
     "assembly/generated/task_batches/stage1-evidence-harness.json",
     "assembly/generated/task_batches/movement-thruster.json",
+    "assembly/generated/task_batches/combat-four-mount.json",
     "assembly/intake/LIVE_DECISIONS.md"
   ],
   "current_section": "guided_task_batch_generation",
   "handoff_status": "task_split_in_progress",
-  "last_completed_item": "Generated and structurally validated the human-approved MT-001 through MT-012 movement-thruster batch, reconciled the predeclared movement IDs from MV-* to MT-*, preserved exclusive ownership boundaries, and kept the no-implementation boundary.",
-  "current_item": "Human review of draft pull request #6 for the validated movement-thruster batch.",
-  "next_action": "Review and merge draft pull request #6. After it merges, start a fresh Task Splitter context from current main, first present the proposed CB-001 through CB-011 titles, owner lanes and exact dependencies to the human lead, and stop. Do not generate combat-four-mount until explicit continuation.",
+  "last_completed_item": "Generated and executable-validator-validated the human-approved CB-001 through CB-011 four-mount combat foundation with corrected capacity, power-bank, input-lifecycle, plain-C# projection and human-review boundaries; no game implementation was performed.",
+  "current_item": "Human review of draft pull request #7 for the validated combat-four-mount batch.",
+  "next_action": "Review and merge draft pull request #7. After it merges, start a fresh Task Splitter context from current main, first present the proposed WP-001 through WP-012 titles, owner lane and exact dependencies to the human lead, and stop. Do not generate stage1-weapons until explicit continuation.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "Twelve planned agent batches remain to be proposed, approved and generated one at a time.",
+    "Eleven planned agent batches remain to be proposed, approved and generated one at a time.",
     "Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 cap of 5 days; Dispatch requires human re-estimation, scope sequencing or an approved milestone-cap amendment. Evidence-critical contracts, accessibility, diagnostics, reliability and performance may not be cut to hide the overrun.",
     "Movement-thruster estimates 6.15 focused lead days against the accepted S1.1 cap of 8 days, leaving 1.85 days for human review and bounded evidence-led iteration; Dispatch must preserve that reserve.",
+    "Combat-four-mount direct estimates consume 4.50 focused lead days of the accepted S1.2 ten-day cap, leaving only 5.50 days for six representative weapons, combat HUD, temporary audiovisual/readability work, human review and bounded iteration; the Stage 1 weapon batch must stay sharply bounded.",
     "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
     "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
   ],
@@ -56,16 +58,17 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T21:41:15+02:00",
+    "last_persisted_at": "2026-07-13T22:07:02+02:00",
     "planning_run": "shooter-mover-v1",
-    "task_decomposition": "4 of 16 batches generated and validated",
+    "task_decomposition": "5 of 16 batches generated and validated",
     "generated_batches": [
       "unity-foundation",
       "shared-contracts-core",
       "stage1-evidence-harness",
-      "movement-thruster"
+      "movement-thruster",
+      "combat-four-mount"
     ],
-    "next_batch": "combat-four-mount",
+    "next_batch": "stage1-weapons",
     "queued_decisions": []
   },
   "verification_boundary": {
@@ -85,11 +88,17 @@
       "the 36 declared MT-owned files/assets are unique within the batch and do not claim EH-004's Stage1BenchmarkArena.unity, EH-005's Stage1ShortRouteShell.unity, Bootstrap-owned files, shared contracts, central registries, Packages or ProjectSettings",
       "MT-007 exclusively owns ShooterMoverMovement.inputactions; MT-012 reads but does not edit the evidence-owned benchmark scene",
       "the movement batch records 6.15 focused lead days against the accepted S1.1 eight-day cap and preserves 1.85 days for review and bounded iteration",
-      "no Unity game implementation, canonical backlog, collaboration assignment, combat, weapon, enemy, mission, reward or persistence task batch was created"
+      "combat-four-mount.json contains exactly CB-001 through CB-011 and all 11 tasks pass the current executable task-batch validator",
+      "all CB tasks are size S or M, use generated/earlier dependencies, and keep four mount state, power banks, aim, behavior plans and fault isolation engine-independent",
+      "CB-003 introduces no passive power regeneration; CB-008 depends on MT-007 lifecycle conventions; CB-010 projects HUD state from plain C# Application code; CB-011 requires recorded human playable review",
+      "the five generated batches contain 56 tasks with an acyclic topologically ordered dependency graph and 193 non-overlapping owned path claims",
+      "the combat batch records 4.50 focused lead days against the accepted S1.2 ten-day cap and preserves 5.50 days for remaining S1.2 work",
+      "no Unity game implementation, canonical backlog, collaboration assignment, weapon content, enemy, mission, reward or persistence task batch was created"
     ],
     "task_split_blockers": [
       "S1.0 cap pressure: Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap",
-      "S1.1 reserve: movement-thruster direct task estimates consume 6.15 of 8 focused lead days, leaving 1.85 days for review and evidence-led iteration"
+      "S1.1 reserve: movement-thruster direct task estimates consume 6.15 of 8 focused lead days, leaving 1.85 days for review and evidence-led iteration",
+      "S1.2 reserve: combat-four-mount consumes 4.50 of 10 focused lead days, leaving 5.50 days for six weapons, HUD, temporary audiovisual/readability work, human review and bounded iteration"
     ]
   },
   "framework": {
@@ -98,5 +107,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T21:41:15+02:00"
+  "updated_at": "2026-07-13T22:07:02+02:00"
 }
