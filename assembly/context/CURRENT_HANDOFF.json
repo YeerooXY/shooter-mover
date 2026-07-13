@@ -1,1 +1,99 @@
-{"schema_version":"0.1.0","project_id":"shooter-mover","repository":"YeerooXY/shooter-mover","lifecycle_phase":"task_decomposition","active_role":"task_splitter","active_role_prompt":"YeerooXY/ai-assembly-line/prompts/06-task-splitter.md","active_branch":"ai/task-split-shooter-mover-v1","active_pr":null,"last_verified_commit":"f3377ac7f97113ee1457783e5afb6898a80d9afa","authoritative_artifacts":["AGENTS.md","project_workspace.json","assembly/context/NEW_CHAT_RESUME.md","assembly/context/handoff.md","assembly/context/repository-notes.md","assembly/intake/project_intake.json","assembly/intake/PROJECT_DNA.md","assembly/intake/intake_session.json","assembly/requirements/REQUIREMENTS.md","assembly/requirements/REQUIREMENTS_REVIEW_CLARIFICATIONS.md","assembly/generated/collaboration_state.json","assembly/generated/project_spec.json","assembly/generated/repo_plan.json","assembly/generated/agent_prompts.json","assembly/generated/slots_db.json","assembly/generated/planning_runs_index.json","assembly/planning_runs/shooter-mover-v1/README.md","assembly/planning_runs/shooter-mover-v1/input-idea.md","assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md","assembly/planning_runs/shooter-mover-v1/MILESTONES.md","assembly/planning_runs/shooter-mover-v1/CONTENT_PLAN.md","assembly/planning_runs/shooter-mover-v1/POLICIES.md","assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md","assembly/generated/task_batch_index.json","assembly/generated/task_batches/unity-foundation.json","assembly/intake/LIVE_DECISIONS.md","assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md","assembly/intake/batches/LIVE_DECISIONS_D101_D110.md","assembly/intake/batches/LIVE_DECISIONS_D111_D120.md","assembly/intake/batches/LIVE_DECISIONS_D121_D130.md","assembly/intake/batches/LIVE_DECISIONS_D131_D140.md","assembly/intake/batches/LIVE_DECISIONS_D141_D141.md","assembly/intake/batches/LIVE_DECISIONS_D142_D150.md","assembly/intake/batches/LIVE_DECISIONS_D151_D160.md","assembly/intake/batches/LIVE_DECISIONS_D161_D170.md","assembly/intake/batches/LIVE_DECISIONS_D171_D180.md","assembly/intake/batches/LIVE_DECISIONS_D181_D190.md","assembly/intake/batches/LIVE_DECISIONS_D191_D194.md","assembly/intake/batches/LIVE_DECISIONS_D195_D200.md","assembly/intake/batches/LIVE_DECISIONS_D201_D210.md","assembly/intake/batches/LIVE_DECISIONS_D211_D220.md","assembly/intake/batches/LIVE_DECISIONS_D221_D230.md","assembly/intake/batches/LIVE_DECISIONS_D231_D233.md"],"current_section":"guided_task_batch_generation","handoff_status":"task_split_in_progress","last_completed_item":"Created the 16-batch task index and schema-valid Unity Foundation Builder batch with 11 small tasks; no implementation files were changed.","current_item":"Human review of assembly/generated/task_batches/unity-foundation.json","next_action":"Review the Unity Foundation Builder batch. On explicit continuation, generate exactly the next planned batch, shared-contracts-core, with 10-13 small tasks on the same branch. Do not generate implementation code, the canonical backlog, collaboration assignments, or the task-split pull request until every agent batch has been reviewed/generated.","resume_instruction":"Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.","blockers":["Fifteen planned agent batches remain to be generated one at a time.","The task backlog, collaboration-state finalization, and task-split pull request remain blocked until all indexed batches validate.","Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."],"persistence":{"status":"task_split_guided_progress_persisted","unsaved_decisions":0,"last_persisted_decision":"D-233","last_persisted_at":"2026-07-13T20:03:23+02:00","planning_run":"shooter-mover-v1","task_decomposition":"1 of 16 batches generated and validated","generated_batches":["unity-foundation"],"next_batch":"shared-contracts-core","queued_decisions":[]},"verification_boundary":{"verified_decisions":"D-040 through D-233","excluded_recovery":"D-001 through D-039","unselected_question":"D-234 was not accepted; the merged planning package defines the prototype-debt register and exit policy.","planning_merge":{"pr":2,"merged":true,"merge_commit":"320b7fee260743f0db250a8e14f46ddd8fdf7b24"},"task_split_validation":["task_batch_index.json validates against task_batch_index.schema.json","unity-foundation.json validates against task_batch.schema.json and all 11 tasks validate against task.schema.json","expected task IDs match exactly and all referenced dependency/block IDs are predeclared","the Unity Foundation batch spends 4.4 of the 5 focused lead-day S1.0 cap","no Unity implementation, accepted planning, requirement, backlog, collaboration assignment, or PR was created"],"task_split_blockers":[]},"framework":{"repository":"YeerooXY/ai-assembly-line","task_splitter_prompt":"prompts/06-task-splitter.md","installed_ref":"main","kit_version":"0.1.0-plus-direct-handoff-upgrade"},"updated_at":"2026-07-13T20:03:23+02:00"}
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "repository": "YeerooXY/shooter-mover",
+  "lifecycle_phase": "task_review",
+  "active_role": "task_splitter",
+  "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
+  "active_branch": "ai/task-split-shooter-mover-v1-continuation-1",
+  "active_pr": 4,
+  "last_verified_commit": "42ffcc8",
+  "authoritative_artifacts": [
+    "AGENTS.md",
+    "project_workspace.json",
+    "assembly/context/NEW_CHAT_RESUME.md",
+    "assembly/context/handoff.md",
+    "assembly/context/repository-notes.md",
+    "assembly/intake/project_intake.json",
+    "assembly/intake/PROJECT_DNA.md",
+    "assembly/intake/intake_session.json",
+    "assembly/requirements/REQUIREMENTS.md",
+    "assembly/requirements/REQUIREMENTS_REVIEW_CLARIFICATIONS.md",
+    "assembly/generated/collaboration_state.json",
+    "assembly/generated/project_spec.json",
+    "assembly/generated/repo_plan.json",
+    "assembly/generated/agent_prompts.json",
+    "assembly/generated/slots_db.json",
+    "assembly/generated/planning_runs_index.json",
+    "assembly/planning_runs/shooter-mover-v1/README.md",
+    "assembly/planning_runs/shooter-mover-v1/input-idea.md",
+    "assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md",
+    "assembly/planning_runs/shooter-mover-v1/MILESTONES.md",
+    "assembly/planning_runs/shooter-mover-v1/CONTENT_PLAN.md",
+    "assembly/planning_runs/shooter-mover-v1/POLICIES.md",
+    "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+    "assembly/generated/task_batch_index.json",
+    "assembly/generated/task_batches/unity-foundation.json",
+    "assembly/generated/task_batches/shared-contracts-core.json",
+    "assembly/generated/task_batches/stage1-evidence-harness.json",
+    "assembly/intake/LIVE_DECISIONS.md"
+  ],
+  "current_section": "guided_task_batch_generation",
+  "handoff_status": "task_split_in_progress",
+  "last_completed_item": "Recovered the Contract Steward and Stage 1 Evidence Harness batches from the closed PR #3 branch onto a fresh continuation branch, narrowed generated-task ownership to remove all current path overlaps, and preserved the no-implementation boundary.",
+  "current_item": "Human review of recovery pull request #4 for the three validated generated batches.",
+  "next_action": "Review and merge pull request #4. In the next fresh Task Splitter context after merge, first present the proposed MT-001 through MT-012 titles and exact dependencies to the human lead and stop. Only after explicit human continuation may the agent create a fresh branch from current main, generate movement-thruster, validate it, update deterministic handoffs, open a draft batch-continuation pull request, and stop.",
+  "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
+  "blockers": [
+    "Thirteen planned agent batches remain to be proposed, approved and generated one at a time.",
+    "Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 cap of 5 days; Dispatch requires human re-estimation, scope sequencing or an approved milestone-cap amendment. Evidence-critical contracts, accessibility, diagnostics, reliability and performance may not be cut to hide the overrun.",
+    "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
+    "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
+  ],
+  "persistence": {
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_decision": "D-233",
+    "last_persisted_at": "2026-07-13T20:59:36+02:00",
+    "planning_run": "shooter-mover-v1",
+    "task_decomposition": "3 of 16 batches generated and validated",
+    "generated_batches": [
+      "unity-foundation",
+      "shared-contracts-core",
+      "stage1-evidence-harness"
+    ],
+    "next_batch": "movement-thruster",
+    "queued_decisions": []
+  },
+  "verification_boundary": {
+    "verified_decisions": "D-040 through D-233",
+    "excluded_recovery": "D-001 through D-039",
+    "unselected_question": "D-234 was not accepted; the merged planning package defines the prototype-debt register and exit policy.",
+    "planning_merge": {
+      "pr": 2,
+      "merged": true,
+      "merge_commit": "320b7fee260743f0db250a8e14f46ddd8fdf7b24"
+    },
+    "task_split_validation": [
+      "task_batch_index.json passes the current AI Assembly Line built-in batch-index validation rules and contains 16 unique batches with 186 unique predeclared IDs",
+      "stage1-evidence-harness.json contains exactly EH-001 through EH-010 and all 10 tasks pass the current built-in task validation rules",
+      "all EH tasks are size S or M and depend only on existing UF/CS tasks or earlier EH tasks",
+      "the EH dependency graph is acyclic and its 41 declared owned paths have no duplicate owner",
+      "EH-004 exclusively owns Stage1BenchmarkArena.unity and EH-005 exclusively owns Stage1ShortRouteShell.unity",
+      "all 33 currently generated tasks have non-overlapping exact file or bounded-folder ownership after narrowing UF-004, UF-005, UF-006, UF-008, UF-009 and CS-004",
+      "build identity consumes CS-002, input fixtures consume CS-003, diagnostics/validity consume CS-012, scene shells consume UF-006/UF-007/UF-008, and artifact/build smoke consumes UF-010",
+      "the current executable workspace validator passes 16 indexed batches, 33 generated tasks and the generated dependency graph; completion validation for all 186 predeclared IDs remains pending",
+      "no Unity game implementation, canonical backlog or collaboration assignment was created"
+    ],
+    "task_split_blockers": [
+      "S1.0 cap pressure: Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap"
+    ]
+  },
+  "framework": {
+    "repository": "YeerooXY/ai-assembly-line",
+    "task_splitter_prompt": "prompts/06-task-splitter.md",
+    "installed_ref": "main",
+    "kit_version": "0.1.0-plus-direct-handoff-upgrade"
+  },
+  "updated_at": "2026-07-13T20:59:36+02:00"
+}
