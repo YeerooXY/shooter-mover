@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 50,
-  "last_completed_decision": "D-050",
+  "questions_asked": 51,
+  "last_completed_decision": "D-051",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -153,6 +153,23 @@
         "Shop reroll economics must remain balanced against floor strongbox acquisition"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-051",
+      "topic": "high_rarity_source_weighting",
+      "answer": "floor_biased_jackpots_with_ultra_rare_shop_miracles",
+      "constraints": [
+        "Use eight strongbox tiers and a two-star ten-level augment scale as the current design direction",
+        "The strongest high-star high-augment weapons primarily come from high-tier floor strongboxes",
+        "Tier 7 and Tier 8 boxes are heavily weighted toward or nearly guarantee high-quality high-augment items",
+        "The exact weapon family and enchantments remain random even from top-tier boxes",
+        "Shops may roll exceptional two-star augment-level-seven-or-higher weapons only at screenshot-worthy rarity",
+        "Higher strongbox tiers are unavailable at low player levels and unlock progressively",
+        "Progressive box-tier availability must create continued motivation to reach and replay later levels",
+        "Exact odds guarantees level gates and availability require playtesting",
+        "Prevent both early progression-breaking jackpots and unrewarding endgame droughts"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -163,7 +180,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "High-rarity source weighting between shop rolls and high-tier floor strongboxes",
+    "Strongbox tier unlock and acquisition rules",
     "Exact strongbox tiers and augment rarity distribution",
     "Remaining shop pricing rules",
     "Remaining level-design and exploration details",
@@ -181,13 +198,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "high_rarity_source_weighting",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether extreme high-augment jackpot weapons are equally available from shops and boxes, primarily guaranteed by top-tier floor strongboxes with ultra-rare shop appearances, or primarily acquired through expensive shop rolls. Include the proposed eight strongbox tiers and two-star ten-level augment scale as context. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "strongbox_tier_unlock_and_acquisition_rules",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the eight strongbox tiers unlock primarily through player-level milestones, through a hybrid of progression milestones plus difficulty or challenge performance, or through campaign-region gates. Preserve the accepted rule that higher tiers are unavailable early. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-050"
+    "last_persisted_decision": "D-051"
   }
 }
