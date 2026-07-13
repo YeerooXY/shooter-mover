@@ -16,13 +16,13 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is intentionally paused after verified decision D-067.
-- D-067 selected whole-profile cloud cross-progression with explicit local-versus-cloud lineage selection and no item-by-item save merging.
+- Product Discovery has resumed and is paused after verified decision D-068.
+- D-068 selected cleared-room persistence by default with deterministic, difficulty-scaled multi-room reclamation on stronger rulesets.
 - `unsaved_decisions` must be zero before continuing.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
 - Decisions D-040 through D-063 are archived verbatim in `assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md`.
-- Decisions D-064 through D-067 are in `assembly/intake/LIVE_DECISIONS.md`.
+- Decisions D-064 through D-068 are in `assembly/intake/LIVE_DECISIONS.md`.
 
 ## Non-negotiable behavior
 
@@ -39,6 +39,6 @@ Before responding:
 
 ## Expected first action
 
-Ask D-068 exactly as directed by `CURRENT_HANDOFF.json`: decide death/checkpoint respawn and world-reset behavior.
+Ask D-069 exactly as directed by `CURRENT_HANDOFF.json`: decide activated-checkpoint fast-travel behavior.
 
-Do not ask another account, monetization, cloud-save, or strongbox question first; D-064 through D-067 already settled those boundaries.
+Do not repeat the death/reset question or return to account, monetization, cloud-save, or strongbox decisions first; D-064 through D-068 already settled those boundaries.
