@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-048
+- Last persisted decision: D-049
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-048 were verified directly by the user after recovery.
+D-040 through D-049 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -114,13 +114,24 @@ D-040 through D-048 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-049 — Weapon power curve
+
+- Status: accepted
+- Choice: B — level-scaled recurring weapon families with later complex archetypes
+- Accepted requirement: Core weapon families may return at later progression milestones as stronger counterparts with improved statistics and modest mechanical changes, while some more complex, interesting, and inherently powerful weapon types only enter the loot pool at higher levels.
+- Example: A basic machine gun may first appear at level 1, return as an improved counterpart around level 11, and receive another stronger family variant around level 39.
+- User-supplied constraints: Deliberate power inflation is acceptable and should be planned, balanced, and paced rather than treated as an accidental side effect.
+- Design implication: Early individual drops become obsolete, but their broader weapon family may remain relevant through authored successor variants. New late-game archetypes must justify their later unlock through added complexity, novelty, or power rather than being simple reskins.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The weapon power-curve model now outranks remaining shop details because it determines whether early weapon types become obsolete, remain viable as upgraded drops, or function as fixed side-grades across the progression.
+Continue with the highest-weight unresolved Product Discovery question. Shop inventory persistence and reroll rules now outrank remaining pricing details because the broad 40-slot randomized inventory must remain useful without enabling trivial infinite fishing for perfect rolls.
 
 ## Revision rules
 
