@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "aa2129d170f9d75b01b267462e53b1ae838eb8bc",
+  "last_verified_commit": "6300fe92d2856459d7367fbeca19525ec5bb429e",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -44,10 +44,10 @@
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "resume_ready",
-  "last_completed_item": "D-210 — Playable-session reliability required before formal external Stage 1 testing",
-  "current_item": "D-211 — Stage 2 production-gate definition",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting what the complete one-level Stage 2 slice must demonstrate before broader content production begins: end-to-end feature completeness only; near-public-demo polish; or a representative production-ready slice that is complete and reliable while also proving that at least one additional room, enemy, and weapon can be added through documented repeatable pipelines without core-system rework. Preserve the automated weapons factory, real saves and recovery, checkpoints, dedicated banking, loot risk, one shop, strongboxes, difficulty, completion, replay, scalable effects, offline Windows play, Unity with C#, performance diagnostics, and solo-led AI-assisted production. Include content throughput, maintainability, automated validation, placeholder tolerance, performance and save reliability, scope-expansion risk, and what may remain deferred. Put the recommendation after all A/B/C options at the end of the card. Begin a new persistence batch D-211 through D-220 unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "active_batch_in_progress",
+  "last_completed_item": "D-214 — Layered automated and playable validation for every content contribution",
+  "current_item": "D-215 — Data-driven content boundary versus bespoke code",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how strongly weapons enemies rooms and encounters must be creatable through data rather than bespoke code: force every content item into a fully code-free universal schema; allow each item to use custom code freely; or use a bounded archetype-based hybrid where ordinary content and variants are assembled through typed ScriptableObject definitions and reusable behavior modules while genuinely novel mechanics may add isolated tested code extensions without modifying unrelated core systems. Preserve Unity with C#, plain-C# domain logic, typed ScriptableObject content definitions, stable identifiers, automated plus playable validation, representative independent-agent pipeline proof, four simultaneous weapons, future large weapon variety, AI-assisted parallel contribution, save/version compatibility, and the requirement that ordinary content additions not rewrite foundational systems. Include designer and AI-agent usability, expressive limits, schema bloat, duplicated bespoke logic, testability, merge conflicts, runtime performance, migration/versioning, debugging, and future mod or tooling possibilities without committing to mod support. Put the recommendation after all A/B/C options at the end of the card. D-211 through D-214 are checkpointed as queued but not formally batch-persisted; continue through D-220 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -56,17 +56,76 @@
     "The D-101 through D-210 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "ready",
-    "unsaved_decisions": 0,
+    "status": "batch_in_progress",
+    "unsaved_decisions": 4,
     "last_persisted_decision": "D-210",
     "last_persisted_at": "2026-07-13T17:50:00+02:00",
-    "batching_rule": "Begin a new Product Discovery batch at D-211 and persist through D-220 unless an earlier handoff is requested",
-    "queued_decisions": []
+    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-211 through D-220 at D-220 unless an earlier handoff is requested",
+    "queued_decisions": [
+      {
+        "decision_id": "D-211",
+        "topic": "stage_two_production_gate",
+        "choice": "C",
+        "answer": "representative_production_ready_slice_with_repeatable_extension_proof",
+        "constraints": [
+          "The complete factory slice must provide the reliable end-to-end loop including saves recovery checkpoints banking loot risk shop strongboxes difficulty completion replay performance and diagnostics",
+          "Before passing the gate add at least one new room or encounter one new enemy and one new weapon through the intended repeatable production pipelines",
+          "Those additions must not require foundational-system rewrites",
+          "Critical systems require automated smoke and regression coverage save interruption tests and representative performance budgets",
+          "Content ownership boundaries must support isolated parallel human or AI-agent branches",
+          "Final environment polish complete music cinematics all difficulty tuning and the mature economy may remain deferred"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-212",
+        "topic": "stage_two_representative_art_pipeline_proof",
+        "choice": "C",
+        "answer": "end_to_end_representative_final_art_pipeline_subset",
+        "constraints": [
+          "Most Stage 2 content may remain coherent temporary art while a representative subset passes through the intended real production pipeline",
+          "The subset includes the player mech at least one ordinary enemy the elite or upgraded droid at least two visually different weapons and one major factory machine or environment set",
+          "Prove representative shadows normal maps emissive effects damage feedback destruction states animation and dimensional 2D presentation",
+          "Document import settings pivots scale sorting collision animation memory and performance requirements",
+          "Another artist or AI-assisted workflow must be able to add equivalent content without repairing every asset manually inside Unity",
+          "Final art for the remaining factory content stays deferred until the pipeline is validated"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-213",
+        "topic": "content_pipeline_repeatability_owner",
+        "choice": "C",
+        "answer": "developer_establishes_pipeline_then_independent_agent_reproduces_it",
+        "constraints": [
+          "The primary developer first produces one reference example and documents files folders data definitions validation naming imports tests previews save implications and common failures",
+          "An isolated AI-agent branch or occasional collaborator must then add another small representative weapon enemy variant or room encounter without direct foundational implementation help",
+          "The contribution must integrate through review and automated checks without modifying unrelated core systems",
+          "Missing documentation discovered during reproduction must be corrected",
+          "Merge conflicts ownership boundaries and repeatability must be evaluated rather than manually rescuing one special contribution"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-214",
+        "topic": "new_content_validation_model",
+        "choice": "C",
+        "answer": "layered_automated_validation_then_playable_review",
+        "constraints": [
+          "Every content contribution first passes automated checks for required fields valid ranges stable identifiers references import rules loot and progression eligibility save compatibility and basic runtime behavior",
+          "Automated smoke tests should cover representative spawn fire damage death completion and performance warnings where practical",
+          "Passing automation means safe to review rather than approved for the game",
+          "Playable review must judge combat feel readability audiovisual feedback encounter purpose weapon identity four-weapon interaction collision navigation and accessibility behavior",
+          "Human and AI-agent contributions use the same validation gates"
+        ],
+        "verification_status": "verified"
+      }
+    ]
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:50:00+02:00"
+  "updated_at": "2026-07-13T17:50:04+02:00"
 }
