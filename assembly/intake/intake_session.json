@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 57,
-  "last_completed_decision": "D-057",
+  "questions_asked": 58,
+  "last_completed_decision": "D-058",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -132,6 +132,13 @@
       "answer": "choose_between_selling_and_dismantling_with_bounded_materials",
       "constraints": ["Unwanted weapons may be sold for currency or dismantled for bounded materials", "Material yields reflect level rarity stars augments and enchantment categories", "Materials support controlled improvement rerolling utility crafting or later systems", "Do not allow free perfect-item manufacturing", "Both paths return partial value and resist farming exploits", "Provide favourites locks bulk marking auto-junk sorting comparison and keep-best-copy tools", "Do not make direct duplicate fusion the primary upgrade path"],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-058",
+      "topic": "inventory_capacity_and_in_run_loot_timing",
+      "answer": "forgiving_universal_inventory_with_expandable_limits_and_deferred_strongbox_opening",
+      "constraints": ["Use one profile-wide universal weapon inventory or armory", "Capacity is generous but finite and may be expanded through progression upgrades", "Shop purchases enter usable inventory immediately and can power up the player mid-run", "Strongboxes earned during a round remain sealed and are opened after the round", "Do not let lucky high-tier box contents instantly trivialize the remaining run", "Overflow handling must avoid silent deletion and remain Android-friendly", "Run-end banking and failure retention remain unresolved"],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -142,7 +149,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Persistent armory and carried-in-level storage model",
+    "Strongbox banking and failure-retention rules for delayed opening",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -158,13 +165,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "persistent_armory_and_carried_storage_model",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether weapon storage is tightly limited everywhere, uses a generous persistent armory with a smaller carried field inventory and checkpoint transfer rules, or allows unlimited universal storage and swapping anywhere. Include loot-flow, combat interruption, collection, and mobile-interface implications. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "strongbox_banking_and_failure_retention",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether sealed strongboxes are awarded only after full level completion, become secured at reached checkpoints while boxes since the latest checkpoint remain at risk, or become permanently banked immediately on pickup despite remaining unopened until the run ends. Preserve instant shop purchases and delayed strongbox opening. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-057"
+    "last_persisted_decision": "D-058"
   }
 }
