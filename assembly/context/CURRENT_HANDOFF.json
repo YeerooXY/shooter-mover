@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "74d155a7696d65cd8116250679bc156ea6915bef",
+  "last_verified_commit": "09557a25fa7d2acf6f3e0ee1203e7dcc0eccf839",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
@@ -14,9 +14,9 @@
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-061 — Protected pending-reward inbox for MVP with opt-in configurable auto-processing after MVP",
-  "current_item": "D-062 — Strongbox outcome commitment timing",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether exact strongbox contents are fully rolled and frozen on pickup, generated deterministically at opening from a pickup-time snapshot and seed, or rolled at opening from the player's current progression state. Include save-scumming, progression manipulation, reproducibility, and reveal implications. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-062 — Deterministic pickup seed and versioned loot snapshot with atomic reload-proof single granting",
+  "current_item": "D-063 — Offline save integrity and future competitive verification",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the MVP only prevents ordinary rollback abuse through deterministic transactions, additionally hardens offline saves with signatures backups and rollback detection while reserving server verification for future competitive modes, or makes progression server-authoritative. Preserve the complete offline-core requirement and clearly state that determined users can still edit a fully local game. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +24,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T10:58:07+02:00"
+    "last_persisted_at": "2026-07-13T11:06:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T10:58:07+02:00"
+  "updated_at": "2026-07-13T11:06:00+02:00"
 }
