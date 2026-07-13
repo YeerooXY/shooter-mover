@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "b8871b2d5027db8e700a2833eb79e012e238b79f",
+  "last_verified_commit": "ca29ff1160b967301324ded91d1b5a94cc1b60fb",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
@@ -14,9 +14,9 @@
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-046 — Stable handcrafted levels with controlled repeat-run variation",
-  "current_item": "D-047 — Repeat-run reward and economy model",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how first-clear rewards, repeat-run rewards, currency, and random drops should make grinding worthwhile without making it mandatory. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-047 — Randomized floor strongboxes plus randomized shop inventory for weapon acquisition",
+  "current_item": "D-048 — RNG fairness and duplicate handling",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting the fairness model for random strongboxes and randomized shop inventories, including duplicate handling and bad-luck protection. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +24,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T00:04:00+02:00"
+    "last_persisted_at": "2026-07-13T00:09:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T00:04:00+02:00"
+  "updated_at": "2026-07-13T00:09:00+02:00"
 }
