@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-047
+- Last persisted decision: D-048
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-047 were verified directly by the user after recovery.
+D-040 through D-048 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -101,13 +101,26 @@ D-040 through D-047 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-048 — RNG fairness, progression bounds, and duplicate handling
+
+- Status: accepted
+- Choice: B — RNG with soft protection
+- Accepted requirement: Strongboxes and shops remain genuinely random, but their results are bounded by player progression and protected against extreme bad-luck streaks. Duplicate weapons remain possible and can be converted into useful value through selling or dismantling.
+- Shop rule: A shop may expose a broad randomized inventory of up to roughly 40 weapon slots, allowing the player a realistic chance to purchase almost any weapon currently appropriate to their progression.
+- Progression rule: Base weapon types enter the possible loot pool gradually as the player gains levels. For example, one weapon may be available at level 1, another at level 2, and a new type at level 4; a level-3 strongbox may roll from a bounded nearby progression window that includes those level-1 through level-4 possibilities rather than the full game-wide pool.
+- Variation rule: Eligible weapons may roll with enchantments or affixes, creating meaningful variants within the same base weapon type.
+- Fairness rule: Higher-tier boxes guarantee an appropriate minimum quality, repeated misses may softly improve relevant odds, and limited shop reroll or equivalent fallback mechanisms may prevent pathological unlucky streaks.
+- User-supplied constraints: The progression window, enchantments, shop breadth, probabilities, and power curve must be carefully balanced rather than allowing early jackpots or unlucky droughts to trivialize or stall progression.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. RNG fairness and duplicate handling now outrank the remaining economy details because they determine whether randomized strongboxes and shop inventories feel exciting or frustrating.
+Continue with the highest-weight unresolved Product Discovery question. The weapon power-curve model now outranks remaining shop details because it determines whether early weapon types become obsolete, remain viable as upgraded drops, or function as fixed side-grades across the progression.
 
 ## Revision rules
 
