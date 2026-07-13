@@ -65,8 +65,8 @@
       "expected_task_ids": ["CB-001", "CB-002", "CB-003", "CB-004", "CB-005", "CB-006", "CB-007", "CB-008", "CB-009", "CB-010", "CB-011"],
       "depends_on_batches": ["shared-contracts-core", "stage1-evidence-harness", "movement-thruster"],
       "output_path": "assembly/generated/task_batches/combat-four-mount.json",
-      "status": "planned",
-      "notes": "One reviewable agent workload."
+      "status": "validated",
+      "notes": "Validated 11-task four-mount combat foundation. Direct implementation and proof spend is 4.50 focused lead days against the accepted S1.2 ten-day cap, leaving 5.50 days for six weapons, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
     },
     {
       "batch_id": "stage1-weapons",

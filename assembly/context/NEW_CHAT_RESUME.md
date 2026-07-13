@@ -18,17 +18,20 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 
 - Planning PR #2 is merged at `320b7fee260743f0db250a8e14f46ddd8fdf7b24`.
 - Recovery PR #4 is merged at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`; its branch is permanently closed.
-- Active continuation branch: `ai/task-split-shooter-mover-v1-continuation-3`; draft PR #6 is open for review.
+- Movement PR #6 is merged at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed.
+- Active continuation branch: `ai/task-split-shooter-mover-v1-continuation-4`; the validated combat-four-mount batch is awaiting its draft PR.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
 - Generated and schema-validated: `stage1-evidence-harness` with 10 tasks.
 - Generated and schema-validated: `movement-thruster` with 12 tasks using `MT-001` through `MT-012`.
-- Progress: 4 of 16 batches generated and validated.
-- Next batch: `combat-four-mount` with 11 tasks.
+- Generated and executable-validator-validated: `combat-four-mount` with 11 tasks using `CB-001` through `CB-011`.
+- Progress: 5 of 16 batches generated and validated.
+- Next batch: `stage1-weapons` with 12 tasks.
 - No Unity/game implementation, canonical backlog, or collaboration assignment exists.
 - Recorded S1.0 blocker: Foundation, Contract Steward, and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
 - S1.1 movement-thruster tasks estimate 6.15 focused lead days against the accepted eight-day cap, leaving 1.85 days for human review and bounded evidence-led iteration.
+- S1.2 combat-four-mount tasks estimate 4.50 focused lead days against the accepted ten-day cap, leaving 5.50 days for six weapons, HUD, temporary audiovisual/readability work, human review and bounded iteration.
 - Full graph validation remains pending until every planned batch file exists; forward references to predeclared later IDs are not evidence of a complete validated backlog.
 
 ## Guided rule
@@ -51,6 +54,6 @@ Keep each batch at 10–13 small tasks. Never append commits to a merged branch.
 
 ## Next action
 
-Review and merge draft pull request #6. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `CB-001` through `CB-011` with titles, owner lanes and exact dependencies and must not write files. After explicit human continuation, it may generate only `assembly/generated/task_batches/combat-four-mount.json` on a fresh branch and open its draft continuation PR. Do not jump ahead to weapons, enemies, or later agents.
+Open, review, and merge the combat-four-mount continuation PR. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `WP-001` through `WP-012` with titles, owner lane and exact dependencies and must not write files. After explicit human continuation, it may generate only `assembly/generated/task_batches/stage1-weapons.json` on a fresh branch and open its draft continuation PR. Do not jump ahead to enemies or later agents.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, or begin Dispatch until all 16 batches are generated and validated.
