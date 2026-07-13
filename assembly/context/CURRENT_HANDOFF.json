@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "bb19e49135b194604aac04809344720bad991a0b",
+  "last_verified_commit": "7d453815378ed964b8f7352f90750c721cf60cd8",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -47,9 +47,9 @@
   ],
   "current_section": "mvp_proof_and_delivery",
   "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-224 — Versioned save migrations with protected rollback",
-  "current_item": "D-225 — Debug tools, cheats, and developer-command policy",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how debug tools cheats and developer commands are handled across developer internal external-test release-candidate and public Windows builds: strip almost all debug capabilities outside the Unity editor; ship a broadly accessible console and cheat system in every build; or use a capability-gated diagnostic command framework where development and approved test artifacts expose auditable commands for room warps loadouts enemy spawning save inspection checkpoint simulation performance overlays and fault injection, while public builds exclude progression-altering commands and retain only safe support diagnostics through explicit hidden or support-approved activation. Preserve immutable promoted artifacts, privacy-safe local logs, versioned save migration, achievements and records integrity, offline play, future speedrunning, automated testing, and one-click support bundles. Include accidental exposure, security through obscurity limits, tester convenience, reproduction speed, build-configuration drift, save contamination, achievement invalidation, deterministic test setup, fault injection, command auditing, and whether legitimate accessibility or practice features should be implemented separately from cheats. Put the recommendation after all A/B/C options at the end of the card. D-221 through D-224 are checkpointed as queued but not formally batch-persisted; continue through D-230 unless the user changes the cadence or requests a handoff.",
+  "last_completed_item": "D-227 — Explicit Windows target tier, minimum floor, and scalable-effects policy",
+  "current_item": "D-228 — Windows distribution, installation, and update model",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting the Windows distribution installation and update model for formal tests and eventual public delivery: distribute only portable zip archives with fully manual updates; require one self-updating launcher or storefront client; or use channel-specific packaging where internal and formal external tests may use signed or checksummed portable immutable artifacts while public release supports a primary storefront or installer with optional updates, explicit offline launch, standard per-user save locations, side-by-side or rollback-safe version handling, repair and uninstall behavior that never deletes saves, and a documented manual or DRM-free path if commercially practical. Preserve immutable promoted artifacts, current and previous known-good builds, versioned migrations with protected rollback, complete offline campaign and permanent guest play, Windows-first scope, privacy-safe local diagnostics, no mandatory account for campaign play, and future storefront integrations behind adapters. Include tester friction, antivirus and code-signing warnings, patch size, delta updates, failed updates, portable versus installed saves, multiple channels, ownership and DRM, clean uninstall, dependency installation, rollback, and avoiding a custom launcher before scale justifies it. Put the recommendation after all A/B/C options at the end of the card. D-221 through D-227 are checkpointed as queued but not formally batch-persisted; continue through D-230 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -59,7 +59,7 @@
   ],
   "persistence": {
     "status": "batch_in_progress",
-    "unsaved_decisions": 4,
+    "unsaved_decisions": 7,
     "last_persisted_decision": "D-220",
     "last_persisted_at": "2026-07-13T18:04:09+02:00",
     "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-221 through D-230 at D-230 unless an earlier handoff is requested",
@@ -122,6 +122,51 @@
           "Development channels may permit announced resets but archive or export old profiles first while public compatibility promises remain explicit and tested"
         ],
         "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-225",
+        "topic": "debug_tools_cheats_and_developer_commands",
+        "choice": "C",
+        "answer": "capability_gated_auditable_diagnostic_command_framework",
+        "constraints": [
+          "Developer and approved internal builds expose deterministic room warps loadout setup enemy spawning state inspection performance overlays and fault injection",
+          "Formal external builds expose only commands required for the round through hidden or authenticated activation and log every use",
+          "Sessions altered by commands are excluded from ordinary fun achievement record and challenge evidence",
+          "Public builds exclude progression-altering commands and retain only safe support diagnostics through an explicit workflow",
+          "Save-changing diagnostics use temporary or cloned profiles rather than silently modifying the primary save",
+          "Practice accessibility level selection and future speedrun tools are legitimate player-facing systems rather than disguised cheats"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-226",
+        "topic": "unity_and_third_party_dependency_policy",
+        "choice": "C",
+        "answer": "pinned_baseline_with_controlled_upgrade_windows",
+        "constraints": [
+          "Use one pinned Unity LTS editor version locked package versions reproducible configuration and an approved dependency inventory with license source version and purpose",
+          "Reject incompatible editor or package versions and disable automatic dependency upgrades",
+          "Every upgrade uses an isolated task and branch with compilation content build save performance smoke visual and asset-reimport validation plus rollback",
+          "Critical fixes may occur outside normal windows but must pass the same checks",
+          "Prefer small maintained dependencies wrapped behind project-owned adapters and avoid unnecessary broad frameworks",
+          "Do not introduce analytics storefront networking or mobile SDKs before those workstreams begin and retain metadata needed to reproduce promoted artifacts"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-227",
+        "topic": "windows_hardware_and_performance_support_policy",
+        "choice": "C",
+        "answer": "explicit_target_tier_minimum_floor_and_scalable_effects",
+        "constraints": [
+          "The primary target sustains stable 60 FPS at 1080p during representative heavy combat with intended four-weapon enemy projectile lighting destruction and effect density",
+          "A declared minimum floor must complete the campaign readably using reduced visual settings without changing gameplay input saves collision simulation or progression",
+          "Higher-end settings add cosmetic quality resolution and refresh-rate headroom without gameplay advantage",
+          "Expose effect density shadows lighting debris shake flashes post-processing resolution display mode frame cap VSync and transparent presets",
+          "Validate on a small matrix covering the primary target minimum floor another GPU or driver family and clean Windows installations before major milestones",
+          "Track CPU GPU allocation memory loading atlas particle enemy and projectile budgets through stress scenes while real hardware remains authoritative"
+        ],
+        "verification_status": "verified"
       }
     ]
   },
@@ -130,5 +175,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:14:18+02:00"
+  "updated_at": "2026-07-13T18:20:00+02:00"
 }
