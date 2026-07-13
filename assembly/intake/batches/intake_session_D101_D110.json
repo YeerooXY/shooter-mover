@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_type": "accepted_answer_delta",
+  "decision_range": "D-101-D-110",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {"decision_id":"D-101","topic":"thruster_charge_and_regeneration_model","answer":"two_or_three_independently_regenerating_chainable_charges","constraints":["Allow chained direction changes pursuit escape traversal and speedrun routing","Keep exact baseline count recharge timing distance acceleration and chain cadence as playtest variables","Permit easier modes to regenerate faster without changing the core mechanic","Prevent near-continuous panic boosting while preserving frequent deliberate use"],"verification_status":"verified"},
+    {"decision_id":"D-102","topic":"thruster_invulnerability_model","answer":"tiny_startup_forgiveness_window_without_full_invulnerability","constraints":["Survival primarily comes from physical displacement","Allow a very brief startup forgiveness window or small temporary hitbox reduction","Do not provide full-duration universal immunity","Define explicit interactions for walls hazards beams persistent effects and explosions","Allow easier modes to widen and extreme modes to reduce or remove the window","Communicate protection and bypass rules clearly"],"verification_status":"verified"},
+    {"decision_id":"D-103","topic":"thruster_direction_input","answer":"movement_input_independent_from_aim","constraints":["Allow firing in one direction while boosting sideways backward or diagonally","Map directly to keyboard gamepad and later Android movement controls","Use a deterministic neutral-input fallback with last valid movement direction as the working default","Preserve twin-stick mastery and routing"],"verification_status":"verified"},
+    {"decision_id":"D-104","topic":"mid_burst_steering","answer":"limited_steering_with_strong_initial_commitment","constraints":["Initial direction determines most of the trajectory","Allow gentle correction or curvature during the burst","Do not permit instant reversals U-turns or free flight","Use steering to reduce controller and touchscreen imprecision","Keep steering strength and response as playtest variables"],"verification_status":"verified"},
+    {"decision_id":"D-105","topic":"thruster_wall_collision","answer":"controlled_predictable_wall_ricochet","constraints":["Allow shallow skims and stronger steep-angle rebounds","Keep ricochets deterministic enough to learn and reproduce","Require speed caps corner handling iteration limits anti-stuck safeguards and cramped-room testing","Do not allow uncontrolled pinball behaviour"],"verification_status":"verified"},
+    {"decision_id":"D-106","topic":"ricochet_direction_control","answer":"geometry_led_reflection_with_limited_input_influence","constraints":["Surface angle and incoming velocity define the main rebound","Allow movement input to bend the exit angle slightly","Preserve learnable wall geometry","Do not let input create arbitrary direction resets","Keep influence strength tunable"],"verification_status":"verified"},
+    {"decision_id":"D-107","topic":"ricochet_momentum_extension","answer":"small_bounded_extension_as_later_prototype_experiment","constraints":["A valid ricochet may later restore bounded boost time or momentum","Use strict caps or diminishing returns","Do not prioritize deep implementation before the core game is usable","Reject infinite bouncing permanent propulsion encounter trivialization and unstable map skips","Retain only if playtesting proves meaningful feel value"],"verification_status":"verified"},
+    {"decision_id":"D-108","topic":"first_playable_ricochet_scope","answer":"basic_predictable_reflection_early_advanced_wall_tech_later","constraints":["Include simple deterministic wall reflection early","Use it to validate collision architecture room geometry and movement feel","Defer extensions chains momentum bonuses elaborate effects and exploit tuning","Allow the initial implementation to be plain","Treat D-107 as a later optional experiment"],"verification_status":"verified"},
+    {"decision_id":"D-109","topic":"thruster_charge_regeneration_start","answer":"immediate_independent_timer_per_spent_charge","constraints":["Start each spent charge timer immediately","Do not reset earlier timers when another charge is used","Keep single boosts frequent while full-bank use creates exposure","Show independent progress clearly","Use recharge duration as a primary anti-spam lever"],"verification_status":"verified"},
+    {"decision_id":"D-110","topic":"thruster_capacity_progression","answer":"stable_baseline_with_rare_maximum_one_additional_charge","constraints":["Give every normal build the complete signature movement system","Allow at most one extra charge through rare controlled progression or specialization","Make the extra charge compete with strong alternatives","Require ordinary routes and encounters to work with baseline capacity","Record constrain or normalize capacity for verified categories","Leave exact baseline count and upgrade source to later testing"],"verification_status":"verified"}
+  ],
+  "open_questions": [
+    "Base locomotion acceleration and inertia between bursts",
+    "Exact baseline thruster charge count after playtesting",
+    "Exact recharge time burst distance acceleration and steering curve",
+    "Whether ricochet extensions survive post-usable-build playtesting",
+    "Exact extra-charge source and competitive normalization"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-111",
+    "topic": "base_locomotion_acceleration_and_inertia",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting immediate tight velocity changes, momentum-heavy inertial movement, or a responsive hybrid with quick acceleration and bounded drift. Preserve the signature chainable thruster burst, independent aiming, weapon-specific movement effects, keyboard and gamepad controls, later Android controls, broad difficulty accessibility, deterministic speedrunning, and future co-op. Include aiming stability, dodge precision, movement satisfaction, controller and touch feel, interaction with recoil and ricochets, level-design implications, accessibility, tuning complexity, and risk of the base movement making the thruster redundant or mandatory. Put the recommendation after all options. Queue D-111 for the D-120 persistence batch unless the user changes the batching rule."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-110",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-120",
+    "active_branch": "assembly/bootstrap-shooter-mover"
+  }
+}
