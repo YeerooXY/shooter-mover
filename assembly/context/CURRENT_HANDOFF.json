@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "daddbc248fba68855b9af39ff60b255a6716ee26",
+  "last_verified_commit": "967592490a61d7730e1b821e588077bef9462d42",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -23,6 +23,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D161_D170.md",
     "assembly/intake/batches/LIVE_DECISIONS_D171_D180.md",
     "assembly/intake/batches/LIVE_DECISIONS_D181_D190.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D191_D194.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -34,27 +35,28 @@
     "assembly/intake/batches/intake_session_D161_D170.json",
     "assembly/intake/batches/intake_session_D171_D180.json",
     "assembly/intake/batches/intake_session_D181_D190.json",
+    "assembly/intake/batches/intake_session_D191_D194.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-190 — Modest active-player-count co-op encounter scaling locked at room entry",
-  "current_item": "D-191 — Supported co-op party size and staged delivery",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether future co-op is capped at two players, targets up to four players but may stage the first implementation around two-player validation, or requires full four-player support from the first co-op MVP. Preserve post-MVP co-op status, fixed mission difficulty, active-player-count encounter scaling, personal non-replenishable difficulty-based lives, spectator clutch play, separate co-op progression, host continuity, teleport-based late joining as a later goal, solo-lead production, and Unity with C#. Include social appeal, encounter readability, projectile and effect density, camera and room constraints, UI, network bandwidth and synchronization, host migration, testing combinations, matchmaking population, implementation cost, and risk of architecture that cannot later expand. Put the recommendation after all A/B/C options at the end of the card. Queue D-191 through D-200 and persist at D-200 unless the user changes the batching rule or requests a context handoff.",
+  "last_completed_item": "D-194 — Optional shared-room entry with local room instances and coarse confirmation",
+  "current_item": "D-195 — Shared room completion across local instances",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how durable room completion, doors, and rewards settle when players may either join a teammate's active room instance or enter their own local instance: the first valid instance clear marks the room globally complete; every participating active player's local instance must clear before global completion; or a hybrid where personal instances and ordinary loot resolve separately while coarse shared map progress unlocks after one valid clear and players still fighting may finish or withdraw. Preserve local authority for movement, firing, incoming damage, pickups, loot, and immediate feedback; coarse shared confirmation for room identity, doors, completion, map access, teleports, and major rewards; optional joined or personal room entry; personal non-replenishable lives and spectator clutch play; active-player-count scaling locked per instance at entry; separate personal progression; relay-backed latency-tolerant networking; and deferred deep shared team objectives. Include pacing, griefing, split-party deadlock, farming, banking and unsecured loot, respawn and teleport behavior, disconnected or spectating players, synchronization complexity, and future deeper co-op objectives. Put the recommendation after all A/B/C options at the end of the card. D-191 through D-194 were persisted early for handoff safety; queue D-195 through D-200 and persist at D-200 unless the user changes the batching rule or requests another handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-190 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-194 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-190",
-    "last_persisted_at": "2026-07-13T16:22:57+02:00",
-    "batching_rule": "Queue D-191 through D-200 and persist at D-200",
+    "last_persisted_decision": "D-194",
+    "last_persisted_at": "2026-07-13T16:47:23+02:00",
+    "batching_rule": "D-191 through D-194 persisted early for handoff safety; queue D-195 through D-200 and persist at D-200",
     "queued_decisions": []
   },
   "framework": {
@@ -62,5 +64,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T16:22:57+02:00"
+  "updated_at": "2026-07-13T16:47:23+02:00"
 }
