@@ -1,0 +1,85 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-191-D-194",
+  "status": "persisted_early_for_handoff",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-191",
+      "topic": "supported_coop_party_size_and_staged_delivery",
+      "answer": "up_to_four_players_staged_through_two_player_validation",
+      "constraints": [
+        "Architect all session collections protocol messages UI and save ownership for up to four players",
+        "Validate the first networked loop with two players before three-player and four-player graduation",
+        "Do not treat two-player success as proof of four-player readability bandwidth or balance",
+        "Keep co-op post-MVP relative to the offline Windows vertical slice"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-192",
+      "topic": "coop_networking_model_and_cross_region_responsiveness",
+      "answer": "relay_backed_player_hosted_latency_tolerant_pve",
+      "constraints": [
+        "Use relay-assisted player-hosted sessions rather than mandatory dedicated servers",
+        "Target responsive enjoyable cross-region play rather than promising literal zero latency",
+        "Use local response smoothing anticipation reconciliation buffering and packet-loss handling where needed",
+        "Simulate latency jitter packet loss and asymmetric links during validation",
+        "Test severe divergent enemy and attack states explicitly",
+        "Preserve a later host migration or transferable authority path"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-193",
+      "topic": "local_authority_for_immediate_player_experience",
+      "answer": "local_first_trusted_cooperative_simulation",
+      "constraints": [
+        "Resolve the local player's movement firing incoming damage pickups loot and immediate inventory feedback locally",
+        "Prioritize feel over strict centralized moment-to-moment authority",
+        "Accept weaker anti-cheat guarantees for the initial friendly cooperative model",
+        "Defer exact shared team-objective simulation beyond the first co-op MVP",
+        "Retain a minimal canonical layer for navigation completion teleports rewards and durable campaign facts"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-194",
+      "topic": "local_room_instances_and_coarse_shared_confirmation",
+      "answer": "optional_joined_or_personal_local_room_instances_with_coarse_shared_state",
+      "constraints": [
+        "Use local combat simulation with shared confirmation for room identity doors completion map access and major rewards",
+        "Allow players to join a teammate's active room instance",
+        "Allow players to enter their own local version of an available room",
+        "Lock active-player-count scaling per room instance at engagement start",
+        "Permit exact enemy combat and pickup states to diverge locally while preventing permanent route and campaign disagreement",
+        "Defer strict bullet-level agreement advanced instance reconciliation and deep shared objectives",
+        "Decide next how global room completion doors and rewards settle across parallel instances"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Global room completion and door-unlock semantics across joined and separate local instances",
+    "Reward and banking settlement when party members clear different instances",
+    "Behavior when one instance clears while another remains in combat",
+    "Reconnect and host-migration handling for local room instances",
+    "Unity relay and networking package selection",
+    "Exact client trust validation and anti-cheat boundary",
+    "Cross-region latency jitter and packet-loss acceptance thresholds",
+    "Future shared-objective synchronization beyond the first co-op MVP"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-195",
+    "topic": "shared_room_completion_across_local_instances",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting how durable room completion, doors, and rewards settle when players may either join a teammate's active room instance or enter their own local instance: the first valid instance clear marks the room globally complete; every participating active player's local instance must clear before global completion; or a hybrid where personal instances and ordinary loot resolve separately while coarse shared map progress unlocks after one valid clear and players still fighting may finish or withdraw. Preserve local authority for movement damage pickups loot and immediate feedback, coarse shared confirmation for room identity doors completion and major rewards, optional joined or personal room entry, personal lives and spectator clutch play, active-player-count scaling locked per instance at entry, separate personal progression, and deferred deep shared team objectives. Include pacing, griefing, split-party deadlock, farming, banking and unsecured loot, respawn and teleport behavior, disconnected or spectating players, synchronization complexity, and future deeper co-op objectives. Put the recommendation after all A/B/C options at the end of the card. D-191 through D-194 were persisted early for handoff safety; queue D-195 through D-200 and persist at D-200 unless the user changes the rule or requests another handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-194",
+    "unsaved_decisions": 0,
+    "early_handoff_checkpoint": true,
+    "next_batch_boundary": "D-200"
+  }
+}
