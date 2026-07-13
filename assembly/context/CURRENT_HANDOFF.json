@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "a147a7545006030bcef710a2f24b00769bb471a6",
+  "last_verified_commit": "4a942eb658f53721807257bca353d8846629a744",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -43,9 +43,9 @@
   ],
   "current_section": "mvp_proof_and_delivery",
   "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-204 — Predeclared pivot-or-stop review after repeated core-fun test failure",
-  "current_item": "D-205 — Reward and progression content inside the Stage 1 core-fun prototype",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how much loot and progression should exist during the Stage 1 core-fun test: no reward loop and only curated fixed loadouts to isolate movement and combat; the complete minimal strongbox shop and progression loop from the start; or a controlled hybrid using a fixed-loadout benchmark first and a thin randomized loadout or reward wrapper only after the baseline combat loop is demonstrably readable. Preserve the staged proof gate, developer-then-external validation, predeclared behavioral pass signals, pivot-or-stop review, four simultaneous mounted weapons, six to eight eventual MVP base weapons, temporary-content tolerance, replay and mastery goals, and the need not to confuse extrinsic loot compulsion with intrinsic movement and combat quality. Include test validity, replay motivation, loadout experimentation, implementation delay, onboarding, data comparability, sunk-cost risk, and transition into the full factory vertical slice. Put the recommendation after all A/B/C options at the end of the card. D-201 through D-204 are checkpointed as queued but not formally batch-persisted; continue through D-210 unless the user changes the cadence or requests a handoff.",
+  "last_completed_item": "D-208 — Representative three-role enemy roster plus one elite for Stage 1",
+  "current_item": "D-209 — Presentation fidelity required for formal external core-fun testing",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting the minimum presentation fidelity required before formal external core-fun testing: raw graybox geometry and debug effects; near-final visual and audio presentation; or a readability-complete prototype using coherent temporary art and audio with production-quality telegraphs, hit feedback, weapon differentiation, HUD clarity, reduced-effect controls, and performance instrumentation while deferring final assets and polish. Preserve the two-stage proof gate, developer-then-external validation, predeclared behavioral signals, controlled fixed-loadout then tiny nonpersistent reward passes, benchmark arena plus short route, five or six representative weapons, three ordinary enemy roles plus one elite, Unity URP 2D, eventual 3D-rendered sprite pipeline, accessibility baseline, 60 FPS target, and need to distinguish poor game feel from confusing placeholder presentation. Include tester comprehension, first-impression bias, art cost, iteration speed, combat readability, audio necessity, motion and effects accessibility, performance representativeness, and risk of polishing a failing loop. Put the recommendation after all A/B/C options at the end of the card. D-201 through D-208 are checkpointed as queued but not formally batch-persisted; ask D-209 and D-210, then persist the complete D-201 through D-210 batch unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -55,7 +55,7 @@
   ],
   "persistence": {
     "status": "batch_in_progress",
-    "unsaved_decisions": 4,
+    "unsaved_decisions": 8,
     "last_persisted_decision": "D-200",
     "last_persisted_at": "2026-07-13T17:30:25+02:00",
     "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-201 through D-210 at D-210 unless an earlier handoff is requested",
@@ -114,6 +114,62 @@
           "Do not enter full vertical-slice production while the result remains ambiguous"
         ],
         "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-205",
+        "topic": "stage_one_reward_and_progression_scope",
+        "choice": "C",
+        "answer": "controlled_fixed_loadout_then_tiny_nonpersistent_random_reward_pass",
+        "constraints": [
+          "First prove intrinsic movement and combat quality using curated fixed four-weapon loadouts",
+          "After the baseline loop is readable and promising add a deliberately tiny nonpersistent randomized weapon or reward wrapper",
+          "Use the second pass to test whether discovery and experimentation improve replay desire without hiding weak combat behind extrinsic rewards",
+          "Defer the mature economy permanent inventory advanced rarity progression strongboxes shops and save integration to Stage 2",
+          "Keep test conditions and loadout identities reproducible for comparison"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-206",
+        "topic": "stage_one_test_environment",
+        "choice": "C",
+        "answer": "repeatable_benchmark_arena_plus_short_interconnected_route",
+        "constraints": [
+          "Maintain one sterile rapidly resettable arena for controlled mechanical comparisons",
+          "Also test the same mechanics in a compact interconnected route with several rooms corridors hazards and traversal choices",
+          "Use the arena to isolate tuning effects and the mini-route to test navigation pacing route mastery and encounter transitions",
+          "Reuse the same temporary enemies weapons and art across both environments",
+          "Neither prototype environment must become the final authored weapons-factory level"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-207",
+        "topic": "stage_one_weapon_roster",
+        "choice": "C",
+        "answer": "five_or_six_representative_mechanically_distinct_weapons",
+        "constraints": [
+          "Build roughly five or six mechanically distinct prototype weapons supporting several meaningful four-weapon combinations",
+          "Cover representative automatic heavy projectile spread or burst beam charge or heat homing or utility and deliberately unusual synergy behavior",
+          "Temporary art and audio are acceptable while cadence handling power-ammo behavior movement interaction and readability must be representative",
+          "Do not require the complete authored six-to-eight-weapon MVP roster before the core-fun gate",
+          "Avoid designing the system around only one unusually compatible fixed loadout"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-208",
+        "topic": "stage_one_enemy_roster",
+        "choice": "C",
+        "answer": "three_representative_roles_plus_one_elite",
+        "constraints": [
+          "Stage 1 includes a direct pursuer or close-pressure enemy a ranged projectile enemy and a positioning or area-denial enemy",
+          "Add one tougher elite variant that combines pressure without becoming the full upgraded-droid climax",
+          "Use mixed encounters to test target prioritization thruster use projectile readability crowd control weapon synergy and encounter composition",
+          "Difficulty variation must not rely only on health inflation",
+          "Defer the remaining ordinary factory roles and upgraded-droid climax to Stage 2"
+        ],
+        "verification_status": "verified"
       }
     ]
   },
@@ -122,5 +178,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:36:11+02:00"
+  "updated_at": "2026-07-13T17:44:00+02:00"
 }
