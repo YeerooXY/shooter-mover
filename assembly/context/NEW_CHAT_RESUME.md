@@ -18,11 +18,12 @@ Continue from the committed task-split branch in `YeerooXY/shooter-mover`.
 - Planning PR #2 is merged at `320b7fee260743f0db250a8e14f46ddd8fdf7b24`.
 - Task-split branch: `ai/task-split-shooter-mover-v1`.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
-- Generated and validated: `unity-foundation` with 11 tasks.
-- Generated and validated: `shared-contracts-core` with 12 tasks.
+- Generated and schema-validated: `unity-foundation` with 11 tasks.
+- Generated and schema-validated: `shared-contracts-core` with 12 tasks.
 - Next batch: `stage1-evidence-harness` with 10 tasks.
 - No Unity/game implementation, canonical backlog, collaboration assignment, or task-split pull request exists.
 - Recorded blocker: Foundation plus Contract Steward estimates total 7.3 focused lead days against the accepted S1.0 five-day cap. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
+- Full graph validation remains pending until every planned batch file exists; forward references to predeclared later IDs are not evidence of a complete validated backlog.
 
 ## Guided rule
 

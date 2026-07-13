@@ -1,104 +1,50 @@
-# Shooter Mover Planning Handoff
+# Shooter Mover Task-Decomposition Handoff
 
 ## Current lifecycle phase
 
-**Planning and architecture review.**
+**Guided task decomposition is in progress.**
 
-Requirements pull request #1 is merged. Planning run `shooter-mover-v1` is committed on `ai/planning-shooter-mover-v1` and open as draft pull request #2.
+Requirements PR #1 and planning PR #2 are merged into `main`. The durable working branch is `ai/task-split-shooter-mover-v1`. No Unity or game implementation may begin until the complete task-decomposition pull request is reviewed and merged.
 
-The planning artifacts remain proposals until PR #2 is reviewed and merged.
+## Durable task state
 
-## Source of truth
+- Batch index: `assembly/generated/task_batch_index.json`
+- Planned batches: 16
+- Predeclared task IDs: 186
+- Generated batch: `assembly/generated/task_batches/unity-foundation.json`
+- Generated batch: `assembly/generated/task_batches/shared-contracts-core.json`
+- Progress: 2 of 16 batches generated
+- Next batch: `stage1-evidence-harness`
+- Canonical backlog: not generated
+- Collaboration assignments and claims: not finalized
 
-Requirements foundation:
+The Unity Foundation batch contains `UF-001` through `UF-011`. The Contract Steward batch contains `CS-001` through `CS-012`. Shared contracts precede their consumers, and generated registry outputs have one explicit owner.
 
-- `assembly/intake/project_intake.json`
-- `assembly/intake/PROJECT_DNA.md`
-- `assembly/requirements/REQUIREMENTS.md`
-- `assembly/requirements/REQUIREMENTS_REVIEW_CLARIFICATIONS.md`
-- verified decision logs under `assembly/intake/`
+## Validation boundary
 
-Planning package:
+The batch index, both batch files, and all 23 generated task records pass their current JSON schema checks. Expected IDs match the index, and generated dependencies point to Foundation tasks or earlier Contract Steward tasks.
 
-- `assembly/generated/project_spec.json`
-- `assembly/generated/repo_plan.json`
-- `assembly/generated/agent_prompts.json`
-- `assembly/generated/slots_db.json`
-- `assembly/generated/planning_runs_index.json`
-- planning trace under `assembly/planning_runs/shooter-mover-v1/`
+Full dependency-graph validation is not yet a completion signal because later planned IDs such as `EH-001` do not have generated batch files yet. Run and require the complete validator after all indexed batches exist; do not describe the canonical backlog or full graph as validated before then.
 
-## Architecture summary
+## Scope and capacity blocker
 
-- One Unity product repository.
-- Engine-independent plain-C# domain core for important rules and durable state.
-- Explicit application services and Unity adapters for input, 2D physics, scenes, rendering, audio, and platform integration.
-- One authoritative `MissionRunState`; rooms and UI are projections rather than state owners.
-- Typed ScriptableObject definitions, stable IDs, generated registries, deterministic review snapshots, and isolated content packages.
-- Atomic versioned snapshots plus a compact idempotent recovery journal.
-- Local-only MVP services for saves, content lookup, diagnostics, and artifact identity; no remote backend.
+The Foundation and Contract Steward estimates currently total 7.3 focused lead days against the accepted five-day S1.0 cap, before the evidence-harness batch is estimated.
 
-## Proof plan
+Dispatch therefore requires a human decision to re-estimate, resequence, cut non-evidence breadth, or approve a bounded cap amendment. Do not hide the overrun by removing required contracts, controls, accessibility, diagnostics, reliability, save safety, or performance work.
 
-Stage 1 proves intrinsic movement/combat quality and voluntary replay desire through a benchmark arena, short route, six representative weapons, three ordinary enemies, one elite, technical reliability, developer behavior, and a formal 6–10-player external round.
+`CS-011` needs focused human review because it combines registry generation, drift validation, baseline generated outputs, and documentation. Split it if one focused executor cannot complete and verify it as one revertible change.
 
-Stage 2 proves the complete factory mission and production system through saves/recovery, checkpoints, banking, loot risk, one stable-per-run shop, mission-only refresh tokens, deterministic strongboxes, completion/replay, accessibility, diagnostics, performance, art-pipeline proof, and isolated content reproduction.
+## Coordination rules
 
-Hard review caps:
+- The active Task Splitter is the sole writer for the batch index and deterministic handoff files during each guided continuation.
+- Generate exactly one next planned batch after explicit human continuation.
+- Reviewers may validate and report findings in parallel but must not race edits to the same index, batch, or handoff files.
+- Each generated batch must update the index, `CURRENT_HANDOFF.json`, `NEW_CHAT_RESUME.md`, and this handoff together.
+- Do not assign implementation tasks or mutate `collaboration_state.json` until all batches validate and the canonical backlog exists.
+- Stage 2 implementation remains blocked behind the explicit Stage 1 gate dependency.
 
-- Stage 1: 43 focused lead days or 10 calendar weeks.
-- Stage 2: 77 focused lead days or 20 calendar weeks.
+## Exact next action
 
-## Representative content
+Human-review `shared-contracts-core.json`, especially `CS-011` and the S1.0 estimate. After explicit continuation, generate only `assembly/generated/task_batches/stage1-evidence-harness.json`, validate its 10 expected tasks, and refresh all deterministic handoff files.
 
-- Eight base weapons: autocannon, heavy cannon, scatter array, thermal beam, coil lance, micro-missile rack, arc projector, and slag mortar.
-- Five ordinary machine roles: close pursuer, ranged gunner, area-denial mortar, heavy blocker, and mobile interceptor.
-- One Foreman elite.
-- One Prototype Overseer upgraded-droid climax.
-- Twenty-four meaningful rooms across Receiving, Assembly, Test, and Core zones.
-- Four teleports, one shop-enabled teleport, two secure-storage rooms, and six optional rooms.
-
-Working names and stable IDs are planning identifiers, not final marketing copy.
-
-## Operational policies
-
-The plan defines:
-
-- Blender/Krita-centered offline art workflow with exact versions pinned before production use;
-- release-bound asset provenance records;
-- 3-2-1 source-asset recovery and milestone restore drills;
-- secrets/signing material outside the repository;
-- a prototype-shortcut register and non-negotiable Stage 2 debt exit conditions;
-- pinned dependencies and controlled upgrades;
-- provisional primary and minimum Windows hardware profiles;
-- immutable build identity and performance evidence.
-
-## Validation completed
-
-- `project_spec.json` validates against the framework project-spec contract.
-- `repo_plan.json` validates against the repository-plan contract.
-- `agent_prompts.json` validates against the agent-prompt contract.
-- every slot record validates against the slot contract.
-- canonical outputs are mirrored in the planning-run outputs directory.
-- no task backlog, task batch, stable task ID, or implementation file was created.
-
-## Human approval action
-
-Review draft pull request #2. Focus on architecture, milestone caps, evidence criteria, content selection, topology, hardware targets, policies, and lane ownership.
-
-Merge only with explicit human approval.
-
-## Next stage after merge
-
-Start a fresh **Task Splitter** context from merged `main` using `assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md` and the framework Task Splitter prompt.
-
-The Task Splitter must create the canonical backlog in a separate task-split pull request. Implementation and Dispatch remain blocked until that pull request is reviewed and merged.
-
-## Blocking issues
-
-No unresolved product-discovery question blocks planning review.
-
-The lifecycle gates are:
-
-1. merge planning PR #2;
-2. create and merge a separate task-split PR;
-3. only then begin implementation waves.
+Do not generate gameplay code, finalize the backlog, assign agents, open the final task-split PR, or begin Dispatch yet.
