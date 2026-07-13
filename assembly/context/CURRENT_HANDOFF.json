@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "7d1e2b880a243b531fb58c6529c827cac6a4641a",
+  "last_verified_commit": "e72d0448821e36a3f1a80b9b772442f9966645c5",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -21,6 +21,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D142_D150.md",
     "assembly/intake/batches/LIVE_DECISIONS_D151_D160.md",
     "assembly/intake/batches/LIVE_DECISIONS_D161_D170.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D171_D180.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -30,27 +31,28 @@
     "assembly/intake/batches/intake_session_D142_D150.json",
     "assembly/intake/batches/intake_session_D151_D160.json",
     "assembly/intake/batches/intake_session_D161_D170.json",
+    "assembly/intake/batches/intake_session_D171_D180.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-170 — Frequent automatic teleport checkpoints approximately every six or seven rooms",
-  "current_item": "D-171 — Activated teleport services during a mission",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether activated teleports act only as automatic respawn checkpoints, also permit fast travel among activated teleports, or additionally provide broader services such as healing, loadout changes, or extraction. Preserve the interconnected authored room map, permanent cleared-room state during a live checkpoint segment, persistent environmental hazards, automatic teleport cadence of approximately six or seven rooms, checkpoint respawning, future co-op compatibility, Windows-first offline MVP, and short-session convenience. Include exploration pacing, backtracking, speedrunning, farming or sequence-break risk, UI and save-state complexity, co-op regrouping, player recovery, and reuse in later larger missions. Put the recommendation after all A/B/C options at the end of the card. Queue D-171 through D-180 and persist at D-180 unless the user changes the batching rule or requests a context handoff.",
+  "last_completed_item": "D-180 — Fixed non-replenishable personal co-op lives scaled by difficulty",
+  "current_item": "D-181 — Co-op loot ownership and reward distribution",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether future co-op uses fully shared loot and currency, individually instanced rewards for each player, or a hybrid where ordinary rewards are personal while major authored rewards are shared or duplicated for everyone. Preserve the interconnected room map, dedicated banking rooms, provisional unsecured loot, stable per-run teleport shops, personal non-replenishable lives, spectator clutch play, host-continuity requirement, permanent individual progression, complete offline solo play, and post-MVP status of co-op. Include fairness, competition and griefing, duplicate weapon handling, banking and death-loss semantics, disconnected or spectating players, shop purchases, save ownership, balance, implementation complexity, and compatibility with later matchmaking. Put the recommendation after all A/B/C options at the end of the card. Queue D-181 through D-190 and persist at D-190 unless the user changes the batching rule or requests a context handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-170 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-180 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-170",
-    "last_persisted_at": "2026-07-13T15:16:38+02:00",
-    "batching_rule": "Queue D-171 through D-180 and persist at D-180",
+    "last_persisted_decision": "D-180",
+    "last_persisted_at": "2026-07-13T15:48:42+02:00",
+    "batching_rule": "Queue D-181 through D-190 and persist at D-190",
     "queued_decisions": []
   },
   "framework": {
@@ -58,5 +60,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T15:16:38+02:00"
+  "updated_at": "2026-07-13T15:48:42+02:00"
 }
