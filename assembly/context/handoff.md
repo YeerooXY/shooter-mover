@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`; weapon amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`; weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`; and enemy amendment PR #10 is merged at `ef4a6bbed6940d472ce29cde7bb5ecd658c85c87`. Those branches are permanently closed. The validated enemy/route batch is on fresh branch `ai/task-split-shooter-mover-v1-continuation-6` in draft PR #11 for human review.
+Movement PR #6, Combat PR #7, weapon amendment PR #8, weapon task-split PR #9, enemy amendment PR #10 and enemy/route task-split PR #11 are merged. PR #11 merged at `60df89d6d8bdc3afb5390bb292551c1e8d169253`; all corresponding branches are permanently closed. The validated accessibility/reliability batch is on fresh branch `ai/task-split-shooter-mover-v1-continuation-7` in draft PR #12 for human review.
 
 ## Durable task state
 
@@ -20,8 +20,9 @@ Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b44
 - Generated batch: `assembly/generated/task_batches/combat-four-mount.json`
 - Generated batch: `assembly/generated/task_batches/stage1-weapons.json`
 - Generated batch: `assembly/generated/task_batches/stage1-enemies-route.json`
-- Progress: 7 of 16 batches generated
-- Next batch: `stage1-accessibility-reliability`
+- Generated batch: `assembly/generated/task_batches/stage1-accessibility-reliability.json`
+- Progress: 8 of 16 batches generated
+- Next batch: `stage1-gate`
 - Canonical backlog: not generated
 - Collaboration assignments and claims: not finalized
 
@@ -44,6 +45,8 @@ The current executable AI Assembly Line validator passes the updated batch index
 The prior six-batch 68-task dependency graph was acyclic and topologically ordered. Its 227 exact file/bounded-folder ownership claims had no exact or parent-folder overlap. WP-003 through WP-007 own separate package folders and may run in parallel. WP-009 validates temporary registry outputs without editing CS-011-owned generated files. WP-011 reads but never edits EH-004's benchmark scene.
 
 With the enemy/route batch, the executable validator passes 81 tasks in topological order. The 261 exact path claims have no duplicates. EN-009 never edits generated registry outputs, and EN-010/EN-011 never edit the evidence-owned scenes. Direct S1.3 spend is 5.75 of 10 days, preserving 4.25 days for review and bounded follow-up.
+
+With the accessibility/reliability batch, the executable validator passes 93 tasks in topological order and 300 exact path claims have no duplicates. AR-001 isolates the settings profile, AR-005 isolates settings-only atomic persistence, AR-011 assembles immutable evidence and AR-012 has no approval authority. The batch spends 1.70 remaining S1.3 days and 2.90 S1.4 days, leaving 2.55 and 2.10 days respectively.
 
 The weapon batch records 4.60 focused lead days. Combined with combat-four-mount, S1.2 direct spend is 9.10 of 10 days, preserving 0.90 day for review reserve and bounded approved follow-up. WP-012 requires recorded human playable review before downstream work may claim weapon identity, audiovisual feedback or readability acceptance.
 
@@ -78,6 +81,6 @@ The one remaining Stage 2 ordinary enemy identity is also deferred until Stage 1
 
 ## Exact next action
 
-Review and merge the Stage 1 enemy/route task-split draft PR. After it merges, start a fresh context from current `main`, present proposed `AR-001` through `AR-012` titles, owner lanes and exact dependencies for Stage 1 accessibility, reliability, diagnostics, performance and formal evidence, and stop. Generate that one batch only after explicit human continuation.
+Review and merge the Stage 1 accessibility/reliability task-split draft PR. After it merges, start a fresh context from current `main`, present proposed `GATE-001` through `GATE-010` titles, owner lanes and exact dependencies for the Stage 1 developer and external formal gate, and stop. Generate that one batch only after explicit human continuation.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

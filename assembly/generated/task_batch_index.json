@@ -104,8 +104,8 @@
       "expected_task_ids": ["AR-001", "AR-002", "AR-003", "AR-004", "AR-005", "AR-006", "AR-007", "AR-008", "AR-009", "AR-010", "AR-011", "AR-012"],
       "depends_on_batches": ["stage1-enemies-route", "stage1-weapons", "stage1-evidence-harness"],
       "output_path": "assembly/generated/task_batches/stage1-accessibility-reliability.json",
-      "status": "planned",
-      "notes": "One reviewable agent workload."
+      "status": "validated",
+      "notes": "Validated 12-task Stage 1 accessibility, reliability, diagnostics, performance, clean-build and gate-readiness workload. Direct spend is 4.60 focused lead days: 1.70 from remaining S1.3 reserve and 2.90 from S1.4, leaving 2.55 S1.3 days and 2.10 S1.4 days for review and the developer gate."
     },
     {
       "batch_id": "stage1-gate",
