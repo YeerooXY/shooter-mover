@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "6743e10bf31a63e6eda156cd08077c9d6318c4b1",
+  "last_verified_commit": "c8e4fc80f8347e16b158a01141e8c7cf7cee19dd",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -26,6 +26,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D191_D194.md",
     "assembly/intake/batches/LIVE_DECISIONS_D195_D200.md",
     "assembly/intake/batches/LIVE_DECISIONS_D201_D210.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D211_D220.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -40,151 +41,34 @@
     "assembly/intake/batches/intake_session_D191_D194.json",
     "assembly/intake/batches/intake_session_D195_D200.json",
     "assembly/intake/batches/intake_session_D201_D210.json",
+    "assembly/intake/batches/intake_session_D211_D220.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-218 — Modular room packages assembled through a lightweight authored level graph",
-  "current_item": "D-219 — Canonical mission and room runtime-state ownership",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting where authoritative mission and room runtime state lives: primarily inside loaded Unity scene objects; in one centralized mutable mission manager with rooms reaching into it directly; or in a typed engine-independent mission-state model keyed by stable IDs, with rooms acting as projections and submitting validated state transitions through explicit commands or events. Preserve modular room packages, lightweight level graph assembly, permanent cleared-room and route state, checkpoint rollback groups, dedicated banking, fast travel, suspend snapshots, versioned local saves, additive loading, automated validation, future co-op coarse canonical state, and plain-C# domain logic. Include death rollback, scene unload and reload, save migration, debugging, testability, accidental direct mutation, performance, authoring ergonomics, transactional reward safety, and risk of overengineering. Put the recommendation after all A/B/C options at the end of the card. D-211 through D-218 are checkpointed as queued but not formally batch-persisted; ask D-219 and D-220, then persist the complete D-211 through D-220 batch unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "resume_ready",
+  "last_completed_item": "D-220 — Versioned snapshots with a short transactional journal",
+  "current_item": "D-221 — Layered Unity CI and build-validation gate",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting the Unity CI and build-validation policy for parallel human and AI-assisted production: local developer validation only; exhaustive full Windows player builds and all tests on every change; or a layered gate with fast deterministic edit-mode tests and content validation on ordinary branches, targeted play-mode tests for affected systems, a Windows player smoke build before integration, and scheduled or milestone full regression, performance, save-recovery, clean-machine, and artifact validation. Preserve Windows-first offline delivery, Unity with C#, plain-C# domain logic, modular content packages, generated registries, representative stress scenes, versioned snapshot and journal saves, accessibility, the stable 60 FPS target, and isolated branches. Include feedback speed, runner cost, flaky tests, Unity licensing or headless constraints, build reproducibility, artifact retention, branch protection, diagnostics, and the risks of both under-testing and making every small change wait for an exhaustive pipeline. Put the recommendation after all A/B/C options at the end of the card. Begin a new formal persistence batch D-221 through D-230 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-210 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-220 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "batch_in_progress",
-    "unsaved_decisions": 8,
-    "last_persisted_decision": "D-210",
-    "last_persisted_at": "2026-07-13T17:50:00+02:00",
-    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-211 through D-220 at D-220 unless an earlier handoff is requested",
-    "queued_decisions": [
-      {
-        "decision_id": "D-211",
-        "topic": "stage_two_production_gate",
-        "choice": "C",
-        "answer": "representative_production_ready_slice_with_repeatable_extension_proof",
-        "constraints": [
-          "The complete factory slice must provide the reliable end-to-end loop including saves recovery checkpoints banking loot risk shop strongboxes difficulty completion replay performance and diagnostics",
-          "Before passing the gate add at least one new room or encounter one new enemy and one new weapon through the intended repeatable production pipelines",
-          "Those additions must not require foundational-system rewrites",
-          "Critical systems require automated smoke and regression coverage save interruption tests and representative performance budgets",
-          "Content ownership boundaries must support isolated parallel human or AI-agent branches",
-          "Final environment polish complete music cinematics all difficulty tuning and the mature economy may remain deferred"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-212",
-        "topic": "stage_two_representative_art_pipeline_proof",
-        "choice": "C",
-        "answer": "end_to_end_representative_final_art_pipeline_subset",
-        "constraints": [
-          "Most Stage 2 content may remain coherent temporary art while a representative subset passes through the intended real production pipeline",
-          "The subset includes the player mech at least one ordinary enemy the elite or upgraded droid at least two visually different weapons and one major factory machine or environment set",
-          "Prove representative shadows normal maps emissive effects damage feedback destruction states animation and dimensional 2D presentation",
-          "Document import settings pivots scale sorting collision animation memory and performance requirements",
-          "Another artist or AI-assisted workflow must be able to add equivalent content without repairing every asset manually inside Unity",
-          "Final art for the remaining factory content stays deferred until the pipeline is validated"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-213",
-        "topic": "content_pipeline_repeatability_owner",
-        "choice": "C",
-        "answer": "developer_establishes_pipeline_then_independent_agent_reproduces_it",
-        "constraints": [
-          "The primary developer first produces one reference example and documents files folders data definitions validation naming imports tests previews save implications and common failures",
-          "An isolated AI-agent branch or occasional collaborator must then add another small representative weapon enemy variant or room encounter without direct foundational implementation help",
-          "The contribution must integrate through review and automated checks without modifying unrelated core systems",
-          "Missing documentation discovered during reproduction must be corrected",
-          "Merge conflicts ownership boundaries and repeatability must be evaluated rather than manually rescuing one special contribution"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-214",
-        "topic": "new_content_validation_model",
-        "choice": "C",
-        "answer": "layered_automated_validation_then_playable_review",
-        "constraints": [
-          "Every content contribution first passes automated checks for required fields valid ranges stable identifiers references import rules loot and progression eligibility save compatibility and basic runtime behavior",
-          "Automated smoke tests should cover representative spawn fire damage death completion and performance warnings where practical",
-          "Passing automation means safe to review rather than approved for the game",
-          "Playable review must judge combat feel readability audiovisual feedback encounter purpose weapon identity four-weapon interaction collision navigation and accessibility behavior",
-          "Human and AI-agent contributions use the same validation gates"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-215",
-        "topic": "data_driven_content_boundary",
-        "choice": "C",
-        "answer": "reusable_archetypes_with_isolated_tested_extensions",
-        "constraints": [
-          "Ordinary weapons enemies rooms encounters objectives hazards and rewards are assembled from typed ScriptableObject definitions and reusable behavior modules",
-          "Provide a compact reusable module set for representative firing movement enemy objective hazard and reward archetypes",
-          "Genuinely novel mechanics may add isolated reusable code extensions rather than one-item hacks",
-          "New extensions require automated tests playable validation documentation and compatibility with saves loot diagnostics and four-weapon interactions",
-          "Ordinary content additions must not modify unrelated foundational systems or force all creativity through a single bloated universal schema"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-216",
-        "topic": "canonical_content_data_source",
-        "choice": "C",
-        "answer": "hybrid_scriptableobject_authoring_with_deterministic_text_review_and_selective_import",
-        "constraints": [
-          "Typed ScriptableObject assets remain the canonical runtime and ordinary authoring format",
-          "Every item uses a stable human-readable content identifier and participates in automated searchable registries",
-          "Generate deterministic text summaries or snapshots so content changes are reviewable outside opaque Unity asset diffs",
-          "Use CSV or JSON import selectively for bulk balance tables localization loot weights or highly repetitive definitions",
-          "Generated files are never hand-edited and import export round trips must be deterministic and tested",
-          "Explicit ownership boundaries reduce parallel edits to the same Unity assets"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-217",
-        "topic": "parallel_content_ownership_and_merge_policy",
-        "choice": "C",
-        "answer": "isolated_content_packages_with_generated_integration_and_owned_shared_systems",
-        "constraints": [
-          "Each weapon enemy encounter or room contribution lives mainly inside an owned feature folder containing definitions prefabs effects audio art tests previews and documentation",
-          "Shared registries lookup tables and build indexes are generated or updated through deterministic tooling rather than manually edited by every contributor",
-          "Central balance tables and foundational systems have explicit owners and require separate justified tasks",
-          "Contributions should be small reviewable removable and rollback-safe with minimal Unity YAML conflicts",
-          "Automated validation must reject duplicate identifiers missing references and incompatible package content before integration",
-          "Human and AI-agent branches follow the same ownership and merge boundaries"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-218",
-        "topic": "room_and_encounter_authoring_structure",
-        "choice": "C",
-        "answer": "modular_room_packages_assembled_by_lightweight_authored_level_graph",
-        "constraints": [
-          "Each meaningful room or encounter is an independently previewable and testable prefab or additive scene package",
-          "Room contracts cover stable identity doorway connections encounter lifecycle enemy and pickup ownership persistent state lighting sorting collision navigation teleports shops banking rewards and performance budgets",
-          "A lightweight authored level graph defines room connections and controls mission-wide structure and state",
-          "Small corridors and decorative connectors may remain lightweight prefabs rather than requiring a full scene each",
-          "Cross-room communication uses stable identifiers and explicit events instead of fragile direct scene-object references",
-          "The structure must support independent branch ownership future streaming and later co-op room instances without overengineering the Stage 2 slice"
-        ],
-        "verification_status": "verified"
-      }
-    ]
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_decision": "D-220",
+    "last_persisted_at": "2026-07-13T18:04:09+02:00",
+    "batching_rule": "Begin a new Product Discovery batch at D-221 and persist through D-230 unless an earlier handoff is requested",
+    "queued_decisions": []
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:00:00+02:00"
+  "updated_at": "2026-07-13T18:04:09+02:00"
 }
