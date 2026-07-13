@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-131-D-140",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {"decision_id":"D-131","topic":"player_protagonist_and_mech_identity","answer":"mostly_silent_player_pilot_with_rare_authored_lines_mech_as_player_tool","constraints":["Keep the protagonist mostly silent","Use only a few concise lines at important moments","Let recurring characters and factions carry most dialogue and emotional weight","Treat the mech primarily as combat loadout and progression rather than a speaking mascot","Preserve light customization and future co-op compatibility"],"verification_status":"verified"},
+    {"decision_id":"D-132","topic":"world_and_story_tone","answer":"stylized_action_science_fiction","constraints":["Keep sincere stakes and meaningful conflict","Allow colorful factions exaggerated weapons memorable bosses and rarity-readable loot","Avoid both relentlessly grey military bleakness and full parody","Use restrained humor only where it fits","Keep spectacle native to the setting"],"verification_status":"verified"},
+    {"decision_id":"D-133","topic":"central_hub_presentation","answer":"pure_menu_based_hub","constraints":["Provide direct access to missions armory upgrades shops challenges story and launch","Minimize between-run friction","Support PC and later Android navigation","Allow the interface to evolve visually with campaign progress","Do not require walking between stations"],"verification_status":"verified"},
+    {"decision_id":"D-134","topic":"mission_and_level_construction","answer":"handcrafted_levels_with_controlled_variation","constraints":["Author core layouts routes secrets objectives and major encounters","Allow bounded variation in selected formations reinforcements loot optional rooms modifiers or secondary conditions","Use fixed seeds or standardized conditions for comparable challenges","Do not make procedural generation the primary MVP level strategy"],"verification_status":"verified"},
+    {"decision_id":"D-135","topic":"overall_replay_structure","answer":"campaign_first_with_deep_mission_replay","constraints":["Keep the authored campaign as the main progression journey","Replay missions for records loot difficulty clears achievements challenges alternate objectives and build experimentation","Reward mastery rather than mandatory repetitive farming","Do not make the core structure a run-reset roguelite"],"verification_status":"verified"},
+    {"decision_id":"D-136","topic":"first_complete_release_and_campaign_scope","answer":"phased_scope_beginning_with_one_strong_level_then_expand_toward_compact_campaign","constraints":["Build one genuinely good replayable level first","Do not produce many missions in parallel before systems are proven","Create the next level only after shared systems and workflow are reusable","Treat two or three missions as a later internal milestone","Allow a fuller compact release to grow toward roughly six to ten substantial missions only after validation"],"verification_status":"verified"},
+    {"decision_id":"D-137","topic":"initial_build_release_strategy","answer":"internal_mvp_before_public_release_strategy","constraints":["Do not treat the first build as a public demo paid episode or Early Access launch","Defer packaging pricing and progress-transfer decisions","Validate fun buildability and production workflow first","Use one complete level as the immediate milestone","Add a second level after surrounding systems are in place"],"verification_status":"verified"},
+    {"decision_id":"D-138","topic":"one_level_mvp_completeness","answer":"thin_but_complete_vertical_slice","constraints":["Support mission launch movement four simultaneous weapons a small enemy roster completion rewards or loot basic loadout or progression and immediate replay","Keep supporting systems minimal but real and connected","Avoid disconnected mechanic sandboxes and mock-only flow","Validate the full earn-adjust-replay loop"],"verification_status":"verified"},
+    {"decision_id":"D-139","topic":"visual_runtime_implementation","answer":"fully_2d_runtime_with_dimensional_looking_artwork","constraints":["Keep rooms collision characters effects projectiles and simulation two-dimensional","Create depth through perspective shading shadows layering animation and optionally offline 3D-rendered sprites","Preserve predictable collision strong performance and later Android viability","Do not require runtime 3D"],"verification_status":"verified"},
+    {"decision_id":"D-140","topic":"camera_and_viewing_angle","answer":"shallow_angled_top_down_on_flat_gameplay_plane","constraints":["Show visible character and wall sides without using a strong isometric grid","Keep movement aiming navigation and collision mechanically planar","Prevent foreground walls props shadows and layering from hiding important threats or rewards","Preserve the chunky dimensional reference-game appearance"],"verification_status":"verified"}
+  ],
+  "open_questions_added": [
+    "Primary world conflict and first enemy faction identity",
+    "First level setting objective and climax",
+    "MVP weapon roster and loadout-content boundary",
+    "MVP enemy roster and boss boundary",
+    "Art-production pipeline for dimensional 2D sprites",
+    "Public demo release and monetization timing after internal validation"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-141",
+    "topic": "primary_world_conflict_and_enemy_faction_scope",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the game's main opposition is primarily a rogue-machine or automated industrial force, a biological or alien infestation, or a broader multi-faction science-fiction conflict whose one-level MVP focuses tightly on a single faction. Preserve the stylized action-science-fiction tone, mostly silent protagonist, menu-based hub, handcrafted missions with controlled variation, campaign-first replay, one-level internal vertical slice, fully 2D runtime, shallow angled top-down presentation, and the user's request to remain at the higher product and MVP level. Include enemy visual readability, weapon and loot fantasy, narrative flexibility, roster variety, asset reuse, boss potential, faction identity, future campaign expansion, and the danger of over-scoping the first level. Put the recommendation after all A/B/C options at the end of the card. Queue accepted decisions D-141 through D-150 and persist the complete batch at D-150 unless a context handoff or explicit user instruction requires earlier persistence."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-140",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-150"
+  }
+}
