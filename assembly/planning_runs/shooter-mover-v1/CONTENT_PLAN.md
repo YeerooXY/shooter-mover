@@ -1,6 +1,6 @@
 # Representative Content and Factory Plan
 
-Names are working production identifiers, not final marketing copy. Counts and archetypes are frozen for task splitting as amended by `AMENDMENT_STAGE1_WEAPONS.md`; numeric balance remains prototype-controlled.
+Names are working production identifiers, not final marketing copy. Counts and archetypes are frozen for task splitting as amended by `AMENDMENT_STAGE1_WEAPONS.md` and `AMENDMENT_STAGE1_ENEMIES.md`; numeric balance remains prototype-controlled.
 
 ## 1. Stage 1 weapon set
 
@@ -28,27 +28,24 @@ For the Stage 1 proof, empowered fire only tunes existing numeric coefficients. 
 
 | Stable ID | Working name | Role | Key pressure |
 |---|---|---|---|
-| `enemy.cutter-drone` | Cutter Drone | close-pressure pursuer, light | pursuit, contact danger, shove-through, crowd pathing |
-| `enemy.sentry-gunner` | Sentry Gunner | ranged projectile, medium | aimed bursts, visible lock attacks, cover interaction |
-| `enemy.fabricator-mortar` | Fabricator Mortar | positioning and area denial, medium | telegraphed lobbed hazards, displacement, destructible payload option |
+| `enemy.pursuer-drone` | Pursuer Drone | basic melee/contact pursuer | direct approach, ordinary contact damage, simple crowd pressure |
+| `enemy.ram-droid` | Ram Droid | small fast disposable contact attacker | low health, fast approach, one bounded impact hit, self-destruction on player collision |
+| `enemy.mobile-blaster-droid` | Mobile Blaster Droid | moving ranged projectile attacker | simple movement, readable cadence, accepted blaster projectile profile |
+| `enemy.blaster-turret` | Blaster Turret | stationary ranged projectile attacker | fixed position, clear line of fire, accepted blaster projectile profile |
 
 ### Stage 1 elite
 
-`enemy.foreman-elite` — **Foreman Elite**
+`enemy.four-blaster-elite` — **Four-Blaster Elite**
 
-- tougher readable machine, not the final boss;
-- combines a bounded gunner burst, denial pulse, and purposeful repositioning;
-- introduces one authored barrage peak;
-- remains a single encounter unit built from reusable modules.
+- easy, readable first boss rather than the final upgraded-droid climax;
+- uses four blaster origins with mild bounded spread and simple deterministic cadence;
+- provides clear wind-up/recovery windows and no phase transition;
+- has no denial pulse, mortar, reinforcement, teleport, complex repositioning or bullet-hell barrage;
+- remains a single encounter unit built from accepted reusable blaster and enemy modules.
 
-### Stage 2 ordinary additions
+### Stage 2 ordinary addition
 
-| Stable ID | Working name | Role | Key pressure |
-|---|---|---|---|
-| `enemy.bulwark-loader` | Bulwark Loader | heavy blocker and formation anchor | solid boost collision, protected lanes, slow push, weak exposure |
-| `enemy.interceptor-drone` | Interceptor Drone | mobile flanker and physical-threat launcher | bounded prediction, shootable rockets/drones, nearby-room pursuit |
-
-The complete factory has five ordinary roles. Variety comes from composition, geometry, reinforcement timing, hazards, and difficulty overrides—not roster inflation.
+The complete factory still targets five ordinary roles. The one remaining Stage 2 ordinary role is intentionally deferred until Stage 1 evidence exists and requires a planning amendment before Stage 2 combat-content generation or dispatch. Variety comes from composition, geometry, reinforcement timing, hazards, and difficulty overrides—not roster inflation.
 
 ## 4. Upgraded-droid climax
 
@@ -104,7 +101,7 @@ Optional:
 - `factory.tooling-cache` — strongbox or refresh-token challenge;
 - `factory.maintenance-bypass` — route shortcut.
 
-Objective: halt the primary assembly line and defeat the Foreman Elite.
+Objective: halt the primary assembly line and defeat the Four-Blaster Elite.
 
 ### Zone C — Test and Calibration
 
@@ -145,7 +142,7 @@ Objective chain: reach the core network, sever the final conduit, defeat the Pro
 - Banking remains separate from teleports.
 - Shop purchases secure immediately; collected rewards remain provisional until banking or completion.
 - Cleared rooms remain clear; persistent hazards remain legible.
-- Ordinary encounters permit retreat; Foreman and Overseer use explicit lockdowns.
+- Ordinary encounters permit retreat; Four-Blaster Elite and Overseer use explicit lockdowns.
 - Fast travel uses activated teleports only, outside combat, and cannot refresh content.
 - Difficulty changes authored formations, reinforcements, warnings, recovery, and checkpoint pressure without hidden topology changes.
 
@@ -154,8 +151,8 @@ Objective chain: reach the core network, sever the final conduit, defeat the Pro
 Pass the following through the real pipeline during Stage 2:
 
 - player mech;
-- Cutter Drone;
-- Foreman Elite or Prototype Overseer;
+- Pursuer Drone;
+- Four-Blaster Elite or Prototype Overseer;
 - Blaster Machine Gun;
 - Rocket Launcher or Arc Gun;
 - one Assembly Line machine/environment set;

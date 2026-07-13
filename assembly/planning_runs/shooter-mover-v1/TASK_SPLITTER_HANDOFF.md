@@ -38,7 +38,7 @@ Create batches in this dependency order without assigning task IDs here:
 3. movement/thruster domain and adapters;
 4. shared combat contracts and four-mount foundation;
 5. five Stage 1 weapon packages defined by `AMENDMENT_STAGE1_WEAPONS.md`;
-6. three ordinary enemy roles, Foreman Elite, short route;
+6. four ordinary enemy roles, Four-Blaster Elite and short route as defined by `AMENDMENT_STAGE1_ENEMIES.md`;
 7. Stage 1 reliability, accessibility, diagnostics, performance, formal evidence;
 8. Stage 1 gate execution and explicitly approved bounded iteration;
 9. Stage 2 mission state, room projection, snapshots, journal, checkpoint, banking, suspend, recovery;
@@ -89,3 +89,7 @@ At a cap preserve evidence-critical work and cut additional polish/variants, ext
 ## Stage 1 weapon amendment
 
 Before generating `stage1-weapons`, consume `AMENDMENT_STAGE1_WEAPONS.md`. Keep `WP-001` through `WP-012`, but decompose exactly five weapon packages. Empowered fire may only tune existing numeric coefficients in Stage 1; it may not increase the Arc Gun chain cap or Ricochet Gun bounce cap. The three remaining Stage 2 weapon identities stay blocked behind the Stage 1 gate and a later evidence-backed planning amendment.
+
+## Stage 1 enemy amendment
+
+Before generating `stage1-enemies-route`, consume `AMENDMENT_STAGE1_ENEMIES.md`. Keep `EN-001` through `EN-013`, but decompose the Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and easy Four-Blaster Elite. Reuse the accepted blaster projectile behavior. The Four-Blaster Elite replaces Foreman Elite, while Prototype Overseer remains Stage 2. The one remaining Stage 2 ordinary role stays blocked behind the Stage 1 gate and a later evidence-backed planning amendment.

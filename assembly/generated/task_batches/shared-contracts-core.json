@@ -449,7 +449,7 @@
       ],
       "verification": [
         "Automated: repeat-start, reinforcement-order, retreat, lockdown, completion-once and budget tests.",
-        "Manual/playable: map three ordinary roles, Foreman Elite and route encounters without special envelopes."
+        "Manual/playable: map the four amended ordinary roles, Four-Blaster Elite and route encounters without special envelopes."
       ],
       "proof_required": [
         "encounter contract test log",
