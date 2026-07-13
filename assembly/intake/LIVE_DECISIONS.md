@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-054
+- Last persisted decision: D-055
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-054 were verified directly by the user after recovery.
+D-040 through D-055 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -181,13 +181,24 @@ D-040 through D-054 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-055 — Shop pricing philosophy
+
+- Status: accepted
+- Choice: B — meaningful investments with rarity-scaled prices
+- Accepted requirement: Ordinary shop weapons should be reasonably affordable while still requiring a meaningful choice. Strong stars, augment levels, desirable enchantments, later weapon families, and exceptional combinations increase prices sharply; screenshot-worthy jackpot weapons may require savings from several runs.
+- Economy rule: Selling or dismantling old and duplicate equipment returns only partial value. Weapon purchases, inventory rerolls, and other shop services compete for the same core currency so spending decisions remain consequential.
+- User-supplied constraints: The shop should support experimentation without replacing floor strongboxes as the primary elite-loot path, and income, resale values, rarity multipliers, and reroll costs require playtesting.
+- Open proposal: An extremely rare token may reserve or fix an unaffordable shop item through rerolls or future visits, allowing eventual purchase while creating a significant resource choice; its exact persistence, capacity, and expiry rules remain unresolved.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Shop pricing philosophy now outranks remaining economy details because the shop must support experimentation and rare jackpot purchases without making currency farming or shop fishing the dominant progression path.
+Continue with the highest-weight unresolved Product Discovery question. The rare shop-item reservation mechanic now outranks remaining economy details because it determines whether miracle shop rolls create motivating long-term goals or remove too much urgency and scarcity.
 
 ## Revision rules
 
