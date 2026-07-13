@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-061
+- Last persisted decision: D-062
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-061 were verified directly by the user after recovery.
+D-040 through D-062 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -264,13 +264,25 @@ D-040 through D-061 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-062 — Strongbox outcome commitment and reload-proof opening
+
+- Status: accepted
+- Choice: B — deterministic pickup seed and versioned loot snapshot
+- Accepted requirement: When a strongbox is collected, record an immutable random seed together with its tier, source level, player progression, difficulty, applicable reward modifiers, collection order, and loot-table version. Opening later must always generate the same exact weapon from that committed snapshot.
+- Manipulation rule: Levelling up, changing difficulty, updating the game, delaying the opening, closing the game, or restoring an ordinary save must not alter the box's eventual family, base level, stars, augments, enchantments, or rolled statistics.
+- Transaction rule: Opening a box must use a crash-safe atomic transaction that consumes the sealed box and persists its exact generated reward before or together with the reveal presentation. A crash or reload during the animation resumes or restores the same already-committed reward instead of rerolling or duplicating it.
+- Save-scumming rule: Reopening and repeatedly reloading the game can never produce alternative outcomes from the same box. The same box identifier and seed may grant its reward only once.
+- Testing requirement: Automated deterministic replay tests, interrupted-transaction tests, duplicate-grant tests, and save-reload tests must verify this invariant before release.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Strongbox outcome commitment timing now outranks remaining loot details because delayed opening, save persistence, collection ordering, and future verification all depend on when the exact weapon roll becomes immutable.
+Continue with the highest-weight unresolved Product Discovery question. Offline save-integrity and future competitive verification now outrank remaining loot details because the MVP should prevent casual rollback abuse without violating the offline-core requirement or pretending a determined player cannot edit local files.
 
 ## Revision rules
 
