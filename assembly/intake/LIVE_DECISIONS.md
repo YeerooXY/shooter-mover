@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-050
+- Last persisted decision: D-051
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-050 were verified directly by the user after recovery.
+D-040 through D-051 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -135,13 +135,25 @@ D-040 through D-050 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-051 — High-rarity source weighting
+
+- Status: accepted
+- Choice: B — floor-biased jackpots with ultra-rare shop miracles
+- Accepted requirement: The strongest high-star, high-augment weapons should primarily come from high-tier floor strongboxes. Shops may still generate exceptional jackpot weapons, such as a two-star weapon with augment level 7 or above, but only at screenshot-worthy rarity.
+- Strongbox structure: Plan around eight strongbox tiers and a two-star, ten-level augment scale. Tier 7–8 boxes should be heavily weighted toward or nearly guarantee a high-quality, high-augment item while keeping the exact weapon family and enchantments random.
+- Progression rule: Higher strongbox tiers must not be available at low player levels. Box tiers unlock progressively so advancing through later levels reveals new reward ceilings and creates continued motivation to play.
+- User-supplied constraints: Exact odds, guarantees, level gates, and availability require playtesting and must prevent both early progression-breaking jackpots and unrewarding endgame droughts.
+- Design implication: Shops provide breadth and extremely rare miracle rolls; high-tier floor boxes provide the dependable route to elite overall quality without allowing deterministic perfect-item targeting.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. High-rarity source weighting between shop rolls and high-tier floor strongboxes now outranks remaining pricing details because it determines where the most memorable jackpot items should primarily come from.
+Continue with the highest-weight unresolved Product Discovery question. Strongbox tier unlock rules now outrank remaining pricing details because progression gates, challenge gates, and level availability determine how the eight-tier reward ladder motivates campaign advancement and difficult replay.
 
 ## Revision rules
 
