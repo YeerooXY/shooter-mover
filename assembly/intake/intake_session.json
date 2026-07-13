@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 47,
-  "last_completed_decision": "D-047",
+  "questions_asked": 48,
+  "last_completed_decision": "D-048",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -103,8 +103,25 @@
         "Weapons are acquired primarily from level-floor pickups",
         "Floor pickups may be represented as tiered strongboxes with random contents",
         "Shops provide a second weapon-acquisition path through a randomized purchasable inventory",
-        "Random weapon discovery should be a central source of excitement during play",
-        "Duplicate handling, bad-luck protection, strongbox tier odds, shop refresh rules, pricing, and deterministic fallback rewards remain unresolved"
+        "Random weapon discovery should be a central source of excitement during play"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-048",
+      "topic": "rng_fairness_progression_bounds_and_duplicate_handling",
+      "answer": "rng_with_soft_protection_and_progression_bounded_loot",
+      "constraints": [
+        "Strongboxes and shops remain genuinely random but are bounded by player progression",
+        "Duplicate weapons remain possible and can be sold or dismantled into useful value",
+        "A shop may expose up to roughly 40 randomized weapon slots and should let the player realistically buy almost any progression-appropriate weapon",
+        "Base weapon types enter the loot pool gradually as player levels unlock them",
+        "Strongboxes roll from a bounded nearby progression window rather than the full game-wide weapon pool",
+        "Eligible weapons may roll enchantments or affixes that create meaningful variants",
+        "Higher-tier boxes guarantee an appropriate minimum quality",
+        "Repeated misses may softly improve relevant odds",
+        "Limited shop rerolls or equivalent fallback mechanisms may prevent pathological unlucky streaks",
+        "The progression window, enchantments, probabilities, and power curve must be carefully balanced"
       ],
       "verification_status": "verified"
     }
@@ -117,8 +134,8 @@
   },
   "assumptions": [],
   "open_questions": [
-    "RNG fairness, duplicate handling, and bad-luck protection",
-    "Remaining economy and shop rules",
+    "Weapon power curve: linear replacement, level-scaled archetypes, or fixed side-grades",
+    "Remaining shop pricing and refresh rules",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -134,13 +151,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "rng_fairness_and_duplicate_handling",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting the fairness model for random strongboxes and randomized shop inventories, including duplicate handling and bad-luck protection. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "weapon_power_curve",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether weapon progression uses linear replacement, level-scaled recurring archetypes, or fixed side-grade weapons. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-047"
+    "last_persisted_decision": "D-048"
   }
 }
