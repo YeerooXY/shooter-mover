@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-049
+- Last persisted decision: D-050
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-049 were verified directly by the user after recovery.
+D-040 through D-050 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -125,13 +125,23 @@ D-040 through D-049 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-050 — Shop inventory persistence and rerolls
+
+- Status: accepted
+- Choice: B — persistent inventory with limited paid rerolls
+- Accepted requirement: A shop's broad randomized inventory remains stable until deliberately refreshed. The player may buy a limited number of rerolls with escalating costs and may lock a small number of selected items so they survive the refresh.
+- User-supplied constraints: The reroll system should create interesting spending decisions without enabling cheap or unlimited fishing for perfect weapons.
+- Design implication: Shop inventory state, reroll count, lock count, and escalating reroll prices must be tracked explicitly and balanced against strongbox acquisition.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Shop inventory persistence and reroll rules now outrank remaining pricing details because the broad 40-slot randomized inventory must remain useful without enabling trivial infinite fishing for perfect rolls.
+Continue with the highest-weight unresolved Product Discovery question. High-rarity source weighting between shop rolls and high-tier floor strongboxes now outranks remaining pricing details because it determines where the most memorable jackpot items should primarily come from.
 
 ## Revision rules
 
