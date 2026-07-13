@@ -1,0 +1,206 @@
+{
+  "schema_version": "0.1.0",
+  "project_slug": "shooter-mover",
+  "intake_mode": "guided",
+  "project_goal": "Create a Windows-first, offline-capable, fully 2D top-down shooter with dimensional-looking science-fiction art, addictive directional-thruster movement, four simultaneously firing weapons, handcrafted interconnected missions, broad difficulty tailoring, and deep replay for mastery, records, achievements, loot, and build experimentation. Prove the product first through one complete internal automated-weapons-factory vertical slice before expanding the campaign.",
+  "target_users": [
+    "Players who enjoy responsive skill-based top-down shooting in the spirit of Robokill, Red Storm, and SAS: Zombie Assault 4",
+    "Casual players who want a readable and forgiving campaign experience",
+    "Experienced action players who want hard-but-fair deterministic encounters and meaningful build choices",
+    "Mastery players, achievement hunters, speedrunners, record chasers, and long-term replay grinders",
+    "Players who value permanent offline and guest play without pay-to-win progression"
+  ],
+  "mvp": {
+    "summary": "A thin but complete internal Windows vertical slice consisting of one substantial, replayable automated-weapons-factory mission. The player launches from a menu hub, traverses an interconnected room map, uses a signature regenerating directional thruster and four concurrently firing weapons, defeats a compact rogue-machine roster, shuts down the production core, earns a minimal real strongbox/shop reward loop, adjusts the loadout, and immediately replays.",
+    "must_have": [
+      "One handcrafted interconnected automated-weapons-factory level with differentiated zones, optional branches, clear objectives, secure-storage banking rooms, teleport checkpoints, and a production-core shutdown finale",
+      "A readable upgraded-droid climax suitable for the first mission rather than a release-scale spectacle boss",
+      "Arcade-responsive planar movement and a first-class regenerating directional thruster tuned for dodging, pursuit, traversal, routing, and speedrunning",
+      "Manual shared-point aiming and four mounted weapons firing concurrently with independent cadence, heat, charge, recovery, recoil, and power-ammo state",
+      "Approximately six to eight handcrafted base weapons, four equipped at once, with no randomized per-instance modifiers in the internal slice",
+      "Approximately four or five complementary ordinary rogue-machine enemy roles plus the upgraded droid",
+      "Unlimited normal fire and scarce but regularly usable weapon-specific power-ammo banks with automatic normal-fire fallback",
+      "A minimal real play-to-earn-to-open-to-equip-to-replay loop using sealed deterministic strongboxes, a small randomized shop, currency, safe duplicate handling, and a capacity-safe reward review flow",
+      "Menu-based hub, mission launch, loadout management, basic progression, completion records, difficulty selection, and immediate replay",
+      "Fog-of-war room map with light objective guidance, discovered checkpoint and shop markers, and no automatic secret revelation",
+      "Difficulty rules that remain deterministic and learnable while tailoring recovery, encounter composition, checkpoint pressure, warnings, and mastery conditions rather than merely changing health and damage",
+      "Local-first versioned saves with stable IDs, atomic writes, backups, recovery, manual import/export, suspend support outside combat, and explicit mission-state classification",
+      "Practical accessibility baseline including scalable UI, color-independent warnings, reduced flashes and effects, configurable shake, aim assistance, hold/toggle alternatives, audio/display controls, and input rebinding",
+      "Keyboard-and-mouse-first controls through Unity Input System actions, with gamepad compatibility designed in and Android touch controls deferred",
+      "Readable temporary-to-representative art, effects, HUD, audio, telegraphs, impact feedback, and factory ambience sufficient for valid external testing",
+      "Stable 60 FPS at 1080p on the primary mainstream gaming-PC target with scalable effects and explicit CPU, GPU, allocation, memory, loading, projectile, enemy, light, and particle budgets",
+      "Privacy-safe bounded local diagnostics, reproducible support bundles, build identity, performance evidence, and save-recovery evidence",
+      "A repeatable content-production proof showing that a new room or encounter, enemy, weapon, and representative final-art asset can be added through documented pipelines without foundational rewrites",
+      "Layered automated validation plus human playable review, immutable formal test artifacts, controlled save migrations, and protected short-lived task branches"
+    ],
+    "postponed": [
+      "Android build, touch-control implementation, mobile performance validation, and app-store release work",
+      "Online cooperative play, host migration, player lives, matchmaking, relay services, cloud authority, and leaderboard infrastructure",
+      "A full six-to-ten-mission campaign, additional factions, additional chassis, advanced movement abilities, large bosses, and release-scale content volume",
+      "Procedural or endless missions, adaptive campaign director systems, prestige or legacy resets, and deep long-term live-service systems",
+      "Randomized stars, augments, enchantments, per-instance weapon statistics, mature strongbox tiers, broad shop rerolls, dismantling economy, layaway tokens, and advanced inventory automation",
+      "Modular weapon construction, deep chassis customization, special equipment slots, and extensive buildcraft systems",
+      "Public demo, Early Access, final storefront strategy, custom launcher, proprietary updater, and public-release packaging before the product proof gates pass",
+      "Remote telemetry, mandatory accounts, mandatory cloud saves, online activation, invasive DRM, kernel anti-cheat, or server-authoritative campaign play",
+      "Full voice acting, release-scale localization, and a comprehensive final accessibility suite",
+      "Final exact weapon, enemy, economy, difficulty, drop-rate, timing, and hardware-minimum coefficients until prototypes and playtests provide evidence"
+    ]
+  },
+  "target_platforms": [
+    "Windows PC first: complete offline campaign, keyboard/mouse, gamepad-ready architecture, 1080p/60 primary target",
+    "Android after the Windows version is stable: touch controls, scalable UI, stricter performance profile, and optional account portability",
+    "Other desktop or console platforms only after product and production proof"
+  ],
+  "stack": {
+    "preference": "Unity with C#",
+    "recommendation": "Use a pinned Unity LTS baseline with URP 2D, Unity Input System, additive scenes and modular prefabs, typed ScriptableObject content definitions, plain testable C# domain logic, and thin Unity-facing adapters. Use offline 3D rendering as an asset production method where useful while shipping a fully 2D runtime.",
+    "options": [
+      {
+        "name": "Unity LTS + C# + URP 2D",
+        "best_for": "The selected Windows-first 2D action game, agent-parallel workflow, normal-mapped sprite lighting, and later Android export",
+        "risks": [
+          "Unity serialized assets require strict ownership and merge discipline",
+          "Engine and package upgrades can introduce reimport and compatibility regressions",
+          "Dynamic 2D lighting, particles, and four-weapon effects require explicit performance budgets"
+        ]
+      }
+    ],
+    "decision_status": "user_selected"
+  },
+  "existing_project": {
+    "state": "existing_repo",
+    "path": ".",
+    "notes": [
+      "The GitHub repository exists and is initialized, but the game implementation is greenfield",
+      "Requirements and discovery artifacts live under assembly/ and are reviewed through pull requests",
+      "The active requirements/bootstrap branch is assembly/bootstrap-shooter-mover",
+      "No planning package, canonical backlog, or implementation wave should be treated as accepted before the corresponding later pull requests merge"
+    ]
+  },
+  "tools": [
+    {
+      "name": "Unity",
+      "path": "",
+      "configuration": "Pinned Unity LTS editor; URP 2D Renderer; Unity Input System; locked package manifest",
+      "notes": "Exact LTS patch and package versions are selected and recorded during planning, then changed only through controlled upgrade branches"
+    },
+    {
+      "name": "C#",
+      "path": "",
+      "configuration": "Plain-C# domain core with Unity-facing adapters and test assemblies",
+      "notes": "Avoid DOTS, a custom engine, or broad frameworks until profiling or concrete requirements justify them"
+    },
+    {
+      "name": "GitHub and AI Assembly Line",
+      "path": ".",
+      "configuration": "Repository-first lifecycle with requirements, planning, task-split, and implementation pull-request boundaries",
+      "notes": "Short-lived scoped branches, explicit ownership, reproducible proof, and durable repository handoffs are mandatory"
+    },
+    {
+      "name": "Offline 3D and 2D art tools",
+      "path": "",
+      "configuration": "Tool choice deferred; output must follow documented perspective, scale, pivot, lighting, normal-map, shadow, animation, and import contracts",
+      "notes": "Asset licensing and provenance must be recorded before production assets are accepted"
+    }
+  ],
+  "team_mode": {
+    "humans": 1,
+    "ai_agents": 4,
+    "parallelization_goal": "One human lead directs, reviews, and integrates work while four or more AI agents may operate concurrently on independently owned gameplay domains, tests, tooling, documentation, and bounded content tasks. Occasional specialist art, audio, music, or animation work may be outsourced."
+  },
+  "working_style": {
+    "task_size": "mixed",
+    "review_style": "Use small, revertable, short-lived task branches with explicit files, interfaces, dependencies, acceptance criteria, and stronger review for shared systems, saves, dependencies, generated content, balance, and build configuration. Human and AI work use the same gates. Experiential qualities require playable human review.",
+    "proof_required": [
+      "Compilation and fast deterministic edit-mode tests",
+      "Content schema, stable-ID, reference, import, generated-registry, and ownership validation",
+      "Targeted play-mode tests and Windows player smoke builds for affected integrations",
+      "Playable evidence for movement feel, aiming, weapon impact, readability, encounter pacing, UI, audio, and accessibility",
+      "Versioned save, journal, migration, backup, corruption, interrupted-write, and recovery tests",
+      "Representative performance and memory stress scenes plus real-hardware validation",
+      "Immutable build artifacts with source, Unity, dependency, generated-content, test, symbol, checksum, and save-schema identity",
+      "Formal playtest behavior showing voluntary replay and mastery interest; interviews explain causes but do not replace behavior",
+      "Independent reproduction of representative content pipelines by an AI agent or collaborator"
+    ]
+  },
+  "constraints": [
+    "The first deliverable is an internal one-level vertical slice, not a public demo, Early Access build, or full campaign",
+    "The complete campaign core and permanent guest play must remain available offline",
+    "Windows is the first target; Android and online co-op are later workstreams",
+    "The shipped runtime is fully 2D on one gameplay plane with a shallow angled top-down presentation",
+    "Four equipped weapons fire concurrently toward one shared aim point",
+    "Ordinary fire is unlimited; power ammo is scarce, weapon-specific, and never required for normal completion",
+    "Strongbox outcomes are committed deterministically and cannot be rerolled through reloads or updates",
+    "Randomized gameplay rewards are earned only through play and are never sold for real money",
+    "The business direction is free-to-play with direct cosmetic-only purchases; paying may not affect power, progression, loot odds, difficulty, or competitive performance",
+    "Core authored missions remain deterministic enough for mastery, fair difficulty variants, achievements, and future speedrun categories",
+    "Stable IDs, typed content, plain-C# mission state, versioned snapshots, and a compact transactional journal are required foundations",
+    "Milestones use predeclared evidence questions and bounded review caps; overruns cut breadth before validation, accessibility, reliability, or core proof",
+    "Exact counts, timings, odds, coefficients, thresholds, and calendar durations remain evidence-driven planning variables unless explicitly fixed"
+  ],
+  "safety_boundaries": [
+    "No real-money loot boxes, pay-to-win items, purchasable progression, paid power, or paid drop-rate advantages",
+    "No mandatory account, always-online requirement, online activation, invasive DRM, or kernel-level anti-cheat for campaign play",
+    "No administrator privilege requirement for normal play and no client-side secrets or signing keys",
+    "Diagnostics remain local by default, use bounded retention, and exclude or redact unrelated personal data",
+    "Imported saves, journals, archives, configuration, and support bundles are validated defensively",
+    "Modified local profiles may lose verified competitive eligibility but must retain offline campaign access",
+    "Cosmetics may not obscure telegraphs, hitboxes, hazards, enemies, or projectiles; competitive modes may normalize disruptive presentation",
+    "Only licensed, commissioned, original, or otherwise provenance-cleared code, art, audio, fonts, models, and generated assets may enter production",
+    "No implementation or integration task may bypass branch ownership, reproducible proof, save safety, or rollback protections merely to preserve feature breadth"
+  ],
+  "assumptions": [
+    "Recovered decisions D-001 through D-039 are not accepted requirements and are excluded unless separately re-verified",
+    "Verified decisions D-040 onward supersede conflicting recovered concepts, including the obsolete three-level MVP assumption",
+    "The internal slice may use coherent temporary art for most content while a representative subset proves the intended final asset pipeline",
+    "Exact formal test-group size, behavioral thresholds, milestone durations, minimum hardware specifications, and balance values will be declared before the relevant test round or implementation milestone",
+    "A conventional storefront or installer may eventually distribute the public Windows build, but public packaging is not required to prove the internal slice",
+    "The target of four AI agents represents supported concurrency rather than a requirement to keep four agents active at all times",
+    "Prototype shortcuts may remain only when isolated, readable, testable, deterministic, and cheap to replace; planning must define explicit debt exit conditions before Stage 2 acceptance"
+  ],
+  "open_questions": [
+    {
+      "question": "What exact effort and calendar budgets apply to each Stage 1 and Stage 2 milestone?",
+      "risk_if_unanswered": "Non-blocking for requirements handoff; planning must set the first caps before implementation begins so the proof stages cannot expand silently."
+    },
+    {
+      "question": "What exact Stage 1 replay-behavior thresholds, tester population, and technically-invalid-session rules will be used?",
+      "risk_if_unanswered": "Non-blocking for architecture; these must be predeclared before the first formal external test so outcomes cannot be reinterpreted afterward."
+    },
+    {
+      "question": "Which exact six-to-eight weapons, four-to-five enemy roles, room graph, optional branches, and upgraded-droid attacks enter the first factory slice?",
+      "risk_if_unanswered": "Non-blocking for intake; content design and planning must select a representative set that covers the accepted archetypes without expanding the slice."
+    },
+    {
+      "question": "What are the exact economy, strongbox, shop, progression, difficulty, recovery, and power-ammo coefficients?",
+      "risk_if_unanswered": "Intentionally deferred to prototypes and playtests; hard-coding mature economy complexity before evidence would increase rework."
+    },
+    {
+      "question": "Which offline 3D, painting, audio, and asset-generation tools are approved, and what provenance record is required?",
+      "risk_if_unanswered": "Non-blocking for system planning but blocking before production assets from a tool or supplier are merged into a release-bound branch."
+    },
+    {
+      "question": "What repository and source-asset disaster-recovery policy is used beyond GitHub history?",
+      "risk_if_unanswered": "Non-blocking for requirements; planning must define backups for large source art, audio, generated intermediates, credentials, and release signing material before those assets exist."
+    },
+    {
+      "question": "Should any detail from the recovered D-001 through D-039 draft be restored?",
+      "risk_if_unanswered": "No blocker. Those details remain excluded; only explicitly re-verified items may be reintroduced later."
+    }
+  ],
+  "acceptance_signals": [
+    "Stage 1 provides a rapidly resettable benchmark arena plus a short interconnected route proving movement, aiming, four-weapon combat, representative enemies, traversal, quick restart, and voluntary developer replay",
+    "Stage 1 uses roughly five or six representative prototype weapons, three ordinary enemy roles, and one elite with readability-complete temporary presentation",
+    "A small target-player group voluntarily repeats complete sessions or pursues improvement under predeclared behavioral pass criteria",
+    "Technically ruined sessions are classified as reliability failures and excluded from fun evidence rather than counted as success or ordinary failure",
+    "After limited failed rounds, the project performs a written diagnosis, allows at most one substantial evidence-backed pivot, and stops or shelves the concept if the revised prototype still fails",
+    "Stage 2 delivers the complete reliable factory mission with saves, checkpoints, banking, minimal loot and shop systems, strongboxes, completion, replay, diagnostics, accessibility, and performance controls",
+    "The Stage 2 slice reliably completes repeated sessions without routine crashes, progression blockers, lost rewards, duplicate grants, or unrecoverable save failures",
+    "The primary target sustains stable 60 FPS at 1080p during representative heavy combat, while the minimum floor preserves readable complete gameplay through reduced visual settings",
+    "A representative player, ordinary enemy, elite or upgraded droid, at least two weapons, and a major factory machine/environment set pass through the intended final rendered-sprite pipeline",
+    "A new room or encounter, enemy, and weapon can be added through documented repeatable pipelines without foundational rewrites",
+    "An independent AI agent or collaborator reproduces representative content additions in an isolated branch without foundational intervention",
+    "Formal test artifacts are immutable, identifiable, reproducible, privacy-safe, save-compatible within the declared envelope, and promotable through validation channels",
+    "The project passes a written production-readiness review covering fun evidence, reliability, content throughput, art pipeline, performance, scope, review capacity, and forecasted production cost before expanding beyond the one-level slice"
+  ]
+}

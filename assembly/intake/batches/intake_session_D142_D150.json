@@ -1,0 +1,141 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-142-D-150",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-142",
+      "topic": "first_mvp_enemy_faction_identity",
+      "answer": "rogue_automated_industrial_machines",
+      "constraints": [
+        "Use one cohesive rogue-machine faction in the first level",
+        "Differentiate enemy silhouettes roles warning states and weight classes clearly",
+        "Prefer modular mechanical parts and reusable production patterns",
+        "Keep corporate mercenary biological and alien factions post-MVP"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-143",
+      "topic": "first_level_setting",
+      "answer": "automated_weapons_factory",
+      "constraints": [
+        "Use assembly testing storage security and industrial production zones",
+        "Connect the location directly to the machine faction technological loot and mission objective",
+        "Differentiate interior areas strongly enough to avoid repetitive factory corridors",
+        "Build a reusable modular industrial environment kit"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-144",
+      "topic": "first_mission_primary_objective",
+      "answer": "shut_down_the_factory_production_core",
+      "constraints": [
+        "Use a direct first-level mission premise",
+        "Allow intermediate production-system shutdown objectives",
+        "Do not require an extraction sequence prototype-launch story or complex branching finale"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-145",
+      "topic": "first_level_climax",
+      "answer": "level_appropriate_upgraded_droid_with_more_advanced_shooting",
+      "constraints": [
+        "Keep the first climax modest and appropriate for level one",
+        "Differentiate the upgraded droid mainly through somewhat more advanced shooting",
+        "Do not require a giant multi-phase or factory-wide boss spectacle",
+        "Defer exact enemy and boss designs",
+        "Allow later broad inspiration from Robokill Red Storm and selected SAS 4 boss ideas"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-146",
+      "topic": "first_level_enemy_roster_boundary",
+      "answer": "four_or_five_complementary_roles_plus_upgraded_droid",
+      "constraints": [
+        "Create approximately four or five ordinary machine roles",
+        "Generate encounter variety through composition positioning and environment",
+        "Keep the roster small enough to animate balance telegraph and test thoroughly",
+        "Defer exact role and attack designs"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-147",
+      "topic": "internal_mvp_weapon_count",
+      "answer": "six_to_eight_authored_base_weapons",
+      "constraints": [
+        "Equip four weapons simultaneously",
+        "Include enough alternatives to test loadouts rewards shops and replay",
+        "Add further weapons only after the core arsenal proves fun",
+        "Defer exact weapon list families and balance values"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-148",
+      "topic": "internal_mvp_randomized_weapon_variation",
+      "answer": "identical_base_weapon_copies_without_modifiers",
+      "constraints": [
+        "Do not implement randomized item statistics stars augments or enchantments for the internal MVP",
+        "Evaluate the quality of the authored base weapons directly",
+        "Preserve a clean future extension path in data and save boundaries without implementing unused complexity"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-149",
+      "topic": "internal_mvp_loot_and_shop_scope",
+      "answer": "minimal_real_strongbox_and_randomized_shop_loop",
+      "constraints": [
+        "Award sealed strongboxes that resolve to the six-to-eight base weapons",
+        "Offer a small randomized weapon subset through a gameplay-currency shop",
+        "Validate the play earn open compare equip replay loop",
+        "Exclude advanced modifiers rerolls dismantling reservations elaborate tiers and mature economy systems",
+        "Use only the smallest real safe duplicate-handling solution needed"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-150",
+      "topic": "dimensional_2d_art_production_pipeline",
+      "answer": "hybrid_offline_3d_rendered_sprites_and_painted_2d",
+      "constraints": [
+        "Render mechs enemies weapons and major machinery from offline 3D sources into 2D sprites",
+        "Use painted procedural or directly authored 2D for environments effects shadows overlays UI and finishing",
+        "Keep the runtime fully two-dimensional",
+        "Define shared perspective lighting palette scale outline texture and post-processing rules",
+        "Support future directional animation equipment variants damage states and cosmetics"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Committed human and AI-agent production team for the internal MVP",
+    "Exact first-level zone and checkpoint structure",
+    "Exact four-or-five enemy roles and upgraded-droid design",
+    "Exact six-to-eight base weapon roster",
+    "Minimal strongbox shop currency inventory and duplicate-handling rules",
+    "Offline 3D modeling rigging rendering and sprite-export toolchain",
+    "Audio music voice and localization production boundary",
+    "Accessibility and control-rebinding baseline",
+    "Stack and technical architecture after participation is known",
+    "Definition of done proof and testing requirements"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-151",
+    "topic": "internal_mvp_production_team_and_participation_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the internal MVP is produced primarily by one human developer supported by AI agents and occasional outsourced specialist work, by a committed small human team with AI support, or as an early open or community-collaboration project. Preserve the one-level internal milestone, hybrid offline-3D and painted-2D pipeline, Windows PC first, fully offline campaign, future Android and co-op directions, and repository-first AI Assembly Line workflow. Include decision speed, workload, code and asset ownership, art audio and design coverage, review and integration overhead, parallelization, contributor onboarding, budget exposure, continuity risk, and implications for later stack architecture and task splitting. Put the recommendation after all A/B/C options at the end of the card. Queue D-151 through D-160 and persist at D-160 unless the user changes the batching rule or requests a context handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-150",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-160"
+  }
+}

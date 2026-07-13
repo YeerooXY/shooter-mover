@@ -1,0 +1,156 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-181-D-190",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-181",
+      "topic": "coop_loot_ownership_and_major_reward_distribution",
+      "answer": "personal_ordinary_loot_with_simultaneous_individual_major_reward_boxes",
+      "constraints": [
+        "Keep routine loot currency shops unsecured rewards banking and permanent progression personal",
+        "Grant every eligible player a strongbox simultaneously for major authored rewards",
+        "Roll each granted strongbox rarity independently",
+        "Prevent loot stealing griefing and permanent ownership disputes"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-182",
+      "topic": "coop_major_reward_eligibility",
+      "answer": "all_players_still_connected_including_eliminated_spectators",
+      "constraints": [
+        "Reward active connected players",
+        "Reward life-exhausted players who remain connected as spectators",
+        "Do not reward players who permanently left the live session",
+        "Defer optional reconnect grace handling until online implementation"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-183",
+      "topic": "personal_strongbox_rarity_inputs",
+      "answer": "mission_settings_and_reward_owners_account_level",
+      "constraints": [
+        "Use mission identity difficulty and explicit challenge settings for the base reward table",
+        "Use only the reward owner's account level as the personal progression input",
+        "Never let teammate level gear performance or progression modify another player's odds",
+        "Support mixed-level friends without a carry altering the newer player's rarity table"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-184",
+      "topic": "mixed_level_coop_combat_difficulty",
+      "answer": "fixed_selected_mission_difficulty_with_real_player_power",
+      "constraints": [
+        "Use one selected mission difficulty for all players",
+        "Do not normalize player power or scale from account levels",
+        "Allow experienced players to carry newer friends",
+        "Allow later level-capped equal-level or standardized-loadout challenges"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-185",
+      "topic": "solo_and_coop_completion_credit",
+      "answer": "separate_solo_and_coop_completion_records",
+      "constraints": [
+        "Keep valid co-op loot currency experience and account rewards",
+        "Do not count a co-op clear as a solo clear",
+        "Track co-op difficulty challenge and record state separately",
+        "Make the distinction explicit in results and campaign interfaces"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-186",
+      "topic": "coop_campaign_advancement",
+      "answer": "separate_coop_campaign_progression_track",
+      "constraints": [
+        "Unlock later co-op missions through eligible co-op clears",
+        "Leave solo campaign progression unchanged",
+        "Allow groups to progress together without mandatory solo homework",
+        "Show solo and co-op unlock and completion state distinctly"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-187",
+      "topic": "mixed_progression_coop_mission_access",
+      "answer": "party_leader_access_with_visible_guest_run_status",
+      "constraints": [
+        "Allow the party leader to launch missions unlocked on the leader's co-op track",
+        "Mark less-progressed participants visibly as guests",
+        "Let guests retain personal loot account rewards and valid guest records",
+        "Advance guest co-op campaign only when personal prerequisites are satisfied",
+        "Show progression eligibility before launch"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-188",
+      "topic": "coop_late_join_boundary",
+      "answer": "teleport_based_late_join_end_goal_with_lobby_only_initial_scope",
+      "constraints": [
+        "Use activated teleports as the controlled eventual entry point for new late joiners",
+        "Do not spawn late joiners directly into combat",
+        "Allow the first co-op MVP to use lobby-only entry plus reconnect support",
+        "Add teleport late join only after synchronization rewards lives and reconnects are reliable"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-189",
+      "topic": "late_join_personal_life_allowance",
+      "answer": "reduced_lives_based_on_authored_mission_progress",
+      "constraints": [
+        "Reduce late-join lives according to reached teleport segments or comparable milestones",
+        "Use a simple understandable authored rule",
+        "Do not derive the allowance from teammate account levels or complex remaining-life averages",
+        "Playtest carefully against unfair entry and fresh-player rotation exploits",
+        "Defer exact counts and steps"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-190",
+      "topic": "coop_combat_scaling_by_party_size",
+      "answer": "modest_active_player_count_scaling_locked_at_room_entry",
+      "constraints": [
+        "Make three-player and four-player encounters meaningfully different",
+        "Scale from active player count and mission settings rather than account levels",
+        "Use restrained encounter budget reinforcement enemy count durability or composition adjustments",
+        "Lock party-size scaling when the room encounter begins",
+        "Prefer added pressure and composition over excessive health sponginess",
+        "Defer exact coefficients to prototypes and playtests"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Final supported co-op party-size target and staged rollout",
+    "Network topology and host-migration strategy for later co-op",
+    "Exact co-op player-count encounter-scaling curves",
+    "Difficulty-dependent personal life allowances",
+    "Late-join life reduction schedule",
+    "Disconnected-player reward and reconnection grace policy",
+    "Account-level contribution to personal strongbox rarity",
+    "Co-op matchmaking and party privacy modes",
+    "Solo versus co-op achievement and leaderboard policy",
+    "Co-op enemy targeting and room-entry synchronization rules"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-191",
+    "topic": "supported_coop_party_size_and_staged_delivery",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether future co-op is capped at two players, targets up to four players but may stage the first implementation around two-player validation, or requires full four-player support from the first co-op MVP. Preserve post-MVP co-op status, fixed mission difficulty, active-player-count encounter scaling, personal non-replenishable difficulty-based lives, spectator clutch play, separate co-op progression, host continuity, teleport-based late joining as a later goal, solo-lead production, and Unity with C#. Include social appeal, encounter readability, projectile and effect density, camera and room constraints, UI, network bandwidth and synchronization, host migration, testing combinations, matchmaking population, implementation cost, and risk of architecture that cannot later expand. Put the recommendation after all A/B/C options at the end of the card. Queue D-191 through D-200 and persist at D-200 unless the user changes the batching rule or requests a context handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-190",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-200"
+  }
+}

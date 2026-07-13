@@ -1,0 +1,156 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-161-D-170",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-161",
+      "topic": "windows_mvp_input_and_rebinding_baseline",
+      "answer": "keyboard_mouse_first_with_device_independent_multiplatform_input_architecture",
+      "constraints": [
+        "Prioritize keyboard movement and mouse aiming for the first playable implementation and tuning pass",
+        "Use Unity Input System actions rather than hard-coded device inputs",
+        "Allow gamepad twin-stick aiming prompt switching and rebinding without gameplay-code redesign",
+        "Defer actual touch controls to the later Android phase"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-162",
+      "topic": "internal_mvp_accessibility_baseline",
+      "answer": "practical_gameplay_accessibility_baseline",
+      "constraints": [
+        "Provide scalable UI and text",
+        "Use color-independent warnings and readable hazards",
+        "Provide reduced flashing screen-shake and camera-effect controls",
+        "Provide aim assistance toggle-hold alternatives audio display and rebinding controls",
+        "Separate accessibility from ordinary difficulty and rewards where practical"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-163",
+      "topic": "internal_mvp_save_model",
+      "answer": "versioned_local_first_save_with_recovery",
+      "constraints": [
+        "Persist settings currency weapons strongboxes shop state mission progress and records locally",
+        "Use schema versioning validation atomic writes and rolling backups",
+        "Provide recovery controls and manual export import",
+        "Preserve complete offline play and a later path to multiple profiles or optional cloud sync"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-164",
+      "topic": "internal_mvp_audio_and_localization_boundary",
+      "answer": "polished_core_audio_with_localization_ready_english_text",
+      "constraints": [
+        "Produce polished audio for movement weapons impacts enemies warnings machinery UI and rewards",
+        "Include one suitable track or a small bounded adaptive music setup",
+        "Use text-based mission communication without full voice acting",
+        "Route all player-facing English text through stable localization keys"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-165",
+      "topic": "windows_internal_mvp_performance_target",
+      "answer": "stable_60_fps_1080p_mainstream_gaming_pc_with_scalable_quality",
+      "constraints": [
+        "Target stable 60 FPS at 1920 by 1080 on an ordinary dedicated gaming GPU",
+        "Define budgets for enemies projectiles lights particles audio memory loading and frame time",
+        "Provide quality fallbacks that preserve gameplay readability",
+        "Expose controls needed for a stricter future Android profile"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-166",
+      "topic": "internal_playtest_diagnostics_and_evidence",
+      "answer": "structured_local_diagnostics_with_exportable_privacy_safe_bundles",
+      "constraints": [
+        "Record local structured mission death weapon reward error settings build and performance events",
+        "Export bounded diagnostic bundles for reports",
+        "Keep diagnostics local by default with retention and redaction rules",
+        "Allow later opt-in analytics crash reporting or replay tooling without requiring it now"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-167",
+      "topic": "first_level_room_and_map_structure",
+      "answer": "interconnected_authored_room_map",
+      "constraints": [
+        "Construct the factory from interconnected authored combat and traversal rooms",
+        "Show explored rooms connections position and major objectives on the map",
+        "Support understandable critical navigation plus bounded optional branches",
+        "Keep rooms modular for independent authoring testing ownership and integration",
+        "Allow broad inspiration from Robokill and Red Storm without copying protected expression"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-168",
+      "topic": "cleared_room_persistence",
+      "answer": "cleared_rooms_remain_enemy_free_with_environmental_hazards_persistent",
+      "constraints": [
+        "Do not respawn enemies merely because the player leaves or re-enters a cleared room",
+        "Allow checkpoint rollback after death to restore later room state according to snapshot rules",
+        "Allow environmental machinery traps or damaging zones to remain dangerous",
+        "Telegraph persistent environmental danger clearly"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-169",
+      "topic": "ordinary_campaign_death_and_respawn_rule",
+      "answer": "respawn_at_latest_activated_checkpoint",
+      "constraints": [
+        "Return the player to the latest activated respawn point on ordinary campaign difficulties",
+        "Define exact post-checkpoint state rollback separately",
+        "Reserve full-mission restart for post-MVP nightmare sadistic challenge achievement or record modes",
+        "Keep the model adaptable to later cooperative party respawn"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-170",
+      "topic": "checkpoint_placement_and_activation_model",
+      "answer": "frequent_automatic_teleports_every_six_or_seven_rooms",
+      "constraints": [
+        "Use recognizable teleport installations as automatic checkpoint activators",
+        "Target roughly one teleport every six or seven rooms and tune by actual room length and difficulty",
+        "Show teleport locations and activation state clearly on the map and in the environment",
+        "Keep implementation presentation terminology assets rules and balance original",
+        "Decide fast travel healing loadout access extraction and other teleport services separately"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Exact checkpoint snapshot and death rollback policy",
+    "Whether activated teleports provide fast travel or other services",
+    "Exact first-level room count and zone grouping",
+    "Unity version package pinning and upgrade policy",
+    "Source asset and generated sprite storage policy",
+    "Offline 3D modeling rigging rendering and sprite-export toolchain",
+    "Exact enemy and upgraded-droid designs",
+    "Exact six-to-eight base weapon roster",
+    "Minimal strongbox shop currency inventory and duplicate handling",
+    "Exact accessibility interaction with records achievements and challenge eligibility",
+    "CI provider and automated Unity licensing setup"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-171",
+    "topic": "activated_teleport_services_during_a_mission",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether activated teleports act only as automatic respawn checkpoints, also permit fast travel among activated teleports, or additionally provide broader services such as healing loadout changes or extraction. Preserve the interconnected authored room map, cleared-room persistence, environmental hazards, automatic teleport cadence of approximately six or seven rooms, checkpoint respawning, future co-op compatibility, and the one-level internal MVP boundary. Include exploration pacing, backtracking, speedrunning, farming or sequence-break risk, UI and save-state complexity, co-op regrouping, short-session convenience, and reuse in later larger missions. Put the recommendation after all A/B/C options at the end of the card. Queue D-171 through D-180 and persist at D-180 unless the user changes the batching rule or requests a context handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-170",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-180"
+  }
+}

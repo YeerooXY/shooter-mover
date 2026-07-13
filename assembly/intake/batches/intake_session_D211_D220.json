@@ -1,0 +1,158 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-211-D-220",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-211",
+      "topic": "stage_two_production_gate",
+      "answer": "representative_production_ready_slice_with_repeatable_extension_proof",
+      "constraints": [
+        "Complete the reliable end-to-end factory loop with saves recovery checkpoints banking loot shop strongboxes completion replay performance and diagnostics",
+        "Add at least one new room or encounter one new enemy and one new weapon through repeatable pipelines",
+        "Do not require foundational-system rewrites for those additions",
+        "Use automated smoke and regression coverage save interruption tests and representative performance budgets",
+        "Support isolated parallel human and AI-agent branches"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-212",
+      "topic": "stage_two_representative_art_pipeline_proof",
+      "answer": "end_to_end_representative_final_art_pipeline_subset",
+      "constraints": [
+        "Most Stage 2 content may remain coherent temporary art",
+        "Pass the player mech one ordinary enemy the elite or upgraded droid two weapons and one factory machine or environment set through the intended real pipeline",
+        "Prove representative shading emissive damage destruction animation memory and performance behavior",
+        "Document import pivots scale sorting collision animation memory and performance requirements",
+        "Allow another artist or AI-assisted workflow to reproduce equivalent content without manual Unity repair"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-213",
+      "topic": "content_pipeline_repeatability_owner",
+      "answer": "developer_establishes_pipeline_then_independent_agent_reproduces_it",
+      "constraints": [
+        "Primary developer creates and documents one reference example",
+        "An isolated AI-agent branch or occasional collaborator adds another representative item without foundational help",
+        "Integrate through review and automated checks without modifying unrelated core systems",
+        "Correct documentation gaps exposed during reproduction",
+        "Evaluate merge boundaries and repeatability rather than rescuing a special contribution"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-214",
+      "topic": "new_content_validation_model",
+      "answer": "layered_automated_validation_then_playable_review",
+      "constraints": [
+        "Automate required fields ranges identifiers references imports loot progression save compatibility and basic runtime behavior",
+        "Cover representative spawn fire damage death completion and performance warnings",
+        "Treat automation as safe to review rather than approved",
+        "Use playable review for feel readability feedback encounter purpose interaction collision navigation and accessibility",
+        "Apply the same gates to human and AI-agent contributions"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-215",
+      "topic": "data_driven_content_boundary",
+      "answer": "reusable_archetypes_with_isolated_tested_extensions",
+      "constraints": [
+        "Build ordinary content from typed ScriptableObject definitions and reusable behavior modules",
+        "Keep the reusable module set compact and representative",
+        "Allow genuinely novel mechanics through isolated reusable code extensions",
+        "Require tests playable validation documentation and save loot diagnostic compatibility",
+        "Do not modify unrelated foundational systems for ordinary content"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-216",
+      "topic": "canonical_content_data_source",
+      "answer": "hybrid_scriptableobject_authoring_with_deterministic_text_review_and_selective_import",
+      "constraints": [
+        "Use typed ScriptableObject assets as canonical runtime and ordinary authoring data",
+        "Assign stable human-readable identifiers and generated searchable registries",
+        "Generate deterministic text summaries for review",
+        "Use CSV or JSON selectively for bulk balance localization loot or repetitive data",
+        "Never hand-edit generated files and test deterministic round trips"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-217",
+      "topic": "parallel_content_ownership_and_merge_policy",
+      "answer": "isolated_content_packages_with_generated_integration_and_owned_shared_systems",
+      "constraints": [
+        "Keep each content contribution mainly inside an owned feature folder",
+        "Generate shared registries lookup tables and build indexes deterministically",
+        "Give central balance tables and foundational systems explicit owners",
+        "Keep branches small reviewable removable rollback-safe and merge-resistant",
+        "Reject duplicate identifiers missing references and incompatible package content"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-218",
+      "topic": "room_and_encounter_authoring_structure",
+      "answer": "modular_room_packages_assembled_by_lightweight_authored_level_graph",
+      "constraints": [
+        "Represent meaningful rooms or encounters as independently testable prefab or additive-scene packages",
+        "Define contracts for identity connections encounter lifecycle ownership persistence presentation navigation services rewards and budgets",
+        "Use a lightweight authored graph for room connections and mission structure",
+        "Allow lightweight corridor and decorative prefabs",
+        "Use stable IDs and events instead of fragile cross-room object references"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-219",
+      "topic": "canonical_mission_runtime_state",
+      "answer": "typed_engine_independent_mission_state_with_validated_transitions",
+      "constraints": [
+        "Use a plain-C# MissionRunState keyed by stable identifiers",
+        "Treat loaded Unity rooms as projections rather than authoritative state owners",
+        "Apply explicit validated commands or events for durable transitions",
+        "Separate permanent checkpoint-secured temporary rollback suspend and transactional state",
+        "Prevent Unity scripts from directly mutating durable progress"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-220",
+      "topic": "mission_progress_persistence_model",
+      "answer": "versioned_snapshots_with_short_transactional_journal",
+      "constraints": [
+        "Use atomic versioned MissionRunState snapshots as the primary save format",
+        "Journal checkpoint banking unique reward route objective completion and suspend transitions",
+        "Make records idempotent checksummed sequence-numbered and committed before acknowledgement",
+        "Fold journals into fresh snapshots and recover from backups",
+        "Do not journal routine combat and movement details"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Layered Unity CI and build-validation policy",
+    "Performance-budget enforcement and representative stress scenes",
+    "Save-schema migration support window and compatibility policy",
+    "Windows hardware test matrix and release artifact retention",
+    "Stage 2 milestone and time-budget policy",
+    "Recovered D-001 through D-039 re-verification"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-221",
+    "topic": "unity_ci_and_build_validation_gate",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting the Unity CI and build-validation policy for parallel human and AI-assisted production: local developer validation only; exhaustive full-player builds and all tests on every change; or a layered gate with fast deterministic edit-mode and content validation on ordinary branches, targeted play-mode tests for affected systems, a Windows player smoke build before integration, and scheduled or milestone full regression performance save-recovery and clean-machine artifact validation. Preserve Windows-first offline delivery Unity with C# modular content packages generated registries representative stress scenes versioned saves accessibility 60 FPS target and isolated branches. Include feedback speed runner cost flaky tests Unity licensing or headless constraints artifact retention reproducibility branch protection and risk of both under-testing and overbuilding. Put the recommendation after all options. Begin a new D-221 through D-230 batch unless the cadence changes."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-220",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-230"
+  }
+}

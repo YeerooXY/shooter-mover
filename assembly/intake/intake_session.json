@@ -1,0 +1,138 @@
+{
+  "schema_version": "0.1.0",
+  "project_slug": "shooter-mover",
+  "mode": "guided",
+  "status": "intake_record_drafted",
+  "current_section": "requirements-handoff",
+  "sections": [
+    {
+      "id": "product-identity",
+      "label": "Product identity and audience",
+      "status": "complete",
+      "questions": [
+        {
+          "id": "verified-product-direction",
+          "question": "What product is being proven and for whom?",
+          "answer": "Windows-first offline-capable fully 2D top-down shooter for casual through mastery players, with signature thruster movement, four-weapon combat, campaign replay, loot, achievements, and speedrunning depth.",
+          "risk_level": "high",
+          "affects": ["product_goal", "target_users", "mvp"]
+        }
+      ]
+    },
+    {
+      "id": "mvp-boundary",
+      "label": "MVP and proof boundary",
+      "status": "complete",
+      "questions": [
+        {
+          "id": "one-level-internal-slice",
+          "question": "What is the smallest complete product proof?",
+          "answer": "One complete automated-weapons-factory level with a thin real end-to-end loop, preceded by a smaller Stage 1 game-feel proof and followed by Stage 2 production-pipeline proof.",
+          "risk_level": "high",
+          "affects": ["mvp", "acceptance_signals", "scope"]
+        }
+      ]
+    },
+    {
+      "id": "platform-and-stack",
+      "label": "Platform and stack",
+      "status": "complete",
+      "questions": [
+        {
+          "id": "windows-unity-csharp",
+          "question": "Which platform and stack lead the project?",
+          "answer": "Windows PC first in Unity with C#, fully 2D URP 2D runtime, plain-C# domain core, ScriptableObject definitions, Unity Input System, additive scenes, and Android later.",
+          "risk_level": "high",
+          "affects": ["target_platforms", "stack", "architecture"]
+        }
+      ]
+    },
+    {
+      "id": "collaboration-and-proof",
+      "label": "Collaboration, verification, and delivery",
+      "status": "complete",
+      "questions": [
+        {
+          "id": "solo-lead-agents-proof",
+          "question": "How is parallel work reviewed and proven?",
+          "answer": "One human lead with four or more AI agents on scoped owned branches, layered automated validation, playable review, immutable build artifacts, versioned save recovery, and milestone evidence caps.",
+          "risk_level": "high",
+          "affects": ["team_mode", "working_style", "acceptance_signals"]
+        }
+      ]
+    },
+    {
+      "id": "commercial-and-safety",
+      "label": "Commercial and safety boundaries",
+      "status": "complete",
+      "questions": [
+        {
+          "id": "offline-cosmetic-only",
+          "question": "Which monetization and trust boundaries apply?",
+          "answer": "Complete free gameplay with optional direct cosmetic purchases only, permanent guest and offline play, no paid randomized rewards, no pay-to-win, no mandatory account, and privacy-safe local diagnostics.",
+          "risk_level": "high",
+          "affects": ["constraints", "safety_boundaries", "business_model"]
+        }
+      ]
+    }
+  ],
+  "stack_options": [
+    {
+      "name": "Unity LTS + C# + URP 2D",
+      "best_for": "Selected Windows-first fully 2D action-game production with normal-mapped sprites and a later Android path",
+      "risks": [
+        "Serialized asset conflicts require strict ownership",
+        "Package upgrades and asset reimports require controlled validation",
+        "Lighting and effect density require explicit budgets"
+      ],
+      "recommendation_level": "recommended"
+    }
+  ],
+  "assumptions": [
+    "Recovered decisions D-001 through D-039 are not accepted requirements and are excluded unless separately re-verified",
+    "Verified decisions D-040 onward supersede conflicting recovered concepts, including the obsolete three-level MVP assumption",
+    "The internal slice may use coherent temporary art for most content while a representative subset proves the intended final asset pipeline",
+    "Exact formal test-group size, behavioral thresholds, milestone durations, minimum hardware specifications, and balance values will be declared before the relevant test round or implementation milestone",
+    "A conventional storefront or installer may eventually distribute the public Windows build, but public packaging is not required to prove the internal slice",
+    "The target of four AI agents represents supported concurrency rather than a requirement to keep four agents active at all times",
+    "Prototype shortcuts may remain only when isolated, readable, testable, deterministic, and cheap to replace; planning must define explicit debt exit conditions before Stage 2 acceptance"
+  ],
+  "open_questions": [
+    {
+      "question": "What exact effort and calendar budgets apply to each Stage 1 and Stage 2 milestone?",
+      "risk_if_unanswered": "Non-blocking for requirements handoff; planning must set the first caps before implementation begins so the proof stages cannot expand silently."
+    },
+    {
+      "question": "What exact Stage 1 replay-behavior thresholds, tester population, and technically-invalid-session rules will be used?",
+      "risk_if_unanswered": "Non-blocking for architecture; these must be predeclared before the first formal external test so outcomes cannot be reinterpreted afterward."
+    },
+    {
+      "question": "Which exact six-to-eight weapons, four-to-five enemy roles, room graph, optional branches, and upgraded-droid attacks enter the first factory slice?",
+      "risk_if_unanswered": "Non-blocking for intake; content design and planning must select a representative set that covers the accepted archetypes without expanding the slice."
+    },
+    {
+      "question": "What are the exact economy, strongbox, shop, progression, difficulty, recovery, and power-ammo coefficients?",
+      "risk_if_unanswered": "Intentionally deferred to prototypes and playtests; hard-coding mature economy complexity before evidence would increase rework."
+    },
+    {
+      "question": "Which offline 3D, painting, audio, and asset-generation tools are approved, and what provenance record is required?",
+      "risk_if_unanswered": "Non-blocking for system planning but blocking before production assets from a tool or supplier are merged into a release-bound branch."
+    },
+    {
+      "question": "What repository and source-asset disaster-recovery policy is used beyond GitHub history?",
+      "risk_if_unanswered": "Non-blocking for requirements; planning must define backups for large source art, audio, generated intermediates, credentials, and release signing material before those assets exist."
+    },
+    {
+      "question": "Should any detail from the recovered D-001 through D-039 draft be restored?",
+      "risk_if_unanswered": "No blocker. Those details remain excluded; only explicitly re-verified items may be reintroduced later."
+    }
+  ],
+  "readiness": {
+    "can_generate_intake": true,
+    "missing_high_risk_answers": []
+  },
+  "next_action": {
+    "type": "handoff_to_planning",
+    "questions": []
+  }
+}

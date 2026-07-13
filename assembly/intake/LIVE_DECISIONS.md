@@ -1,0 +1,487 @@
+# Shooter Mover — Live Decisions
+
+Status: active Product Discovery log. Detailed historical decisions D-040 through D-063 are preserved verbatim in `assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md`.
+
+## Persistence status
+
+- Active branch: `assembly/bootstrap-shooter-mover`
+- Last persisted decision: D-100
+- Unsaved accepted decisions: 0
+
+## Recovery and archive note
+
+- Decisions D-001 through D-039 remain an unverified recovery set in `assembly/intake/RECOVERED_INTAKE_DRAFT.md`.
+- Decisions D-040 through D-063 were verified directly by the user and are preserved verbatim in `assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md`.
+- This file continues the live verified log from D-064 onward. The archival split is organizational only and does not supersede or alter any accepted decision.
+
+## Verified decision index through D-063
+
+- D-040: Fog-of-war exploration map with light guidance and hidden undiscovered secrets.
+- D-041: Core-action-first target with meaningful difficulty tailoring from casual through mastery.
+- D-042: Complete offline MVP core with optional online features later.
+- D-043: Real-time cooperative campaign play is the first post-MVP multiplayer direction.
+- D-044: Windows PC first; Android follows after PC stability.
+- D-045: Substantial checkpoint-segmented levels with replayable 10–20-minute sections.
+- D-046: Deterministic core levels with bounded authored repeat-run variation.
+- D-047: Randomized floor strongboxes plus broad randomized shop inventory.
+- D-048: Progression-bounded RNG with soft bad-luck protection and useful duplicates.
+- D-049: Recurring weapon families, authored successors, later complex archetypes, and planned power inflation.
+- D-050: Stable shop inventory with limited escalating paid rerolls and short-term locks.
+- D-051: Elite loot mainly from high-tier floor boxes; ultra-rare shop miracle rolls remain possible.
+- D-052: Strongbox tier gates from progression, with challenge-weighted odds across all unlocked levels.
+- D-053: Overlapping tier quality bands with minimum guarantees and limited jackpot tails.
+- D-054: Exceptional older weapons may bridge several levels while retaining contextual value after successors appear.
+- D-055: Meaningful rarity-scaled shop pricing with shared currency pressure.
+- D-056: One extremely rare consumed token may reserve one shop item indefinitely at its original price.
+- D-057: Unwanted weapons may be sold or dismantled; no primary duplicate-fusion upgrade path.
+- D-058: Generous but finite universal inventory; shop purchases are immediate, strongboxes open after the run.
+- D-059: Checkpoints permanently bank sealed boxes; only the current section’s boxes remain at risk.
+- D-060: Collection-ordered reward vault with individual and batch opening plus a capacity-safe review tray.
+- D-061: Persistent pending-reward inbox for MVP; opt-in protected auto-processing follows after MVP.
+- D-062: Deterministic pickup seed and versioned loot snapshot with atomic reload-proof single granting.
+- D-063: Hardened offline saves with separate verified competitive modes and no server-authoritative campaign requirement.
+
+## Decision log
+
+### D-064 — Monetization and release model
+
+- Status: accepted
+- Choice: custom — free-to-play freemium game with cosmetic-only monetization
+- Accepted requirement: The game is free to download and enter. Real-money spending must not alter gameplay progression, combat power, loot quality, drop probabilities, difficulty, or competitive performance.
+- Cosmetic rule: Monetization is based on optional skins and other visual variants for existing mechs, weapons, effects, and comparable already-available gameplay content. A paid cosmetic must not secretly introduce a stronger gameplay version of the underlying item.
+- Strongbox boundary: Strongboxes, weapons, stars, augments, enchantments, currencies, materials, rerolls, reservation tokens, inventory capacity, player levels, and progression advantages cannot be purchased with real money. Randomized in-game strongboxes remain earned through gameplay and are not real-money loot boxes.
+- Fairness rule: Free and paying players use the same gameplay balance, reward tables, progression rules, difficulty systems, and competitive rules. Spending may change appearance only.
+- Readability rule: Cosmetic effects must preserve enemy, projectile, weapon-state, hitbox, and telegraph readability. Competitive or verified modes may normalize or restrict visually disruptive cosmetics when necessary.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-065 — Free-content boundary
+
+- Status: accepted
+- Choice: A — complete gameplay remains free
+- Accepted requirement: Every campaign level, boss, weapon family, difficulty option, progression system, challenge, and gameplay update is available without payment. No authored gameplay content is placed behind a paid expansion, starter-campaign paywall, or one-time full-game unlock.
+- Revenue rule: Revenue comes from optional direct-purchase cosmetics and cosmetic supporter bundles only. Paid offerings may alter appearance, presentation, or supporter recognition but cannot contain exclusive gameplay functionality or progression value.
+- Community rule: Free and paying players always retain access to the same playable levels, modes, co-op content, challenges, weapon families, and balance rules, avoiding content-fragmented matchmaking or progression.
+- Sustainability note: Cosmetic production, pricing, storefront presentation, and content cadence must be scoped honestly around team capacity; monetization pressure must never be solved by weakening free progression or introducing paid advantages.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-066 — Cosmetic ownership and optional accounts
+
+- Status: accepted
+- Choice: B — optional account linkage with permanent guest and offline play
+- Accepted requirement: Players may begin, continue, and complete ordinary offline gameplay as guests without creating or linking an account. Login must never gate quick play, campaign access, progression, inventory, or difficulty settings.
+- Account rule: An optional game account may link purchased cosmetic entitlements, cosmetic loadouts, favourites, cloud backup, device migration, and eventual PC-to-Android ownership portability where platform rules permit.
+- Restoration rule: Purchases made through a platform storefront must remain restorable from valid storefront receipts on that original platform without requiring the optional game account.
+- Portability rule: Linking an account may unify supported cosmetic ownership across devices and platforms, but must never turn gameplay progression or offline access into an always-online service.
+- Privacy rule: Account creation is voluntary, requests only necessary data, supports recovery and unlinking, and clearly explains entitlement-merging and conflict behavior before committing changes.
+- Implementation note: Entitlement merging, account recovery, cross-platform purchase recognition, and platform-policy differences require explicit testing and backend boundaries; Android portability is post-PC rather than an MVP release blocker.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-067 — Gameplay cross-progression and divergent offline saves
+
+- Status: accepted
+- Choice: B — whole-profile cloud cross-progression with explicit conflict selection
+- Accepted requirement: Linked players may upload and restore a complete gameplay-profile snapshot for cross-device and eventual PC-to-Android continuity while retaining unrestricted offline play and optional account use.
+- Conflict rule: When local and cloud profiles diverge, never merge individual weapons, currencies, strongboxes, inventory transactions, or progression events. Present both complete save lineages and require the player to choose either the local or cloud branch.
+- Comparison rule: Conflict selection must show useful summaries such as timestamp, player level, playtime, campaign progress, inventory overview, and verification state before the player commits.
+- Recovery rule: Preserve the discarded branch temporarily as a recoverable backup rather than deleting it immediately.
+- Integrity rule: Profile lineage identifiers, transaction journals, monotonic grant counters, and save versioning must prevent choosing both branches sequentially to duplicate weapons, currency, boxes, purchases, or other rewards.
+- Timing rule: Prepare profile identifiers, deterministic save schemas, and versioning during the Windows PC build. The actual cross-platform cloud service may arrive post-MVP with Android and must not block the PC MVP.
+- Explicit exclusion: Do not attempt automatic item-by-item merging of divergent gameplay profiles.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-068 — Death respawn and difficulty-scaled room reclamation
+
+- Status: accepted
+- Choice: custom A — cleared-room persistence by default with stronger difficulty reclamation
+- Accepted requirement: On the baseline and more accessible difficulty rulesets, rooms already cleared before death remain cleared. The room or active encounter in which the player died resets so the player can retry without routinely replaying the entire checkpoint section.
+- Difficulty rule: Stronger difficulty rulesets may reclaim a larger authored area after death, potentially resetting several previously cleared rooms or, at the highest settings, a substantial part of the current checkpoint section.
+- Determinism rule: The reclaimed area is fixed and predictable for each difficulty, checkpoint, and death location rather than selected through uncontrolled random respawning. Each difficulty remains learnable, repeatable, and suitable for fair speedrunning categories.
+- Boundary rule: Reclamation must not undo checkpoint-banked strongboxes or other progress already secured under D-059, and it must not reach behind the latest activated checkpoint unless a separately defined challenge mode explicitly establishes that rule.
+- Repetition guardrail: Multi-room reclamation must create meaningful route and survival pressure rather than repetitive cleanup. Encounter composition, shortcut state, one-way transitions, and respawn placement must avoid impossible or unfair recovery states.
+- Implementation note: Level state must support authored reset groups larger than one room even when ordinary difficulties use only the death-room reset, preventing a later difficulty-system rewrite.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-069 — Activated-checkpoint fast travel
+
+- Status: accepted
+- Choice: B — controlled travel between activated checkpoints within the current level
+- Accepted requirement: Once the player physically discovers and activates multiple teleport checkpoints in a level, those stations may be used to travel between one another while the player is outside combat and no encounter-lock condition is active.
+- Exploration rule: Fast travel never reveals undiscovered rooms, secrets, routes, shops, objectives, or checkpoints. A destination must already have been reached and activated through ordinary play.
+- State-safety rule: Travelling must preserve enemy-clear state, authored difficulty reclamation state, objectives, doors, switches, hazards, shop inventory, reroll state, reserved items, pickups, and all other persistent level state exactly as if the player had walked there.
+- Economy and reward guardrail: Fast travel cannot respawn loot or enemies, refresh shops, regenerate one-time pickups, duplicate checkpoint banking, re-secure unsecured strongboxes, reset reward seeds, or bypass progression and lock requirements.
+- Routing rule: Checkpoint travel is a deterministic traversal option and may support speedrunning routes, but official categories may define whether teleport use is allowed rather than relying on hidden or random restrictions.
+- Difficulty rule: Stronger rulesets may apply explicit authored restrictions, such as limiting travel to the latest checkpoint, requiring nearby rooms to be secure, or disabling selected links, provided each ruleset remains clear, deterministic, and learnable.
+- Implementation note: Destination validation and state restoration must be designed for later co-op and Android session practicality, while the Windows PC MVP needs only safe same-level activated-station travel.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-070 — Puzzle, key, lock, and environmental-interaction complexity
+
+- Status: accepted
+- Choice: B — straightforward mandatory routing with deeper optional puzzles
+- Accepted requirement: Main-path keys, locks, switches, destructible generators, power-routing tasks, and comparable interactions remain quick, readable, and subordinate to combat pacing. Optional secrets, shortcuts, rare rewards, lore spaces, and side encounters may use moderate multi-step environmental puzzles.
+- Replay rule: Mandatory interactions must remain fast on repeat runs, while optional puzzles may reward route knowledge and permit efficient solutions once mastered.
+- Difficulty rule: Puzzle logic remains fixed and deterministic across difficulties. Easier modes may provide clearer visual hints or reminders; harder modes may reduce hints or add combat pressure but must not secretly change the correct logical solution.
+- Accessibility rule: Required interactions need clear visual and audio language, remappable controls, and practical PC, gamepad, and later Android input paths. Avoid obscure pixel hunting or solutions that depend only on colour, sound, or precise timing without alternatives.
+- Co-op rule: Optional puzzles may support coordination later, but ordinary campaign progress cannot depend on fragile simultaneous-input sequences or create co-op deadlocks.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-071 — Mission objectives and kill-based XP progression
+
+- Status: accepted
+- Choice: custom B — mixed authored mission objectives with robot-kill XP
+- Accepted requirement: Each campaign level or major section has authored mission-wide goals that define success, such as destroying targets, activating systems, retrieving an object, defending a position, escaping, or defeating a boss. Combat remains the dominant moment-to-moment activity.
+- XP rule: Destroying enemy robots grants XP toward the player’s persistent level, making ordinary combat a primary progression source even when clearing every enemy is not itself the mission objective.
+- Objective rule: Objectives structure routes and pacing without replacing combat as the game’s core. Optional objectives may grant additional XP, currency, strongbox-quality influence, mastery credit, or other bounded rewards.
+- Anti-farming rule: XP rewards, reclaimed enemies, repeat clears, and objective resets must be controlled so repeatedly cycling restored rooms cannot become the dominant progression strategy.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-072 — XP accrual and checkpoint-activated level-ups
+
+- Status: accepted
+- Choice: B — earn XP immediately and activate level-ups at checkpoints
+- Accepted requirement: Kills and objectives add XP to the visible progression bar immediately. Crossing a threshold provides immediate feedback, but the actual player-level increase, baseline stat changes, unlocks, and new loot eligibility activate only upon reaching or using the next valid checkpoint.
+- Encounter rule: Player power and loot eligibility do not change unexpectedly during an active fight.
+- Loot rule: Strongboxes already collected retain the immutable progression snapshot committed at pickup under D-062. Pickups after checkpoint activation use the newly active player level.
+- Failure rule: XP already earned is not erased merely because the player dies before checkpoint activation; reclaimed-enemy reward suppression is handled separately under D-075.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-073 — Fixed core growth with authored milestone choices
+
+- Status: accepted
+- Choice: C — deterministic baseline progression plus occasional permanent upgrade choices
+- Accepted requirement: Ordinary player levels provide predictable authored baseline growth, unlocks, and loot-pool progression. Specific milestone levels offer a choice among a small set of balanced permanent upgrades, such as shield behaviour, movement efficiency, weapon handling, or recovery characteristics.
+- Balance rule: Random weapon rolls already provide frequent variation, so foundational character growth remains sufficiently stable for encounter tuning, comparison, and deterministic mastery.
+- Choice rule: Milestone options must represent understandable trade-offs rather than obvious traps or strictly superior picks.
+- Competitive rule: Verified runs record the active milestone build, and categories may normalize or constrain builds where necessary.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-074 — Paid milestone respec at checkpoints
+
+- Status: accepted
+- Choice: B — checkpoint respec using gameplay resources
+- Accepted requirement: Milestone upgrade choices may be reset and reassigned at activated checkpoints or equivalent safe progression interfaces by paying a bounded gameplay-currency or material cost.
+- UX rule: The complete resulting build and cost are previewed before confirmation. The first respecs should remain affordable enough to support learning and experimentation.
+- Economy rule: Respec costs must remain meaningful without becoming punitive, permanently trapping a profile, or pressuring real-money spending.
+- Run rule: Milestone choices cannot be changed during active combat. Verified runs record or lock the selected build according to category rules.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-075 — Permanent earned XP with reclaimed-enemy suppression
+
+- Status: accepted
+- Choice: C — keep earned XP and reduce repeated reclaimed-enemy rewards
+- Accepted requirement: Legitimately earned XP is retained immediately and is not removed by death or abandonment. Enemies restored through the same death-and-reclamation cycle grant sharply reduced or zero additional XP until genuine progression resets their reward eligibility.
+- Reset rule: Reward eligibility may reset through reaching a new checkpoint, starting a fresh level attempt, or another clearly defined legitimate progression boundary, not by repeatedly dying or teleporting.
+- Communication rule: Suppressed or reduced XP must be clearly signalled so the player understands that the enemy is a repeated reclaimed target rather than a bugged reward.
+- Difficulty rule: Reward-reduction values may vary by ruleset, but already earned XP is not deleted to create difficulty.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-076 — Authored level bands with optional player-scaled modes
+
+- Status: accepted
+- Choice: custom C — fixed approachable modes plus bounded scaled replay modes
+- Accepted requirement: Each campaign level has an authored intended power band. Easier and ordinary modes preserve fixed approachable enemy tuning so newer players can progress without every level automatically matching a highly levelled profile.
+- Scaled-mode rule: Separate replay, challenge, or mastery modes may scale earlier levels toward the player’s current level within authored bounds, keeping old content challenging and economically relevant without blindly equalizing every stat.
+- Power-fantasy rule: Returning to ordinary earlier content while overlevelled should still communicate real progression and increased power.
+- Reward rule: Scaled modes may provide appropriately improved challenge rewards, while fixed easy modes must not become the optimal high-level farming route.
+- Competitive rule: Fixed authored and scaled variants use explicit separate rulesets and leaderboard or challenge categories.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-077 — Per-attempt difficulty commitment
+
+- Status: accepted
+- Choice: B — choose difficulty at level start and commit for the full attempt
+- Accepted requirement: The player selects one difficulty or ruleset when starting or replaying a level. That selection remains fixed until the attempt ends or is deliberately restarted.
+- Progress rule: Different campaign levels may be completed on different difficulties. Completion records, rewards, achievements, mastery results, and verification data store the selected ruleset for each run.
+- Anti-exploit rule: Difficulty cannot be lowered for one troublesome room or increased only before a reward. Changing it requires ending or restarting the attempt.
+- Speedrun rule: Verified categories retain one deterministic ruleset for the entire run.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-078 — Immediate core difficulties with unlockable extreme mastery modes
+
+- Status: accepted
+- Choice: C — normal spectrum available immediately; transformative extremes unlock through achievement
+- Accepted requirement: New players may immediately choose from the ordinary difficulty spectrum, including accessible, standard, hard, and an appropriately demanding expert option, without being forced to clear easier settings first.
+- Unlock rule: The most transformative mastery rulesets—such as severe room reclamation, near-zero recovery, expanded encounter compositions, or specialised challenge modifiers—unlock after the player demonstrates familiarity through campaign progress, level completion, or relevant achievements.
+- UX rule: Extreme modes must be clearly labelled as specialised mastery experiences rather than ordinary recommended first-play options.
+- Speedrun rule: Main categories remain available without mandatory low-difficulty grinding; specialised unlocked categories use predictable requirements.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-079 — Difficulty-scaled between-room health recovery
+
+- Status: accepted
+- Choice: custom B — health recovery varies from generous to nearly absent by difficulty
+- Accepted requirement: Clearing a legitimate room or encounter may restore a difficulty-dependent amount of health while shield recovery follows its own rules. Easier modes provide substantial recovery and may make attrition almost trivial for inexperienced players; standard modes provide modest recovery; hard modes sharply reduce it; extreme modes may provide almost none or zero.
+- Abuse rule: Reclaimed rooms and repeatedly restored encounters cannot repeatedly grant full health recovery. Recovery is tied to legitimate first-clear or progression eligibility.
+- Balance rule: Pickups, shops, upgrades, perks, and checkpoints may provide additional authored healing, but the complete system must avoid both infinite recovery loops and unwinnable no-resource states on modes intended for ordinary completion.
+- Communication rule: The selected difficulty clearly explains its health-recovery rules before the level begins.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-080 — Capped passive shield recovery with difficulty and perk scaling
+
+- Status: accepted
+- Choice: custom — minimal capped baseline recovery, extensible through skills and rulesets
+- Accepted requirement: Passive shield recovery between or after encounters is deliberately limited by default rather than automatically restoring a full shield after every room. Recovery may stop at a maximum percentage cap and should remain small enough that ordinary mistakes still matter.
+- Perk rule: Authored skills, perks, or milestone upgrades may raise the passive recovery cap, improve regeneration speed, enable additional recovery conditions, or add aggression-driven recharge as an optional build mechanic rather than a universal baseline requirement.
+- Difficulty rule: Accessible modes may override the baseline with generous or near-complete shield recovery and substantial health recovery, making the game intentionally easy for newer players. Standard modes provide restrained recovery. Hard and extreme modes reduce passive shield and between-room health recovery toward almost zero or zero.
+- Anti-stalling rule: Recovery timing and caps must avoid making doorway waiting the optimal rhythm. The game may complete eligible recovery quickly once a room is secure rather than rewarding prolonged inactivity.
+- Abuse rule: Reclaimed or repeatedly cleared rooms cannot repeatedly restore shield or health beyond the active ruleset’s legitimate recovery allowance.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-081 — Checkpoint and shop loadout changes
+
+- Status: accepted
+- Choice: B — full loadout changes at activated checkpoints and shops
+- Accepted requirement: The player selects a four-weapon loadout before beginning a level attempt. During the attempt, stored armory weapons may be reassigned to those four slots only at activated checkpoints or physical shops while no combat or encounter lock is active.
+- Shop rule: A weapon purchased from a shop may be equipped immediately at that shop, including replacing an equipped weapon through a clear confirmation flow.
+- Routing rule: Checkpoint fast travel may support deliberate returns for reconfiguration without refreshing shops, enemies, loot, or other state.
+- Competitive rule: Loadout changes are deterministic run events. Verified or extreme categories may lock the starting loadout for the full attempt when explicitly stated.
+- Platform rule: The interface must remain practical for keyboard, gamepad, later Android, and future co-op without opening disruptive inventory menus during combat.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-082 — Background weapon recovery without default magazines
+
+- Status: accepted
+- Choice: custom C — weapon-specific holstered recovery with no conventional magazine requirement
+- Accepted requirement: Ordinary guns do not require traditional clip-by-clip magazine reloads as the universal baseline. Holstered weapons may cool, recharge, vent, or recover readiness in the background according to their authored mechanics.
+- Combat rule: Sustained firing is controlled mainly through fire rate, heat, spread, recoil, energy demand, ammunition consumption, recovery windows, or weapon-specific behaviour rather than routine small magazine sizes.
+- Identity rule: Individual weapons may still use authored charge, vent, reload, chamber, or downtime mechanics when those mechanics meaningfully support their fantasy.
+- Communication rule: The HUD must make background recovery and readiness legible across the four-weapon rotation.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-083 — Shared normal and power ammunition pools
+
+- Status: accepted
+- Choice: B — generous shared normal ammunition plus scarce shared power ammunition
+- Accepted requirement: Compatible weapons draw from transferable shared ammunition pools rather than carrying separate per-gun magazines. A generous normal-ammo pool supports frequent arcade-style firing, while a much scarcer shared power-ammo pool enables empowered fire.
+- Consumption rule: Different weapons consume each pool at authored rates. Rapid weapons may spend small units continuously, while cannons, beams, launchers, or comparable weapons may consume larger amounts per shot or per second.
+- Balance rule: Fire rate, heat, spread, recoil, handling, and ammo efficiency remain major balancing levers; ammunition scarcity must not be the only control on powerful weapons.
+- Exception rule: Truly exotic weapons may use clearly communicated authored resource exceptions, but the MVP should avoid a cluttered family-by-family ammo inventory.
+- Superseded in part by: D-093 removes normal-ammo scarcity entirely; D-096 replaces the shared power pool with separate weapon banks.
+- Source: guided Product Discovery recovery
+
+### D-084 — Guaranteed supply, random surplus, and anywhere normal-ammo purchases
+
+- Status: accepted
+- Choice: custom B — deterministic baseline supply with random bonuses and emergency purchasing
+- Accepted requirement: Authored rooms, crates, checkpoints, shops, and objectives provide enough normal ammunition for reasonable play. Enemies may drop additional normal ammo and occasional power ammo as surplus rather than as the sole survival source.
+- Purchase rule: Normal ammunition may be purchased through a fast emergency interface from anywhere, including during combat, using gameplay currency only.
+- Anti-farming rule: Reclaimed enemies and repeatedly restored encounters provide reduced or zero repeat ammo drops according to clear eligibility state.
+- Difficulty rule: Accessible modes may provide extremely generous refills; hard and extreme modes may reduce guarantees and make efficiency more important without creating unavoidable empty-weapon states in ordinary completion modes.
+- Platform rule: Emergency purchasing must be fast and practical for keyboard, gamepad, Android, and later co-op.
+- Superseded by: D-093 removes normal-ammo depletion, pickups, and purchases.
+- Source: guided Product Discovery recovery
+
+### D-085 — Combat purchases limited to normal ammunition
+
+- Status: accepted
+- Choice: A — normal ammo purchasable anywhere; power ammo remains earned
+- Accepted requirement: The emergency anywhere-purchase system may replenish normal ammunition only. Power ammunition cannot be freely bought during combat and is acquired through authored pickups, drops, objectives, exploration rewards, checkpoints, or eligible physical-shop supply.
+- Completion rule: Regular ammunition and ordinary weapon fire must remain sufficient to defeat every required encounter and boss. Power ammo is extremely effective and exciting but not mandatory for normal completion.
+- Economy rule: Currency stockpiles cannot be converted directly into unlimited empowered damage during a difficult fight.
+- Difficulty rule: Power-ammo supply may become scarcer on stronger modes, but required encounter tuning must not assume the player possesses it unless a specialised ruleset explicitly says so.
+- Superseded in part by: D-093 removes normal-ammo purchases; D-096 reopens whether power ammo may eventually be purchased anywhere.
+- Source: guided Product Discovery recovery
+
+### D-086 — Hold modifier for empowered fire
+
+- Status: accepted
+- Choice: B — hold a power-ammo modifier while firing
+- Accepted requirement: Normal fire remains the default. Holding a dedicated power-ammo modifier causes eligible weapons to produce empowered shots and consume power ammunition; releasing the modifier immediately returns to normal firing.
+- Accessibility rule: Controls may support equivalent hold or toggle behaviour without changing output, consumption, timing, or competitive rules.
+- Input rule: Controller and later Android layouts require a comfortable dedicated action rather than an unreliable multi-button chord.
+- Feedback rule: Empowered state, shot transformation, ammo consumption, depletion, and fallback must have unmistakable audiovisual and HUD feedback so using power ammo feels dramatic rather than like an invisible damage multiplier.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-087 — Shared empowered-fire archetypes with later bespoke effects
+
+- Status: accepted
+- Choice: C — small shared archetype set for MVP, extensible toward unique late-game behaviour
+- Accepted requirement: MVP power ammo uses a deliberately small set of approximately three or four polished empowerment archetypes, such as overcharge, fragmentation or explosive effect, piercing, rapid surge, homing, or chaining behaviour.
+- Weapon rule: Individual weapons tune or modestly reinterpret their assigned archetype so shared implementation does not erase weapon identity.
+- Scope rule: Do not double the complete weapon-design burden by requiring a bespoke alternate attack for every MVP weapon.
+- Extension rule: Iconic, complex, or late-game weapons may receive fully bespoke empowered-fire behaviours after the foundation is proven.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-088 — Power ammo replaces normal-ammo consumption while empowered
+
+- Status: accepted
+- Choice: A — empowered fire consumes only power ammunition
+- Accepted requirement: While the power modifier is active, eligible fire consumes the shared power-ammo pool instead of also draining normal ammunition. Releasing the modifier returns consumption to the normal-ammo pool.
+- Clarity rule: Only one ammunition pool is actively consumed by a shot at a time, keeping HUD feedback and mental accounting straightforward.
+- Depletion rule: If power ammo reaches zero, the weapon automatically and clearly falls back to normal fire rather than becoming unable to shoot or consuming both pools unexpectedly.
+- Balance rule: Power-ammo costs remain weapon-specific so particularly strong empowered attacks may consume several units or drain the pool rapidly.
+- Superseded in part by: D-093 makes normal fire unlimited; D-096 gives each weapon a separate power bank while preserving automatic normal-fire fallback.
+- Source: guided Product Discovery recovery
+
+### D-089 — Scarce but regularly usable power ammunition
+
+- Status: accepted
+- Choice: B — several meaningful empowered bursts per checkpoint section
+- Accepted requirement: A typical player should find enough power ammunition to use empowered fire several times during each checkpoint section rather than treating it as a once-per-level emergency resource.
+- Reward rule: Exploration, secrets, optional objectives, difficult encounters, bosses, and eligible physical shops may provide additional power ammo, rewarding mastery without making it the default firing mode.
+- Hoarding rule: Supply and encounter design should encourage confident use instead of teaching players to save every unit indefinitely.
+- Difficulty rule: Accessible modes may provide more frequent use, while extreme modes may make each burst significantly more precious.
+- Completion rule: Encounters remain completable with ordinary ammunition even when the player spends power ammo inefficiently or arrives without it.
+- Reinterpreted by: D-096 applies scarcity and supply to separate per-weapon banks rather than one shared pool.
+- Source: guided Product Discovery recovery
+
+### D-090 — Capped persistent power-ammo reserve with authored minimums
+
+- Status: accepted
+- Choice: C — limited carry-over plus a guaranteed per-level starting floor
+- Accepted requirement: Unused power ammunition persists between ordinary campaign level attempts only up to a relatively small profile-wide storage cap. This preserves the value of pickups without allowing unlimited stockpiling through easy-level farming.
+- Starting rule: Each level and ruleset defines an authored minimum starting amount. At attempt start, the player receives whichever is higher: the carried capped reserve or that authored minimum, without duplicating or permanently generating additional reserve through repeated restarts.
+- Failure rule: Remaining carried power ammo may survive failed or abandoned attempts within the cap, subject to atomic save handling that prevents rollback or restart duplication.
+- Excess rule: Power ammo above the cap cannot create an ever-growing reserve. Any later conversion or overflow reward must be minor, bounded, and non-exploitable rather than a second farming economy.
+- Competitive rule: Verified challenge and speedrun categories may use a fixed authored starting amount and ignore profile carry-over when fair comparison requires it.
+- Balance rule: Required encounters must remain completable with the guaranteed minimum or with no power ammo where the ruleset explicitly allows that condition.
+- Reinterpreted by: D-096 requires separate weapon banks; exact ownership, carry-over, and authored-minimum mapping across banks remains open for later discovery.
+- Source: guided Product Discovery recovery
+
+### D-091 — Non-pausing normal-ammo quick-buy
+
+- Status: accepted, later superseded
+- Choice: B — dedicated fixed-bundle quick-buy action
+- Accepted requirement at time of decision: A dedicated non-pausing action would buy a clearly priced fixed normal-ammo bundle, with visible HUD preview, anti-double-input cooldown, and accessible hold-to-confirm or prompt options.
+- Platform rule: The interaction was required to work consistently in solo play, later co-op, gamepad, and Android without pausing the world.
+- Superseded by: D-093 removes normal-ammo depletion and therefore removes the quick-buy action entirely.
+- Source: guided Product Discovery recovery
+
+### D-092 — Free normal ammo and non-purchasable power ammo
+
+- Status: accepted, later superseded in part
+- Choice: custom — normal ammunition free; power ammunition earned rather than purchased
+- Accepted requirement at time of decision: Replenishing normal ammunition would not spend persistent currency. Power ammunition would remain a separate gameplay-earned resource.
+- Economy rule: Persistent currency should remain focused on weapons, rerolls, respecs, and other meaningful progression choices rather than paying to retain the ability to shoot.
+- Superseded by: D-093 removes normal ammunition as a depleting resource entirely. D-096 reopens whether power ammo may eventually be purchased anywhere, so the non-purchasable conclusion is no longer final.
+- Source: guided Product Discovery recovery
+
+### D-093 — Unlimited frictionless normal fire
+
+- Status: accepted
+- Choice: custom — shooting is a permanent core ability, not a consumable privilege
+- Accepted requirement: Ordinary normal fire cannot run out. There is no normal-ammo counter, purchase, pickup dependency, refill action, reload tax, cooldown refill, or regeneration wait required merely to keep shooting.
+- Combat rule: When a weapon is otherwise ready under its authored firing model, the player may always use its normal fire. Normal shooting must never be disabled because a consumable pool reached zero.
+- Power rule: Power ammo remains a separate scarce enhancement resource. If a weapon lacks power ammo, it immediately continues or falls back to unlimited normal fire.
+- Balance rule: Sustained damage is controlled by firing cadence, heat, spread, recoil, charge, movement trade-offs, recovery states, encounter design, and weapon balance rather than ordinary-ammo starvation.
+- Supersedes: normal-ammo portions of D-083, D-084, D-085, D-088, D-091, and D-092.
+- Source: guided Product Discovery recovery
+
+### D-094 — Small set of weapon-specific firing models
+
+- Status: accepted
+- Choice: C — several clear firing archetypes instead of one universal restriction
+- Accepted requirement: Unlimited normal fire uses a deliberately small, readable set of weapon-specific rhythms such as continuous fire with spread or recoil growth, heat and venting, charge-and-release, burst cadence, or sustained beams with mobility or recovery trade-offs.
+- Identity rule: Weapons may differ meaningfully without every weapon requiring a bespoke simulation or every weapon sharing the same overheat rule.
+- Availability rule: Ordinary play should avoid states where all four mounted weapons are simultaneously unavailable for long periods. Independent recovery and mixed rhythms should keep the mech capable of firing.
+- Scope rule: Keep the MVP archetype count compact and polish feel, feedback, and balance before expanding.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-095 — All four mounted weapons fire concurrently
+
+- Status: accepted
+- Choice: custom — no active weapon switching during combat
+- Accepted requirement: The mech equips four weapons, and one normal-fire command activates all four mounted weapons that are currently ready. There is no single active weapon that the player cycles through during ordinary combat.
+- Independence rule: Each mounted weapon independently tracks cadence, heat, charge, bursts, recoil, recovery, and temporary unavailability. One unavailable weapon never prevents the other three from firing.
+- Loadout rule: Checkpoints and shops still control which four weapons are installed under D-081.
+- Interpretation rule: D-082’s holstered recovery concept becomes independent mounted-weapon recovery while the full array remains active rather than literal holstering.
+- Readability rule: HUD, audio, and effects must communicate four independent states without overwhelming the player.
+- Supersedes: any assumption in D-081 or D-082 that combat involves switching one active weapon.
+- Source: guided Product Discovery recovery
+
+### D-096 — Simultaneous four-weapon empowerment with separate banks
+
+- Status: accepted, corrected before persistence
+- Choice: custom — power mode empowers every mounted weapon, each from its own bank
+- Accepted requirement: Holding the power-ammo modifier attempts to empower all four mounted weapons simultaneously. Every weapon has its own independent power-ammo bank and consumes only from that bank according to its authored empowered-fire cost.
+- Depletion rule: A weapon with an empty power bank continues unlimited normal fire while other weapons with remaining power ammo stay empowered. Empty banks never disable normal shooting or cancel empowerment for the other mounts.
+- Feedback rule: The HUD must show each weapon’s bank and empowered state clearly enough that the player can understand mixed depletion during the same burst.
+- Open economy question: The earlier prohibition on buying power ammo is reopened. Whether, where, and under what limits power ammo may be purchased will be decided later after surrounding combat behaviours are clearer.
+- Persistence question: D-090’s capped carry-over direction remains, but exact bank ownership across weapon instances, slots, loadout changes, and authored starting minimums remains open.
+- Supersedes: the shared-power-pool portions of D-083, D-088, D-089, and D-090; the fixed non-purchasable conclusion in D-085 and D-092 is reopened rather than replaced by a purchase rule.
+- Source: guided Product Discovery recovery
+
+### D-097 — Shared aimed point for all four weapons
+
+- Status: accepted
+- Choice: B — individual mounts converge on one player-controlled aim point
+- Accepted requirement: The player controls one cursor or aim point. Projectiles originate from their individual weapon mounts and converge toward that common point while preserving each weapon’s spread, projectile speed, range, beam, homing, and other authored behaviour.
+- Geometry rule: Very close targets and wide mount spacing require safeguards against absurd crossing angles, self-obstruction, or obvious misses caused only by visual mounting geometry.
+- Control rule: Manual aiming remains the default MVP control model and the basis for deterministic mastery.
+- Post-MVP direction: Optional aim assistance or limited auto-targeting may be explored later, especially for Android and accessibility, without replacing manual aiming by default.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-098 — Independent firing cadence under one trigger
+
+- Status: accepted
+- Choice: A — every mounted weapon follows its own rhythm
+- Accepted requirement: Holding the fire command activates the complete four-weapon array. Each weapon fires whenever its own cooldown, burst, charge, heat, vent, recovery, and readiness state permits rather than waiting for synchronized volleys.
+- Independence rule: Fast weapons continue operating while slower or temporarily unavailable weapons recover.
+- Build rule: Mixed-rate loadouts remain viable and do not require matching cadence to avoid wasting output.
+- Presentation rule: Effects and audio need prioritization, ducking, and legibility rules so four independent weapons remain exciting rather than becoming unreadable audiovisual noise.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-099 — Weapon-specific movement effects with a combined cap
+
+- Status: accepted
+- Choice: B — selected heavy weapons influence handling without universal slowdown
+- Accepted requirement: Most ordinary weapons impose little or no movement penalty. Authored heavy cannons, charged weapons, sustained beams, recoil-driven guns, or exceptional attacks may alter speed, acceleration, momentum, or pushback while firing.
+- Stacking rule: Effects from four simultaneous weapons combine under a strict cap that prevents accidental near-immobility, control loss, or a loadout becoming unusable simply because several heavy weapons fire together.
+- Readability rule: Movement effects must be predictable from weapon information and clearly visible in play rather than feeling like random controller lag.
+- Difficulty rule: Difficulty modes do not secretly change a weapon’s fundamental handling penalty; explicit challenge modifiers may do so only when clearly declared.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-100 — Signature regenerating directional thruster burst
+
+- Status: accepted
+- Choice: C — physical boost movement as a defining game-feel pillar
+- Accepted requirement: The mech has one or more regenerating directional thruster bursts that rapidly displace it according to player input. The move is intended to become one of the game’s signature, addictive actions and must receive first-class prototyping, tuning, audiovisual feedback, and test attention.
+- Skill rule: The burst primarily succeeds through actual movement, timing, path selection, and momentum control rather than relying on long universal invulnerability by default.
+- Combat rule: A burst may break or counteract selected recoil, slowdown, or commitment effects when explicitly authored, supporting aggressive repositioning and escape without erasing weapon identity.
+- Mastery rule: Advanced players should be able to use boosts for dodging, pursuit, routing, room traversal, animation or recovery optimization, and speedrunning while the baseline remains understandable to newcomers.
+- Accessibility rule: Easier modes may offer faster recharge, steering assistance, clearer trajectory preview, or a small forgiveness window. The core control and spatial result must remain recognizable across difficulties.
+- Platform rule: The move must feel responsive on keyboard, gamepad, and later Android, with reliable collision handling and no camera behaviour that creates nausea or loss of orientation.
+- MVP priority: Thruster feel is a vertical-slice acceptance criterion, not a polish task deferred until the end.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+## Guided intake presentation preference
+
+- Place the agent recommendation after all A/B/C options, at the end of each decision card.
+
+## Next discovery state
+
+Continue the core-experience recovery by deciding the thruster burst’s charge and regeneration model.
+
+## Revision rules
+
+- Never rewrite history silently.
+- Mark changed decisions as superseded and add a new entry.
+- Do not record unchosen options as requirements.
+- Keep reconstructed decisions unverified until confirmed.
+- Product Discovery decisions may be batch-persisted every ten questions when explicitly requested by the user; the next planned batch boundary is D-110.

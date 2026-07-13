@@ -1,0 +1,120 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-195-D-200",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-195",
+      "topic": "shared_room_completion_across_local_instances",
+      "answer": "hybrid_personal_resolution_with_one_clear_shared_progress",
+      "constraints": [
+        "The first valid local-instance clear marks the room globally complete and unlocks coarse shared doors map access and teleports",
+        "Grant the room's one-time major reward to every eligible connected player including life-exhausted spectators without duplicate granting",
+        "Players already fighting in another local instance may finish for remaining personal ordinary loot or withdraw",
+        "Personal enemies pickups unsecured loot deaths lives banking and immediate feedback resolve locally",
+        "A local death or withdrawal cannot relock globally completed progress",
+        "Prevent farming duplicate major rewards and permanent durable-state disagreement",
+        "Allow future deep shared-objective rooms to use stricter synchronization separately"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-196",
+      "topic": "entry_into_already_globally_completed_room",
+      "answer": "new_entries_find_room_permanently_clear_with_mirrored_non_xp_reward_events",
+      "constraints": [
+        "After the first valid global clear non-participants cannot start a new combat instance in that room during the same run",
+        "Players already inside an active instance may still finish or withdraw under D-195",
+        "Non-participants may miss personal XP because the globally cleared room does not replay",
+        "Qualifying non-XP events such as strongbox drops create matching personal reward events for other eligible players",
+        "Mirrored rewards remain personally owned and follow unsecured-loot death-loss banking deterministic grant and save rules",
+        "Respawn teleport reconnect and later entry preserve global room completion",
+        "Each eligible player may receive the mirrored reward event at most once"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-197",
+      "topic": "mirrored_non_xp_reward_roll_identity",
+      "answer": "fully_independent_personal_reward_rolls",
+      "constraints": [
+        "Each eligible player independently rolls the complete reward including strongbox tier and eventual contents",
+        "Use shared mission difficulty and challenge settings plus only the reward owner's account-level eligibility",
+        "Never let teammate level gear performance progression or reward result alter another player's odds",
+        "Derive a unique deterministic personal seed from the shared event and stable player identity",
+        "Allow players to receive different tiers and items from the same event",
+        "Keep every result personal and subject to owner-specific pickup banking death-loss and persistence rules"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-198",
+      "topic": "physical_delivery_and_pickup_of_mirrored_rewards",
+      "answer": "physical_personal_drops_at_original_location_with_owner_pickup",
+      "constraints": [
+        "Create each eligible player's personal physical reward at the original event location",
+        "Require the owning player to reach and collect the drop",
+        "Do not automatically secure or permanently grant the reward merely because the player was eligible",
+        "Do not allow other players to steal consume or redirect an owned personal drop",
+        "Preserve normal unsecured-loot and banking risk after collection",
+        "A future forced-rendezvous system may relocate or carry all uncollected boxes belonging to a teleported player",
+        "Defer exact spectator geometry and relocated-drop presentation rules to co-op implementation"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-199",
+      "topic": "forced_coop_rendezvous_trigger",
+      "answer": "party_vote_after_readiness_window_at_valid_transitions",
+      "constraints": [
+        "Allow ready players to initiate a visible regroup vote or countdown at authored major transitions",
+        "Warn separated players and give them a short collection or preparation window",
+        "Do not permit unrestricted forced teleporting as a combat escape",
+        "Transfer or safely relocate the teleported player's remaining owned strongboxes",
+        "Prevent one idle or malicious player from blocking progression indefinitely",
+        "Prevent one impatient player from arbitrarily teleporting the party",
+        "Treat vote threshold countdown combat cancellation leader privileges and disconnect handling as playtest variables"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-200",
+      "topic": "disconnect_protection_for_owned_physical_drops",
+      "answer": "temporary_reconnect_reservation_with_serious_validation",
+      "constraints": [
+        "Reserve an eligible disconnected player's uncollected physical drops for a bounded reconnect grace period",
+        "Do not allow other players to steal or claim reserved drops",
+        "Restore normal physical pickup responsibility when the owner reconnects within the grace period",
+        "Move reserved drops through the protected destination flow if forced rendezvous occurs during disconnection",
+        "Allow explicit session departure or grace-period expiry to forfeit the uncollected reward under the final policy",
+        "Use stable event and owner identifiers plus atomic transitions to prevent duplicate grants",
+        "Seriously test timeout boundaries repeated reconnects crashes host migration death spectator state rendezvous save interruption packet loss and intentional disconnect abuse",
+        "Leave exact grace-period duration to prototypes and realistic network testing"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Exact reconnect grace-period duration and forfeiture messaging",
+    "Spectator pickup or protected-transfer behavior for physical personal rewards",
+    "Vote threshold and countdown tuning for forced rendezvous",
+    "Host-migration behavior while rewards are reserved or in destination transfer",
+    "Unity relay and networking package selection",
+    "Exact client trust validation and anti-cheat boundary",
+    "Cross-region latency jitter and packet-loss acceptance thresholds",
+    "Future shared-objective synchronization beyond the first co-op MVP"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-201",
+    "topic": "vertical_slice_proof_gate",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting what the one-level internal vertical slice must prove before broader content production begins: basic feature completeness; exceptional core movement and combat feel plus repeat-run desire even with temporary content; or a staged hybrid gate requiring both a fun repeated-play benchmark and one thin end-to-end production loop. Preserve the one-level automated weapons factory slice, six to eight base weapons, four or five ordinary enemy roles plus an upgraded droid climax, minimal real strongbox and randomized shop loop, Unity C# architecture, Windows-first offline play, deterministic replay and difficulty direction, solo-led AI-assisted production, and the rule that exact coefficients remain playtest variables. Include kill criteria, replay sessions, external testers, content polish, placeholder tolerance, performance stability, save reliability, instrumentation, scope expansion risk, and what may remain deferred. Put the recommendation after all options at the end of the card. Begin a new persistence batch D-201 through D-210 unless the user changes the cadence or requests a handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-200",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-210"
+  }
+}

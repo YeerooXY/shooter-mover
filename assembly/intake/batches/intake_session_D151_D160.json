@@ -1,0 +1,161 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-151-D-160",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-151",
+      "topic": "internal_mvp_production_team_and_participation_model",
+      "answer": "one_human_lead_with_ai_agents_and_selective_specialists",
+      "constraints": [
+        "Human lead retains final product code asset scope and integration authority",
+        "Use AI agents for bounded planning implementation test documentation tooling and content tasks",
+        "Allow selective specialist outsourcing for art audio music animation or similar needs",
+        "Persist operational knowledge and decisions in the repository"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-152",
+      "topic": "ai_agent_parallelism",
+      "answer": "four_or_more_parallel_agents",
+      "constraints": [
+        "Support aggressive concurrency only for independently owned tasks",
+        "Expose dependencies file ownership interfaces and acceptance criteria before work begins",
+        "Keep review and integration load manageable for the solo lead",
+        "Do not use parallelism to justify overlapping speculative implementations"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-153",
+      "topic": "parallel_agent_integration_model",
+      "answer": "isolated_task_branches_with_interface_first_contracts",
+      "constraints": [
+        "Give every agent a narrow branch scope owned modules dependencies interfaces and acceptance tests",
+        "Review and merge tasks individually through controlled integration",
+        "Avoid concurrent edits to the same Unity serialized assets unless explicitly sequenced",
+        "Require reproducible evidence for acceptance"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-154",
+      "topic": "parallel_codebase_ownership_structure",
+      "answer": "gameplay_domain_modules",
+      "constraints": [
+        "Organize ownership around player weapons enemies levels rewards menus and shared foundations",
+        "Prefer tasks that remain inside one bounded domain",
+        "Govern cross-domain damage item event save and content-reference contracts explicitly",
+        "Validate domains through playable vertical integrations"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-155",
+      "topic": "game_engine_and_primary_language",
+      "answer": "unity_with_csharp",
+      "supersedes": "godot_4_with_statically_typed_gdscript",
+      "constraints": [
+        "Build the Windows-first internal MVP in Unity with C#",
+        "Preserve a credible future Android export path without implementing Android now",
+        "Prefer project-owned C# contracts over unnecessary proprietary package coupling",
+        "Do not adopt DOTS or a custom engine without measured need"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-156",
+      "topic": "unity_gameplay_architecture",
+      "answer": "hybrid_plain_csharp_domain_core_and_unity_adapters",
+      "constraints": [
+        "Keep important gameplay rules and mutable domain state in plain testable C# where practical",
+        "Use Unity components for input physics rendering animation audio and scene lifecycle",
+        "Avoid implicit scene searches lifecycle coupling and conflicting authoritative state",
+        "Leave a clean later co-op adaptation path without implementing multiplayer now"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-157",
+      "topic": "unity_content_authoring_model",
+      "answer": "scriptableobject_definitions_with_separate_runtime_state",
+      "constraints": [
+        "Use typed ScriptableObjects for immutable weapon enemy loot encounter and difficulty definitions",
+        "Keep mutable runtime state in plain C# objects",
+        "Provide stable IDs reference conventions and validation",
+        "Keep serialized definition assets small and domain-owned",
+        "Defer external modding data pipelines until required"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-158",
+      "topic": "unity_2d_rendering_pipeline",
+      "answer": "urp_2d_lighting_with_normal_mapped_sprites",
+      "constraints": [
+        "Use URP 2D lights sprite normal maps shadows emissive effects and reactive combat lighting",
+        "Keep gameplay readability independent of dynamic light availability",
+        "Integrate normal-map production with the offline-3D sprite pipeline",
+        "Define performance budgets and fallback quality for future Android",
+        "Keep runtime presentation fully two-dimensional"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-159",
+      "topic": "unity_scene_and_prefab_structure",
+      "answer": "additive_scenes_with_modular_prefabs",
+      "constraints": [
+        "Separate persistent systems UI level geometry lighting encounters and focused tests",
+        "Assign explicit temporary ownership of every edited serialized asset",
+        "Use explicit cross-scene initialization and references",
+        "Support focused verification scenes",
+        "Preserve handcrafted visual authoring rather than code-generating the level"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-160",
+      "topic": "agent_task_validation_standard",
+      "answer": "layered_automated_tests_build_validation_and_playable_proof",
+      "constraints": [
+        "Use plain-C# unit tests for domain rules where applicable",
+        "Use targeted Unity tests for engine integration",
+        "Require automated project or build validation",
+        "Require a playable proof or precise reproducible procedure for user-visible behavior",
+        "Reserve experiential judgement for human review",
+        "Match test depth to task risk and add practical regression coverage"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Windows MVP keyboard mouse gamepad and rebinding baseline",
+    "Accessibility baseline beyond input rebinding",
+    "Unity version package pinning and upgrade policy",
+    "Source asset and generated sprite storage policy",
+    "Offline 3D modeling rigging rendering and sprite-export toolchain",
+    "Exact first-level zone and checkpoint structure",
+    "Exact enemy and upgraded-droid designs",
+    "Exact six-to-eight base weapon roster",
+    "Minimal strongbox shop currency inventory and duplicate handling",
+    "Audio music voice and localization production boundary",
+    "Performance budgets for Windows and future Android",
+    "Save format migration and compatibility policy",
+    "CI provider and automated Unity licensing setup"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-161",
+    "topic": "windows_mvp_input_and_rebinding_baseline",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the Windows-first internal MVP supports keyboard and mouse only, keyboard and mouse plus gamepad with fully rebindable actions, or keyboard mouse gamepad and an early touch-control abstraction for future Android. Preserve Unity with C#, the hybrid domain-core architecture, four simultaneously equipped weapons, directional thruster burst, shallow angled top-down flat-plane play, permanent offline play, Windows-first delivery, and future Android support. Include aiming precision, twin-stick suitability, accessibility, rebinding, UI prompt switching, test burden, Input System architecture, future touch adaptation, scope cost, and risk of delaying mobile-specific work. Put the recommendation after all A/B/C options at the end of the card. Queue D-161 through D-170 and persist at D-170 unless the user changes the batching rule or requests a context handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-160",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-170"
+  }
+}
