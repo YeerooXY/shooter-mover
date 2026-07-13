@@ -1,1 +1,799 @@
-{"schema_version":"0.1.0","batch_id":"unity-foundation","source_plan_path":"assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md","tasks":[{"id":"UF-001","title":"Pin the Unity LTS editor baseline","summary":"Create the minimal Unity project-version declaration and a human-readable editor installation record.","objective":"Select one supported Unity LTS editor version, record its exact revision and required Windows modules, and make that version the only accepted editor baseline for this planning run.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"ready","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["ProjectSettings/ProjectVersion.txt","docs/toolchain/UNITY_BASELINE.md"],"depends_on":[],"blocks":["UF-002","UF-003"],"inputs":["assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md","assembly/planning_runs/shooter-mover-v1/POLICIES.md","Consumed contracts: accepted planning run shooter-mover-v1; no gameplay contract."],"outputs":["ProjectSettings/ProjectVersion.txt","docs/toolchain/UNITY_BASELINE.md"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: None.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert ProjectVersion.txt and UNITY_BASELINE.md together; do not leave a partially changed editor declaration.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["ProjectVersion.txt contains one exact Unity LTS editor revision.","The baseline document records editor revision, Unity Hub modules, supported OS, install verification, and upgrade isolation policy.","No preview, beta, mobile, networking, analytics, storefront, or remote-service package is implied by the editor choice."],"verification":["Automated: Parse ProjectVersion.txt and assert one non-empty m_EditorVersion value. Repository scan confirms no second project-version declaration exists.","Manual/playable: Open the repository through Unity Hub using the pinned editor and confirm the project reaches the editor without automatic version migration. Reviewer confirms the documented modules are sufficient for Windows development."],"proof_required":["ProjectVersion.txt diff","UNITY_BASELINE.md"],"edge_cases":["Unity Hub has a newer patch available.","The exact editor revision is temporarily unavailable on one machine."],"non_goals":["Do not add gameplay code.","Do not configure packages beyond what is necessary to identify the editor baseline."],"estimated_size":"S","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.35 focused lead day(s)."},{"id":"UF-002","title":"Pin the approved Unity package set","summary":"Create the package manifest, package lock, and dependency inventory for the minimal fully 2D MVP baseline.","objective":"Pin only the approved Unity LTS-compatible packages required for URP 2D, Input System, Test Framework, and editor/build operation.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Packages/manifest.json","Packages/packages-lock.json","docs/toolchain/DEPENDENCY_LOCK.md"],"depends_on":["UF-001"],"blocks":["UF-003","UF-004","UF-010"],"inputs":["UF-001 pinned editor baseline","assembly/planning_runs/shooter-mover-v1/POLICIES.md","Consumed contracts: accepted dependency policy v1 from shooter-mover-v1."],"outputs":["Packages/manifest.json","Packages/packages-lock.json","docs/toolchain/DEPENDENCY_LOCK.md"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: None.","Save-schema impact: None.","Registry impact: None.","Rollback: Restore manifest, lock, and inventory as one unit; rerun package resolution after rollback.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Manifest and lock file resolve without floating versions.","Dependency inventory records source, version, purpose, license, owner, update policy, risk, and removal path for each direct package.","URP 2D, Input System, and Test Framework are present; prohibited SDK categories are absent."],"verification":["Automated: Unity package resolution completes with no unresolved package. Static validation rejects wildcard, branch-head, or preview package versions. Repository scan confirms no analytics, crash SaaS, ads, networking, relay, mobile, account, or storefront SDK.","Manual/playable: Open Package Manager and confirm the locked set resolves without prompting for upgrades. Reviewer verifies every direct dependency has an inventory entry."],"proof_required":["Resolved package list","Package-lock fingerprint"],"edge_cases":["Transitive dependency versions differ across platforms.","Unity silently rewrites the lock after first open."],"non_goals":["Do not add optional convenience packages.","Do not introduce third-party gameplay frameworks."],"estimated_size":"M","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.45 focused lead day(s)."},{"id":"UF-003","title":"Configure the fully 2D project baseline","summary":"Set project, graphics, quality, physics, and renderer defaults for a planar URP 2D runtime.","objective":"Establish a 2D-only runtime configuration with deterministic quality profiles that cannot alter gameplay rules.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["ProjectSettings/ProjectSettings.asset","ProjectSettings/GraphicsSettings.asset","ProjectSettings/QualitySettings.asset","ProjectSettings/Physics2DSettings.asset","Assets/ShooterMover/Settings/Rendering/"],"depends_on":["UF-001","UF-002"],"blocks":["UF-010"],"inputs":["UF-001 editor baseline","UF-002 package lock","Consumed contracts: accepted fully-2D and performance boundaries from shooter-mover-v1."],"outputs":["Pinned 2D project settings","URP 2D renderer asset and pipeline asset under Assets/ShooterMover/Settings/Rendering/"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: ProjectSettings.asset, GraphicsSettings.asset, QualitySettings.asset, Physics2DSettings.asset, and the exact URP 2D pipeline/renderer assets created by this task. No scene or prefab ownership.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert the owned settings and renderer assets together; reopen with UF-002 package lock to confirm the prior empty baseline.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Default renderer is URP 2D and the project launches without a 3D camera or 3D physics dependency.","Physics settings use 2D configuration only for runtime collision.","Quality profiles affect rendering cost only and do not encode simulation, reward, difficulty, collision, or progression changes."],"verification":["Automated: Unity batchmode project import completes without graphics-setting errors. Static scan confirms runtime assemblies do not reference UnityEngine.Physics or 3D collider types at this stage.","Manual/playable: Open an empty scene and confirm the configured 2D renderer is active. Reviewer switches quality profiles and confirms only visual settings differ."],"proof_required":["Project settings diff","Renderer/pipeline asset paths"],"edge_cases":["Headless or batchmode import has no GPU.","A machine lacks the preferred graphics API."],"non_goals":["Do not author gameplay cameras, lighting, sprites, or effects.","Do not tune performance budgets yet."],"estimated_size":"M","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.45 focused lead day(s)."},{"id":"UF-004","title":"Create the inward assembly-definition skeleton","summary":"Create compilation boundaries for Domain, Contracts, Application, UnityAdapters, Bootstrap, Presentation, Content, and Tests.","objective":"Encode the accepted inward-only dependency direction so later agents cannot accidentally reference Unity from the plain-C# domain core.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Assets/ShooterMover/Runtime/Domain/","Assets/ShooterMover/Runtime/Contracts/","Assets/ShooterMover/Runtime/Application/","Assets/ShooterMover/Runtime/UnityAdapters/","Assets/ShooterMover/Runtime/Bootstrap/","Assets/ShooterMover/Runtime/Presentation/","Assets/ShooterMover/Content/Definitions/","Assets/ShooterMover/Tests/"],"depends_on":["UF-002"],"blocks":["UF-005","UF-006","UF-009","CS-001"],"inputs":["assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md","UF-002 package lock","Consumed contracts: architecture assembly-direction contract v1 from shooter-mover-v1."],"outputs":["Assembly definition files for each accepted layer","docs/architecture/ASSEMBLY_DEPENDENCIES.md"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: Only .asmdef and associated .meta files listed by this task; no scenes, prefabs, ScriptableObjects, or project settings.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert all assembly-definition files as one dependency-graph change and verify the repository returns to the prior compile state.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Domain assembly compiles without UnityEngine references.","Contracts/Application may reference Domain but not UnityAdapters or Presentation.","UnityAdapters and Presentation point inward; Bootstrap composes outward layers."],"verification":["Automated: Unity script compilation succeeds with empty marker types or no source files as appropriate. A dependency-graph validation script reports no forbidden outward or cyclic references.","Manual/playable: Reviewer inspects the assembly graph in Unity and confirms the documented direction. A deliberate temporary forbidden reference is detected by the validation script, then removed."],"proof_required":["Assembly graph report","Compilation log"],"edge_cases":["Unity cannot compile an entirely empty assembly folder.","Editor-only tests accidentally reference player-only assemblies."],"non_goals":["Do not define gameplay interfaces or DTOs; Contract Steward owns them.","Do not place mutable runtime state in ScriptableObjects."],"estimated_size":"M","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.45 focused lead day(s)."},{"id":"UF-005","title":"Create the owned repository layout and file-ownership map","summary":"Materialize the accepted Unity/runtime/content/test directories and document exclusive ownership rules.","objective":"Give every later agent an explicit path boundary, including rules for Unity serialized assets and generated outputs.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Assets/ShooterMover/","tools/","docs/architecture/FILE_OWNERSHIP.md"],"depends_on":["UF-004"],"blocks":["CS-001","EH-001"],"inputs":["assembly/generated/repo_plan.json","assembly/generated/agent_prompts.json","UF-004 assembly skeleton"],"outputs":["Tracked directory markers or README files for accepted roots","docs/architecture/FILE_OWNERSHIP.md"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: No scene, prefab, or ScriptableObject. Ownership includes only directory marker .meta files created by Unity for the accepted roots.","Save-schema impact: None.","Registry impact: None.","Rollback: Remove only the directory markers and ownership document added here; never delete later files that may have appeared under those roots.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Every accepted root from repo_plan.json has a tracked location or documented creation rule.","The ownership map identifies exclusive owners for scenes, prefabs, ScriptableObjects, central tables, shared modules, generated registries, and tools.","Generated outputs are marked regenerate-only and never manual-merge targets."],"verification":["Automated: A repository-layout validator checks all required roots and reports unknown generated output locations. No two exclusive serialized-asset patterns are assigned concurrently in the ownership map.","Manual/playable: Reviewer can identify the owner and escalation rule for any sample path without guessing. Reviewer confirms at least four later agent lanes can work in disjoint paths after shared contracts."],"proof_required":["Layout validation output","FILE_OWNERSHIP.md"],"edge_cases":["Unity-generated .meta files appear for directory markers.","A content package needs a new subfolder later."],"non_goals":["Do not create gameplay or content definitions.","Do not assign implementation tasks or claims."],"estimated_size":"S","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.3 focused lead day(s)."},{"id":"UF-006","title":"Create the explicit bootstrap composition-root shell","summary":"Add a minimal bootstrap assembly entry point with deterministic service registration order and no scene searches.","objective":"Provide a compile-safe composition root that later application and adapter services can register through explicit code.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Assets/ShooterMover/Runtime/Bootstrap/"],"depends_on":["UF-004"],"blocks":["UF-007"],"inputs":["UF-004 assembly graph","assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md","Consumed contracts: bootstrap boundary v1 from accepted architecture; no gameplay service contracts yet."],"outputs":["Minimal bootstrap composition-root source","Bootstrap lifecycle documentation colocated with the source"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: None; source and documentation only.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert the bootstrap source and its tests; no scene asset is owned by this task.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Bootstrap startup and shutdown order are explicit and deterministic.","The shell compiles without FindObjectOfType, scene-name lookup, service locator globals, or implicit script execution ordering.","No gameplay, persistence, content, diagnostics, or UI service implementation is included."],"verification":["Automated: Edit-mode test constructs and disposes the empty composition root twice without retained registrations. Static scan rejects forbidden scene-search APIs inside Runtime/Bootstrap.","Manual/playable: Reviewer reads the lifecycle and can identify registration, start, stop, and disposal phases. Unity enters and exits play mode twice without duplicate bootstrap instances after UF-007 is complete."],"proof_required":["Bootstrap compile/test output","Lifecycle note"],"edge_cases":["Domain reload is disabled in editor settings.","Play mode is entered twice rapidly."],"non_goals":["Do not invent cross-lane service interfaces.","Do not implement a general dependency-injection framework."],"estimated_size":"M","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.45 focused lead day(s)."},{"id":"UF-007","title":"Create the single Bootstrap scene","summary":"Author the minimal scene that hosts only the explicit composition-root adapter.","objective":"Provide one deterministic startup scene that delegates service construction to UF-006 and owns no gameplay state.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity","Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity.meta","Assets/ShooterMover/Runtime/Bootstrap/Unity/"],"depends_on":["UF-006"],"blocks":["UF-008","UF-010"],"inputs":["UF-006 composition-root shell","Consumed contracts: bootstrap lifecycle v1 from UF-006."],"outputs":["Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity","Minimal Unity adapter component for invoking the composition root"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: Exclusive ownership of Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity and its .meta; no other task may edit this scene concurrently.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert Bootstrap.unity and its adapter together; restore the previous build scene list if it was changed by a dependent task.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Bootstrap.unity contains only the minimum camera/event-system/bootstrap objects justified by startup.","The scene owns no MissionRunState, rewards, inventory, room truth, content definitions, or mutable shared data.","Duplicate bootstrap creation is prevented deterministically."],"verification":["Automated: Play-mode test loads Bootstrap.unity twice and asserts one active composition root. Scene validation rejects unexpected root objects and missing bootstrap adapter.","Manual/playable: Enter play mode from Bootstrap.unity, exit, and repeat without errors or duplicate objects. Reviewer inspects the scene hierarchy and confirms it contains no gameplay content."],"proof_required":["Scene hierarchy snapshot","Play-mode test output"],"edge_cases":["Enter play mode with domain reload disabled.","Reload the scene additively by mistake."],"non_goals":["Do not add menu, arena, input, diagnostics, or gameplay objects.","Do not mark arbitrary objects DontDestroyOnLoad."],"estimated_size":"S","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.35 focused lead day(s)."},{"id":"UF-008","title":"Create the foundation smoke scene","summary":"Author a tiny non-gameplay scene used only to prove additive scene loading, unloading, and return to Bootstrap.","objective":"Create a deterministic smoke target without implementing the benchmark arena or short route.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity","Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity.meta","Assets/ShooterMover/TestSupport/Foundation/"],"depends_on":["UF-006","UF-007"],"blocks":["UF-009"],"inputs":["UF-006 composition root","UF-007 Bootstrap scene","Consumed contracts: bootstrap lifecycle v1; no room-projection contract yet."],"outputs":["Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity","Foundation smoke loader fixture"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: Exclusive ownership of Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity and its .meta.","Save-schema impact: None.","Registry impact: None.","Rollback: Delete/revert only FoundationSmoke and its fixture; Bootstrap must continue to open independently.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["The scene contains only a labeled 2D visual marker and smoke-test hooks.","Bootstrap can load and unload it additively without retained objects or errors.","The scene does not become the benchmark arena, a RoomDefinition owner, or a durable-state owner."],"verification":["Automated: Play-mode test executes load, unload, reload, and return-to-bootstrap sequence. Post-unload object count and registered-service count return to baseline.","Manual/playable: Reviewer launches Bootstrap, enters FoundationSmoke, returns, and repeats. Scene remains visually obvious enough to distinguish successful load from a blank/frozen frame."],"proof_required":["FoundationSmoke hierarchy snapshot","Load/unload test log"],"edge_cases":["Scene load is interrupted by exiting play mode.","Reload occurs before unload completion."],"non_goals":["Do not add gameplay input, movement, enemies, weapons, rewards, UI, or diagnostics.","Do not define the modular room contract."],"estimated_size":"S","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.35 focused lead day(s)."},{"id":"UF-009","title":"Add foundation edit-mode and play-mode smoke tests","summary":"Create baseline tests for assembly boundaries, bootstrap lifecycle, and additive scene cleanup.","objective":"Make the empty project foundations mechanically verifiable before shared contracts and gameplay begin.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["Assets/ShooterMover/Tests/EditMode/Foundation/","Assets/ShooterMover/Tests/PlayMode/Foundation/","Assets/ShooterMover/TestSupport/Foundation/"],"depends_on":["UF-004","UF-008"],"blocks":["EH-001"],"inputs":["UF-004 assembly graph","UF-006 bootstrap shell","UF-007 Bootstrap scene"],"outputs":["Foundation edit-mode tests","Foundation play-mode tests","Test assembly definitions where not already owned by UF-004"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: No new production serialized assets. Test fixtures may reference, but may not edit, Bootstrap.unity or FoundationSmoke.unity.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert the foundation test folders; production foundation remains intact and manually verifiable.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Tests cover forbidden assembly dependencies, bootstrap construction/disposal, duplicate prevention, scene load/unload, and retained-object checks.","Tests do not require gameplay code or content.","Failures produce actionable path/object details rather than generic timeouts."],"verification":["Automated: Unity Test Framework edit-mode suite passes. Unity Test Framework play-mode foundation suite passes in batchmode where supported.","Manual/playable: Run the same smoke flow once interactively and confirm test behavior matches editor behavior. Reviewer deliberately introduces one invalid dependency or duplicate bootstrap in a temporary local change and observes a failing test."],"proof_required":["Edit-mode XML or console result","Play-mode XML or console result"],"edge_cases":["Tests run with domain reload disabled.","Scene load timeout on slow clean import."],"non_goals":["Do not test movement, combat, mission state, rewards, or content registries.","Do not hide flaky behavior with retries."],"estimated_size":"M","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.45 focused lead day(s)."},{"id":"UF-010","title":"Create the deterministic Windows development-build baseline","summary":"Configure the scene list and a local build script for a reproducible Windows x86-64 smoke player.","objective":"Prove the pinned editor/package/settings/bootstrap combination can produce and launch a clean Windows player without game implementation.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["ProjectSettings/EditorBuildSettings.asset","tools/build/","docs/build/WINDOWS_BUILD.md"],"depends_on":["UF-002","UF-003","UF-007"],"blocks":["EH-001"],"inputs":["UF-001 editor baseline","UF-002 package lock","UF-003 2D settings"],"outputs":["Pinned EditorBuildSettings scene list","Local Windows build script","docs/build/WINDOWS_BUILD.md"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: Exclusive ownership of ProjectSettings/EditorBuildSettings.asset for this task; no scene content edits.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert EditorBuildSettings, build script, and documentation together; delete local ignored build output.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["Build index zero is Bootstrap.unity; FoundationSmoke is included only when explicitly justified for smoke testing.","Build script produces Windows x86-64 output into an ignored artifact directory and fails non-zero on compile/build errors.","Build instructions cover clean import, command, expected output, launch, and cleanup."],"verification":["Automated: Unity batchmode Windows development build succeeds from a clean project cache where infrastructure permits. Script verifies artifact files exist and records editor/package fingerprints.","Manual/playable: Launch the player, observe the Bootstrap-to-smoke flow, exit cleanly, and repeat. Reviewer confirms the build output directory is ignored and no binary artifact is committed."],"proof_required":["Build command output","Artifact file list and fingerprints"],"edge_cases":["Build path contains spaces.","Existing output directory is read-only or stale."],"non_goals":["Do not create release packaging or signing.","Do not add formal BuildIdentity/diagnostics features; the evidence agent owns those."],"estimated_size":"M","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.55 focused lead day(s)."},{"id":"UF-011","title":"Initialize the prototype-debt register","summary":"Create the required debt ledger and review rules before any implementation shortcut can be accepted.","objective":"Make temporary deviations visible, expiring, testable, and impossible to use for forbidden authority, persistence, ID, input, generated-file, accessibility, diagnostics, or asset-provenance shortcuts.","context":"Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?","owner_role":"Unity Foundation Builder","lane":"unity-foundation","repo_target":"YeerooXY/shooter-mover","status":"blocked","priority":"P0","milestone":"S1.0 Foundation and evidence harness","allowed_areas":["docs/architecture/PROTOTYPE_DEBT.md"],"depends_on":["UF-005"],"blocks":["CS-001","EH-001"],"inputs":["assembly/planning_runs/shooter-mover-v1/POLICIES.md","UF-005 ownership map","Consumed contracts: prototype-shortcut policy v1."],"outputs":["docs/architecture/PROTOTYPE_DEBT.md"],"implementation_notes":["Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.","Serialized ownership: None.","Save-schema impact: None.","Registry impact: None.","Rollback: Revert the empty register only if an equivalent accepted register exists elsewhere; never delete active debt history.","Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."],"acceptance_criteria":["The register template includes debt ID, paths/owner, reason/evidence question, preserved invariants, risk, detection tests, expiry milestone, removal condition, status, and review decision.","The document lists every never-acceptable debt category from the accepted policy.","The initial register contains no invented debt entries and explains how later tasks reference an entry."],"verification":["Automated: Markdown validation confirms required headings/fields exist. Repository scan can find debt IDs using one documented pattern.","Manual/playable: Reviewer walks through a hypothetical acceptable shortcut and a forbidden shortcut using the decision rules. Human lead confirms debt approval remains explicit and is not delegated silently."],"proof_required":["PROTOTYPE_DEBT.md","Validation output"],"edge_cases":["A task discovers debt after implementation has already started.","One shortcut affects multiple owners."],"non_goals":["Do not pre-authorize any shortcut.","Do not weaken the never-acceptable list."],"estimated_size":"S","risk_tags":["unity-baseline","shared-foundation","strong-review"],"handoff_notes":"One small revertible change; do not combine with gameplay or another serialized-asset owner.","notes":"Milestone-cap spend: 0.25 focused lead day(s)."}]}
+{
+  "schema_version": "0.1.0",
+  "batch_id": "unity-foundation",
+  "source_plan_path": "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+  "tasks": [
+    {
+      "id": "UF-001",
+      "title": "Pin the Unity LTS editor baseline",
+      "summary": "Create the minimal Unity project-version declaration and a human-readable editor installation record.",
+      "objective": "Select one supported Unity LTS editor version, record its exact revision and required Windows modules, and make that version the only accepted editor baseline for this planning run.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "ProjectSettings/ProjectVersion.txt",
+        "docs/toolchain/UNITY_BASELINE.md"
+      ],
+      "depends_on": [],
+      "blocks": [
+        "UF-002",
+        "UF-003"
+      ],
+      "inputs": [
+        "assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md",
+        "assembly/planning_runs/shooter-mover-v1/POLICIES.md",
+        "Consumed contracts: accepted planning run shooter-mover-v1; no gameplay contract."
+      ],
+      "outputs": [
+        "ProjectSettings/ProjectVersion.txt",
+        "docs/toolchain/UNITY_BASELINE.md"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: None.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert ProjectVersion.txt and UNITY_BASELINE.md together; do not leave a partially changed editor declaration.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "ProjectVersion.txt contains one exact Unity LTS editor revision.",
+        "The baseline document records editor revision, Unity Hub modules, supported OS, install verification, and upgrade isolation policy.",
+        "No preview, beta, mobile, networking, analytics, storefront, or remote-service package is implied by the editor choice."
+      ],
+      "verification": [
+        "Automated: Parse ProjectVersion.txt and assert one non-empty m_EditorVersion value. Repository scan confirms no second project-version declaration exists.",
+        "Manual/playable: Open the repository through Unity Hub using the pinned editor and confirm the project reaches the editor without automatic version migration. Reviewer confirms the documented modules are sufficient for Windows development."
+      ],
+      "proof_required": [
+        "ProjectVersion.txt diff",
+        "UNITY_BASELINE.md"
+      ],
+      "edge_cases": [
+        "Unity Hub has a newer patch available.",
+        "The exact editor revision is temporarily unavailable on one machine."
+      ],
+      "non_goals": [
+        "Do not add gameplay code.",
+        "Do not configure packages beyond what is necessary to identify the editor baseline."
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.35 focused lead day(s)."
+    },
+    {
+      "id": "UF-002",
+      "title": "Pin the approved Unity package set",
+      "summary": "Create the package manifest, package lock, and dependency inventory for the minimal fully 2D MVP baseline.",
+      "objective": "Pin only the approved Unity LTS-compatible packages required for URP 2D, Input System, Test Framework, and editor/build operation.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Packages/manifest.json",
+        "Packages/packages-lock.json",
+        "docs/toolchain/DEPENDENCY_LOCK.md"
+      ],
+      "depends_on": [
+        "UF-001"
+      ],
+      "blocks": [
+        "UF-003",
+        "UF-004",
+        "UF-010"
+      ],
+      "inputs": [
+        "UF-001 pinned editor baseline",
+        "assembly/planning_runs/shooter-mover-v1/POLICIES.md",
+        "Consumed contracts: accepted dependency policy v1 from shooter-mover-v1."
+      ],
+      "outputs": [
+        "Packages/manifest.json",
+        "Packages/packages-lock.json",
+        "docs/toolchain/DEPENDENCY_LOCK.md"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: None.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Restore manifest, lock, and inventory as one unit; rerun package resolution after rollback.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Manifest and lock file resolve without floating versions.",
+        "Dependency inventory records source, version, purpose, license, owner, update policy, risk, and removal path for each direct package.",
+        "URP 2D, Input System, and Test Framework are present; prohibited SDK categories are absent."
+      ],
+      "verification": [
+        "Automated: Unity package resolution completes with no unresolved package. Static validation rejects wildcard, branch-head, or preview package versions. Repository scan confirms no analytics, crash SaaS, ads, networking, relay, mobile, account, or storefront SDK.",
+        "Manual/playable: Open Package Manager and confirm the locked set resolves without prompting for upgrades. Reviewer verifies every direct dependency has an inventory entry."
+      ],
+      "proof_required": [
+        "Resolved package list",
+        "Package-lock fingerprint"
+      ],
+      "edge_cases": [
+        "Transitive dependency versions differ across platforms.",
+        "Unity silently rewrites the lock after first open."
+      ],
+      "non_goals": [
+        "Do not add optional convenience packages.",
+        "Do not introduce third-party gameplay frameworks."
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day(s)."
+    },
+    {
+      "id": "UF-003",
+      "title": "Configure the fully 2D project baseline",
+      "summary": "Set project, graphics, quality, physics, and renderer defaults for a planar URP 2D runtime.",
+      "objective": "Establish a 2D-only runtime configuration with deterministic quality profiles that cannot alter gameplay rules.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "ProjectSettings/ProjectSettings.asset",
+        "ProjectSettings/GraphicsSettings.asset",
+        "ProjectSettings/QualitySettings.asset",
+        "ProjectSettings/Physics2DSettings.asset",
+        "Assets/ShooterMover/Settings/Rendering/"
+      ],
+      "depends_on": [
+        "UF-001",
+        "UF-002"
+      ],
+      "blocks": [
+        "UF-010"
+      ],
+      "inputs": [
+        "UF-001 editor baseline",
+        "UF-002 package lock",
+        "Consumed contracts: accepted fully-2D and performance boundaries from shooter-mover-v1."
+      ],
+      "outputs": [
+        "Pinned 2D project settings",
+        "URP 2D renderer asset and pipeline asset under Assets/ShooterMover/Settings/Rendering/"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: ProjectSettings.asset, GraphicsSettings.asset, QualitySettings.asset, Physics2DSettings.asset, and the exact URP 2D pipeline/renderer assets created by this task. No scene or prefab ownership.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert the owned settings and renderer assets together; reopen with UF-002 package lock to confirm the prior empty baseline.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Default renderer is URP 2D and the project launches without a 3D camera or 3D physics dependency.",
+        "Physics settings use 2D configuration only for runtime collision.",
+        "Quality profiles affect rendering cost only and do not encode simulation, reward, difficulty, collision, or progression changes."
+      ],
+      "verification": [
+        "Automated: Unity batchmode project import completes without graphics-setting errors. Static scan confirms runtime assemblies do not reference UnityEngine.Physics or 3D collider types at this stage.",
+        "Manual/playable: Open an empty scene and confirm the configured 2D renderer is active. Reviewer switches quality profiles and confirms only visual settings differ."
+      ],
+      "proof_required": [
+        "Project settings diff",
+        "Renderer/pipeline asset paths"
+      ],
+      "edge_cases": [
+        "Headless or batchmode import has no GPU.",
+        "A machine lacks the preferred graphics API."
+      ],
+      "non_goals": [
+        "Do not author gameplay cameras, lighting, sprites, or effects.",
+        "Do not tune performance budgets yet."
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day(s)."
+    },
+    {
+      "id": "UF-004",
+      "title": "Create the inward assembly-definition skeleton",
+      "summary": "Create compilation boundaries for Domain, Contracts, Application, UnityAdapters, Bootstrap, Presentation, Content, and Tests.",
+      "objective": "Encode the accepted inward-only dependency direction so later agents cannot accidentally reference Unity from the plain-C# domain core.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Domain/ShooterMover.Domain.asmdef",
+        "Assets/ShooterMover/Runtime/Contracts/ShooterMover.Contracts.asmdef",
+        "Assets/ShooterMover/Runtime/Application/ShooterMover.Application.asmdef",
+        "Assets/ShooterMover/Runtime/UnityAdapters/ShooterMover.UnityAdapters.asmdef",
+        "Assets/ShooterMover/Runtime/Bootstrap/ShooterMover.Bootstrap.asmdef",
+        "Assets/ShooterMover/Runtime/Presentation/ShooterMover.Presentation.asmdef",
+        "Assets/ShooterMover/Content/Definitions/ShooterMover.Content.Definitions.asmdef",
+        "Assets/ShooterMover/Tests/EditMode/ShooterMover.Tests.EditMode.asmdef",
+        "Assets/ShooterMover/Tests/PlayMode/ShooterMover.Tests.PlayMode.asmdef",
+        "tools/validation/validate_unity_assembly_graph.py",
+        "docs/architecture/ASSEMBLY_DEPENDENCIES.md"
+      ],
+      "depends_on": [
+        "UF-002"
+      ],
+      "blocks": [
+        "UF-005",
+        "UF-006",
+        "UF-009",
+        "CS-001"
+      ],
+      "inputs": [
+        "assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md",
+        "UF-002 package lock",
+        "Consumed contracts: architecture assembly-direction contract v1 from shooter-mover-v1."
+      ],
+      "outputs": [
+        "Assembly definition files for each accepted layer",
+        "docs/architecture/ASSEMBLY_DEPENDENCIES.md"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: Only .asmdef and associated .meta files listed by this task; no scenes, prefabs, ScriptableObjects, or project settings.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert all assembly-definition files as one dependency-graph change and verify the repository returns to the prior compile state.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Domain assembly compiles without UnityEngine references.",
+        "Contracts/Application may reference Domain but not UnityAdapters or Presentation.",
+        "UnityAdapters and Presentation point inward; Bootstrap composes outward layers."
+      ],
+      "verification": [
+        "Automated: Unity script compilation succeeds with empty marker types or no source files as appropriate. A dependency-graph validation script reports no forbidden outward or cyclic references.",
+        "Manual/playable: Reviewer inspects the assembly graph in Unity and confirms the documented direction. A deliberate temporary forbidden reference is detected by the validation script, then removed."
+      ],
+      "proof_required": [
+        "Assembly graph report",
+        "Compilation log"
+      ],
+      "edge_cases": [
+        "Unity cannot compile an entirely empty assembly folder.",
+        "Editor-only tests accidentally reference player-only assemblies."
+      ],
+      "non_goals": [
+        "Do not define gameplay interfaces or DTOs; Contract Steward owns them.",
+        "Do not place mutable runtime state in ScriptableObjects."
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day(s)."
+    },
+    {
+      "id": "UF-005",
+      "title": "Create the owned repository layout and file-ownership map",
+      "summary": "Materialize the accepted Unity/runtime/content/test directories and document exclusive ownership rules.",
+      "objective": "Give every later agent an explicit path boundary, including rules for Unity serialized assets and generated outputs.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/README.md",
+        "tools/README.md",
+        "tools/validation/validate_repository_layout.py",
+        "docs/architecture/FILE_OWNERSHIP.md"
+      ],
+      "depends_on": [
+        "UF-004"
+      ],
+      "blocks": [
+        "CS-001",
+        "EH-001"
+      ],
+      "inputs": [
+        "assembly/generated/repo_plan.json",
+        "assembly/generated/agent_prompts.json",
+        "UF-004 assembly skeleton"
+      ],
+      "outputs": [
+        "Repository-root marker files for Assets/ShooterMover and tools",
+        "Repository-layout validation script",
+        "docs/architecture/FILE_OWNERSHIP.md"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: No scene, prefab, ScriptableObject, directory, or generated registry ownership. This task owns only its four explicit files.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Remove only the directory markers and ownership document added here; never delete later files that may have appeared under those roots.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Every accepted root from repo_plan.json has a tracked location or documented creation rule.",
+        "The ownership map identifies exclusive owners for scenes, prefabs, ScriptableObjects, central tables, shared modules, generated registries, and tools.",
+        "Generated outputs are marked regenerate-only and never manual-merge targets."
+      ],
+      "verification": [
+        "Automated: A repository-layout validator checks all required roots and reports unknown generated output locations. No two exclusive serialized-asset patterns are assigned concurrently in the ownership map.",
+        "Manual/playable: Reviewer can identify the owner and escalation rule for any sample path without guessing. Reviewer confirms at least four later agent lanes can work in disjoint paths after shared contracts."
+      ],
+      "proof_required": [
+        "Layout validation output",
+        "FILE_OWNERSHIP.md"
+      ],
+      "edge_cases": [
+        "Unity-generated .meta files appear for directory markers.",
+        "A content package needs a new subfolder later."
+      ],
+      "non_goals": [
+        "Do not create gameplay or content definitions.",
+        "Do not assign implementation tasks or claims."
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.3 focused lead day(s)."
+    },
+    {
+      "id": "UF-006",
+      "title": "Create the explicit bootstrap composition-root shell",
+      "summary": "Add a minimal bootstrap assembly entry point with deterministic service registration order and no scene searches.",
+      "objective": "Provide a compile-safe composition root that later application and adapter services can register through explicit code.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Bootstrap/BootstrapCompositionRoot.cs",
+        "Assets/ShooterMover/Runtime/Bootstrap/BOOTSTRAP_LIFECYCLE.md"
+      ],
+      "depends_on": [
+        "UF-004"
+      ],
+      "blocks": [
+        "UF-007"
+      ],
+      "inputs": [
+        "UF-004 assembly graph",
+        "assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md",
+        "Consumed contracts: bootstrap boundary v1 from accepted architecture; no gameplay service contracts yet."
+      ],
+      "outputs": [
+        "Minimal bootstrap composition-root source",
+        "Bootstrap lifecycle documentation colocated with the source"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: None; source and documentation only.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert the bootstrap source and lifecycle document; no scene or test asset is owned by this task.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Bootstrap startup and shutdown order are explicit and deterministic.",
+        "The shell compiles without FindObjectOfType, scene-name lookup, service locator globals, or implicit script execution ordering.",
+        "No gameplay, persistence, content, diagnostics, or UI service implementation is included."
+      ],
+      "verification": [
+        "Automated: Unity compilation succeeds and a static scan rejects forbidden scene-search APIs in BootstrapCompositionRoot.cs. UF-009 owns lifecycle construction/disposal tests.",
+        "Manual/playable: Reviewer reads the lifecycle and can identify registration, start, stop, and disposal phases. Unity enters and exits play mode twice without duplicate bootstrap instances after UF-007 is complete."
+      ],
+      "proof_required": [
+        "Bootstrap compile/test output",
+        "Lifecycle note"
+      ],
+      "edge_cases": [
+        "Domain reload is disabled in editor settings.",
+        "Play mode is entered twice rapidly."
+      ],
+      "non_goals": [
+        "Do not invent cross-lane service interfaces.",
+        "Do not implement a general dependency-injection framework."
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day(s)."
+    },
+    {
+      "id": "UF-007",
+      "title": "Create the single Bootstrap scene",
+      "summary": "Author the minimal scene that hosts only the explicit composition-root adapter.",
+      "objective": "Provide one deterministic startup scene that delegates service construction to UF-006 and owns no gameplay state.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity",
+        "Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity.meta",
+        "Assets/ShooterMover/Runtime/Bootstrap/Unity/"
+      ],
+      "depends_on": [
+        "UF-006"
+      ],
+      "blocks": [
+        "UF-008",
+        "UF-010"
+      ],
+      "inputs": [
+        "UF-006 composition-root shell",
+        "Consumed contracts: bootstrap lifecycle v1 from UF-006."
+      ],
+      "outputs": [
+        "Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity",
+        "Minimal Unity adapter component for invoking the composition root"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: Exclusive ownership of Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity and its .meta; no other task may edit this scene concurrently.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert Bootstrap.unity and its adapter together; restore the previous build scene list if it was changed by a dependent task.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Bootstrap.unity contains only the minimum camera/event-system/bootstrap objects justified by startup.",
+        "The scene owns no MissionRunState, rewards, inventory, room truth, content definitions, or mutable shared data.",
+        "Duplicate bootstrap creation is prevented deterministically."
+      ],
+      "verification": [
+        "Automated: Play-mode test loads Bootstrap.unity twice and asserts one active composition root. Scene validation rejects unexpected root objects and missing bootstrap adapter.",
+        "Manual/playable: Enter play mode from Bootstrap.unity, exit, and repeat without errors or duplicate objects. Reviewer inspects the scene hierarchy and confirms it contains no gameplay content."
+      ],
+      "proof_required": [
+        "Scene hierarchy snapshot",
+        "Play-mode test output"
+      ],
+      "edge_cases": [
+        "Enter play mode with domain reload disabled.",
+        "Reload the scene additively by mistake."
+      ],
+      "non_goals": [
+        "Do not add menu, arena, input, diagnostics, or gameplay objects.",
+        "Do not mark arbitrary objects DontDestroyOnLoad."
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.35 focused lead day(s)."
+    },
+    {
+      "id": "UF-008",
+      "title": "Create the foundation smoke scene",
+      "summary": "Author a tiny non-gameplay scene used only to prove additive scene loading, unloading, and return to Bootstrap.",
+      "objective": "Create a deterministic smoke target without implementing the benchmark arena or short route.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity",
+        "Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity.meta",
+        "Assets/ShooterMover/TestSupport/Foundation/FoundationSmokeLoaderFixture.cs"
+      ],
+      "depends_on": [
+        "UF-006",
+        "UF-007"
+      ],
+      "blocks": [
+        "UF-009"
+      ],
+      "inputs": [
+        "UF-006 composition root",
+        "UF-007 Bootstrap scene",
+        "Consumed contracts: bootstrap lifecycle v1; no room-projection contract yet."
+      ],
+      "outputs": [
+        "Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity",
+        "Foundation smoke loader fixture"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: Exclusive ownership of Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity and its .meta.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Delete/revert only FoundationSmoke and its fixture; Bootstrap must continue to open independently.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "The scene contains only a labeled 2D visual marker and smoke-test hooks.",
+        "Bootstrap can load and unload it additively without retained objects or errors.",
+        "The scene does not become the benchmark arena, a RoomDefinition owner, or a durable-state owner."
+      ],
+      "verification": [
+        "Automated: Play-mode test executes load, unload, reload, and return-to-bootstrap sequence. Post-unload object count and registered-service count return to baseline.",
+        "Manual/playable: Reviewer launches Bootstrap, enters FoundationSmoke, returns, and repeats. Scene remains visually obvious enough to distinguish successful load from a blank/frozen frame."
+      ],
+      "proof_required": [
+        "FoundationSmoke hierarchy snapshot",
+        "Load/unload test log"
+      ],
+      "edge_cases": [
+        "Scene load is interrupted by exiting play mode.",
+        "Reload occurs before unload completion."
+      ],
+      "non_goals": [
+        "Do not add gameplay input, movement, enemies, weapons, rewards, UI, or diagnostics.",
+        "Do not define the modular room contract."
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.35 focused lead day(s)."
+    },
+    {
+      "id": "UF-009",
+      "title": "Add foundation edit-mode and play-mode smoke tests",
+      "summary": "Create baseline tests for assembly boundaries, bootstrap lifecycle, and additive scene cleanup.",
+      "objective": "Make the empty project foundations mechanically verifiable before shared contracts and gameplay begin.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Tests/EditMode/Foundation/AssemblyDependencyTests.cs",
+        "Assets/ShooterMover/Tests/EditMode/Foundation/BootstrapCompositionRootTests.cs",
+        "Assets/ShooterMover/Tests/PlayMode/Foundation/BootstrapLifecycleTests.cs",
+        "Assets/ShooterMover/Tests/PlayMode/Foundation/FoundationSmokeSceneTests.cs"
+      ],
+      "depends_on": [
+        "UF-004",
+        "UF-008"
+      ],
+      "blocks": [
+        "EH-001"
+      ],
+      "inputs": [
+        "UF-004 assembly graph",
+        "UF-006 bootstrap shell",
+        "UF-007 Bootstrap scene"
+      ],
+      "outputs": [
+        "Foundation edit-mode tests",
+        "Foundation play-mode tests",
+        "Test assembly definitions where not already owned by UF-004"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: No new production serialized assets. Test fixtures may reference, but may not edit, Bootstrap.unity or FoundationSmoke.unity.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert the foundation test folders; production foundation remains intact and manually verifiable.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Tests cover forbidden assembly dependencies, bootstrap construction/disposal, duplicate prevention, scene load/unload, and retained-object checks.",
+        "Tests do not require gameplay code or content.",
+        "Failures produce actionable path/object details rather than generic timeouts."
+      ],
+      "verification": [
+        "Automated: Unity Test Framework edit-mode suite passes. Unity Test Framework play-mode foundation suite passes in batchmode where supported.",
+        "Manual/playable: Run the same smoke flow once interactively and confirm test behavior matches editor behavior. Reviewer deliberately introduces one invalid dependency or duplicate bootstrap in a temporary local change and observes a failing test."
+      ],
+      "proof_required": [
+        "Edit-mode XML or console result",
+        "Play-mode XML or console result"
+      ],
+      "edge_cases": [
+        "Tests run with domain reload disabled.",
+        "Scene load timeout on slow clean import."
+      ],
+      "non_goals": [
+        "Do not test movement, combat, mission state, rewards, or content registries.",
+        "Do not hide flaky behavior with retries."
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day(s)."
+    },
+    {
+      "id": "UF-010",
+      "title": "Create the deterministic Windows development-build baseline",
+      "summary": "Configure the scene list and a local build script for a reproducible Windows x86-64 smoke player.",
+      "objective": "Prove the pinned editor/package/settings/bootstrap combination can produce and launch a clean Windows player without game implementation.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "ProjectSettings/EditorBuildSettings.asset",
+        "tools/build/",
+        "docs/build/WINDOWS_BUILD.md"
+      ],
+      "depends_on": [
+        "UF-002",
+        "UF-003",
+        "UF-007"
+      ],
+      "blocks": [
+        "EH-001"
+      ],
+      "inputs": [
+        "UF-001 editor baseline",
+        "UF-002 package lock",
+        "UF-003 2D settings"
+      ],
+      "outputs": [
+        "Pinned EditorBuildSettings scene list",
+        "Local Windows build script",
+        "docs/build/WINDOWS_BUILD.md"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: Exclusive ownership of ProjectSettings/EditorBuildSettings.asset for this task; no scene content edits.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert EditorBuildSettings, build script, and documentation together; delete local ignored build output.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "Build index zero is Bootstrap.unity; FoundationSmoke is included only when explicitly justified for smoke testing.",
+        "Build script produces Windows x86-64 output into an ignored artifact directory and fails non-zero on compile/build errors.",
+        "Build instructions cover clean import, command, expected output, launch, and cleanup."
+      ],
+      "verification": [
+        "Automated: Unity batchmode Windows development build succeeds from a clean project cache where infrastructure permits. Script verifies artifact files exist and records editor/package fingerprints.",
+        "Manual/playable: Launch the player, observe the Bootstrap-to-smoke flow, exit cleanly, and repeat. Reviewer confirms the build output directory is ignored and no binary artifact is committed."
+      ],
+      "proof_required": [
+        "Build command output",
+        "Artifact file list and fingerprints"
+      ],
+      "edge_cases": [
+        "Build path contains spaces.",
+        "Existing output directory is read-only or stale."
+      ],
+      "non_goals": [
+        "Do not create release packaging or signing.",
+        "Do not add formal BuildIdentity/diagnostics features; the evidence agent owns those."
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.55 focused lead day(s)."
+    },
+    {
+      "id": "UF-011",
+      "title": "Initialize the prototype-debt register",
+      "summary": "Create the required debt ledger and review rules before any implementation shortcut can be accepted.",
+      "objective": "Make temporary deviations visible, expiring, testable, and impossible to use for forbidden authority, persistence, ID, input, generated-file, accessibility, diagnostics, or asset-provenance shortcuts.",
+      "context": "Frozen S1.0 question: can the repo open, compile, test, and build as a reproducible fully 2D Windows Unity baseline with inward assembly dependencies and explicit bootstrap, before gameplay begins?",
+      "owner_role": "Unity Foundation Builder",
+      "lane": "unity-foundation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "docs/architecture/PROTOTYPE_DEBT.md"
+      ],
+      "depends_on": [
+        "UF-005"
+      ],
+      "blocks": [
+        "CS-001",
+        "EH-001"
+      ],
+      "inputs": [
+        "assembly/planning_runs/shooter-mover-v1/POLICIES.md",
+        "UF-005 ownership map",
+        "Consumed contracts: prototype-shortcut policy v1."
+      ],
+      "outputs": [
+        "docs/architecture/PROTOTYPE_DEBT.md"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted planning/requirements, Movement/Combat domains, ContentPackages, UI, and unowned serialized assets.",
+        "Serialized ownership: None.",
+        "Save-schema impact: None.",
+        "Registry impact: None.",
+        "Rollback: Revert the empty register only if an equivalent accepted register exists elsewhere; never delete active debt history.",
+        "Prototype debt: none expected; any workaround needs a registered debt ID and human approval before merge."
+      ],
+      "acceptance_criteria": [
+        "The register template includes debt ID, paths/owner, reason/evidence question, preserved invariants, risk, detection tests, expiry milestone, removal condition, status, and review decision.",
+        "The document lists every never-acceptable debt category from the accepted policy.",
+        "The initial register contains no invented debt entries and explains how later tasks reference an entry."
+      ],
+      "verification": [
+        "Automated: Markdown validation confirms required headings/fields exist. Repository scan can find debt IDs using one documented pattern.",
+        "Manual/playable: Reviewer walks through a hypothetical acceptable shortcut and a forbidden shortcut using the decision rules. Human lead confirms debt approval remains explicit and is not delegated silently."
+      ],
+      "proof_required": [
+        "PROTOTYPE_DEBT.md",
+        "Validation output"
+      ],
+      "edge_cases": [
+        "A task discovers debt after implementation has already started.",
+        "One shortcut affects multiple owners."
+      ],
+      "non_goals": [
+        "Do not pre-authorize any shortcut.",
+        "Do not weaken the never-acceptable list."
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "unity-baseline",
+        "shared-foundation",
+        "strong-review"
+      ],
+      "handoff_notes": "One small revertible change; do not combine with gameplay or another serialized-asset owner.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day(s)."
+    }
+  ]
+}

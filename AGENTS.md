@@ -89,3 +89,12 @@ Do not blur stages.
 ## Durable-state rule
 
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
+
+## Task-decomposition approval gate
+
+During the remaining Shooter Mover task split, every batch uses two turns:
+
+1. Before writing files, present the proposed stable task IDs, titles, owner lane, and exact dependencies to the human lead. Then stop.
+2. Only after explicit human continuation, create a fresh branch from current `main`, generate that one approved batch, update the index and deterministic handoffs atomically, run the executable validators, open a draft continuation PR, report it, and stop.
+
+A merged branch is permanently closed. Before every write, inspect the branch PR state and compare it with current `main`. Never append commits to a merged branch or silently continue from a branch that is behind `main`.

@@ -1,0 +1,713 @@
+{
+  "schema_version": "0.1.0",
+  "batch_id": "shared-contracts-core",
+  "source_plan_path": "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+  "tasks": [
+    {
+      "id": "CS-001",
+      "title": "Define StableId v1",
+      "summary": "Define the immutable ID primitive for content, rooms, runs, events and transactions.",
+      "objective": "Implement canonical stable-ID parsing, formatting, namespaces, equality, ordering and rejection rules.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Domain/Common/StableId.cs",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/StableIdTests.cs",
+        "docs/architecture/contracts/STABLE_ID_V1.md"
+      ],
+      "depends_on": [
+        "UF-004",
+        "UF-005"
+      ],
+      "inputs": [
+        "Consumed contract: planning identity boundary v1."
+      ],
+      "outputs": [
+        "StableId v1 source, tests and contract document"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted plans, Packages, ProjectSettings, Scenes, UI, ContentPackages, gameplay implementations and unowned serialized assets. Serialized owner: none. Save impact: ID key only. Registry impact: canonical key. Rollback owned files and rerun tests. Prototype debt: none unless registered and human-approved."
+      ],
+      "acceptance_criteria": [
+        "Canonical IDs round-trip and order deterministically.",
+        "Invalid, ambiguous, traversal and duplicate forms fail; UnityEngine is absent."
+      ],
+      "verification": [
+        "Automated: parse, format, equality, ordering and invalid-form tests.",
+        "Manual/playable: review use across content, rooms, events, saves and registries."
+      ],
+      "proof_required": [
+        "StableId test log",
+        "STABLE_ID_V1.md"
+      ],
+      "edge_cases": [
+        "case-only duplicate",
+        "malformed imported ID"
+      ],
+      "non_goals": [
+        "no content assets",
+        "no new product IDs"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "stable-id",
+        "shared-contract"
+      ],
+      "handoff_notes": "Consumers use StableId v1; no duplicate ID contract.",
+      "notes": "Milestone-cap spend: 0.20 focused lead day."
+    },
+    {
+      "id": "CS-002",
+      "title": "Define ContentVersion and BuildIdentity v1",
+      "summary": "Define immutable fingerprints for content, source, editor, packages, save schema and formal artifacts.",
+      "objective": "Provide deterministic identity values without implementing the build pipeline.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Identity/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/IdentityContractTests.cs",
+        "docs/architecture/contracts/IDENTITY_MANIFEST_V1.md"
+      ],
+      "depends_on": [
+        "CS-001",
+        "UF-001",
+        "UF-002"
+      ],
+      "inputs": [
+        "Consumed contracts: StableId v1; pinned editor and package lock."
+      ],
+      "outputs": [
+        "ContentVersion v1",
+        "BuildIdentity v1",
+        "identity tests and document"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized owner: none. Save impact: schema identity field only. Registry impact: content fingerprint. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "All accepted identity fields exist and serialize deterministically.",
+        "Malformed formal identity fails instead of using placeholders."
+      ],
+      "verification": [
+        "Automated: equality, field-order, missing-field and fingerprint-change tests.",
+        "Manual/playable: confirm formal build identity works fully offline."
+      ],
+      "proof_required": [
+        "identity test log",
+        "sample manifest fixture"
+      ],
+      "edge_cases": [
+        "dirty working tree",
+        "development build without final checksum"
+      ],
+      "non_goals": [
+        "no build pipeline",
+        "no save migration"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "identity",
+        "shared-contract"
+      ],
+      "handoff_notes": "Evidence and registry tasks consume Identity v1.",
+      "notes": "Milestone-cap spend: 0.20 focused lead day."
+    },
+    {
+      "id": "CS-003",
+      "title": "Define player intent contracts v1",
+      "summary": "Define device-independent move, aim, fire, power, thruster, interaction, map, pause and UI intents.",
+      "objective": "Keep device checks out of gameplay and allow one fire/power intent to drive four mounts.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Input/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/InputIntentContractTests.cs",
+        "docs/architecture/contracts/PLAYER_INTENTS_V1.md"
+      ],
+      "depends_on": [
+        "CS-001",
+        "UF-004"
+      ],
+      "inputs": [
+        "Consumed contracts: StableId v1; accepted input boundary."
+      ],
+      "outputs": [
+        "Player Intents v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized owner: none. Save and registry impact: none. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Move and aim are independent normalized intents.",
+        "No keyboard, mouse, gamepad or touch identifiers enter gameplay contracts."
+      ],
+      "verification": [
+        "Automated: normalization, simultaneous-action and held/pressed/released tests.",
+        "Manual/playable: map keyboard/mouse and gamepad to the same intent records."
+      ],
+      "proof_required": [
+        "input contract test log",
+        "intent fixtures"
+      ],
+      "edge_cases": [
+        "focus loss",
+        "pause and fire together"
+      ],
+      "non_goals": [
+        "no InputAction asset",
+        "no aim-assist tuning"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "input-contract",
+        "shared-contract"
+      ],
+      "handoff_notes": "Movement, combat and evidence harness consume Player Intents v1.",
+      "notes": "Milestone-cap spend: 0.20 focused lead day."
+    },
+    {
+      "id": "CS-004",
+      "title": "Define common combat messages v1",
+      "summary": "Define immutable damage, hit, vital, contact, weight and status messages shared by combat lanes.",
+      "objective": "Prevent each consumer from inventing its own combat DTOs or mutable universal combat object.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Combat/CombatMessages.cs",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/CombatContractTests.cs",
+        "docs/architecture/contracts/COMBAT_MESSAGES_V1.md"
+      ],
+      "depends_on": [
+        "CS-001",
+        "UF-004"
+      ],
+      "inputs": [
+        "Consumed contract: StableId v1; accepted combat boundary."
+      ],
+      "outputs": [
+        "Combat Messages v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized, save and registry impact: none. No randomized modifiers. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Messages are immutable, Unity-free and identify source, target, channel and result.",
+        "Negative or ambiguous health/shield state fails validation."
+      ],
+      "verification": [
+        "Automated: shield overflow, duplicate event, contact class, invalid-value and unknown-channel tests.",
+        "Manual/playable: confirm movement, weapons, enemies, HUD and diagnostics can share the messages."
+      ],
+      "proof_required": [
+        "combat contract test log",
+        "representative fixtures"
+      ],
+      "edge_cases": [
+        "late hit after destruction",
+        "unknown status type"
+      ],
+      "non_goals": [
+        "no damage implementation",
+        "no randomized weapon modifiers"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "combat-contract",
+        "shared-contract"
+      ],
+      "handoff_notes": "All combat producers and consumers use Combat Messages v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-005",
+      "title": "Define four-mount weapon and HUD contracts v1",
+      "summary": "Represent four independently operating weapon mounts under one aim and fire intent.",
+      "objective": "Define slots, readiness, cadence, heat or charge, recoil, power bank, fire result and HUD ordering.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Combat/WeaponMountContracts.cs",
+        "Assets/ShooterMover/Runtime/Contracts/Presentation/WeaponHudState.cs",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/WeaponMountContractTests.cs",
+        "docs/architecture/contracts/FOUR_MOUNT_WEAPONS_V1.md"
+      ],
+      "depends_on": [
+        "CS-003",
+        "CS-004"
+      ],
+      "inputs": [
+        "Consumed contracts: Player Intents v1; Combat Messages v1."
+      ],
+      "outputs": [
+        "Four-Mount Weapons v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized, save and registry impact: none. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Exactly four stable independent slots are represented; normal fire is unlimited.",
+        "An empty power bank falls back per mount while other mounts remain empowered."
+      ],
+      "verification": [
+        "Automated: slot uniqueness, mixed readiness, mixed power fallback and HUD ordering tests.",
+        "Manual/playable: walk all six Stage 1 weapon archetypes through the contract."
+      ],
+      "proof_required": [
+        "weapon contract test log",
+        "four-mount fixtures"
+      ],
+      "edge_cases": [
+        "unequipped slot",
+        "one mount faults"
+      ],
+      "non_goals": [
+        "no weapon behavior",
+        "no HUD prefab or effects"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "four-mount",
+        "shared-contract"
+      ],
+      "handoff_notes": "Combat and HUD implementations consume Four-Mount Weapons v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-006",
+      "title": "Define mission command and event envelopes v1",
+      "summary": "Define validated command, event, sequence, payload-version and rejection envelopes.",
+      "objective": "Create the state-transition boundary without implementing MissionRunState, snapshots or journals.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Mission/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/MissionEnvelopeTests.cs",
+        "docs/architecture/contracts/MISSION_MESSAGES_V1.md"
+      ],
+      "depends_on": [
+        "CS-001",
+        "CS-002"
+      ],
+      "inputs": [
+        "Consumed contracts: StableId v1; Identity v1."
+      ],
+      "outputs": [
+        "Mission Messages v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized owner: none. Save impact: sequence and version fields only. Registry impact: none. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Commands carry command ID, run ID, payload version and expected sequence; events and rejections are typed.",
+        "No scene references or implication that ordinary gameplay ticks are journaled."
+      ],
+      "verification": [
+        "Automated: duplicate, stale/future sequence, version, order and rejection tests.",
+        "Manual/playable: trace room-clear, checkpoint, banking and completion requests without deciding domain state."
+      ],
+      "proof_required": [
+        "mission envelope test log",
+        "sequence and rejection fixtures"
+      ],
+      "edge_cases": [
+        "retry after timeout",
+        "unknown command type"
+      ],
+      "non_goals": [
+        "no MissionRunState",
+        "no journal or network transport"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "mission-contract",
+        "shared-contract"
+      ],
+      "handoff_notes": "Room, encounter, diagnostics and Stage 2 state tasks consume Mission Messages v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-007",
+      "title": "Define room lifecycle and projection contracts v1",
+      "summary": "Define how additive rooms request state, present it, submit commands and unload without durable authority.",
+      "objective": "Specify room identity, sockets, projection keys, services and idempotent lifecycle transitions.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Rooms/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/RoomContractTests.cs",
+        "docs/architecture/contracts/ROOM_PROJECTION_V1.md"
+      ],
+      "depends_on": [
+        "CS-006"
+      ],
+      "inputs": [
+        "Consumed contract: Mission Messages v1."
+      ],
+      "outputs": [
+        "Room Projection v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized, save and registry impact: none. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Room identity, sockets, keys, services and lifecycle are explicit and idempotent.",
+        "Projection interfaces cannot mutate permanent clear, reward, route, checkpoint or objective truth."
+      ],
+      "verification": [
+        "Automated: lifecycle, repeated refresh, reload, unknown-key and connection tests.",
+        "Manual/playable: confirm arena, short route and later factory can share the contract while MissionRunState remains authoritative."
+      ],
+      "proof_required": [
+        "room contract test log",
+        "lifecycle diagram"
+      ],
+      "edge_cases": [
+        "two rooms loaded additively",
+        "interrupted unload"
+      ],
+      "non_goals": [
+        "no scenes or prefabs",
+        "no LevelGraph implementation"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "room-projection",
+        "shared-contract"
+      ],
+      "handoff_notes": "Arena, encounters and Stage 2 room projections consume Room Projection v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-008",
+      "title": "Define encounter lifecycle contracts v1",
+      "summary": "Define deterministic encounter start, reinforcement, retreat, lockdown, withdrawal, completion and budget messages.",
+      "objective": "Create the boundary among loaded encounter runtime, rooms, enemies, mission events and verification tooling.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Encounters/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/EncounterContractTests.cs",
+        "docs/architecture/contracts/ENCOUNTER_LIFECYCLE_V1.md"
+      ],
+      "depends_on": [
+        "CS-004",
+        "CS-006",
+        "CS-007"
+      ],
+      "inputs": [
+        "Consumed contracts: Combat v1; Mission v1; Room Projection v1."
+      ],
+      "outputs": [
+        "Encounter Lifecycle v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized, save and registry impact: none. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Entries, reinforcements, retreat, lockdown, completion and performance budgets are explicit.",
+        "Loaded combat may be runtime-local, but durable completion is a mission event."
+      ],
+      "verification": [
+        "Automated: repeat-start, reinforcement-order, retreat, lockdown, completion-once and budget tests.",
+        "Manual/playable: map three ordinary roles, Foreman Elite and route encounters without special envelopes."
+      ],
+      "proof_required": [
+        "encounter contract test log",
+        "lifecycle fixtures"
+      ],
+      "edge_cases": [
+        "leave during reinforcement",
+        "completion retry"
+      ],
+      "non_goals": [
+        "no AI or spawning",
+        "no rewards or scenes"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "encounter-contract",
+        "shared-contract"
+      ],
+      "handoff_notes": "Enemy and encounter builders consume Encounter Lifecycle v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-009",
+      "title": "Define typed content references v1",
+      "summary": "Define stable references, descriptors, kinds, versions and structured validation results for content.",
+      "objective": "Keep ScriptableObject identity and mutable runtime state out of shared engine-independent contracts.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Content/ContentReference.cs",
+        "Assets/ShooterMover/Runtime/Contracts/Content/ContentDefinitionDescriptor.cs",
+        "Assets/ShooterMover/Runtime/Contracts/Content/ContentValidationResult.cs",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/ContentReferenceTests.cs",
+        "docs/architecture/contracts/CONTENT_DEFINITIONS_V1.md"
+      ],
+      "depends_on": [
+        "CS-001",
+        "CS-002"
+      ],
+      "inputs": [
+        "Consumed contracts: StableId v1; Identity v1; accepted content plan."
+      ],
+      "outputs": [
+        "Content Definitions v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized and save impact: none. Registry impact: defines registry input semantics. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "References use StableId plus expected definition kind and version.",
+        "Duplicate, missing, wrong-kind, unsupported, cyclic and provenance errors are distinct; no mutable runtime state is stored."
+      ],
+      "verification": [
+        "Automated: resolution, cycle, duplicate and deterministic error-order tests.",
+        "Manual/playable: map every accepted definition kind while keeping ScriptableObjects as adapters."
+      ],
+      "proof_required": [
+        "content contract test log",
+        "validation fixtures"
+      ],
+      "edge_cases": [
+        "tombstoned ID",
+        "prototype-only asset"
+      ],
+      "non_goals": [
+        "no ScriptableObjects or packages",
+        "no randomized modifiers"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "content-contract",
+        "shared-contract"
+      ],
+      "handoff_notes": "Weapons, enemies, rooms and art pipeline consume Content Definitions v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-010",
+      "title": "Define generated registry formats v1",
+      "summary": "Define canonical machine registry and deterministic human review-snapshot formats.",
+      "objective": "Specify canonical ordering, schema version, fingerprints, validation summary and diff-friendly output.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Content/GeneratedRegistryContracts.cs",
+        "Assets/ShooterMover/Generated/schemas/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/GeneratedRegistryContractTests.cs",
+        "docs/architecture/contracts/GENERATED_REGISTRY_V1.md"
+      ],
+      "depends_on": [
+        "CS-002",
+        "CS-009"
+      ],
+      "inputs": [
+        "Consumed contracts: Identity v1; Content Definitions v1."
+      ],
+      "outputs": [
+        "Generated Registry schemas v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized owner: two generated text schema files only. Save impact: none. Registry impact: schema and canonical-order owner. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Entries order canonically by kind and StableId with explicit schema and fingerprints.",
+        "Output is deterministic, diff-friendly, free of runtime state and machine-local paths."
+      ],
+      "verification": [
+        "Automated: schema validation and shuffled-input byte-stability tests.",
+        "Manual/playable: compare independently generated fixtures for byte identity."
+      ],
+      "proof_required": [
+        "schema and test logs",
+        "example fixtures"
+      ],
+      "edge_cases": [
+        "empty catalog",
+        "line-ending differences"
+      ],
+      "non_goals": [
+        "no hand-authored production catalog",
+        "no manual conflict resolution"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "generated-format",
+        "shared-contract"
+      ],
+      "handoff_notes": "CS-011 is the sole generator owner for Registry v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "id": "CS-011",
+      "title": "Implement registry generation and drift validation",
+      "summary": "Create the sole deterministic generator and validator for central registries and review snapshots.",
+      "objective": "Scan approved descriptors, validate references, write atomically and fail on drift or manual edits.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "tools/content-validation/",
+        "Assets/ShooterMover/Generated/content-registry.json",
+        "Assets/ShooterMover/Generated/content-review-snapshot.json",
+        "docs/architecture/contracts/REGISTRY_GENERATION.md"
+      ],
+      "depends_on": [
+        "CS-010",
+        "UF-005"
+      ],
+      "inputs": [
+        "Consumed contracts: Generated Registry v1; UF-005 ownership map."
+      ],
+      "outputs": [
+        "registry generator",
+        "registry validator",
+        "baseline generated registry and review snapshot"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized owner: generated text outputs only. Save impact: none. Registry impact: exclusive central-output owner; regenerate only. Rollback tool and outputs together. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "One command atomically regenerates both outputs.",
+        "Duplicate, missing, wrong-kind, version, order and manual-edit drift fail deterministically."
+      ],
+      "verification": [
+        "Automated: generate twice from shuffled fixtures, compare checksums, hand-edit output and confirm failure.",
+        "Manual/playable: confirm later content tasks contribute inputs and never edit central outputs."
+      ],
+      "proof_required": [
+        "tool test log",
+        "checksum and drift-failure logs"
+      ],
+      "edge_cases": [
+        "interrupted write",
+        "concurrent invocation"
+      ],
+      "non_goals": [
+        "no gameplay content",
+        "no suppressed validation errors"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "generated-artifact-owner",
+        "strong-review"
+      ],
+      "handoff_notes": "All generated registries must pass through this tool; never hand-merge output.",
+      "notes": "Milestone-cap spend: 0.30 focused lead day."
+    },
+    {
+      "id": "CS-012",
+      "title": "Define diagnostics and run-validity contracts v1",
+      "summary": "Define bounded local diagnostic events, invalidating commands, performance warnings and evidence validity.",
+      "objective": "Create privacy-safe diagnostic, validity and support-bundle manifests tied to BuildIdentity.",
+      "context": "Milestone S1.0; frozen question: establish stable engine-independent contracts for safe parallel work.",
+      "owner_role": "Contract Steward",
+      "lane": "shared-contract",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Contracts/Diagnostics/",
+        "Assets/ShooterMover/Tests/EditMode/Contracts/DiagnosticsContractTests.cs",
+        "docs/architecture/contracts/DIAGNOSTICS_V1.md"
+      ],
+      "depends_on": [
+        "CS-002",
+        "CS-006"
+      ],
+      "inputs": [
+        "Consumed contracts: Identity v1; Mission Messages v1; accepted evidence rules."
+      ],
+      "outputs": [
+        "Diagnostics v1 and tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths as CS-001. Serialized owner: none. Save impact: identity and recovery event fields only. Registry impact: none. Rollback owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Required Stage 1 technical events and identities are representable.",
+        "Technical invalidity is separate from fun evidence; support export is local, bounded, explicit and private."
+      ],
+      "verification": [
+        "Automated: order, bounds, redaction, version and validity-accumulation tests.",
+        "Manual/playable: map all Stage 1 gate data without remote telemetry."
+      ],
+      "proof_required": [
+        "diagnostics test log",
+        "event and redaction fixtures"
+      ],
+      "edge_cases": [
+        "crash before run end",
+        "log capacity reached"
+      ],
+      "non_goals": [
+        "no logger storage or upload",
+        "no automated fun classifier"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "diagnostics-contract",
+        "shared-contract"
+      ],
+      "handoff_notes": "Evidence harness and reliability tasks consume Diagnostics v1.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    }
+  ]
+}
