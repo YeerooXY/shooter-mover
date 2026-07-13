@@ -41,9 +41,9 @@
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-195 — Hybrid personal room resolution with one-clear shared progress",
-  "current_item": "D-196 — Entry into an already globally completed room",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting what happens when a player who was not already fighting enters a room after another instance has marked it globally complete: the room is permanently clear for all new entries during that run; the player may start one personal catch-up encounter without another major reward; or the player may deliberately replay a fresh personal instance for ordinary loot under anti-farming limits. Preserve D-195's hybrid rule that the first valid clear unlocks coarse shared map progress and the one-time major reward while already-active personal instances may finish or withdraw; personal ordinary loot, unsecured rewards, banking, lives, and immediate feedback; globally persistent cleared-room state; teleport regrouping; late joining and reconnection; local-first trusted simulation; and deterministic anti-farming requirements. Include pacing, fairness to split players, ordinary-loot opportunity, farming and XP abuse, death and respawn, disconnected or spectating players, implementation complexity, and compatibility with future challenge or replay modes. Put the recommendation after all A/B/C options at the end of the card. D-195 is queued but not yet batch-persisted; queue D-196 through D-200 and persist the complete D-195 through D-200 partial batch at D-200 unless the user changes the rule or requests another handoff.",
+  "last_completed_item": "D-196 — Permanently clear new entries with mirrored non-XP reward drops",
+  "current_item": "D-197 — Mirrored non-XP reward roll identity",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting what is replicated when one player causes a qualifying non-XP reward drop such as a strongbox: every eligible player receives the same reward class and tier but owns an independently seeded personal item outcome; every eligible player independently rerolls the complete reward including tier from their own progression state; or every eligible player receives an exact duplicate of the same rolled reward. Preserve D-196's rule that new entries find globally completed rooms permanently clear, personal XP may therefore be missed, and qualifying non-XP drops are mirrored immediately so players do not lose box-like rewards; D-181 personal ownership; D-182 connected-player major-reward eligibility; D-183 personal account-level reward influence; deterministic pickup seeds and reload-proof single granting; unsecured loot and dedicated banking; local-first room simulation; split-party play; spectators, disconnects, and anti-farming. Include fairness, shared excitement, mixed-level parties, rarity consistency, jackpot envy, duplicate exploits, banking and death-loss semantics, deterministic save transactions, synchronization cost, and future matchmaking. Put the recommendation after all A/B/C options at the end of the card. D-195 and D-196 are queued but not yet batch-persisted; queue D-197 through D-200 and persist the complete D-195 through D-200 partial batch at D-200 unless the user changes the rule or requests another handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -53,7 +53,7 @@
   ],
   "persistence": {
     "status": "batch_in_progress",
-    "unsaved_decisions": 1,
+    "unsaved_decisions": 2,
     "last_persisted_decision": "D-194",
     "last_persisted_at": "2026-07-13T16:47:23+02:00",
     "batching_rule": "D-191 through D-194 persisted early for handoff safety; queue D-195 through D-200 and persist at D-200",
@@ -73,6 +73,22 @@
           "Allow future deep shared-objective rooms to opt into stricter synchronization rules separately"
         ],
         "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-196",
+        "topic": "entry_into_already_globally_completed_room",
+        "choice": "custom_A",
+        "answer": "new_entries_find_room_permanently_clear_with_mirrored_non_xp_reward_drops",
+        "constraints": [
+          "After the first valid global clear, players who were not already fighting cannot start a new combat instance in that room during the same run",
+          "Players already inside an active local instance may still finish or withdraw under D-195",
+          "A player who did not participate may miss the encounter's personal XP because the globally cleared room does not replay for them",
+          "When any player triggers a qualifying non-XP reward drop such as a strongbox, matching personal reward drops or grants occur immediately for the other eligible players so they do not miss box-like rewards",
+          "Mirrored rewards remain individually owned and must follow each player's unsecured-loot, death-loss, banking, deterministic grant, and save-transaction rules",
+          "Global completion, respawn, teleport travel, reconnects, and later entry must consistently preserve the permanently cleared state",
+          "Do not allow mirrored drops or parallel instances to duplicate the same reward event more than once per eligible player"
+        ],
+        "verification_status": "verified"
       }
     ]
   },
@@ -81,5 +97,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:00:29+02:00"
+  "updated_at": "2026-07-13T17:04:00+02:00"
 }
