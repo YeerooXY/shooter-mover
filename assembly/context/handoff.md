@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. The human-approved combat-four-mount batch is validated on fresh branch `ai/task-split-shooter-mover-v1-continuation-4` and is open for review in draft PR #7.
+Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. Combat PR #7 is merged into `main` at `435269af72ccfaefab2faf04f91539fc2ff23c05`; its branch is permanently closed. The human lead then selected a five-weapon Stage 1 roster and numeric-only empowered profiles. That material content change is isolated in planning-amendment branch `ai/planning-amend-stage1-weapons-v1` and draft PR #8 for review before weapon task splitting continues.
 
 ## Durable task state
 
@@ -47,7 +47,9 @@ Dispatch therefore requires a human decision to re-estimate, resequence, cut non
 
 The Movement and Thruster batch estimates 6.15 focused lead days against the accepted S1.1 eight-day cap, leaving 1.85 focused lead days for human review and bounded evidence-led iteration. Do not consume that reserve by silently expanding movement polish, presentation, combat, enemies, or generalized tooling.
 
-The Four-Mount Combat batch estimates 4.50 focused lead days against the accepted S1.2 ten-day cap. Only 5.50 focused lead days remain for six representative weapon packages, combat HUD, temporary audiovisual/readability work, human review, and bounded iteration. The next weapon batch must remain sharply bounded and must not add generalized tooling or mature balance depth.
+The Four-Mount Combat batch estimates 4.50 focused lead days against the accepted S1.2 ten-day cap. Only 5.50 focused lead days remain for the amended five-weapon set, combat HUD, temporary audiovisual/readability work, human review, and bounded iteration. The next weapon batch must remain sharply bounded and must not add generalized tooling or mature balance depth.
+
+The three remaining Stage 2 weapon identities are intentionally deferred until Stage 1 evidence. A later planning amendment is required before Stage 2 combat-content generation or dispatch.
 
 `CS-011` still needs focused human review because it combines registry generation, drift validation, baseline generated outputs, and documentation. Split it if one focused executor cannot complete and verify it as one revertible change.
 
@@ -64,6 +66,6 @@ The Four-Mount Combat batch estimates 4.50 focused lead days against the accepte
 
 ## Exact next action
 
-Review and merge combat-four-mount draft PR #7. After it merges, start a fresh context from current `main`, present the proposed `WP-001` through `WP-012` titles, owner lane and exact dependencies to the human lead, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/stage1-weapons.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
+Review and merge Stage 1 weapon planning-amendment draft PR #8. After it merges, start a fresh context from current `main`, present revised `WP-001` through `WP-012` titles, owner lane and exact dependencies for the five accepted weapons, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/stage1-weapons.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

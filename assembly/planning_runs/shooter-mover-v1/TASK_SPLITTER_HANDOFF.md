@@ -37,7 +37,7 @@ Create batches in this dependency order without assigning task IDs here:
 2. Stage 1 evidence harness, arena shell, input, build identity;
 3. movement/thruster domain and adapters;
 4. shared combat contracts and four-mount foundation;
-5. six Stage 1 weapon packages;
+5. five Stage 1 weapon packages defined by `AMENDMENT_STAGE1_WEAPONS.md`;
 6. three ordinary enemy roles, Foreman Elite, short route;
 7. Stage 1 reliability, accessibility, diagnostics, performance, formal evidence;
 8. Stage 1 gate execution and explicitly approved bounded iteration;
@@ -85,3 +85,7 @@ At a cap preserve evidence-critical work and cut additional polish/variants, ext
 - no mature randomized item modifiers;
 - no unlicensed assets or shipped secrets;
 - no implementation before dependencies and proof are explicit.
+
+## Stage 1 weapon amendment
+
+Before generating `stage1-weapons`, consume `AMENDMENT_STAGE1_WEAPONS.md`. Keep `WP-001` through `WP-012`, but decompose exactly five weapon packages. Empowered fire may only tune existing numeric coefficients in Stage 1; it may not increase the Arc Gun chain cap or Ricochet Gun bounce cap. The three remaining Stage 2 weapon identities stay blocked behind the Stage 1 gate and a later evidence-backed planning amendment.

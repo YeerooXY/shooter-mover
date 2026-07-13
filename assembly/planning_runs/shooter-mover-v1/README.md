@@ -34,6 +34,7 @@ Human-readable planning trace:
 - `CONTENT_PLAN.md`
 - `POLICIES.md`
 - `TASK_SPLITTER_HANDOFF.md`
+- `AMENDMENT_STAGE1_WEAPONS.md`
 
 ## Planning resolutions
 
@@ -47,6 +48,10 @@ This run resolves the non-blocking Planning questions by:
 - defining a prototype-shortcut register and Stage 2 debt exit gate.
 
 Numeric feel and economy coefficients remain evidence-controlled prototype variables unless specifically frozen for a formal round.
+
+## Stage 1 weapon amendment
+
+The human lead selected an amendment after combat-foundation review. It becomes authoritative when its pull request merges. Stage 1 then proves five deliberately simple weapons, and empowered fire only improves authored numeric stats without changing each weapon's core behavior topology. See `AMENDMENT_STAGE1_WEAPONS.md`.
 
 ## Review boundary
 

@@ -24,7 +24,7 @@
     "role": "Movement and Combat Builder",
     "status": "planned",
     "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Thruster and movement foundation", "Four-weapon combat", "Six Stage 1 weapons"],
+    "outputs": ["Thruster and movement foundation", "Four-weapon combat", "Five amended Stage 1 weapons"],
     "allowed_actions": ["Implement owned domain and adapters", "Produce benchmark evidence"],
     "verification_requirements": ["Automated invariants pass.", "Feel and readability receive human review."],
     "notes": "Stage 1 evidence-critical lane."

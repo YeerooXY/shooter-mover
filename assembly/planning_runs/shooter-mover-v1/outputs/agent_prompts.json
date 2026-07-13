@@ -31,7 +31,7 @@
       "forbidden_files": ["assembly/generated/task_backlog.json", "assembly/generated/task_batch_index.json", "assembly/generated/task_batches/", "Unowned Unity serialized assets", "Credentials, signing keys, or secrets", "Assets/ShooterMover/Runtime/Domain/Persistence/", "Assets/ShooterMover/UI/Rewards/"],
       "input_context_required": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
       "task_boundaries": ["Own responsive locomotion, thruster, collision, shared aim, four independent mounts, unlimited normal fire, and per-weapon power banks.", "Treat coefficients as frozen tuning profiles per evidence round.", "Do not add item modifiers or economy depth."],
-      "output_required": ["Stage 1 movement and combat foundation", "Six representative weapons", "Playable benchmark evidence"],
+      "output_required": ["Stage 1 movement and combat foundation", "Five amended representative weapons", "Playable benchmark evidence"],
       "verification_required": ["Movement and four-mount invariants have automated tests.", "Power depletion falls back per mount.", "Feel and readability receive human review."]
     },
     {
