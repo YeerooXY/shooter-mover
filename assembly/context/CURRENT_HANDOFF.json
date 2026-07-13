@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "6300fe92d2856459d7367fbeca19525ec5bb429e",
+  "last_verified_commit": "e5153346916f44aeb70593e28196d2bca9072fdd",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -45,9 +45,9 @@
   ],
   "current_section": "mvp_proof_and_delivery",
   "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-214 — Layered automated and playable validation for every content contribution",
-  "current_item": "D-215 — Data-driven content boundary versus bespoke code",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how strongly weapons enemies rooms and encounters must be creatable through data rather than bespoke code: force every content item into a fully code-free universal schema; allow each item to use custom code freely; or use a bounded archetype-based hybrid where ordinary content and variants are assembled through typed ScriptableObject definitions and reusable behavior modules while genuinely novel mechanics may add isolated tested code extensions without modifying unrelated core systems. Preserve Unity with C#, plain-C# domain logic, typed ScriptableObject content definitions, stable identifiers, automated plus playable validation, representative independent-agent pipeline proof, four simultaneous weapons, future large weapon variety, AI-assisted parallel contribution, save/version compatibility, and the requirement that ordinary content additions not rewrite foundational systems. Include designer and AI-agent usability, expressive limits, schema bloat, duplicated bespoke logic, testability, merge conflicts, runtime performance, migration/versioning, debugging, and future mod or tooling possibilities without committing to mod support. Put the recommendation after all A/B/C options at the end of the card. D-211 through D-214 are checkpointed as queued but not formally batch-persisted; continue through D-220 unless the user changes the cadence or requests a handoff.",
+  "last_completed_item": "D-217 — Isolated content packages with generated integration and explicit shared-system ownership",
+  "current_item": "D-218 — Room and encounter authoring granularity",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how Stage 2 rooms and encounters should be represented and assembled in Unity: one monolithic level scene with embedded encounters; every room as a fully self-contained additive scene; or a hybrid modular room package where rooms are independently testable prefabs or additive scene units with explicit doorway, encounter, navigation, persistence, lighting, hazard, reward, and performance contracts, while a lightweight level graph assembles authored connections and global mission state. Preserve the interconnected factory map, additive-scene direction, room-clear persistence, checkpoints and teleports, dedicated banking rooms, permanent route changes, deterministic authored layouts with bounded variation, stable IDs, isolated content packages, generated registries, automated plus playable validation, and future co-op room-instance needs. Include iteration speed, Unity merge conflicts, cross-room references, lighting and sorting, save-state granularity, loading hitches, memory, nav and collision seams, independent previews, reuse, agent ownership, and risk of overengineering. Put the recommendation after all A/B/C options at the end of the card. D-211 through D-217 are checkpointed as queued but not formally batch-persisted; continue through D-220 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -57,7 +57,7 @@
   ],
   "persistence": {
     "status": "batch_in_progress",
-    "unsaved_decisions": 4,
+    "unsaved_decisions": 7,
     "last_persisted_decision": "D-210",
     "last_persisted_at": "2026-07-13T17:50:00+02:00",
     "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-211 through D-220 at D-220 unless an earlier handoff is requested",
@@ -119,6 +119,50 @@
           "Human and AI-agent contributions use the same validation gates"
         ],
         "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-215",
+        "topic": "data_driven_content_boundary",
+        "choice": "C",
+        "answer": "reusable_archetypes_with_isolated_tested_extensions",
+        "constraints": [
+          "Ordinary weapons enemies rooms encounters objectives hazards and rewards are assembled from typed ScriptableObject definitions and reusable behavior modules",
+          "Provide a compact reusable module set for representative firing movement enemy objective hazard and reward archetypes",
+          "Genuinely novel mechanics may add isolated reusable code extensions rather than one-item hacks",
+          "New extensions require automated tests playable validation documentation and compatibility with saves loot diagnostics and four-weapon interactions",
+          "Ordinary content additions must not modify unrelated foundational systems or force all creativity through a single bloated universal schema"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-216",
+        "topic": "canonical_content_data_source",
+        "choice": "C",
+        "answer": "hybrid_scriptableobject_authoring_with_deterministic_text_review_and_selective_import",
+        "constraints": [
+          "Typed ScriptableObject assets remain the canonical runtime and ordinary authoring format",
+          "Every item uses a stable human-readable content identifier and participates in automated searchable registries",
+          "Generate deterministic text summaries or snapshots so content changes are reviewable outside opaque Unity asset diffs",
+          "Use CSV or JSON import selectively for bulk balance tables localization loot weights or highly repetitive definitions",
+          "Generated files are never hand-edited and import export round trips must be deterministic and tested",
+          "Explicit ownership boundaries reduce parallel edits to the same Unity assets"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-217",
+        "topic": "parallel_content_ownership_and_merge_policy",
+        "choice": "C",
+        "answer": "isolated_content_packages_with_generated_integration_and_owned_shared_systems",
+        "constraints": [
+          "Each weapon enemy encounter or room contribution lives mainly inside an owned feature folder containing definitions prefabs effects audio art tests previews and documentation",
+          "Shared registries lookup tables and build indexes are generated or updated through deterministic tooling rather than manually edited by every contributor",
+          "Central balance tables and foundational systems have explicit owners and require separate justified tasks",
+          "Contributions should be small reviewable removable and rollback-safe with minimal Unity YAML conflicts",
+          "Automated validation must reject duplicate identifiers missing references and incompatible package content before integration",
+          "Human and AI-agent branches follow the same ownership and merge boundaries"
+        ],
+        "verification_status": "verified"
       }
     ]
   },
@@ -127,5 +171,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:50:04+02:00"
+  "updated_at": "2026-07-13T17:55:25+02:00"
 }
