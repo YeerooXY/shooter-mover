@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-062
+- Last persisted decision: D-063
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-062 were verified directly by the user after recovery.
+D-040 through D-063 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -276,13 +276,25 @@ D-040 through D-062 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-063 — Offline save integrity and future competitive verification
+
+- Status: accepted
+- Choice: B — hardened offline saves with separate verified competitive modes
+- Accepted requirement: Keep the complete campaign, progression, inventory, economy, and strongbox systems playable offline while hardening normal local saves with checksums or signatures, transaction journals, rotating backups, monotonic counters for important grants and economy actions, and detection of suspicious rollback or mismatched save history.
+- Recovery rule: Save-integrity checks must prioritize safe recovery from genuine corruption, crashes, interrupted writes, and device problems. They must not silently delete progression or punish a player merely because a backup was needed.
+- Verification rule: Suspicious or manually altered local state may mark a profile as unverified while preserving unrestricted offline campaign play. An unverified flag affects only features that explicitly require trusted competitive results.
+- Competitive boundary: Future leaderboards, official speedrun events, and competitive challenges should use a separate verified-run system, potentially including server-issued run identifiers, version and ruleset attestation, replay or result proofs, and server-side validation. They must not make the ordinary campaign server-authoritative.
+- Explicit limitation: A determined user can ultimately alter a fully local game. The MVP should prevent casual rollback and duplication abuse rather than spending excessive effort pretending local files can be perfectly secured.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Offline save-integrity and future competitive verification now outrank remaining loot details because the MVP should prevent casual rollback abuse without violating the offline-core requirement or pretending a determined player cannot edit local files.
+Continue with the highest-weight unresolved Product Discovery question. Monetization and release positioning now outrank remaining economy details because randomized strongboxes must be clearly separated from real-money loot boxes and the project needs a trustworthy revenue model.
 
 ## Revision rules
 
