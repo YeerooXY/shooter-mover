@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "b5d4027cc0f6f51e9c8cf4b19f3c56a3bb7b8bd0",
+  "last_verified_commit": "cf6dc0b3fc343a92f7ba665ace1756731b6c1abe",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
@@ -14,9 +14,9 @@
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-058 — Forgiving universal inventory with expandable capacity, instant shop purchases, and deferred strongbox opening",
-  "current_item": "D-059 — Strongbox banking and failure retention",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether sealed strongboxes are awarded only after full level completion, become secured at reached checkpoints while boxes since the latest checkpoint remain at risk, or become permanently banked immediately on pickup despite remaining unopened until the run ends. Preserve instant shop purchases and delayed strongbox opening. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-059 — Checkpoint-banked sealed strongboxes with only the current section at risk",
+  "current_item": "D-060 — Post-run strongbox opening and reward-review flow",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether all secured boxes auto-open immediately, use a staged reward vault with individual or batch opening and a temporary capacity-safe review tray, or remain indefinitely hoardable as unopened boxes. Preserve checkpoint banking and delayed opening. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +24,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T10:41:22+02:00"
+    "last_persisted_at": "2026-07-13T10:49:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T10:41:22+02:00"
+  "updated_at": "2026-07-13T10:49:00+02:00"
 }
