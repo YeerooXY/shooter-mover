@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-180.
+- Product Discovery is active after verified decision D-190.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -44,6 +44,9 @@ Before responding:
 - Decisions D-171 through D-180 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D171_D180.md`
   - `assembly/intake/batches/intake_session_D171_D180.json`
+- Decisions D-181 through D-190 were batch-persisted in:
+  - `assembly/intake/batches/LIVE_DECISIONS_D181_D190.md`
+  - `assembly/intake/batches/intake_session_D181_D190.json`
 - The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
 - The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
 - The central hub is a fast menu interface, not an explorable base.
@@ -81,8 +84,16 @@ Before responding:
 - Co-op uses separate personal life allowances. A player with no lives remaining spectates while surviving teammates may clutch the run; the run fails when no active player remains.
 - The first co-op implementation consumes a life immediately at zero health and respawns the player. A revivable downed state remains a later experiment.
 - Personal co-op lives are fixed for the mission, cannot be replenished during the run, and use difficulty-dependent starting allowances.
-- The next decision is D-181: choose how co-op loot ownership and reward distribution work while preserving personal progression and provisional banking rules.
-- The user requested persistence every ten discovery questions. Queue D-181 through D-190 and persist at D-190 unless this instruction changes or another context handoff is requested.
+- Routine co-op loot, currency, shops, unsecured rewards, banking, and permanent progression remain personal. Major authored rewards grant every eligible player a strongbox simultaneously, with rarity rolled independently per player.
+- Active players and life-exhausted spectators receive major rewards when still connected. Players who left the live session do not receive them under the initial rule.
+- Each player's strongbox rarity is based on the mission settings and that player's own account level. Teammate account levels never modify another player's odds.
+- Co-op uses one fixed selected mission difficulty and preserves each player's real equipment and account power. Veteran carrying is allowed; later challenge rules may constrain levels or loadouts explicitly.
+- Solo and co-op completions are tracked separately. Co-op has its own campaign progression track and does not automatically advance the solo campaign.
+- The party leader may launch missions from the leader's co-op track. Less-progressed participants join with visible guest-run status, keep personal rewards, and advance only when their own prerequisites are satisfied.
+- Teleport-based late joining is the desired end state, but the first co-op MVP may use lobby-only entry plus reconnection. Late joiners eventually receive fewer lives according to a simple mission-progress or teleport-segment rule.
+- Co-op encounter pressure scales modestly with active player count and selected mission settings, not account level. Party-size scaling is locked when a room engagement begins; exact curves remain playtest variables.
+- The next decision is D-191: establish the supported co-op party-size target and whether four-player delivery is staged through an earlier two-player validation step.
+- The user requested persistence every ten discovery questions. Queue D-191 through D-200 and persist at D-200 unless this instruction changes or another context handoff is requested.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -97,16 +108,17 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: queue D-181 through D-190 and commit the complete batch before asking D-191. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Honour the ten-question persistence cadence: queue D-191 through D-200 and commit the complete batch before asking D-201. Persist earlier if another context handoff becomes necessary or the user requests it.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
 - Continue prioritizing high-level product, campaign, level structure, progression, co-op policy, content boundary, accessibility, production-pipeline, architecture-policy, proof, and MVP-delivery decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Preserve Windows PC as the first target and Android as a later target rather than expanding the internal MVP to mobile now.
 - Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, frequent teleport checkpoint cadence, dedicated banking rooms, and clear secured-versus-unsecured loot semantics.
-- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, and animation counts as prototype-and-playtest variables unless explicitly fixed.
+- Preserve fixed mission difficulty across mixed-level co-op while scaling encounter pressure only from active player count and explicit mission settings.
+- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, player-count scaling coefficients, and animation counts as prototype-and-playtest variables unless explicitly fixed.
 
 ## Expected first action
 
-Ask D-181 exactly as directed by `CURRENT_HANDOFF.json`: determine whether future co-op rewards are shared, individually instanced, or use a hybrid ownership model.
+Ask D-191 exactly as directed by `CURRENT_HANDOFF.json`: determine whether future co-op is capped at two players, targets four players through staged two-player validation, or requires full four-player support from the first co-op MVP.
 
 Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher level-structure, progression, co-op, accessibility, production, proof, and MVP-delivery level.
