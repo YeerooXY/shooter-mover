@@ -14,21 +14,31 @@ Before responding:
 6. Read the complete Intake Interviewer prompt from `assembly/prompts/00-intake-interviewer.md`.
 7. Continue from the exact `next_action` in `CURRENT_HANDOFF.json`.
 
+## Current checkpoint
+
+- Product Discovery is intentionally paused after verified decision D-067.
+- D-067 selected whole-profile cloud cross-progression with explicit local-versus-cloud lineage selection and no item-by-item save merging.
+- `unsaved_decisions` must be zero before continuing.
+- No pull request is open yet.
+- Decisions D-001 through D-039 remain an unverified recovered set.
+- Decisions D-040 through D-063 are archived verbatim in `assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md`.
+- Decisions D-064 through D-067 are in `assembly/intake/LIVE_DECISIONS.md`.
+
 ## Non-negotiable behavior
 
 - Do not reconstruct state from chat memory.
 - Do not repeat already accepted questions.
-- Do not present D-001 through D-039 as fully verified; they are a recovered set awaiting confirmation.
-- Treat D-040 as verified.
+- Do not present D-001 through D-039 as final until explicitly re-verified.
 - Ask exactly one highest-impact Product Discovery question per turn.
-- Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation.
-- If the user answers only with a letter or short clear choice, record it without praise or detailed explanation and move on.
+- Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
+- If the user gives a short clear choice, record it without extended praise or repetition.
 - Before asking the next question, commit the accepted answer to `LIVE_DECISIONS.md`, update `intake_session.json`, and update `CURRENT_HANDOFF.json`.
 - Keep `unsaved_decisions` at zero.
+- Preserve the complete offline campaign and permanent guest-play requirements.
 - Do not choose a stack until product identity, users, core experience, connectivity, participation, platform scope, and MVP boundary are sufficiently clear.
 
 ## Expected first action
 
-Ask D-041: the primary target-player strategy.
+Ask D-068 exactly as directed by `CURRENT_HANDOFF.json`: decide death/checkpoint respawn and world-reset behavior.
 
-Do not ask the previously invented objective-guidance question. It was not part of the recovered original sequence and is lower priority than unresolved target-user scope.
+Do not ask another account, monetization, cloud-save, or strongbox question first; D-064 through D-067 already settled those boundaries.
