@@ -11,129 +11,64 @@ Before responding:
 3. Read `assembly/context/CURRENT_HANDOFF.json`.
 4. Verify repository `YeerooXY/shooter-mover`, branch `assembly/bootstrap-shooter-mover`, and the recorded commit state.
 5. Read every file listed in `authoritative_artifacts`.
-6. Read the complete Intake Interviewer prompt from `assembly/prompts/00-intake-interviewer.md`.
+6. Read the complete Intake Interviewer prompt from `assembly/prompts/00-intake-interviewer.md`. If the path remains absent, restore or read the current framework prompt from `YeerooXY/ai-assembly-line` before continuing.
 7. Continue from the exact `next_action` in `CURRENT_HANDOFF.json`.
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-200.
-- Decisions D-101 through D-110 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
-  - `assembly/intake/batches/intake_session_D101_D110.json`
-- Decisions D-111 through D-120 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D111_D120.md`
-  - `assembly/intake/batches/intake_session_D111_D120.json`
-- Decisions D-121 through D-130 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D121_D130.md`
-  - `assembly/intake/batches/intake_session_D121_D130.json`
-- Decisions D-131 through D-140 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D131_D140.md`
-  - `assembly/intake/batches/intake_session_D131_D140.json`
-- D-141 was persisted early for handoff safety in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D141_D141.md`
-  - `assembly/intake/batches/intake_session_D141_D141.json`
-- Decisions D-142 through D-150 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D142_D150.md`
-  - `assembly/intake/batches/intake_session_D142_D150.json`
-- Decisions D-151 through D-160 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D151_D160.md`
-  - `assembly/intake/batches/intake_session_D151_D160.json`
-- Decisions D-161 through D-170 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D161_D170.md`
-  - `assembly/intake/batches/intake_session_D161_D170.json`
-- Decisions D-171 through D-180 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D171_D180.md`
-  - `assembly/intake/batches/intake_session_D171_D180.json`
-- Decisions D-181 through D-190 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D181_D190.md`
-  - `assembly/intake/batches/intake_session_D181_D190.json`
-- D-191 through D-194 were persisted early because the user explicitly requested a context handoff:
-  - `assembly/intake/batches/LIVE_DECISIONS_D191_D194.md`
-  - `assembly/intake/batches/intake_session_D191_D194.json`
-- Decisions D-195 through D-200 were batch-persisted in:
-  - `assembly/intake/batches/LIVE_DECISIONS_D195_D200.md`
-  - `assembly/intake/batches/intake_session_D195_D200.json`
-- The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
-- The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
-- The central hub is a fast menu interface, not an explorable base.
-- Missions are handcrafted with bounded controlled variation. Comparable challenge runs may use fixed seeds or standardized conditions.
-- The game is campaign-first with deep mission replay for records, difficulty clears, loot, challenges, achievements, alternate objectives, and build experimentation.
-- Production begins with one genuinely good, replayable level. The internal MVP is not a public demo, Early Access release, or paid episode.
-- The internal MVP is a thin but complete one-level vertical slice covering launch, movement, four-weapon combat, a compact enemy roster, rewards or loot, basic loadout or progression, completion, and replay.
-- The runtime is fully 2D with dimensional-looking artwork. The viewpoint is shallow angled top-down while movement, aiming, navigation, and collision remain on one flat gameplay plane.
-- The eventual setting may contain several distinct enemy factions, but the one-level MVP focuses entirely on rogue automated industrial machines.
-- The first level is an automated weapons factory. Its direct mission objective is to shut down the production core.
-- The first climax is a level-appropriate upgraded droid with somewhat more advanced shooting, not a giant multi-phase spectacle. Detailed enemy and boss design is deferred.
-- The first level uses approximately four or five complementary ordinary enemy roles plus the upgraded droid.
-- The internal MVP uses approximately six to eight authored base weapons, with four equipped simultaneously.
-- Copies of the same MVP weapon behave identically. Stars, augments, enchantments, and randomized item statistics are deferred.
-- The internal MVP includes a minimal real strongbox and randomized-shop loop using the base-weapon pool, without the mature economy's advanced systems.
-- Art production uses a hybrid pipeline: offline 3D sources rendered into 2D sprites for mechs, enemies, weapons, and major machinery, combined with painted, procedural, or directly authored 2D environments, effects, shadows, interface work, and finishing passes.
-- The internal MVP is led by one human developer, supported by AI agents and occasional specialist outsourcing. The workflow supports four or more parallel agents through isolated task branches and gameplay-domain ownership.
-- The engine remains Unity with C#. Gameplay uses a hybrid plain-C# domain core with Unity-facing adapters, ScriptableObject definitions, URP 2D lighting, additive scenes, modular prefabs, and layered automated validation plus playable proof.
-- Windows implementation and tuning begin with keyboard and mouse, while Unity Input System actions remain device-independent for later gamepad, touch, and other platform inputs.
-- The MVP includes a practical accessibility baseline: scalable interface and text, color-independent warnings, reduced-effect controls, aim assistance, input alternatives, and configurable camera feedback.
-- Saves are versioned and local-first with atomic writes, validation, rolling backups, recovery, and manual export or import. Permanent offline play remains complete.
-- Core audio is polished enough to judge combat, with English-first localization-ready text and no requirement for full voice acting.
-- The Windows target is stable 60 FPS at 1080p on a mainstream gaming PC, with scalable quality settings and measurable effect budgets.
-- Playtesting uses structured local diagnostics and exportable privacy-safe evidence bundles rather than mandatory online telemetry.
-- The first factory level is an interconnected authored room map inspired broadly by the navigation feel of `Robokill` and `Red Storm`.
-- Cleared rooms remain enemy-free during the run. Environmental machinery and hazards may remain dangerous and must be clearly telegraphed.
-- Ordinary death respawns the player at the latest activated checkpoint. Full-mission restart remains a possible post-MVP rule for nightmare or sadistic modes and record challenges.
-- Checkpoints are recognizable automatic teleports placed initially about every six or seven rooms, subject to playtesting.
-- Activated teleports support fast travel among discovered teleports. Only a few authored teleports per map also host shops.
-- Teleport-shop stock is rolled once per run. Optional rerolls consume scarce refresh tokens earned during that run; tokens cannot be banked between missions.
-- Mission loot remains provisional until deposited in a few dedicated secure-storage rooms. Completed teleport-shop purchases are secured immediately.
-- Defeated enemies, explored rooms, objectives, and permanent route changes persist after death. Unsecured loot and explicitly temporary post-checkpoint state roll back.
-- Solo play supports a single automatic suspend snapshot from safe or cleared rooms outside combat. Co-op runs cannot be suspended.
-- Future co-op must allow remaining players to continue when the original host leaves through host migration, transferable authority, or an equivalent continuity design.
-- Co-op uses separate personal life allowances. A player with no lives remaining spectates while surviving teammates may clutch the run; the run fails when no active player remains.
-- The first co-op implementation consumes a life immediately at zero health and respawns the player. A revivable downed state remains a later experiment.
-- Personal co-op lives are fixed for the mission, cannot be replenished during the run, and use difficulty-dependent starting allowances.
-- Routine co-op loot, currency, shops, unsecured rewards, banking, and permanent progression remain personal. Major authored rewards create an independently rolled personal strongbox opportunity for every eligible connected player, including life-exhausted spectators.
-- Co-op uses one fixed selected mission difficulty and preserves each player's real equipment and account power. Veteran carrying is allowed; later challenge rules may constrain levels or loadouts explicitly.
-- Solo and co-op completions are tracked separately. Co-op has its own campaign progression track and does not automatically advance the solo campaign.
-- The party leader may launch missions from the leader's co-op track. Less-progressed participants join with visible guest-run status, keep personal rewards, and advance only when their own prerequisites are satisfied.
-- Teleport-based late joining is the desired end state, but the first co-op MVP may use lobby-only entry plus reconnection. Late joiners eventually receive fewer lives according to a simple mission-progress or teleport-segment rule.
-- Co-op encounter pressure scales modestly with active player count and selected mission settings, not account level. Party-size scaling is locked when a room engagement begins; exact curves remain playtest variables.
-- Co-op targets up to four players, with staged two-player validation before three- and four-player completion testing. Architecture must not assume a permanent two-player limit.
-- Networking uses a relay-backed player-hosted PvE model with explicit latency tolerance. Cross-region play should feel responsive but cannot be promised as literally lag-free; latency, jitter, packet loss, and severe divergent enemy-state cases require deliberate testing.
-- The trusted co-op model resolves each player's movement, firing, incoming damage, pickups, loot, and immediate inventory or combat feedback locally. Strict shared team-objective synchronization is deferred beyond the first co-op MVP.
-- A lightweight shared layer confirms room identity, doors, coarse completion, map access, teleports, and major rewards. Players may join a teammate's active room instance or enter their own local version of an available room.
-- The first valid local-instance clear globally unlocks the room's coarse shared progress. Other already-active instances may finish or withdraw, while later entrants find the room cleared.
-- A player may miss XP from a room they did not fight in, but qualifying non-XP reward events create independent personal rolls for every eligible connected player.
-- Each personal reward remains a physical owned drop at the original event location and must normally be collected by its owner. Other players cannot steal it.
-- Major transition points may use a warned party vote and countdown to force rendezvous. A teleported player's remaining owned boxes travel with them or safely reappear at the destination.
-- A disconnected player's uncollected drops remain exclusively reserved during a bounded reconnect grace period. Exact timeout and forfeiture rules require serious testing across reconnects, crashes, host migration, packet loss, spectator state, teleport transitions, and duplication attempts.
-- Detailed post-MVP co-op settlement is now sufficiently bounded for Product Discovery. Return to MVP proof, delivery, content, and acceptance gates before further networking micro-decisions.
-- The next decision is D-201: define what the one-level vertical slice must prove before broader content production begins.
-- D-195 through D-200 are safely persisted. Begin a new D-201 through D-210 batch unless the cadence changes or another context handoff is requested.
-- `unsaved_decisions` is zero at this checkpoint.
+- Product Discovery is active after verified decision D-210.
+- Decisions D-101 through D-210 are persisted in authoritative batch-extension markdown and JSON files under `assembly/intake/batches/`.
+- The latest completed batch is:
+  - `assembly/intake/batches/LIVE_DECISIONS_D201_D210.md`
+  - `assembly/intake/batches/intake_session_D201_D210.json`
+- D-001 through D-039 remain recovered but unverified and must not be presented as final requirements until explicitly re-verified.
+- D-040 through D-063 are archived verbatim.
+- D-064 through D-100 remain in the primary live decision log.
 - No pull request is open yet.
-- Decisions D-001 through D-039 remain an unverified recovered set.
-- Decisions D-040 through D-063 are archived verbatim in `assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md`.
-- Decisions D-064 through D-100 are in `assembly/intake/LIVE_DECISIONS.md`.
 
-## Non-negotiable behavior
+## Stable product direction
+
+- The game is a Windows-first offline-capable top-down 2D shooter built in Unity with C#; Android and online co-op follow later.
+- The runtime is fully 2D with dimensional-looking artwork and a shallow angled top-down view over one flat gameplay plane.
+- The game is campaign-first with deep replay for difficulty clears, records, achievements, loot, challenges, alternate objectives, and build experimentation.
+- The first complete internal vertical slice is one automated-weapons-factory level whose objective is to shut down the production core.
+- The final Stage 2 slice targets approximately six to eight base weapons, four or five ordinary enemy roles, and an upgraded-droid climax.
+- Four mounted weapons fire concurrently toward one shared aim point with independent cadence and separate power banks.
+- The regenerating directional thruster is a signature game-feel pillar.
+- Normal fire is unlimited. Power ammo is scarce but regularly usable and weapon-specific.
+- Loot, strongboxes, shops, checkpoints, banking, deterministic reward grants, offline saves, difficulty rules, replay, accessibility, and performance requirements are extensively specified in the persisted decision batches.
+- Co-op is post-MVP, targets up to four players through staged two-player validation, and uses relay-backed player-hosted latency-tolerant trusted local-first simulation with coarse shared room and campaign facts.
+
+## Proof and delivery direction through D-210
+
+- Development uses a two-stage proof gate.
+- Stage 1 proves intrinsic movement, aiming, four-weapon combat, enemy readability, traversal, quick restart, and voluntary repeat-play desire with temporary content.
+- Stage 2 turns the proven loop into one complete reliable factory level with real saves, checkpoints, loot risk, banking, a shop, strongboxes, completion, replay, scalable effects, and diagnostics.
+- The developer must first replay voluntarily and pursue mastery; then a small target-player group must show genuine behavioral replay interest.
+- Formal pass signals are declared before each test round. Behavior determines pass or fail; interviews and ratings explain causes.
+- After a limited number of failed rounds, conduct a written pivot-or-stop review, permit one evidence-backed substantial pivot, and stop or shelve if the revised prototype still fails.
+- Stage 1 begins with curated fixed four-weapon loadouts, followed only after promise by a tiny nonpersistent randomized reward wrapper.
+- Stage 1 contains a rapidly resettable benchmark arena plus a short interconnected route.
+- Stage 1 uses roughly five or six representative weapon archetypes and three ordinary enemy roles plus one elite.
+- External tests use readability-complete temporary presentation: representative telegraphs, hit feedback, silhouettes, HUD, audio, reduced-effects controls, and performance instrumentation, while final art and polish remain deferred.
+- Formal external builds must reliably support repeated complete prototype sessions. Technically ruined sessions are excluded from fun-gate evidence and recorded as reliability failures.
+
+## Non-negotiable interview behavior
 
 - Do not reconstruct state from chat memory.
 - Do not repeat already accepted questions.
 - Do not present D-001 through D-039 as final until explicitly re-verified.
 - Ask exactly one highest-impact Product Discovery question per turn.
-- Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
-- If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: begin the next batch at D-201 and persist through D-210. Persist earlier if another context handoff becomes necessary or the user requests it.
-- Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
-- Continue prioritizing high-level product, campaign, level structure, progression, content boundary, accessibility, production pipeline, architecture policy, proof, and MVP-delivery decisions before returning to micro-level combat or networking tuning.
-- Preserve the complete offline campaign and permanent guest-play requirements.
-- Preserve Windows PC as the first target and Android as a later target rather than expanding the internal MVP to mobile now.
-- Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, frequent teleport checkpoint cadence, dedicated banking rooms, and clear secured-versus-unsecured loot semantics.
-- Preserve fixed mission difficulty across mixed-level co-op while scaling encounter pressure only from active player count and explicit mission settings.
-- Preserve the local-first trusted co-op direction while maintaining coarse canonical navigation and durable progression facts.
-- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, life counts, player-count scaling coefficients, network thresholds, grace periods, vote thresholds, countdowns, and animation counts as prototype-and-playtest variables unless explicitly fixed.
+- Use a concise A/B/C decision card with pros, cons, MVP risk, scaling or refactor risk where relevant, and one recommendation placed after all options.
+- If the user gives a short clear choice, record it without extended praise or repetition and immediately continue.
+- Commit decisions in grouped batches rather than after every answer. D-201 through D-210 are fully persisted; begin the next batch at D-211 and persist through D-220 unless an earlier handoff is requested.
+- Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is active, track queued decisions and never claim they are committed before a repository write.
+- Prioritize product, vertical-slice boundaries, proof, content-production pipeline, architecture policy, accessibility, testing, and delivery decisions before micro-level coefficients.
+- Preserve complete offline campaign and permanent guest play.
+- Preserve Windows as the first target and Android as later work.
+- Preserve the one-level internal vertical slice rather than expanding the MVP into a public demo, Early Access release, or full campaign.
+- Treat exact counts, timings, coefficients, and thresholds as prototype variables unless explicitly fixed.
 
-## Expected first action
+## Expected next action
 
-Ask D-201 exactly as directed by `CURRENT_HANDOFF.json`: decide what the one-level internal vertical slice must prove before broader content production begins.
-
-Do not return to detailed co-op edge cases, enemy attack statistics, weapon coefficients, boss patterns, collision coefficients, or exact networking thresholds until the higher-level MVP proof and delivery gates are settled.
+Ask D-211 exactly as directed by `CURRENT_HANDOFF.json`: define what the complete Stage 2 production slice must demonstrate before broader content production begins.
