@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 49,
-  "last_completed_decision": "D-049",
+  "questions_asked": 50,
+  "last_completed_decision": "D-050",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -139,6 +139,20 @@
         "Late-game archetypes must justify their later unlock through added complexity, novelty, or power"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-050",
+      "topic": "shop_inventory_persistence_and_rerolls",
+      "answer": "persistent_inventory_with_limited_paid_rerolls_and_item_locks",
+      "constraints": [
+        "A shop's randomized inventory remains stable until deliberately refreshed",
+        "Players may purchase only a limited number of rerolls",
+        "Reroll costs escalate",
+        "Players may lock a small number of selected items so those items survive a refresh",
+        "The system must prevent cheap or unlimited fishing for perfect weapon rolls",
+        "Shop reroll economics must remain balanced against floor strongbox acquisition"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -149,7 +163,8 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Shop inventory persistence and reroll rules",
+    "High-rarity source weighting between shop rolls and high-tier floor strongboxes",
+    "Exact strongbox tiers and augment rarity distribution",
     "Remaining shop pricing rules",
     "Remaining level-design and exploration details",
     "Story and world",
@@ -166,13 +181,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "shop_inventory_persistence_and_rerolls",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting how a broad randomized shop inventory persists, refreshes, and permits rerolls without allowing trivial infinite fishing for perfect weapons. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "high_rarity_source_weighting",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether extreme high-augment jackpot weapons are equally available from shops and boxes, primarily guaranteed by top-tier floor strongboxes with ultra-rare shop appearances, or primarily acquired through expensive shop rolls. Include the proposed eight strongbox tiers and two-star ten-level augment scale as context. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-049"
+    "last_persisted_decision": "D-050"
   }
 }
