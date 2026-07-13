@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "4a942eb658f53721807257bca353d8846629a744",
+  "last_verified_commit": "aa2129d170f9d75b01b267462e53b1ae838eb8bc",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -25,6 +25,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D181_D190.md",
     "assembly/intake/batches/LIVE_DECISIONS_D191_D194.md",
     "assembly/intake/batches/LIVE_DECISIONS_D195_D200.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D201_D210.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -38,145 +39,34 @@
     "assembly/intake/batches/intake_session_D181_D190.json",
     "assembly/intake/batches/intake_session_D191_D194.json",
     "assembly/intake/batches/intake_session_D195_D200.json",
+    "assembly/intake/batches/intake_session_D201_D210.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-208 — Representative three-role enemy roster plus one elite for Stage 1",
-  "current_item": "D-209 — Presentation fidelity required for formal external core-fun testing",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting the minimum presentation fidelity required before formal external core-fun testing: raw graybox geometry and debug effects; near-final visual and audio presentation; or a readability-complete prototype using coherent temporary art and audio with production-quality telegraphs, hit feedback, weapon differentiation, HUD clarity, reduced-effect controls, and performance instrumentation while deferring final assets and polish. Preserve the two-stage proof gate, developer-then-external validation, predeclared behavioral signals, controlled fixed-loadout then tiny nonpersistent reward passes, benchmark arena plus short route, five or six representative weapons, three ordinary enemy roles plus one elite, Unity URP 2D, eventual 3D-rendered sprite pipeline, accessibility baseline, 60 FPS target, and need to distinguish poor game feel from confusing placeholder presentation. Include tester comprehension, first-impression bias, art cost, iteration speed, combat readability, audio necessity, motion and effects accessibility, performance representativeness, and risk of polishing a failing loop. Put the recommendation after all A/B/C options at the end of the card. D-201 through D-208 are checkpointed as queued but not formally batch-persisted; ask D-209 and D-210, then persist the complete D-201 through D-210 batch unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "resume_ready",
+  "last_completed_item": "D-210 — Playable-session reliability required before formal external Stage 1 testing",
+  "current_item": "D-211 — Stage 2 production-gate definition",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting what the complete one-level Stage 2 slice must demonstrate before broader content production begins: end-to-end feature completeness only; near-public-demo polish; or a representative production-ready slice that is complete and reliable while also proving that at least one additional room, enemy, and weapon can be added through documented repeatable pipelines without core-system rework. Preserve the automated weapons factory, real saves and recovery, checkpoints, dedicated banking, loot risk, one shop, strongboxes, difficulty, completion, replay, scalable effects, offline Windows play, Unity with C#, performance diagnostics, and solo-led AI-assisted production. Include content throughput, maintainability, automated validation, placeholder tolerance, performance and save reliability, scope-expansion risk, and what may remain deferred. Put the recommendation after all A/B/C options at the end of the card. Begin a new persistence batch D-211 through D-220 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-200 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-210 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "batch_in_progress",
-    "unsaved_decisions": 8,
-    "last_persisted_decision": "D-200",
-    "last_persisted_at": "2026-07-13T17:30:25+02:00",
-    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-201 through D-210 at D-210 unless an earlier handoff is requested",
-    "queued_decisions": [
-      {
-        "decision_id": "D-201",
-        "topic": "vertical_slice_proof_gate",
-        "choice": "C",
-        "answer": "two_stage_core_fun_then_thin_end_to_end_production_gate",
-        "constraints": [
-          "Stage 1 must prove movement aiming four-weapon combat enemy readability room traversal quick restart and voluntary repeat-run desire with temporary content",
-          "Stage 2 must turn the proven loop into one complete factory level with reliable saves checkpoints loot risk shop strongboxes completion replay scalable effects and diagnostic evidence",
-          "Broader content production begins only after both replay desire and a stable extensible production loop are demonstrated",
-          "Define evidence and kill criteria before testing rather than moving the goalposts afterward",
-          "Exact thresholds and tuning coefficients remain prototype and playtest variables"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-202",
-        "topic": "core_fun_validation_audience",
-        "choice": "C",
-        "answer": "staged_developer_then_external_target_player_validation",
-        "constraints": [
-          "The developer must first find the prototype compelling enough to replay voluntarily and pursue mastery or better execution",
-          "A small external target-player group must then demonstrate genuine repeat-play interest despite temporary visuals and limited progression",
-          "Failure at either stage keeps the project in prototype iteration rather than advancing to full vertical-slice production",
-          "Tester counts and exact replay thresholds must be declared before each formal test round"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-203",
-        "topic": "external_core_fun_pass_evidence",
-        "choice": "C",
-        "answer": "predeclared_behavioral_gate_plus_explanatory_feedback",
-        "constraints": [
-          "Actual replay behavior determines whether the external fun gate passes while interviews and ratings explain why",
-          "Observe voluntary restarts alternate loadout trials mastery or record chasing and later-session return interest",
-          "Replay must be motivated by enjoyment experimentation or mastery rather than merely helping the developer test",
-          "Major frustration must not consistently overwhelm the desire to continue",
-          "Thresholds may change between formal rounds with written justification but never retroactively to declare a weak result successful"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-204",
-        "topic": "repeated_core_fun_gate_failure_policy",
-        "choice": "C",
-        "answer": "predeclared_pivot_or_stop_review",
-        "constraints": [
-          "After a limited predeclared number of failed formal rounds, likely two or three, pause for a written diagnosis",
-          "Identify whether failure comes from movement aiming four-weapon readability enemy design level pacing onboarding or replay incentives",
-          "Permit one substantial evidence-backed pivot with a fresh predeclared test gate",
-          "Stop or shelve the project if the revised prototype still fails",
-          "Do not enter full vertical-slice production while the result remains ambiguous"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-205",
-        "topic": "stage_one_reward_and_progression_scope",
-        "choice": "C",
-        "answer": "controlled_fixed_loadout_then_tiny_nonpersistent_random_reward_pass",
-        "constraints": [
-          "First prove intrinsic movement and combat quality using curated fixed four-weapon loadouts",
-          "After the baseline loop is readable and promising add a deliberately tiny nonpersistent randomized weapon or reward wrapper",
-          "Use the second pass to test whether discovery and experimentation improve replay desire without hiding weak combat behind extrinsic rewards",
-          "Defer the mature economy permanent inventory advanced rarity progression strongboxes shops and save integration to Stage 2",
-          "Keep test conditions and loadout identities reproducible for comparison"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-206",
-        "topic": "stage_one_test_environment",
-        "choice": "C",
-        "answer": "repeatable_benchmark_arena_plus_short_interconnected_route",
-        "constraints": [
-          "Maintain one sterile rapidly resettable arena for controlled mechanical comparisons",
-          "Also test the same mechanics in a compact interconnected route with several rooms corridors hazards and traversal choices",
-          "Use the arena to isolate tuning effects and the mini-route to test navigation pacing route mastery and encounter transitions",
-          "Reuse the same temporary enemies weapons and art across both environments",
-          "Neither prototype environment must become the final authored weapons-factory level"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-207",
-        "topic": "stage_one_weapon_roster",
-        "choice": "C",
-        "answer": "five_or_six_representative_mechanically_distinct_weapons",
-        "constraints": [
-          "Build roughly five or six mechanically distinct prototype weapons supporting several meaningful four-weapon combinations",
-          "Cover representative automatic heavy projectile spread or burst beam charge or heat homing or utility and deliberately unusual synergy behavior",
-          "Temporary art and audio are acceptable while cadence handling power-ammo behavior movement interaction and readability must be representative",
-          "Do not require the complete authored six-to-eight-weapon MVP roster before the core-fun gate",
-          "Avoid designing the system around only one unusually compatible fixed loadout"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-208",
-        "topic": "stage_one_enemy_roster",
-        "choice": "C",
-        "answer": "three_representative_roles_plus_one_elite",
-        "constraints": [
-          "Stage 1 includes a direct pursuer or close-pressure enemy a ranged projectile enemy and a positioning or area-denial enemy",
-          "Add one tougher elite variant that combines pressure without becoming the full upgraded-droid climax",
-          "Use mixed encounters to test target prioritization thruster use projectile readability crowd control weapon synergy and encounter composition",
-          "Difficulty variation must not rely only on health inflation",
-          "Defer the remaining ordinary factory roles and upgraded-droid climax to Stage 2"
-        ],
-        "verification_status": "verified"
-      }
-    ]
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_decision": "D-210",
+    "last_persisted_at": "2026-07-13T17:50:00+02:00",
+    "batching_rule": "Begin a new Product Discovery batch at D-211 and persist through D-220 unless an earlier handoff is requested",
+    "queued_decisions": []
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:44:00+02:00"
+  "updated_at": "2026-07-13T17:50:00+02:00"
 }
