@@ -1,0 +1,40 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-121-D-130",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {"decision_id":"D-121","topic":"baseline_enemy_attack_and_projectile_density","answer":"hybrid_readable_aimed_pressure_with_bounded_authored_barrages","constraints":["Use readable aimed attacks bursts melee flanking and area denial as the baseline","Reserve denser projectile patterns for selected enemies elites events and bosses","Scale difficulty through coordination speed and added layers rather than permanent screen flooding","Preserve readability alongside four player weapons and later Android controls"],"verification_status":"verified"},
+    {"decision_id":"D-122","topic":"enemy_room_entry_model","answer":"authored_starting_formations_with_limited_deterministic_reinforcements","constraints":["Place most threats visibly at encounter start","Use clearly telegraphed believable reinforcement entry points","Trigger reinforcements deterministically from objectives time deaths or player position","Never spawn enemies unfairly on top of or invisibly behind the player","Allow skilled players to learn and manipulate timing"],"verification_status":"verified"},
+    {"decision_id":"D-123","topic":"combat_room_lockdown_policy","answer":"selective_authored_lockdowns","constraints":["Allow retreat and repositioning in ordinary skirmishes","Use lockdowns for major ambushes elites objectives bosses and set pieces","Signal commitment thresholds clearly before entry","Use enemy behaviour rather than universal invisible walls to resist retreat cheese"],"verification_status":"verified"},
+    {"decision_id":"D-124","topic":"enemy_pursuit_across_rooms","answer":"role_based_pursuit_with_encounter_boundaries","constraints":["Let hunters melee units and selected elites pursue across nearby rooms","Keep defensive heavy ranged and objective-bound enemies within authored areas","Protect checkpoints shops and safe spaces","Use flanking suppression grenades or coordinated pushes against doorway abuse"],"verification_status":"verified"},
+    {"decision_id":"D-125","topic":"enemy_predictive_aiming","answer":"enemy_and_weapon_specific_bounded_prediction","constraints":["Keep basic enemies mostly direct-aimed","Let specialised gunners snipers launchers and elites lead current velocity","Never perfectly predict sudden boost reversals","Improve prediction and coordination carefully on harder modes without clairvoyance"],"verification_status":"verified"},
+    {"decision_id":"D-126","topic":"enemy_windup_tracking_and_aim_lock","answer":"track_during_windup_then_visibly_lock_before_firing","constraints":["Allow selected attacks to track during most of the telegraph","Mark the final commitment moment with clear audiovisual feedback","Preserve fair last-second movement or boost reversals","Do not let telegraphs track invisibly through the firing frame"],"verification_status":"verified"},
+    {"decision_id":"D-127","topic":"enemy_projectile_cover_interaction","answer":"most_projectiles_respect_cover_with_explicit_exceptions","constraints":["Make ordinary direct attacks collide consistently with appropriate geometry","Allow clearly marked arcing ricocheting piercing cover-destroying or hazard attacks","Use consistent enemy and projectile visual language","Keep cover useful without letting one obstacle solve every encounter"],"verification_status":"verified"},
+    {"decision_id":"D-128","topic":"destructible_enemy_projectiles","answer":"only_specific_clearly_marked_physical_threats_are_destructible","constraints":["Keep ordinary bullets and beams non-destructible","Allow rockets mines drones slow plasma spheres and similar threats to be shot down","Prevent four continuous weapons from becoming an automatic projectile shield","Defer exact interception tuning to later detailed combat design","Prioritize higher-level discovery questions before more micro-combat rules"],"verification_status":"verified"},
+    {"decision_id":"D-129","topic":"campaign_story_importance","answer":"light_but_meaningful_campaign_narrative","constraints":["Use recurring characters factions discoveries and escalating stakes","Deliver story through concise briefings environmental storytelling dialogue and restrained scenes","Make narrative skippable or accelerated on repeat runs","Support the arcade loop rather than interrupting it"],"verification_status":"verified"},
+    {"decision_id":"D-130","topic":"overall_campaign_structure","answer":"central_hub_with_controlled_branching_mission_choices","constraints":["Use a persistent central base or mission interface","Connect authored main missions optional missions shops progression characters and challenges","Allow selected branches in different orders before convergence points","Avoid open-world scope","Keep branching compatible with progression weapon unlocks narrative pacing and deterministic replay"],"verification_status":"verified"}
+  ],
+  "open_questions_added": [
+    "Player protagonist and mech identity model",
+    "Physical versus menu-driven hub presentation",
+    "World setting tone factions and visual identity",
+    "MVP campaign size and number of authored missions",
+    "Optional mission and replay-mode scope",
+    "Narrative delivery budget and voice acting boundary",
+    "Exact hub services and progression flow"
+  ],
+  "discovery_preference": "Prioritize higher-level product campaign world platform scope and MVP-boundary questions before returning to detailed combat implementation rules.",
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-131",
+    "topic": "player_protagonist_and_mech_identity_model",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the player controls a fixed named protagonist in a signature mech, a customizable pilot identity operating an evolving player-owned mech with recurring authored characters, or an intentionally anonymous mercenary or machine avatar. Preserve the light meaningful narrative, central hub with controlled branching, cosmetic-only monetization, four-weapon mech identity, persistent progression, full offline play, Windows PC first and later Android, future co-op, and the user's request to stay at a higher level. Include emotional attachment, dialogue and story flexibility, cosmetic expression, co-op duplication, production scope, localization and voice implications, player self-insertion, franchise identity, and save/profile structure. Put the recommendation after all A/B/C options at the end of the card. Queue D-131 through D-140 and persist at D-140 unless the user changes the batching rule."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-130",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-140"
+  }
+}
