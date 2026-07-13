@@ -2,7 +2,7 @@
   "schema_version": "0.2.0",
   "project_id": "shooter-mover",
   "name": "Shooter Mover",
-  "status": "draft",
+  "status": "requirements_review",
   "default_view": "overview",
   "repository": {
     "provider": "github",
@@ -66,10 +66,12 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Complete guided intake and open the requirements/bootstrap pull request. Do not generate architecture or implementation tasks yet.",
+    "human_next_step": "Review and merge the requirements/bootstrap pull request, then start a fresh Planning Agent context from merged main.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
-      "Planning and task decomposition belong in later pull requests."
+      "Product Discovery is closed through verified decision D-233.",
+      "D-001 through D-039 remain excluded unverified recovery material.",
+      "Planning and task decomposition belong in later separate pull requests."
     ]
   }
 }
