@@ -20,9 +20,11 @@ Continue from the committed task-split branch in `YeerooXY/shooter-mover`.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
-- Next batch: `stage1-evidence-harness` with 10 tasks.
+- Generated and schema-validated: `stage1-evidence-harness` with 10 tasks.
+- Progress: 3 of 16 batches generated and validated.
+- Next batch: `movement-thruster` with 12 tasks.
 - No Unity/game implementation, canonical backlog, collaboration assignment, or task-split pull request exists.
-- Recorded blocker: Foundation plus Contract Steward estimates total 7.3 focused lead days against the accepted S1.0 five-day cap. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
+- Recorded blocker: Foundation, Contract Steward, and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 five-day cap. The Evidence Harness adds 3.6 days. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
 - Full graph validation remains pending until every planned batch file exists; forward references to predeclared later IDs are not evidence of a complete validated backlog.
 
 ## Guided rule
@@ -39,6 +41,6 @@ Generate exactly one next planned agent batch per explicit continuation from the
 
 ## Next action
 
-Generate `assembly/generated/task_batches/stage1-evidence-harness.json` only after the human lead asks to continue. Do not jump ahead to movement or later agents.
+Human-review `assembly/generated/task_batches/stage1-evidence-harness.json`. After explicit continuation, generate only `assembly/generated/task_batches/movement-thruster.json`. Do not jump ahead to combat, weapons, enemies, or later agents.
 
-Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, or open the task-split PR until all 16 batches are generated and validated.
+Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, open the task-split pull request, or begin Dispatch until all 16 batches are generated and validated.
