@@ -2,12 +2,12 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "task_decomposition",
+  "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
   "active_branch": "ai/task-split-shooter-mover-v1-continuation-3",
-  "active_pr": null,
-  "last_verified_commit": "5bded6d0b9b133b3851bb1998ebb776e9356c3b5",
+  "active_pr": 6,
+  "last_verified_commit": "dde90cb09aa04e44f593de1a0eab447d009d9472",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -42,8 +42,8 @@
   "current_section": "guided_task_batch_generation",
   "handoff_status": "task_split_in_progress",
   "last_completed_item": "Generated and structurally validated the human-approved MT-001 through MT-012 movement-thruster batch, reconciled the predeclared movement IDs from MV-* to MT-*, preserved exclusive ownership boundaries, and kept the no-implementation boundary.",
-  "current_item": "Open the draft continuation pull request for the validated movement-thruster batch.",
-  "next_action": "Open and review the draft movement-thruster continuation pull request. After it is approved and merged, start a fresh Task Splitter context from current main and first present the proposed CB-001 through CB-011 titles, owner lanes and exact dependencies to the human lead, then stop. Do not generate combat-four-mount until explicit continuation.",
+  "current_item": "Human review of draft pull request #6 for the validated movement-thruster batch.",
+  "next_action": "Review and merge draft pull request #6. After it merges, start a fresh Task Splitter context from current main, first present the proposed CB-001 through CB-011 titles, owner lanes and exact dependencies to the human lead, and stop. Do not generate combat-four-mount until explicit continuation.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Twelve planned agent batches remain to be proposed, approved and generated one at a time.",
@@ -56,7 +56,7 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T21:22:28+02:00",
+    "last_persisted_at": "2026-07-13T21:41:15+02:00",
     "planning_run": "shooter-mover-v1",
     "task_decomposition": "4 of 16 batches generated and validated",
     "generated_batches": [
@@ -98,5 +98,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T21:22:28+02:00"
+  "updated_at": "2026-07-13T21:41:15+02:00"
 }

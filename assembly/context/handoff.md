@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-The human-approved movement-thruster batch is committed on the fresh continuation branch `ai/task-split-shooter-mover-v1-continuation-3` for draft pull-request review.
+The human-approved movement-thruster batch is committed on `ai/task-split-shooter-mover-v1-continuation-3` and is open for review in draft pull request #6.
 
 ## Durable task state
 
@@ -57,6 +57,6 @@ The Movement and Thruster batch estimates 6.15 focused lead days against the acc
 
 ## Exact next action
 
-Open and review the draft movement-thruster continuation pull request. After it merges, start a fresh context from current `main`, present the proposed `CB-001` through `CB-011` titles, owner lanes and exact dependencies to the human lead, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/combat-four-mount.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
+Review and merge draft pull request #6. After it merges, start a fresh context from current `main`, present the proposed `CB-001` through `CB-011` titles, owner lanes and exact dependencies to the human lead, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/combat-four-mount.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.
