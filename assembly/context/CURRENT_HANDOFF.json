@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "a414c2e5a85d9a2f40e86f2ca912807a507b88c8",
+  "last_verified_commit": "4f0805c07553c3f0bc13a6b9069f23ec770cbac2",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -19,9 +19,9 @@
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-069 — Controlled same-level fast travel between physically activated checkpoint teleport stations",
-  "current_item": "D-070 — Puzzle, key, lock, and environmental-interaction complexity",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether levels use only simple combat-adjacent switches and key gates, use moderate optional environmental puzzles plus straightforward mandatory routing tasks, or include substantial mandatory multi-step puzzle sequences. Preserve combat-first pacing, substantial interconnected levels, alternate routes, secrets, deterministic mastery, accessibility across broad difficulty settings, checkpoint travel, and later Android controls. Include pacing interruption, exploration value, replay friction, readability, implementation and testing complexity, co-op implications, and whether puzzle solutions remain fixed or vary by difficulty. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist D-070 to LIVE_DECISIONS.md, update intake_session.json, refresh NEW_CHAT_RESUME.md if its expected action changes, and update this handoff before asking anything else.",
+  "last_completed_item": "D-080 — Minimal capped passive shield recovery extended through skills and difficulty rulesets",
+  "current_item": "D-081 — Mid-level four-weapon loadout change rules",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the player may swap equipped weapons anywhere while outside combat, only at activated checkpoints and shops with immediate equipping of shop purchases, or only before beginning a level attempt. Preserve the four-weapon instant-switch combat model, immediate usability of shop purchases, universal armory inventory, deterministic speedrunning, checkpoint fast travel, later Android controls, and future co-op. Include experimentation freedom, inventory-menu interruption, encounter counter-picking, shop value, implementation and save-state complexity, competitive verification, and difficulty-specific restrictions. Put the agent recommendation after all A/B/C options, at the end of the card. Queue accepted decisions D-081 through D-090 and persist the complete batch at D-090 before asking D-091, unless a context handoff or explicit user instruction requires earlier persistence.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -31,12 +31,15 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T11:40:55+02:00"
+    "last_persisted_decision": "D-080",
+    "last_persisted_at": "2026-07-13T12:07:24+02:00",
+    "batching_rule": "Queue ten Product Discovery decisions per batch; next persistence boundary D-090",
+    "queued_decisions": []
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T11:40:55+02:00"
+  "updated_at": "2026-07-13T12:07:24+02:00"
 }
