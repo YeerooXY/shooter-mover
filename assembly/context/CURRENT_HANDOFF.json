@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "e3494b66bc4443151492c5564b86575b03c6c4d6",
+  "last_verified_commit": "4825c1495e592b144ca6bf16b933d9bb167c686f",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
@@ -14,9 +14,9 @@
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-055 — Meaningful shop investments with rarity-scaled prices and partial resale value",
-  "current_item": "D-056 — Rare shop-item reservation token",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether miracle shop items cannot be preserved beyond normal reroll locks, may be reserved through a very rare consumed token with a tightly limited layaway slot, or may be permanently reserved through a broader long-term wishlist system. Distinguish the rare reservation token from ordinary reroll locks. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-056 — Extremely rare consumed reservation token with one non-expiring long-term shop layaway slot",
+  "current_item": "D-057 — Duplicate conversion and inventory cleanup",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether unwanted weapons are mainly sold for currency, may be either sold or dismantled into bounded upgrade and crafting materials, or are fused directly into matching weapons to raise their power. Include inventory cleanup and anti-farming implications. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +24,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T10:03:00+02:00"
+    "last_persisted_at": "2026-07-13T10:10:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T10:03:00+02:00"
+  "updated_at": "2026-07-13T10:10:00+02:00"
 }
