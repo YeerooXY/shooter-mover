@@ -6,7 +6,7 @@
   "active_role": "requirements_reviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": 1,
-  "last_verified_commit": "d93efc2c9498eef54129731b075f4ad95a6a1fde",
+  "last_verified_commit": "32504f8a5409dcc95a95af8beda4dfe0ba9b9a14",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -14,9 +14,12 @@
     "assembly/context/handoff.md",
     "assembly/context/repository-notes.md",
     "assembly/intake/project_intake.json",
+    "assembly/intake/PROJECT_DNA.md",
     "assembly/intake/intake_session.json",
     "assembly/requirements/REQUIREMENTS.md",
+    "assembly/requirements/REQUIREMENTS_REVIEW_CLARIFICATIONS.md",
     "assembly/generated/collaboration_state.json",
+    "assembly/prompts/09-requirements-reviewer.md",
     "assembly/intake/LIVE_DECISIONS.md",
     "assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md",
     "assembly/intake/batches/LIVE_DECISIONS_D101_D110.md",
@@ -53,19 +56,19 @@
     "assembly/intake/batches/intake_session_D231_D233.json"
   ],
   "current_section": "requirements_handoff",
-  "handoff_status": "draft_requirements_pr_open",
-  "last_completed_item": "Product Discovery closed through verified D-233, requirements package generated, and draft requirements PR #1 opened",
-  "current_item": "Review and approve draft requirements PR #1",
-  "next_action": "Review draft pull request #1, Finalize Shooter Mover requirements and Planning handoff, for blocking inconsistencies. Merge only with explicit human approval. After merge, start a fresh Planning Agent context from merged main and create the architecture and repository planning package in a separate planning pull request. Do not create the canonical task backlog during Planning.",
+  "handoff_status": "requirements_pr_open_review_repairs_applied",
+  "last_completed_item": "Requirements review blockers repaired: Project DNA, reviewer prompt, mission-only shop-refresh clarification, and deterministic handoff coverage added",
+  "current_item": "Review and approve requirements pull request #1",
+  "next_action": "Review pull request #1, Finalize Shooter Mover requirements and Planning handoff, for any remaining blocking inconsistency. Merge only with explicit human approval. After merge, start a fresh Planning Agent context from merged main and create the architecture and repository planning package in a separate planning pull request. Do not create the canonical task backlog during Planning.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "Draft requirements pull request #1 must be reviewed and merged before Planning artifacts become authoritative"
+    "Requirements pull request #1 must be reviewed and merged before Planning artifacts become authoritative"
   ],
   "persistence": {
-    "status": "requirements_persisted",
+    "status": "requirements_persisted_review_repairs_committed",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T18:48:50+02:00",
+    "last_persisted_at": "2026-07-13T19:14:12+02:00",
     "batching_rule": "Product Discovery is closed; no further decision batch is active",
     "queued_decisions": []
   },
@@ -80,5 +83,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:51:00+02:00"
+  "updated_at": "2026-07-13T19:14:12+02:00"
 }
