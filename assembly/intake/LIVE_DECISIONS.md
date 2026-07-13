@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-066
+- Last persisted decision: D-067
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -79,13 +79,27 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-067 — Gameplay cross-progression and divergent offline saves
+
+- Status: accepted
+- Choice: B — whole-profile cloud cross-progression with explicit conflict selection
+- Accepted requirement: Linked players may upload and restore a complete gameplay-profile snapshot for cross-device and eventual PC-to-Android continuity while retaining unrestricted offline play and optional account use.
+- Conflict rule: When local and cloud profiles diverge, never merge individual weapons, currencies, strongboxes, inventory transactions, or progression events. Present both complete save lineages and require the player to choose either the local or cloud branch.
+- Comparison rule: Conflict selection must show useful summaries such as timestamp, player level, playtime, campaign progress, inventory overview, and verification state before the player commits.
+- Recovery rule: Preserve the discarded branch temporarily as a recoverable backup rather than deleting it immediately.
+- Integrity rule: Profile lineage identifiers, transaction journals, monotonic grant counters, and save versioning must prevent choosing both branches sequentially to duplicate weapons, currency, boxes, purchases, or other rewards.
+- Timing rule: Prepare profile identifiers, deterministic save schemas, and versioning during the Windows PC build. The actual cross-platform cloud service may arrive post-MVP with Android and must not block the PC MVP.
+- Explicit exclusion: Do not attempt automatic item-by-item merging of divergent gameplay profiles.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Define whether optional account linkage also provides gameplay cross-progression, and how divergent offline saves are resolved without duplicating weapons, currency, or strongboxes.
+Product Discovery is intentionally paused for a context handoff after D-067. On resume, re-enter the core-experience recovery by deciding death/checkpoint world-reset behavior, especially whether cleared rooms stay cleared, the current checkpoint section resets deterministically, or earlier rooms may be reclaimed.
 
 ## Revision rules
 
