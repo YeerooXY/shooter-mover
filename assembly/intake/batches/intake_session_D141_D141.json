@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-141-D-141",
+  "status": "persisted_early_for_handoff",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-141",
+      "topic": "primary_world_conflict_and_enemy_faction_scope",
+      "answer": "broad_multi_faction_science_fiction_setting_with_single_faction_mvp_focus",
+      "constraints": [
+        "Allow several distinct factions in the eventual campaign",
+        "Use exactly one cohesive opposing faction in the first complete level",
+        "Give the MVP faction a readable visual language focused roster and faction-appropriate climax",
+        "Do not build assets or systems for future factions before the first level is complete and enjoyable",
+        "Use later factions to expand enemy silhouettes movement pressures environments bosses and narrative conflict",
+        "Keep first-level loot and presentation coherent with the chosen faction and location"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Specific enemy faction identity for the one-level MVP",
+    "First level location mission objective and climax",
+    "Minimum enemy roster and boss boundary for the vertical slice",
+    "MVP weapon and loot-content boundary",
+    "Art-production pipeline for dimensional 2D faction assets"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-142",
+    "topic": "first_mvp_enemy_faction_identity",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the one-level internal MVP fights an automated industrial or rogue-machine faction, a human corporate-security or mercenary faction, or a biological or alien infestation faction. Preserve the broader multi-faction future setting while keeping the first level entirely focused on one production-ready faction. Include visual readability, animation and asset cost, fit with four-weapon mech combat and loot, enemy-role variety, boss potential, environmental cohesion, story flexibility, and reuse into later missions. Put the recommendation after all A/B/C options at the end of the card. Continue queuing D-142 through D-150 and persist the complete remaining batch at D-150 unless another context handoff or explicit user instruction requires earlier persistence."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-141",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-150",
+    "early_persistence_reason": "explicit_context_handoff_request"
+  }
+}
