@@ -17,12 +17,12 @@ Continue from the committed task-split branch in `YeerooXY/shooter-mover`.
 
 - Planning PR #2 is merged at `320b7fee260743f0db250a8e14f46ddd8fdf7b24`.
 - Task-split branch: `ai/task-split-shooter-mover-v1`.
-- Batch index: `assembly/generated/task_batch_index.json`.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
-- Each agent batch contains 10–13 small, reviewable tasks.
-- Generated and validated: `assembly/generated/task_batches/unity-foundation.json` with 11 tasks.
-- Next batch: `shared-contracts-core`.
-- No Unity/game implementation, canonical backlog, collaboration assignment, or task-split pull request has been created.
+- Generated and validated: `unity-foundation` with 11 tasks.
+- Generated and validated: `shared-contracts-core` with 12 tasks.
+- Next batch: `stage1-evidence-harness` with 10 tasks.
+- No Unity/game implementation, canonical backlog, collaboration assignment, or task-split pull request exists.
+- Recorded blocker: Foundation plus Contract Steward estimates total 7.3 focused lead days against the accepted S1.0 five-day cap. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
 
 ## Guided rule
 
@@ -38,6 +38,6 @@ Generate exactly one next planned agent batch per explicit continuation from the
 
 ## Next action
 
-Generate `assembly/generated/task_batches/shared-contracts-core.json` only after the human lead asks to continue. Do not jump ahead to later agents.
+Generate `assembly/generated/task_batches/stage1-evidence-harness.json` only after the human lead asks to continue. Do not jump ahead to movement or later agents.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, or open the task-split PR until all 16 batches are generated and validated.
