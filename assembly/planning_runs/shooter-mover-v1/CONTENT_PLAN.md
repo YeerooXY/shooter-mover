@@ -1,32 +1,26 @@
 # Representative Content and Factory Plan
 
-Names are working production identifiers, not final marketing copy. Counts and archetypes are frozen for task splitting; numeric balance remains prototype-controlled.
+Names are working production identifiers, not final marketing copy. Counts and archetypes are frozen for task splitting as amended by `AMENDMENT_STAGE1_WEAPONS.md`; numeric balance remains prototype-controlled.
 
 ## 1. Stage 1 weapon set
 
-Stage 1 uses six weapons so multiple four-slot combinations cover the accepted firing models.
+Stage 1 uses five deliberately simple weapons so multiple four-slot combinations can test identity and readability without exhausting the S1.2 review reserve.
 
-| Stable ID | Working name | Primary rhythm | Purpose | Power archetype |
+| Stable ID | Working name | Primary rhythm | Purpose | Empowered profile |
 |---|---|---|---|---|
-| `weapon.needle-autocannon` | Needle Autocannon | fast automatic fire with bounded spread/recoil growth | continuous reference weapon and audiovisual prioritization | rapid surge |
-| `weapon.foundry-cannon` | Foundry Cannon | slow heavy projectile with recovery and authored push | slow cadence, convergence, recoil, boost counterplay | explosive fragmentation |
-| `weapon.scatter-array` | Scatter Array | short burst or spread volley | range choice, crowd pressure, multi-projectile density | focused overcharge |
-| `weapon.thermal-beam` | Thermal Beam | sustained beam with heat and recovery | continuous hit feedback, heat, movement trade-off, cover | high-intensity overcharge |
-| `weapon.coil-lance` | Coil Lance | charge/release piercing line shot | visible charge, commitment, precision, heavy timing | piercing surge |
-| `weapon.wasp-rack` | Wasp Rack | paced micro-missiles with bounded homing | utility/homing, physical threats, target priority | swarm surge |
+| `weapon.blaster-machine-gun` | Blaster Machine Gun | straightforward automatic projectile fire | default starting weapon and continuous reference | numeric base-stat uplift only |
+| `weapon.shotgun` | Shotgun | close-range multi-projectile spread | range choice and crowd pressure | numeric base-stat uplift only |
+| `weapon.rocket-launcher` | Rocket Launcher | paced projectile with bounded area detonation | simple area damage and deliberate recovery | numeric base-stat uplift only |
+| `weapon.arc-gun` | Arc Gun | primary hit chaining to at most three additional nearby targets | bounded multi-target synergy | numeric base-stat uplift; chain cap unchanged |
+| `weapon.ricochet-gun` | Ricochet Gun | long-lived projectile with at most two wall bounces | geometry play and bank-shot identity | numeric base-stat uplift; bounce cap unchanged |
 
-Stage 1 fixed-loadout comparisons use reproducible four-weapon sets. Its tiny randomized wrapper chooses from these six but does not persist rewards.
+Stage 1 fixed-loadout comparisons use reproducible four-weapon sets. Its tiny randomized wrapper chooses from these five but does not persist rewards.
 
 ## 2. Stage 2 weapon additions
 
-| Stable ID | Working name | Primary rhythm | Purpose | Power archetype |
-|---|---|---|---|---|
-| `weapon.arc-projector` | Arc Projector | short-range pulses with bounded chaining | unusual multi-target synergy without modifiers | extended chaining |
-| `weapon.slag-mortar` | Slag Mortar | lobbed area projectile with deliberate recovery | area denial, cover exception, route control | fragmentation field |
+The complete slice still targets exactly eight identical-copy base weapons; four are equipped simultaneously. The remaining three weapon identities are intentionally deferred until Stage 1 evidence exists. They require a planning amendment before Stage 2 combat-content tasks are generated or dispatched.
 
-The complete slice therefore has exactly eight identical-copy base weapons; four are equipped simultaneously.
-
-Keep four reusable empowered-fire archetypes: overcharge, fragmentation, piercing, and surge. A weapon may tune an archetype but does not receive an unrelated bespoke second design merely to use power ammo.
+For the Stage 1 proof, empowered fire only tunes existing numeric coefficients. It does not add unrelated bespoke behavior, increase the Arc Gun's three-additional-target cap, increase the Ricochet Gun's two-bounce cap, or introduce mature modifier systems.
 
 ## 3. Enemy roster
 
@@ -162,8 +156,8 @@ Pass the following through the real pipeline during Stage 2:
 - player mech;
 - Cutter Drone;
 - Foreman Elite or Prototype Overseer;
-- Needle Autocannon;
-- Foundry Cannon or Thermal Beam;
+- Blaster Machine Gun;
+- Rocket Launcher or Arc Gun;
 - one Assembly Line machine/environment set;
 - representative normal maps, emissives, shadows, animation, damage, destruction, projectiles, and effects.
 

@@ -66,7 +66,7 @@
       "depends_on_batches": ["shared-contracts-core", "stage1-evidence-harness", "movement-thruster"],
       "output_path": "assembly/generated/task_batches/combat-four-mount.json",
       "status": "validated",
-      "notes": "Validated 11-task four-mount combat foundation. Direct implementation and proof spend is 4.50 focused lead days against the accepted S1.2 ten-day cap, leaving 5.50 days for six weapons, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
+      "notes": "Validated 11-task four-mount combat foundation. Direct implementation and proof spend is 4.50 focused lead days against the accepted S1.2 ten-day cap, leaving 5.50 days for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
     },
     {
       "batch_id": "stage1-weapons",
@@ -79,7 +79,7 @@
       "depends_on_batches": ["combat-four-mount"],
       "output_path": "assembly/generated/task_batches/stage1-weapons.json",
       "status": "planned",
-      "notes": "One reviewable agent workload."
+      "notes": "One reviewable agent workload. WP-001 through WP-012 must cover exactly the five packages and numeric-only empowered profiles accepted in AMENDMENT_STAGE1_WEAPONS.md."
     },
     {
       "batch_id": "stage1-enemies-route",

@@ -275,7 +275,7 @@
       ],
       "verification": [
         "Automated: slot uniqueness, mixed readiness, mixed power fallback and HUD ordering tests.",
-        "Manual/playable: walk all six Stage 1 weapon archetypes through the contract."
+        "Manual/playable: walk all five amended Stage 1 weapon archetypes through the contract."
       ],
       "proof_required": [
         "weapon contract test log",

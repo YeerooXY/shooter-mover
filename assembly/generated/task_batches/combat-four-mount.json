@@ -34,17 +34,17 @@
       "implementation_notes": [
         "Forbidden paths: accepted planning/requirements, movement-owned files, UnityAdapters, ContentPackages/Weapons, generated registries, scenes, prefabs, ScriptableObjects, UI, enemies, mission state, saves, rewards, and networking.",
         "Serialized ownership: none. Save-schema impact: none. Content-registry impact: none; behavior references use validated stable IDs without generating content.",
-        "Keep this a runtime profile, not a universal weapon god object and not a replacement for the six Stage 1 weapon packages.",
+        "Keep this a runtime profile, not a universal weapon god object and not a replacement for the five amended Stage 1 weapon packages.",
         "Rollback: remove the three owned files before any consumer lands. Prototype debt: none."
       ],
       "acceptance_criteria": [
         "Profiles are immutable, Unity-free, deterministically identifiable, and reject invalid cadence, cost, heat/charge, recovery, recoil-influence, module-reference, and priority values.",
         "Normal fire has no consumable ammunition field; every mount profile has an independent optional power bank and authored empowered cost.",
-        "The model does not encode the six Stage 1 weapon packages or switch on weapon IDs."
+        "The model does not encode the five amended Stage 1 weapon packages or switch on weapon IDs."
       ],
       "verification": [
         "Automated: deterministic identity, invalid numeric bounds, missing module reference, unlimited-normal-fire, and independent-power-field tests.",
-        "Manual/playable: contract review confirms all six planned Stage 1 weapon packages can be represented without adding package-specific branches."
+        "Manual/playable: contract review confirms all five amended Stage 1 weapon packages can be represented without adding package-specific branches."
       ],
       "proof_required": ["WeaponRuntimeProfileTests log", "representative valid and rejected profile fixtures"],
       "edge_cases": ["zero empowered cost", "unknown behavior-module ID", "conflicting heat and charge modes"],
@@ -487,7 +487,7 @@
         "The frozen session demonstrates one shared aim/fire stream driving exactly four mounts with different cadence and simultaneous mixed readiness.",
         "Per-mount power depletion falls back independently, one injected mount fault leaves the other three operational, and combat movement influence remains bounded.",
         "Focus loss clears held combat input, rapid restart returns to the same frozen initial state, diagnostics classify invalid sessions, and evidence identity/manifests remain reproducible.",
-        "The scenario explicitly states that six Stage 1 weapon packages, final audiovisual identity, HUD visuals, and encounter balance are not complete."
+        "The scenario explicitly states that five amended Stage 1 weapon packages, final audiovisual identity, HUD visuals, and encounter balance are not complete."
       ],
       "verification": [
         "Automated: deterministic replay, shared aim, mixed cadence/readiness/power, fault isolation, recoil cap, focus-loss, restart, diagnostics, manifest, and performance-budget scenario tests.",
@@ -501,11 +501,11 @@
         "human playable review record covering aim, independence, recoil, readability, restart, and fault isolation"
       ],
       "edge_cases": ["all mounts recovering", "one mount faults during power fire", "focus loss during simultaneous fire", "restart during pending plan"],
-      "non_goals": ["no six-weapon completion claim", "no final audiovisual identity", "no HUD prefab", "no encounter or enemy work"],
+      "non_goals": ["no five-weapon completion claim", "no final audiovisual identity", "no HUD prefab", "no encounter or enemy work"],
       "estimated_size": "M",
       "risk_tags": ["integration-evidence", "human-review", "performance", "combat-foundation"],
       "handoff_notes": "WP tasks consume this accepted foundation and replace synthetic profiles with package-owned evidence without editing EH-004.",
-      "notes": "Milestone-cap spend: 0.65 focused lead day. Batch direct spend totals 4.50 focused lead days, leaving 5.50 of the S1.2 ten-day cap for six weapons, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
+      "notes": "Milestone-cap spend: 0.65 focused lead day. Batch direct spend totals 4.50 focused lead days, leaving 5.50 of the S1.2 ten-day cap for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
     }
   ]
 }
