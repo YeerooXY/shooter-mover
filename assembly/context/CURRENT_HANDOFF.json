@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "4ddecb56a5ae1d7e7dd086973702e544b201a9a5",
+  "last_verified_commit": "bb19e49135b194604aac04809344720bad991a0b",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -47,9 +47,9 @@
   ],
   "current_section": "mvp_proof_and_delivery",
   "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-223 — Privacy-safe local diagnostics with explicit export",
-  "current_item": "D-224 — Update, save-migration, and rollback compatibility contract",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how formal test and eventual public Windows builds handle updates, save compatibility, and rollback: treat saves as disposable between builds; require universal backward and forward compatibility across every build; or use an explicit versioned migration envelope where newer builds apply ordered idempotent tested migrations to supported older saves after creating immutable backups, older builds refuse to modify newer-schema saves, failed or interrupted migrations restore safely, removed content uses stable-ID tombstones or replacement and compensation rules, and rollback operates on cloned or backed-up saves rather than destructive downgrade. Preserve immutable promoted artifacts, versioned snapshot plus short journal persistence, offline play, atomic writes and backups, stable content identifiers, current and previous known-good artifacts, and eventual public player trust. Include development-channel reset tolerance, public compatibility promises, migration fixtures, interruption tests, unsupported-version messaging, content removal, downgrade hazards, recovery tooling, and the cost of indefinite compatibility. Put the recommendation after all A/B/C options at the end of the card. D-221 through D-223 are checkpointed as queued but not formally batch-persisted; continue through D-230 unless the user changes the cadence or requests a handoff.",
+  "last_completed_item": "D-224 — Versioned save migrations with protected rollback",
+  "current_item": "D-225 — Debug tools, cheats, and developer-command policy",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how debug tools cheats and developer commands are handled across developer internal external-test release-candidate and public Windows builds: strip almost all debug capabilities outside the Unity editor; ship a broadly accessible console and cheat system in every build; or use a capability-gated diagnostic command framework where development and approved test artifacts expose auditable commands for room warps loadouts enemy spawning save inspection checkpoint simulation performance overlays and fault injection, while public builds exclude progression-altering commands and retain only safe support diagnostics through explicit hidden or support-approved activation. Preserve immutable promoted artifacts, privacy-safe local logs, versioned save migration, achievements and records integrity, offline play, future speedrunning, automated testing, and one-click support bundles. Include accidental exposure, security through obscurity limits, tester convenience, reproduction speed, build-configuration drift, save contamination, achievement invalidation, deterministic test setup, fault injection, command auditing, and whether legitimate accessibility or practice features should be implemented separately from cheats. Put the recommendation after all A/B/C options at the end of the card. D-221 through D-224 are checkpointed as queued but not formally batch-persisted; continue through D-230 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -59,7 +59,7 @@
   ],
   "persistence": {
     "status": "batch_in_progress",
-    "unsaved_decisions": 3,
+    "unsaved_decisions": 4,
     "last_persisted_decision": "D-220",
     "last_persisted_at": "2026-07-13T18:04:09+02:00",
     "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-221 through D-230 at D-230 unless an earlier handoff is requested",
@@ -107,6 +107,21 @@
           "Remote telemetry remains a future opt-in consideration only if project scale justifies its privacy security hosting and retention costs"
         ],
         "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-224",
+        "topic": "update_save_migration_and_rollback_policy",
+        "choice": "C",
+        "answer": "versioned_migrations_with_protected_rollback",
+        "constraints": [
+          "Every save records game content and schema versions migration history and stable content identifiers",
+          "Newer builds create immutable backups then validate and apply ordered idempotent tested migrations before atomically committing the result",
+          "Failed or interrupted migrations restore safely and older builds refuse to modify newer-schema saves",
+          "Rollback uses cloned saves or compatible backups rather than destructive downgrade",
+          "Removed content uses stable-ID tombstones replacements refunds or explicit compensation rules",
+          "Development channels may permit announced resets but archive or export old profiles first while public compatibility promises remain explicit and tested"
+        ],
+        "verification_status": "verified"
       }
     ]
   },
@@ -115,5 +130,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:12:11+02:00"
+  "updated_at": "2026-07-13T18:14:18+02:00"
 }
