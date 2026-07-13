@@ -5,9 +5,9 @@
   "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
-  "active_branch": "ai/task-split-shooter-mover-v1-continuation-1",
-  "active_pr": 4,
-  "last_verified_commit": "42ffcc8",
+  "active_branch": "ai/task-split-shooter-mover-v1-continuation-2",
+  "active_pr": 5,
+  "last_verified_commit": "5bded6d",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -36,17 +36,19 @@
     "assembly/generated/task_batches/unity-foundation.json",
     "assembly/generated/task_batches/shared-contracts-core.json",
     "assembly/generated/task_batches/stage1-evidence-harness.json",
+    "assembly/generated/task_batches/movement-thruster.json",
     "assembly/intake/LIVE_DECISIONS.md"
   ],
   "current_section": "guided_task_batch_generation",
   "handoff_status": "task_split_in_progress",
-  "last_completed_item": "Recovered the Contract Steward and Stage 1 Evidence Harness batches from the closed PR #3 branch onto a fresh continuation branch, narrowed generated-task ownership to remove all current path overlaps, and preserved the no-implementation boundary.",
-  "current_item": "Human review of recovery pull request #4 for the three validated generated batches.",
-  "next_action": "Review and merge pull request #4. In the next fresh Task Splitter context after merge, first present the proposed MT-001 through MT-012 titles and exact dependencies to the human lead and stop. Only after explicit human continuation may the agent create a fresh branch from current main, generate movement-thruster, validate it, update deterministic handoffs, open a draft batch-continuation pull request, and stop.",
+  "last_completed_item": "Generated and validated the approved Movement and Thruster batch as MT-001 through MT-012, reconciled the stale MV prefix in the batch index, preserved exclusive file ownership, and kept all implementation blocked behind the task-decomposition merge gate.",
+  "current_item": "Human review of draft movement-thruster continuation pull request #5.",
+  "next_action": "Review and merge pull request #5. In the next fresh Task Splitter context after merge, first present the proposed CB-001 through CB-011 titles, owner lane, exact dependencies, estimated sizes and owned files/assets to the human lead and stop. Only after explicit human continuation may the agent create a fresh branch from current main, generate combat-four-mount, validate it, update deterministic handoffs, open a draft continuation pull request, and stop.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "Thirteen planned agent batches remain to be proposed, approved and generated one at a time.",
+    "Twelve planned agent batches remain to be proposed, approved and generated one at a time.",
     "Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 cap of 5 days; Dispatch requires human re-estimation, scope sequencing or an approved milestone-cap amendment. Evidence-critical contracts, accessibility, diagnostics, reliability and performance may not be cut to hide the overrun.",
+    "The movement-thruster batch estimates 6.35 focused lead days against the accepted S1.1 eight-day cap, leaving 1.65 focused lead days for integration and human feel review; any overrun still triggers the written milestone review.",
     "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
     "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
   ],
@@ -54,15 +56,16 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T20:59:36+02:00",
+    "last_persisted_at": "2026-07-13T21:23:49+02:00",
     "planning_run": "shooter-mover-v1",
-    "task_decomposition": "3 of 16 batches generated and validated",
+    "task_decomposition": "4 of 16 batches generated and validated",
     "generated_batches": [
       "unity-foundation",
       "shared-contracts-core",
-      "stage1-evidence-harness"
+      "stage1-evidence-harness",
+      "movement-thruster"
     ],
-    "next_batch": "movement-thruster",
+    "next_batch": "combat-four-mount",
     "queued_decisions": []
   },
   "verification_boundary": {
@@ -75,15 +78,14 @@
       "merge_commit": "320b7fee260743f0db250a8e14f46ddd8fdf7b24"
     },
     "task_split_validation": [
-      "task_batch_index.json passes the current AI Assembly Line built-in batch-index validation rules and contains 16 unique batches with 186 unique predeclared IDs",
-      "stage1-evidence-harness.json contains exactly EH-001 through EH-010 and all 10 tasks pass the current built-in task validation rules",
-      "all EH tasks are size S or M and depend only on existing UF/CS tasks or earlier EH tasks",
-      "the EH dependency graph is acyclic and its 41 declared owned paths have no duplicate owner",
-      "EH-004 exclusively owns Stage1BenchmarkArena.unity and EH-005 exclusively owns Stage1ShortRouteShell.unity",
-      "all 33 currently generated tasks have non-overlapping exact file or bounded-folder ownership after narrowing UF-004, UF-005, UF-006, UF-008, UF-009 and CS-004",
-      "build identity consumes CS-002, input fixtures consume CS-003, diagnostics/validity consume CS-012, scene shells consume UF-006/UF-007/UF-008, and artifact/build smoke consumes UF-010",
-      "the current executable workspace validator passes 16 indexed batches, 33 generated tasks and the generated dependency graph; completion validation for all 186 predeclared IDs remains pending",
-      "no Unity game implementation, canonical backlog or collaboration assignment was created"
+      "task_batch_index.json contains 16 unique batches and 186 unique predeclared task IDs after reconciling movement-thruster to MT-001 through MT-012",
+      "movement-thruster.json contains exactly MT-001 through MT-012 and all 12 task records pass the current built-in task validation rules",
+      "all movement-thruster tasks are size S or M and depend only on existing UF/CS/EH tasks or earlier MT tasks",
+      "the movement-thruster dependency graph is acyclic and topologically ordered",
+      "the 36 movement-thruster owned file claims are exact, unique and do not claim Bootstrap, evidence-harness scenes, project settings, shared contracts, central registries, content packages or UI",
+      "MT-007 is the sole owner of ShooterMoverMovement.inputactions; MT-012 consumes EH-004 read-only and does not edit Stage1BenchmarkArena.unity",
+      "the movement-thruster estimate is 6.35 focused lead days against the accepted S1.1 eight-day cap",
+      "no Unity game implementation, canonical backlog, collaboration assignment or Dispatch work was created"
     ],
     "task_split_blockers": [
       "S1.0 cap pressure: Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap"
@@ -95,5 +97,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T20:59:36+02:00"
+  "updated_at": "2026-07-13T21:23:49+02:00"
 }

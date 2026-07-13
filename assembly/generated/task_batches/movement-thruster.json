@@ -1,0 +1,409 @@
+{
+ "schema_version": "0.1.0",
+ "batch_id": "movement-thruster",
+ "source_plan_path": "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+ "tasks": [
+  {
+   "id": "MT-001",
+   "title": "Define the movement-thruster tuning profile",
+   "summary": "Define the movement-thruster tuning profile.",
+   "objective": "Define immutable movement/thruster tuning values and deterministic profile validation without freezing mature balance.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/MovementThrusterTuningProfile.cs",
+    "Assets/ShooterMover/Runtime/Domain/Movement/MovementThrusterTuningProfileValidator.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/MovementThrusterTuningProfileTests.cs"
+   ],
+   "depends_on": [
+    "CS-001",
+    "CS-002"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Profile validates all accepted locomotion, bank, burst, reflection, forgiveness and contact parameters; invalid values fail deterministically."
+   ],
+   "verification": [
+    "Run edit-mode profile validation, canonical-order and fingerprint-change tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.45 focused lead day(s)."
+  },
+  {
+   "id": "MT-002",
+   "title": "Implement deterministic base locomotion",
+   "summary": "Implement deterministic base locomotion.",
+   "objective": "Implement deterministic acceleration, braking, speed bounds and inertia from move intent independently of aim.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/BaseLocomotionState.cs",
+    "Assets/ShooterMover/Runtime/Domain/Movement/BaseLocomotionStepper.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/BaseLocomotionStepperTests.cs"
+   ],
+   "depends_on": [
+    "CS-003",
+    "MT-001"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Identical fixed-step inputs produce identical bounded locomotion with normalized diagonals and predictable braking/reversal."
+   ],
+   "verification": [
+    "Run edit-mode acceleration, braking, reversal, clamp and deterministic replay tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.55 focused lead day(s)."
+  },
+  {
+   "id": "MT-003",
+   "title": "Implement the thruster charge and regeneration bank",
+   "summary": "Implement the thruster charge and regeneration bank.",
+   "objective": "Implement charge consumption and fractional regeneration independently from burst motion.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/ThrusterBankState.cs",
+    "Assets/ShooterMover/Runtime/Domain/Movement/ThrusterBankStepper.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/ThrusterBankStepperTests.cs"
+   ],
+   "depends_on": [
+    "MT-001"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Charges consume once, regenerate deterministically and never duplicate, overfill or activate while unavailable."
+   ],
+   "verification": [
+    "Run charge, empty-bank, recharge rollover and restart tests."
+   ],
+   "estimated_size": "S",
+   "notes": "Milestone-cap spend: 0.35 focused lead day(s)."
+  },
+  {
+   "id": "MT-004",
+   "title": "Implement thruster activation, steering, and exit momentum",
+   "summary": "Implement thruster activation, steering, and exit momentum.",
+   "objective": "Implement immediate directional velocity replacement, bounded steering, startup forgiveness, chaining and exit momentum.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/ThrusterBurstState.cs",
+    "Assets/ShooterMover/Runtime/Domain/Movement/ThrusterBurstStepper.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/ThrusterBurstStepperTests.cs"
+   ],
+   "depends_on": [
+    "CS-003",
+    "MT-002",
+    "MT-003"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Valid activation consumes one charge, follows movement direction rather than aim, and respects bounded steering/forgiveness/exit rules."
+   ],
+   "verification": [
+    "Run activation, zero-direction, steering, chaining, exit-momentum and replay tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.65 focused lead day(s)."
+  },
+  {
+   "id": "MT-005",
+   "title": "Implement deterministic wall reflection",
+   "summary": "Implement deterministic wall reflection.",
+   "objective": "Implement engine-independent wall-normal reflection and bounded post-impact momentum.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/WallReflectionPolicy.cs",
+    "Assets/ShooterMover/Runtime/Domain/Movement/WallReflectionResult.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/WallReflectionPolicyTests.cs"
+   ],
+   "depends_on": [
+    "MT-001",
+    "MT-004"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Reflection is deterministic for equivalent velocity/normal inputs and rejects invalid contacts without Unity dependencies."
+   ],
+   "verification": [
+    "Run reflection vector, glancing, corner, speed-bound and invalid-normal tests."
+   ],
+   "estimated_size": "S",
+   "notes": "Milestone-cap spend: 0.35 focused lead day(s)."
+  },
+  {
+   "id": "MT-006",
+   "title": "Implement weighted enemy-contact and grace rules",
+   "summary": "Implement weighted enemy-contact and grace rules.",
+   "objective": "Implement light shove-through, heavy blocking and discrete per-enemy contact grace from shared combat messages.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/MovementContactPolicy.cs",
+    "Assets/ShooterMover/Runtime/Domain/Movement/PerContactGraceTracker.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/MovementContactPolicyTests.cs"
+   ],
+   "depends_on": [
+    "CS-004",
+    "MT-001",
+    "MT-004"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Weight/contact outcomes are deterministic; grace is tracked per enemy and cannot become global invulnerability."
+   ],
+   "verification": [
+    "Run light/heavy, repeated-contact, simultaneous-contact and grace-expiry tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.55 focused lead day(s)."
+  },
+  {
+   "id": "MT-007",
+   "title": "Create the movement input action map and adapter",
+   "summary": "Create the movement input action map and adapter.",
+   "objective": "Map keyboard/mouse and gamepad movement actions to the same device-independent intents with focus-loss clearing.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "unity-input-physics",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/UnityAdapters/Input/ShooterMoverMovement.inputactions",
+    "Assets/ShooterMover/Runtime/UnityAdapters/Input/PlayerMovementIntentAdapter.cs",
+    "Assets/ShooterMover/Tests/PlayMode/Movement/PlayerMovementIntentAdapterTests.cs"
+   ],
+   "depends_on": [
+    "UF-002",
+    "UF-004",
+    "CS-003",
+    "EH-002"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "One movement-specific InputAction asset drives equivalent move/aim/thruster intents and clears held state deterministically."
+   ],
+   "verification": [
+    "Run play-mode device-equivalence, action-phase, simultaneous-input and focus-loss tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.60 focused lead day(s)."
+  },
+  {
+   "id": "MT-008",
+   "title": "Bridge movement state to Rigidbody2D",
+   "summary": "Bridge movement state to Rigidbody2D.",
+   "objective": "Apply domain movement through a fixed-step Rigidbody2D adapter without creating a second authority.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "unity-input-physics",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementBody2DAdapter.cs",
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementFixedStepDriver.cs",
+    "Assets/ShooterMover/Tests/PlayMode/Movement/MovementBody2DAdapterTests.cs"
+   ],
+   "depends_on": [
+    "UF-003",
+    "UF-004",
+    "MT-002",
+    "MT-004"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "The adapter applies domain velocity deterministically, uses only 2D physics and does not reinterpret movement rules."
+   ],
+   "verification": [
+    "Run play-mode fixed-step, velocity, collision-mode and frame-rate-independence tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.60 focused lead day(s)."
+  },
+  {
+   "id": "MT-009",
+   "title": "Bridge Unity 2D contacts to movement collision policies",
+   "summary": "Bridge Unity 2D contacts to movement collision policies.",
+   "objective": "Translate Unity 2D wall/enemy contacts into domain reflection, shove, blocking and grace outcomes.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "unity-input-physics",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementContactClassifier.cs",
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementContact2DAdapter.cs",
+    "Assets/ShooterMover/Tests/PlayMode/Movement/MovementContact2DAdapterTests.cs"
+   ],
+   "depends_on": [
+    "UF-003",
+    "CS-004",
+    "MT-005",
+    "MT-006",
+    "MT-008"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Contact classification is explicit and stable; callbacks cannot double-apply outcomes or mutate durable state."
+   ],
+   "verification": [
+    "Run play-mode wall/light/heavy, duplicate-callback, corner and missing-metadata tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.65 focused lead day(s)."
+  },
+  {
+   "id": "MT-010",
+   "title": "Assemble the movement actor runtime",
+   "summary": "Assemble the movement actor runtime.",
+   "objective": "Compose input, locomotion, thruster, body and contact adapters into one explicit movement actor lifecycle.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "unity-input-physics",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementActor2D.cs",
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementActorLifecycle.cs",
+    "Assets/ShooterMover/Tests/PlayMode/Movement/MovementActorLifecycleTests.cs"
+   ],
+   "depends_on": [
+    "MT-007",
+    "MT-008",
+    "MT-009"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Construction/start/stop/dispose order is explicit, scene-search-free and leak-free across repeated recreation."
+   ],
+   "verification": [
+    "Run lifecycle, duplicate-start, missing-dependency and 50-cycle recreation tests."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.55 focused lead day(s)."
+  },
+  {
+   "id": "MT-011",
+   "title": "Expose read-only thruster status",
+   "summary": "Expose read-only thruster status.",
+   "objective": "Expose immutable charge, recharge, burst, steering and readiness status without implementing HUD visuals.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "core-domain",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Runtime/Domain/Movement/ThrusterStatusSnapshot.cs",
+    "Assets/ShooterMover/Runtime/UnityAdapters/Physics/ThrusterStatusProjector.cs",
+    "Assets/ShooterMover/Tests/EditMode/Movement/ThrusterStatusProjectorTests.cs"
+   ],
+   "depends_on": [
+    "MT-003",
+    "MT-004",
+    "MT-010"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Projection is read-only, deterministic and contains every later HUD field without driving simulation."
+   ],
+   "verification": [
+    "Run idle, empty, recharging, active-burst, readiness and immutability tests."
+   ],
+   "estimated_size": "S",
+   "notes": "Milestone-cap spend: 0.30 focused lead day(s)."
+  },
+  {
+   "id": "MT-012",
+   "title": "Add movement-thruster evidence scenarios",
+   "summary": "Add movement-thruster evidence scenarios.",
+   "objective": "Exercise movement in the existing benchmark arena using frozen tuning, restart, diagnostics, performance and evidence protocols.",
+   "owner_role": "Movement and Combat Builder",
+   "lane": "unity-input-physics",
+   "repo_target": "YeerooXY/shooter-mover",
+   "allowed_areas": [
+    "Assets/ShooterMover/Tests/PlayMode/Movement/MovementThrusterEvidenceFixture.cs",
+    "Assets/ShooterMover/Tests/PlayMode/Movement/MovementThrusterEvidenceScenarioTests.cs",
+    "Assets/ShooterMover/Tests/PlayMode/Movement/Fixtures/movement-thruster-evidence-profile-v1.json"
+   ],
+   "depends_on": [
+    "EH-002",
+    "EH-003",
+    "EH-004",
+    "EH-006",
+    "EH-007",
+    "EH-008",
+    "EH-009",
+    "EH-010",
+    "MT-010",
+    "MT-011"
+   ],
+   "inputs": [
+    "Accepted plan and depends_on outputs."
+   ],
+   "outputs": [
+    "Owned implementation and verification files."
+   ],
+   "acceptance_criteria": [
+    "Scenarios cover locomotion, burst, recharge, steering, chaining, reflection, restart and contacts without editing evidence scenes."
+   ],
+   "verification": [
+    "Run scripted replay, 50 restarts, validity propagation, performance-hook and manifested-evidence checks plus human feel review."
+   ],
+   "estimated_size": "M",
+   "notes": "Milestone-cap spend: 0.75 focused lead day(s)."
+  }
+ ]
+}

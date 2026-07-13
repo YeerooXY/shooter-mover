@@ -117,26 +117,26 @@
       ],
       "expected_task_count": 12,
       "expected_task_ids": [
-        "MV-001",
-        "MV-002",
-        "MV-003",
-        "MV-004",
-        "MV-005",
-        "MV-006",
-        "MV-007",
-        "MV-008",
-        "MV-009",
-        "MV-010",
-        "MV-011",
-        "MV-012"
+        "MT-001",
+        "MT-002",
+        "MT-003",
+        "MT-004",
+        "MT-005",
+        "MT-006",
+        "MT-007",
+        "MT-008",
+        "MT-009",
+        "MT-010",
+        "MT-011",
+        "MT-012"
       ],
       "depends_on_batches": [
         "shared-contracts-core",
         "stage1-evidence-harness"
       ],
       "output_path": "assembly/generated/task_batches/movement-thruster.json",
-      "status": "planned",
-      "notes": "One reviewable agent workload."
+      "status": "validated",
+      "notes": "Validated 12-task Movement and Thruster workload using MT-001 through MT-012. Estimated milestone spend is 6.35 focused lead days against the accepted S1.1 eight-day cap, leaving 1.65 days for integration and human feel review."
     },
     {
       "batch_id": "combat-four-mount",
