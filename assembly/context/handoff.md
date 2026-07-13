@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. The human-approved combat-four-mount batch is validated on fresh branch `ai/task-split-shooter-mover-v1-continuation-4` and is awaiting its draft continuation PR.
+Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. The human-approved combat-four-mount batch is validated on fresh branch `ai/task-split-shooter-mover-v1-continuation-4` and is open for review in draft PR #7.
 
 ## Durable task state
 
@@ -64,6 +64,6 @@ The Four-Mount Combat batch estimates 4.50 focused lead days against the accepte
 
 ## Exact next action
 
-Open, review, and merge the combat-four-mount continuation PR. After it merges, start a fresh context from current `main`, present the proposed `WP-001` through `WP-012` titles, owner lane and exact dependencies to the human lead, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/stage1-weapons.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
+Review and merge combat-four-mount draft PR #7. After it merges, start a fresh context from current `main`, present the proposed `WP-001` through `WP-012` titles, owner lane and exact dependencies to the human lead, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/stage1-weapons.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

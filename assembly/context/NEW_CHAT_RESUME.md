@@ -19,7 +19,7 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - Planning PR #2 is merged at `320b7fee260743f0db250a8e14f46ddd8fdf7b24`.
 - Recovery PR #4 is merged at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`; its branch is permanently closed.
 - Movement PR #6 is merged at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed.
-- Active continuation branch: `ai/task-split-shooter-mover-v1-continuation-4`; the validated combat-four-mount batch is awaiting its draft PR.
+- Active continuation branch: `ai/task-split-shooter-mover-v1-continuation-4`; validated combat-four-mount draft PR #7 is open for human review.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
@@ -54,6 +54,6 @@ Keep each batch at 10–13 small tasks. Never append commits to a merged branch.
 
 ## Next action
 
-Open, review, and merge the combat-four-mount continuation PR. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `WP-001` through `WP-012` with titles, owner lane and exact dependencies and must not write files. After explicit human continuation, it may generate only `assembly/generated/task_batches/stage1-weapons.json` on a fresh branch and open its draft continuation PR. Do not jump ahead to enemies or later agents.
+Review and merge combat-four-mount draft PR #7. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `WP-001` through `WP-012` with titles, owner lane and exact dependencies and must not write files. After explicit human continuation, it may generate only `assembly/generated/task_batches/stage1-weapons.json` on a fresh branch and open its draft continuation PR. Do not jump ahead to enemies or later agents.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, or begin Dispatch until all 16 batches are generated and validated.
