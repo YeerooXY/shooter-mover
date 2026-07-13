@@ -16,13 +16,13 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery has resumed and is paused after verified decision D-068.
-- D-068 selected cleared-room persistence by default with deterministic, difficulty-scaled multi-room reclamation on stronger rulesets.
+- Product Discovery is active after verified decision D-069.
+- D-069 selected controlled same-level travel between physically activated checkpoint teleport stations while outside combat, with strict state and economy-abuse protection.
 - `unsaved_decisions` must be zero before continuing.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
 - Decisions D-040 through D-063 are archived verbatim in `assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md`.
-- Decisions D-064 through D-068 are in `assembly/intake/LIVE_DECISIONS.md`.
+- Decisions D-064 through D-069 are in `assembly/intake/LIVE_DECISIONS.md`.
 
 ## Non-negotiable behavior
 
@@ -39,6 +39,6 @@ Before responding:
 
 ## Expected first action
 
-Ask D-069 exactly as directed by `CURRENT_HANDOFF.json`: decide activated-checkpoint fast-travel behavior.
+Ask D-070 exactly as directed by `CURRENT_HANDOFF.json`: decide puzzle, key, lock, and environmental-interaction complexity.
 
-Do not repeat the death/reset question or return to account, monetization, cloud-save, or strongbox decisions first; D-064 through D-068 already settled those boundaries.
+Do not repeat checkpoint fast travel, death/reset, account, monetization, cloud-save, or strongbox questions first; D-064 through D-069 already settled those boundaries.
