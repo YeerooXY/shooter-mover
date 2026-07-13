@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 54,
-  "last_completed_decision": "D-054",
+  "questions_asked": 55,
+  "last_completed_decision": "D-055",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -218,6 +218,22 @@
         "Weapon comparisons must communicate contextual strengths rather than only one damage number"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-055",
+      "topic": "shop_pricing_philosophy",
+      "answer": "meaningful_investments_with_rarity_scaled_prices",
+      "constraints": [
+        "Ordinary shop weapons are reasonably affordable but still require meaningful spending choices",
+        "Strong stars augment levels desirable enchantments later weapon families and exceptional combinations increase price sharply",
+        "Screenshot-worthy jackpot weapons may require savings from several runs",
+        "Selling or dismantling equipment returns only partial value",
+        "Weapon purchases inventory rerolls and other shop services compete for the same core currency",
+        "The shop supports experimentation without replacing floor strongboxes as the primary elite-loot path",
+        "Income resale values rarity multipliers and reroll costs require playtesting",
+        "A rare token that reserves an unaffordable shop item is proposed but its persistence capacity and expiry rules remain unresolved"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -228,7 +244,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Shop pricing philosophy for ordinary weapons rare rolls and rerolls",
+    "Rare shop-item reservation token persistence capacity and expiry rules",
     "Remaining duplicate conversion and inventory management details",
     "Remaining level-design and exploration details",
     "Story and world",
@@ -245,13 +261,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "shop_pricing_philosophy",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether shop weapons are broadly affordable for experimentation, priced as meaningful investments with resale and escalating jackpot costs, or deliberately scarce luxury purchases. Include ordinary weapons, rare high-augment rolls, and reroll costs. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "rare_shop_item_reservation_token",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether miracle shop items cannot be preserved beyond normal reroll locks, may be reserved through a very rare consumed token with a tightly limited layaway slot, or may be permanently reserved through a broader long-term wishlist system. Distinguish the rare reservation token from ordinary reroll locks. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-054"
+    "last_persisted_decision": "D-055"
   }
 }
