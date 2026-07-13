@@ -1,0 +1,70 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-231-D-233",
+  "status": "persisted_early_handoff",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-231",
+      "topic": "proof_stage_milestone_budgets_and_timebox_review_policy",
+      "answer": "milestone_budgets_with_hard_review_caps",
+      "constraints": [
+        "Stage 1 and Stage 2 are divided into bounded evidence-producing milestones",
+        "Each milestone receives a predeclared effort or calendar budget before implementation",
+        "Reaching a cap pauses work for written evidence overrun scope extension pivot or stop review",
+        "Extensions require a specific evidence or dependency reason a revised cap and unchanged acceptance evidence",
+        "Polish generalization sunk-cost pressure and routine overtime do not silently move the gate"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-232",
+      "topic": "milestone_overrun_scope_cut_priority",
+      "answer": "protect_evidence_critical_work_and_cut_breadth",
+      "constraints": [
+        "Preserve core mechanics representative content readability controls diagnostics valid testing accessibility reliability and gate-relevant save or performance work",
+        "Cut additional weapons enemies rooms variants cosmetic polish secondary progression mature economy optional tools generalized architecture and premature post-MVP preparation first",
+        "Every cut records its reason and re-entry condition",
+        "Deferred scope cannot silently return during the same milestone",
+        "Validation accessibility diagnostics and reliability are not traded away to preserve visible feature count"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-233",
+      "topic": "milestone_acceptance_criteria_change_control",
+      "answer": "freeze_the_product_question_and_control_measurement_changes",
+      "constraints": [
+        "Record the product question evidence outcomes scope method population and approvers before work begins",
+        "The core question cannot be softened after implementation or evidence collection starts",
+        "Clarifications are allowed only before affected evidence is collected while material changes create a new version or test round",
+        "Previous results remain attached to their original rules",
+        "Technical failures remain distinct from fun evidence and threshold changes require measurement-validity justification"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "unselected_question": {
+    "decision_id": "D-234",
+    "topic": "prototype_shortcut_and_technical_debt_exit_policy",
+    "status": "not_selected_non_blocking",
+    "handoff": "Planning must define a small debt register and explicit Stage 2 exit conditions without treating the presented recommendation as an accepted user decision."
+  },
+  "open_questions_added": [
+    "Exact milestone budgets and formal test thresholds",
+    "Prototype-shortcut and technical-debt exit policy",
+    "Asset provenance and licensing workflow",
+    "Repository and source-asset disaster recovery",
+    "Recovered D-001 through D-039 remain excluded unless explicitly re-verified"
+  ],
+  "next_action": {
+    "type": "requirements_review",
+    "instruction": "Review and merge the requirements/bootstrap package. After merge, begin a fresh Planning Agent context from the merged project_intake.json and REQUIREMENTS.md."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-233",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": null
+  }
+}
