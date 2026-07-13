@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.1.0",
+  "workspace_id": "shooter-mover",
+  "generated_from": "assembly/intake/project_intake.json",
+  "actors": [
+    {
+      "actor_id": "nemo",
+      "display_name": "Nemo",
+      "kind": "human",
+      "status": "active",
+      "notes": "Human product lead, final reviewer, scope owner, and integration authority."
+    },
+    {
+      "actor_id": "web-ai",
+      "display_name": "Web AI",
+      "kind": "web_ai",
+      "status": "active",
+      "notes": "Repository-first planning and coordination agent. Specific implementation agents are added after task decomposition."
+    }
+  ],
+  "task_assignments": [],
+  "task_claims": [],
+  "artifact_submissions": [],
+  "reviews": [],
+  "audit_events": []
+}
