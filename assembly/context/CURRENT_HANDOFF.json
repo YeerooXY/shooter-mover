@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "c8e4fc80f8347e16b158a01141e8c7cf7cee19dd",
+  "last_verified_commit": "4ddecb56a5ae1d7e7dd086973702e544b201a9a5",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -46,10 +46,10 @@
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "resume_ready",
-  "last_completed_item": "D-220 — Versioned snapshots with a short transactional journal",
-  "current_item": "D-221 — Layered Unity CI and build-validation gate",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting the Unity CI and build-validation policy for parallel human and AI-assisted production: local developer validation only; exhaustive full Windows player builds and all tests on every change; or a layered gate with fast deterministic edit-mode tests and content validation on ordinary branches, targeted play-mode tests for affected systems, a Windows player smoke build before integration, and scheduled or milestone full regression, performance, save-recovery, clean-machine, and artifact validation. Preserve Windows-first offline delivery, Unity with C#, plain-C# domain logic, modular content packages, generated registries, representative stress scenes, versioned snapshot and journal saves, accessibility, the stable 60 FPS target, and isolated branches. Include feedback speed, runner cost, flaky tests, Unity licensing or headless constraints, build reproducibility, artifact retention, branch protection, diagnostics, and the risks of both under-testing and making every small change wait for an exhaustive pipeline. Put the recommendation after all A/B/C options at the end of the card. Begin a new formal persistence batch D-221 through D-230 unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "active_batch_in_progress",
+  "last_completed_item": "D-223 — Privacy-safe local diagnostics with explicit export",
+  "current_item": "D-224 — Update, save-migration, and rollback compatibility contract",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how formal test and eventual public Windows builds handle updates, save compatibility, and rollback: treat saves as disposable between builds; require universal backward and forward compatibility across every build; or use an explicit versioned migration envelope where newer builds apply ordered idempotent tested migrations to supported older saves after creating immutable backups, older builds refuse to modify newer-schema saves, failed or interrupted migrations restore safely, removed content uses stable-ID tombstones or replacement and compensation rules, and rollback operates on cloned or backed-up saves rather than destructive downgrade. Preserve immutable promoted artifacts, versioned snapshot plus short journal persistence, offline play, atomic writes and backups, stable content identifiers, current and previous known-good artifacts, and eventual public player trust. Include development-channel reset tolerance, public compatibility promises, migration fixtures, interruption tests, unsupported-version messaging, content removal, downgrade hazards, recovery tooling, and the cost of indefinite compatibility. Put the recommendation after all A/B/C options at the end of the card. D-221 through D-223 are checkpointed as queued but not formally batch-persisted; continue through D-230 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -58,17 +58,62 @@
     "The D-101 through D-220 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "ready",
-    "unsaved_decisions": 0,
+    "status": "batch_in_progress",
+    "unsaved_decisions": 3,
     "last_persisted_decision": "D-220",
     "last_persisted_at": "2026-07-13T18:04:09+02:00",
-    "batching_rule": "Begin a new Product Discovery batch at D-221 and persist through D-230 unless an earlier handoff is requested",
-    "queued_decisions": []
+    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-221 through D-230 at D-230 unless an earlier handoff is requested",
+    "queued_decisions": [
+      {
+        "decision_id": "D-221",
+        "topic": "unity_ci_and_build_validation_policy",
+        "choice": "C",
+        "answer": "layered_validation_with_escalating_gates",
+        "constraints": [
+          "Ordinary branches run compilation fast deterministic edit-mode tests content validation generated-registry checks and tests targeted to affected systems",
+          "Before integration run relevant play-mode smoke tests and a Windows player smoke build covering launch menu input room load combat save resume and clean exit",
+          "Scheduled or milestone validation runs full regression representative performance and memory scenes save interruption recovery and migration checks clean-machine installation offline launch and accessibility settings persistence",
+          "Required integration checks retain identifiable artifacts and actionable diagnostics",
+          "Flaky tests are quarantined and repaired rather than repeatedly rerun until green",
+          "Android networking and complete co-op pipelines remain deferred until those workstreams begin"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-222",
+        "topic": "windows_build_promotion_and_release_artifacts",
+        "choice": "C",
+        "answer": "immutable_artifacts_promoted_through_release_channels",
+        "constraints": [
+          "Each candidate artifact records unique build and content versions source commit Unity version dependency and generated-content fingerprints test reports symbols checksums and save-schema compatibility",
+          "The exact same artifact is promoted through developer internal external release-candidate and public channels",
+          "Any code content configuration or dependency change creates a new artifact rather than silently altering a tested build",
+          "Retain the current public or formal build the previous known-good build relevant migration tools and a save-safe rollback procedure",
+          "Formal external Stage 1 tests and Stage 2 milestones use identifiable immutable artifacts even if earlier prototypes use a lighter process"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-223",
+        "topic": "diagnostic_and_playtest_data_collection",
+        "choice": "C",
+        "answer": "privacy_safe_local_diagnostics_with_explicit_export",
+        "constraints": [
+          "Local bounded logs record build content and save-schema versions session and major mission outcomes deaths restarts checkpoints banking loadout changes performance failures exceptions asset failures and save journal recovery results",
+          "Relevant input-device and settings state may be included without personal identifiers",
+          "Logs remain local by default and testers explicitly choose when to export or submit them",
+          "Formal test builds explain what is recorded and exclude or redact free-text names account data filenames and unrelated system information",
+          "Logs rotate automatically and a one-click support bundle combines diagnostics configuration build identity and optional tester notes",
+          "Remote telemetry remains a future opt-in consideration only if project scale justifies its privacy security hosting and retention costs"
+        ],
+        "verification_status": "verified"
+      }
+    ]
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:04:09+02:00"
+  "updated_at": "2026-07-13T18:12:11+02:00"
 }
