@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-090
+- Last persisted decision: D-100
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -275,7 +275,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Consumption rule: Different weapons consume each pool at authored rates. Rapid weapons may spend small units continuously, while cannons, beams, launchers, or comparable weapons may consume larger amounts per shot or per second.
 - Balance rule: Fire rate, heat, spread, recoil, handling, and ammo efficiency remain major balancing levers; ammunition scarcity must not be the only control on powerful weapons.
 - Exception rule: Truly exotic weapons may use clearly communicated authored resource exceptions, but the MVP should avoid a cluttered family-by-family ammo inventory.
-- Supersedes: none
+- Superseded in part by: D-093 removes normal-ammo scarcity entirely; D-096 replaces the shared power pool with separate weapon banks.
 - Source: guided Product Discovery recovery
 
 ### D-084 — Guaranteed supply, random surplus, and anywhere normal-ammo purchases
@@ -287,7 +287,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Anti-farming rule: Reclaimed enemies and repeatedly restored encounters provide reduced or zero repeat ammo drops according to clear eligibility state.
 - Difficulty rule: Accessible modes may provide extremely generous refills; hard and extreme modes may reduce guarantees and make efficiency more important without creating unavoidable empty-weapon states in ordinary completion modes.
 - Platform rule: Emergency purchasing must be fast and practical for keyboard, gamepad, Android, and later co-op.
-- Supersedes: none
+- Superseded by: D-093 removes normal-ammo depletion, pickups, and purchases.
 - Source: guided Product Discovery recovery
 
 ### D-085 — Combat purchases limited to normal ammunition
@@ -298,7 +298,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Completion rule: Regular ammunition and ordinary weapon fire must remain sufficient to defeat every required encounter and boss. Power ammo is extremely effective and exciting but not mandatory for normal completion.
 - Economy rule: Currency stockpiles cannot be converted directly into unlimited empowered damage during a difficult fight.
 - Difficulty rule: Power-ammo supply may become scarcer on stronger modes, but required encounter tuning must not assume the player possesses it unless a specialised ruleset explicitly says so.
-- Supersedes: none
+- Superseded in part by: D-093 removes normal-ammo purchases; D-096 reopens whether power ammo may eventually be purchased anywhere.
 - Source: guided Product Discovery recovery
 
 ### D-086 — Hold modifier for empowered fire
@@ -331,7 +331,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Clarity rule: Only one ammunition pool is actively consumed by a shot at a time, keeping HUD feedback and mental accounting straightforward.
 - Depletion rule: If power ammo reaches zero, the weapon automatically and clearly falls back to normal fire rather than becoming unable to shoot or consuming both pools unexpectedly.
 - Balance rule: Power-ammo costs remain weapon-specific so particularly strong empowered attacks may consume several units or drain the pool rapidly.
-- Supersedes: none
+- Superseded in part by: D-093 makes normal fire unlimited; D-096 gives each weapon a separate power bank while preserving automatic normal-fire fallback.
 - Source: guided Product Discovery recovery
 
 ### D-089 — Scarce but regularly usable power ammunition
@@ -343,7 +343,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Hoarding rule: Supply and encounter design should encourage confident use instead of teaching players to save every unit indefinitely.
 - Difficulty rule: Accessible modes may provide more frequent use, while extreme modes may make each burst significantly more precious.
 - Completion rule: Encounters remain completable with ordinary ammunition even when the player spends power ammo inefficiently or arrives without it.
-- Supersedes: none
+- Reinterpreted by: D-096 applies scarcity and supply to separate per-weapon banks rather than one shared pool.
 - Source: guided Product Discovery recovery
 
 ### D-090 — Capped persistent power-ammo reserve with authored minimums
@@ -356,6 +356,117 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Excess rule: Power ammo above the cap cannot create an ever-growing reserve. Any later conversion or overflow reward must be minor, bounded, and non-exploitable rather than a second farming economy.
 - Competitive rule: Verified challenge and speedrun categories may use a fixed authored starting amount and ignore profile carry-over when fair comparison requires it.
 - Balance rule: Required encounters must remain completable with the guaranteed minimum or with no power ammo where the ruleset explicitly allows that condition.
+- Reinterpreted by: D-096 requires separate weapon banks; exact ownership, carry-over, and authored-minimum mapping across banks remains open for later discovery.
+- Source: guided Product Discovery recovery
+
+### D-091 — Non-pausing normal-ammo quick-buy
+
+- Status: accepted, later superseded
+- Choice: B — dedicated fixed-bundle quick-buy action
+- Accepted requirement at time of decision: A dedicated non-pausing action would buy a clearly priced fixed normal-ammo bundle, with visible HUD preview, anti-double-input cooldown, and accessible hold-to-confirm or prompt options.
+- Platform rule: The interaction was required to work consistently in solo play, later co-op, gamepad, and Android without pausing the world.
+- Superseded by: D-093 removes normal-ammo depletion and therefore removes the quick-buy action entirely.
+- Source: guided Product Discovery recovery
+
+### D-092 — Free normal ammo and non-purchasable power ammo
+
+- Status: accepted, later superseded in part
+- Choice: custom — normal ammunition free; power ammunition earned rather than purchased
+- Accepted requirement at time of decision: Replenishing normal ammunition would not spend persistent currency. Power ammunition would remain a separate gameplay-earned resource.
+- Economy rule: Persistent currency should remain focused on weapons, rerolls, respecs, and other meaningful progression choices rather than paying to retain the ability to shoot.
+- Superseded by: D-093 removes normal ammunition as a depleting resource entirely. D-096 reopens whether power ammo may eventually be purchased anywhere, so the non-purchasable conclusion is no longer final.
+- Source: guided Product Discovery recovery
+
+### D-093 — Unlimited frictionless normal fire
+
+- Status: accepted
+- Choice: custom — shooting is a permanent core ability, not a consumable privilege
+- Accepted requirement: Ordinary normal fire cannot run out. There is no normal-ammo counter, purchase, pickup dependency, refill action, reload tax, cooldown refill, or regeneration wait required merely to keep shooting.
+- Combat rule: When a weapon is otherwise ready under its authored firing model, the player may always use its normal fire. Normal shooting must never be disabled because a consumable pool reached zero.
+- Power rule: Power ammo remains a separate scarce enhancement resource. If a weapon lacks power ammo, it immediately continues or falls back to unlimited normal fire.
+- Balance rule: Sustained damage is controlled by firing cadence, heat, spread, recoil, charge, movement trade-offs, recovery states, encounter design, and weapon balance rather than ordinary-ammo starvation.
+- Supersedes: normal-ammo portions of D-083, D-084, D-085, D-088, D-091, and D-092.
+- Source: guided Product Discovery recovery
+
+### D-094 — Small set of weapon-specific firing models
+
+- Status: accepted
+- Choice: C — several clear firing archetypes instead of one universal restriction
+- Accepted requirement: Unlimited normal fire uses a deliberately small, readable set of weapon-specific rhythms such as continuous fire with spread or recoil growth, heat and venting, charge-and-release, burst cadence, or sustained beams with mobility or recovery trade-offs.
+- Identity rule: Weapons may differ meaningfully without every weapon requiring a bespoke simulation or every weapon sharing the same overheat rule.
+- Availability rule: Ordinary play should avoid states where all four mounted weapons are simultaneously unavailable for long periods. Independent recovery and mixed rhythms should keep the mech capable of firing.
+- Scope rule: Keep the MVP archetype count compact and polish feel, feedback, and balance before expanding.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-095 — All four mounted weapons fire concurrently
+
+- Status: accepted
+- Choice: custom — no active weapon switching during combat
+- Accepted requirement: The mech equips four weapons, and one normal-fire command activates all four mounted weapons that are currently ready. There is no single active weapon that the player cycles through during ordinary combat.
+- Independence rule: Each mounted weapon independently tracks cadence, heat, charge, bursts, recoil, recovery, and temporary unavailability. One unavailable weapon never prevents the other three from firing.
+- Loadout rule: Checkpoints and shops still control which four weapons are installed under D-081.
+- Interpretation rule: D-082’s holstered recovery concept becomes independent mounted-weapon recovery while the full array remains active rather than literal holstering.
+- Readability rule: HUD, audio, and effects must communicate four independent states without overwhelming the player.
+- Supersedes: any assumption in D-081 or D-082 that combat involves switching one active weapon.
+- Source: guided Product Discovery recovery
+
+### D-096 — Simultaneous four-weapon empowerment with separate banks
+
+- Status: accepted, corrected before persistence
+- Choice: custom — power mode empowers every mounted weapon, each from its own bank
+- Accepted requirement: Holding the power-ammo modifier attempts to empower all four mounted weapons simultaneously. Every weapon has its own independent power-ammo bank and consumes only from that bank according to its authored empowered-fire cost.
+- Depletion rule: A weapon with an empty power bank continues unlimited normal fire while other weapons with remaining power ammo stay empowered. Empty banks never disable normal shooting or cancel empowerment for the other mounts.
+- Feedback rule: The HUD must show each weapon’s bank and empowered state clearly enough that the player can understand mixed depletion during the same burst.
+- Open economy question: The earlier prohibition on buying power ammo is reopened. Whether, where, and under what limits power ammo may be purchased will be decided later after surrounding combat behaviours are clearer.
+- Persistence question: D-090’s capped carry-over direction remains, but exact bank ownership across weapon instances, slots, loadout changes, and authored starting minimums remains open.
+- Supersedes: the shared-power-pool portions of D-083, D-088, D-089, and D-090; the fixed non-purchasable conclusion in D-085 and D-092 is reopened rather than replaced by a purchase rule.
+- Source: guided Product Discovery recovery
+
+### D-097 — Shared aimed point for all four weapons
+
+- Status: accepted
+- Choice: B — individual mounts converge on one player-controlled aim point
+- Accepted requirement: The player controls one cursor or aim point. Projectiles originate from their individual weapon mounts and converge toward that common point while preserving each weapon’s spread, projectile speed, range, beam, homing, and other authored behaviour.
+- Geometry rule: Very close targets and wide mount spacing require safeguards against absurd crossing angles, self-obstruction, or obvious misses caused only by visual mounting geometry.
+- Control rule: Manual aiming remains the default MVP control model and the basis for deterministic mastery.
+- Post-MVP direction: Optional aim assistance or limited auto-targeting may be explored later, especially for Android and accessibility, without replacing manual aiming by default.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-098 — Independent firing cadence under one trigger
+
+- Status: accepted
+- Choice: A — every mounted weapon follows its own rhythm
+- Accepted requirement: Holding the fire command activates the complete four-weapon array. Each weapon fires whenever its own cooldown, burst, charge, heat, vent, recovery, and readiness state permits rather than waiting for synchronized volleys.
+- Independence rule: Fast weapons continue operating while slower or temporarily unavailable weapons recover.
+- Build rule: Mixed-rate loadouts remain viable and do not require matching cadence to avoid wasting output.
+- Presentation rule: Effects and audio need prioritization, ducking, and legibility rules so four independent weapons remain exciting rather than becoming unreadable audiovisual noise.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-099 — Weapon-specific movement effects with a combined cap
+
+- Status: accepted
+- Choice: B — selected heavy weapons influence handling without universal slowdown
+- Accepted requirement: Most ordinary weapons impose little or no movement penalty. Authored heavy cannons, charged weapons, sustained beams, recoil-driven guns, or exceptional attacks may alter speed, acceleration, momentum, or pushback while firing.
+- Stacking rule: Effects from four simultaneous weapons combine under a strict cap that prevents accidental near-immobility, control loss, or a loadout becoming unusable simply because several heavy weapons fire together.
+- Readability rule: Movement effects must be predictable from weapon information and clearly visible in play rather than feeling like random controller lag.
+- Difficulty rule: Difficulty modes do not secretly change a weapon’s fundamental handling penalty; explicit challenge modifiers may do so only when clearly declared.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-100 — Signature regenerating directional thruster burst
+
+- Status: accepted
+- Choice: C — physical boost movement as a defining game-feel pillar
+- Accepted requirement: The mech has one or more regenerating directional thruster bursts that rapidly displace it according to player input. The move is intended to become one of the game’s signature, addictive actions and must receive first-class prototyping, tuning, audiovisual feedback, and test attention.
+- Skill rule: The burst primarily succeeds through actual movement, timing, path selection, and momentum control rather than relying on long universal invulnerability by default.
+- Combat rule: A burst may break or counteract selected recoil, slowdown, or commitment effects when explicitly authored, supporting aggressive repositioning and escape without erasing weapon identity.
+- Mastery rule: Advanced players should be able to use boosts for dodging, pursuit, routing, room traversal, animation or recovery optimization, and speedrunning while the baseline remains understandable to newcomers.
+- Accessibility rule: Easier modes may offer faster recharge, steering assistance, clearer trajectory preview, or a small forgiveness window. The core control and spatial result must remain recognizable across difficulties.
+- Platform rule: The move must feel responsive on keyboard, gamepad, and later Android, with reliable collision handling and no camera behaviour that creates nausea or loss of orientation.
+- MVP priority: Thruster feel is a vertical-slice acceptance criterion, not a polish task deferred until the end.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
@@ -365,7 +476,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 
 ## Next discovery state
 
-Continue the core-experience recovery by deciding the exact interaction for buying normal ammunition anywhere, including during combat.
+Continue the core-experience recovery by deciding the thruster burst’s charge and regeneration model.
 
 ## Revision rules
 
@@ -373,4 +484,4 @@ Continue the core-experience recovery by deciding the exact interaction for buyi
 - Mark changed decisions as superseded and add a new entry.
 - Do not record unchosen options as requirements.
 - Keep reconstructed decisions unverified until confirmed.
-- Product Discovery decisions may be batch-persisted every ten questions when explicitly requested by the user; the next planned batch boundary is D-100.
+- Product Discovery decisions may be batch-persisted every ten questions when explicitly requested by the user; the next planned batch boundary is D-110.
