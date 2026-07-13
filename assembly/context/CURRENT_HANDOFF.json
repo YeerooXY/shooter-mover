@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "fed063625a2308dcbb507635404c8d4c65c61167",
+  "last_verified_commit": "a414c2e5a85d9a2f40e86f2ca912807a507b88c8",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -19,9 +19,9 @@
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-068 — Cleared-room persistence by default with deterministic multi-room reclamation on stronger difficulty rulesets",
-  "current_item": "D-069 — Activated-checkpoint fast-travel behavior",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether activated checkpoint teleport stations are respawn and save anchors only, permit controlled travel between activated stations within the current level while out of combat, or enable broad map-based travel to discovered rooms, shops, and objectives. Preserve fog-of-war exploration, substantial interconnected levels, hidden secrets, deterministic mastery, checkpoint-banked strongboxes, and later Android session practicality. Include backtracking friction, exploration value, speedrunning consistency, sequence-breaking and economy-abuse risk, implementation complexity, and difficulty-specific restrictions. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist D-069 to LIVE_DECISIONS.md, update intake_session.json, refresh NEW_CHAT_RESUME.md if its expected action changes, and update this handoff before asking anything else.",
+  "last_completed_item": "D-069 — Controlled same-level fast travel between physically activated checkpoint teleport stations",
+  "current_item": "D-070 — Puzzle, key, lock, and environmental-interaction complexity",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether levels use only simple combat-adjacent switches and key gates, use moderate optional environmental puzzles plus straightforward mandatory routing tasks, or include substantial mandatory multi-step puzzle sequences. Preserve combat-first pacing, substantial interconnected levels, alternate routes, secrets, deterministic mastery, accessibility across broad difficulty settings, checkpoint travel, and later Android controls. Include pacing interruption, exploration value, replay friction, readability, implementation and testing complexity, co-op implications, and whether puzzle solutions remain fixed or vary by difficulty. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist D-070 to LIVE_DECISIONS.md, update intake_session.json, refresh NEW_CHAT_RESUME.md if its expected action changes, and update this handoff before asking anything else.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -31,12 +31,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T11:36:36+02:00"
+    "last_persisted_at": "2026-07-13T11:40:55+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T11:36:36+02:00"
+  "updated_at": "2026-07-13T11:40:55+02:00"
 }
