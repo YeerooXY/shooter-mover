@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-058
+- Last persisted decision: D-059
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-058 were verified directly by the user after recovery.
+D-040 through D-059 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -229,13 +229,25 @@ D-040 through D-058 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-059 — Strongbox banking and failure retention
+
+- Status: accepted
+- Choice: B — checkpoint-banked sealed strongboxes
+- Accepted requirement: Reaching a checkpoint permanently secures every sealed strongbox collected since the previous checkpoint. Secured boxes remain owned even if the player later dies, abandons the level, or exits the run.
+- Risk rule: Strongboxes collected after the latest reached checkpoint remain at risk until the player reaches another checkpoint or completes the level. Death or abandonment loses only this unsecured current-section set.
+- Opening rule: Both checkpoint-secured and completion-secured boxes remain sealed during the run and become available for opening only after the run ends.
+- Pacing rule: Each 10–20-minute checkpoint segment carries meaningful extraction tension without allowing a late failure to erase the rewards from the entire 45–75-minute level.
+- Abuse guardrail: Continuing after banking must remain worthwhile through completion rewards, later-section reward quality, objectives, boss rewards, and efficient full-clear incentives rather than punishing legitimate exits.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Strongbox banking on success, checkpointing, death, and abandonment now outranks remaining inventory details because delayed opening must create tension without turning a long level failure into excessive lost progress.
+Continue with the highest-weight unresolved Product Discovery question. The post-run strongbox opening and reward-review flow now outranks remaining inventory details because players may return with several sealed boxes and need an exciting, fast, capacity-safe way to reveal and process them.
 
 ## Revision rules
 
