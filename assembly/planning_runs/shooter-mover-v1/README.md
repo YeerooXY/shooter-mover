@@ -35,6 +35,7 @@ Human-readable planning trace:
 - `POLICIES.md`
 - `TASK_SPLITTER_HANDOFF.md`
 - `AMENDMENT_STAGE1_WEAPONS.md`
+- `AMENDMENT_STAGE1_ENEMIES.md`
 
 ## Planning resolutions
 
@@ -52,6 +53,8 @@ Numeric feel and economy coefficients remain evidence-controlled prototype varia
 ## Stage 1 weapon amendment
 
 The human lead selected an amendment after combat-foundation review. It becomes authoritative when its pull request merges. Stage 1 then proves five deliberately simple weapons, and empowered fire only improves authored numeric stats without changing each weapon's core behavior topology. See `AMENDMENT_STAGE1_WEAPONS.md`.
+
+The human lead also selected a simple four-role Stage 1 enemy roster and easy Four-Blaster Elite first boss. That amendment becomes authoritative when its pull request merges. See `AMENDMENT_STAGE1_ENEMIES.md`.
 
 ## Review boundary
 

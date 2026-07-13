@@ -21,7 +21,8 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - Movement PR #6 is merged at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed.
 - Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`; its branch is permanently closed.
 - Weapon planning-amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`; its branch is permanently closed.
-- Active task-split branch: `ai/task-split-shooter-mover-v1-continuation-5`; validated Stage 1 weapon draft PR #9 is awaiting human review.
+- Stage 1 weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`; its branch is permanently closed.
+- Active planning-amendment branch: `ai/planning-amend-stage1-enemies-v1`; draft PR #10 awaits human review, and the enemy task batch remains ungenerated until the amendment is merged.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
@@ -38,6 +39,8 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - The weapon batch freezes Blaster Machine Gun, Shotgun, Rocket Launcher, Arc Gun, and Ricochet Gun. Empowered fire changes numeric base stats only; Arc remains capped at three additional targets and Ricochet at two wall bounces.
 - WP-003 through WP-007 own separate package folders and may run in parallel after WP-001/WP-002. WP-009 never edits CS-011-owned generated outputs. WP-012 is the explicit human weapon identity/readability gate.
 - The remaining three Stage 2 weapon identities are deferred until Stage 1 evidence and require a later planning amendment.
+- The amended Stage 1 roster is Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and the easy Four-Blaster Elite. The elite replaces Foreman Elite; Prototype Overseer remains Stage 2.
+- Stage 2 still targets five ordinary enemy roles. The one remaining ordinary identity is deferred until Stage 1 evidence and a later amendment.
 - Full graph validation remains pending until every planned batch file exists; forward references to predeclared later IDs are not evidence of a complete validated backlog.
 
 ## Guided rule
@@ -60,6 +63,6 @@ Keep each batch at 10–13 small tasks. Never append commits to a merged branch.
 
 ## Next action
 
-Review and merge Stage 1 weapon task-split draft PR #9. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the three ordinary enemy roles, Foreman Elite and short-route encounters, then stop without writing files. Generate that batch only after explicit human continuation.
+Review and merge the Stage 1 enemy planning-amendment PR. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the four amended ordinary enemy roles, easy Four-Blaster Elite and short-route encounters, then stop without writing files. Generate that batch only after explicit human continuation.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, or begin Dispatch until all 16 batches are generated and validated.

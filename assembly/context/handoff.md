@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`. Weapon planning-amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`. Those branches are permanently closed. The human-approved Stage 1 weapon batch is validated on fresh branch `ai/task-split-shooter-mover-v1-continuation-5` and open for review in draft PR #9.
+Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`. Weapon planning-amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`. Stage 1 weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`. Those branches are permanently closed. The replacement Stage 1 enemy roster is recorded on fresh branch `ai/planning-amend-stage1-enemies-v1` in draft PR #10 for human review before any enemy task batch is generated.
 
 ## Durable task state
 
@@ -32,6 +32,8 @@ The combat batch covers immutable runtime profiles, independent mount state mach
 
 The weapon batch covers the five-package baseline, one bounded shared projectile primitive, separately owned Blaster Machine Gun, Shotgun, Rocket Launcher, Arc Gun and Ricochet Gun packages, deterministic loadout fixtures, registry-input validation, temporary accessible presentation, formal package evidence and an explicit human identity/readability gate. Empowerment is numeric-only; Arc remains capped at three additional targets and Ricochet at two wall bounces.
 
+The proposed enemy amendment freezes Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and an easy Four-Blaster Elite. The elite has one health model, four blaster origins, mild telegraphed spread and a simple deterministic cadence; it replaces Foreman Elite without changing Prototype Overseer's Stage 2 role. One remaining Stage 2 ordinary role is intentionally deferred until Stage 1 evidence.
+
 ## Validation boundary
 
 The current executable AI Assembly Line validator passes the updated batch index and all six generated batches. The index contains 16 unique batches and 186 unique predeclared IDs. The weapon batch contains exactly `WP-001` through `WP-012`; every task is size `S` or `M`; and dependencies point only to generated earlier tasks or earlier `WP-*` tasks.
@@ -54,6 +56,8 @@ The Four-Mount Combat and Stage 1 Weapon batches estimate 9.10 focused lead days
 
 The three remaining Stage 2 weapon identities are intentionally deferred until Stage 1 evidence. A later planning amendment is required before Stage 2 combat-content generation or dispatch.
 
+The one remaining Stage 2 ordinary enemy identity is also deferred until Stage 1 evidence and a later planning amendment.
+
 `CS-011` still needs focused human review because it combines registry generation, drift validation, baseline generated outputs, and documentation. Split it if one focused executor cannot complete and verify it as one revertible change.
 
 ## Coordination rules
@@ -69,6 +73,6 @@ The three remaining Stage 2 weapon identities are intentionally deferred until S
 
 ## Exact next action
 
-Review and merge Stage 1 weapon task-split draft PR #9. After it merges, start a fresh context from current `main`, present proposed `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the three ordinary enemy roles, Foreman Elite and short route, and stop. Generate that one batch only after explicit human continuation.
+Review and merge the Stage 1 enemy planning-amendment PR. After it merges, start a fresh context from current `main`, present proposed `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the amended four ordinary roles, easy Four-Blaster Elite and short route, and stop. Generate that one batch only after explicit human continuation.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

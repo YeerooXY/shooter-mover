@@ -314,7 +314,7 @@ Prove movement, aiming, thruster feel, four-weapon combat, enemy readability, tr
 - a rapidly resettable benchmark arena;
 - a short interconnected route;
 - roughly five or six representative weapons;
-- three ordinary enemy roles plus one elite;
+- four ordinary enemy roles plus one easy first elite boss, as frozen by the accepted Stage 1 enemy planning amendment;
 - readability-complete temporary visuals, HUD, telegraphs, audio, reduced-effects controls, and instrumentation.
 
 The developer must voluntarily replay and pursue mastery. Then a small target-player group tests repeated complete sessions under predeclared behavioral criteria.

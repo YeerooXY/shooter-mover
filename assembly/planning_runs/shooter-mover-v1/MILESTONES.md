@@ -15,7 +15,7 @@ Calendar caps are review triggers, not delivery promises.
 | S1.0 Foundation and evidence harness | reproducible resettable prototype; pinned Unity baseline, input actions, build identity, diagnostics, arena shell, quick restart | 5 lead days | 1 week |
 | S1.1 Movement and thruster | responsive locomotion, charges, regeneration, steering, forgiveness, exit momentum, basic wall reflection, collision safeguards, HUD state | 8 lead days | 2 weeks |
 | S1.2 Four-weapon combat | shared aim, independent mounts, five representative weapons, numeric-only empowered profiles, movement interactions, combat HUD, temporary effects/audio | 10 lead days | 2 weeks |
-| S1.3 Enemies and short route | three ordinary roles, one elite, arena encounters, interconnected route, hazards, quick loadout selection, reduced-effects controls | 10 lead days | 2 weeks |
+| S1.3 Enemies and short route | four simple ordinary roles, one easy Four-Blaster Elite, arena encounters, interconnected route, hazards, quick loadout selection, reduced-effects controls | 10 lead days | 2 weeks |
 | S1.4 Reliability and developer gate | repeated complete sessions, settings persistence, diagnostics, performance pass, developer behavioral gate | 5 lead days | 1 week |
 | S1.5 External formal round | immutable artifact, frozen population/method, sessions, interviews, evidence report | 5 lead days | 2 weeks |
 

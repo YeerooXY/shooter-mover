@@ -2,12 +2,12 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "task_review",
+  "lifecycle_phase": "planning_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
-  "active_branch": "ai/task-split-shooter-mover-v1-continuation-5",
-  "active_pr": 9,
-  "last_verified_commit": "f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33",
+  "active_branch": "ai/planning-amend-stage1-enemies-v1",
+  "active_pr": 10,
+  "last_verified_commit": "385c73bc6e268020ad5f26d2ab77f36aaac9922d",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -27,6 +27,7 @@
     "assembly/generated/planning_runs_index.json",
     "assembly/planning_runs/shooter-mover-v1/README.md",
     "assembly/planning_runs/shooter-mover-v1/AMENDMENT_STAGE1_WEAPONS.md",
+    "assembly/planning_runs/shooter-mover-v1/AMENDMENT_STAGE1_ENEMIES.md",
     "assembly/planning_runs/shooter-mover-v1/input-idea.md",
     "assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md",
     "assembly/planning_runs/shooter-mover-v1/MILESTONES.md",
@@ -42,11 +43,11 @@
     "assembly/generated/task_batches/stage1-weapons.json",
     "assembly/intake/LIVE_DECISIONS.md"
   ],
-  "current_section": "guided_task_batch_generation",
-  "handoff_status": "task_split_in_progress",
-  "last_completed_item": "Generated and executable-validator-validated the human-approved WP-001 through WP-012 amended five-weapon batch with numeric-only empowerment, exclusive package ownership, generated-registry safety, temporary presentation, formal evidence and an explicit human quality gate; no game implementation was performed.",
-  "current_item": "Human review of draft PR #9 for the validated stage1-weapons batch on ai/task-split-shooter-mover-v1-continuation-5.",
-  "next_action": "Review and merge stage1-weapons draft PR #9. After it merges, start a fresh Task Splitter context from current main, present EN-001 through EN-013 titles, owner lanes and exact dependencies for stage1-enemies-route, and stop. Do not generate the enemy/route batch before explicit proposal approval.",
+  "current_section": "stage1_enemy_planning_amendment",
+  "handoff_status": "planning_amendment_review",
+  "last_completed_item": "Stage 1 weapon task-split PR #9 merged into main at 385c73bc6e268020ad5f26d2ab77f36aaac9922d. The human lead then selected a replacement Stage 1 roster of four simple ordinary enemies and one easy Four-Blaster Elite; no enemy batch or game implementation was created.",
+  "current_item": "Human review of draft PR #10 for the Stage 1 enemy planning amendment on ai/planning-amend-stage1-enemies-v1.",
+  "next_action": "Review and merge the Stage 1 enemy planning-amendment PR. After it merges, start a fresh Task Splitter context from current main, present revised EN-001 through EN-013 titles, owner lanes and exact dependencies for the amended four ordinary roles, Four-Blaster Elite and short route, then stop. Generate the batch only after explicit human continuation.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Ten planned agent batches remain to be proposed, approved and generated one at a time.",
@@ -54,6 +55,7 @@
     "Movement-thruster estimates 6.15 focused lead days against the accepted S1.1 cap of 8 days, leaving 1.85 days for human review and bounded evidence-led iteration; Dispatch must preserve that reserve.",
     "Combat-four-mount plus stage1-weapons consume 9.10 focused lead days of the accepted S1.2 ten-day cap, leaving only 0.90 day for review reserve and bounded approved follow-up; Dispatch may not add generalized tooling, mature balance depth or extra weapon breadth.",
     "The three remaining Stage 2 weapon identities are deliberately deferred until Stage 1 evidence and require a later planning amendment before Stage 2 combat-content generation or dispatch.",
+    "The one remaining Stage 2 ordinary enemy role is deliberately deferred until Stage 1 evidence and requires a later planning amendment before Stage 2 combat-content generation or dispatch.",
     "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
     "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
   ],
@@ -61,7 +63,7 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T22:35:44+02:00",
+    "last_persisted_at": "2026-07-13T22:52:31+02:00",
     "planning_run": "shooter-mover-v1",
     "task_decomposition": "6 of 16 batches generated and validated",
     "generated_batches": [
@@ -117,5 +119,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T22:35:44+02:00"
+  "updated_at": "2026-07-13T22:54:12+02:00"
 }

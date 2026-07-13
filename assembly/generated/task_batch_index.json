@@ -92,7 +92,7 @@
       "depends_on_batches": ["movement-thruster", "combat-four-mount", "stage1-weapons", "stage1-evidence-harness"],
       "output_path": "assembly/generated/task_batches/stage1-enemies-route.json",
       "status": "planned",
-      "notes": "One reviewable agent workload."
+      "notes": "Planned 13-task workload. Generation is blocked until AMENDMENT_STAGE1_ENEMIES.md merges; EN-001 through EN-013 must cover the four amended ordinary roles, easy Four-Blaster Elite and short route without changing accepted architecture."
     },
     {
       "batch_id": "stage1-accessibility-reliability",

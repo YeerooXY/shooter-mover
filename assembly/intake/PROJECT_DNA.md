@@ -59,7 +59,7 @@ Status: derived from accepted Product Discovery decisions D-040 through D-233. T
 
 - One interconnected automated-weapons-factory mission with differentiated zones, optional branches, teleport checkpoints, selected teleport shops, dedicated secure-storage rooms, and a production-core shutdown objective.
 - Approximately six to eight identical-copy base weapons, with roughly five or six representative weapons available during the earlier Stage 1 proof.
-- Approximately four or five ordinary rogue-machine roles plus a readable upgraded-droid climax; Stage 1 begins with three ordinary roles and one elite.
+- Approximately four or five ordinary rogue-machine roles plus a readable upgraded-droid climax; Stage 1 begins with four deliberately simple ordinary roles and one easy first elite boss.
 - A menu hub, mission launch, loadout and basic progression interfaces, completion, records, reward review, and immediate replay.
 - Deterministic sealed strongboxes, gameplay currency, a small stable-per-run randomized shop, optional mission-bound shop-refresh tokens, safe duplicate handling, banking, and atomic reward opening.
 - Representative final-pipeline art for the player, an ordinary enemy, the elite or upgraded droid, at least two weapons, and a major factory machine or environment set.
