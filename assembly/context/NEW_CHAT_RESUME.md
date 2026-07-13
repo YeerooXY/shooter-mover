@@ -16,11 +16,11 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-220.
-- Decisions D-101 through D-220 are persisted in authoritative batch-extension markdown and JSON files under `assembly/intake/batches/`.
+- Product Discovery is active after verified decision D-230.
+- Decisions D-101 through D-230 are persisted in authoritative batch-extension markdown and JSON files under `assembly/intake/batches/`.
 - The latest completed batch is:
-  - `assembly/intake/batches/LIVE_DECISIONS_D211_D220.md`
-  - `assembly/intake/batches/intake_session_D211_D220.json`
+  - `assembly/intake/batches/LIVE_DECISIONS_D221_D230.md`
+  - `assembly/intake/batches/intake_session_D221_D230.json`
 - D-001 through D-039 remain recovered but unverified and must not be presented as final requirements until explicitly re-verified.
 - D-040 through D-063 are archived verbatim.
 - D-064 through D-100 remain in the primary live decision log.
@@ -39,32 +39,29 @@ Before responding:
 - Loot, strongboxes, shops, checkpoints, banking, deterministic reward grants, offline saves, difficulty rules, replay, accessibility, and performance requirements are extensively specified in the persisted decision batches.
 - Co-op is post-MVP, targets up to four players through staged two-player validation, and uses relay-backed player-hosted latency-tolerant trusted local-first simulation with coarse shared room and campaign facts.
 
-## Proof and delivery direction through D-210
+## Proof and production direction through D-220
 
 - Development uses a two-stage proof gate.
 - Stage 1 proves intrinsic movement, aiming, four-weapon combat, enemy readability, traversal, quick restart, and voluntary repeat-play desire with temporary content.
-- Stage 2 turns the proven loop into one complete reliable factory level with real saves, checkpoints, loot risk, banking, a shop, strongboxes, completion, replay, scalable effects, and diagnostics.
-- The developer must first replay voluntarily and pursue mastery; then a small target-player group must show genuine behavioral replay interest.
-- Formal pass signals are declared before each test round. Behavior determines pass or fail; interviews and ratings explain causes.
-- After a limited number of failed rounds, conduct a written pivot-or-stop review, permit one evidence-backed substantial pivot, and stop or shelve if the revised prototype still fails.
-- Stage 1 begins with curated fixed four-weapon loadouts, followed only after promise by a tiny nonpersistent randomized reward wrapper.
-- Stage 1 contains a rapidly resettable benchmark arena plus a short interconnected route.
-- Stage 1 uses roughly five or six representative weapon archetypes and three ordinary enemy roles plus one elite.
-- External tests use readability-complete temporary presentation: representative telegraphs, hit feedback, silhouettes, HUD, audio, reduced-effects controls, and performance instrumentation, while final art and polish remain deferred.
-- Formal external builds must reliably support repeated complete prototype sessions. Technically ruined sessions are excluded from fun-gate evidence and recorded as reliability failures.
+- Stage 2 turns the proven loop into one complete reliable factory level and must also prove repeatable addition of a room or encounter, enemy, weapon, and representative final-pipeline art without foundational rewrites.
+- The developer validates voluntary mastery pursuit first; then a small target-player group must show genuine behavioral replay interest.
+- Formal pass signals and kill criteria are declared before test rounds. A limited failed-round sequence triggers written diagnosis, one evidence-backed substantial pivot, then stop or shelve if the revised prototype still fails.
+- Content uses typed `ScriptableObject` definitions and reusable modules, stable IDs, deterministic review snapshots, generated registries, isolated feature packages, and layered automated plus playable validation.
+- Meaningful rooms are independently testable packages assembled by a lightweight authored level graph.
+- Authoritative mission state lives in a typed plain-C# model. Persistence uses atomic versioned snapshots plus a short idempotent transactional journal.
 
-## Production pipeline and state direction through D-220
+## Delivery and repository direction through D-230
 
-- Stage 2 passes only when the complete reliable factory slice also proves that a new room or encounter, enemy, and weapon can be added through documented repeatable pipelines without foundational rewrites.
-- Most slice content may use coherent temporary art, but a representative player, enemy, elite, weapon, and factory subset must pass through the intended final rendered-sprite pipeline.
-- The primary developer establishes reference content pipelines, then an isolated AI-agent branch or collaborator independently reproduces a representative addition.
-- Every content contribution uses layered validation: automated technical checks first, then playable review for feel, readability, purpose, interaction, and accessibility.
-- Ordinary content uses typed `ScriptableObject` definitions and reusable modules; genuinely novel mechanics may add isolated reusable tested extensions.
-- `ScriptableObject` assets are canonical for ordinary authoring, with stable IDs, generated registries, deterministic text review snapshots, and selective CSV or JSON import.
-- Content contributions live mainly in isolated owned feature packages. Shared indexes are generated, and foundational systems have explicit owners.
-- Meaningful rooms are independently testable prefab or additive-scene packages assembled through a lightweight authored level graph.
-- Authoritative mission state lives in a typed plain-C# `MissionRunState` keyed by stable IDs. Unity rooms project that state and request validated transitions rather than directly mutating durable progress.
-- Mission persistence uses atomic versioned snapshots plus a compact idempotent transactional journal for checkpoints, banking, unique rewards, route or objective changes, completion, and suspend boundaries.
+- CI uses escalating gates: fast branch validation, targeted integration smoke tests and Windows builds, then scheduled or milestone full regression, performance, save-recovery, migration, clean-machine, offline-launch, and accessibility validation.
+- Formal test and release builds are immutable identified artifacts promoted through channels rather than rebuilt between stages.
+- Diagnostics remain local and privacy-safe by default, with explicit tester export and rotating one-click support bundles.
+- Save evolution uses ordered idempotent migrations, immutable backups, atomic commit, protected rollback, and safe handling of removed content.
+- Developer commands use one capability-gated auditable framework. Public builds exclude progression-altering commands; legitimate practice, accessibility, and speedrun tools remain separate player-facing features.
+- Unity and third-party dependencies are pinned. Upgrades use isolated tasks, comprehensive validation, and rollback.
+- Windows support uses a primary 60 FPS at 1080p target, a declared minimum floor with scalable visual effects, and a small representative hardware matrix.
+- Test builds use immutable portable packages. Public release uses a storefront or conventional installer with optional updates, complete offline play, no campaign account requirement, and save-safe update and uninstall behavior.
+- The application follows least-privilege offline security without mandatory DRM, kernel anti-cheat, or online activation.
+- Human and AI work use short-lived scoped branches with protected integration, explicit ownership, layered CI, and one revertable change per branch.
 
 ## Non-negotiable interview behavior
 
@@ -74,14 +71,14 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling or refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition and immediately continue.
-- Commit decisions in grouped batches rather than after every answer. D-211 through D-220 are fully persisted; begin the next batch at D-221 and persist through D-230 unless an earlier handoff is requested.
+- Commit decisions in grouped batches rather than after every answer. D-221 through D-230 are fully persisted; begin the next batch at D-231 and persist through D-240 unless an earlier handoff is requested.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is active, track queued decisions and never claim they are committed before a repository write.
-- Prioritize product, vertical-slice boundaries, proof, content-production pipeline, architecture policy, accessibility, testing, and delivery decisions before micro-level coefficients.
+- Prioritize product, vertical-slice boundaries, proof, content-production pipeline, architecture policy, accessibility, testing, delivery, and explicit scope controls before micro-level coefficients.
 - Preserve complete offline campaign and permanent guest play.
 - Preserve Windows as the first target and Android as later work.
 - Preserve the one-level internal vertical slice rather than expanding the MVP into a public demo, Early Access release, or full campaign.
-- Treat exact counts, timings, coefficients, and thresholds as prototype variables unless explicitly fixed.
+- Treat exact counts, timings, coefficients, calendar durations, and thresholds as planning or prototype variables unless explicitly fixed.
 
 ## Expected next action
 
-Ask D-221 exactly as directed by `CURRENT_HANDOFF.json`: define the layered Unity CI and build-validation policy for parallel human and AI-assisted production.
+Ask D-231 exactly as directed by `CURRENT_HANDOFF.json`: define milestone budgets and timebox review rules that prevent Stage 1 and Stage 2 from expanding indefinitely while still allowing a narrowly justified extension.
