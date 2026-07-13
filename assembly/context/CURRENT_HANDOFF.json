@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "f3db931793a47f2826f416c085a140f1ad136fdf",
+  "last_verified_commit": "04cc8c2aa841a37ac96621043d068b1337bc82ff",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -48,10 +48,10 @@
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "resume_ready",
-  "last_completed_item": "D-230 — Short-lived scoped branches with protected integration",
-  "current_item": "D-231 — Proof-stage milestone budgets and timebox review policy",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how Stage 1 and Stage 2 are bounded against indefinite expansion: no hard timebox and continue until quality is satisfactory; one fixed calendar deadline for each whole stage; or milestone budgets with predeclared review caps for core mechanics, prototype environment, developer validation, external validation, and Stage 2 end-to-end production proof, where missed caps trigger written scope reduction, diagnosis, resequencing, or stop review rather than automatic overtime. Preserve the two-stage evidence gates, predeclared pass signals, pivot-or-stop rule, solo-led AI-assisted production, one-level internal slice, and exact calendar durations as planning variables rather than fixed requirements. Include part-time schedule uncertainty, hidden technical risk, architecture overbuilding, quality pressure, sunk-cost behavior, incomplete evidence, dependencies, what counts as a justified extension, and how extensions are approved without silently moving the gate. Put the recommendation after all A/B/C options at the end of the card. Begin a new formal persistence batch D-231 through D-240 unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "active_batch_in_progress",
+  "last_completed_item": "D-233 — Frozen product question with controlled measurement changes",
+  "current_item": "D-234 — Prototype-shortcut and technical-debt exit policy",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting which prototype shortcuts may survive from Stage 1 into Stage 2: carry all working prototype code and content forward to preserve speed; rebuild Stage 2 cleanly from scratch after Stage 1 passes; or classify every shortcut by risk and evidence impact, preserving isolated readable test-covered temporary implementations while requiring replacement before Stage 2 acceptance for shortcuts that corrupt saves, block deterministic testing, violate content pipelines, undermine performance or accessibility, couple Unity scenes directly to durable state, or make new rooms enemies weapons and final-art assets require foundational rewrites. Preserve the two-stage proof gate, evidence-critical scope, milestone budgets, documented deferred scope, plain-C# domain core, typed content, stable IDs, repeatable pipelines, versioned persistence, and the one-level internal slice. Include sunk-cost rewrites, premature abstraction, throwaway-code myths, migration seams, ownership, replacement triggers, debt registers, proof-stage boundaries, and when a shortcut becomes a blocker rather than an acceptable temporary compromise. Put the recommendation after all A/B/C options at the end of the card. D-231 through D-233 are checkpointed as queued but not formally batch-persisted; continue through D-240 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -60,17 +60,60 @@
     "The D-101 through D-230 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "ready",
-    "unsaved_decisions": 0,
+    "status": "batch_in_progress",
+    "unsaved_decisions": 3,
     "last_persisted_decision": "D-230",
     "last_persisted_at": "2026-07-13T18:24:00+02:00",
-    "batching_rule": "Begin a new Product Discovery batch at D-231 and persist through D-240 unless an earlier handoff is requested",
-    "queued_decisions": []
+    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-231 through D-240 at D-240 unless an earlier handoff is requested",
+    "queued_decisions": [
+      {
+        "decision_id": "D-231",
+        "topic": "proof_stage_milestone_budgets_and_timebox_review_policy",
+        "choice": "C",
+        "answer": "milestone_budgets_with_hard_review_caps",
+        "constraints": [
+          "Stage 1 and Stage 2 are divided into bounded evidence-producing milestones rather than one open-ended stage deadline",
+          "Each milestone receives a predeclared effort or calendar budget set before implementation as a planning variable",
+          "Reaching a cap pauses work for written evidence review diagnosis scope reduction resequencing extension or stop decisions",
+          "Extensions require a specific dependency or evidence-based reason a revised cap and unchanged acceptance evidence",
+          "Polish architecture generalization and sunk-cost pressure do not justify silently moving the gate"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-232",
+        "topic": "milestone_overrun_scope_cut_priority",
+        "choice": "C",
+        "answer": "protect_evidence_critical_work_and_cut_breadth",
+        "constraints": [
+          "Preserve core mechanics representative content readability controls diagnostics valid test conditions and gate-relevant save or performance reliability",
+          "Cut additional weapons enemies rooms variants cosmetic polish secondary progression economy depth optional tools generalized architecture and premature post-MVP preparation first",
+          "Every cut is recorded with its reason and re-entry condition",
+          "Deferred scope cannot silently return during the same milestone",
+          "Validation accessibility diagnostics and reliability are not sacrificed merely to preserve visible feature count"
+        ],
+        "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-233",
+        "topic": "milestone_acceptance_criteria_change_control",
+        "choice": "C",
+        "answer": "freeze_the_product_question_and_control_measurement_changes",
+        "constraints": [
+          "Record the product question required evidence pass fail and technically-invalid outcomes included and excluded scope measurement method test population and approvers before work begins",
+          "The core question cannot be softened after development or evidence collection starts",
+          "Clarifications are allowed only before affected evidence is collected while material changes create a new version or test round",
+          "Previous results remain attached to their original rules and threshold changes require measurement-validity justification rather than disappointing results",
+          "Technical failures remain distinct from fun evidence and scope cuts must still answer the original question"
+        ],
+        "verification_status": "verified"
+      }
+    ]
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:24:00+02:00"
+  "updated_at": "2026-07-13T18:34:35+02:00"
 }
