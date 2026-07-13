@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1.0",
+  "generated_by": "Planning Agent using the repository-first planning workflow",
+  "planning_runs_path": "assembly/planning_runs",
+  "required_outputs": [
+    "project_spec.json",
+    "repo_plan.json",
+    "agent_prompts.json",
+    "slots_db.json"
+  ],
+  "deferred_to_task_splitter": [
+    "task_batch_index.json",
+    "task_batches/*.json",
+    "task_backlog.json"
+  ],
+  "runs": [
+    {
+      "run_id": "shooter-mover-v1",
+      "status": "review",
+      "branch": "ai/planning-shooter-mover-v1",
+      "requirements_sources": [
+        "assembly/intake/project_intake.json",
+        "assembly/intake/PROJECT_DNA.md",
+        "assembly/requirements/REQUIREMENTS.md",
+        "assembly/requirements/REQUIREMENTS_REVIEW_CLARIFICATIONS.md"
+      ],
+      "outputs_path": "assembly/planning_runs/shooter-mover-v1/outputs",
+      "canonical_outputs": [
+        "assembly/generated/project_spec.json",
+        "assembly/generated/repo_plan.json",
+        "assembly/generated/agent_prompts.json",
+        "assembly/generated/slots_db.json"
+      ],
+      "task_decomposition": "deferred_until_planning_pr_merge"
+    }
+  ]
+}
