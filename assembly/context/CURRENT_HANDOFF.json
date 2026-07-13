@@ -6,17 +6,18 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "101dd81481cbb44ab4d91b8459d65423dd163e38",
+  "last_verified_commit": "f4759ea4f6d4d5809ce3f1cf9a46024662a9e956",
   "authoritative_artifacts": [
     "AGENTS.md",
     "assembly/intake/LIVE_DECISIONS.md",
+    "assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-063 — Hardened offline saves with separate verified competitive modes",
-  "current_item": "D-064 — Monetization and release model",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the game is a pure premium purchase with no additional monetization, a premium purchase with optional cosmetic supporter content and paid expansions while all randomized strongboxes power and progression remain gameplay-only, or uses free-to-play or paid progression and randomized real-money purchases. Explicitly separate in-game randomized strongboxes from real-money loot boxes. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "last_completed_item": "D-064 — Free-to-play game with cosmetic-only monetization and no paid power or progression",
+  "current_item": "D-065 — Free-content boundary and paid authored content",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether all gameplay and campaign content remains free with revenue only from direct-purchase cosmetics, the core game remains free while substantial authored expansions may be sold without selling power, or a free starter campaign leads to a one-time full-content unlock plus cosmetics. Preserve the cosmetic-only no-paid-power rule and explicitly discuss community fragmentation, revenue sustainability, and player trust. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -24,12 +25,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T11:13:00+02:00"
+    "last_persisted_at": "2026-07-13T11:25:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T11:13:00+02:00"
+  "updated_at": "2026-07-13T11:25:00+02:00"
 }
