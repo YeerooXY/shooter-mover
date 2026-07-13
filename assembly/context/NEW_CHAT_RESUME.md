@@ -16,7 +16,7 @@ Before responding:
 
 ## Current checkpoint
 
-- Product Discovery is active after verified decision D-160.
+- Product Discovery is active after verified decision D-170.
 - Decisions D-101 through D-110 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D101_D110.md`
   - `assembly/intake/batches/intake_session_D101_D110.json`
@@ -38,6 +38,9 @@ Before responding:
 - Decisions D-151 through D-160 were batch-persisted in:
   - `assembly/intake/batches/LIVE_DECISIONS_D151_D160.md`
   - `assembly/intake/batches/intake_session_D151_D160.json`
+- Decisions D-161 through D-170 were batch-persisted in:
+  - `assembly/intake/batches/LIVE_DECISIONS_D161_D170.md`
+  - `assembly/intake/batches/intake_session_D161_D170.json`
 - The player pilot is mostly silent, with only rare concise authored lines. Recurring characters and factions carry most dialogue; the mech is primarily the player's combat and progression platform.
 - The world uses a stylized action-science-fiction tone with sincere stakes, colorful readable technology, exaggerated weapons and loot, and restrained humor.
 - The central hub is a fast menu interface, not an explorable base.
@@ -54,18 +57,20 @@ Before responding:
 - Copies of the same MVP weapon behave identically. Stars, augments, enchantments, and randomized item statistics are deferred.
 - The internal MVP includes a minimal real strongbox and randomized-shop loop using the base-weapon pool, without the mature economy's advanced systems.
 - Art production uses a hybrid pipeline: offline 3D sources rendered into 2D sprites for mechs, enemies, weapons, and major machinery, combined with painted, procedural, or directly authored 2D environments, effects, shadows, interface work, and finishing passes.
-- The internal MVP is led by one human developer, supported by AI agents and occasional specialist outsourcing. The human retains final authority and integration responsibility.
-- The workflow should support four or more parallel AI agents, but only through narrowly scoped, independently owned work.
-- Agents use isolated task branches with interface-first contracts, explicit dependencies, acceptance criteria, owned modules or serialized assets, and reproducible proof.
-- The codebase is divided primarily into gameplay-domain modules, with small governed shared contracts.
-- The final engine choice is Unity with C#. The earlier provisional Godot decision is superseded.
-- Unity gameplay uses a hybrid domain-core architecture: plain testable C# for important rules and state, with Unity components handling engine-facing presentation and lifecycle concerns.
-- Static content definitions use typed ScriptableObjects, while mutable runtime state remains separate.
-- Rendering uses URP 2D lighting with normal-mapped sprites, while gameplay remains readable without depending on dynamic lighting.
-- Project composition uses additive scenes and modular prefabs, with explicit initialization and temporary ownership of serialized assets.
-- Every agent task requires proportional layered validation: plain-C# tests where applicable, targeted Unity integration tests, build or project validation, plus a playable proof or reproducible verification procedure.
-- The next decision is D-161: establish the Windows-first MVP input, controller, and rebinding baseline before deeper accessibility and implementation-policy decisions.
-- The user requested persistence every ten discovery questions. Queue D-161 through D-170 and persist at D-170 unless this instruction changes or another context handoff is requested.
+- The internal MVP is led by one human developer, supported by AI agents and occasional specialist outsourcing. The workflow supports four or more parallel agents through isolated task branches and gameplay-domain ownership.
+- The engine is Unity with C#. Gameplay uses a hybrid plain-C# domain core with Unity-facing adapters, ScriptableObject definitions, URP 2D lighting, additive scenes, modular prefabs, and layered automated validation plus playable proof.
+- Windows implementation and tuning begin with keyboard and mouse, while Unity Input System actions remain device-independent for later gamepad, touch, and other platform inputs.
+- The MVP includes a practical accessibility baseline: scalable interface and text, color-independent warnings, reduced-effect controls, aim assistance, input alternatives, and configurable camera feedback.
+- Saves are versioned and local-first with atomic writes, validation, rolling backups, recovery, and manual export or import. Permanent offline play remains complete.
+- Core audio is polished enough to judge combat, with English-first localization-ready text and no requirement for full voice acting.
+- The Windows target is stable 60 FPS at 1080p on a mainstream gaming PC, with scalable quality settings and measurable effect budgets.
+- Playtesting uses structured local diagnostics and exportable privacy-safe evidence bundles rather than mandatory online telemetry.
+- The first factory level is an interconnected authored room map inspired broadly by the navigation feel of `Robokill` and `Red Storm`.
+- Cleared rooms remain enemy-free during the run. Environmental machinery and hazards may remain dangerous and must be clearly telegraphed.
+- Ordinary death respawns the player at the latest activated checkpoint. Full-mission restart remains a possible post-MVP rule for nightmare or sadistic modes and record challenges.
+- Checkpoints are recognizable automatic teleports placed initially about every six or seven rooms, subject to playtesting. Their map state is visible and the model must remain adaptable to later co-op.
+- The next decision is D-171: decide whether activated teleports are only respawn checkpoints, also permit fast travel, or provide broader services.
+- The user requested persistence every ten discovery questions. Queue D-171 through D-180 and persist at D-180 unless this instruction changes or another context handoff is requested.
 - `unsaved_decisions` is zero at this checkpoint.
 - No pull request is open yet.
 - Decisions D-001 through D-039 remain an unverified recovered set.
@@ -80,16 +85,16 @@ Before responding:
 - Ask exactly one highest-impact Product Discovery question per turn.
 - Use a concise A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk where relevant, and one recommendation placed after all options.
 - If the user gives a short clear choice, record it without extended praise or repetition.
-- Honour the ten-question persistence cadence: queue D-161 through D-170 and commit the complete batch before asking D-171. Persist earlier if another context handoff becomes necessary or the user requests it.
+- Honour the ten-question persistence cadence: queue D-171 through D-180 and commit the complete batch before asking D-181. Persist earlier if another context handoff becomes necessary or the user requests it.
 - Keep committed checkpoints at `unsaved_decisions: 0`; while a batch is in progress, clearly track queued decisions and never claim they are committed before a repository write.
-- Continue prioritizing high-level product, campaign, content-boundary, accessibility, production-pipeline, architecture-policy, and MVP-delivery decisions before returning to micro-level combat tuning.
+- Continue prioritizing high-level product, campaign, level structure, content boundary, accessibility, production-pipeline, architecture-policy, proof, and MVP-delivery decisions before returning to micro-level combat tuning.
 - Preserve the complete offline campaign and permanent guest-play requirements.
 - Preserve Windows PC as the first target and Android as a later target rather than expanding the internal MVP to mobile now.
-- Treat advanced ricochet extensions as prototype-dependent and defer deep commitment until a usable core build exists.
-- Treat exact combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, and animation counts as later prototype-and-playtest variables unless explicitly fixed.
+- Preserve the interconnected authored room map, permanent room clearing within a run, environmental hazard persistence, and frequent teleport checkpoint cadence.
+- Treat exact room count, checkpoint spacing, combat timing, projectile health, boost coefficients, collision coefficients, weapon statistics, enemy attack details, and animation counts as prototype-and-playtest variables unless explicitly fixed.
 
 ## Expected first action
 
-Ask D-161 exactly as directed by `CURRENT_HANDOFF.json`: establish whether the Windows-first internal MVP supports keyboard and mouse only, keyboard and mouse plus gamepad with rebindable actions, or those inputs plus an early touch-control abstraction for future Android.
+Ask D-171 exactly as directed by `CURRENT_HANDOFF.json`: determine what services an activated teleport provides during a mission while preserving its checkpoint role.
 
-Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher input, accessibility, production, architecture-policy, proof, and MVP-delivery level.
+Do not begin with detailed enemy attacks, weapon statistics, boss patterns, collision coefficients, or animation-count questions. Continue at the higher level-structure, checkpoint, progression, accessibility, production, proof, and MVP-delivery level.
