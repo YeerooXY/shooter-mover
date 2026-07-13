@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-067
+- Last persisted decision: D-068
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -93,13 +93,26 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-068 — Death respawn and difficulty-scaled room reclamation
+
+- Status: accepted
+- Choice: custom A — cleared-room persistence by default with stronger difficulty reclamation
+- Accepted requirement: On the baseline and more accessible difficulty rulesets, rooms already cleared before death remain cleared. The room or active encounter in which the player died resets so the player can retry without routinely replaying the entire checkpoint section.
+- Difficulty rule: Stronger difficulty rulesets may reclaim a larger authored area after death, potentially resetting several previously cleared rooms or, at the highest settings, a substantial part of the current checkpoint section.
+- Determinism rule: The reclaimed area is fixed and predictable for each difficulty, checkpoint, and death location rather than selected through uncontrolled random respawning. Each difficulty remains learnable, repeatable, and suitable for fair speedrunning categories.
+- Boundary rule: Reclamation must not undo checkpoint-banked strongboxes or other progress already secured under D-059, and it must not reach behind the latest activated checkpoint unless a separately defined challenge mode explicitly establishes that rule.
+- Repetition guardrail: Multi-room reclamation must create meaningful route and survival pressure rather than repetitive cleanup. Encounter composition, shortcut state, one-way transitions, and respawn placement must avoid impossible or unfair recovery states.
+- Implementation note: Level state must support authored reset groups larger than one room even when ordinary difficulties use only the death-room reset, preventing a later difficulty-system rewrite.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Product Discovery is intentionally paused for a context handoff after D-067. On resume, re-enter the core-experience recovery by deciding death/checkpoint world-reset behavior, especially whether cleared rooms stay cleared, the current checkpoint section resets deterministically, or earlier rooms may be reclaimed.
+Continue the core-experience recovery by deciding whether activated checkpoint teleport stations are respawn/save anchors only, support controlled travel between activated checkpoints, or enable broad map-based fast travel.
 
 ## Revision rules
 
