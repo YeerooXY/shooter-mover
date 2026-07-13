@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-052
+- Last persisted decision: D-053
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-052 were verified directly by the user after recovery.
+D-040 through D-053 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -159,13 +159,24 @@ D-040 through D-052 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-053 — Strongbox tier to augment-quality mapping
+
+- Status: accepted
+- Choice: B — overlapping weighted quality bands with minimum guarantees
+- Accepted requirement: Each strongbox tier has a dependable minimum quality floor and a strongly weighted expected star-and-augment range, while neighboring tiers overlap and retain a limited upper-tail jackpot chance.
+- Cross-level jackpot rule: A box may roll an older, lower-base-level weapon with unusually strong stars and augments. For example, around player level 10, a Tier 2 crate may produce a level-2-to-4 base weapon with a rare high-star, high-augment roll.
+- Balance rule: Base weapon level, weapon-family power, stars, augment level, and enchantment synergy must be evaluated together. Exceptional older weapons may remain exciting and temporarily competitive, but the combined system must not let common low-tier farming reliably overpower current progression.
+- Tier rule: Higher box tiers raise minimums and expected quality rather than making every top-tier result perfect; exact ranges, overlap, and jackpot tails require playtesting.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The mapping from the eight strongbox tiers to the two-star, ten-level augment-quality scale now outranks remaining shop pricing details because it defines how predictable, surprising, and valuable each box tier feels.
+Continue with the highest-weight unresolved Product Discovery question. The amount by which stars and augments may compensate for a lower base weapon level now outranks remaining shop pricing details because it determines whether jackpot older weapons are temporary curiosities, meaningful bridge items, or permanent best-in-slot outliers.
 
 ## Revision rules
 
