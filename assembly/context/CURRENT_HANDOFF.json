@@ -6,34 +6,37 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "665890126e094d348d2abba2525fdb2a703d60cc",
+  "last_verified_commit": "ff73cd27ef26df744172fbae4f2c31c70e01843a",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
     "assembly/context/NEW_CHAT_RESUME.md",
     "assembly/intake/LIVE_DECISIONS.md",
     "assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D101_D110.md",
     "assembly/intake/intake_session.json",
+    "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-100 — Signature regenerating directional thruster burst as a vertical-slice feel pillar",
-  "current_item": "D-101 — Thruster burst charge and regeneration model",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the signature thruster uses one fast-recharging charge, two or three independently regenerating charges that may be chained, or a continuous fuel meter supporting variable-length boosts. Preserve the signature addictive movement goal, physical displacement rather than long universal invulnerability, keyboard and gamepad controls, later Android controls, speedrunning and route mastery, weapon-specific movement effects, broad difficulty accessibility, and future co-op. Include responsiveness, chain-dashing, panic-spam, recharge downtime, readability, tuning complexity, level-design impact, accessibility adjustments, and competitive determinism. Put the recommendation after all A/B/C options, at the end of the card. Queue accepted decisions D-101 through D-110 and persist the complete batch at D-110 before asking D-111, unless a context handoff or explicit user instruction requires earlier persistence.",
+  "last_completed_item": "D-110 — Stable baseline thruster capacity with rare access to at most one additional charge",
+  "current_item": "D-111 — Base locomotion acceleration and inertia between thruster bursts",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether ordinary mech movement uses immediate tight velocity changes, momentum-heavy inertial movement, or a responsive hybrid with quick acceleration and bounded drift. Preserve the signature chainable directional thruster burst, movement-input boost direction independent from aim, limited boost steering, predictable wall ricochets, weapon-specific movement effects, keyboard and gamepad controls, later Android controls, broad difficulty accessibility, deterministic speedrunning, and future co-op. Include aiming stability, dodge precision, movement satisfaction, controller and touch feel, interaction with recoil and ricochets, level-design implications, accessibility, tuning complexity, and the risk of base movement making the thruster either redundant or mandatory. Put the agent recommendation after all A/B/C options, at the end of the card. Queue accepted decisions D-111 through D-120 and persist the complete batch at D-120 before asking D-121, unless a context handoff or explicit user instruction requires earlier persistence.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
-    "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation"
+    "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
+    "The D-101 through D-110 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-100",
-    "last_persisted_at": "2026-07-13T12:57:23+02:00",
-    "batching_rule": "Queue ten Product Discovery decisions per batch; next persistence boundary D-110",
+    "last_persisted_decision": "D-110",
+    "last_persisted_at": "2026-07-13T13:20:48+02:00",
+    "batching_rule": "Queue ten Product Discovery decisions per batch; next persistence boundary D-120",
     "queued_decisions": []
   },
   "framework": {
@@ -41,5 +44,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T12:57:23+02:00"
+  "updated_at": "2026-07-13T13:20:48+02:00"
 }
