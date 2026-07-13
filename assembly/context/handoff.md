@@ -4,9 +4,9 @@
 
 **Guided task decomposition is in progress.**
 
-Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 also merged the first partial Unity Foundation batch, so its branch is permanently closed. Contract Steward and Evidence Harness work was recovered onto the fresh branch `ai/task-split-shooter-mover-v1-continuation-1`. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
+Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-The recovered state is open for human review in draft pull request #4. Do not append another batch to that branch after the PR merges.
+The human-approved movement-thruster batch is committed on `ai/task-split-shooter-mover-v1-continuation-3` and is open for review in draft pull request #6.
 
 ## Durable task state
 
@@ -16,37 +16,38 @@ The recovered state is open for human review in draft pull request #4. Do not ap
 - Generated batch: `assembly/generated/task_batches/unity-foundation.json`
 - Generated batch: `assembly/generated/task_batches/shared-contracts-core.json`
 - Generated batch: `assembly/generated/task_batches/stage1-evidence-harness.json`
-- Progress: 3 of 16 batches generated
-- Next batch: `movement-thruster`
+- Generated batch: `assembly/generated/task_batches/movement-thruster.json`
+- Progress: 4 of 16 batches generated
+- Next batch: `combat-four-mount`
 - Canonical backlog: not generated
 - Collaboration assignments and claims: not finalized
 
-The Unity Foundation batch contains `UF-001` through `UF-011`. The Contract Steward batch contains `CS-001` through `CS-012`. The Stage 1 Evidence Harness batch contains `EH-001` through `EH-010` and is owned by the Verification, Performance, and Release Builder.
+The Unity Foundation batch contains `UF-001` through `UF-011`. The Contract Steward batch contains `CS-001` through `CS-012`. The Stage 1 Evidence Harness batch contains `EH-001` through `EH-010`. The Movement and Thruster batch contains `MT-001` through `MT-012` and is owned by the Movement and Combat Builder.
 
-The Evidence Harness tasks cover build/content/tuning identity, deterministic configuration and seed fixtures, bounded local diagnostics and run validity, a benchmark arena shell, a short-route shell, rapid reset/restart/session lifecycle, performance capture hooks, immutable evidence manifests/checksums, edit/play/Windows smoke entrypoints, and the human-review/invalid-session protocol.
+The movement batch covers immutable tuning identity, deterministic base locomotion, thruster charge/regeneration, activation/steering/exit momentum, wall reflection, weighted enemy contact/grace rules, device-independent Input System mapping, Rigidbody2D application, Unity 2D contact translation, explicit actor lifecycle, read-only thruster status, and evidence-harness scenarios.
 
 ## Validation boundary
 
-The executable AI Assembly Line workspace validator passes the batch index, all three generated batches, all 33 generated task records, and the current dependency graph. The Evidence Harness contains exactly `EH-001` through `EH-010`; all sizes are `S` or `M`; and dependencies point only to existing `UF-*`/`CS-*` tasks or earlier `EH-*` tasks.
+The current AI Assembly Line built-in validators pass the updated batch index and the movement-thruster batch. The index contains 16 unique batches and 186 unique predeclared IDs. The movement batch contains exactly `MT-001` through `MT-012`; every task is size `S` or `M`; and dependencies point only to existing `UF-*`/`CS-*`/`EH-*` tasks or earlier `MT-*` tasks.
 
-Ownership was narrowed for `UF-004`, `UF-005`, `UF-006`, `UF-008`, `UF-009`, and `CS-004`. The 33 currently generated tasks now have non-overlapping exact file or bounded-folder claims. The two serialized evidence scenes retain one explicit owner each: `EH-004` owns `Stage1BenchmarkArena.unity`, and `EH-005` owns `Stage1ShortRouteShell.unity`.
+The movement dependency graph is acyclic and topologically ordered. Its 36 declared owned files/assets are unique within the batch and avoid every previously exclusive serialized owner. `MT-007` exclusively owns `ShooterMoverMovement.inputactions`; `MT-012` loads but never edits `EH-004`'s `Stage1BenchmarkArena.unity`. No movement task edits `EH-005`'s short-route scene, Bootstrap-owned files, shared contracts, generated registries, Packages, ProjectSettings, ContentPackages, or accepted planning/requirements.
 
-Artifact/build smoke work consumes `UF-010`; build identity consumes `CS-002`; input fixtures consume `CS-003`; diagnostics and validity consume `CS-012`; and the arena/route shells consume the Bootstrap/Foundation scene tasks.
+The current validator still skips twelve intentionally planned/missing batches, so this is not completion validation for all 186 predeclared task IDs. Run and require the complete workspace validator after all indexed batches exist; do not describe the canonical backlog or full graph as complete before then.
 
-The current validator skips thirteen intentionally planned/missing batches, so this is not completion validation for all 186 predeclared task IDs. Run and require the complete workspace validator after all indexed batches exist; do not describe the canonical backlog or full graph as complete before then.
-
-## Scope and capacity blocker
+## Scope and capacity blockers
 
 The Foundation and Contract Steward estimates total 7.3 focused lead days. The Stage 1 Evidence Harness adds 3.6 focused lead days, bringing the recorded S1.0 planning total to 10.9 focused lead days against the accepted five-day cap.
 
 Dispatch therefore requires a human decision to re-estimate, resequence, cut non-evidence breadth, or approve a bounded cap amendment. Do not hide the overrun by removing required contracts, controls, accessibility, diagnostics, reliability, save safety, or performance work.
+
+The Movement and Thruster batch estimates 6.15 focused lead days against the accepted S1.1 eight-day cap, leaving 1.85 focused lead days for human review and bounded evidence-led iteration. Do not consume that reserve by silently expanding movement polish, presentation, combat, enemies, or generalized tooling.
 
 `CS-011` still needs focused human review because it combines registry generation, drift validation, baseline generated outputs, and documentation. Split it if one focused executor cannot complete and verify it as one revertible change.
 
 ## Coordination rules
 
 - A merged branch is permanently closed. Every later continuation starts from current `main` on a fresh branch after comparing branch and PR state.
-- Before writing the next batch, the Task Splitter must present the proposed task IDs, titles, exact dependencies and owner lane to the human lead, then stop.
+- Before writing the next batch, the Task Splitter must present the proposed task IDs, titles, exact dependencies and owner lanes to the human lead, then stop.
 - Generate exactly one next planned batch only after explicit human continuation.
 - Reviewers may validate and report findings in parallel but must not race edits to the same index, batch, or handoff files.
 - Each generated batch must update the index, `CURRENT_HANDOFF.json`, `NEW_CHAT_RESUME.md`, and this handoff together.
@@ -56,6 +57,6 @@ Dispatch therefore requires a human decision to re-estimate, resequence, cut non
 
 ## Exact next action
 
-Review and merge recovery PR #4. In a fresh context after merge, present the proposed `MT-001` through `MT-012` titles and exact dependencies to the human lead and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/movement-thruster.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
+Review and merge draft pull request #6. After it merges, start a fresh context from current `main`, present the proposed `CB-001` through `CB-011` titles, owner lanes and exact dependencies to the human lead, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/combat-four-mount.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.
