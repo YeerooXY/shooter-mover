@@ -1,0 +1,949 @@
+{
+  "schema_version": "0.1.0",
+  "batch_id": "stage1-weapons",
+  "source_plan_path": "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+  "tasks": [
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-001",
+      "title": "Define the amended Stage 1 weapon-package baseline",
+      "summary": "Define and validate the five-package authoring boundary and numeric-only empowered-profile rules.",
+      "objective": "Create the package descriptor and validator consumed by all Stage 1 weapon packages without changing the accepted combat contracts or central registry generator.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/Stage1/Stage1WeaponPackageDescriptor.cs",
+        "Assets/ShooterMover/ContentPackages/Weapons/Stage1/Stage1WeaponPackageValidator.cs",
+        "Assets/ShooterMover/Tests/EditMode/Combat/Stage1WeaponPackageValidatorTests.cs",
+        "Assets/ShooterMover/ContentPackages/Weapons/Stage1/STAGE1_WEAPON_PACKAGES_V1.md"
+      ],
+      "depends_on": [
+        "CS-001",
+        "CS-002",
+        "CS-009",
+        "CS-011",
+        "CB-001",
+        "CB-003",
+        "CB-004",
+        "CB-011"
+      ],
+      "blocks": [
+        "WP-002",
+        "WP-003",
+        "WP-004",
+        "WP-005",
+        "WP-006",
+        "WP-007"
+      ],
+      "inputs": [
+        "Consumed contracts: StableId v1, ContentVersion v1, Typed Content References v1, Generated Registry v1, WeaponRuntimeProfile, independent power-bank policy, and modular weapon-behavior pipeline.",
+        "Accepted roster and empowered-fire boundaries from AMENDMENT_STAGE1_WEAPONS.md."
+      ],
+      "outputs": [
+        "Stage 1 weapon-package descriptor",
+        "Five-weapon package validator",
+        "Authoring-boundary documentation and edit-mode tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: accepted intake/requirements/architecture outside the amendment, combat-foundation files, central generated registry outputs, scenes, UI, enemies, mission state, saves, rewards, Packages, ProjectSettings, networking, and backend code.",
+        "Serialized ownership: none. Save-schema impact: none. Content-registry impact: contributes validated descriptor inputs only; Assets/ShooterMover/Generated outputs remain exclusively CS-011-owned and are regenerated, never edited here.",
+        "Rollback: remove the four owned files before package consumers land. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Exactly the five amended stable IDs are accepted and the Blaster Machine Gun can be marked as the default starting weapon.",
+        "Normal fire cannot declare consumable ammunition and every empowered profile is limited to existing numeric coefficients.",
+        "Arc profiles reject more than three additional targets, Ricochet profiles reject more than two wall bounces, and Rocket profiles reject fragmentation or second-detonation behavior.",
+        "Unknown, duplicate, malformed, or behavior-changing package descriptors fail deterministically."
+      ],
+      "verification": [
+        "Automated: run descriptor identity, duplicate-ID, numeric empowerment, Arc cap, Ricochet cap, Rocket topology, and unlimited-normal-fire tests.",
+        "Manual/playable: contract review confirms each of the five approved packages fits without modifying CB-004 or adding a universal weapon switch."
+      ],
+      "proof_required": [
+        "Stage1WeaponPackageValidatorTests log",
+        "accepted and intentionally rejected descriptor fixtures",
+        "contract review note"
+      ],
+      "edge_cases": [
+        "duplicate default flag",
+        "zero power cost",
+        "unknown behavior-module ID",
+        "empowered profile attempts to change module topology"
+      ],
+      "non_goals": [
+        "no concrete weapon package",
+        "no final balance values",
+        "no generated-output edit",
+        "no Stage 2 weapon selection"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "content-contract",
+        "strong-review"
+      ],
+      "handoff_notes": "WP-002 through WP-007 consume this baseline; CS-011 remains the sole central generated-output owner.",
+      "notes": "Milestone-cap spend: 0.30 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-002",
+      "title": "Create bounded shared projectile and hit-presentation primitives",
+      "summary": "Provide the minimal package-owned 2D projectile shell and temporary hit hook reused by the five weapon packages.",
+      "objective": "Implement only the concrete 2D projectile lifetime, collision handoff and temporary hit-presentation primitives needed by Stage 1 packages behind the accepted execution-plan adapter.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/BoundedProjectile2D.cs",
+        "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanAdapter.cs",
+        "Assets/ShooterMover/ContentPackages/Weapons/Shared/Presentation/TemporaryHitPresentation.cs",
+        "Assets/ShooterMover/ContentPackages/Weapons/Shared/Prefabs/BoundedProjectile2D.prefab",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/BoundedProjectile2DTests.cs"
+      ],
+      "depends_on": [
+        "UF-003",
+        "CS-004",
+        "CB-004",
+        "CB-009",
+        "WP-001"
+      ],
+      "blocks": [
+        "WP-003",
+        "WP-004",
+        "WP-005",
+        "WP-006",
+        "WP-007"
+      ],
+      "inputs": [
+        "Consumed contracts: Combat Messages v1, WeaponFireExecutionPlan, WeaponMount2DAdapter boundary, and Stage 1 weapon-package baseline."
+      ],
+      "outputs": [
+        "Bounded 2D projectile primitive",
+        "Execution-plan adapter",
+        "Temporary hit hook",
+        "Play-mode projectile tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: CB-owned pipeline/adapters, central registries, movement files, scenes, UI, package-specific folders, enemies, mission state, saves, rewards, Packages, ProjectSettings, 3D physics, and generalized pooling frameworks.",
+        "Serialized ownership: exclusive ownership of BoundedProjectile2D.prefab. Save-schema impact: none. Content-registry impact: descriptor input only; no generated output edit.",
+        "Rollback: remove the five owned files; no accepted contract changes. Prototype debt: none; the bounded primitive must meet Stage 1 performance evidence without speculative generalization."
+      ],
+      "acceptance_criteria": [
+        "The primitive uses only Unity 2D APIs, has finite validated lifetime, reports confirmed hits once, and cannot become authoritative combat state.",
+        "Execution originates only from a validated fire plan and package-specific behavior remains outside the shared primitive.",
+        "Temporary hit presentation is optional, bounded and does not carry damage or target-selection authority."
+      ],
+      "verification": [
+        "Automated: play-mode tests cover spawn, finite expiry, one-hit translation, disabled presentation, rapid restart and invalid-plan rejection.",
+        "Manual/playable: inspect the prefab and confirm no package identity, scene reference, 3D component or hidden global service is embedded."
+      ],
+      "proof_required": [
+        "BoundedProjectile2DTests log",
+        "prefab component snapshot",
+        "rapid-restart trace"
+      ],
+      "edge_cases": [
+        "spawn inside collider",
+        "owner collision",
+        "simultaneous lifetime and impact",
+        "missing presentation reference"
+      ],
+      "non_goals": [
+        "no weapon package",
+        "no pooling framework",
+        "no damage authority",
+        "no final effects or audio"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "shared-weapon-primitive",
+        "serialized-asset",
+        "strong-review"
+      ],
+      "handoff_notes": "Five package tasks may proceed in parallel after this shared primitive and WP-001 are accepted.",
+      "notes": "Milestone-cap spend: 0.40 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-003",
+      "title": "Build the Blaster Machine Gun package",
+      "summary": "Create the default straightforward automatic-fire reference weapon.",
+      "objective": "Implement the Blaster Machine Gun as the default starting package with simple automatic projectile fire and numeric-only empowerment.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/BlasterMachineGun/",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/BlasterMachineGunPackageTests.cs"
+      ],
+      "depends_on": [
+        "CB-006",
+        "WP-001",
+        "WP-002"
+      ],
+      "blocks": [
+        "WP-008",
+        "WP-009",
+        "WP-010"
+      ],
+      "inputs": [
+        "Consumed contracts: Four-Mount Weapons v1 and Combat Messages v1; plus the accepted four-mount coordinator, Stage 1 package baseline, and shared projectile primitive."
+      ],
+      "outputs": [
+        "Blaster Machine Gun package",
+        "Package-owned definition/prefabs/tuning",
+        "Play-mode package tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: every other weapon package, shared primitive, combat foundation, generated outputs, scenes, central UI, enemies, mission state, saves, rewards, Packages and ProjectSettings.",
+        "Serialized ownership: every asset under BlasterMachineGun only. Save-schema impact: none. Content-registry impact: contributes weapon.blaster-machine-gun descriptor input; generated outputs remain CS-011-owned.",
+        "Rollback: remove the owned package folder and test file. Prototype debt: temporary presentation is supplied by WP-010, not duplicated here."
+      ],
+      "acceptance_criteria": [
+        "The stable ID is weapon.blaster-machine-gun and the descriptor marks it as the default starting weapon.",
+        "Holding fire produces straightforward independent automatic fire with no special secondary behavior or consumable normal ammo.",
+        "Empowerment changes authored numeric values only and empty power falls back immediately to identical normal-fire topology."
+      ],
+      "verification": [
+        "Automated: play-mode cadence, aim, unlimited normal fire, independent power fallback, restart and stable-identity tests.",
+        "Manual/playable: confirm this reads as the uncomplicated baseline beside the other four packages."
+      ],
+      "proof_required": [
+        "BlasterMachineGunPackageTests log",
+        "package manifest snapshot",
+        "short manual baseline note"
+      ],
+      "edge_cases": [
+        "very close aim point",
+        "power depletion mid-burst",
+        "focus loss while firing",
+        "rapid restart"
+      ],
+      "non_goals": [
+        "no alternate fire",
+        "no randomized modifiers",
+        "no bespoke target selection",
+        "no final art"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "weapon-package",
+        "default-content"
+      ],
+      "handoff_notes": "May run concurrently with WP-004 through WP-007; never edit their package folders.",
+      "notes": "Milestone-cap spend: 0.25 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-004",
+      "title": "Build the Shotgun package",
+      "summary": "Create the close-range multi-projectile spread weapon.",
+      "objective": "Implement deterministic bounded spread fire with package-owned pellet tuning and numeric-only empowerment.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/Shotgun/",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/ShotgunPackageTests.cs"
+      ],
+      "depends_on": [
+        "CB-004",
+        "CB-006",
+        "WP-001",
+        "WP-002"
+      ],
+      "blocks": [
+        "WP-008",
+        "WP-009",
+        "WP-010"
+      ],
+      "inputs": [
+        "Consumed contracts: Four-Mount Weapons v1 and Combat Messages v1; plus the accepted behavior pipeline, coordinator, package baseline, and projectile primitive."
+      ],
+      "outputs": [
+        "Shotgun package",
+        "Bounded spread behavior module",
+        "Play-mode package tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: other weapon packages, shared primitive, combat foundation, generated outputs, scenes, central UI, enemies, mission state, saves, rewards, Packages and ProjectSettings.",
+        "Serialized ownership: every asset under Shotgun only. Save-schema impact: none. Content-registry impact: contributes weapon.shotgun descriptor input only.",
+        "Rollback: remove the owned package folder and test file. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "One fire plan emits a deterministically ordered, bounded pellet spread with no duplicate damage event per confirmed pellet.",
+        "Normal fire is unlimited and independent; empowerment only tunes existing numeric spread, damage, cadence, speed or recovery values.",
+        "Pellet count and spread bounds prevent unbounded projectile density."
+      ],
+      "verification": [
+        "Automated: pellet order/count, spread bounds, close aim, independent fallback, restart and density-budget tests.",
+        "Manual/playable: confirm clear close-range identity without hiding enemy telegraphs."
+      ],
+      "proof_required": [
+        "ShotgunPackageTests log",
+        "spread fixture",
+        "manual readability note"
+      ],
+      "edge_cases": [
+        "muzzle intersects wall",
+        "minimum aim distance",
+        "multiple pellets hit one target",
+        "power depletion during held fire"
+      ],
+      "non_goals": [
+        "no slug alternate mode",
+        "no knockback authority",
+        "no randomized pellet modifiers",
+        "no final art"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "weapon-package",
+        "projectile-density"
+      ],
+      "handoff_notes": "May run concurrently with WP-003 and WP-005 through WP-007.",
+      "notes": "Milestone-cap spend: 0.35 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-005",
+      "title": "Build the Rocket Launcher package",
+      "summary": "Create the paced projectile weapon with one simple bounded area detonation.",
+      "objective": "Implement a deterministic rocket impact/expiry detonation using the accepted combat messages and numeric-only empowerment.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/RocketLauncher/",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/RocketLauncherPackageTests.cs"
+      ],
+      "depends_on": [
+        "CS-004",
+        "CB-004",
+        "CB-006",
+        "WP-001",
+        "WP-002"
+      ],
+      "blocks": [
+        "WP-008",
+        "WP-009",
+        "WP-010"
+      ],
+      "inputs": [
+        "Consumed contracts: Combat Messages v1 and Four-Mount Weapons v1; plus the accepted behavior pipeline, coordinator, package baseline, and projectile primitive."
+      ],
+      "outputs": [
+        "Rocket Launcher package",
+        "Bounded area-detonation module",
+        "Play-mode package tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: other weapon packages, shared primitive, combat foundation, generated outputs, scenes, central UI, enemies, mission state, saves, rewards, Packages and ProjectSettings.",
+        "Serialized ownership: every asset under RocketLauncher only. Save-schema impact: none. Content-registry impact: contributes weapon.rocket-launcher descriptor input only.",
+        "Rollback: remove the owned package folder and test file. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "A rocket produces at most one deterministic bounded area detonation on valid impact or authored expiry.",
+        "Normal fire is unlimited; empowerment only tunes existing numeric values such as damage, speed, radius, cadence or recovery.",
+        "No fragmentation, second detonation, persistent area, homing or scene-owned damage state is introduced."
+      ],
+      "verification": [
+        "Automated: single-detonation, radius boundary, stable target ordering, impact/expiry race, fallback and restart tests.",
+        "Manual/playable: confirm readable area warning and impact without excessive screen obstruction."
+      ],
+      "proof_required": [
+        "RocketLauncherPackageTests log",
+        "AOE boundary fixture",
+        "manual readability note"
+      ],
+      "edge_cases": [
+        "impact and expiry same tick",
+        "zero eligible targets",
+        "target on radius boundary",
+        "owner inside radius"
+      ],
+      "non_goals": [
+        "no fragmentation",
+        "no cluster rockets",
+        "no homing",
+        "no persistent fire field",
+        "no final art"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "weapon-package",
+        "area-damage"
+      ],
+      "handoff_notes": "May run concurrently with WP-003, WP-004, WP-006 and WP-007.",
+      "notes": "Milestone-cap spend: 0.40 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-006",
+      "title": "Build the Arc Gun package",
+      "summary": "Create the original bounded chain-lightning weapon.",
+      "objective": "Implement deterministic nearby-target chaining from one primary hit to at most three additional eligible targets with numeric-only empowerment.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/ArcGun/",
+        "Assets/ShooterMover/Tests/EditMode/Combat/ArcGunChainTests.cs",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/ArcGunPackageTests.cs"
+      ],
+      "depends_on": [
+        "CS-004",
+        "CB-004",
+        "CB-006",
+        "WP-001",
+        "WP-002"
+      ],
+      "blocks": [
+        "WP-008",
+        "WP-009",
+        "WP-010"
+      ],
+      "inputs": [
+        "Consumed contracts: Combat Messages v1 and Four-Mount Weapons v1; plus the accepted behavior pipeline, coordinator, package baseline, and shared hit-presentation hook."
+      ],
+      "outputs": [
+        "Arc Gun package",
+        "Bounded deterministic chain module",
+        "Edit-mode and play-mode tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: other weapon packages, shared primitive, combat foundation, generated outputs, scenes, central UI, enemies, mission state, saves, rewards, third-party SAS assets/code, Packages and ProjectSettings.",
+        "Serialized ownership: every asset under ArcGun only. Save-schema impact: none. Content-registry impact: contributes weapon.arc-gun descriptor input only.",
+        "Rollback: remove the owned package folder and two test files. Prototype debt: none; naming, code, tuning and presentation must be original."
+      ],
+      "acceptance_criteria": [
+        "A primary hit may chain to at most three additional nearby eligible targets and never hits one target twice in the same chain.",
+        "Distance ties resolve deterministically by stable target identity and dead, invalid, out-of-range or already-visited targets are skipped.",
+        "Empowerment may tune damage, range, cadence or other existing numeric coefficients but never increases the three-additional-target cap or changes topology."
+      ],
+      "verification": [
+        "Automated: zero-to-three chain, fourth-target rejection, stable tie-break, disappearing target, no-repeat, fallback and restart tests.",
+        "Manual/playable: confirm the chain path is readable, original in presentation and distinguishable amid four-mount fire."
+      ],
+      "proof_required": [
+        "ArcGunChainTests and ArcGunPackageTests logs",
+        "chain-order fixture",
+        "originality/readability review note"
+      ],
+      "edge_cases": [
+        "equidistant targets",
+        "target removed during chain",
+        "primary target invalidated",
+        "fewer than three eligible targets"
+      ],
+      "non_goals": [
+        "no fourth additional target",
+        "no infinite chaining",
+        "no imported SAS identity/assets",
+        "no status effects",
+        "no final art"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "weapon-package",
+        "deterministic-targeting",
+        "originality"
+      ],
+      "handoff_notes": "May run concurrently with WP-003 through WP-005 and WP-007.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-007",
+      "title": "Build the Ricochet Gun package",
+      "summary": "Create the long-lived projectile weapon capped at two wall bounces.",
+      "objective": "Implement deterministic 2D wall reflection, finite lifetime and expiry after at most two authored wall bounces with numeric-only empowerment.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/RicochetGun/",
+        "Assets/ShooterMover/Tests/EditMode/Combat/RicochetProjectilePolicyTests.cs",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/RicochetGunPackageTests.cs"
+      ],
+      "depends_on": [
+        "UF-003",
+        "CB-004",
+        "CB-006",
+        "CB-009",
+        "WP-001",
+        "WP-002"
+      ],
+      "blocks": [
+        "WP-008",
+        "WP-009",
+        "WP-010"
+      ],
+      "inputs": [
+        "Consumed contracts: Combat Messages v1 and Four-Mount Weapons v1; plus the accepted 2D baseline, behavior pipeline, coordinator, Unity 2D execution boundary, package baseline, and projectile primitive."
+      ],
+      "outputs": [
+        "Ricochet Gun package",
+        "Two-bounce projectile policy",
+        "Edit-mode and play-mode tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: movement wall-reflection ownership, other weapon packages, shared primitive, combat foundation, generated outputs, scenes, central UI, enemies, mission state, saves, rewards, 3D physics, Packages and ProjectSettings.",
+        "Serialized ownership: every asset under RicochetGun only. Save-schema impact: none. Content-registry impact: contributes weapon.ricochet-gun descriptor input only.",
+        "Rollback: remove the owned package folder and two test files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Projectiles have a long but finite validated lifetime, reflect deterministically from valid 2D walls, and perform at most two wall bounces.",
+        "After the second bounce, the next wall collision or lifetime expiry terminates the projectile without another reflection.",
+        "Empowerment may tune existing numeric values but never increases the two-bounce cap or creates persistent projectiles."
+      ],
+      "verification": [
+        "Automated: first/second bounce, third-collision expiry, corner collision, grazing contact, lifetime expiry, fallback and restart tests.",
+        "Manual/playable: confirm bank shots are predictable and projectiles remain readable without accumulating indefinitely."
+      ],
+      "proof_required": [
+        "RicochetProjectilePolicyTests and RicochetGunPackageTests logs",
+        "bounce trace fixture",
+        "manual predictability note"
+      ],
+      "edge_cases": [
+        "simultaneous corner contacts",
+        "grazing wall contact",
+        "spawn touching wall",
+        "lifetime expiry on bounce tick"
+      ],
+      "non_goals": [
+        "no movement-actor reflection edits",
+        "no more than two bounces",
+        "no infinite lifetime",
+        "no target ricochet",
+        "no final art"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "weapon-package",
+        "2d-collision",
+        "projectile-lifetime"
+      ],
+      "handoff_notes": "May run concurrently with WP-003 through WP-006; do not edit MT-005 files.",
+      "notes": "Milestone-cap spend: 0.45 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-008",
+      "title": "Define deterministic Stage 1 loadout fixtures",
+      "summary": "Create reproducible four-slot comparisons and the non-persistent five-weapon evidence wrapper.",
+      "objective": "Provide fixed four-slot loadouts that include the default Blaster Machine Gun and deterministic seeded selection from exactly the five approved packages.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/Stage1Loadouts/",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Fixtures/Stage1WeaponLoadouts/",
+        "Assets/ShooterMover/Tests/EditMode/Combat/Stage1WeaponLoadoutFixtureTests.cs"
+      ],
+      "depends_on": [
+        "CS-005",
+        "EH-002",
+        "WP-003",
+        "WP-004",
+        "WP-005",
+        "WP-006",
+        "WP-007"
+      ],
+      "blocks": [
+        "WP-011"
+      ],
+      "inputs": [
+        "Consumed contracts: Four-Mount Weapons v1 and BuildIdentity/ContentVersion v1; plus the deterministic evidence seed fixture and all five package descriptors."
+      ],
+      "outputs": [
+        "Fixed four-slot loadout fixtures",
+        "Seeded non-persistent five-weapon wrapper",
+        "Fixture validation tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: package implementation folders, central registries, runtime inventory/economy, saves, rewards, shops, scenes, UI, enemies, Packages and ProjectSettings.",
+        "Serialized ownership: every asset under Stage1Loadouts and the fixture directory only. Save-schema impact: none; wrapper state is evidence-session-only. Content-registry impact: loadout descriptor inputs only.",
+        "Rollback: remove the three owned areas. Prototype debt: evidence-only randomized wrapper expires when Stage 2 inventory/loadout state becomes authoritative."
+      ],
+      "acceptance_criteria": [
+        "Every fixture has exactly four stable ordered slots and resolves only the five approved package IDs.",
+        "The default comparison includes the Blaster Machine Gun; alternate fixtures expose all five identities across the matrix.",
+        "The seeded wrapper is reproducible, cannot persist rewards or inventory and never creates randomized weapon modifiers."
+      ],
+      "verification": [
+        "Automated: slot count/order, unknown ID, seed reproducibility, all-five coverage and no-persistence tests.",
+        "Manual/playable: human reviewer can select documented fixed comparisons without editing serialized scenes."
+      ],
+      "proof_required": [
+        "Stage1WeaponLoadoutFixtureTests log",
+        "fixture manifest",
+        "seed reproducibility checksum"
+      ],
+      "edge_cases": [
+        "duplicate weapon IDs",
+        "missing Blaster default",
+        "unknown seed",
+        "unequipped slot"
+      ],
+      "non_goals": [
+        "no inventory",
+        "no economy",
+        "no reward persistence",
+        "no mature random loadout system"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "evidence-fixture",
+        "prototype-debt"
+      ],
+      "handoff_notes": "WP-011 consumes these fixtures; production loadout ownership remains Stage 2 work.",
+      "notes": "Milestone-cap spend: 0.20 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-009",
+      "title": "Validate five weapon packages and registry inputs",
+      "summary": "Add a deterministic package matrix that proves all five descriptors and references are valid without editing generated registry outputs.",
+      "objective": "Exercise the CS-011 generator/validator against package inputs, detect drift and verify power/four-mount invariants across the amended roster.",
+      "allowed_areas": [
+        "Assets/ShooterMover/Tests/EditMode/Combat/Stage1WeaponPackageRegistryTests.cs",
+        "Assets/ShooterMover/Tests/EditMode/Combat/Fixtures/stage1-weapon-registry-input-v1.json",
+        "Assets/ShooterMover/Tests/EditMode/Combat/Stage1WeaponPackageValidation.md"
+      ],
+      "depends_on": [
+        "CS-009",
+        "CS-011",
+        "CB-003",
+        "CB-006",
+        "WP-003",
+        "WP-004",
+        "WP-005",
+        "WP-006",
+        "WP-007"
+      ],
+      "blocks": [
+        "WP-011"
+      ],
+      "inputs": [
+        "Consumed contracts: Typed Content References v1, Generated Registry v1 and Four-Mount Weapons v1; plus the sole registry generator/validator, power-bank policy, coordinator, and all five package inputs."
+      ],
+      "outputs": [
+        "Five-package validation matrix",
+        "Registry-input fixture",
+        "Validation procedure"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: Assets/ShooterMover/Generated outputs, CS-011 generator code, package implementation folders, scenes, UI, enemies, mission state, saves, rewards, Packages and ProjectSettings.",
+        "Serialized ownership: none. Save-schema impact: none. Content-registry impact: validation-only; regenerate to a temporary test location and never commit or hand-edit CS-011-owned outputs.",
+        "Rollback: remove the three owned files. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Exactly five unique weapon descriptors validate and every reference resolves with deterministic ordering.",
+        "Generator drift, duplicate IDs, unknown modules, invalid empowered profiles and stale package inputs fail visibly.",
+        "The committed central generated outputs are unchanged by this task."
+      ],
+      "verification": [
+        "Automated: run package matrix twice with shuffled inputs, compare checksums, inject drift and confirm failure.",
+        "Manual/playable: reviewer verifies the diff contains no Assets/ShooterMover/Generated changes."
+      ],
+      "proof_required": [
+        "Stage1WeaponPackageRegistryTests log",
+        "repeat-generation checksums",
+        "drift-failure log",
+        "no-generated-diff confirmation"
+      ],
+      "edge_cases": [
+        "shuffled descriptors",
+        "duplicate stable ID",
+        "stale module reference",
+        "concurrent temporary generation"
+      ],
+      "non_goals": [
+        "no central generated-output commit",
+        "no generator rewrite",
+        "no runtime content loading",
+        "no Stage 2 IDs"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "registry-input",
+        "generated-artifact-safety",
+        "strong-review"
+      ],
+      "handoff_notes": "Any committed central-output regeneration remains a separately reviewed CS-011-owner action.",
+      "notes": "Milestone-cap spend: 0.35 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-010",
+      "title": "Add the minimal weapon-status strip and temporary audiovisual identity",
+      "summary": "Create bounded Stage 1 presentation that distinguishes five weapons and communicates four independent mount states.",
+      "objective": "Consume the immutable CB-010 snapshot to present readiness, power/fallback and package identity with color-independent temporary HUD, effects and audio prioritization.",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Weapons/Stage1Presentation/",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Stage1WeaponPresentationTests.cs"
+      ],
+      "depends_on": [
+        "CS-005",
+        "CB-010",
+        "WP-003",
+        "WP-004",
+        "WP-005",
+        "WP-006",
+        "WP-007"
+      ],
+      "blocks": [
+        "WP-011"
+      ],
+      "inputs": [
+        "Consumed contracts: Four-Mount HUD v1 and Four-Mount Weapons v1; plus the immutable four-mount status snapshot and package presentation references."
+      ],
+      "outputs": [
+        "Minimal four-slot weapon-status strip",
+        "Temporary package effects/audio identity",
+        "Presentation play-mode tests"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: CB-010 projector, central/global UI systems, package behavior files, generated registries, scenes, enemies, mission state, saves, rewards, final-art pipeline, Packages and ProjectSettings.",
+        "Serialized ownership: every prefab, ScriptableObject, temporary audio/effect and UI asset under Stage1Presentation only. Save-schema impact: none. Content-registry impact: presentation references only.",
+        "Rollback: remove the owned folder and test file; combat state remains valid. Prototype debt: PD-WP-001 records temporary HUD/effects/audio, expiring before Stage 2 representative-art acceptance."
+      ],
+      "acceptance_criteria": [
+        "Exactly four stable slots show readiness, recovery, power level, normal/empowered/fallback state and fault state without reading mutable combat state.",
+        "All five weapons are distinguishable through at least two cues and critical state never depends on color alone.",
+        "Empowered use, expenditure, depletion and fallback are unmistakable even though empowerment is numeric-only.",
+        "Audio/effect priority remains bounded so enemy warnings can remain dominant."
+      ],
+      "verification": [
+        "Automated: snapshot projection, slot order, missing reference, reduced-effects fixture, power fallback and bounded-priority tests.",
+        "Manual/playable: human inspection confirms identity, color-independent status and warning headroom at four-mount effect density."
+      ],
+      "proof_required": [
+        "Stage1WeaponPresentationTests log",
+        "four-slot HUD screenshot",
+        "reduced-effects screenshot",
+        "audio/effect priority capture",
+        "PD-WP-001 entry"
+      ],
+      "edge_cases": [
+        "all mounts firing",
+        "mixed power depletion",
+        "faulted mount",
+        "missing temporary audio",
+        "reduced-effects mode"
+      ],
+      "non_goals": [
+        "no final HUD",
+        "no final art/audio",
+        "no enemy-warning implementation",
+        "no durable state mutation"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "presentation",
+        "accessibility",
+        "prototype-debt",
+        "human-review"
+      ],
+      "handoff_notes": "WP-012 performs the formal human identity/readability gate; later UI work may replace presentation without changing combat state.",
+      "notes": "Milestone-cap spend: 0.50 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-011",
+      "title": "Add representative five-weapon evidence scenarios",
+      "summary": "Replace synthetic-only combat evidence with reproducible scenarios covering all five packages and representative four-slot combinations.",
+      "objective": "Use the existing benchmark arena read-only to verify package identity, numeric empowerment, independent fallback, caps, restart, diagnostics and performance.",
+      "allowed_areas": [
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Stage1WeaponEvidenceFixture.cs",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Stage1WeaponEvidenceScenarioTests.cs",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Fixtures/stage1-five-weapon-evidence-v1.json"
+      ],
+      "depends_on": [
+        "EH-002",
+        "EH-003",
+        "EH-004",
+        "EH-006",
+        "EH-007",
+        "EH-008",
+        "EH-009",
+        "EH-010",
+        "MT-012",
+        "CB-011",
+        "WP-008",
+        "WP-009",
+        "WP-010"
+      ],
+      "blocks": [
+        "WP-012"
+      ],
+      "inputs": [
+        "Consumed contracts: BuildIdentity/ContentVersion v1, Diagnostics and Run Validity v1, Combat Messages v1 and Four-Mount Weapons v1; plus the evidence configuration/arena/lifecycle/performance/manifests/smoke/protocol, movement evidence, combat foundation evidence, loadout fixtures, package validation and presentation."
+      ],
+      "outputs": [
+        "Five-weapon evidence fixture",
+        "Play-mode scenario matrix",
+        "Frozen evidence profile"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: EH-004 benchmark scene, package implementation folders, central generated registries, shared evidence frameworks, movement/combat foundation, enemies, mission state, saves, rewards, Packages and ProjectSettings.",
+        "Serialized ownership: exclusive ownership of stage1-five-weapon-evidence-v1.json only; benchmark scene is read-only. Save-schema impact: none. Content-registry impact: none.",
+        "Rollback: remove the three owned files; package tests remain valid. Prototype debt: evidence fixture is Stage 1-only and expires after the formal Stage 1 gate."
+      ],
+      "acceptance_criteria": [
+        "Frozen scenarios exercise every weapon and at least two reproducible four-slot loadouts with one shared aim/fire stream.",
+        "Arc never exceeds three additional targets, Ricochet never exceeds two bounces, Rocket detonates once, and all empowered modes preserve normal behavior topology.",
+        "Mixed depletion falls back independently, restart reproduces initial state, diagnostics/manifests identify all packages, and invalid sessions are classified.",
+        "Representative effect/projectile density remains inside recorded Stage 1 performance budgets."
+      ],
+      "verification": [
+        "Automated: run edit/play/smoke entrypoints for identity, caps, fallback, restart, diagnostics, manifest checksum and performance-budget scenarios.",
+        "Manual/playable: prepare a review build and evidence package for WP-012 without claiming human quality acceptance."
+      ],
+      "proof_required": [
+        "Stage1WeaponEvidenceScenarioTests log",
+        "valid and intentionally invalid manifested evidence packages",
+        "performance capture",
+        "loadout coverage matrix"
+      ],
+      "edge_cases": [
+        "all four mounts use power",
+        "mixed recovery and depletion",
+        "rapid restart with live projectiles",
+        "missing package presentation"
+      ],
+      "non_goals": [
+        "no enemy encounter balance",
+        "no final art acceptance",
+        "no Stage 2 weapons",
+        "no benchmark-scene edit"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "integration-evidence",
+        "performance",
+        "formal-proof"
+      ],
+      "handoff_notes": "WP-012 is the explicit human acceptance dependency for weapon identity, audiovisual feedback and readability.",
+      "notes": "Milestone-cap spend: 0.55 focused lead day."
+    },
+    {
+      "owner_role": "Movement and Combat Builder",
+      "lane": "content-weapons",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P1",
+      "milestone": "S1.2 Four-weapon combat",
+      "context": "S1.2 frozen question: can five simple, distinct weapon packages make four independently firing mounts readable and replayable while preserving unlimited normal fire, independent power banks, numeric-only empowerment, movement quality, and the accepted ten-day cap?",
+      "id": "WP-012",
+      "title": "Record the human weapon-identity and readability gate",
+      "summary": "Run and record the explicit human playable review required before downstream Stage 1 work treats the weapon set as accepted.",
+      "objective": "Evaluate movement-preserving feel, shared aiming, five weapon identities, numeric empowerment feedback, audiovisual priority and four-slot readability using the immutable WP-011 evidence package.",
+      "allowed_areas": [
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Evidence/Stage1WeaponHumanReviewV1.md",
+        "Assets/ShooterMover/Tests/PlayMode/Combat/Evidence/Stage1WeaponHumanReviewChecklistV1.json"
+      ],
+      "depends_on": [
+        "EH-010",
+        "WP-011"
+      ],
+      "blocks": [],
+      "inputs": [
+        "Consumed contracts: Diagnostics and Run Validity v1 and BuildIdentity/ContentVersion v1; plus the Stage 1 evidence protocol and immutable five-weapon evidence package."
+      ],
+      "outputs": [
+        "Signed human playable review",
+        "Machine-readable pass/fail checklist and bounded findings"
+      ],
+      "implementation_notes": [
+        "Forbidden paths: all gameplay/content implementation, tuning assets, scenes, prefabs, ScriptableObjects, generated registries, evidence framework, enemies, mission state, saves, rewards, Packages and ProjectSettings.",
+        "Serialized ownership: none. Save-schema impact: none. Content-registry impact: none.",
+        "Rollback: remove only the two review artifacts and return the batch to blocked review. Prototype debt: records PD-WP-001 disposition but cannot waive unresolved blocking debt.",
+        "This task records evidence only; any required implementation change becomes a separately reviewed bounded follow-up and may not be hidden inside the review commit."
+      ],
+      "acceptance_criteria": [
+        "The human lead records pass/fail for aiming, each weapon's identity, normal/power distinction, fallback, movement interaction, impact feedback, warning headroom and reduced-effects readability.",
+        "Arc chaining and Ricochet bounces are judged predictable; Rocket area damage and Shotgun density remain readable; Blaster remains a clear default baseline.",
+        "Every blocking finding names affected evidence and required bounded follow-up; no failed quality dimension is silently accepted.",
+        "The review states whether Stage 1 enemy/route work may consume the five-weapon set."
+      ],
+      "verification": [
+        "Automated: validate checklist JSON shape, required dimensions, build/content/tuning fingerprints and WP-011 evidence links before accepting the record.",
+        "Manual/playable: complete the frozen checklist across the documented fixed loadouts and reduced-effects profile on the identified build.",
+        "Review: verify human identity, date, build/content/tuning fingerprints and links to WP-011 proof are present."
+      ],
+      "proof_required": [
+        "completed Stage1WeaponHumanReviewV1.md",
+        "signed checklist JSON",
+        "build/content/tuning identity",
+        "linked WP-011 evidence manifests"
+      ],
+      "edge_cases": [
+        "reviewer stops due to discomfort",
+        "technically invalid session",
+        "majority cues rely on color",
+        "one weapon indistinguishable under four-mount load"
+      ],
+      "non_goals": [
+        "no tuning edit",
+        "no implementation fix",
+        "no external formal round",
+        "no Stage 2 approval"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "human-gate",
+        "feel",
+        "readability",
+        "accessibility"
+      ],
+      "handoff_notes": "Downstream Stage 1 tasks must depend on this recorded human gate when claiming weapon feel, identity, audiovisual feedback or readability acceptance.",
+      "notes": "Milestone-cap spend: 0.40 focused lead day. Batch direct spend totals 4.60 focused lead days, leaving 0.90 of the S1.2 ten-day cap for review reserve and bounded approved follow-up."
+    }
+  ]
+}

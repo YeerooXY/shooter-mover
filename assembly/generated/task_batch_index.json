@@ -78,8 +78,8 @@
       "expected_task_ids": ["WP-001", "WP-002", "WP-003", "WP-004", "WP-005", "WP-006", "WP-007", "WP-008", "WP-009", "WP-010", "WP-011", "WP-012"],
       "depends_on_batches": ["combat-four-mount"],
       "output_path": "assembly/generated/task_batches/stage1-weapons.json",
-      "status": "planned",
-      "notes": "One reviewable agent workload. WP-001 through WP-012 must cover exactly the five packages and numeric-only empowered profiles accepted in AMENDMENT_STAGE1_WEAPONS.md."
+      "status": "validated",
+      "notes": "Validated 12-task amended five-weapon workload. Direct implementation and proof spend is 4.60 focused lead days; combined with combat-four-mount, S1.2 consumes 9.10 of 10 days and preserves 0.90 day for review reserve and bounded approved follow-up."
     },
     {
       "batch_id": "stage1-enemies-route",

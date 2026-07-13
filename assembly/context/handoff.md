@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. Combat PR #7 is merged into `main` at `435269af72ccfaefab2faf04f91539fc2ff23c05`; its branch is permanently closed. The human lead then selected a five-weapon Stage 1 roster and numeric-only empowered profiles. That material content change is isolated in planning-amendment branch `ai/planning-amend-stage1-weapons-v1` and draft PR #8 for review before weapon task splitting continues.
+Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`. Weapon planning-amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`. Those branches are permanently closed. The human-approved Stage 1 weapon batch is validated on fresh branch `ai/task-split-shooter-mover-v1-continuation-5` and open for review in draft PR #9.
 
 ## Durable task state
 
@@ -18,26 +18,29 @@ Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b44
 - Generated batch: `assembly/generated/task_batches/stage1-evidence-harness.json`
 - Generated batch: `assembly/generated/task_batches/movement-thruster.json`
 - Generated batch: `assembly/generated/task_batches/combat-four-mount.json`
-- Progress: 5 of 16 batches generated
-- Next batch: `stage1-weapons`
+- Generated batch: `assembly/generated/task_batches/stage1-weapons.json`
+- Progress: 6 of 16 batches generated
+- Next batch: `stage1-enemies-route`
 - Canonical backlog: not generated
 - Collaboration assignments and claims: not finalized
 
-The Unity Foundation batch contains `UF-001` through `UF-011`. The Contract Steward batch contains `CS-001` through `CS-012`. The Stage 1 Evidence Harness batch contains `EH-001` through `EH-010`. The Movement and Thruster batch contains `MT-001` through `MT-012`. The Four-Mount Combat batch contains `CB-001` through `CB-011`. Movement and combat are owned by the Movement and Combat Builder.
+The Unity Foundation batch contains `UF-001` through `UF-011`. The Contract Steward batch contains `CS-001` through `CS-012`. The Stage 1 Evidence Harness batch contains `EH-001` through `EH-010`. The Movement and Thruster batch contains `MT-001` through `MT-012`. The Four-Mount Combat batch contains `CB-001` through `CB-011`. The Stage 1 Weapon batch contains `WP-001` through `WP-012`. Movement, combat and weapon packages are owned by the Movement and Combat Builder.
 
 The movement batch covers immutable tuning identity, deterministic base locomotion, thruster charge/regeneration, activation/steering/exit momentum, wall reflection, weighted enemy contact/grace rules, device-independent Input System mapping, Rigidbody2D application, Unity 2D contact translation, explicit actor lifecycle, read-only thruster status, and evidence-harness scenarios.
 
 The combat batch covers immutable runtime profiles, independent mount state machines, independent power-bank expenditure/refill eligibility and normal-fire fallback, modular behavior-plan boundaries, shared aim resolution, four-mount coordination, bounded recoil-to-movement influence, device-independent combat input, Unity 2D execution adapters, engine-independent HUD status projection, and formal foundation evidence.
 
+The weapon batch covers the five-package baseline, one bounded shared projectile primitive, separately owned Blaster Machine Gun, Shotgun, Rocket Launcher, Arc Gun and Ricochet Gun packages, deterministic loadout fixtures, registry-input validation, temporary accessible presentation, formal package evidence and an explicit human identity/readability gate. Empowerment is numeric-only; Arc remains capped at three additional targets and Ricochet at two wall bounces.
+
 ## Validation boundary
 
-The current executable AI Assembly Line validator passes the updated batch index and all five generated batches. The index contains 16 unique batches and 186 unique predeclared IDs. The combat batch contains exactly `CB-001` through `CB-011`; every task is size `S` or `M`; and dependencies point only to generated earlier tasks or earlier `CB-*` tasks.
+The current executable AI Assembly Line validator passes the updated batch index and all six generated batches. The index contains 16 unique batches and 186 unique predeclared IDs. The weapon batch contains exactly `WP-001` through `WP-012`; every task is size `S` or `M`; and dependencies point only to generated earlier tasks or earlier `WP-*` tasks.
 
-The generated 56-task dependency graph is acyclic and topologically ordered. Its 193 exact file/bounded-folder ownership claims have no exact or parent-folder overlap. `CB-008` exclusively owns `ShooterMoverCombat.inputactions` and consumes MT-007 device lifecycle conventions without editing `ShooterMoverMovement.inputactions`. `CB-011` reads but never edits EH-004's benchmark scene.
+The generated 68-task dependency graph is acyclic and topologically ordered. Its 227 exact file/bounded-folder ownership claims have no exact or parent-folder overlap. WP-003 through WP-007 own separate package folders and may run in parallel. WP-009 validates temporary registry outputs without editing CS-011-owned generated files. WP-011 reads but never edits EH-004's benchmark scene.
 
-The review corrections are frozen into the batch: total direct spend is 4.50 days; CB-003 allows explicit authored refill but no passive power regeneration; CB-010 uses plain-C# Application projection rather than UnityAdapters; and CB-011 requires recorded human playable review for shared aim, independent firing, recoil interaction, color-independent readability, restart, and fault isolation.
+The weapon batch records 4.60 focused lead days. Combined with combat-four-mount, S1.2 direct spend is 9.10 of 10 days, preserving 0.90 day for review reserve and bounded approved follow-up. WP-012 requires recorded human playable review before downstream work may claim weapon identity, audiovisual feedback or readability acceptance.
 
-The current validator still skips eleven intentionally planned/missing batches, so this is not completion validation for all 186 predeclared task IDs. Run and require the complete workspace validator after all indexed batches exist; do not describe the canonical backlog or full graph as complete before then.
+The current validator still skips ten intentionally planned/missing batches, so this is not completion validation for all 186 predeclared task IDs. Run and require the complete workspace validator after all indexed batches exist; do not describe the canonical backlog or full graph as complete before then.
 
 ## Scope and capacity blockers
 
@@ -47,7 +50,7 @@ Dispatch therefore requires a human decision to re-estimate, resequence, cut non
 
 The Movement and Thruster batch estimates 6.15 focused lead days against the accepted S1.1 eight-day cap, leaving 1.85 focused lead days for human review and bounded evidence-led iteration. Do not consume that reserve by silently expanding movement polish, presentation, combat, enemies, or generalized tooling.
 
-The Four-Mount Combat batch estimates 4.50 focused lead days against the accepted S1.2 ten-day cap. Only 5.50 focused lead days remain for the amended five-weapon set, combat HUD, temporary audiovisual/readability work, human review, and bounded iteration. The next weapon batch must remain sharply bounded and must not add generalized tooling or mature balance depth.
+The Four-Mount Combat and Stage 1 Weapon batches estimate 9.10 focused lead days against the accepted S1.2 ten-day cap. Only 0.90 day remains for review reserve and bounded approved follow-up. Dispatch must not add generalized tooling, mature balance depth, extra weapons or unrelated polish.
 
 The three remaining Stage 2 weapon identities are intentionally deferred until Stage 1 evidence. A later planning amendment is required before Stage 2 combat-content generation or dispatch.
 
@@ -66,6 +69,6 @@ The three remaining Stage 2 weapon identities are intentionally deferred until S
 
 ## Exact next action
 
-Review and merge Stage 1 weapon planning-amendment draft PR #8. After it merges, start a fresh context from current `main`, present revised `WP-001` through `WP-012` titles, owner lane and exact dependencies for the five accepted weapons, and stop. After explicit continuation, create a fresh branch from current `main`, generate only `assembly/generated/task_batches/stage1-weapons.json`, validate it, refresh all deterministic handoff files, open a draft continuation PR, and stop.
+Review and merge Stage 1 weapon task-split draft PR #9. After it merges, start a fresh context from current `main`, present proposed `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the three ordinary enemy roles, Foreman Elite and short route, and stop. Generate that one batch only after explicit human continuation.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.
