@@ -4,174 +4,34 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 58,
-  "last_completed_decision": "D-058",
+  "questions_asked": 59,
+  "last_completed_decision": "D-059",
   "accepted_answers": [
-    {
-      "decision_id": "D-040",
-      "topic": "map_system",
-      "answer": "fog_of_war_exploration_map",
-      "constraints": ["Reveal rooms and connections through exploration", "Do not reveal undiscovered secrets", "Keep guidance light and avoid GPS-style navigation"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-041",
-      "topic": "primary_target_player_strategy",
-      "answer": "core_action_first_broadly_accessible",
-      "constraints": ["Target skill-based top-down combat players", "Support casual through mastery players with meaningful difficulty tailoring", "Do not rely only on health and damage multipliers"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-042",
-      "topic": "connectivity_model",
-      "answer": "offline_core_optional_online_features",
-      "constraints": ["Complete MVP campaign saves progression and difficulty work offline", "Multiplayer follows only after a successful MVP", "Preserve clean extension boundaries without MVP networking complexity"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-043",
-      "topic": "primary_post_mvp_multiplayer_experience",
-      "answer": "real_time_cooperative_play_first",
-      "constraints": ["Co-op campaign combat exploration objectives and bosses are the first multiplayer direction", "Leaderboards remain post-MVP", "No networking scaling shared progression or leaderboard service in MVP"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-044",
-      "topic": "target_platform_order",
-      "answer": "windows_pc_first_android_post_mvp",
-      "constraints": ["Windows PC polished MVP first", "Keyboard mouse and gamepad support", "Android follows after PC stability", "Keep actions platform-neutral UI scalable and saves mobile-compatible"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-045",
-      "topic": "level_size_and_session_length",
-      "answer": "substantial_checkpoint_segmented_levels",
-      "constraints": ["Exploratory first clear roughly 45 to 75 minutes", "Mastered run roughly 20 to 35 minutes", "Natural checkpoint sections roughly 10 to 20 minutes", "Prioritize distinct replayable content over filler"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-046",
-      "topic": "repeat_run_variation_model",
-      "answer": "stable_levels_with_controlled_variations",
-      "constraints": ["Core layouts bosses major encounters and competitive categories remain deterministic", "Allow bounded authored modifiers and variants", "Preserve mastery and fair speedrunning", "Do not convert campaign into a heavily randomized roguelike"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-047",
-      "topic": "repeat_run_reward_and_weapon_acquisition_economy",
-      "answer": "randomized_floor_strongboxes_and_randomized_shop_inventory",
-      "constraints": ["Weapons mainly come from floor pickups and tiered random strongboxes", "Shops provide a randomized purchasable inventory", "Random discovery is a central source of excitement"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-048",
-      "topic": "rng_fairness_progression_bounds_and_duplicate_handling",
-      "answer": "rng_with_soft_protection_and_progression_bounded_loot",
-      "constraints": ["Random results are bounded by progression", "Duplicates remain possible and useful", "Shops may expose roughly 40 progression-appropriate slots", "Weapon types enter the pool gradually", "Boxes use nearby progression windows", "Stars augments and enchantments create variants", "Use soft protection against pathological bad luck"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-049",
-      "topic": "weapon_power_curve",
-      "answer": "level_scaled_recurring_weapon_families_with_later_complex_archetypes",
-      "constraints": ["Weapon families return as authored stronger successors", "Successors may add modest mechanical changes", "Complex and inherently stronger archetypes unlock later", "Deliberate power inflation is planned and paced", "Late archetypes must add novelty complexity or power"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-050",
-      "topic": "shop_inventory_persistence_and_rerolls",
-      "answer": "persistent_inventory_with_limited_paid_rerolls_and_item_locks",
-      "constraints": ["Shop stock remains stable until deliberately refreshed", "Rerolls are limited and increasingly expensive", "A small number of items may be locked through rerolls", "Prevent cheap infinite perfect-roll fishing"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-051",
-      "topic": "high_rarity_source_weighting",
-      "answer": "floor_biased_jackpots_with_ultra_rare_shop_miracles",
-      "constraints": ["Current direction uses eight strongbox tiers and two-star ten-level augments", "Elite high-augment gear primarily comes from high-tier floor boxes", "Exact weapon and enchantments remain random", "Extreme shop rolls occur only at screenshot-worthy rarity", "High box tiers unlock progressively", "Exact odds require playtesting"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-052",
-      "topic": "strongbox_tier_unlock_and_acquisition_rules",
-      "answer": "progression_gates_with_challenge_weighted_odds_across_all_unlocked_levels",
-      "constraints": ["Player level and campaign progress hard-cap eligible box tiers", "Difficulty objectives bosses and mastery improve high-tier odds", "Every level retains a non-zero chance for unlocked tiers", "Earlier levels have lower odds and weaker quality distributions", "Later difficult content provides materially better expected rewards"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-053",
-      "topic": "strongbox_tier_to_augment_quality_mapping",
-      "answer": "overlapping_weighted_quality_bands_with_cross_level_jackpot_variants",
-      "constraints": ["Each box tier has a quality floor and weighted expected band", "Neighboring tiers overlap with limited jackpot tails", "Older lower-base-level weapons may roll excellent stars and augments", "Balance base level family power modifiers and synergy together", "Low-tier farming must not overpower current progression"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-054",
-      "topic": "modifier_compensation_for_lower_base_weapon_level",
-      "answer": "bounded_bridge_weapons_with_contextual_older_weapon_value",
-      "constraints": ["Exceptional modifiers may bridge several progression levels", "Strong successors eventually overtake older jackpots", "New weapons remain meaningful", "Older weapons retain situational value through handling effects matchups or synergy", "No permanent universal best-in-slot outliers", "Comparison UI communicates contextual strengths"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-055",
-      "topic": "shop_pricing_philosophy",
-      "answer": "meaningful_investments_with_rarity_scaled_prices",
-      "constraints": ["Ordinary shop weapons are attainable but consequential purchases", "Stars augments enchantments and later families sharply raise prices", "Jackpots may require several runs of savings", "Selling and dismantling return partial value", "Purchases rerolls and services compete for core currency", "Exact prices and income require playtesting"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-056",
-      "topic": "rare_shop_item_reservation_token",
-      "answer": "extremely_rare_consumed_token_with_one_long_term_layaway_slot",
-      "constraints": ["One consumed token reserves one exact shop item", "The reservation survives rerolls visits and completed runs", "Only one profile-wide reservation exists", "Reserved item keeps its original price", "No expiry until purchase or deliberate discard", "Ordinary reroll locks remain separate and short-term"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-057",
-      "topic": "duplicate_conversion_and_inventory_cleanup",
-      "answer": "choose_between_selling_and_dismantling_with_bounded_materials",
-      "constraints": ["Unwanted weapons may be sold for currency or dismantled for bounded materials", "Material yields reflect level rarity stars augments and enchantment categories", "Materials support controlled improvement rerolling utility crafting or later systems", "Do not allow free perfect-item manufacturing", "Both paths return partial value and resist farming exploits", "Provide favourites locks bulk marking auto-junk sorting comparison and keep-best-copy tools", "Do not make direct duplicate fusion the primary upgrade path"],
-      "verification_status": "verified"
-    },
-    {
-      "decision_id": "D-058",
-      "topic": "inventory_capacity_and_in_run_loot_timing",
-      "answer": "forgiving_universal_inventory_with_expandable_limits_and_deferred_strongbox_opening",
-      "constraints": ["Use one profile-wide universal weapon inventory or armory", "Capacity is generous but finite and may be expanded through progression upgrades", "Shop purchases enter usable inventory immediately and can power up the player mid-run", "Strongboxes earned during a round remain sealed and are opened after the round", "Do not let lucky high-tier box contents instantly trivialize the remaining run", "Overflow handling must avoid silent deletion and remain Android-friendly", "Run-end banking and failure retention remain unresolved"],
-      "verification_status": "verified"
-    }
+    {"decision_id":"D-040","topic":"map_system","answer":"fog_of_war_exploration_map","constraints":["Reveal rooms and connections through exploration","Do not reveal undiscovered secrets","Keep guidance light and avoid GPS-style navigation"],"verification_status":"verified"},
+    {"decision_id":"D-041","topic":"primary_target_player_strategy","answer":"core_action_first_broadly_accessible","constraints":["Target skill-based top-down combat players","Support casual through mastery players with meaningful difficulty tailoring","Do not rely only on health and damage multipliers"],"verification_status":"verified"},
+    {"decision_id":"D-042","topic":"connectivity_model","answer":"offline_core_optional_online_features","constraints":["Complete MVP campaign saves progression and difficulty work offline","Multiplayer follows only after a successful MVP","Preserve clean extension boundaries without MVP networking complexity"],"verification_status":"verified"},
+    {"decision_id":"D-043","topic":"primary_post_mvp_multiplayer_experience","answer":"real_time_cooperative_play_first","constraints":["Co-op campaign combat exploration objectives and bosses are the first multiplayer direction","Leaderboards remain post-MVP","No networking scaling shared progression or leaderboard service in MVP"],"verification_status":"verified"},
+    {"decision_id":"D-044","topic":"target_platform_order","answer":"windows_pc_first_android_post_mvp","constraints":["Windows PC polished MVP first","Keyboard mouse and gamepad support","Android follows after PC stability","Keep actions platform-neutral UI scalable and saves mobile-compatible"],"verification_status":"verified"},
+    {"decision_id":"D-045","topic":"level_size_and_session_length","answer":"substantial_checkpoint_segmented_levels","constraints":["Exploratory first clear roughly 45 to 75 minutes","Mastered run roughly 20 to 35 minutes","Natural checkpoint sections roughly 10 to 20 minutes","Prioritize distinct replayable content over filler"],"verification_status":"verified"},
+    {"decision_id":"D-046","topic":"repeat_run_variation_model","answer":"stable_levels_with_controlled_variations","constraints":["Core layouts bosses major encounters and competitive categories remain deterministic","Allow bounded authored modifiers and variants","Preserve mastery and fair speedrunning","Do not convert campaign into a heavily randomized roguelike"],"verification_status":"verified"},
+    {"decision_id":"D-047","topic":"repeat_run_reward_and_weapon_acquisition_economy","answer":"randomized_floor_strongboxes_and_randomized_shop_inventory","constraints":["Weapons mainly come from floor pickups and tiered random strongboxes","Shops provide a randomized purchasable inventory","Random discovery is a central source of excitement"],"verification_status":"verified"},
+    {"decision_id":"D-048","topic":"rng_fairness_progression_bounds_and_duplicate_handling","answer":"rng_with_soft_protection_and_progression_bounded_loot","constraints":["Random results are bounded by progression","Duplicates remain possible and useful","Shops may expose roughly 40 progression-appropriate slots","Weapon types enter the pool gradually","Boxes use nearby progression windows","Stars augments and enchantments create variants","Use soft protection against pathological bad luck"],"verification_status":"verified"},
+    {"decision_id":"D-049","topic":"weapon_power_curve","answer":"level_scaled_recurring_weapon_families_with_later_complex_archetypes","constraints":["Weapon families return as authored stronger successors","Successors may add modest mechanical changes","Complex and inherently stronger archetypes unlock later","Deliberate power inflation is planned and paced","Late archetypes must add novelty complexity or power"],"verification_status":"verified"},
+    {"decision_id":"D-050","topic":"shop_inventory_persistence_and_rerolls","answer":"persistent_inventory_with_limited_paid_rerolls_and_item_locks","constraints":["Shop stock remains stable until deliberately refreshed","Rerolls are limited and increasingly expensive","A small number of items may be locked through rerolls","Prevent cheap infinite perfect-roll fishing"],"verification_status":"verified"},
+    {"decision_id":"D-051","topic":"high_rarity_source_weighting","answer":"floor_biased_jackpots_with_ultra_rare_shop_miracles","constraints":["Current direction uses eight strongbox tiers and two-star ten-level augments","Elite high-augment gear primarily comes from high-tier floor boxes","Exact weapon and enchantments remain random","Extreme shop rolls occur only at screenshot-worthy rarity","High box tiers unlock progressively","Exact odds require playtesting"],"verification_status":"verified"},
+    {"decision_id":"D-052","topic":"strongbox_tier_unlock_and_acquisition_rules","answer":"progression_gates_with_challenge_weighted_odds_across_all_unlocked_levels","constraints":["Player level and campaign progress hard-cap eligible box tiers","Difficulty objectives bosses and mastery improve high-tier odds","Every level retains a non-zero chance for unlocked tiers","Earlier levels have lower odds and weaker quality distributions","Later difficult content provides materially better expected rewards"],"verification_status":"verified"},
+    {"decision_id":"D-053","topic":"strongbox_tier_to_augment_quality_mapping","answer":"overlapping_weighted_quality_bands_with_cross_level_jackpot_variants","constraints":["Each box tier has a quality floor and weighted expected band","Neighboring tiers overlap with limited jackpot tails","Older lower-base-level weapons may roll excellent stars and augments","Balance base level family power modifiers and synergy together","Low-tier farming must not overpower current progression"],"verification_status":"verified"},
+    {"decision_id":"D-054","topic":"modifier_compensation_for_lower_base_weapon_level","answer":"bounded_bridge_weapons_with_contextual_older_weapon_value","constraints":["Exceptional modifiers may bridge several progression levels","Strong successors eventually overtake older jackpots","New weapons remain meaningful","Older weapons retain situational value through handling effects matchups or synergy","No permanent universal best-in-slot outliers","Comparison UI communicates contextual strengths"],"verification_status":"verified"},
+    {"decision_id":"D-055","topic":"shop_pricing_philosophy","answer":"meaningful_investments_with_rarity_scaled_prices","constraints":["Ordinary shop weapons are attainable but consequential purchases","Stars augments enchantments and later families sharply raise prices","Jackpots may require several runs of savings","Selling and dismantling return partial value","Purchases rerolls and services compete for core currency","Exact prices and income require playtesting"],"verification_status":"verified"},
+    {"decision_id":"D-056","topic":"rare_shop_item_reservation_token","answer":"extremely_rare_consumed_token_with_one_long_term_layaway_slot","constraints":["One consumed token reserves one exact shop item","The reservation survives rerolls visits and completed runs","Only one profile-wide reservation exists","Reserved item keeps its original price","No expiry until purchase or deliberate discard","Ordinary reroll locks remain separate and short-term"],"verification_status":"verified"},
+    {"decision_id":"D-057","topic":"duplicate_conversion_and_inventory_cleanup","answer":"choose_between_selling_and_dismantling_with_bounded_materials","constraints":["Unwanted weapons may be sold for currency or dismantled for bounded materials","Material yields reflect level rarity stars augments and enchantment categories","Materials support controlled improvement rerolling utility crafting or later systems","Do not allow free perfect-item manufacturing","Both paths return partial value and resist farming exploits","Provide favourites locks bulk marking auto-junk sorting comparison and keep-best-copy tools","Do not make direct duplicate fusion the primary upgrade path"],"verification_status":"verified"},
+    {"decision_id":"D-058","topic":"inventory_capacity_and_in_run_loot_timing","answer":"forgiving_universal_inventory_with_expandable_limits_and_deferred_strongbox_opening","constraints":["Use one profile-wide universal weapon inventory or armory","Capacity is generous but finite and may be expanded through progression upgrades","Shop purchases enter usable inventory immediately and can power up the player mid-run","Strongboxes earned during a round remain sealed and are opened after the round","Do not let lucky high-tier box contents instantly trivialize the remaining run","Overflow handling must avoid silent deletion and remain Android-friendly"],"verification_status":"verified"},
+    {"decision_id":"D-059","topic":"strongbox_banking_and_failure_retention","answer":"checkpoint_banked_sealed_strongboxes","constraints":["Reaching a checkpoint permanently secures all boxes collected since the previous checkpoint","Secured boxes survive later death abandonment or exit","Only boxes collected after the latest checkpoint remain at risk","All secured boxes stay sealed until the run ends","Each checkpoint section carries extraction tension without erasing an entire long run","Completion and later-section incentives must discourage trivial bank-and-exit farming"],"verification_status":"verified"}
   ],
-  "recovered_state": {
-    "decision_range": "D-001-D-039",
-    "artifact": "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
-    "verification_status": "unverified",
-    "rule": "Re-verify reconstructed details before final requirements"
-  },
+  "recovered_state": {"decision_range":"D-001-D-039","artifact":"assembly/intake/RECOVERED_INTAKE_DRAFT.md","verification_status":"unverified","rule":"Re-verify reconstructed details before final requirements"},
   "assumptions": [],
-  "open_questions": [
-    "Strongbox banking and failure-retention rules for delayed opening",
-    "Remaining level-design and exploration details",
-    "Story and world",
-    "Accessibility requirements",
-    "Monetization and release model",
-    "Stack and technical architecture after product scope is mature",
-    "Team and AI-agent parallelization",
-    "Proof and testing requirements"
-  ],
-  "readiness": {
-    "can_generate_intake": false,
-    "reason": "High-weight Product Discovery decisions and recovery verification remain incomplete"
-  },
-  "next_action": {
-    "type": "ask_question",
-    "decision_weight": 4,
-    "topic": "strongbox_banking_and_failure_retention",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether sealed strongboxes are awarded only after full level completion, become secured at reached checkpoints while boxes since the latest checkpoint remain at risk, or become permanently banked immediately on pickup despite remaining unopened until the run ends. Preserve instant shop purchases and delayed strongbox opening. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
-  },
-  "persistence": {
-    "status": "ready",
-    "unsaved_decisions": 0,
-    "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-058"
-  }
+  "open_questions": ["Post-run strongbox opening and reward-review flow","Remaining level-design and exploration details","Story and world","Accessibility requirements","Monetization and release model","Stack and technical architecture after product scope is mature","Team and AI-agent parallelization","Proof and testing requirements"],
+  "readiness": {"can_generate_intake":false,"reason":"High-weight Product Discovery decisions and recovery verification remain incomplete"},
+  "next_action": {"type":"ask_question","decision_weight":4,"topic":"post_run_strongbox_opening_and_reward_review","instruction":"Ask exactly one concise A/B/C decision card selecting whether all secured boxes auto-open immediately, use a staged reward vault with individual or batch opening and a temporary capacity-safe review tray, or remain indefinitely hoardable as unopened boxes. Preserve checkpoint banking and delayed opening. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."},
+  "persistence": {"status":"ready","unsaved_decisions":0,"active_branch":"assembly/bootstrap-shooter-mover","last_persisted_decision":"D-059"}
 }
