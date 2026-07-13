@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "7d453815378ed964b8f7352f90750c721cf60cd8",
+  "last_verified_commit": "f3db931793a47f2826f416c085a140f1ad136fdf",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -27,6 +27,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D195_D200.md",
     "assembly/intake/batches/LIVE_DECISIONS_D201_D210.md",
     "assembly/intake/batches/LIVE_DECISIONS_D211_D220.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D221_D230.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -42,138 +43,34 @@
     "assembly/intake/batches/intake_session_D195_D200.json",
     "assembly/intake/batches/intake_session_D201_D210.json",
     "assembly/intake/batches/intake_session_D211_D220.json",
+    "assembly/intake/batches/intake_session_D221_D230.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "mvp_proof_and_delivery",
-  "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-227 — Explicit Windows target tier, minimum floor, and scalable-effects policy",
-  "current_item": "D-228 — Windows distribution, installation, and update model",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting the Windows distribution installation and update model for formal tests and eventual public delivery: distribute only portable zip archives with fully manual updates; require one self-updating launcher or storefront client; or use channel-specific packaging where internal and formal external tests may use signed or checksummed portable immutable artifacts while public release supports a primary storefront or installer with optional updates, explicit offline launch, standard per-user save locations, side-by-side or rollback-safe version handling, repair and uninstall behavior that never deletes saves, and a documented manual or DRM-free path if commercially practical. Preserve immutable promoted artifacts, current and previous known-good builds, versioned migrations with protected rollback, complete offline campaign and permanent guest play, Windows-first scope, privacy-safe local diagnostics, no mandatory account for campaign play, and future storefront integrations behind adapters. Include tester friction, antivirus and code-signing warnings, patch size, delta updates, failed updates, portable versus installed saves, multiple channels, ownership and DRM, clean uninstall, dependency installation, rollback, and avoiding a custom launcher before scale justifies it. Put the recommendation after all A/B/C options at the end of the card. D-221 through D-227 are checkpointed as queued but not formally batch-persisted; continue through D-230 unless the user changes the cadence or requests a handoff.",
+  "handoff_status": "resume_ready",
+  "last_completed_item": "D-230 — Short-lived scoped branches with protected integration",
+  "current_item": "D-231 — Proof-stage milestone budgets and timebox review policy",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting how Stage 1 and Stage 2 are bounded against indefinite expansion: no hard timebox and continue until quality is satisfactory; one fixed calendar deadline for each whole stage; or milestone budgets with predeclared review caps for core mechanics, prototype environment, developer validation, external validation, and Stage 2 end-to-end production proof, where missed caps trigger written scope reduction, diagnosis, resequencing, or stop review rather than automatic overtime. Preserve the two-stage evidence gates, predeclared pass signals, pivot-or-stop rule, solo-led AI-assisted production, one-level internal slice, and exact calendar durations as planning variables rather than fixed requirements. Include part-time schedule uncertainty, hidden technical risk, architecture overbuilding, quality pressure, sunk-cost behavior, incomplete evidence, dependencies, what counts as a justified extension, and how extensions are approved without silently moving the gate. Put the recommendation after all A/B/C options at the end of the card. Begin a new formal persistence batch D-231 through D-240 unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-220 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-230 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "batch_in_progress",
-    "unsaved_decisions": 7,
-    "last_persisted_decision": "D-220",
-    "last_persisted_at": "2026-07-13T18:04:09+02:00",
-    "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-221 through D-230 at D-230 unless an earlier handoff is requested",
-    "queued_decisions": [
-      {
-        "decision_id": "D-221",
-        "topic": "unity_ci_and_build_validation_policy",
-        "choice": "C",
-        "answer": "layered_validation_with_escalating_gates",
-        "constraints": [
-          "Ordinary branches run compilation fast deterministic edit-mode tests content validation generated-registry checks and tests targeted to affected systems",
-          "Before integration run relevant play-mode smoke tests and a Windows player smoke build covering launch menu input room load combat save resume and clean exit",
-          "Scheduled or milestone validation runs full regression representative performance and memory scenes save interruption recovery and migration checks clean-machine installation offline launch and accessibility settings persistence",
-          "Required integration checks retain identifiable artifacts and actionable diagnostics",
-          "Flaky tests are quarantined and repaired rather than repeatedly rerun until green",
-          "Android networking and complete co-op pipelines remain deferred until those workstreams begin"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-222",
-        "topic": "windows_build_promotion_and_release_artifacts",
-        "choice": "C",
-        "answer": "immutable_artifacts_promoted_through_release_channels",
-        "constraints": [
-          "Each candidate artifact records unique build and content versions source commit Unity version dependency and generated-content fingerprints test reports symbols checksums and save-schema compatibility",
-          "The exact same artifact is promoted through developer internal external release-candidate and public channels",
-          "Any code content configuration or dependency change creates a new artifact rather than silently altering a tested build",
-          "Retain the current public or formal build the previous known-good build relevant migration tools and a save-safe rollback procedure",
-          "Formal external Stage 1 tests and Stage 2 milestones use identifiable immutable artifacts even if earlier prototypes use a lighter process"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-223",
-        "topic": "diagnostic_and_playtest_data_collection",
-        "choice": "C",
-        "answer": "privacy_safe_local_diagnostics_with_explicit_export",
-        "constraints": [
-          "Local bounded logs record build content and save-schema versions session and major mission outcomes deaths restarts checkpoints banking loadout changes performance failures exceptions asset failures and save journal recovery results",
-          "Relevant input-device and settings state may be included without personal identifiers",
-          "Logs remain local by default and testers explicitly choose when to export or submit them",
-          "Formal test builds explain what is recorded and exclude or redact free-text names account data filenames and unrelated system information",
-          "Logs rotate automatically and a one-click support bundle combines diagnostics configuration build identity and optional tester notes",
-          "Remote telemetry remains a future opt-in consideration only if project scale justifies its privacy security hosting and retention costs"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-224",
-        "topic": "update_save_migration_and_rollback_policy",
-        "choice": "C",
-        "answer": "versioned_migrations_with_protected_rollback",
-        "constraints": [
-          "Every save records game content and schema versions migration history and stable content identifiers",
-          "Newer builds create immutable backups then validate and apply ordered idempotent tested migrations before atomically committing the result",
-          "Failed or interrupted migrations restore safely and older builds refuse to modify newer-schema saves",
-          "Rollback uses cloned saves or compatible backups rather than destructive downgrade",
-          "Removed content uses stable-ID tombstones replacements refunds or explicit compensation rules",
-          "Development channels may permit announced resets but archive or export old profiles first while public compatibility promises remain explicit and tested"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-225",
-        "topic": "debug_tools_cheats_and_developer_commands",
-        "choice": "C",
-        "answer": "capability_gated_auditable_diagnostic_command_framework",
-        "constraints": [
-          "Developer and approved internal builds expose deterministic room warps loadout setup enemy spawning state inspection performance overlays and fault injection",
-          "Formal external builds expose only commands required for the round through hidden or authenticated activation and log every use",
-          "Sessions altered by commands are excluded from ordinary fun achievement record and challenge evidence",
-          "Public builds exclude progression-altering commands and retain only safe support diagnostics through an explicit workflow",
-          "Save-changing diagnostics use temporary or cloned profiles rather than silently modifying the primary save",
-          "Practice accessibility level selection and future speedrun tools are legitimate player-facing systems rather than disguised cheats"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-226",
-        "topic": "unity_and_third_party_dependency_policy",
-        "choice": "C",
-        "answer": "pinned_baseline_with_controlled_upgrade_windows",
-        "constraints": [
-          "Use one pinned Unity LTS editor version locked package versions reproducible configuration and an approved dependency inventory with license source version and purpose",
-          "Reject incompatible editor or package versions and disable automatic dependency upgrades",
-          "Every upgrade uses an isolated task and branch with compilation content build save performance smoke visual and asset-reimport validation plus rollback",
-          "Critical fixes may occur outside normal windows but must pass the same checks",
-          "Prefer small maintained dependencies wrapped behind project-owned adapters and avoid unnecessary broad frameworks",
-          "Do not introduce analytics storefront networking or mobile SDKs before those workstreams begin and retain metadata needed to reproduce promoted artifacts"
-        ],
-        "verification_status": "verified"
-      },
-      {
-        "decision_id": "D-227",
-        "topic": "windows_hardware_and_performance_support_policy",
-        "choice": "C",
-        "answer": "explicit_target_tier_minimum_floor_and_scalable_effects",
-        "constraints": [
-          "The primary target sustains stable 60 FPS at 1080p during representative heavy combat with intended four-weapon enemy projectile lighting destruction and effect density",
-          "A declared minimum floor must complete the campaign readably using reduced visual settings without changing gameplay input saves collision simulation or progression",
-          "Higher-end settings add cosmetic quality resolution and refresh-rate headroom without gameplay advantage",
-          "Expose effect density shadows lighting debris shake flashes post-processing resolution display mode frame cap VSync and transparent presets",
-          "Validate on a small matrix covering the primary target minimum floor another GPU or driver family and clean Windows installations before major milestones",
-          "Track CPU GPU allocation memory loading atlas particle enemy and projectile budgets through stress scenes while real hardware remains authoritative"
-        ],
-        "verification_status": "verified"
-      }
-    ]
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_decision": "D-230",
+    "last_persisted_at": "2026-07-13T18:24:00+02:00",
+    "batching_rule": "Begin a new Product Discovery batch at D-231 and persist through D-240 unless an earlier handoff is requested",
+    "queued_decisions": []
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T18:20:00+02:00"
+  "updated_at": "2026-07-13T18:24:00+02:00"
 }
