@@ -1,0 +1,659 @@
+{
+  "project_name": "Shooter Mover",
+  "product_summary": {
+    "goal": "Prove a Windows-first, offline-capable, fully 2D science-fiction shooter whose signature chainable directional thruster, four concurrently firing weapons, readable rogue-machine combat, and earn-adjust-replay loop are compelling enough to justify broader campaign production. The accepted internal MVP is one complete automated-weapons-factory mission, preceded by a bounded intrinsic game-feel proof.",
+    "users": [
+      "Players who enjoy responsive skill-based top-down shooting and expressive movement",
+      "Casual players who need readable, forgiving, configurable difficulty and accessibility",
+      "Expert players, achievement hunters, speedrunners, record chasers, and replay grinders",
+      "Players who value permanent offline guest play and progression without pay-to-win"
+    ],
+    "non_goals": [
+      "Android implementation, touch controls, or mobile release during the internal MVP",
+      "Online co-op, relay, matchmaking, host migration, cloud authority, or leaderboards",
+      "A full campaign, additional factions, procedural or endless modes, or release-scale content",
+      "Randomized per-instance weapon modifiers, mature strongbox tiers, broad persistent rerolls, dismantling depth, or modular weapon construction",
+      "Public demo, Early Access, storefront integration, monetization infrastructure, mandatory accounts, or remote telemetry",
+      "Runtime 3D, DOTS-first architecture, a custom engine, or speculative generalized frameworks",
+      "Canonical implementation tasks or stable task IDs during the planning phase"
+    ]
+  },
+  "safety_boundaries": [
+    "Campaign, progression, saves, and ordinary play remain fully available offline and to permanent guest profiles.",
+    "No real-money strongboxes, pay-to-win items, paid progression, paid loot odds, or purchasable gameplay advantage.",
+    "Normal play requires no administrator privileges, online activation, invasive DRM, or kernel anti-cheat.",
+    "No credentials, signing keys, private service secrets, or unrelated personal information are shipped or exported.",
+    "Imported saves, journals, archives, support bundles, and generated content are validated defensively.",
+    "Modified local profiles may lose protected competitive eligibility but never lose offline campaign access.",
+    "Production assets require recorded authorship, license, source, and derivative provenance before release-bound use.",
+    "Planning and implementation remain separated: this package defines lanes and interfaces but no canonical executable backlog."
+  ],
+  "repo_split": [
+    {
+      "name": "domain-core",
+      "purpose": "Engine-independent deterministic rules, immutable identifiers, commands, events, runtime state, and calculations.",
+      "contains": [
+        "Assets/ShooterMover/Runtime/Domain/Common/",
+        "Assets/ShooterMover/Runtime/Domain/Movement/",
+        "Assets/ShooterMover/Runtime/Domain/Combat/",
+        "Assets/ShooterMover/Runtime/Domain/Mission/",
+        "Assets/ShooterMover/Runtime/Domain/Rewards/",
+        "Assets/ShooterMover/Runtime/Domain/Progression/",
+        "Assets/ShooterMover/Runtime/Domain/Persistence/"
+      ],
+      "depends_on": []
+    },
+    {
+      "name": "application-services",
+      "purpose": "Use-case orchestration around the domain core without scene or presentation authority.",
+      "contains": [
+        "Assets/ShooterMover/Runtime/Application/",
+        "Assets/ShooterMover/Runtime/Contracts/"
+      ],
+      "depends_on": [
+        "domain-core"
+      ]
+    },
+    {
+      "name": "unity-adapters",
+      "purpose": "Unity Input System, 2D physics, scene lifecycle, rendering, animation, audio, and platform-facing adapters.",
+      "contains": [
+        "Assets/ShooterMover/Runtime/UnityAdapters/",
+        "Assets/ShooterMover/Runtime/Bootstrap/",
+        "Assets/ShooterMover/Scenes/"
+      ],
+      "depends_on": [
+        "domain-core",
+        "application-services"
+      ]
+    },
+    {
+      "name": "presentation-ui",
+      "purpose": "HUD, menu hub, map, loadout, rewards, settings, diagnostics, and localization-ready presentation.",
+      "contains": [
+        "Assets/ShooterMover/Runtime/Presentation/",
+        "Assets/ShooterMover/UI/",
+        "Assets/ShooterMover/Localization/"
+      ],
+      "depends_on": [
+        "application-services",
+        "unity-adapters"
+      ]
+    },
+    {
+      "name": "content-definitions",
+      "purpose": "Typed ScriptableObject definitions, stable IDs, reusable behavior modules, generated registries, and deterministic review snapshots.",
+      "contains": [
+        "Assets/ShooterMover/Content/Definitions/",
+        "Assets/ShooterMover/Content/SharedModules/",
+        "Assets/ShooterMover/Generated/"
+      ],
+      "depends_on": [
+        "domain-core",
+        "application-services"
+      ]
+    },
+    {
+      "name": "content-packages",
+      "purpose": "Independently owned weapon, enemy, room, encounter, and factory-environment packages.",
+      "contains": [
+        "Assets/ShooterMover/ContentPackages/Weapons/",
+        "Assets/ShooterMover/ContentPackages/Enemies/",
+        "Assets/ShooterMover/ContentPackages/Rooms/",
+        "Assets/ShooterMover/ContentPackages/Encounters/",
+        "Assets/ShooterMover/ContentPackages/Environment/"
+      ],
+      "depends_on": [
+        "content-definitions",
+        "unity-adapters",
+        "presentation-ui"
+      ]
+    },
+    {
+      "name": "verification-tooling",
+      "purpose": "Edit-mode, play-mode, performance, save-recovery, content-validation, build, diagnostics, and reproducibility tooling.",
+      "contains": [
+        "Assets/ShooterMover/Tests/",
+        "Assets/ShooterMover/TestSupport/",
+        "tools/",
+        ".github/workflows/",
+        "docs/verification/"
+      ],
+      "depends_on": [
+        "domain-core",
+        "application-services",
+        "unity-adapters",
+        "content-definitions"
+      ]
+    },
+    {
+      "name": "production-source-assets",
+      "purpose": "Versioned source-art manifests, provenance, export recipes, and references for the offline-3D and painted-2D pipeline.",
+      "contains": [
+        "source-assets/manifests/",
+        "source-assets/export-recipes/",
+        "source-assets/reference/",
+        "docs/art-pipeline/"
+      ],
+      "depends_on": [
+        "content-definitions"
+      ]
+    }
+  ],
+  "domain_model": [
+    {
+      "name": "StableId",
+      "fields": [
+        "namespace",
+        "value"
+      ],
+      "relations": [
+        "Identifies every content definition, mission element, transaction, and persisted object."
+      ]
+    },
+    {
+      "name": "ContentVersion",
+      "fields": [
+        "catalog_version",
+        "definition_fingerprint"
+      ],
+      "relations": [
+        "Stored by saves, reward commitments, builds, and deterministic review snapshots."
+      ]
+    },
+    {
+      "name": "PlayerProfile",
+      "fields": [
+        "profile_id",
+        "schema_version",
+        "currency",
+        "inventory",
+        "pending_rewards",
+        "records",
+        "settings",
+        "verification_state"
+      ],
+      "relations": [
+        "Owns persistent progression and contains zero or one active MissionRunState reference."
+      ]
+    },
+    {
+      "name": "Loadout",
+      "fields": [
+        "slot_1_weapon_id",
+        "slot_2_weapon_id",
+        "slot_3_weapon_id",
+        "slot_4_weapon_id"
+      ],
+      "relations": [
+        "References exactly four WeaponDefinition records."
+      ]
+    },
+    {
+      "name": "WeaponDefinition",
+      "fields": [
+        "weapon_id",
+        "firing_model",
+        "normal_fire",
+        "power_fire",
+        "movement_effect",
+        "presentation_refs"
+      ],
+      "relations": [
+        "Creates independent WeaponRuntimeState for each mounted slot."
+      ]
+    },
+    {
+      "name": "WeaponRuntimeState",
+      "fields": [
+        "mount_slot",
+        "readiness",
+        "cadence_state",
+        "heat_or_charge",
+        "recoil_state",
+        "power_bank"
+      ],
+      "relations": [
+        "One per equipped mount; normal fire remains available whenever authored readiness allows."
+      ]
+    },
+    {
+      "name": "ThrusterDefinition",
+      "fields": [
+        "baseline_charge_count",
+        "recharge_model",
+        "burst_curve",
+        "steering_curve",
+        "ricochet_rules",
+        "forgiveness_rules"
+      ],
+      "relations": [
+        "Creates ThrusterRuntimeState and is tuned through benchmark evidence."
+      ]
+    },
+    {
+      "name": "ThrusterRuntimeState",
+      "fields": [
+        "charges",
+        "recharge_progress",
+        "burst_state",
+        "velocity",
+        "last_move_direction"
+      ],
+      "relations": [
+        "Consumes movement input independently from aim input."
+      ]
+    },
+    {
+      "name": "EnemyDefinition",
+      "fields": [
+        "enemy_id",
+        "role",
+        "weight_class",
+        "movement_module",
+        "attack_modules",
+        "telegraph_profile",
+        "reward_profile"
+      ],
+      "relations": [
+        "Instantiated by EncounterDefinition without owning durable mission truth."
+      ]
+    },
+    {
+      "name": "EncounterDefinition",
+      "fields": [
+        "encounter_id",
+        "enemy_entries",
+        "reinforcement_triggers",
+        "lockdown_rule",
+        "difficulty_overrides",
+        "budget"
+      ],
+      "relations": [
+        "Belongs to a RoomDefinition and emits validated mission transitions."
+      ]
+    },
+    {
+      "name": "RoomDefinition",
+      "fields": [
+        "room_id",
+        "zone_id",
+        "connections",
+        "encounter_id",
+        "services",
+        "state_keys",
+        "performance_budget"
+      ],
+      "relations": [
+        "Projected from MissionRunState and connected by LevelGraph."
+      ]
+    },
+    {
+      "name": "LevelGraph",
+      "fields": [
+        "level_id",
+        "nodes",
+        "edges",
+        "critical_route",
+        "optional_branches",
+        "objective_chain"
+      ],
+      "relations": [
+        "Defines the authored factory topology without direct scene-object references."
+      ]
+    },
+    {
+      "name": "MissionRunState",
+      "fields": [
+        "run_id",
+        "level_id",
+        "difficulty_id",
+        "room_states",
+        "objective_states",
+        "checkpoint_state",
+        "temporary_state",
+        "unsecured_rewards",
+        "banked_rewards",
+        "shop_states",
+        "refresh_tokens",
+        "suspend_state"
+      ],
+      "relations": [
+        "Authoritative engine-independent mission state mutated only by validated commands."
+      ]
+    },
+    {
+      "name": "MissionCommand",
+      "fields": [
+        "command_id",
+        "run_id",
+        "type",
+        "payload",
+        "expected_sequence"
+      ],
+      "relations": [
+        "Validated by application services before producing MissionEvent records."
+      ]
+    },
+    {
+      "name": "MissionEvent",
+      "fields": [
+        "event_id",
+        "sequence",
+        "type",
+        "payload",
+        "timestamp_class"
+      ],
+      "relations": [
+        "Feeds projections, diagnostics, and selected journal records."
+      ]
+    },
+    {
+      "name": "CheckpointState",
+      "fields": [
+        "checkpoint_id",
+        "activated_ids",
+        "respawn_id",
+        "safe_travel_links",
+        "snapshot_sequence"
+      ],
+      "relations": [
+        "Controls respawn, fast travel, and safe snapshot boundaries."
+      ]
+    },
+    {
+      "name": "RewardCommitment",
+      "fields": [
+        "reward_id",
+        "seed",
+        "source",
+        "collection_order",
+        "difficulty_snapshot",
+        "progression_snapshot",
+        "content_version",
+        "grant_state"
+      ],
+      "relations": [
+        "Guarantees reload-proof deterministic strongbox results and single granting."
+      ]
+    },
+    {
+      "name": "ShopRunState",
+      "fields": [
+        "shop_id",
+        "stock_seed",
+        "stock",
+        "sold_out",
+        "refresh_count"
+      ],
+      "relations": [
+        "Stable for one run and refreshed only by allowed run-bound tokens."
+      ]
+    },
+    {
+      "name": "SaveSnapshot",
+      "fields": [
+        "schema_version",
+        "game_version",
+        "content_version",
+        "sequence",
+        "profile",
+        "mission_state",
+        "checksum"
+      ],
+      "relations": [
+        "Atomically replaced and paired with rolling backups and a compact journal."
+      ]
+    },
+    {
+      "name": "JournalRecord",
+      "fields": [
+        "sequence",
+        "transaction_id",
+        "type",
+        "payload",
+        "checksum"
+      ],
+      "relations": [
+        "Used only for important idempotent transitions such as banking, rewards, routes, completion, and suspension."
+      ]
+    },
+    {
+      "name": "DifficultyProfile",
+      "fields": [
+        "difficulty_id",
+        "recovery_rules",
+        "encounter_overrides",
+        "warning_rules",
+        "checkpoint_pressure",
+        "mastery_conditions"
+      ],
+      "relations": [
+        "Fixed at attempt start and remains deterministic for the run."
+      ]
+    },
+    {
+      "name": "BuildIdentity",
+      "fields": [
+        "source_commit",
+        "unity_version",
+        "package_lock_fingerprint",
+        "content_fingerprint",
+        "save_schema",
+        "artifact_checksum"
+      ],
+      "relations": [
+        "Included in diagnostics and immutable test artifacts."
+      ]
+    }
+  ],
+  "frontend_screens": [
+    {
+      "name": "Menu Hub",
+      "renders_from": [
+        "PlayerProfile",
+        "mission catalog",
+        "build identity"
+      ],
+      "notes": "Fast menu-driven entry to mission selection, armory, records, settings, and reward inbox."
+    },
+    {
+      "name": "Mission Select and Difficulty",
+      "renders_from": [
+        "LevelGraph metadata",
+        "DifficultyProfile",
+        "completion records"
+      ],
+      "notes": "Shows fixed-per-attempt rules, expected recovery, and evidence-affecting conditions."
+    },
+    {
+      "name": "Loadout and Armory",
+      "renders_from": [
+        "Loadout",
+        "WeaponDefinition",
+        "inventory"
+      ],
+      "notes": "Supports four slots, comparison, checkpoint/shop changes, and clear weapon-state explanations."
+    },
+    {
+      "name": "In-Mission HUD",
+      "renders_from": [
+        "WeaponRuntimeState",
+        "ThrusterRuntimeState",
+        "MissionRunState",
+        "player health and shield"
+      ],
+      "notes": "Prioritizes four independent weapon states, power banks, thruster recharge, secured versus at-risk loot, and readable warnings."
+    },
+    {
+      "name": "Fog-of-War Map",
+      "renders_from": [
+        "LevelGraph",
+        "MissionRunState",
+        "CheckpointState"
+      ],
+      "notes": "Reveals explored rooms and discovered services without exposing hidden secrets."
+    },
+    {
+      "name": "Teleport and Shop",
+      "renders_from": [
+        "CheckpointState",
+        "ShopRunState",
+        "Loadout",
+        "currency",
+        "refresh_tokens"
+      ],
+      "notes": "Safe non-combat travel and one selected shop-enabled teleport in the factory slice."
+    },
+    {
+      "name": "Secure Storage",
+      "renders_from": [
+        "unsecured_rewards",
+        "banked_rewards",
+        "MissionRunState"
+      ],
+      "notes": "Explicitly previews and atomically confirms banking."
+    },
+    {
+      "name": "Mission Results and Records",
+      "renders_from": [
+        "completion event",
+        "difficulty",
+        "run summary",
+        "records",
+        "diagnostic validity"
+      ],
+      "notes": "Supports immediate replay and distinguishes technically invalid or command-altered sessions."
+    },
+    {
+      "name": "Strongbox Vault and Reward Review",
+      "renders_from": [
+        "RewardCommitment",
+        "pending_rewards",
+        "inventory capacity"
+      ],
+      "notes": "Collection-ordered, atomic, capacity-safe, reload-proof reveal and review."
+    },
+    {
+      "name": "Settings and Accessibility",
+      "renders_from": [
+        "settings profile",
+        "Input System bindings",
+        "quality capabilities"
+      ],
+      "notes": "Scalable UI, reduced effects, camera feedback, aim assistance, hold/toggle, audio, display, and rebinding."
+    },
+    {
+      "name": "Diagnostics Export",
+      "renders_from": [
+        "BuildIdentity",
+        "bounded logs",
+        "optional tester notes"
+      ],
+      "notes": "Creates a privacy-safe support bundle only on explicit user action."
+    }
+  ],
+  "backend_services": [
+    {
+      "name": "No Remote MVP Backend",
+      "responsibility": "The internal MVP has no mandatory server, account, analytics, cloud-save, matchmaking, or storefront service.",
+      "inputs": [
+        "local player actions",
+        "local files"
+      ],
+      "outputs": [
+        "complete offline gameplay"
+      ]
+    },
+    {
+      "name": "Local Save and Recovery Service",
+      "responsibility": "Validates, snapshots, journals, backs up, migrates, exports, imports, and safely recovers local profile and mission data.",
+      "inputs": [
+        "PlayerProfile",
+        "MissionRunState",
+        "MissionEvent",
+        "BuildIdentity"
+      ],
+      "outputs": [
+        "SaveSnapshot",
+        "JournalRecord",
+        "recovery result"
+      ]
+    },
+    {
+      "name": "Local Content Registry Service",
+      "responsibility": "Resolves stable IDs to typed content definitions and rejects duplicates, missing references, unsupported versions, and generated-registry drift.",
+      "inputs": [
+        "ScriptableObject definitions",
+        "generated registry",
+        "ContentVersion"
+      ],
+      "outputs": [
+        "validated immutable content catalog"
+      ]
+    },
+    {
+      "name": "Local Diagnostics Service",
+      "responsibility": "Records bounded structured events, rotates local logs, marks invalid evidence, and exports explicit privacy-safe support bundles.",
+      "inputs": [
+        "MissionEvent",
+        "performance samples",
+        "exceptions",
+        "BuildIdentity"
+      ],
+      "outputs": [
+        "local logs",
+        "support bundle",
+        "run validity classification"
+      ]
+    },
+    {
+      "name": "Local Artifact Identity Service",
+      "responsibility": "Exposes source, editor, dependency, content, test, symbol, checksum, and save-schema identity for immutable formal builds.",
+      "inputs": [
+        "build pipeline metadata"
+      ],
+      "outputs": [
+        "BuildIdentity",
+        "artifact manifest"
+      ]
+    }
+  ],
+  "core_engine_responsibilities": [
+    "Run deterministic engine-independent movement, weapon, mission, reward, progression, and persistence rules where practical.",
+    "Keep one authoritative MissionRunState and reject direct durable-state mutation from Unity scenes.",
+    "Translate device-independent Input System actions into movement, shared aiming, four-weapon fire, power mode, thruster, interaction, map, and menu intents.",
+    "Integrate Unity 2D physics for precise planar movement, collision, projectiles, wall ricochet, shove behavior, and deterministic safeguards.",
+    "Run four mounted weapon state machines independently under one fire command and one aim point.",
+    "Project authoritative mission and room state into additive scenes and modular content packages.",
+    "Coordinate explicit bootstrap, services, registries, commands, events, and scene lifecycle without scene searches or lifecycle luck.",
+    "Render dimensional 2D sprites through URP 2D while preserving readability without dynamic lighting.",
+    "Enforce stable IDs, typed definitions, generated registries, deterministic review snapshots, and content-package validation.",
+    "Persist atomic snapshots and a bounded idempotent journal with migration and recovery.",
+    "Expose capability-gated diagnostics, deterministic setup, fault injection, performance overlays, and evidence classification.",
+    "Build reproducible Windows artifacts and measure CPU, GPU, allocations, memory, loading, projectile, enemy, light, particle, atlas, and audio budgets."
+  ],
+  "verification_tasks": [
+    "Validate every generated planning JSON artifact against its framework contract and ensure no task backlog or task batch is created.",
+    "Compile the pinned Unity project and run deterministic edit-mode tests for domain rules and content validation.",
+    "Run focused play-mode tests for input, movement, collision, four-weapon operation, room projection, save/resume, banking, rewards, and clean scene transitions.",
+    "Run deterministic replay tests for RewardCommitment, atomic single granting, shop stock, mission-only refresh tokens, anti-farming, and interrupted transactions.",
+    "Run save corruption, interrupted write, journal replay, backup fallback, migration, newer-schema refusal, import, export, and suspend-consumption tests.",
+    "Run benchmark and short-route sessions with representative effect density, local diagnostics, quick restart, settings persistence, and near-target frame rate.",
+    "Run Windows player smoke tests for launch, menu, input, arena/room load, combat, checkpoint, save, resume, completion, replay, and clean exit.",
+    "Run accessibility checks for scalable UI, color-independent telegraphs, reduced effects, configurable shake, aim assistance, hold/toggle, audio/display controls, and rebinding.",
+    "Run representative heavy-combat stress scenes and real-hardware checks against the primary 1080p/60 target and the reduced-quality minimum floor.",
+    "Run immutable artifact checks for source commit, Unity version, package lock, generated-content fingerprints, symbols, checksums, test reports, and save compatibility.",
+    "Conduct human playable review for movement feel, boost chaining, ricochet predictability, four-weapon readability, enemy pressure, route pacing, audio impact, UI clarity, and replay desire.",
+    "Conduct an independent content-pipeline reproduction in an isolated branch and verify that a weapon, enemy, or room addition does not require unrelated foundational edits."
+  ],
+  "starter_prompts": {
+    "intake_interviewer": "Use the merged Product Discovery record only for historical traceability; do not reopen discovery unless the human explicitly changes product requirements.",
+    "planning_agent": "Maintain the planning package and planning-run trace only; preserve merged requirements, keep executable task decomposition deferred, and update handoff state through the planning PR.",
+    "contract_steward": "Own stable IDs, domain/application boundaries, schemas, generated registries, save contracts, command/event contracts, and cross-lane interface review before implementation lanes consume them.",
+    "frontend_builder": "Own menu hub, HUD, map, loadout, rewards, settings, accessibility, and diagnostics presentation; consume application contracts and never own durable mission truth.",
+    "backend_builder": "There is no remote MVP backend. Own only local save/recovery, content registry, diagnostics export, and artifact identity services behind project-owned interfaces.",
+    "core_engine_builder": "Own engine-independent gameplay/state rules and Unity adapters for input, 2D physics, scenes, rendering, audio, and build integration while preserving one authoritative domain state.",
+    "red_team_verifier": "Attack determinism, duplicate grants, rollback exploits, shop refresh abuse, save corruption, scene-state divergence, input edge cases, performance overload, accessibility regressions, and planning-scope drift."
+  }
+}
