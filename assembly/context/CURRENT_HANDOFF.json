@@ -6,18 +6,23 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "efd249f5c399d1baff66d357864b3f121c3986ee",
+  "last_verified_commit": "3e1190c77eb10188d9f72d31f0eec21b433359cd",
   "authoritative_artifacts": [
     "AGENTS.md",
+    "project_workspace.json",
+    "assembly/context/NEW_CHAT_RESUME.md",
     "assembly/intake/LIVE_DECISIONS.md",
     "assembly/intake/archive/LIVE_DECISIONS_THROUGH_D063.md",
     "assembly/intake/intake_session.json",
-    "assembly/intake/RECOVERED_INTAKE_DRAFT.md"
+    "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
+    "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
-  "last_completed_item": "D-066 — Permanent guest and offline play with optional account linkage for cosmetic ownership restoration and cross-platform portability",
-  "current_item": "D-067 — Optional gameplay cross-progression and divergent offline save conflicts",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether optional accounts sync cosmetics only while gameplay progression remains device-local, provide whole-profile cloud backup and cross-progression with explicit conflict selection and no item-by-item merging, or provide automatic multi-device merging of inventories currencies strongboxes and progression. Preserve full offline play, hardened local saves, and no mandatory login. Include duplication risks, user recovery, PC-to-Android convenience, implementation cost, and MVP versus post-MVP timing. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist the answer and update this handoff before asking anything else.",
+  "handoff_status": "paused_ready_to_resume",
+  "last_completed_item": "D-067 — Whole-profile cloud cross-progression with explicit local-versus-cloud conflict selection and no item-by-item merging",
+  "current_item": "D-068 — Death checkpoint respawn and world-reset behavior",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether cleared rooms remain cleared and only the death room resets, the current checkpoint section resets deterministically while earlier checkpoint-banked sections stay cleared, or enemies may dynamically reclaim previously cleared rooms after death. Preserve checkpoint-banked strongboxes, fixed handcrafted teleport checkpoints, deterministic campaign mastery, difficulty-specific recovery rules, and quit-anytime single-use suspend-save intent from the recovered draft without presenting unverified details as final. Include repetition risk, challenge tension, speedrunning consistency, implementation complexity, and difficulty scaling. Put the agent recommendation after all A/B/C options, at the end of the card. After the user answers, persist D-068 to LIVE_DECISIONS.md, update intake_session.json, and update this handoff before asking anything else.",
+  "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test"
@@ -25,12 +30,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-13T11:43:00+02:00"
+    "last_persisted_at": "2026-07-13T12:00:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T11:43:00+02:00"
+  "updated_at": "2026-07-13T12:00:00+02:00"
 }
