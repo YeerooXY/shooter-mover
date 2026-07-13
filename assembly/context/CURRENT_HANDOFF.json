@@ -40,10 +40,10 @@
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
-  "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-194 — Optional shared-room entry with local room instances and coarse confirmation",
-  "current_item": "D-195 — Shared room completion across local instances",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how durable room completion, doors, and rewards settle when players may either join a teammate's active room instance or enter their own local instance: the first valid instance clear marks the room globally complete; every participating active player's local instance must clear before global completion; or a hybrid where personal instances and ordinary loot resolve separately while coarse shared map progress unlocks after one valid clear and players still fighting may finish or withdraw. Preserve local authority for movement, firing, incoming damage, pickups, loot, and immediate feedback; coarse shared confirmation for room identity, doors, completion, map access, teleports, and major rewards; optional joined or personal room entry; personal non-replenishable lives and spectator clutch play; active-player-count scaling locked per instance at entry; separate personal progression; relay-backed latency-tolerant networking; and deferred deep shared team objectives. Include pacing, griefing, split-party deadlock, farming, banking and unsecured loot, respawn and teleport behavior, disconnected or spectating players, synchronization complexity, and future deeper co-op objectives. Put the recommendation after all A/B/C options at the end of the card. D-191 through D-194 were persisted early for handoff safety; queue D-195 through D-200 and persist at D-200 unless the user changes the batching rule or requests another handoff.",
+  "handoff_status": "active_batch_in_progress",
+  "last_completed_item": "D-195 — Hybrid personal room resolution with one-clear shared progress",
+  "current_item": "D-196 — Entry into an already globally completed room",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting what happens when a player who was not already fighting enters a room after another instance has marked it globally complete: the room is permanently clear for all new entries during that run; the player may start one personal catch-up encounter without another major reward; or the player may deliberately replay a fresh personal instance for ordinary loot under anti-farming limits. Preserve D-195's hybrid rule that the first valid clear unlocks coarse shared map progress and the one-time major reward while already-active personal instances may finish or withdraw; personal ordinary loot, unsecured rewards, banking, lives, and immediate feedback; globally persistent cleared-room state; teleport regrouping; late joining and reconnection; local-first trusted simulation; and deterministic anti-farming requirements. Include pacing, fairness to split players, ordinary-loot opportunity, farming and XP abuse, death and respawn, disconnected or spectating players, implementation complexity, and compatibility with future challenge or replay modes. Put the recommendation after all A/B/C options at the end of the card. D-195 is queued but not yet batch-persisted; queue D-196 through D-200 and persist the complete D-195 through D-200 partial batch at D-200 unless the user changes the rule or requests another handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -52,17 +52,34 @@
     "The D-101 through D-194 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
-    "status": "ready",
-    "unsaved_decisions": 0,
+    "status": "batch_in_progress",
+    "unsaved_decisions": 1,
     "last_persisted_decision": "D-194",
     "last_persisted_at": "2026-07-13T16:47:23+02:00",
     "batching_rule": "D-191 through D-194 persisted early for handoff safety; queue D-195 through D-200 and persist at D-200",
-    "queued_decisions": []
+    "queued_decisions": [
+      {
+        "decision_id": "D-195",
+        "topic": "shared_room_completion_across_local_instances",
+        "choice": "C",
+        "answer": "hybrid_personal_resolution_with_one_clear_shared_progress",
+        "constraints": [
+          "The first valid local-instance clear marks the room globally complete and unlocks coarse shared doors, map access, and teleports",
+          "Grant the room's one-time major reward to every eligible connected player, including life-exhausted spectators, without duplicate granting from later instance clears",
+          "Players already fighting in another local instance may finish for remaining personal ordinary loot or withdraw to the newly unlocked route",
+          "Personal enemies, pickups, unsecured loot, deaths, lives, banking state, and immediate feedback resolve locally",
+          "A local death or withdrawal cannot relock globally completed progress",
+          "Prevent farming, duplicate major rewards, and permanent disagreement about durable campaign state",
+          "Allow future deep shared-objective rooms to opt into stricter synchronization rules separately"
+        ],
+        "verification_status": "verified"
+      }
+    ]
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T16:47:23+02:00"
+  "updated_at": "2026-07-13T17:00:29+02:00"
 }
