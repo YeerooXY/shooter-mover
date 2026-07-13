@@ -5,7 +5,7 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-068
+- Last persisted decision: D-069
 - Unsaved accepted decisions: 0
 
 ## Recovery and archive note
@@ -106,13 +106,27 @@ Status: active Product Discovery log. Detailed historical decisions D-040 throug
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-069 — Activated-checkpoint fast travel
+
+- Status: accepted
+- Choice: B — controlled travel between activated checkpoints within the current level
+- Accepted requirement: Once the player physically discovers and activates multiple teleport checkpoints in a level, those stations may be used to travel between one another while the player is outside combat and no encounter-lock condition is active.
+- Exploration rule: Fast travel never reveals undiscovered rooms, secrets, routes, shops, objectives, or checkpoints. A destination must already have been reached and activated through ordinary play.
+- State-safety rule: Travelling must preserve enemy-clear state, authored difficulty reclamation state, objectives, doors, switches, hazards, shop inventory, reroll state, reserved items, pickups, and all other persistent level state exactly as if the player had walked there.
+- Economy and reward guardrail: Fast travel cannot respawn loot or enemies, refresh shops, regenerate one-time pickups, duplicate checkpoint banking, re-secure unsecured strongboxes, reset reward seeds, or bypass progression and lock requirements.
+- Routing rule: Checkpoint travel is a deterministic traversal option and may support speedrunning routes, but official categories may define whether teleport use is allowed rather than relying on hidden or random restrictions.
+- Difficulty rule: Stronger rulesets may apply explicit authored restrictions, such as limiting travel to the latest checkpoint, requiring nearby rooms to be secure, or disabling selected links, provided each ruleset remains clear, deterministic, and learnable.
+- Implementation note: Destination validation and state restoration must be designed for later co-op and Android session practicality, while the Windows PC MVP needs only safe same-level activated-station travel.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue the core-experience recovery by deciding whether activated checkpoint teleport stations are respawn/save anchors only, support controlled travel between activated checkpoints, or enable broad map-based fast travel.
+Continue the core-experience recovery by deciding the role and complexity of keys, locks, power-routing tasks, and environmental puzzles within the combat-first campaign.
 
 ## Revision rules
 
