@@ -1,0 +1,742 @@
+{
+  "schema_version": "0.1.0",
+  "batch_id": "stage1-evidence-harness",
+  "source_plan_path": "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+  "tasks": [
+    {
+      "id": "EH-001",
+      "title": "Capture build, content, and tuning identity",
+      "summary": "Create the evidence-harness identity adapter that records immutable build, content, source, editor, package, save-schema, and tuning-profile identity.",
+      "objective": "Make every Stage 1 evidence session attributable to one exact offline build and frozen tuning configuration before any gameplay implementation exists.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/EvidenceIdentityCapture.cs",
+        "Assets/ShooterMover/Tests/EditMode/EvidenceHarness/EvidenceIdentityCaptureTests.cs",
+        "tools/evidence/capture_build_identity.py",
+        "docs/verification/evidence-harness/BUILD_IDENTITY.md"
+      ],
+      "depends_on": [
+        "CS-002",
+        "UF-010",
+        "UF-011"
+      ],
+      "inputs": [
+        "Consumed contracts: ContentVersion and BuildIdentity v1 from CS-002.",
+        "Consumed foundation: Windows build entrypoint from UF-010 and prototype-debt policy from UF-011."
+      ],
+      "outputs": [
+        "Evidence identity capture adapter",
+        "Identity capture tests",
+        "Offline identity capture tool",
+        "Build/content/tuning identity documentation"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: none. Save impact: read identity only. Registry impact: read fingerprints only; do not generate or hand-edit registries.",
+        "Formal identity must fail closed when required values are missing, malformed, provisional, or internally inconsistent.",
+        "Rollback: remove only the four owned files and rerun identity tests. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "One deterministic record contains source commit, dirty-state policy, Unity/editor version, package lock fingerprint, content version, save schema version, build target, build configuration, and tuning-profile ID.",
+        "Two records from the same frozen inputs serialize identically; changing any required identity input changes the fingerprint.",
+        "Missing formal identity is classified as invalid evidence rather than replaced with placeholders."
+      ],
+      "verification": [
+        "Automated: deterministic serialization, field completeness, dirty-source, changed-tuning, changed-package-lock, and malformed-identity tests.",
+        "Manual/playable: compare an editor capture and a UF-010 Windows build capture for the same frozen source."
+      ],
+      "proof_required": [
+        "EvidenceIdentityCaptureTests log",
+        "Two sample identity records showing stable and changed fingerprints"
+      ],
+      "edge_cases": [
+        "development build without final checksum",
+        "dirty working tree",
+        "missing tuning-profile ID"
+      ],
+      "non_goals": [
+        "no build pipeline replacement",
+        "no gameplay telemetry",
+        "no remote identity service"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "identity",
+        "evidence-integrity"
+      ],
+      "handoff_notes": "EH-002 consumes this identity record; later manifest and smoke tasks must not invent a second build-identity format.",
+      "notes": "Milestone-cap spend: 0.30 focused lead days."
+    },
+    {
+      "id": "EH-002",
+      "title": "Define deterministic evidence configuration and seed fixture",
+      "summary": "Define one versioned Stage 1 evidence configuration that binds run seed, input-intent fixture, quality profile, locale, resolution, diagnostics bounds, and identity.",
+      "objective": "Provide a reproducible setup artifact that can be loaded identically in edit-mode, play-mode, and Windows smoke runs.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/EvidenceRunConfiguration.cs",
+        "Assets/ShooterMover/Tests/EditMode/EvidenceHarness/EvidenceRunConfigurationTests.cs",
+        "tools/evidence/fixtures/stage1-evidence-config-v1.json",
+        "docs/verification/evidence-harness/EVIDENCE_CONFIGURATION_V1.md"
+      ],
+      "depends_on": [
+        "CS-002",
+        "CS-003",
+        "EH-001"
+      ],
+      "inputs": [
+        "Consumed contracts: Identity v1 and Player Intents v1.",
+        "Consumed output: EH-001 evidence identity capture."
+      ],
+      "outputs": [
+        "EvidenceRunConfiguration value and loader",
+        "Canonical Stage 1 configuration fixture",
+        "Configuration validation tests",
+        "Versioned configuration document"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: tools/evidence/fixtures/stage1-evidence-config-v1.json only. Save and registry impact: none.",
+        "The seed controls harness setup and scripted intent fixtures only; it must not imply mature gameplay randomness or balance.",
+        "Rollback: remove owned files and restore callers to explicit test defaults. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "The canonical fixture has an explicit schema/version, seed, identity reference, intent-fixture version, quality profile, locale, viewport, diagnostics limits, and timeout limits.",
+        "Configuration fields serialize in canonical order and reject unknown, missing, duplicate, out-of-range, or machine-local values.",
+        "Keyboard/mouse and gamepad fixtures map to the same CS-003 device-independent intents."
+      ],
+      "verification": [
+        "Automated: round-trip, canonical-order, same-seed, changed-seed, unknown-field, invalid-bound, and device-equivalence tests.",
+        "Manual/playable: load the same fixture in editor and a Windows smoke invocation and compare resolved setup."
+      ],
+      "proof_required": [
+        "EvidenceRunConfigurationTests log",
+        "Canonical stage1-evidence-config-v1.json fixture"
+      ],
+      "edge_cases": [
+        "zero or negative timeout",
+        "unsupported fixture version",
+        "machine-specific absolute path"
+      ],
+      "non_goals": [
+        "no gameplay balance tuning",
+        "no random item modifiers",
+        "no device checks in gameplay code"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "determinism",
+        "input-fixture"
+      ],
+      "handoff_notes": "All later EH tasks consume this one configuration and seed fixture; do not fork per-run ad hoc settings.",
+      "notes": "Milestone-cap spend: 0.25 focused lead days."
+    },
+    {
+      "id": "EH-003",
+      "title": "Implement bounded local diagnostics and run-validity recording",
+      "summary": "Create an evidence-only recorder for bounded local diagnostic events and explicit run-validity transitions.",
+      "objective": "Separate technical invalidation from fun or behavior evidence while keeping logs local, rotated, redacted, and size-bounded.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/EvidenceDiagnosticsRecorder.cs",
+        "Assets/ShooterMover/Tests/EditMode/EvidenceHarness/EvidenceDiagnosticsRecorderTests.cs",
+        "tools/evidence/fixtures/run-validity-cases-v1.json",
+        "docs/verification/evidence-harness/RUN_VALIDITY_AND_DIAGNOSTICS.md"
+      ],
+      "depends_on": [
+        "CS-002",
+        "CS-012",
+        "EH-001",
+        "EH-002"
+      ],
+      "inputs": [
+        "Consumed contracts: BuildIdentity v1 and Diagnostics/RunValidity v1.",
+        "Consumed output: canonical EH-002 run configuration and bounds."
+      ],
+      "outputs": [
+        "Bounded diagnostics recorder",
+        "Run-validity transition tests",
+        "Validity-case fixture",
+        "Diagnostics and invalidation rules"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: tools/evidence/fixtures/run-validity-cases-v1.json only. Save and registry impact: none.",
+        "Events are append-only within a session, locally rotated, explicitly exportable, and free of secrets or unnecessary personal data.",
+        "Rollback: remove recorder/fixtures/docs; no gameplay or durable mission state may depend on this recorder. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "The recorder captures identity, session start/end/restart, diagnostic commands, exceptions, timeouts, missing assets, performance warnings, and validity reason codes using CS-012.",
+        "Bounds cap event count, payload size, file size, and retained rotations; overflow produces an explicit truncation/invalidity event rather than silent loss.",
+        "Technical invalidity is distinct from negative human feedback and cannot be cleared by later events."
+      ],
+      "verification": [
+        "Automated: event-order, rotation, redaction, overflow, duplicate-start, end-without-start, invalidity-monotonicity, and malformed-event tests.",
+        "Manual/playable: inspect one valid and one intentionally invalid local session log without network access."
+      ],
+      "proof_required": [
+        "EvidenceDiagnosticsRecorderTests log",
+        "Valid and invalid example diagnostic logs"
+      ],
+      "edge_cases": [
+        "disk full",
+        "clock moves backward",
+        "diagnostic command during formal run",
+        "log bound exceeded"
+      ],
+      "non_goals": [
+        "no analytics SDK",
+        "no crash-reporting SaaS",
+        "no gameplay-state authority"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "diagnostics",
+        "run-validity"
+      ],
+      "handoff_notes": "EH-006, EH-007, EH-008, and EH-010 consume this recorder and its explicit validity outcome.",
+      "notes": "Milestone-cap spend: 0.40 focused lead days."
+    },
+    {
+      "id": "EH-004",
+      "title": "Create the Stage 1 benchmark arena shell",
+      "summary": "Create one test-owned additive 2D arena scene shell with deterministic spawn sockets, camera bounds, collision envelope, evidence markers, and empty combat hooks.",
+      "objective": "Provide a reproducible benchmark combat space without implementing movement, weapons, enemies, rewards, or durable room truth.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Tests/PlayMode/EvidenceHarness/Scenes/Stage1BenchmarkArena.unity",
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/Stage1BenchmarkArenaFixture.cs",
+        "Assets/ShooterMover/Tests/PlayMode/EvidenceHarness/Stage1BenchmarkArenaSmokeTests.cs",
+        "docs/verification/evidence-harness/BENCHMARK_ARENA_SHELL.md"
+      ],
+      "depends_on": [
+        "UF-006",
+        "UF-007",
+        "UF-008",
+        "EH-002"
+      ],
+      "inputs": [
+        "Consumed foundation: composition-root shell, Bootstrap scene, and FoundationSmoke scene.",
+        "Consumed output: canonical EH-002 evidence configuration."
+      ],
+      "outputs": [
+        "Stage1BenchmarkArena test scene",
+        "Arena fixture adapter",
+        "Play-mode scene smoke tests",
+        "Arena ownership and review document"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: Stage1BenchmarkArena.unity only. Save/content/registry impact: none.",
+        "The scene contains placeholders and stable test markers only; it must not own permanent room, encounter, reward, or progression truth.",
+        "Rollback: delete the owned scene, fixture, test, and document. Prototype debt: any placeholder visual is test-only and not release content."
+      ],
+      "acceptance_criteria": [
+        "The scene loads additively from the UF-007 bootstrap path and exposes stable named sockets for player, targets, hazards, camera bounds, and performance probes.",
+        "Two resets produce the same object graph, transforms, sorting setup, and evidence marker IDs.",
+        "The shell is fully 2D and contains no gameplay behavior, remote dependency, unowned prefab, or direct scene search requirement."
+      ],
+      "verification": [
+        "Automated: additive load/unload, marker uniqueness, transform snapshot, camera/collision bounds, missing-socket, and second-reset equality tests.",
+        "Manual/playable: open the arena through the evidence configuration and review scale, empty readability, and reset behavior."
+      ],
+      "proof_required": [
+        "Stage1BenchmarkArenaSmokeTests log",
+        "Scene hierarchy/marker snapshot",
+        "Human shell-review note"
+      ],
+      "edge_cases": [
+        "scene loaded twice",
+        "required socket deleted",
+        "non-2D component introduced"
+      ],
+      "non_goals": [
+        "no movement implementation",
+        "no weapons or enemies",
+        "no final art or balance"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "serialized-scene",
+        "arena-shell"
+      ],
+      "handoff_notes": "EH-005 may reuse documented socket conventions but owns its own scene; later gameplay batches project into this shell without editing its evidence markers.",
+      "notes": "Milestone-cap spend: 0.45 focused lead days."
+    },
+    {
+      "id": "EH-005",
+      "title": "Create the Stage 1 short-route shell",
+      "summary": "Create a test-owned additive short-route scene shell connecting start, arena, transition, restart, and completion-review markers through room-projection interfaces.",
+      "objective": "Provide deterministic multi-space lifecycle coverage before route gameplay, encounters, mission state, rewards, or persistence are implemented.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/Tests/PlayMode/EvidenceHarness/Scenes/Stage1ShortRouteShell.unity",
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/Stage1ShortRouteFixture.cs",
+        "Assets/ShooterMover/Tests/PlayMode/EvidenceHarness/Stage1ShortRouteSmokeTests.cs",
+        "docs/verification/evidence-harness/SHORT_ROUTE_SHELL.md"
+      ],
+      "depends_on": [
+        "UF-006",
+        "UF-007",
+        "UF-008",
+        "CS-007",
+        "EH-002",
+        "EH-004"
+      ],
+      "inputs": [
+        "Consumed foundation: composition root, Bootstrap, and FoundationSmoke scene.",
+        "Consumed contract: Room Projection v1.",
+        "Consumed outputs: canonical evidence configuration and arena socket conventions."
+      ],
+      "outputs": [
+        "Stage1ShortRouteShell test scene",
+        "Short-route projection fixture",
+        "Route lifecycle smoke tests",
+        "Route-shell ownership document"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: Stage1ShortRouteShell.unity only. Save/content/registry impact: none.",
+        "Route nodes are projections/test markers; no scene object may assert durable clear, objective, checkpoint, reward, or completion truth.",
+        "Rollback: delete owned scene/fixture/test/document. Prototype debt: test-only placeholder geometry is allowed only inside this scene."
+      ],
+      "acceptance_criteria": [
+        "The shell declares stable start, arena-entry, connector, restart, and review-end markers plus deterministic additive load/unload order.",
+        "Repeated enter, leave, unload, and reload operations are idempotent through CS-007 room lifecycle semantics.",
+        "The scene contains no direct object references across additive-room boundaries and no Stage 2 route implementation."
+      ],
+      "verification": [
+        "Automated: marker uniqueness, lifecycle order, repeated load/unload, interrupted unload, missing connection, and projection-read-only tests.",
+        "Manual/playable: traverse the empty shell using test controls and confirm clear spatial orientation and rapid return to start."
+      ],
+      "proof_required": [
+        "Stage1ShortRouteSmokeTests log",
+        "Route marker and lifecycle snapshot",
+        "Human route-shell review note"
+      ],
+      "edge_cases": [
+        "two shells loaded together",
+        "interrupted transition",
+        "unknown projection key"
+      ],
+      "non_goals": [
+        "no LevelGraph implementation",
+        "no encounters or rewards",
+        "no durable mission state"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "serialized-scene",
+        "route-shell"
+      ],
+      "handoff_notes": "EH-006 owns restart/session behavior across this route; later route gameplay consumes CS-007 and must not make this shell authoritative.",
+      "notes": "Milestone-cap spend: 0.40 focused lead days."
+    },
+    {
+      "id": "EH-006",
+      "title": "Implement rapid reset, restart, and session lifecycle harness",
+      "summary": "Create the evidence-session controller that starts from the canonical fixture, resets arena/route state, performs quick restart, and closes sessions cleanly.",
+      "objective": "Guarantee rapidly repeatable evidence attempts without retaining hidden state or relying on gameplay systems.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/EvidenceSessionLifecycle.cs",
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/EvidenceRestartProbe.cs",
+        "Assets/ShooterMover/Tests/PlayMode/EvidenceHarness/EvidenceSessionLifecycleTests.cs",
+        "docs/verification/evidence-harness/SESSION_RESET_AND_RESTART.md"
+      ],
+      "depends_on": [
+        "CS-003",
+        "CS-012",
+        "EH-002",
+        "EH-003",
+        "EH-004",
+        "EH-005"
+      ],
+      "inputs": [
+        "Consumed contracts: Player Intents v1 and Diagnostics/RunValidity v1.",
+        "Consumed outputs: configuration, diagnostics recorder, arena shell, and route shell."
+      ],
+      "outputs": [
+        "Evidence session lifecycle controller",
+        "Restart probe",
+        "Play-mode lifecycle tests",
+        "Reset/restart protocol document"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: none. Save/content/registry impact: none.",
+        "Restart may recreate test projections and clear harness-local state only; it must not define future MissionRunState, save, reward, or checkpoint semantics.",
+        "Rollback: remove owned support/test/docs and use manual scene reload. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "A session has explicit configured, starting, running, restarting, ending, ended, and invalid states with rejected illegal transitions.",
+        "Quick restart returns to the same canonical start state and identity/configuration while issuing a new attempt ID and preserving the parent session audit trail.",
+        "Fifty consecutive reset/restart cycles leave no duplicate markers, retained subscriptions, leaked test objects, or stale intent state."
+      ],
+      "verification": [
+        "Automated: legal/illegal transitions, restart latency bound, focus-loss intent clear, 50-cycle leak sentinel, interrupted restart, and end-idempotency tests.",
+        "Manual/playable: perform repeated arena and short-route restarts and confirm immediate predictable recovery."
+      ],
+      "proof_required": [
+        "EvidenceSessionLifecycleTests log",
+        "50-cycle reset/restart diagnostic summary",
+        "Human quick-restart review note"
+      ],
+      "edge_cases": [
+        "restart requested twice",
+        "focus lost while input held",
+        "scene unload timeout",
+        "end after invalidation"
+      ],
+      "non_goals": [
+        "no save-system semantics",
+        "no death/respawn gameplay",
+        "no progression or score rules"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "restart",
+        "session-lifecycle"
+      ],
+      "handoff_notes": "EH-009 invokes this lifecycle from edit/play/Windows smoke entrypoints; later gameplay tasks plug into it rather than replacing its evidence semantics.",
+      "notes": "Milestone-cap spend: 0.45 focused lead days."
+    },
+    {
+      "id": "EH-007",
+      "title": "Add representative performance capture hooks",
+      "summary": "Add evidence-only frame-time, allocation, object-count, loading, and marker hooks with bounded capture windows and explicit warm-up.",
+      "objective": "Make later representative combat performance measurable without changing simulation, quality rules, or gameplay code.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "Assets/ShooterMover/TestSupport/EvidenceHarness/EvidencePerformanceProbe.cs",
+        "Assets/ShooterMover/Tests/Performance/EvidenceHarness/EvidencePerformanceProbeTests.cs",
+        "tools/evidence/fixtures/performance-budget-stage1-v1.json",
+        "docs/performance/STAGE1_EVIDENCE_CAPTURE.md"
+      ],
+      "depends_on": [
+        "CS-012",
+        "EH-003",
+        "EH-004",
+        "EH-005"
+      ],
+      "inputs": [
+        "Consumed contract: Diagnostics/RunValidity v1.",
+        "Consumed outputs: bounded recorder, arena shell, and short-route shell.",
+        "Consumed policy: provisional Windows performance acceptance."
+      ],
+      "outputs": [
+        "EvidencePerformanceProbe",
+        "Performance probe tests",
+        "Stage 1 performance-budget fixture",
+        "Capture procedure document"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: tools/evidence/fixtures/performance-budget-stage1-v1.json only. Save/content/registry impact: none.",
+        "Hooks observe and annotate; they never alter time scale, simulation, collision, quality behavior, or scene contents to improve results.",
+        "Rollback: remove owned files and performance annotations. Prototype debt: thresholds are versioned provisional evidence values, not hidden tuning."
+      ],
+      "acceptance_criteria": [
+        "The probe records warm-up, capture duration, frame-time percentiles, managed allocations, scene-load duration, memory, and configured object-budget counters.",
+        "Capture windows and payloads are bounded and emit CS-012 warnings/invalidity when samples are incomplete, clock-invalid, or overrun.",
+        "Quality-profile changes are recorded and cannot change hidden game rules."
+      ],
+      "verification": [
+        "Automated: percentile calculation, warm-up exclusion, zero-sample, clock reversal, allocation bound, object counter, and quality-identity tests.",
+        "Manual/playable: capture empty arena and short-route baselines and inspect locally exported summaries."
+      ],
+      "proof_required": [
+        "EvidencePerformanceProbeTests log",
+        "Empty-shell arena/route baseline summaries",
+        "Versioned performance-budget fixture"
+      ],
+      "edge_cases": [
+        "capture shorter than warm-up",
+        "counter unavailable",
+        "background pause",
+        "sample buffer overflow"
+      ],
+      "non_goals": [
+        "no optimization work",
+        "no gameplay stress population",
+        "no hardware pass claim"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "performance",
+        "measurement-integrity"
+      ],
+      "handoff_notes": "EH-008 packages these summaries; later combat and reliability batches populate the same hooks with representative workloads.",
+      "notes": "Milestone-cap spend: 0.30 focused lead days."
+    },
+    {
+      "id": "EH-008",
+      "title": "Generate immutable evidence manifests and checksums",
+      "summary": "Create a deterministic offline evidence-manifest generator binding identity, configuration, validity, diagnostics, performance summaries, file inventory, and SHA-256 checksums.",
+      "objective": "Make every captured evidence package reviewable, immutable, and detectably incomplete or modified.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "tools/evidence/build_evidence_manifest.py",
+        "tools/evidence/schemas/evidence-manifest-v1.schema.json",
+        "tools/evidence/tests/test_build_evidence_manifest.py",
+        "docs/release/EVIDENCE_ARTIFACT_MANIFEST.md"
+      ],
+      "depends_on": [
+        "CS-002",
+        "CS-012",
+        "UF-010",
+        "EH-001",
+        "EH-002",
+        "EH-003",
+        "EH-007"
+      ],
+      "inputs": [
+        "Consumed contracts: Identity v1 and Diagnostics/RunValidity v1.",
+        "Consumed foundation: UF-010 Windows artifact entrypoint.",
+        "Consumed outputs: identity, configuration, diagnostics, validity, and performance summaries."
+      ],
+      "outputs": [
+        "Deterministic evidence-manifest generator",
+        "Manifest schema",
+        "Generator tests",
+        "Artifact/checksum documentation"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: evidence-manifest-v1.schema.json only. Save/content/registry impact: none.",
+        "Generated manifests are regenerate-only, canonical, path-normalized, machine-neutral, and exclude secrets, temporary files, and absolute local paths.",
+        "Rollback: remove generator/schema/tests/docs; existing evidence remains readable but is not accepted as formally manifested. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Identical evidence inputs yield byte-identical canonical manifests and checksums; changed, missing, extra, or reordered files are detected.",
+        "The manifest binds build/content/tuning identity, config/seed, session/attempt IDs, validity, diagnostics bounds, performance capture, tool version, and artifact inventory.",
+        "A failed or incomplete Windows build from UF-010 cannot be marked as a valid immutable artifact."
+      ],
+      "verification": [
+        "Automated: canonical order, SHA-256 vector, path normalization, tamper, missing file, extra file, invalid session, and cross-directory reproducibility tests.",
+        "Manual/playable: generate two packages from copied inputs and compare byte-for-byte manifests offline."
+      ],
+      "proof_required": [
+        "Manifest generator test log",
+        "Two byte-identical sample manifests",
+        "Tamper-detection example"
+      ],
+      "edge_cases": [
+        "case-only path collision",
+        "symlink or traversal path",
+        "partial write",
+        "checksum file included in its own digest"
+      ],
+      "non_goals": [
+        "no public signing infrastructure",
+        "no cloud upload",
+        "no release-store packaging"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "checksums",
+        "artifact-integrity"
+      ],
+      "handoff_notes": "EH-009 uses this generator for Windows smoke output; EH-010 validates and reviews manifested sessions.",
+      "notes": "Milestone-cap spend: 0.35 focused lead days."
+    },
+    {
+      "id": "EH-009",
+      "title": "Provide edit-mode, play-mode, and Windows smoke entrypoints",
+      "summary": "Provide three explicit local entrypoints that run the evidence identity/configuration checks, scene/session smoke, and UF-010 Windows build smoke with manifested outputs.",
+      "objective": "Make the Stage 1 evidence environment reproducible from clean commands without introducing CI, release, or gameplay implementation.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "tests-verification",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "tools/evidence/run_editmode_smoke.ps1",
+        "tools/evidence/run_playmode_smoke.ps1",
+        "tools/evidence/run_windows_build_smoke.ps1",
+        "Assets/ShooterMover/Tests/PlayMode/EvidenceHarness/EvidenceEntrypointSmokeTests.cs",
+        "docs/verification/evidence-harness/SMOKE_ENTRYPOINTS.md"
+      ],
+      "depends_on": [
+        "UF-009",
+        "UF-010",
+        "EH-006",
+        "EH-008"
+      ],
+      "inputs": [
+        "Consumed foundation: UF-009 edit/play smoke coverage and UF-010 Windows build entrypoint.",
+        "Consumed outputs: session lifecycle and evidence manifest generator."
+      ],
+      "outputs": [
+        "Edit-mode smoke script",
+        "Play-mode smoke script",
+        "Windows build smoke script",
+        "Entrypoint integration test",
+        "Operator documentation"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: none. Save/content/registry impact: none.",
+        "Scripts are local/offline, fail fast, use repository-relative paths, preserve exit codes, and never modify accepted planning or task artifacts.",
+        "Rollback: remove owned scripts/test/docs and retain lower-level UF/EH tools. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "Each entrypoint resolves the canonical config, captures identity, emits bounded diagnostics, records validity, and writes a manifested result to a caller-selected output directory.",
+        "Edit-mode and play-mode entrypoints exercise their intended test layers; Windows smoke invokes UF-010 and verifies the built artifact starts, loads the harness shell, restarts, exits, and manifests.",
+        "Missing Unity/editor/build prerequisites produce a technical failure with actionable diagnostics, never a false pass."
+      ],
+      "verification": [
+        "Automated: argument parsing, repository-relative paths, nonzero-exit propagation, stale-output rejection, manifest creation, and entrypoint integration tests.",
+        "Manual/playable: run all three documented commands on Windows and inspect separate valid/failed output examples."
+      ],
+      "proof_required": [
+        "Entrypoint test log",
+        "Command transcripts for edit/play/Windows smoke",
+        "Manifest from a successful Windows smoke"
+      ],
+      "edge_cases": [
+        "path contains spaces",
+        "stale output directory",
+        "Unity process timeout",
+        "build starts but harness does not load"
+      ],
+      "non_goals": [
+        "no CI workflow",
+        "no release signing",
+        "no gameplay acceptance claim"
+      ],
+      "estimated_size": "M",
+      "risk_tags": [
+        "smoke-tests",
+        "windows-build"
+      ],
+      "handoff_notes": "EH-010 is the review/validity gate for these outputs; later batches may call the entrypoints but may not weaken their failure semantics.",
+      "notes": "Milestone-cap spend: 0.40 focused lead days."
+    },
+    {
+      "id": "EH-010",
+      "title": "Define the Stage 1 evidence protocol and invalid-session review",
+      "summary": "Define and validate the operator/human-review protocol for evidence preparation, execution, invalid-session classification, technical rerun, and shell review.",
+      "objective": "Turn harness output into trustworthy review evidence without treating technical failures as negative fun votes or claiming gameplay proof.",
+      "context": "Milestone S1.0 Foundation and evidence harness; frozen product question: Can Shooter Mover provide a reproducible, rapidly resettable Stage 1 evidence environment with build identity, deterministic setup, bounded local diagnostics, benchmark combat space, a short-route shell, quick restart, and trustworthy evidence capture before gameplay systems are implemented?",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "docs-devex",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "blocked",
+      "priority": "P0",
+      "milestone": "S1.0 Foundation and evidence harness",
+      "allowed_areas": [
+        "tools/evidence/validate_evidence_session.py",
+        "tools/evidence/tests/test_validate_evidence_session.py",
+        "docs/verification/evidence-harness/STAGE1_EVIDENCE_PROTOCOL.md",
+        "docs/verification/evidence-harness/INVALID_SESSION_REVIEW.md"
+      ],
+      "depends_on": [
+        "CS-012",
+        "EH-003",
+        "EH-006",
+        "EH-008",
+        "EH-009"
+      ],
+      "inputs": [
+        "Consumed contract: Diagnostics/RunValidity v1.",
+        "Consumed outputs: diagnostics, session lifecycle, immutable manifest, and all smoke entrypoints.",
+        "Consumed milestone rule: invalid sessions are reliability failures and are rerun."
+      ],
+      "outputs": [
+        "Evidence-session validator",
+        "Validator tests",
+        "Stage 1 operator/reviewer protocol",
+        "Invalid-session classification guide"
+      ],
+      "implementation_notes": [
+        "Forbidden: accepted planning/requirements, assembly-generated task artifacts, credentials or secrets, unowned serialized assets, Assets/ShooterMover/Runtime/Domain/, Assets/ShooterMover/ContentPackages/, and gameplay implementation. Keep diagnostics local/offline and bounded.",
+        "Serialized owner: none. Save/content/registry impact: none.",
+        "The validator reads manifested evidence only and never repairs, edits, reclassifies, or uploads a session automatically.",
+        "Rollback: remove validator/tests/docs; no evidence round may proceed without an approved replacement protocol. Prototype debt: none."
+      ],
+      "acceptance_criteria": [
+        "The protocol fixes preparation, identity/config checks, allowed diagnostic commands, restart handling, required artifacts, human shell-review questions, and sign-off fields.",
+        "Invalid-session reasons are explicit, monotonic, traceable to CS-012, and separated from behavior/fun observations; invalid technical sessions require rerun.",
+        "The validator rejects checksum drift, missing proof, conflicting validity, unmanifested files, unsupported protocol versions, and incomplete human review."
+      ],
+      "verification": [
+        "Automated: valid package, checksum drift, missing proof, conflicting validity, unsupported version, duplicate review, and invalid-session classification tests.",
+        "Manual/playable: independently review one valid shell session and one intentionally invalid session using only the package and documents."
+      ],
+      "proof_required": [
+        "Evidence-session validator test log",
+        "Completed valid-session review example",
+        "Completed invalid-session/rerun example"
+      ],
+      "edge_cases": [
+        "reviewer changes classification without reason",
+        "diagnostic command used during frozen run",
+        "more than one attempted manifest",
+        "human review missing"
+      ],
+      "non_goals": [
+        "no external player study",
+        "no gameplay fun threshold claim",
+        "no automatic approval or upload"
+      ],
+      "estimated_size": "S",
+      "risk_tags": [
+        "protocol",
+        "human-review"
+      ],
+      "handoff_notes": "Human review stops here. The next guided batch is movement-thruster only after this task batch is accepted; no gameplay implementation is assigned by this decomposition step.",
+      "notes": "Milestone-cap spend: 0.30 focused lead days."
+    }
+  ]
+}
