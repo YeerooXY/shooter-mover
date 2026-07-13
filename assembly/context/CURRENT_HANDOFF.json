@@ -6,7 +6,7 @@
   "active_role": "requirements_reviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": 1,
-  "last_verified_commit": "32504f8a5409dcc95a95af8beda4dfe0ba9b9a14",
+  "last_verified_commit": "d80d7ea7d90ff408a378cea2354eff4f40645c84",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -57,7 +57,7 @@
   ],
   "current_section": "requirements_handoff",
   "handoff_status": "requirements_pr_open_review_repairs_applied",
-  "last_completed_item": "Requirements review blockers repaired: Project DNA, reviewer prompt, mission-only shop-refresh clarification, and deterministic handoff coverage added",
+  "last_completed_item": "Requirements review blockers repaired and final handoff artifacts aligned: Project DNA, reviewer prompt, mission-only shop-refresh clarification, and deterministic resume coverage",
   "current_item": "Review and approve requirements pull request #1",
   "next_action": "Review pull request #1, Finalize Shooter Mover requirements and Planning handoff, for any remaining blocking inconsistency. Merge only with explicit human approval. After merge, start a fresh Planning Agent context from merged main and create the architecture and repository planning package in a separate planning pull request. Do not create the canonical task backlog during Planning.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
@@ -68,7 +68,7 @@
     "status": "requirements_persisted_review_repairs_committed",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T19:14:12+02:00",
+    "last_persisted_at": "2026-07-13T19:15:36+02:00",
     "batching_rule": "Product Discovery is closed; no further decision batch is active",
     "queued_decisions": []
   },
@@ -83,5 +83,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T19:14:12+02:00"
+  "updated_at": "2026-07-13T19:15:36+02:00"
 }
