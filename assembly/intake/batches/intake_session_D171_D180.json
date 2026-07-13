@@ -1,0 +1,166 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "shooter-mover",
+  "batch_range": "D-171-D-180",
+  "status": "persisted",
+  "verification_status": "verified",
+  "accepted_answers": [
+    {
+      "decision_id": "D-171",
+      "topic": "activated_teleport_services",
+      "answer": "checkpoint_respawn_and_fast_travel_with_few_shop_enabled_teleports",
+      "constraints": [
+        "Allow travel only among previously activated teleports under safe non-combat conditions",
+        "Keep most teleports focused on transport and checkpoint functions",
+        "Allow only a few authored shop-enabled teleports per map",
+        "Show activation destination and shop state clearly on the room map",
+        "Preserve a later co-op regrouping path without implementing co-op now"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-172",
+      "topic": "teleport_shop_inventory_refresh_policy",
+      "answer": "stable_per_run_stock_with_optional_run_bound_refreshes",
+      "constraints": [
+        "Roll each shop inventory once at mission-run start",
+        "Keep stock and sold-out state stable unless an explicit refresh is spent",
+        "Use only mission-bound refresh resources that cannot be banked",
+        "Do not refresh stock through revisits death or teleport travel",
+        "Defer persistent reroll currencies and mature shop systems"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-173",
+      "topic": "shop_refresh_resource_acquisition",
+      "answer": "earned_run_only_refresh_tokens",
+      "constraints": [
+        "Award tokens from optional rooms challenges strongboxes or selected encounters",
+        "Delete unused tokens when the mission ends",
+        "Keep tokens scarce enough to preserve shop choices",
+        "Prevent repeated farming inside one run",
+        "Allow authored or deterministic placement where route learning matters"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-174",
+      "topic": "mission_loot_banking_trigger",
+      "answer": "specific_authored_banking_rooms",
+      "constraints": [
+        "Keep eligible collected rewards provisional until deposited",
+        "Lose or roll back unbanked eligible loot on death according to checkpoint rules",
+        "Secure completed teleport-shop purchases immediately",
+        "Distinguish secured and at-risk loot clearly in the interface",
+        "Do not bank all loot automatically at every teleport"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-175",
+      "topic": "banking_room_form",
+      "answer": "dedicated_secure_storage_rooms",
+      "constraints": [
+        "Use a small number of distinct vault uplink cargo-transfer or storage rooms",
+        "Give banking rooms a unique map icon and visual language",
+        "Allow proximity to teleports without merging the functions by default",
+        "Avoid placements that force tedious ordinary backtracking",
+        "Keep the room type reusable for later larger missions"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-176",
+      "topic": "death_world_and_temporary_state_rollback",
+      "answer": "persistent_world_progress_with_temporary_state_rollback",
+      "constraints": [
+        "Keep defeated enemies defeated after death",
+        "Keep explored rooms objectives and permanent route changes",
+        "Remove unsecured loot on death",
+        "Reset temporary resources buffs deployed objects and loose pickups after the active checkpoint",
+        "Classify persistent checkpoint temporary and banked state explicitly",
+        "Prevent duplication and death farming without respawning cleared enemies"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-177",
+      "topic": "solo_save_and_quit_during_mission",
+      "answer": "automatic_suspend_save_outside_combat_for_solo_only",
+      "constraints": [
+        "Allow a single resumable suspend snapshot from cleared or safe solo rooms",
+        "Preserve exact current run state needed for continuity",
+        "Do not expose the suspend snapshot as a rewind or duplication slot",
+        "Use versioned atomic validated local save handling",
+        "Do not imply that co-op sessions can be suspended"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-178",
+      "topic": "coop_session_continuity_and_elimination",
+      "answer": "no_coop_suspension_host_continuity_personal_lives_and_spectating",
+      "constraints": [
+        "Do not allow a live co-op mission to be suspended for later continuation",
+        "Support host migration transferable authority or an equivalent continuation design",
+        "Let remaining players continue if the original host leaves",
+        "Give each player a separate limited life allowance",
+        "Move players with zero lives into spectator mode",
+        "Fail the run only when no active players remain",
+        "Keep networking outside the offline internal MVP"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-179",
+      "topic": "initial_coop_life_loss_and_revive_model",
+      "answer": "immediate_life_consumption_and_respawn_with_downed_state_deferred",
+      "constraints": [
+        "Consume one personal life immediately when health reaches zero",
+        "Respawn according to active co-op checkpoint rules",
+        "Apply spectator mode when no personal lives remain",
+        "Defer teammate revives and downed-state systems for post-MVP experimentation",
+        "Do not implement revive infrastructure for the offline internal MVP"
+      ],
+      "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-180",
+      "topic": "coop_personal_life_replenishment",
+      "answer": "fixed_non_replenishable_lives_scaled_by_difficulty",
+      "constraints": [
+        "Set a fixed personal life allowance at mission start",
+        "Do not replenish lives during the run",
+        "Determine the exact allowance by difficulty",
+        "Preserve personal rather than shared-team lives",
+        "Treat player-count tuning as a later balance variable",
+        "Defer extra-life rewards unless playtesting shows excessive spectator downtime"
+      ],
+      "verification_status": "verified"
+    }
+  ],
+  "open_questions_added": [
+    "Co-op loot ownership and reward distribution",
+    "Co-op difficulty and enemy scaling by player count",
+    "Co-op join-in-progress and reconnection rules",
+    "Exact spectator camera and information rules",
+    "Host migration or authority-continuity implementation approach",
+    "Teleport fast-travel sequence-break safeguards",
+    "Exact banking-room placement and secured-loot categories",
+    "Solo suspend-save invalidation and crash-recovery details",
+    "Exact per-difficulty life allowances after co-op prototyping",
+    "Whether a downed-and-revive system improves later co-op play"
+  ],
+  "next_action": {
+    "type": "ask_question",
+    "decision_id": "D-181",
+    "topic": "coop_loot_ownership_and_reward_distribution",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether future co-op uses fully shared loot and currency, individually instanced rewards for each player, or a hybrid where ordinary rewards are personal while major authored rewards are shared or duplicated for everyone. Preserve the room-based map, dedicated banking rooms, provisional unsecured loot, stable per-run teleport shops, personal non-replenishable lives, spectator clutch play, host-continuity requirement, permanent individual progression, complete offline solo play, and post-MVP status of co-op. Include fairness, competition and griefing, duplicate weapon handling, banking and death-loss semantics, disconnected or spectating players, shop purchases, save ownership, balance, implementation complexity, and compatibility with later matchmaking. Put the recommendation after all A/B/C options at the end of the card. Queue D-181 through D-190 and persist at D-190 unless the user changes the batching rule or requests a context handoff."
+  },
+  "persistence": {
+    "last_persisted_decision": "D-180",
+    "unsaved_decisions": 0,
+    "next_batch_boundary": "D-190"
+  }
+}
