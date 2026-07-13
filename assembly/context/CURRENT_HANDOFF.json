@@ -2,12 +2,12 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "planning_review",
+  "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
-  "active_branch": "ai/planning-amend-stage1-weapons-v1",
-  "active_pr": 8,
-  "last_verified_commit": "435269af72ccfaefab2faf04f91539fc2ff23c05",
+  "active_branch": "ai/task-split-shooter-mover-v1-continuation-5",
+  "active_pr": 9,
+  "last_verified_commit": "f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -39,19 +39,20 @@
     "assembly/generated/task_batches/stage1-evidence-harness.json",
     "assembly/generated/task_batches/movement-thruster.json",
     "assembly/generated/task_batches/combat-four-mount.json",
+    "assembly/generated/task_batches/stage1-weapons.json",
     "assembly/intake/LIVE_DECISIONS.md"
   ],
-  "current_section": "stage1_weapon_planning_amendment",
-  "handoff_status": "planning_amendment_review",
-  "last_completed_item": "Combat-four-mount PR #7 merged into main at 435269af72ccfaefab2faf04f91539fc2ff23c05. The human lead then selected exactly five simple Stage 1 weapons and numeric-only empowered profiles; no game implementation or weapon task batch was created.",
-  "current_item": "Human review of draft PR #8 for the Stage 1 weapon planning amendment on ai/planning-amend-stage1-weapons-v1.",
-  "next_action": "Review and merge Stage 1 weapon planning-amendment draft PR #8. After it merges, start a fresh Task Splitter context from current main, present the revised WP-001 through WP-012 titles, owner lane and exact dependencies, and stop. Do not generate stage1-weapons before that explicit proposal approval.",
+  "current_section": "guided_task_batch_generation",
+  "handoff_status": "task_split_in_progress",
+  "last_completed_item": "Generated and executable-validator-validated the human-approved WP-001 through WP-012 amended five-weapon batch with numeric-only empowerment, exclusive package ownership, generated-registry safety, temporary presentation, formal evidence and an explicit human quality gate; no game implementation was performed.",
+  "current_item": "Human review of draft PR #9 for the validated stage1-weapons batch on ai/task-split-shooter-mover-v1-continuation-5.",
+  "next_action": "Review and merge stage1-weapons draft PR #9. After it merges, start a fresh Task Splitter context from current main, present EN-001 through EN-013 titles, owner lanes and exact dependencies for stage1-enemies-route, and stop. Do not generate the enemy/route batch before explicit proposal approval.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "Eleven planned agent batches remain to be proposed, approved and generated one at a time.",
+    "Ten planned agent batches remain to be proposed, approved and generated one at a time.",
     "Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 cap of 5 days; Dispatch requires human re-estimation, scope sequencing or an approved milestone-cap amendment. Evidence-critical contracts, accessibility, diagnostics, reliability and performance may not be cut to hide the overrun.",
     "Movement-thruster estimates 6.15 focused lead days against the accepted S1.1 cap of 8 days, leaving 1.85 days for human review and bounded evidence-led iteration; Dispatch must preserve that reserve.",
-    "Combat-four-mount direct estimates consume 4.50 focused lead days of the accepted S1.2 ten-day cap, leaving only 5.50 days for the amended five-weapon set, combat HUD, temporary audiovisual/readability work, human review and bounded iteration; the Stage 1 weapon batch must stay sharply bounded.",
+    "Combat-four-mount plus stage1-weapons consume 9.10 focused lead days of the accepted S1.2 ten-day cap, leaving only 0.90 day for review reserve and bounded approved follow-up; Dispatch may not add generalized tooling, mature balance depth or extra weapon breadth.",
     "The three remaining Stage 2 weapon identities are deliberately deferred until Stage 1 evidence and require a later planning amendment before Stage 2 combat-content generation or dispatch.",
     "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
     "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
@@ -60,17 +61,18 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T22:19:05+02:00",
+    "last_persisted_at": "2026-07-13T22:35:44+02:00",
     "planning_run": "shooter-mover-v1",
-    "task_decomposition": "5 of 16 batches generated and validated",
+    "task_decomposition": "6 of 16 batches generated and validated",
     "generated_batches": [
       "unity-foundation",
       "shared-contracts-core",
       "stage1-evidence-harness",
       "movement-thruster",
-      "combat-four-mount"
+      "combat-four-mount",
+      "stage1-weapons"
     ],
-    "next_batch": "stage1-weapons",
+    "next_batch": "stage1-enemies-route",
     "queued_decisions": []
   },
   "verification_boundary": {
@@ -93,14 +95,19 @@
       "combat-four-mount.json contains exactly CB-001 through CB-011 and all 11 tasks pass the current executable task-batch validator",
       "all CB tasks are size S or M, use generated/earlier dependencies, and keep four mount state, power banks, aim, behavior plans and fault isolation engine-independent",
       "CB-003 introduces no passive power regeneration; CB-008 depends on MT-007 lifecycle conventions; CB-010 projects HUD state from plain C# Application code; CB-011 requires recorded human playable review",
-      "the five generated batches contain 56 tasks with an acyclic topologically ordered dependency graph and 193 non-overlapping owned path claims",
       "the combat batch records 4.50 focused lead days against the accepted S1.2 ten-day cap and preserves 5.50 days for remaining S1.2 work",
-      "no Unity game implementation, canonical backlog, collaboration assignment, weapon content, enemy, mission, reward or persistence task batch was created"
+      "stage1-weapons.json contains exactly WP-001 through WP-012 and all 12 tasks pass the current executable task-batch validator",
+      "all WP tasks are size S or M; WP-003 through WP-007 own separate package folders and may proceed in parallel after WP-001 and WP-002",
+      "the amended roster is exactly Blaster Machine Gun, Shotgun, Rocket Launcher, Arc Gun and Ricochet Gun; empowerment is numeric-only, Arc is capped at three additional targets and Ricochet at two wall bounces",
+      "WP-009 validates registry inputs without editing CS-011-owned generated outputs; WP-012 is the explicit human playable identity/readability gate",
+      "the six generated batches contain 68 tasks with an acyclic topologically ordered dependency graph and 227 non-overlapping owned path claims",
+      "the weapon batch records 4.60 focused lead days; combined S1.2 direct spend is 9.10 of 10 days and preserves 0.90 day of review reserve",
+      "no Unity game implementation, canonical backlog, collaboration assignment, weapon content implementation, enemy content, mission, reward or persistence task batch was created"
     ],
     "task_split_blockers": [
       "S1.0 cap pressure: Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap",
       "S1.1 reserve: movement-thruster direct task estimates consume 6.15 of 8 focused lead days, leaving 1.85 days for review and evidence-led iteration",
-      "S1.2 reserve: combat-four-mount consumes 4.50 of 10 focused lead days, leaving 5.50 days for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review and bounded iteration",
+      "S1.2 reserve: combat-four-mount plus stage1-weapons consume 9.10 of 10 focused lead days, leaving 0.90 day for review reserve and bounded approved follow-up",
       "Stage 2 roster blocker: the three remaining weapon identities require an evidence-backed planning amendment after the Stage 1 gate"
     ]
   },
@@ -110,5 +117,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T22:19:05+02:00"
+  "updated_at": "2026-07-13T22:35:44+02:00"
 }
