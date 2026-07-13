@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "94449437b1a9b057ca312d817b9ccc1eeaa4909b",
+  "last_verified_commit": "7d1e2b880a243b531fb58c6529c827cac6a4641a",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -20,6 +20,7 @@
     "assembly/intake/batches/LIVE_DECISIONS_D141_D141.md",
     "assembly/intake/batches/LIVE_DECISIONS_D142_D150.md",
     "assembly/intake/batches/LIVE_DECISIONS_D151_D160.md",
+    "assembly/intake/batches/LIVE_DECISIONS_D161_D170.md",
     "assembly/intake/intake_session.json",
     "assembly/intake/batches/intake_session_D101_D110.json",
     "assembly/intake/batches/intake_session_D111_D120.json",
@@ -28,27 +29,28 @@
     "assembly/intake/batches/intake_session_D141_D141.json",
     "assembly/intake/batches/intake_session_D142_D150.json",
     "assembly/intake/batches/intake_session_D151_D160.json",
+    "assembly/intake/batches/intake_session_D161_D170.json",
     "assembly/intake/RECOVERED_INTAKE_DRAFT.md",
     "assembly/prompts/00-intake-interviewer.md"
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-160 — Layered automated validation plus playable proof",
-  "current_item": "D-161 — Windows MVP input and rebinding baseline",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the Windows-first internal MVP supports keyboard and mouse only, keyboard and mouse plus gamepad with fully rebindable actions, or keyboard mouse gamepad and an early touch-control abstraction for future Android. Preserve Unity with C#, the hybrid domain-core architecture, four simultaneously equipped weapons, directional thruster burst, shallow angled top-down flat-plane play, permanent offline play, Windows-first delivery, and future Android support. Include aiming precision, twin-stick suitability, accessibility, rebinding, UI prompt switching, test burden, Unity Input System architecture, future touch adaptation, scope cost, and risk of delaying mobile-specific work. Put the recommendation after all A/B/C options at the end of the card. Queue D-161 through D-170 and persist at D-170 unless the user changes the batching rule or requests a context handoff.",
+  "last_completed_item": "D-170 — Frequent automatic teleport checkpoints approximately every six or seven rooms",
+  "current_item": "D-171 — Activated teleport services during a mission",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether activated teleports act only as automatic respawn checkpoints, also permit fast travel among activated teleports, or additionally provide broader services such as healing, loadout changes, or extraction. Preserve the interconnected authored room map, permanent cleared-room state during a live checkpoint segment, persistent environmental hazards, automatic teleport cadence of approximately six or seven rooms, checkpoint respawning, future co-op compatibility, Windows-first offline MVP, and short-session convenience. Include exploration pacing, backtracking, speedrunning, farming or sequence-break risk, UI and save-state complexity, co-op regrouping, player recovery, and reuse in later larger missions. Put the recommendation after all A/B/C options at the end of the card. Queue D-171 through D-180 and persist at D-180 unless the user changes the batching rule or requests a context handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
     "The product repository uses a bootstrap kit installed before the latest handoff framework additions; current resume files were added directly for this test",
     "The authoritative Intake Interviewer prompt path assembly/prompts/00-intake-interviewer.md is currently missing from this branch and should be restored from the framework before final intake generation",
-    "The D-101 through D-160 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
+    "The D-101 through D-170 decisions are persisted as authoritative batch-extension artifacts and should be consolidated into the primary live log and session snapshot during a later maintenance pass"
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-160",
-    "last_persisted_at": "2026-07-13T14:55:00+02:00",
-    "batching_rule": "Queue D-161 through D-170 and persist at D-170",
+    "last_persisted_decision": "D-170",
+    "last_persisted_at": "2026-07-13T15:16:38+02:00",
+    "batching_rule": "Queue D-171 through D-180 and persist at D-180",
     "queued_decisions": []
   },
   "framework": {
@@ -56,5 +58,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T14:55:00+02:00"
+  "updated_at": "2026-07-13T15:16:38+02:00"
 }
