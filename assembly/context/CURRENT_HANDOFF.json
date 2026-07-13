@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "e5153346916f44aeb70593e28196d2bca9072fdd",
+  "last_verified_commit": "6743e10bf31a63e6eda156cd08077c9d6318c4b1",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -45,9 +45,9 @@
   ],
   "current_section": "mvp_proof_and_delivery",
   "handoff_status": "active_batch_in_progress",
-  "last_completed_item": "D-217 — Isolated content packages with generated integration and explicit shared-system ownership",
-  "current_item": "D-218 — Room and encounter authoring granularity",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting how Stage 2 rooms and encounters should be represented and assembled in Unity: one monolithic level scene with embedded encounters; every room as a fully self-contained additive scene; or a hybrid modular room package where rooms are independently testable prefabs or additive scene units with explicit doorway, encounter, navigation, persistence, lighting, hazard, reward, and performance contracts, while a lightweight level graph assembles authored connections and global mission state. Preserve the interconnected factory map, additive-scene direction, room-clear persistence, checkpoints and teleports, dedicated banking rooms, permanent route changes, deterministic authored layouts with bounded variation, stable IDs, isolated content packages, generated registries, automated plus playable validation, and future co-op room-instance needs. Include iteration speed, Unity merge conflicts, cross-room references, lighting and sorting, save-state granularity, loading hitches, memory, nav and collision seams, independent previews, reuse, agent ownership, and risk of overengineering. Put the recommendation after all A/B/C options at the end of the card. D-211 through D-217 are checkpointed as queued but not formally batch-persisted; continue through D-220 unless the user changes the cadence or requests a handoff.",
+  "last_completed_item": "D-218 — Modular room packages assembled through a lightweight authored level graph",
+  "current_item": "D-219 — Canonical mission and room runtime-state ownership",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting where authoritative mission and room runtime state lives: primarily inside loaded Unity scene objects; in one centralized mutable mission manager with rooms reaching into it directly; or in a typed engine-independent mission-state model keyed by stable IDs, with rooms acting as projections and submitting validated state transitions through explicit commands or events. Preserve modular room packages, lightweight level graph assembly, permanent cleared-room and route state, checkpoint rollback groups, dedicated banking, fast travel, suspend snapshots, versioned local saves, additive loading, automated validation, future co-op coarse canonical state, and plain-C# domain logic. Include death rollback, scene unload and reload, save migration, debugging, testability, accidental direct mutation, performance, authoring ergonomics, transactional reward safety, and risk of overengineering. Put the recommendation after all A/B/C options at the end of the card. D-211 through D-218 are checkpointed as queued but not formally batch-persisted; ask D-219 and D-220, then persist the complete D-211 through D-220 batch unless the user changes the cadence or requests a handoff.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -57,7 +57,7 @@
   ],
   "persistence": {
     "status": "batch_in_progress",
-    "unsaved_decisions": 7,
+    "unsaved_decisions": 8,
     "last_persisted_decision": "D-210",
     "last_persisted_at": "2026-07-13T17:50:00+02:00",
     "batching_rule": "Checkpoint queued state after several questions for flow; formally persist D-211 through D-220 at D-220 unless an earlier handoff is requested",
@@ -163,6 +163,21 @@
           "Human and AI-agent branches follow the same ownership and merge boundaries"
         ],
         "verification_status": "verified"
+      },
+      {
+        "decision_id": "D-218",
+        "topic": "room_and_encounter_authoring_structure",
+        "choice": "C",
+        "answer": "modular_room_packages_assembled_by_lightweight_authored_level_graph",
+        "constraints": [
+          "Each meaningful room or encounter is an independently previewable and testable prefab or additive scene package",
+          "Room contracts cover stable identity doorway connections encounter lifecycle enemy and pickup ownership persistent state lighting sorting collision navigation teleports shops banking rewards and performance budgets",
+          "A lightweight authored level graph defines room connections and controls mission-wide structure and state",
+          "Small corridors and decorative connectors may remain lightweight prefabs rather than requiring a full scene each",
+          "Cross-room communication uses stable identifiers and explicit events instead of fragile direct scene-object references",
+          "The structure must support independent branch ownership future streaming and later co-op room instances without overengineering the Stage 2 slice"
+        ],
+        "verification_status": "verified"
       }
     ]
   },
@@ -171,5 +186,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T17:55:25+02:00"
+  "updated_at": "2026-07-13T18:00:00+02:00"
 }
