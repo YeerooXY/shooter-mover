@@ -6,7 +6,7 @@
   "active_role": "intake_interviewer",
   "active_branch": "assembly/bootstrap-shooter-mover",
   "active_pr": null,
-  "last_verified_commit": "4f0805c07553c3f0bc13a6b9069f23ec770cbac2",
+  "last_verified_commit": "a92e4a2c22dac67465388cd9681ff1214553a7d7",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -19,9 +19,9 @@
   ],
   "current_section": "product_discovery_recovery",
   "handoff_status": "active_ready_to_continue",
-  "last_completed_item": "D-080 — Minimal capped passive shield recovery extended through skills and difficulty rulesets",
-  "current_item": "D-081 — Mid-level four-weapon loadout change rules",
-  "next_action": "Ask exactly one concise A/B/C decision card selecting whether the player may swap equipped weapons anywhere while outside combat, only at activated checkpoints and shops with immediate equipping of shop purchases, or only before beginning a level attempt. Preserve the four-weapon instant-switch combat model, immediate usability of shop purchases, universal armory inventory, deterministic speedrunning, checkpoint fast travel, later Android controls, and future co-op. Include experimentation freedom, inventory-menu interruption, encounter counter-picking, shop value, implementation and save-state complexity, competitive verification, and difficulty-specific restrictions. Put the agent recommendation after all A/B/C options, at the end of the card. Queue accepted decisions D-081 through D-090 and persist the complete batch at D-090 before asking D-091, unless a context handoff or explicit user instruction requires earlier persistence.",
+  "last_completed_item": "D-090 — Capped persistent power-ammo reserve with an authored per-level starting minimum",
+  "current_item": "D-091 — Anywhere normal-ammo purchase interaction",
+  "next_action": "Ask exactly one concise A/B/C decision card selecting whether anywhere normal-ammo purchases use a pausing radial or menu confirmation, a dedicated non-pausing quick-buy action for a fixed bundle, or automatic purchase when normal ammo becomes critically low or empty. Preserve generous shared normal ammo, gameplay-currency-only purchases, power ammo remaining earned, high-speed combat, PC and gamepad controls, later Android controls, future co-op where one player cannot pause the world, and deterministic competitive verification. Include accidental purchases, menu interruption, survival tension, price and bundle clarity, input pressure, accessibility options, exploit resistance, implementation complexity, and how easy versus extreme modes may differ. Put the agent recommendation after all A/B/C options, at the end of the card. Queue accepted decisions D-091 through D-100 and persist the complete batch at D-100 before asking D-101, unless a context handoff or explicit user instruction requires earlier persistence.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
     "Recovered decisions D-001 through D-039 require re-verification before final requirements",
@@ -31,9 +31,9 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_decision": "D-080",
-    "last_persisted_at": "2026-07-13T12:07:24+02:00",
-    "batching_rule": "Queue ten Product Discovery decisions per batch; next persistence boundary D-090",
+    "last_persisted_decision": "D-090",
+    "last_persisted_at": "2026-07-13T12:45:00+02:00",
+    "batching_rule": "Queue ten Product Discovery decisions per batch; next persistence boundary D-100",
     "queued_decisions": []
   },
   "framework": {
@@ -41,5 +41,5 @@
     "installed_ref": "main after merged PRs 31-34",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T12:07:24+02:00"
+  "updated_at": "2026-07-13T12:45:00+02:00"
 }
