@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-053
+- Last persisted decision: D-054
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-053 were verified directly by the user after recovery.
+D-040 through D-054 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -170,13 +170,24 @@ D-040 through D-053 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-054 — Modifier compensation for lower base weapon levels
+
+- Status: accepted
+- Choice: B — bounded bridge weapons with contextual older-weapon value
+- Accepted requirement: Exceptional stars, augments, and enchantment synergy may let an older weapon compete with ordinary weapons from several progression levels later, creating a meaningful bridge period, but a strong authored successor should eventually overtake it.
+- User-supplied constraints: Every newly introduced weapon or successor should feel meaningful, while older weapons should retain contextual value through distinct handling, range, damage profile, status effects, efficiency, encounter matchups, or build synergy rather than becoming immediate vendor trash.
+- Balance rule: Modifier power must use explicit budgets and bounded level-gap compensation. Older jackpot weapons may remain situationally useful after losing raw-stat leadership, but should not become permanent universal best-in-slot outliers.
+- Design implication: Weapon comparison must communicate both effective power and contextual strengths instead of reducing every decision to a single damage number.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The amount by which stars and augments may compensate for a lower base weapon level now outranks remaining shop pricing details because it determines whether jackpot older weapons are temporary curiosities, meaningful bridge items, or permanent best-in-slot outliers.
+Continue with the highest-weight unresolved Product Discovery question. Shop pricing philosophy now outranks remaining economy details because the shop must support experimentation and rare jackpot purchases without making currency farming or shop fishing the dominant progression path.
 
 ## Revision rules
 
