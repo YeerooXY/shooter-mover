@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 53,
-  "last_completed_decision": "D-053",
+  "questions_asked": 54,
+  "last_completed_decision": "D-054",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -202,6 +202,22 @@
         "Exact quality ranges overlap and jackpot tails require playtesting"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-054",
+      "topic": "modifier_compensation_for_lower_base_weapon_level",
+      "answer": "bounded_bridge_weapons_with_contextual_older_weapon_value",
+      "constraints": [
+        "Exceptional stars augments and enchantment synergy may bridge several progression levels",
+        "A strong authored successor should eventually overtake an older jackpot weapon",
+        "Every newly introduced weapon or successor should feel meaningful",
+        "Older weapons should retain situational value through handling range damage profile status effects efficiency encounter matchups or build synergy",
+        "Modifier power must use explicit budgets and bounded level-gap compensation",
+        "Older jackpot weapons may remain contextually useful after losing raw-stat leadership",
+        "Do not allow permanent universal best-in-slot outliers",
+        "Weapon comparisons must communicate contextual strengths rather than only one damage number"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -212,8 +228,8 @@
   },
   "assumptions": [],
   "open_questions": [
-    "How strongly stars and augments may compensate for a lower base weapon level",
-    "Remaining shop pricing rules",
+    "Shop pricing philosophy for ordinary weapons rare rolls and rerolls",
+    "Remaining duplicate conversion and inventory management details",
     "Remaining level-design and exploration details",
     "Story and world",
     "Accessibility requirements",
@@ -229,13 +245,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "modifier_compensation_for_lower_base_weapon_level",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether strong stars and augments provide only minor bonuses, may bridge a bounded base-level gap and make exceptional older weapons temporarily competitive, or may preserve old weapons as permanent endgame contenders. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "shop_pricing_philosophy",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether shop weapons are broadly affordable for experimentation, priced as meaningful investments with resale and escalating jackpot costs, or deliberately scarce luxury purchases. Include ordinary weapons, rare high-augment rolls, and reroll costs. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-053"
+    "last_persisted_decision": "D-054"
   }
 }
