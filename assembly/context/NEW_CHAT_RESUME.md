@@ -1,4 +1,4 @@
-# Resume Shooter Mover Requirements Review and Planning Handoff
+# Resume Shooter Mover Planning Review and Task-Split Handoff
 
 Continue from committed repository state in `YeerooXY/shooter-mover`.
 
@@ -7,46 +7,68 @@ Continue from committed repository state in `YeerooXY/shooter-mover`.
 1. Read `AGENTS.md` completely.
 2. Read `project_workspace.json`.
 3. Read `assembly/context/CURRENT_HANDOFF.json`.
-4. Verify the active repository, branch, pull-request, and merge state.
+4. Verify the active repository, branch, pull request, head commit, and merge state.
 5. Read every path listed in `authoritative_artifacts`.
-6. Read the complete prompt for the active role under `assembly/prompts/` or from `YeerooXY/ai-assembly-line` if the local copy is absent.
+6. Read the complete active-role prompt at `YeerooXY/ai-assembly-line/prompts/00-planning-agent.md` while the planning PR is open.
 7. Follow the exact `next_action` in `CURRENT_HANDOFF.json`.
 
-## Requirements checkpoint
+## Lifecycle checkpoint
 
-- Product Discovery is closed with verified decisions through D-233.
-- D-231 through D-233 were persisted as an early partial batch because the user requested handoff.
-- D-234 was presented but not selected and is not an accepted requirement.
-- D-001 through D-039 remain excluded unverified recovery material.
-- The verified one-level internal factory slice supersedes the recovered three-level MVP.
-- `assembly/intake/project_intake.json`, `assembly/intake/PROJECT_DNA.md`, and `assembly/requirements/REQUIREMENTS.md` contain the core requirements package.
-- `assembly/requirements/REQUIREMENTS_REVIEW_CLARIFICATIONS.md` preserves the accepted bounded mission-only shop-refresh rule from D-172 and D-173 without adding mature economy scope.
-- `assembly/prompts/09-requirements-reviewer.md` is the complete active-role prompt while the requirements pull request remains open.
-- Planning must begin only after the requirements/bootstrap pull request is reviewed and merged.
+- Requirements pull request #1 is merged into `main`.
+- Product Discovery remains closed with verified decisions D-040 through D-233.
+- D-001 through D-039 remain excluded recovery material.
+- D-234 was never selected; the planning package defines a prototype-debt register and Stage 2 exit policy without treating D-234 as accepted Product Discovery.
+- Planning run `shooter-mover-v1` lives on `ai/planning-shooter-mover-v1` in draft pull request #2.
+- Pull requests remain the approval boundary; planning artifacts are drafts until PR #2 merges.
 
-## Stable product direction
+## Planning package
 
-- Windows-first, offline-capable, fully 2D Unity/C# shooter with a shallow angled top-down view.
-- Signature regenerating directional thruster.
-- Four mounted weapons fire concurrently toward one aim point with independent cadence and power banks.
-- One complete automated-weapons-factory level is the internal MVP.
-- Roughly six to eight base weapons, four or five ordinary machine roles, and an upgraded-droid climax.
-- Minimal real strongbox, stable-per-run shop with bounded mission-only refresh tokens, banking, save, completion, and replay loop.
-- Practical accessibility, structured local diagnostics, stable 1080p/60 primary target, versioned atomic saves, and repeatable content pipelines.
-- Android and online co-op are post-MVP.
-- One human lead with four or more concurrent AI agents supported by isolated owned tasks and protected integration.
+Canonical machine-readable outputs:
 
-## Review repair checkpoint
+- `assembly/generated/project_spec.json`
+- `assembly/generated/repo_plan.json`
+- `assembly/generated/agent_prompts.json`
+- `assembly/generated/slots_db.json`
+- `assembly/generated/planning_runs_index.json`
 
-The requirements-review blockers identified after PR creation have been repaired:
+Human-readable planning trace:
 
-- the missing Project DNA exists;
-- the active requirements-reviewer role has a complete local prompt;
-- the accepted mission-bound shop-refresh rule is represented explicitly;
-- the deterministic handoff lists the complete authoritative package.
+- `assembly/planning_runs/shooter-mover-v1/ARCHITECTURE.md`
+- `assembly/planning_runs/shooter-mover-v1/MILESTONES.md`
+- `assembly/planning_runs/shooter-mover-v1/CONTENT_PLAN.md`
+- `assembly/planning_runs/shooter-mover-v1/POLICIES.md`
+- `assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md`
+
+The four required JSON outputs are mirrored under `assembly/planning_runs/shooter-mover-v1/outputs/`.
+
+## Stable planning direction
+
+- One Unity repository with an engine-independent plain-C# domain core and explicit Unity adapters.
+- `MissionRunState` is authoritative; loaded rooms and UI are projections that submit validated commands.
+- Typed ScriptableObject definitions use stable IDs, generated registries, deterministic review snapshots, and isolated content packages.
+- Persistence uses atomic versioned snapshots, rolling backups, and a compact idempotent journal for important transitions.
+- Stage 1 has a 43-focused-lead-day or 10-calendar-week hard review cap and proves intrinsic replay desire.
+- Stage 2 has a 77-focused-lead-day or 20-calendar-week hard review cap and proves the complete factory plus production pipeline.
+- The planned slice contains eight base weapons, five ordinary machine roles, a Foreman elite, a Prototype Overseer climax, and a 24-room four-zone factory.
+- Asset provenance, 3-2-1 source recovery, dependency locking, prototype-debt exits, immutable formal artifacts, and a provisional Windows hardware matrix are defined.
+- Android, online co-op, remote services, full campaign content, mature item modifiers, and public-release systems remain postponed.
+
+## Review focus
+
+Review PR #2 for blocking inconsistency in:
+
+- authority and module boundaries;
+- milestone caps and behavioral pass criteria;
+- representative weapon and enemy roster;
+- 24-room factory topology;
+- hardware and performance targets;
+- provenance, backup, dependency, and prototype-debt policy;
+- lane ownership and Task Splitter handoff.
+
+Do not reject the plan merely because exact tuning coefficients remain prototype variables. Do not add a canonical task backlog to the planning PR.
 
 ## Exact next action
 
-If the requirements pull request is not merged, review the package and report any remaining blocking inconsistency; otherwise merge only with explicit human approval.
+If PR #2 is open, review it and repair only blocking planning issues on `ai/planning-shooter-mover-v1`. Merge only with explicit human approval.
 
-If the requirements package is already merged into `main`, switch to the Planning Agent and create the planning and architecture package in a new branch and pull request. Do not generate the canonical task backlog in the planning stage.
+If PR #2 is already merged into `main`, switch to the framework Task Splitter role at `YeerooXY/ai-assembly-line/prompts/06-task-splitter.md`. Create the canonical task batch index, task batches, task backlog, and updated collaboration state in a new branch and separate pull request. Do not start implementation before the task-split PR merges.

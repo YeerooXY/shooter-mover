@@ -2,7 +2,7 @@
   "schema_version": "0.2.0",
   "project_id": "shooter-mover",
   "name": "Shooter Mover",
-  "status": "requirements_review",
+  "status": "planning_review",
   "default_view": "overview",
   "repository": {
     "provider": "github",
@@ -66,12 +66,14 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review and merge the requirements/bootstrap pull request, then start a fresh Planning Agent context from merged main.",
+    "human_next_step": "Review draft planning pull request #2. After it is approved and merged, start a fresh Task Splitter context from merged main and create the canonical task decomposition in a separate pull request.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
       "Product Discovery is closed through verified decision D-233.",
       "D-001 through D-039 remain excluded unverified recovery material.",
-      "Planning and task decomposition belong in later separate pull requests."
+      "Planning run shooter-mover-v1 is open for review in pull request #2.",
+      "The planning pull request intentionally contains no task backlog, task batches, stable task IDs, or implementation.",
+      "Task decomposition and implementation remain blocked until their separate lifecycle gates are merged."
     ]
   }
 }
