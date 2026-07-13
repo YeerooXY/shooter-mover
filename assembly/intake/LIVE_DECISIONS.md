@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-056
+- Last persisted decision: D-057
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-056 were verified directly by the user after recovery.
+D-040 through D-057 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -203,13 +203,26 @@ D-040 through D-056 were verified directly by the user after recovery.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
+### D-057 — Duplicate conversion and inventory cleanup
+
+- Status: accepted
+- Choice: B — choose between selling and dismantling
+- Accepted requirement: Unwanted, obsolete, and duplicate weapons may be sold for ordinary shop currency or dismantled into bounded materials whose yields reflect factors such as base level, rarity, stars, augments, and enchantment categories.
+- Material-use rule: Dismantling materials may support tightly controlled services such as minor weapon improvement, limited enchantment rerolling, utility crafting, or later progression systems, but must not allow players to freely manufacture perfect weapons.
+- Economy rule: Selling offers immediate flexible purchasing power; dismantling offers slower, more specialized progression value. Both returns remain partial so opening undesirable loot is useful without becoming an optimal infinite-farming loop.
+- Inventory rule: Provide favourites, item locking, bulk marking, automatic junk filters, sorting and comparison tools, and a safe “keep best copy” workflow so large quantities of randomized loot can be processed quickly.
+- Anti-farming rule: Material yields, crafting costs, and low-tier returns must prevent easy duplicate farming from overtaking difficult content and high-tier strongbox progression.
+- Explicit exclusion: Do not make direct same-weapon duplicate fusion the primary upgrade path.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
 ## Guided intake presentation preference
 
 - Place the agent recommendation after all A/B/C options, at the end of each decision card.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. Duplicate conversion and inventory cleanup now outrank remaining economy details because randomized strongboxes and broad shops will generate frequent unwanted items, and those results must remain useful without making duplicate farming the dominant progression path.
+Continue with the highest-weight unresolved Product Discovery question. Persistent armory and carried-in-level storage rules now outrank remaining economy details because the game needs generous collection support without letting players swap an unlimited arsenal anywhere or interrupt combat for constant loot triage.
 
 ## Revision rules
 
