@@ -5,14 +5,14 @@ Status: recovery and Product Discovery log. Final acceptance occurs through the 
 ## Persistence status
 
 - Active branch: `assembly/bootstrap-shooter-mover`
-- Last persisted decision: D-055
+- Last persisted decision: D-056
 - Unsaved accepted decisions: 0
 
 ## Recovery note
 
 Decisions D-001 through D-039 were reconstructed from the surviving chat transcript and preserved in `RECOVERED_INTAKE_DRAFT.md`. They require section-by-section re-verification before becoming final requirements.
 
-D-040 through D-055 were verified directly by the user after recovery.
+D-040 through D-056 were verified directly by the user after recovery.
 
 ## Decision log
 
@@ -188,7 +188,18 @@ D-040 through D-055 were verified directly by the user after recovery.
 - Accepted requirement: Ordinary shop weapons should be reasonably affordable while still requiring a meaningful choice. Strong stars, augment levels, desirable enchantments, later weapon families, and exceptional combinations increase prices sharply; screenshot-worthy jackpot weapons may require savings from several runs.
 - Economy rule: Selling or dismantling old and duplicate equipment returns only partial value. Weapon purchases, inventory rerolls, and other shop services compete for the same core currency so spending decisions remain consequential.
 - User-supplied constraints: The shop should support experimentation without replacing floor strongboxes as the primary elite-loot path, and income, resale values, rarity multipliers, and reroll costs require playtesting.
-- Open proposal: An extremely rare token may reserve or fix an unaffordable shop item through rerolls or future visits, allowing eventual purchase while creating a significant resource choice; its exact persistence, capacity, and expiry rules remain unresolved.
+- Supersedes: none
+- Source: guided Product Discovery recovery
+
+### D-056 — Rare shop-item reservation token
+
+- Status: accepted
+- Choice: B — extremely rare one-slot layaway token
+- Accepted requirement: Consuming an extremely rare token moves one shop item into a dedicated long-term reservation slot. The reserved item survives inventory rerolls, shop refreshes, future visits, and completed runs until it is purchased or deliberately discarded.
+- Capacity rule: Only one item may be reserved at a time across the player profile. Another reservation cannot be made until the slot is cleared, and the token is consumed immediately when the item is reserved.
+- Economy rule: Reservation preserves the exact rolled weapon but does not discount it, reduce its original price, or accelerate earning the required currency.
+- Persistence rule: The reserved item does not expire. The opportunity cost of occupying the sole slot supplies the pressure that an artificial timer otherwise would.
+- Distinction: Ordinary item locks only protect selected stock during the current shop's limited rerolls; the rare layaway token is the only long-term preservation mechanism.
 - Supersedes: none
 - Source: guided Product Discovery recovery
 
@@ -198,7 +209,7 @@ D-040 through D-055 were verified directly by the user after recovery.
 
 ## Next discovery state
 
-Continue with the highest-weight unresolved Product Discovery question. The rare shop-item reservation mechanic now outranks remaining economy details because it determines whether miracle shop rolls create motivating long-term goals or remove too much urgency and scarcity.
+Continue with the highest-weight unresolved Product Discovery question. Duplicate conversion and inventory cleanup now outrank remaining economy details because randomized strongboxes and broad shops will generate frequent unwanted items, and those results must remain useful without making duplicate farming the dominant progression path.
 
 ## Revision rules
 
