@@ -22,7 +22,8 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`; its branch is permanently closed.
 - Weapon planning-amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`; its branch is permanently closed.
 - Stage 1 weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`; its branch is permanently closed.
-- Active planning-amendment branch: `ai/planning-amend-stage1-enemies-v1`; draft PR #10 awaits human review, and the enemy task batch remains ungenerated until the amendment is merged.
+- Stage 1 enemy planning-amendment PR #10 is merged at `ef4a6bbed6940d472ce29cde7bb5ecd658c85c87`; its branch is permanently closed.
+- Active task-split branch: `ai/task-split-shooter-mover-v1-continuation-6`; draft PR #11 contains the validated enemy/route batch and awaits human review.
 - The index contains 16 agent-sized batches and 186 predeclared stable task IDs.
 - Generated and schema-validated: `unity-foundation` with 11 tasks.
 - Generated and schema-validated: `shared-contracts-core` with 12 tasks.
@@ -30,8 +31,9 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - Generated and schema-validated: `movement-thruster` with 12 tasks using `MT-001` through `MT-012`.
 - Generated and executable-validator-validated: `combat-four-mount` with 11 tasks using `CB-001` through `CB-011`.
 - Generated and executable-validator-validated: `stage1-weapons` with 12 tasks using `WP-001` through `WP-012`.
-- Progress: 6 of 16 batches generated and validated, 68 generated tasks total.
-- Next batch: `stage1-enemies-route` with 13 tasks.
+- Generated and executable-validator-validated: `stage1-enemies-route` with 13 tasks using `EN-001` through `EN-013`.
+- Progress: 7 of 16 batches generated and validated, 81 generated tasks total.
+- Next batch: `stage1-accessibility-reliability` with 12 tasks.
 - No Unity/game implementation, canonical backlog, or collaboration assignment exists.
 - Recorded S1.0 blocker: Foundation, Contract Steward, and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap. Do not hide this by cutting contracts, evidence, accessibility, diagnostics, reliability, save safety, or performance.
 - S1.1 movement-thruster tasks estimate 6.15 focused lead days against the accepted eight-day cap, leaving 1.85 days for human review and bounded evidence-led iteration.
@@ -41,6 +43,8 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never cont
 - The remaining three Stage 2 weapon identities are deferred until Stage 1 evidence and require a later planning amendment.
 - The amended Stage 1 roster is Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and the easy Four-Blaster Elite. The elite replaces Foreman Elite; Prototype Overseer remains Stage 2.
 - Stage 2 still targets five ordinary enemy roles. The one remaining ordinary identity is deferred until Stage 1 evidence and a later amendment.
+- EN-004 through EN-008 own separate package folders and may run in parallel after EN-001 through EN-003. EN-010 and EN-011 consume evidence scenes read-only. EN-013 is the explicit human enemy, boss and route quality gate.
+- The enemy/route batch consumes 5.75 of the S1.3 ten-day cap, preserving 4.25 days for review and bounded evidence-led follow-up.
 - Full graph validation remains pending until every planned batch file exists; forward references to predeclared later IDs are not evidence of a complete validated backlog.
 
 ## Guided rule
@@ -63,6 +67,6 @@ Keep each batch at 10–13 small tasks. Never append commits to a merged branch.
 
 ## Next action
 
-Review and merge the Stage 1 enemy planning-amendment PR. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the four amended ordinary enemy roles, easy Four-Blaster Elite and short-route encounters, then stop without writing files. Generate that batch only after explicit human continuation.
+Review and merge the Stage 1 enemy/route task-split draft PR. After it is merged, start a fresh Task Splitter context from current `main`. Its first response must propose `AR-001` through `AR-012` titles, owner lanes and exact dependencies for Stage 1 accessibility, reliability, diagnostics, performance and formal evidence, then stop without writing files. Generate that batch only after explicit human continuation.
 
 Stage 2 tasks must remain blocked behind the explicit Stage 1 gate task dependency. Do not build `task_backlog.json`, finalize collaboration state, assign implementation work, or begin Dispatch until all 16 batches are generated and validated.

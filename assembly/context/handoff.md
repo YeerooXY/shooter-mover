@@ -6,7 +6,7 @@
 
 Requirements PR #1 and planning PR #2 are merged into `main`. PR #3 merged the first partial Unity Foundation batch. PR #4 recovered and merged the Contract Steward and Evidence Harness batches at `5bded6d0b9b133b3851bb1998ebb776e9356c3b5`. Both earlier task-split branches are permanently closed. No Unity or game implementation may begin until the complete task decomposition and canonical backlog are reviewed and merged.
 
-Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; its branch is permanently closed. Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`. Weapon planning-amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`. Stage 1 weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`. Those branches are permanently closed. The replacement Stage 1 enemy roster is recorded on fresh branch `ai/planning-amend-stage1-enemies-v1` in draft PR #10 for human review before any enemy task batch is generated.
+Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b441`; Combat PR #7 is merged at `435269af72ccfaefab2faf04f91539fc2ff23c05`; weapon amendment PR #8 is merged at `f15f2737ca3efe51e8b5c3a8ed80731c95ea9d33`; weapon task-split PR #9 is merged at `385c73bc6e268020ad5f26d2ab77f36aaac9922d`; and enemy amendment PR #10 is merged at `ef4a6bbed6940d472ce29cde7bb5ecd658c85c87`. Those branches are permanently closed. The validated enemy/route batch is on fresh branch `ai/task-split-shooter-mover-v1-continuation-6` in draft PR #11 for human review.
 
 ## Durable task state
 
@@ -19,8 +19,9 @@ Movement PR #6 is merged into `main` at `b9942630abd66663a037ad3e64ddde4c62b9b44
 - Generated batch: `assembly/generated/task_batches/movement-thruster.json`
 - Generated batch: `assembly/generated/task_batches/combat-four-mount.json`
 - Generated batch: `assembly/generated/task_batches/stage1-weapons.json`
-- Progress: 6 of 16 batches generated
-- Next batch: `stage1-enemies-route`
+- Generated batch: `assembly/generated/task_batches/stage1-enemies-route.json`
+- Progress: 7 of 16 batches generated
+- Next batch: `stage1-accessibility-reliability`
 - Canonical backlog: not generated
 - Collaboration assignments and claims: not finalized
 
@@ -32,13 +33,17 @@ The combat batch covers immutable runtime profiles, independent mount state mach
 
 The weapon batch covers the five-package baseline, one bounded shared projectile primitive, separately owned Blaster Machine Gun, Shotgun, Rocket Launcher, Arc Gun and Ricochet Gun packages, deterministic loadout fixtures, registry-input validation, temporary accessible presentation, formal package evidence and an explicit human identity/readability gate. Empowerment is numeric-only; Arc remains capped at three additional targets and Ricochet at two wall bounces.
 
-The proposed enemy amendment freezes Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and an easy Four-Blaster Elite. The elite has one health model, four blaster origins, mild telegraphed spread and a simple deterministic cadence; it replaces Foreman Elite without changing Prototype Overseer's Stage 2 role. One remaining Stage 2 ordinary role is intentionally deferred until Stage 1 evidence.
+The accepted enemy amendment freezes Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and an easy Four-Blaster Elite. The elite has one health model, four blaster origins, mild telegraphed spread and a simple deterministic cadence; it replaces Foreman Elite without changing Prototype Overseer's Stage 2 role. One remaining Stage 2 ordinary role is intentionally deferred until Stage 1 evidence.
+
+The enemy/route batch defines a shared engine-independent foundation, five separately owned packages, registry-input validation, read-only benchmark and route encounter composition, formal evidence and an explicit human quality gate. EN-004 through EN-008 and then EN-010/EN-011 provide the parallel lanes.
 
 ## Validation boundary
 
 The current executable AI Assembly Line validator passes the updated batch index and all six generated batches. The index contains 16 unique batches and 186 unique predeclared IDs. The weapon batch contains exactly `WP-001` through `WP-012`; every task is size `S` or `M`; and dependencies point only to generated earlier tasks or earlier `WP-*` tasks.
 
-The generated 68-task dependency graph is acyclic and topologically ordered. Its 227 exact file/bounded-folder ownership claims have no exact or parent-folder overlap. WP-003 through WP-007 own separate package folders and may run in parallel. WP-009 validates temporary registry outputs without editing CS-011-owned generated files. WP-011 reads but never edits EH-004's benchmark scene.
+The prior six-batch 68-task dependency graph was acyclic and topologically ordered. Its 227 exact file/bounded-folder ownership claims had no exact or parent-folder overlap. WP-003 through WP-007 own separate package folders and may run in parallel. WP-009 validates temporary registry outputs without editing CS-011-owned generated files. WP-011 reads but never edits EH-004's benchmark scene.
+
+With the enemy/route batch, the executable validator passes 81 tasks in topological order. The 261 exact path claims have no duplicates. EN-009 never edits generated registry outputs, and EN-010/EN-011 never edit the evidence-owned scenes. Direct S1.3 spend is 5.75 of 10 days, preserving 4.25 days for review and bounded follow-up.
 
 The weapon batch records 4.60 focused lead days. Combined with combat-four-mount, S1.2 direct spend is 9.10 of 10 days, preserving 0.90 day for review reserve and bounded approved follow-up. WP-012 requires recorded human playable review before downstream work may claim weapon identity, audiovisual feedback or readability acceptance.
 
@@ -73,6 +78,6 @@ The one remaining Stage 2 ordinary enemy identity is also deferred until Stage 1
 
 ## Exact next action
 
-Review and merge the Stage 1 enemy planning-amendment PR. After it merges, start a fresh context from current `main`, present proposed `EN-001` through `EN-013` titles, owner lanes and exact dependencies for the amended four ordinary roles, easy Four-Blaster Elite and short route, and stop. Generate that one batch only after explicit human continuation.
+Review and merge the Stage 1 enemy/route task-split draft PR. After it merges, start a fresh context from current `main`, present proposed `AR-001` through `AR-012` titles, owner lanes and exact dependencies for Stage 1 accessibility, reliability, diagnostics, performance and formal evidence, and stop. Generate that one batch only after explicit human continuation.
 
 Do not generate gameplay code, finalize the backlog, assign agents, or begin Dispatch yet.

@@ -1,0 +1,1007 @@
+{
+    "schema_version":  "0.1.0",
+    "batch_id":  "stage1-enemies-route",
+    "source_plan_path":  "assembly/planning_runs/shooter-mover-v1/TASK_SPLITTER_HANDOFF.md",
+    "tasks":  [
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P0",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-001",
+                      "title":  "Define the Stage 1 enemy-package baseline",
+                      "summary":  "Define the immutable authoring boundary for the amended five-enemy Stage 1 roster.",
+                      "objective":  "Create package descriptors and deterministic validation without changing accepted combat, movement, encounter or registry contracts.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Enemies/Stage1/Stage1EnemyPackageDescriptor.cs",
+                                            "Assets/ShooterMover/ContentPackages/Enemies/Stage1/Stage1EnemyPackageValidator.cs",
+                                            "Assets/ShooterMover/Tests/EditMode/Enemies/Stage1EnemyPackageValidatorTests.cs",
+                                            "Assets/ShooterMover/ContentPackages/Enemies/Stage1/STAGE1_ENEMY_PACKAGES_V1.md"
+                                        ],
+                      "depends_on":  [
+                                         "CS-001",
+                                         "CS-002",
+                                         "CS-004",
+                                         "CS-008",
+                                         "CS-009",
+                                         "CS-011",
+                                         "EH-002"
+                                     ],
+                      "blocks":  [
+                                     "EN-002",
+                                     "EN-004",
+                                     "EN-005",
+                                     "EN-006",
+                                     "EN-007",
+                                     "EN-008"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: StableId v1, ContentVersion v1, Combat Messages v1, Encounter Lifecycle v1, Typed Content References v1 and Generated Registry v1.",
+                                     "Accepted roster and boss boundary from AMENDMENT_STAGE1_ENEMIES.md."
+                                 ],
+                      "outputs":  [
+                                      "Stage 1 enemy-package descriptor",
+                                      "Five-package validator",
+                                      "Authoring-boundary tests and documentation"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: accepted planning, shared contracts, generated registry outputs, scenes, weapons, movement/combat foundations, mission state, saves, rewards, Packages and ProjectSettings.",
+                                                   "Serialized ownership: none. Save-schema impact: none. Content-registry impact: descriptor inputs only; CS-011 exclusively owns regenerated outputs.",
+                                                   "Rollback: remove the four owned files before consumers land. Prototype debt: none."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Exactly the five amended stable IDs and ordinary/elite classifications validate.",
+                                                  "Unknown, duplicate, malformed or out-of-bound package behavior fails deterministically.",
+                                                  "The elite profile rejects phases, denial pulses, mortars, reinforcements, teleporting and bullet-hell behavior."
+                                              ],
+                      "verification":  [
+                                           "Automated: run roster, duplicate-ID, classification and forbidden-capability validator tests.",
+                                           "Manual: contract review confirms all packages fit accepted adapters without a parallel enemy architecture."
+                                       ],
+                      "proof_required":  [
+                                             "Stage1EnemyPackageValidatorTests log",
+                                             "accepted/rejected descriptor fixtures",
+                                             "contract review note"
+                                         ],
+                      "edge_cases":  [
+                                         "duplicate stable ID",
+                                         "missing telegraph reference",
+                                         "ordinary role marked elite",
+                                         "elite profile requests a phase"
+                                     ],
+                      "non_goals":  [
+                                        "no concrete enemy package",
+                                        "no final balance",
+                                        "no generated-output edit",
+                                        "no Stage 2 enemy selection"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "content-contract",
+                                        "strong-review"
+                                    ],
+                      "handoff_notes":  "All enemy packages consume this boundary; generated outputs remain CS-011-owned.",
+                      "notes":  "Milestone-cap spend: 0.30 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P0",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-002",
+                      "title":  "Implement deterministic enemy health, contact, and lifecycle rules",
+                      "summary":  "Provide plain-C# authoritative enemy health, damage, contact and death transitions.",
+                      "objective":  "Create one deterministic enemy actor state used by every package without making Unity objects durable-state owners.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/Runtime/Domain/Enemies/EnemyActorState.cs",
+                                            "Assets/ShooterMover/Runtime/Domain/Enemies/EnemyActorStepper.cs",
+                                            "Assets/ShooterMover/Runtime/Domain/Enemies/EnemyContactPolicy.cs",
+                                            "Assets/ShooterMover/Tests/EditMode/Enemies/EnemyActorStepperTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "CS-004",
+                                         "CS-008",
+                                         "MT-006",
+                                         "EN-001"
+                                     ],
+                      "blocks":  [
+                                     "EN-003",
+                                     "EN-004",
+                                     "EN-005",
+                                     "EN-006",
+                                     "EN-007",
+                                     "EN-008"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Combat Messages v1 and Encounter Lifecycle v1; accepted weighted-contact/grace policy and EN-001 descriptors."
+                                 ],
+                      "outputs":  [
+                                      "Immutable enemy actor state",
+                                      "Deterministic health/contact/lifecycle stepper",
+                                      "Domain invariant tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: Unity adapters/assets, enemy packages, player state, movement/combat foundations, registries, scenes and persistence.",
+                                                   "Serialized ownership: none. Save-schema impact: none; Stage 1 actor state is session-only. Content-registry impact: none.",
+                                                   "Rollback: remove owned domain files. Prototype debt: none."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Damage, bounded contact, death and encounter notifications are deterministic and emitted once.",
+                                                  "Enemy state remains engine-independent and cannot own player velocity or durable mission state.",
+                                                  "Disposable-impact death and ordinary contact damage are separately representable."
+                                              ],
+                      "verification":  [
+                                           "Automated: damage ordering, overkill, repeated contact, grace, disposal and death-once tests.",
+                                           "Manual: architecture review confirms no Unity or MissionRunState ownership leak."
+                                       ],
+                      "proof_required":  [
+                                             "EnemyActorStepperTests log",
+                                             "state-transition table",
+                                             "architecture review note"
+                                         ],
+                      "edge_cases":  [
+                                         "simultaneous lethal damage/contact",
+                                         "zero health",
+                                         "repeat collision",
+                                         "despawn after death"
+                                     ],
+                      "non_goals":  [
+                                        "no navigation",
+                                        "no package tuning",
+                                        "no effects",
+                                        "no persistence"
+                                    ],
+                      "estimated_size":  "M",
+                      "risk_tags":  [
+                                        "authoritative-state",
+                                        "combat-boundary"
+                                    ],
+                      "handoff_notes":  "EN-003 is the sole Unity bridge consumer for this foundation.",
+                      "notes":  "Milestone-cap spend: 0.50 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P0",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-003",
+                      "title":  "Bridge enemy actors to Unity 2D",
+                      "summary":  "Connect deterministic enemy decisions to targeting, Rigidbody2D movement, hits and contacts.",
+                      "objective":  "Provide bounded Unity 2D adapters shared by enemy packages while preserving plain-C# authority.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyActor2DAdapter.cs",
+                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyTarget2DAdapter.cs",
+                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyContact2DAdapter.cs",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/EnemyActor2DAdapterTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "UF-003",
+                                         "CS-004",
+                                         "MT-009",
+                                         "MT-010",
+                                         "CB-009",
+                                         "EN-002"
+                                     ],
+                      "blocks":  [
+                                     "EN-004",
+                                     "EN-005",
+                                     "EN-006",
+                                     "EN-007",
+                                     "EN-008"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Combat Messages v1; accepted Unity 2D contact, actor lifecycle and confirmed-hit adapters; EN-002 actor state."
+                                 ],
+                      "outputs":  [
+                                      "Enemy Unity 2D actor adapter",
+                                      "Target/contact adapters",
+                                      "Play-mode boundary tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: player adapters, shared movement/combat files, concrete packages, scenes, registries, ProjectSettings and 3D physics.",
+                                                   "Serialized ownership: none beyond test-created transient objects. Save-schema impact: none. Content-registry impact: none.",
+                                                   "Rollback: remove four owned files. Prototype debt: none."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Adapters apply domain decisions in fixed-step 2D without becoming state authority.",
+                                                  "Hits and contacts translate exactly once and disabled/destroyed targets are safe.",
+                                                  "No adapter edits player velocity or bypasses accepted contact rules."
+                                              ],
+                      "verification":  [
+                                           "Automated: play-mode target loss, contact, hit, disable, restart and 2D-only tests.",
+                                           "Manual: dependency review confirms package folders can consume adapters without editing them."
+                                       ],
+                      "proof_required":  [
+                                             "EnemyActor2DAdapterTests log",
+                                             "2D boundary snapshot",
+                                             "dependency review note"
+                                         ],
+                      "edge_cases":  [
+                                         "target destroyed mid-step",
+                                         "multiple colliders",
+                                         "disabled actor",
+                                         "rapid restart"
+                                     ],
+                      "non_goals":  [
+                                        "no concrete AI role",
+                                        "no scene edit",
+                                        "no navigation mesh",
+                                        "no final effects"
+                                    ],
+                      "estimated_size":  "M",
+                      "risk_tags":  [
+                                        "unity-adapter",
+                                        "shared-system",
+                                        "strong-review"
+                                    ],
+                      "handoff_notes":  "EN-004 through EN-008 may consume but never edit these files.",
+                      "notes":  "Milestone-cap spend: 0.45 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-004",
+                      "title":  "Build the Pursuer Drone package",
+                      "summary":  "Create the basic walking melee/contact pursuer.",
+                      "objective":  "Implement direct readable pursuit and ordinary contact damage as the baseline enemy role.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Enemies/PursuerDrone/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/PursuerDronePackageTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "MT-010",
+                                         "EN-001",
+                                         "EN-002",
+                                         "EN-003"
+                                     ],
+                      "blocks":  [
+                                     "EN-009"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Combat Messages v1 and Encounter Lifecycle v1; accepted movement actor lifecycle and enemy foundation."
+                                 ],
+                      "outputs":  [
+                                      "Pursuer Drone package",
+                                      "Package-owned definition/prefab/tuning/presentation",
+                                      "Play-mode tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: all other enemy packages, shared adapters, scenes, generated outputs, weapons, player movement and persistence.",
+                                                   "Serialized ownership: every asset under PursuerDrone only. Save-schema impact: none. Content-registry impact: contributes enemy.pursuer-drone input only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: temporary package-owned presentation expires at final-art replacement."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "The drone approaches the player directly and deals bounded ordinary contact damage.",
+                                                  "Pursuit stops safely on death, target loss or session reset.",
+                                                  "Shape, motion and warning remain readable without color."
+                                              ],
+                      "verification":  [
+                                           "Automated: pursuit, contact cadence, target-loss, death and restart tests.",
+                                           "Manual/playable: confirm it reads as the uncomplicated durable-enough baseline."
+                                       ],
+                      "proof_required":  [
+                                             "PursuerDronePackageTests log",
+                                             "package manifest",
+                                             "short readability capture"
+                                         ],
+                      "edge_cases":  [
+                                         "overlapping spawn",
+                                         "blocked path",
+                                         "target teleport",
+                                         "many pursuers"
+                                     ],
+                      "non_goals":  [
+                                        "no pathfinding framework",
+                                        "no ranged attack",
+                                        "no elite behavior",
+                                        "no final art"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "enemy-package",
+                                        "contact"
+                                    ],
+                      "handoff_notes":  "May run concurrently with EN-005 through EN-008; never edit their folders.",
+                      "notes":  "Milestone-cap spend: 0.35 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-005",
+                      "title":  "Build the Ram Droid package",
+                      "summary":  "Create the small fast low-health disposable impact attacker.",
+                      "objective":  "Implement readable collision pressure with one bounded impact hit followed by self-destruction.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Enemies/RamDroid/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/RamDroidPackageTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "MT-006",
+                                         "MT-009",
+                                         "EN-001",
+                                         "EN-002",
+                                         "EN-003"
+                                     ],
+                      "blocks":  [
+                                     "EN-009"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Combat Messages v1; accepted weighted contact/grace and Unity 2D contact adapters; enemy foundation."
+                                 ],
+                      "outputs":  [
+                                      "Ram Droid package",
+                                      "Package-owned definition/prefab/tuning/presentation",
+                                      "Play-mode tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: other packages, shared adapters, player velocity, scenes, registries and persistence.",
+                                                   "Serialized ownership: every asset under RamDroid only. Save-schema impact: none. Content-registry impact: contributes enemy.ram-droid input only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: temporary presentation expires at final-art replacement."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "The droid is faster, smaller and lower-health than the Pursuer Drone.",
+                                                  "First valid player impact deals one bounded hit and destroys the droid exactly once.",
+                                                  "Grace, wall contact and non-player collision cannot duplicate impact damage."
+                                              ],
+                      "verification":  [
+                                           "Automated: speed/health relation, impact-once, grace, wall, death and restart tests.",
+                                           "Manual/playable: confirm a clear non-color warning and fair reaction window."
+                                       ],
+                      "proof_required":  [
+                                             "RamDroidPackageTests log",
+                                             "impact-once trace",
+                                             "readability capture"
+                                         ],
+                      "edge_cases":  [
+                                         "simultaneous projectile death/impact",
+                                         "multi-collider player",
+                                         "wall collision",
+                                         "two droids impact together"
+                                     ],
+                      "non_goals":  [
+                                        "no explosion area damage",
+                                        "no spawning",
+                                        "no borrowed IP presentation",
+                                        "no final art"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "enemy-package",
+                                        "collision-once"
+                                    ],
+                      "handoff_notes":  "Original Ram Droid identity; disposable collision pressure only.",
+                      "notes":  "Milestone-cap spend: 0.35 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-006",
+                      "title":  "Build the Mobile Blaster Droid package",
+                      "summary":  "Create a moving ranged enemy that reuses the accepted Blaster projectile.",
+                      "objective":  "Implement simple movement, readable firing timing and bounded ranged pressure without cloning weapon logic.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Enemies/MobileBlasterDroid/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/MobileBlasterDroidPackageTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "CB-009",
+                                         "WP-002",
+                                         "WP-003",
+                                         "EN-001",
+                                         "EN-002",
+                                         "EN-003"
+                                     ],
+                      "blocks":  [
+                                     "EN-009"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Combat Messages v1; accepted Unity 2D execution adapter, projectile primitive, Blaster package and enemy foundation."
+                                 ],
+                      "outputs":  [
+                                      "Mobile Blaster Droid package",
+                                      "Package-owned definition/prefab/tuning/presentation",
+                                      "Play-mode tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: weapon package, projectile primitive, other enemies, shared adapters, scenes, registries and persistence.",
+                                                   "Serialized ownership: every asset under MobileBlasterDroid only. Save-schema impact: none. Content-registry impact: contributes enemy.mobile-blaster-droid input only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: temporary presentation expires at final-art replacement."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "The droid moves using simple deterministic positioning and fires the accepted Blaster projectile profile.",
+                                                  "Wind-up, projectile direction and recovery are readable and bounded.",
+                                                  "Target loss, death and restart cancel pending fire safely."
+                                              ],
+                      "verification":  [
+                                           "Automated: movement, cadence, projectile reuse, target-loss, death and restart tests.",
+                                           "Manual/playable: confirm ranged pressure remains distinguishable from the turret."
+                                       ],
+                      "proof_required":  [
+                                             "MobileBlasterDroidPackageTests log",
+                                             "reuse/dependency trace",
+                                             "readability capture"
+                                         ],
+                      "edge_cases":  [
+                                         "point-blank target",
+                                         "line obstruction",
+                                         "target destroyed during wind-up",
+                                         "many shooters"
+                                     ],
+                      "non_goals":  [
+                                        "no new projectile",
+                                        "no advanced strafing",
+                                        "no predictive aim",
+                                        "no final art"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "enemy-package",
+                                        "projectile-reuse"
+                                    ],
+                      "handoff_notes":  "May run concurrently with other package tasks and must not edit WP-owned files.",
+                      "notes":  "Milestone-cap spend: 0.40 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-007",
+                      "title":  "Build the Blaster Turret package",
+                      "summary":  "Create a stationary ranged enemy using the accepted Blaster projectile.",
+                      "objective":  "Implement a fixed-position shooter with a clear line-of-fire warning and simple cadence.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/BlasterTurretPackageTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "CB-009",
+                                         "WP-002",
+                                         "WP-003",
+                                         "EN-001",
+                                         "EN-002",
+                                         "EN-003"
+                                     ],
+                      "blocks":  [
+                                     "EN-009"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Combat Messages v1; accepted projectile primitive, Blaster package, Unity 2D execution adapter and enemy foundation."
+                                 ],
+                      "outputs":  [
+                                      "Blaster Turret package",
+                                      "Package-owned definition/prefab/tuning/presentation",
+                                      "Play-mode tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: weapon/projectile implementation, other enemies, shared adapters, scenes, registries and persistence.",
+                                                   "Serialized ownership: every asset under BlasterTurret only. Save-schema impact: none. Content-registry impact: contributes enemy.blaster-turret input only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: temporary presentation expires at final-art replacement."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "The turret remains stationary and fires the accepted Blaster projectile with deterministic timing.",
+                                                  "Line-of-fire warning remains legible without color and precedes every shot.",
+                                                  "Obstruction, target loss, death and restart cannot leave stale shots."
+                                              ],
+                      "verification":  [
+                                           "Automated: stationary, cadence, obstruction, target-loss, death and restart tests.",
+                                           "Manual/playable: confirm warning clarity and identity versus the mobile shooter."
+                                       ],
+                      "proof_required":  [
+                                             "BlasterTurretPackageTests log",
+                                             "stationary/cadence trace",
+                                             "warning capture"
+                                         ],
+                      "edge_cases":  [
+                                         "target behind turret",
+                                         "point-blank target",
+                                         "temporary obstruction",
+                                         "multiple turrets"
+                                     ],
+                      "non_goals":  [
+                                        "no locomotion",
+                                        "no tracking beam",
+                                        "no alternate projectile",
+                                        "no final art"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "enemy-package",
+                                        "telegraph"
+                                    ],
+                      "handoff_notes":  "May run concurrently with other package tasks and owns no shared projectile asset.",
+                      "notes":  "Milestone-cap spend: 0.35 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-008",
+                      "title":  "Build the easy Four-Blaster Elite package",
+                      "summary":  "Create the approachable first boss with four Blaster origins and mild telegraphed spread.",
+                      "objective":  "Implement one simple deterministic boss cadence with generous recovery and none of the superseded Foreman complexity.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Enemies/FourBlasterElite/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/FourBlasterElitePackageTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "CS-008",
+                                         "CB-004",
+                                         "CB-009",
+                                         "WP-002",
+                                         "WP-003",
+                                         "EN-001",
+                                         "EN-002",
+                                         "EN-003"
+                                     ],
+                      "blocks":  [
+                                     "EN-009"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Encounter Lifecycle v1 and Combat Messages v1; accepted behavior pipeline, projectile/execution adapters, Blaster package and enemy foundation."
+                                 ],
+                      "outputs":  [
+                                      "Four-Blaster Elite package",
+                                      "Package-owned definition/prefab/tuning/presentation",
+                                      "Play-mode boss tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: player four-mount state, weapon package, other enemies, shared adapters, scenes, reward authority, Prototype Overseer and persistence.",
+                                                   "Serialized ownership: every asset under FourBlasterElite only. Save-schema impact: none. Content-registry impact: contributes enemy.four-blaster-elite input only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: temporary boss presentation expires at final-art replacement."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "One health model drives four Blaster origins with mild bounded telegraphed spread and deterministic safe recovery.",
+                                                  "The boss has no phase, denial pulse, mortar, reinforcement, teleport, complex repositioning or bullet-hell barrage.",
+                                                  "Completion emits once and all warnings remain color-independent and reduced-effects readable."
+                                              ],
+                      "verification":  [
+                                           "Automated: four-origin ordering, spread cap, cadence, recovery, completion-once, death and restart tests.",
+                                           "Manual/playable: confirm the first boss is easy, fair and clearly not the Prototype Overseer."
+                                       ],
+                      "proof_required":  [
+                                             "FourBlasterElitePackageTests log",
+                                             "spread/cadence trace",
+                                             "boss readability capture"
+                                         ],
+                      "edge_cases":  [
+                                         "player at minimum distance",
+                                         "one origin obstructed",
+                                         "death during wind-up",
+                                         "rapid restart"
+                                     ],
+                      "non_goals":  [
+                                        "no phase transition",
+                                        "no final-boss rewards",
+                                        "no new projectile",
+                                        "no final art"
+                                    ],
+                      "estimated_size":  "M",
+                      "risk_tags":  [
+                                        "enemy-package",
+                                        "first-boss",
+                                        "human-feel"
+                                    ],
+                      "handoff_notes":  "Keep this intentionally simpler than Prototype Overseer and independent of player four-mount authority.",
+                      "notes":  "Milestone-cap spend: 0.60 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "enemy-ai",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-009",
+                      "title":  "Validate enemy packages and registry inputs",
+                      "summary":  "Validate the five packages together without editing generated registry outputs.",
+                      "objective":  "Prove stable identities, package isolation, roster completeness and registry-input determinism.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/Tests/EditMode/Enemies/Stage1EnemyPackageMatrixTests.cs",
+                                            "Assets/ShooterMover/Tests/EditMode/Enemies/Fixtures/stage1-enemy-registry-input-v1.json",
+                                            "Assets/ShooterMover/ContentPackages/Enemies/Stage1/STAGE1_ENEMY_VALIDATION.md"
+                                        ],
+                      "depends_on":  [
+                                         "CS-009",
+                                         "CS-011",
+                                         "EN-004",
+                                         "EN-005",
+                                         "EN-006",
+                                         "EN-007",
+                                         "EN-008"
+                                     ],
+                      "blocks":  [
+                                     "EN-010",
+                                     "EN-011"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Typed Content References v1 and Generated Registry v1; all five package descriptors."
+                                 ],
+                      "outputs":  [
+                                      "Five-package validation matrix",
+                                      "Registry-input fixture",
+                                      "Validation procedure"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: CS-011 generated outputs/generator, package folders, scenes, adapters, tuning and persistence.",
+                                                   "Serialized ownership: fixture JSON only. Save-schema impact: none. Content-registry impact: validates inputs only; outputs must be regenerated by CS-011 owner.",
+                                                   "Rollback: remove three owned files. Prototype debt: none."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Exactly four ordinary IDs and one elite ID validate with no duplicate ownership.",
+                                                  "Registry input is deterministic and drift is reported without manual output conflict resolution.",
+                                                  "Every package declares its package-owned serialized assets and temporary-presentation debt."
+                                              ],
+                      "verification":  [
+                                           "Automated: package matrix, stable ordering, duplicate, missing-role and drift tests.",
+                                           "Manual: ownership audit confirms no exact or parent-folder overlap."
+                                       ],
+                      "proof_required":  [
+                                             "Stage1EnemyPackageMatrixTests log",
+                                             "registry-input checksum",
+                                             "ownership audit"
+                                         ],
+                      "edge_cases":  [
+                                         "missing package",
+                                         "duplicate ID",
+                                         "stale generated output",
+                                         "unexpected sixth role"
+                                     ],
+                      "non_goals":  [
+                                        "no output regeneration",
+                                        "no tuning",
+                                        "no encounter composition",
+                                        "no Stage 2 role"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "registry-input",
+                                        "ownership"
+                                    ],
+                      "handoff_notes":  "EN-010 and EN-011 consume the validated roster and may proceed in parallel.",
+                      "notes":  "Milestone-cap spend: 0.30 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "encounters",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-010",
+                      "title":  "Compose benchmark-arena enemy encounters",
+                      "summary":  "Define resettable controlled encounters for each role, mixed groups and the first boss.",
+                      "objective":  "Add package-owned encounter fixtures loaded by the evidence arena without editing its scene.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Encounters/Stage1Benchmark/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Encounters/Stage1BenchmarkEnemyEncounterTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "CS-008",
+                                         "EH-004",
+                                         "EH-006",
+                                         "WP-008",
+                                         "EN-009"
+                                     ],
+                      "blocks":  [
+                                     "EN-012"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Encounter Lifecycle v1; evidence arena/reset harness, fixed weapon loadouts and validated enemy roster."
+                                 ],
+                      "outputs":  [
+                                      "Benchmark encounter definitions",
+                                      "Arena fixture loader",
+                                      "Play-mode encounter tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: EH-004 benchmark scene, enemy/weapon packages, shared encounter contracts, registries and persistence.",
+                                                   "Serialized ownership: assets under Stage1Benchmark only; Stage1BenchmarkArena.unity is read-only. Save-schema impact: none. Content-registry impact: encounter inputs only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: Stage 1 benchmark fixtures expire after the formal gate."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Fixtures cover each enemy alone, representative mixed pressure and a standalone Four-Blaster Elite fight.",
+                                                  "Every scenario resets deterministically and respects bounded counts/performance budgets.",
+                                                  "No fixture claims pacing or quality acceptance before EN-013."
+                                              ],
+                      "verification":  [
+                                           "Automated: spawn order, reset, completion-once, count budget and missing-ID tests.",
+                                           "Manual/playable: rapidly select and replay every fixture in the unmodified arena."
+                                       ],
+                      "proof_required":  [
+                                             "Stage1BenchmarkEnemyEncounterTests log",
+                                             "fixture matrix",
+                                             "arena read-only ownership audit"
+                                         ],
+                      "edge_cases":  [
+                                         "restart with live projectiles",
+                                         "enemy dies during spawn",
+                                         "missing package",
+                                         "boss completion twice"
+                                     ],
+                      "non_goals":  [
+                                        "no arena-scene edit",
+                                        "no final pacing",
+                                        "no rewards",
+                                        "no Stage 2 content"
+                                    ],
+                      "estimated_size":  "M",
+                      "risk_tags":  [
+                                        "encounter-composition",
+                                        "evidence-scene-readonly"
+                                    ],
+                      "handoff_notes":  "May run concurrently with EN-011 after EN-009.",
+                      "notes":  "Milestone-cap spend: 0.50 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "short-route",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-011",
+                      "title":  "Compose short-route encounters and bounded hazards",
+                      "summary":  "Define room-to-room enemy pressure, simple hazards and the elite endpoint for the short route.",
+                      "objective":  "Project deterministic encounter data into the route shell without letting scenes own durable state.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/ContentPackages/Encounters/Stage1ShortRoute/",
+                                            "Assets/ShooterMover/Tests/PlayMode/Encounters/Stage1ShortRouteEncounterTests.cs"
+                                        ],
+                      "depends_on":  [
+                                         "CS-007",
+                                         "CS-008",
+                                         "EH-005",
+                                         "EH-006",
+                                         "WP-008",
+                                         "EN-009"
+                                     ],
+                      "blocks":  [
+                                     "EN-012"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: Room Projection v1 and Encounter Lifecycle v1; short-route/reset shells, fixed loadouts and validated enemy roster."
+                                 ],
+                      "outputs":  [
+                                      "Short-route encounter definitions",
+                                      "Bounded hazard definitions",
+                                      "Route projection tests"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: EH-005 route scene, enemy/weapon packages, shared contracts, registries, MissionRunState and persistence.",
+                                                   "Serialized ownership: assets under Stage1ShortRoute only; Stage1ShortRouteShell.unity is read-only. Save-schema impact: none. Content-registry impact: encounter/hazard inputs only.",
+                                                   "Rollback: remove package folder/test. Prototype debt: temporary route composition expires when Stage 2 factory rooms replace it."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "The route projects deterministic ordinary encounters, bounded non-color hazards and one Four-Blaster Elite endpoint.",
+                                                  "Loaded rooms remain projections, retreat rules are respected and elite lockdown releases on completion.",
+                                                  "Rapid restart restores the frozen route without stale enemies, hazards or projectiles."
+                                              ],
+                      "verification":  [
+                                           "Automated: projection, room order, retreat, lockdown, hazard, restart and completion-once tests.",
+                                           "Manual/playable: complete the unmodified route shell with fixed loadouts and inspect warning readability."
+                                       ],
+                      "proof_required":  [
+                                             "Stage1ShortRouteEncounterTests log",
+                                             "route composition map",
+                                             "route-shell read-only audit"
+                                         ],
+                      "edge_cases":  [
+                                         "retreat during spawn",
+                                         "restart during lockdown",
+                                         "hazard/enemy simultaneous hit",
+                                         "elite dies during room transition"
+                                     ],
+                      "non_goals":  [
+                                        "no route-scene edit",
+                                        "no durable mission state",
+                                        "no economy/rewards",
+                                        "no final factory graph"
+                                    ],
+                      "estimated_size":  "M",
+                      "risk_tags":  [
+                                        "short-route",
+                                        "room-projection",
+                                        "hazards"
+                                    ],
+                      "handoff_notes":  "May run concurrently with EN-010; EH-005 retains exclusive scene ownership.",
+                      "notes":  "Milestone-cap spend: 0.60 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "encounters",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-012",
+                      "title":  "Add Stage 1 enemy and route evidence scenarios",
+                      "summary":  "Produce immutable evidence for enemy behavior, arena encounters and short-route completion.",
+                      "objective":  "Verify determinism, readability prerequisites, diagnostics, restart and performance without claiming human quality acceptance.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/Stage1EnemyRouteEvidenceFixture.cs",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/Stage1EnemyRouteEvidenceScenarioTests.cs",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/Fixtures/stage1-enemy-route-evidence-v1.json"
+                                        ],
+                      "depends_on":  [
+                                         "EH-002",
+                                         "EH-003",
+                                         "EH-004",
+                                         "EH-005",
+                                         "EH-006",
+                                         "EH-007",
+                                         "EH-008",
+                                         "EH-009",
+                                         "EH-010",
+                                         "MT-012",
+                                         "CB-011",
+                                         "WP-011",
+                                         "EN-010",
+                                         "EN-011"
+                                     ],
+                      "blocks":  [
+                                     "EN-013"
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: BuildIdentity/ContentVersion v1, Diagnostics and Run Validity v1, Room Projection v1 and Encounter Lifecycle v1; prior movement/combat/weapon evidence and both encounter sets."
+                                 ],
+                      "outputs":  [
+                                      "Enemy/route evidence fixture",
+                                      "Play-mode evidence matrix",
+                                      "Frozen evidence profile"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: evidence-owned scenes/framework, packages, encounter definitions, generated registries, tuning and persistence.",
+                                                   "Serialized ownership: stage1-enemy-route-evidence-v1.json only; both scenes are read-only. Save-schema impact: none. Content-registry impact: none.",
+                                                   "Rollback: remove three owned files. Prototype debt: Stage 1 evidence fixture expires after the formal gate."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Evidence covers all five enemies, mixed arena encounters, short-route completion and the approachable boss boundary.",
+                                                  "Restart, identity, diagnostics, manifests and invalid-session classification are reproducible.",
+                                                  "Representative density remains inside recorded Stage 1 performance budgets and missing warnings invalidate evidence."
+                                              ],
+                      "verification":  [
+                                           "Automated: run edit/play/Windows smoke entrypoints for behavior, route, restart, diagnostics, checksum and performance scenarios.",
+                                           "Manual/playable: prepare the immutable EN-013 review package without asserting feel, pacing or readability acceptance."
+                                       ],
+                      "proof_required":  [
+                                             "Stage1EnemyRouteEvidenceScenarioTests log",
+                                             "valid/invalid evidence manifests",
+                                             "performance capture",
+                                             "scenario coverage matrix"
+                                         ],
+                      "edge_cases":  [
+                                         "rapid restart with active attacks",
+                                         "simultaneous player/boss death",
+                                         "missing warning",
+                                         "technically invalid route session"
+                                     ],
+                      "non_goals":  [
+                                        "no balance edit",
+                                        "no human acceptance",
+                                        "no final art",
+                                        "no Stage 2 validation"
+                                    ],
+                      "estimated_size":  "M",
+                      "risk_tags":  [
+                                        "integration-evidence",
+                                        "performance",
+                                        "formal-proof"
+                                    ],
+                      "handoff_notes":  "EN-013 is the explicit human quality gate for this batch.",
+                      "notes":  "Milestone-cap spend: 0.65 focused lead day."
+                  },
+                  {
+                      "owner_role":  "Enemy and Encounter Builder",
+                      "lane":  "encounters",
+                      "repo_target":  "YeerooXY/shooter-mover",
+                      "status":  "blocked",
+                      "priority":  "P1",
+                      "milestone":  "S1.3 Enemies and short route",
+                      "context":  "S1.3 frozen question: can four deliberately simple ordinary enemies, an approachable Four-Blaster Elite and a short factory route produce readable pressure and voluntary replay within the accepted ten-day cap?",
+                      "id":  "EN-013",
+                      "title":  "Record the human enemy, boss, and route quality gate",
+                      "summary":  "Record the human playable review required before downstream work treats S1.3 quality as accepted.",
+                      "objective":  "Evaluate movement and aiming interaction, enemy identity, audiovisual feedback, encounter pacing, boss fairness, route readability and UI warning quality.",
+                      "allowed_areas":  [
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/Evidence/Stage1EnemyRouteHumanReviewV1.md",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/Evidence/Stage1EnemyRouteHumanReviewChecklistV1.json"
+                                        ],
+                      "depends_on":  [
+                                         "EH-010",
+                                         "WP-012",
+                                         "EN-012"
+                                     ],
+                      "blocks":  [
+
+                                 ],
+                      "inputs":  [
+                                     "Consumed contracts: BuildIdentity/ContentVersion v1 and Diagnostics and Run Validity v1; accepted weapon human gate and immutable EN-012 evidence package."
+                                 ],
+                      "outputs":  [
+                                      "Signed human playable review",
+                                      "Machine-readable pass/fail checklist and bounded findings"
+                                  ],
+                      "implementation_notes":  [
+                                                   "Forbidden paths: all implementation, tuning, scenes, prefabs, ScriptableObjects, registries, evidence framework and persistence.",
+                                                   "Serialized ownership: none. Save-schema impact: none. Content-registry impact: none.",
+                                                   "Rollback: remove review artifacts and return gate to blocked. Prototype debt: records package presentation/route-fixture dispositions but cannot waive blocking debt.",
+                                                   "Any required fix becomes a separately reviewed bounded follow-up; this task records evidence only."
+                                               ],
+                      "acceptance_criteria":  [
+                                                  "Human review records pass/fail for movement feel, aiming, every enemy identity, audiovisual cues, pacing, warnings, reduced effects, route quality and first-boss fairness.",
+                                                  "The Four-Blaster Elite is approachable, readable and free of superseded complex behaviors.",
+                                                  "Every blocking finding identifies evidence and a bounded follow-up; failures are not silently accepted."
+                                              ],
+                      "verification":  [
+                                           "Automated: validate checklist shape, required dimensions, fingerprints and EN-012 links.",
+                                           "Manual/playable: complete frozen arena and route cases with fixed loadouts and reduced-effects settings.",
+                                           "Review: verify human identity, date, fingerprints and evidence links."
+                                       ],
+                      "proof_required":  [
+                                             "completed human review markdown",
+                                             "signed checklist JSON",
+                                             "build/content/tuning identity",
+                                             "linked EN-012 manifests"
+                                         ],
+                      "edge_cases":  [
+                                         "reviewer discomfort",
+                                         "invalid session",
+                                         "color-only cue",
+                                         "boss perceived as unfair",
+                                         "enemy identities blend together"
+                                     ],
+                      "non_goals":  [
+                                        "no tuning edit",
+                                        "no implementation fix",
+                                        "no external formal round",
+                                        "no Stage 2 approval"
+                                    ],
+                      "estimated_size":  "S",
+                      "risk_tags":  [
+                                        "human-gate",
+                                        "feel",
+                                        "pacing",
+                                        "readability",
+                                        "accessibility"
+                                    ],
+                      "handoff_notes":  "Downstream Stage 1 quality claims must consume this recorded gate.",
+                      "notes":  "Milestone-cap spend: 0.40 focused lead day. Batch direct spend totals 5.75 focused lead days, preserving 4.25 days of the S1.3 cap for human review reserve and bounded evidence-led follow-up."
+                  }
+              ]
+}

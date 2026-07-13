@@ -2,12 +2,12 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "planning_review",
+  "lifecycle_phase": "task_review",
   "active_role": "task_splitter",
   "active_role_prompt": "YeerooXY/ai-assembly-line/prompts/06-task-splitter.md",
-  "active_branch": "ai/planning-amend-stage1-enemies-v1",
-  "active_pr": 10,
-  "last_verified_commit": "385c73bc6e268020ad5f26d2ab77f36aaac9922d",
+  "active_branch": "ai/task-split-shooter-mover-v1-continuation-6",
+  "active_pr": 11,
+  "last_verified_commit": "ef4a6bbed6940d472ce29cde7bb5ecd658c85c87",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -41,21 +41,23 @@
     "assembly/generated/task_batches/movement-thruster.json",
     "assembly/generated/task_batches/combat-four-mount.json",
     "assembly/generated/task_batches/stage1-weapons.json",
+    "assembly/generated/task_batches/stage1-enemies-route.json",
     "assembly/intake/LIVE_DECISIONS.md"
   ],
-  "current_section": "stage1_enemy_planning_amendment",
-  "handoff_status": "planning_amendment_review",
-  "last_completed_item": "Stage 1 weapon task-split PR #9 merged into main at 385c73bc6e268020ad5f26d2ab77f36aaac9922d. The human lead then selected a replacement Stage 1 roster of four simple ordinary enemies and one easy Four-Blaster Elite; no enemy batch or game implementation was created.",
-  "current_item": "Human review of draft PR #10 for the Stage 1 enemy planning amendment on ai/planning-amend-stage1-enemies-v1.",
-  "next_action": "Review and merge the Stage 1 enemy planning-amendment PR. After it merges, start a fresh Task Splitter context from current main, present revised EN-001 through EN-013 titles, owner lanes and exact dependencies for the amended four ordinary roles, Four-Blaster Elite and short route, then stop. Generate the batch only after explicit human continuation.",
+  "current_section": "guided_task_batch_generation",
+  "handoff_status": "task_split_in_progress",
+  "last_completed_item": "Generated and executable-validator-validated EN-001 through EN-013 for the amended four-role enemy roster, easy Four-Blaster Elite, benchmark and short-route encounter composition, formal evidence and explicit human quality gate; no game implementation was performed.",
+  "current_item": "Human review of draft PR #11 for the validated stage1-enemies-route batch on ai/task-split-shooter-mover-v1-continuation-6.",
+  "next_action": "Review and merge the stage1-enemies-route draft PR. After it merges, start a fresh Task Splitter context from current main, present AR-001 through AR-012 titles, owner lanes and exact dependencies for stage1-accessibility-reliability, then stop. Generate that batch only after explicit human continuation.",
   "resume_instruction": "Read assembly/context/NEW_CHAT_RESUME.md first and follow it exactly.",
   "blockers": [
-    "Ten planned agent batches remain to be proposed, approved and generated one at a time.",
+    "Nine planned agent batches remain to be proposed, approved and generated one at a time.",
     "Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted S1.0 cap of 5 days; Dispatch requires human re-estimation, scope sequencing or an approved milestone-cap amendment. Evidence-critical contracts, accessibility, diagnostics, reliability and performance may not be cut to hide the overrun.",
     "Movement-thruster estimates 6.15 focused lead days against the accepted S1.1 cap of 8 days, leaving 1.85 days for human review and bounded evidence-led iteration; Dispatch must preserve that reserve.",
     "Combat-four-mount plus stage1-weapons consume 9.10 focused lead days of the accepted S1.2 ten-day cap, leaving only 0.90 day for review reserve and bounded approved follow-up; Dispatch may not add generalized tooling, mature balance depth or extra weapon breadth.",
     "The three remaining Stage 2 weapon identities are deliberately deferred until Stage 1 evidence and require a later planning amendment before Stage 2 combat-content generation or dispatch.",
     "The one remaining Stage 2 ordinary enemy role is deliberately deferred until Stage 1 evidence and requires a later planning amendment before Stage 2 combat-content generation or dispatch.",
+    "Stage1-enemies-route consumes 5.75 focused lead days of the S1.3 ten-day cap, preserving 4.25 days for human review and bounded evidence-led follow-up.",
     "The canonical task backlog and collaboration-state finalization remain blocked until all indexed batches validate.",
     "Implementation and Dispatch remain blocked until the completed task-split pull request is explicitly approved and merged."
   ],
@@ -63,18 +65,19 @@
     "status": "ready",
     "unsaved_decisions": 0,
     "last_persisted_decision": "D-233",
-    "last_persisted_at": "2026-07-13T22:52:31+02:00",
+    "last_persisted_at": "2026-07-13T23:05:15+02:00",
     "planning_run": "shooter-mover-v1",
-    "task_decomposition": "6 of 16 batches generated and validated",
+    "task_decomposition": "7 of 16 batches generated and validated",
     "generated_batches": [
       "unity-foundation",
       "shared-contracts-core",
       "stage1-evidence-harness",
       "movement-thruster",
       "combat-four-mount",
-      "stage1-weapons"
+      "stage1-weapons",
+      "stage1-enemies-route"
     ],
-    "next_batch": "stage1-enemies-route",
+    "next_batch": "stage1-accessibility-reliability",
     "queued_decisions": []
   },
   "verification_boundary": {
@@ -102,15 +105,21 @@
       "all WP tasks are size S or M; WP-003 through WP-007 own separate package folders and may proceed in parallel after WP-001 and WP-002",
       "the amended roster is exactly Blaster Machine Gun, Shotgun, Rocket Launcher, Arc Gun and Ricochet Gun; empowerment is numeric-only, Arc is capped at three additional targets and Ricochet at two wall bounces",
       "WP-009 validates registry inputs without editing CS-011-owned generated outputs; WP-012 is the explicit human playable identity/readability gate",
-      "the six generated batches contain 68 tasks with an acyclic topologically ordered dependency graph and 227 non-overlapping owned path claims",
       "the weapon batch records 4.60 focused lead days; combined S1.2 direct spend is 9.10 of 10 days and preserves 0.90 day of review reserve",
-      "no Unity game implementation, canonical backlog, collaboration assignment, weapon content implementation, enemy content, mission, reward or persistence task batch was created"
+      "stage1-enemies-route.json contains exactly EN-001 through EN-013 and all 13 tasks pass the current executable task-batch validator",
+      "EN-004 through EN-008 own separate package folders and may run in parallel after the shared EN-001 through EN-003 foundation",
+      "EN-010 and EN-011 read but never edit EH-004 and EH-005 scenes; EN-009 validates registry inputs without editing CS-011-owned outputs",
+      "the seven generated batches contain 81 tasks with an acyclic topologically ordered dependency graph and 261 non-overlapping exact path claims",
+      "the enemy/route batch records 5.75 focused lead days against the S1.3 ten-day cap and preserves 4.25 days for review and bounded follow-up",
+      "no Unity game implementation, canonical backlog, collaboration assignment, mission, reward, persistence or later-stage task batch was created"
     ],
     "task_split_blockers": [
       "S1.0 cap pressure: Foundation, Contract Steward and Evidence Harness estimates total 10.9 focused lead days against the accepted five-day cap",
       "S1.1 reserve: movement-thruster direct task estimates consume 6.15 of 8 focused lead days, leaving 1.85 days for review and evidence-led iteration",
       "S1.2 reserve: combat-four-mount plus stage1-weapons consume 9.10 of 10 focused lead days, leaving 0.90 day for review reserve and bounded approved follow-up",
-      "Stage 2 roster blocker: the three remaining weapon identities require an evidence-backed planning amendment after the Stage 1 gate"
+      "S1.3 reserve: stage1-enemies-route consumes 5.75 of 10 focused lead days, leaving 4.25 days for review and bounded evidence-led follow-up",
+      "Stage 2 roster blocker: the three remaining weapon identities require an evidence-backed planning amendment after the Stage 1 gate",
+      "Stage 2 enemy blocker: the one remaining ordinary enemy identity requires an evidence-backed planning amendment after the Stage 1 gate"
     ]
   },
   "framework": {
@@ -119,5 +128,5 @@
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-13T22:54:12+02:00"
+  "updated_at": "2026-07-13T23:07:17+02:00"
 }

@@ -91,8 +91,8 @@
       "expected_task_ids": ["EN-001", "EN-002", "EN-003", "EN-004", "EN-005", "EN-006", "EN-007", "EN-008", "EN-009", "EN-010", "EN-011", "EN-012", "EN-013"],
       "depends_on_batches": ["movement-thruster", "combat-four-mount", "stage1-weapons", "stage1-evidence-harness"],
       "output_path": "assembly/generated/task_batches/stage1-enemies-route.json",
-      "status": "planned",
-      "notes": "Planned 13-task workload. Generation is blocked until AMENDMENT_STAGE1_ENEMIES.md merges; EN-001 through EN-013 must cover the four amended ordinary roles, easy Four-Blaster Elite and short route without changing accepted architecture."
+      "status": "validated",
+      "notes": "Validated 13-task amended enemy/route workload covering four separately owned ordinary packages, the easy Four-Blaster Elite, read-only evidence-scene encounter composition, formal evidence and an explicit human quality gate. Direct spend is 5.75 focused lead days, preserving 4.25 days of the S1.3 cap for review and bounded follow-up."
     },
     {
       "batch_id": "stage1-accessibility-reliability",
