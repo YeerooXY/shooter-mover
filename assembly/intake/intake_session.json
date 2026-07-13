@@ -4,8 +4,8 @@
   "mode": "guided",
   "status": "in_progress",
   "current_section": "product_discovery_recovery",
-  "questions_asked": 51,
-  "last_completed_decision": "D-051",
+  "questions_asked": 52,
+  "last_completed_decision": "D-052",
   "accepted_answers": [
     {
       "decision_id": "D-040",
@@ -170,6 +170,21 @@
         "Prevent both early progression-breaking jackpots and unrewarding endgame droughts"
       ],
       "verification_status": "verified"
+    },
+    {
+      "decision_id": "D-052",
+      "topic": "strongbox_tier_unlock_and_acquisition_rules",
+      "answer": "progression_gates_with_challenge_weighted_odds_across_all_unlocked_levels",
+      "constraints": [
+        "Player level and campaign progress impose a hard maximum on eligible strongbox tiers",
+        "Difficulty optional objectives bosses challenge performance and other mastery signals improve high-tier odds without bypassing progression gates",
+        "Once a strongbox tier is unlocked every level retains a non-zero chance to produce it",
+        "Earlier or easier levels are substantially less likely to produce high unlocked tiers",
+        "Earlier levels skew toward slightly weaker item-quality rolls so they do not become the optimal farming route",
+        "Later and more difficult content must provide materially better expected rewards",
+        "Exact tier weights quality penalties and performance multipliers require playtesting"
+      ],
+      "verification_status": "verified"
     }
   ],
   "recovered_state": {
@@ -180,8 +195,7 @@
   },
   "assumptions": [],
   "open_questions": [
-    "Strongbox tier unlock and acquisition rules",
-    "Exact strongbox tiers and augment rarity distribution",
+    "Mapping from eight strongbox tiers to two-star ten-level augment quality",
     "Remaining shop pricing rules",
     "Remaining level-design and exploration details",
     "Story and world",
@@ -198,13 +212,13 @@
   "next_action": {
     "type": "ask_question",
     "decision_weight": 4,
-    "topic": "strongbox_tier_unlock_and_acquisition_rules",
-    "instruction": "Ask exactly one concise A/B/C decision card selecting whether the eight strongbox tiers unlock primarily through player-level milestones, through a hybrid of progression milestones plus difficulty or challenge performance, or through campaign-region gates. Preserve the accepted rule that higher tiers are unavailable early. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
+    "topic": "strongbox_tier_to_augment_quality_mapping",
+    "instruction": "Ask exactly one concise A/B/C decision card selecting whether strongbox tiers use rigid non-overlapping augment brackets, overlapping weighted quality bands with minimum guarantees, or primarily increase choice quantity rather than item quality. Preserve the accepted eight-tier and two-star ten-level direction. Put the agent recommendation after all options at the end of the card. Persist the accepted answer and update the handoff before continuing."
   },
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
     "active_branch": "assembly/bootstrap-shooter-mover",
-    "last_persisted_decision": "D-051"
+    "last_persisted_decision": "D-052"
   }
 }
