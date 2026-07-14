@@ -138,9 +138,21 @@ namespace ShooterMover.Tests.EditMode.Contracts
         }
 
         [Test]
-        public void FocusLoss_NullPreviousFrame_IsRejected()
+        public void NeutralFrame_IsAllocationFreeAndContainsNoActiveIntent()
         {
-            Assert.Throws<ArgumentNullException>(() => PlayerIntentFrame.FromFocusLoss(null));
+            PlayerIntentFrame neutral = PlayerIntentFrame.Neutral;
+
+            Assert.That(typeof(PlayerIntentFrame).IsValueType, Is.True);
+            Assert.That(neutral.WasFocusLost, Is.False);
+            Assert.That(neutral.Move, Is.EqualTo(NormalizedIntentVector2.Zero));
+            Assert.That(neutral.Aim, Is.EqualTo(NormalizedIntentVector2.Zero));
+            Assert.That(neutral.UiNavigation, Is.EqualTo(NormalizedIntentVector2.Zero));
+            Assert.That(neutral.Fire, Is.EqualTo(ButtonIntent.Inactive));
+            Assert.That(neutral.PowerModifier, Is.EqualTo(ButtonIntent.Inactive));
+            Assert.That(neutral.Thruster, Is.EqualTo(ButtonIntent.Inactive));
+            Assert.That(neutral.Interact, Is.EqualTo(ButtonIntent.Inactive));
+            Assert.That(neutral.Map, Is.EqualTo(ButtonIntent.Inactive));
+            Assert.That(neutral.PauseMenu, Is.EqualTo(ButtonIntent.Inactive));
         }
 
         [Test]
