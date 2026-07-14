@@ -12,7 +12,7 @@ namespace ShooterMover.UnityAdapters.Combat
         Disabled = 2,
         NotConfigured = 3,
         InvalidPlan = 4,
-        InvalidPhysicsScene = 5,
+        Invalid2DScene = 5,
         MissingHandler = 6,
         HandlerRejected = 7,
         HandlerFaulted = 8,
@@ -317,7 +317,7 @@ namespace ShooterMover.UnityAdapters.Combat
             if (!physicsScene.IsValid())
             {
                 return Result(
-                    WeaponMount2DExecutionStatus.InvalidPhysicsScene,
+                    WeaponMount2DExecutionStatus.Invalid2DScene,
                     plan,
                     0,
                     -1,
