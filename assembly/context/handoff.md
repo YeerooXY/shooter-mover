@@ -15,12 +15,12 @@ Unity `6000.3.19f1` created the assets. Both the setup run and a clean follow-up
 
 ## Review boundary
 
-PR #18 contains only UF-003-owned settings/rendering assets plus workflow proof. Collaboration state is `review`; no completion is claimed before the PR is manually inspected and merged.
+PR #19 contains only UF-003-owned settings/rendering assets plus workflow proof. Collaboration state is `review`; no completion is claimed before the PR is manually inspected and merged.
 
 The other first-import Unity files remain untracked and must not be bulk-staged. UF-004 is isolated in `../shooter-mover-uf004` on branch `nemo/uf-004-assembly-skeleton`.
 
 ## Exact next action
 
-Review PR #18 in Unity `6000.3.19f1`. Open an empty scene, confirm URP 2D is active, switch quality profiles and confirm only visual-cost settings differ, then merge if accepted. UF-004 may proceed independently in its prepared worktree.
+Review PR #19 in Unity `6000.3.19f1`. Open an empty scene, confirm URP 2D is active, switch quality profiles and confirm only visual-cost settings differ, then merge if accepted. UF-004 may proceed independently in its prepared worktree.
 
 Stage 2 remains blocked behind `GATE-010`.

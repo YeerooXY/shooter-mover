@@ -23,7 +23,7 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 - Static graph, exact-version, source, inventory, excluded-SDK, and canonical fingerprint checks pass.
 - Unity `6000.3.19f1` completed the first import: all 21 packages registered in 19.57 seconds, no blocking package/compiler error appeared, and Git reported no package-file rewrite.
 - PR #17 merged, so UF-003 and UF-004 are unblocked and may proceed independently.
-- UF-003 is submitted for review in PR #18. It pins linear color, the new Input System backend, zero 2D gravity, and a Unity-authored URP 2D pipeline shared by all six rendering-only quality profiles.
+- UF-003 is submitted for review in PR #19. It pins linear color, the new Input System backend, zero 2D gravity, and a Unity-authored URP 2D pipeline shared by all six rendering-only quality profiles.
 - UF-003 exact-editor setup and clean-import checks exited 0; serialized GUID checks and the forbidden 3D-physics scan pass.
 - UF-004 has a clean separate worktree at `../shooter-mover-uf004` on branch `nemo/uf-004-assembly-skeleton`; it still needs its explicit task claim and implementation.
 - The first import generated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
@@ -31,6 +31,6 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 
 ## Exact next action
 
-Review PR #18 in Unity `6000.3.19f1`. Open an empty scene and confirm URP 2D is active; switch quality profiles and confirm only visual-cost settings differ; merge if accepted. UF-004 may proceed independently in its prepared worktree and must claim only its assembly-skeleton task paths. Do not bulk-stage first-import Unity files in either worktree.
+Review PR #19 in Unity `6000.3.19f1`. Open an empty scene and confirm URP 2D is active; switch quality profiles and confirm only visual-cost settings differ; merge if accepted. UF-004 may proceed independently in its prepared worktree and must claim only its assembly-skeleton task paths. Do not bulk-stage first-import Unity files in either worktree.
 
 Do not add gameplay, optional packages, networking, analytics, storefront, mobile, or Stage 2 functionality.

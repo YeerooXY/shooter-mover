@@ -5,7 +5,7 @@
   "lifecycle_phase": "development",
   "active_role": "task_executor",
   "active_branch": "agent/uf-003-2d-baseline",
-  "active_pr": 18,
+  "active_pr": 19,
   "last_verified_commit": "e9b2410901dc6b376a43f7f650ef11256cede74b",
   "authoritative_artifacts": [
     "AGENTS.md",
@@ -56,10 +56,10 @@
   ],
   "current_section": "UF-003_review",
   "last_completed_item": "PR #17 merged, durably accepting UF-002 and unlocking UF-003 and UF-004 for parallel execution on separate branches.",
-  "current_item": "PR #18 submits the UF-003 fully 2D project baseline: linear color, new Input System backend, zero 2D gravity, and one Renderer2D-backed URP pipeline shared by all quality profiles.",
-  "next_action": "Review PR #18 in Unity 6000.3.19f1: open an empty scene, confirm URP 2D is active, switch quality profiles and confirm only visual cost changes, then merge if accepted. UF-004 may proceed independently on branch nemo/uf-004-assembly-skeleton in the separate shooter-mover-uf004 worktree.",
+  "current_item": "PR #19 submits the UF-003 fully 2D project baseline: linear color, new Input System backend, zero 2D gravity, and one Renderer2D-backed URP pipeline shared by all quality profiles.",
+  "next_action": "Review PR #19 in Unity 6000.3.19f1: open an empty scene, confirm URP 2D is active, switch quality profiles and confirm only visual cost changes, then merge if accepted. UF-004 may proceed independently on branch nemo/uf-004-assembly-skeleton in the separate shooter-mover-uf004 worktree.",
   "blockers": [
-    "UF-003 remains in review until the manual empty-scene and quality-profile checks pass and PR #18 merges.",
+    "UF-003 remains in review until the manual empty-scene and quality-profile checks pass and PR #19 merges.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
