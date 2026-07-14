@@ -115,7 +115,7 @@
       "milestones": [
         "S1.1 Movement and thruster"
       ],
-      "expected_task_count": 12,
+      "expected_task_count": 13,
       "expected_task_ids": [
         "MT-001",
         "MT-002",
@@ -128,7 +128,8 @@
         "MT-009",
         "MT-010",
         "MT-011",
-        "MT-012"
+        "MT-012",
+        "MT-013"
       ],
       "depends_on_batches": [
         "shared-contracts-core",
@@ -136,7 +137,7 @@
       ],
       "output_path": "assembly/generated/task_batches/movement-thruster.json",
       "status": "validated",
-      "notes": "Validated 12-task movement-thruster workload. Estimated implementation and direct proof spend is 6.15 focused lead days against the accepted S1.1 eight-day cap, leaving review and bounded iteration reserve."
+      "notes": "Validated 13-task movement-thruster workload. Estimated implementation and direct proof spend is 6.55 focused lead days against the accepted S1.1 eight-day cap, leaving 1.45 focused lead days of review and bounded iteration reserve. MT-013 is an optional test-only leaf and blocks no existing task."
     },
     {
       "batch_id": "combat-four-mount",

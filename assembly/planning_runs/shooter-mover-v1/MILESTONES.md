@@ -91,3 +91,8 @@ Before production-readiness review:
 ## 5. Cap review record
 
 Record the frozen question/version, completed and invalid evidence, overrun cause, D-232 scope cuts, resequencing, requested extension/revised cap, pivot/stop recommendation, human approver, and date. Deferred breadth cannot silently re-enter the same milestone.
+
+The 2026-07-14 movement-playground amendment adds the 0.40-focused-lead-day
+test-only `MT-013` leaf to S1.1. Direct S1.1 spend is therefore 6.55 of 8
+days, leaving 1.45 days of review and bounded iteration reserve. It blocks no
+existing task and does not change the 50-day Stage 1 aggregate cap.

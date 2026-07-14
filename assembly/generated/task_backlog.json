@@ -3971,6 +3971,67 @@
     "estimated_size": "M",
     "notes": "Milestone-cap spend: 0.75 focused lead day(s)."
   },
+{
+    "id": "MT-013",
+    "title": "Create the test-only movement playground",
+    "summary": "Compose the accepted movement runtime, input, Rigidbody2D body and a centered camera into a manual test scene without changing gameplay authority.",
+    "objective": "Provide the first hands-on movement and thruster check while keeping composition test-owned, explicit and fully reversible.",
+    "context": "S1.1 frozen question: prove responsive locomotion and signature thruster feel within the accepted eight-day cap.",
+    "owner_role": "Movement and Combat Builder",
+    "lane": "unity-input-physics",
+    "repo_target": "YeerooXY/shooter-mover",
+    "status": "blocked",
+    "priority": "P0",
+    "milestone": "S1.1 Movement and thruster",
+    "allowed_areas": [
+      "Assets/ShooterMover/Tests/PlayMode/Movement/Scenes/MovementPlayground.unity",
+      "Assets/ShooterMover/TestSupport/Movement/MovementPlaygroundHarness.cs",
+      "Assets/ShooterMover/Tests/PlayMode/Movement/MovementPlaygroundTests.cs",
+      "docs/verification/movement/MOVEMENT_PLAYGROUND.md"
+    ],
+    "depends_on": [
+      "MT-007",
+      "MT-010"
+    ],
+    "inputs": [
+      "Consume the accepted MT-007 action asset and MT-010 lifecycle-owned movement actor read-only; MT-010 remains the only path to the MT-008 Rigidbody2D projection and MT-009 contact authority.",
+      "Use a fixed test-only tuning profile owned by the harness; introduce no shared content, persistent tuning asset or production composition root."
+    ],
+    "outputs": [
+      "Test-only MovementPlayground scene",
+      "Explicit player movement harness with centered orthographic camera follow",
+      "Focused PlayMode tests and manual operator instructions"
+    ],
+    "implementation_notes": [
+      "Serialized ownership: the exact MovementPlayground scene and its paired metadata; all other serialized assets remain read-only.",
+      "The harness uses explicit serialized references; no scene search, singleton, implicit execution order, second velocity writer or production Bootstrap change.",
+      "Save-schema impact: none. Content-registry impact: none. Rollback: remove only the owned paths and paired Unity metadata. Prototype debt: placeholder geometry expires when a later owned presentation task replaces it."
+    ],
+    "acceptance_criteria": [
+      "Opening the test scene and entering Play Mode constructs one MovementActorLifecycle from explicit existing dependencies, activates it exactly once, and accepts the existing MT-007 movement and thruster controls.",
+      "A single orthographic camera stays centered on the player; the bounded test room supplies roughly two to three camera-view extents around the player without a camera clamp or final level-layout claim.",
+      "The only final player velocity writer is the accepted MT-010/MT-008 path; restart, disable and re-entry clear velocity and leave no duplicate player or runtime objects.",
+      "The scene is test-only and adds no weapons, combat, enemies, encounters, HUD, persistence, production scene, build-settings edit or gameplay acceptance claim."
+    ],
+    "verification": [
+      "Automated focused PlayMode scene-load, explicit construction and activation, input-to-movement, thruster, camera-follow, restart, disable/re-entry and single-velocity-writer tests.",
+      "Manual/playable: open MovementPlayground.unity in the Unity editor, enter Play Mode, use the existing keyboard/gamepad movement and thruster bindings, verify camera centering, then repeat a clean stop/re-enter cycle."
+    ],
+    "proof_required": [
+      "MovementPlaygroundTests log",
+      "Manual movement, thruster and camera check note or capture"
+    ],
+    "edge_cases": [
+      "Focus loss or disabled input adapter",
+      "Rapid stop and re-enter Play Mode",
+      "Player contacting a playground wall during thruster exit"
+    ],
+    "non_goals": [
+      "No combat, weapon, enemy, encounter, route, HUD, final art, user-supplied sprite import, camera-bounds system, save, registry, Bootstrap or build-settings change."
+    ],
+    "estimated_size": "S",
+    "notes": "Milestone-cap spend: 0.40 focused lead day(s). Optional leaf task: no existing task depends on MT-013."
+  },
   {
     "id": "CB-011",
     "title": "Add four-mount combat-foundation evidence scenarios",

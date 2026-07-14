@@ -73,7 +73,8 @@
     "human_next_step": "Dispatch dependency-ready Stage 1 tasks from current main. Do not dispatch retired CB-007; weapon fire must not alter player movement authority.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
-      "Stage 1 task decomposition is complete: 9 validated batches and 102 canonical tasks.",
+      "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
+      "MT-013 is an optional test-only movement-playground leaf: it consumes accepted MT-007/MT-010 runtime read-only, blocks no existing task, and introduces no production scene or gameplay authority.",
       "The human-selected no-player-motion recoil amendment retires CB-007; existing recoil data is non-authoritative and may not alter player velocity, position, thruster, or collision state.",
       "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
       "UF-001 and UF-002 are accepted; Unity 6000.3.19f1 completed the first clean 21-package resolution.",
