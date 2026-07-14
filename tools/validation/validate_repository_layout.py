@@ -154,7 +154,12 @@ class ExclusiveScope:
 
     @property
     def base(self) -> str:
-        return self.pattern[:-3].rstrip("/") if self.is_subtree else self.pattern.rstrip("/")
+        raw_base = (
+            self.pattern[:-3].rstrip("/")
+            if self.is_subtree
+            else self.pattern.rstrip("/")
+        )
+        return raw_base.casefold()
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -323,7 +328,9 @@ def validate_exclusive_ownership(markers: Iterable[Marker]) -> list[str]:
                 f"{marker_location(marker)} exclusive-owner {pattern} has no owner"
             )
             continue
-        if "*" in pattern and not pattern.endswith("/**"):
+        if "*" in pattern and (
+            not pattern.endswith("/**") or pattern.count("*") != 2
+        ):
             errors.append(
                 f"{marker_location(marker)} exclusive-owner pattern {pattern!r} "
                 "may use only a trailing /** wildcard"
