@@ -31,8 +31,8 @@ branch whose pull request has merged.
 
 ## Exact next action
 
-Review and merge the Stage 1 way-of-working simplification PR. Then launch
-UF-006, CS-001, and UF-011 on separate fresh branches from current `main`.
+Review and merge PR #22. Then launch UF-006, CS-001, and UF-011 on separate
+fresh branches from current `main`.
 Implementation agents must change only their owned paths, put all required
 proof in their PRs, and leave central lifecycle bookkeeping untouched.
 

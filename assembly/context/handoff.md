@@ -22,7 +22,7 @@ second handoff PR or duplicated task-run file.
 
 ## Next parallel work
 
-After this amendment merges, launch from fresh current `main`:
+After PR #22 merges, launch from fresh current `main`:
 
 - UF-006 — explicit bootstrap composition-root shell;
 - CS-001 — StableId v1; and

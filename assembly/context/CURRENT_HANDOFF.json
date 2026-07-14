@@ -5,7 +5,7 @@
   "lifecycle_phase": "development",
   "active_role": "task_executor",
   "active_branch": "agent/simplify-stage1-wow",
-  "active_pr": null,
+  "active_pr": 22,
   "last_verified_commit": "63e488b17f1899fdad89645a167a97a6d24c3bb7",
   "authoritative_artifacts": [
     "AGENTS.md",
@@ -72,21 +72,21 @@
   ],
   "current_section": "stage1_way_of_working_simplification_review",
   "last_completed_item": "PR #21 merged, recording UF-004 done, and PR #20 then merged at 63e488b17f1899fdad89645a167a97a6d24c3bb7 after UF-005 repository-layout and adversarial ownership validation passed.",
-  "current_item": "This amendment makes a proof-complete implementation PR merge the acceptance boundary for ordinary Stage 1 tasks, removes per-task handoff PRs, batches bookkeeping once per wave, and records UF-005 as accepted from merged PR #20.",
-  "next_action": "Review and merge the Stage 1 way-of-working simplification PR. After merge, launch UF-006, CS-001, and UF-011 on separate fresh branches from current main; keep ordinary proof in each implementation PR and do not edit central bookkeeping from those branches.",
+  "current_item": "PR #22 makes a proof-complete implementation PR merge the acceptance boundary for ordinary Stage 1 tasks, removes per-task handoff PRs, batches bookkeeping once per wave, and records UF-005 as accepted from merged PR #20.",
+  "next_action": "Review and merge PR #22. After merge, launch UF-006, CS-001, and UF-011 on separate fresh branches from current main; keep ordinary proof in each implementation PR and do not edit central bookkeeping from those branches.",
   "blockers": [
-    "The streamlined merge-as-acceptance rule and UF-005 acceptance record are not durable until this amendment PR merges.",
+    "The streamlined merge-as-acceptance rule and UF-005 acceptance record are not durable until PR #22 merges.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T10:38:00+02:00"
+    "last_persisted_at": "2026-07-14T10:41:14+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T10:38:00+02:00"
+  "updated_at": "2026-07-14T10:41:14+02:00"
 }
