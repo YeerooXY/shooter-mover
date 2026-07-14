@@ -37,7 +37,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0.5d,
                 true);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(fastResult.ShotsFired, Is.EqualTo(6));
                 Assert.That(slowResult.ShotsFired, Is.EqualTo(3));
@@ -70,7 +70,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0.05d,
                 false);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(started.ShotsFired, Is.EqualTo(1));
                 Assert.That(started.State.Phase, Is.EqualTo(WeaponMountPhase.Firing));
@@ -114,7 +114,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0.001d,
                 false);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(overheated.ShotsFired, Is.EqualTo(1));
                 Assert.That(overheated.BurstInterrupted, Is.True);
@@ -155,7 +155,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0.001d,
                 false);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(fired.State.Phase, Is.EqualTo(WeaponMountPhase.Depleted));
                 Assert.That(fired.State.ChargeProgressSeconds, Is.Zero);
@@ -190,7 +190,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0.3d,
                 false);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(fired.State.Phase, Is.EqualTo(WeaponMountPhase.Recovering));
                 Assert.That(cadenceComplete.State.CadenceRemainingSeconds, Is.Zero);
@@ -215,7 +215,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             WeaponMountStepResult becameReady = WeaponMountStepper.Step(profile, tappedWhileBlocked.State, 0.25d, false);
             WeaponMountStepResult newRequest = WeaponMountStepper.Step(profile, becameReady.State, 0d, true);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(initialFire.ShotsFired, Is.EqualTo(1));
                 Assert.That(tappedWhileBlocked.ShotsFired, Is.Zero);
@@ -247,7 +247,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                     invalid,
                     true);
 
-                Assert.Multiple(() =>
+                AssertSequentially(() =>
                 {
                     Assert.That(result.Succeeded, Is.False);
                     Assert.That(result.ShotsFired, Is.Zero);
@@ -290,7 +290,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0.1d,
                 true);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(result.Succeeded, Is.False);
                 Assert.That(result.ShotsFired, Is.Zero);
@@ -334,7 +334,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 10d,
                 true);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(faulted.State.Phase, Is.EqualTo(WeaponMountPhase.Faulted));
                 Assert.That(faulted.Fault.Kind, Is.EqualTo(WeaponMountFaultKind.ExternalFault));
@@ -373,7 +373,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 partitionedShots += step.ShotsFired;
             }
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(single.ShotsFired, Is.EqualTo(6));
                 Assert.That(partitionedShots, Is.EqualTo(single.ShotsFired));
@@ -454,7 +454,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 ContractCombat.WeaponRecoilState.None,
                 ContractCombat.WeaponPowerBankState.None);
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(heatSnapshot.Readiness, Is.EqualTo(ContractCombat.WeaponMountReadiness.Overheated));
                 Assert.That(heatSnapshot.CycleResource.Current, Is.EqualTo(5d));
@@ -512,7 +512,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 }
             }
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(states[0].TotalShotsFired, Is.GreaterThan(states[1].TotalShotsFired));
                 Assert.That(states[2].HeatUnits, Is.GreaterThanOrEqualTo(0d));
@@ -542,7 +542,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                     type.Name + " exposes a writable property.");
             }
 
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(
                     typeof(DomainMountState).Assembly.GetReferencedAssemblies()
@@ -571,6 +571,16 @@ namespace ShooterMover.Tests.EditMode.Combat
                     profileSuffix: "zeroburst",
                     burstShotCount: 0,
                     burstShotIntervalSeconds: 0d));
+        }
+
+        private static void AssertSequentially(Action assertions)
+        {
+            if (assertions == null)
+            {
+                throw new ArgumentNullException(nameof(assertions));
+            }
+
+            assertions();
         }
 
         private static string[] RunTrace(
@@ -602,7 +612,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             DomainMountState expected,
             DomainMountState actual)
         {
-            Assert.Multiple(() =>
+            AssertSequentially(() =>
             {
                 Assert.That(actual.Phase, Is.EqualTo(expected.Phase));
                 Assert.That(actual.CadenceRemainingSeconds, Is.EqualTo(expected.CadenceRemainingSeconds).Within(0.000000001d));
