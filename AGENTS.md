@@ -19,8 +19,9 @@ Do not reconstruct project state from remembered chat.
 
 - No accepted `project_intake.json`: Product Discovery / Intake Interviewer
 - Requirements merged, no planning package: Planning Agent
-- Planning merged, no canonical backlog: Task Splitter
-- Backlog merged: Dispatch / Task Executor
+- Planning merged, no accepted stage backlog: Task Splitter
+- Stage backlog merged: Dispatch / Task Executor
+- Stage 1 gate passed and Stage 2 plan amended: Stage 2 Task Splitter
 
 The current handoff selects the exact active role and next action.
 
@@ -79,9 +80,12 @@ If a recovered decision becomes relevant, either rely only on the clearly preser
 Product Discovery
   -> requirements/bootstrap PR merge
   -> planning and architecture PR merge
-  -> task-splitting and dependency-audit PR merge
-  -> canonical backlog
-  -> development waves
+  -> Stage 1 task-splitting and dependency-audit PR merge
+  -> Stage 1 canonical backlog
+  -> Stage 1 development waves
+  -> Stage 1 evidence gate
+  -> evidence-backed Stage 2 amendment and task split
+  -> Stage 2 development
 ```
 
 Do not blur stages.
@@ -90,11 +94,10 @@ Do not blur stages.
 
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
 
-## Task-decomposition approval gate
+## Stage-first task-decomposition approval gate
 
-During the remaining Shooter Mover task split, every batch uses two turns:
+Stage 1 may become the canonical backlog after all nine Stage 1 batches validate, their dependency graph is acyclic, their path ownership is conflict-free, and any milestone-cap pressure has a recorded human amendment.
 
-1. Before writing files, present the proposed stable task IDs, titles, owner lane, and exact dependencies to the human lead. Then stop.
-2. Only after explicit human continuation, create a fresh branch from current `main`, generate that one approved batch, update the index and deterministic handoffs atomically, run the executable validators, open a draft continuation PR, report it, and stop.
+The seven Stage 2 batch ranges are long-range planning only. Preserve them in a deferred artifact, but do not generate Stage 2 task files, add them to the canonical backlog, or mark their slots ready before `GATE-010` records a genuine signed advance decision with `stage2_unlocked=true`.
 
-A merged branch is permanently closed. Before every write, inspect the branch PR state and compare it with current `main`. Never append commits to a merged branch or silently continue from a branch that is behind `main`.
+Every task-decomposition or stage-transition change uses a fresh branch from current `main`, executable validation, deterministic handoff updates, and a pull request. A merged branch is permanently closed. Before every write, inspect the branch PR state and compare it with current `main`.

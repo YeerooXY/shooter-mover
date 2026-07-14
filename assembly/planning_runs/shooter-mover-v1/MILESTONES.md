@@ -12,14 +12,16 @@ Calendar caps are review triggers, not delivery promises.
 
 | Milestone | Product question and included scope | Effort cap | Calendar cap |
 |---|---|---:|---:|
-| S1.0 Foundation and evidence harness | reproducible resettable prototype; pinned Unity baseline, input actions, build identity, diagnostics, arena shell, quick restart | 5 lead days | 1 week |
+| S1.0 Foundation and evidence harness | reproducible resettable prototype; pinned Unity baseline, input actions, build identity, diagnostics, arena shell, quick restart | 12 lead days | 3 weeks |
 | S1.1 Movement and thruster | responsive locomotion, charges, regeneration, steering, forgiveness, exit momentum, basic wall reflection, collision safeguards, HUD state | 8 lead days | 2 weeks |
 | S1.2 Four-weapon combat | shared aim, independent mounts, five representative weapons, numeric-only empowered profiles, movement interactions, combat HUD, temporary effects/audio | 10 lead days | 2 weeks |
 | S1.3 Enemies and short route | four simple ordinary roles, one easy Four-Blaster Elite, arena encounters, interconnected route, hazards, quick loadout selection, reduced-effects controls | 10 lead days | 2 weeks |
 | S1.4 Reliability and developer gate | repeated complete sessions, settings persistence, diagnostics, performance pass, developer behavioral gate | 5 lead days | 1 week |
 | S1.5 External formal round | immutable artifact, frozen population/method, sessions, interviews, evidence report | 5 lead days | 2 weeks |
 
-**Stage 1 aggregate cap:** 43 focused lead days or 10 calendar weeks.
+**Stage 1 aggregate cap:** 50 focused lead days or 12 calendar weeks.
+
+The 2026-07-14 Stage 1-first capacity amendment raised S1.0 from 5 to 12 focused lead days. Its 10.9-day direct estimate leaves 1.1 days for review and integration without consuming the reserves of later evidence-critical milestones.
 
 ### Technical validity
 

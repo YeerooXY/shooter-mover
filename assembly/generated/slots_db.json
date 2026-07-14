@@ -2,91 +2,241 @@
   {
     "slot_id": "contract-steward",
     "role": "Contract Steward",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Versioned shared contracts", "Stable-ID and registry formats"],
-    "allowed_actions": ["Define interfaces", "Review cross-lane changes"],
-    "verification_requirements": ["Contracts precede consumers.", "No scene-owned durable truth."],
-    "notes": "First implementation lane to sequence."
+    "status": "ready",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Versioned shared contracts",
+      "Stable-ID and registry formats"
+    ],
+    "allowed_actions": [
+      "Define interfaces",
+      "Review cross-lane changes"
+    ],
+    "verification_requirements": [
+      "Contracts precede consumers.",
+      "No scene-owned durable truth."
+    ],
+    "notes": "First implementation lane to sequence. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
   },
   {
     "slot_id": "unity-foundation",
     "role": "Unity Foundation Builder",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Pinned Unity baseline", "Explicit bootstrap and smoke scene"],
-    "allowed_actions": ["Pin editor and packages", "Compose services", "Verify clean launch"],
-    "verification_requirements": ["Baseline is reproducible.", "No speculative SDKs."],
-    "notes": "Task readiness is assigned only after planning merge."
+    "status": "ready",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Pinned Unity baseline",
+      "Explicit bootstrap and smoke scene"
+    ],
+    "allowed_actions": [
+      "Pin editor and packages",
+      "Compose services",
+      "Verify clean launch"
+    ],
+    "verification_requirements": [
+      "Baseline is reproducible.",
+      "No speculative SDKs."
+    ],
+    "notes": "Task readiness is assigned only after planning merge. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
   },
   {
     "slot_id": "movement-combat",
     "role": "Movement and Combat Builder",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Thruster and movement foundation", "Four-weapon combat", "Five amended Stage 1 weapons"],
-    "allowed_actions": ["Implement owned domain and adapters", "Produce benchmark evidence"],
-    "verification_requirements": ["Automated invariants pass.", "Feel and readability receive human review."],
-    "notes": "Stage 1 evidence-critical lane."
+    "status": "ready",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Thruster and movement foundation",
+      "Four-weapon combat",
+      "Five amended Stage 1 weapons"
+    ],
+    "allowed_actions": [
+      "Implement owned domain and adapters",
+      "Produce benchmark evidence"
+    ],
+    "verification_requirements": [
+      "Automated invariants pass.",
+      "Feel and readability receive human review."
+    ],
+    "notes": "Stage 1 evidence-critical lane. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
   },
   {
     "slot_id": "enemies-encounters",
     "role": "Enemy and Encounter Builder",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Representative enemy roles", "Encounter modules", "Short-route pressure"],
-    "allowed_actions": ["Implement owned roles and packages", "Validate telegraphs and composition"],
-    "verification_requirements": ["No unfair spawning.", "Mission state remains authoritative."],
-    "notes": "Stage 1 then Stage 2 content lane."
+    "status": "ready",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Representative enemy roles",
+      "Encounter modules",
+      "Short-route pressure"
+    ],
+    "allowed_actions": [
+      "Implement owned roles and packages",
+      "Validate telegraphs and composition"
+    ],
+    "verification_requirements": [
+      "No unfair spawning.",
+      "Mission state remains authoritative."
+    ],
+    "notes": "Stage 1 then Stage 2 content lane. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
   },
   {
     "slot_id": "mission-rewards-ui",
     "role": "Mission, Persistence, Rewards, and UI Builder",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["MissionRunState and recovery", "Connected replay loop", "Accessible UI"],
-    "allowed_actions": ["Implement validated transitions", "Persist atomic snapshots and journal", "Build minimal economy and presentation"],
-    "verification_requirements": ["Interrupted transitions recover.", "Rewards grant once.", "Shop refresh rules resist abuse."],
-    "notes": "Stage 2 critical lane."
+    "status": "blocked",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "MissionRunState and recovery",
+      "Connected replay loop",
+      "Accessible UI"
+    ],
+    "allowed_actions": [
+      "Implement validated transitions",
+      "Persist atomic snapshots and journal",
+      "Build minimal economy and presentation"
+    ],
+    "verification_requirements": [
+      "Interrupted transitions recover.",
+      "Rewards grant once.",
+      "Shop refresh rules resist abuse."
+    ],
+    "notes": "Stage 2 lane; blocked until GATE-010 records stage2_unlocked=true and an evidence-backed Stage 2 planning/task amendment is merged."
   },
   {
     "slot_id": "content-art-pipeline",
     "role": "Content and Art Pipeline Builder",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Content package standard", "Representative art subset", "Independent reproduction"],
-    "allowed_actions": ["Build documented pipeline", "Generate registries and snapshots", "Record provenance"],
-    "verification_requirements": ["Generated output is deterministic.", "Release assets have provenance.", "Independent reproduction succeeds."],
-    "notes": "Stage 2 production-proof lane."
+    "status": "blocked",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Content package standard",
+      "Representative art subset",
+      "Independent reproduction"
+    ],
+    "allowed_actions": [
+      "Build documented pipeline",
+      "Generate registries and snapshots",
+      "Record provenance"
+    ],
+    "verification_requirements": [
+      "Generated output is deterministic.",
+      "Release assets have provenance.",
+      "Independent reproduction succeeds."
+    ],
+    "notes": "Stage 2 lane; blocked until GATE-010 records stage2_unlocked=true and an evidence-backed Stage 2 planning/task amendment is merged."
   },
   {
     "slot_id": "verification-release",
     "role": "Verification, Performance, and Release Builder",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Layered validation", "Immutable Windows artifacts", "Formal evidence reports"],
-    "allowed_actions": ["Build tests and stress scenes", "Measure hardware profiles", "Classify evidence"],
-    "verification_requirements": ["Artifacts are reproducible.", "Technical failures remain separate.", "Flaky tests are repaired."],
-    "notes": "Cross-cutting verification lane."
+    "status": "ready",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Layered validation",
+      "Immutable Windows artifacts",
+      "Formal evidence reports"
+    ],
+    "allowed_actions": [
+      "Build tests and stress scenes",
+      "Measure hardware profiles",
+      "Classify evidence"
+    ],
+    "verification_requirements": [
+      "Artifacts are reproducible.",
+      "Technical failures remain separate.",
+      "Flaky tests are repaired."
+    ],
+    "notes": "Cross-cutting verification lane. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
   },
   {
     "slot_id": "integration-review",
     "role": "Human Lead Integration and Review",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Approved bounded PRs", "Milestone cap decisions", "Playable experiential review"],
-    "allowed_actions": ["Approve scope and contracts", "Sequence shared assets", "Merge or reject"],
-    "verification_requirements": ["No proof gate is bypassed.", "Overruns trigger written review."],
-    "notes": "Nemo retains final product and integration authority."
+    "status": "ready",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Approved bounded PRs",
+      "Milestone cap decisions",
+      "Playable experiential review"
+    ],
+    "allowed_actions": [
+      "Approve scope and contracts",
+      "Sequence shared assets",
+      "Merge or reject"
+    ],
+    "verification_requirements": [
+      "No proof gate is bypassed.",
+      "Overruns trigger written review."
+    ],
+    "notes": "Nemo retains final product and integration authority. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
   },
   {
     "slot_id": "task-splitter",
     "role": "Task Splitter",
-    "status": "planned",
-    "inputs": ["assembly/intake/project_intake.json", "assembly/requirements/REQUIREMENTS.md", "assembly/generated/project_spec.json", "assembly/generated/repo_plan.json", "assembly/planning_runs/shooter-mover-v1/"],
-    "outputs": ["Task batch index", "Task batches", "Canonical backlog in a separate PR"],
-    "allowed_actions": ["Create stable IDs after planning merge", "Order contract tasks before consumers"],
-    "verification_requirements": ["No architecture is invented.", "Dependencies use exact task IDs."],
-    "notes": "Blocked until planning is merged."
+    "status": "complete",
+    "inputs": [
+      "assembly/intake/project_intake.json",
+      "assembly/requirements/REQUIREMENTS.md",
+      "assembly/generated/project_spec.json",
+      "assembly/generated/repo_plan.json",
+      "assembly/planning_runs/shooter-mover-v1/"
+    ],
+    "outputs": [
+      "Task batch index",
+      "Task batches",
+      "Canonical backlog in a separate PR"
+    ],
+    "allowed_actions": [
+      "Create stable IDs after planning merge",
+      "Order contract tasks before consumers"
+    ],
+    "verification_requirements": [
+      "No architecture is invented.",
+      "Dependencies use exact task IDs."
+    ],
+    "notes": "Stage 1 split complete: 9 validated batches and 103 tasks. Stage 2 decomposition is deferred behind GATE-010."
   }
 ]

@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1.0",
   "workspace_id": "shooter-mover",
-  "generated_from": "assembly/intake/project_intake.json",
+  "generated_from": "assembly/generated/task_backlog.json",
   "actors": [
     {
       "actor_id": "nemo",
@@ -15,7 +15,7 @@
       "display_name": "Web AI",
       "kind": "web_ai",
       "status": "active",
-      "notes": "Repository-first planning and coordination agent. Specific implementation agents are added after task decomposition."
+      "notes": "Repository-first coordination agent. Implementation work is claimed explicitly during Dispatch; no task is auto-claimed."
     }
   ],
   "task_assignments": [],

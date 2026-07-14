@@ -2,8 +2,8 @@
   "schema_version": "0.2.0",
   "project_id": "shooter-mover",
   "name": "Shooter Mover",
-  "status": "planning_review",
-  "default_view": "overview",
+  "status": "active",
+  "default_view": "dispatch",
   "repository": {
     "provider": "github",
     "full_name": "YeerooXY/shooter-mover",
@@ -66,14 +66,14 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review draft planning pull request #2. After it is approved and merged, start a fresh Task Splitter context from merged main and create the canonical task decomposition in a separate pull request.",
+    "human_next_step": "Review and merge draft pull request #14. After merge, start a fresh Dispatch context from current main and execute the first ready Stage 1 task, UF-001.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
-      "Product Discovery is closed through verified decision D-233.",
-      "D-001 through D-039 remain excluded unverified recovery material.",
-      "Planning run shooter-mover-v1 is open for review in pull request #2.",
-      "The planning pull request intentionally contains no task backlog, task batches, stable task IDs, or implementation.",
-      "Task decomposition and implementation remain blocked until their separate lifecycle gates are merged."
+      "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
+      "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
+      "UF-001 is the only initially ready implementation task; downstream tasks remain dependency-blocked.",
+      "Seven Stage 2 batch ranges are preserved as deferred planning and remain locked behind GATE-010.",
+      "No Stage 2 task file, multiplayer/networking implementation, or Stage 2 dispatch is authorized."
     ]
   }
 }
