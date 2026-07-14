@@ -4,6 +4,7 @@ using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
+using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Enemies.RamDroid
