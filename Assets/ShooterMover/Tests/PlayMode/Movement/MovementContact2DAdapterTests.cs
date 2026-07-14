@@ -63,7 +63,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             FakeMovementContactAuthority authority = CreateAuthority(tuning, -10d, 0d);
             Rigidbody2D body;
             MovementContact2DAdapter adapter = CreateAdapter(authority, out body);
-            StableId enemyId = StableId.Parse("enemy.light.mt-009");
+            StableId enemyId = StableId.Parse("enemy.light-mt-009");
             Collider2D enemy = CreateContactCollider(
                 "MT-009 light enemy",
                 CreateEnemyDescriptor(
@@ -93,7 +93,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             FakeMovementContactAuthority authority = CreateAuthority(tuning, -8d, 3d);
             Rigidbody2D body;
             MovementContact2DAdapter adapter = CreateAdapter(authority, out body);
-            StableId enemyId = StableId.Parse("enemy.heavy.mt-009");
+            StableId enemyId = StableId.Parse("enemy.heavy-mt-009");
             Collider2D enemy = CreateContactCollider(
                 "MT-009 heavy enemy",
                 CreateEnemyDescriptor(
@@ -197,7 +197,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             FakeMovementContactAuthority authority = CreateAuthority(tuning, -7d, -2d);
             Rigidbody2D body;
             MovementContact2DAdapter adapter = CreateAdapter(authority, out body);
-            StableId enemyId = StableId.Parse("enemy.grace.mt-009");
+            StableId enemyId = StableId.Parse("enemy.grace-mt-009");
             Collider2D enemy = CreateContactCollider(
                 "MT-009 grace enemy",
                 CreateEnemyDescriptor(
@@ -353,7 +353,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             WeightResult result = WeightMessage.DetermineResult(sourceWeight, targetWeight);
             WeightMessage message = new WeightMessage(
                 StableId.Parse("event." + enemyId.Value),
-                StableId.Parse("actor.player.mt-009"),
+                StableId.Parse("actor.player-mt-009"),
                 enemyId,
                 CombatChannel.Contact,
                 sourceWeight,
