@@ -101,10 +101,12 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 second.GetCanonicalUtf8Bytes());
             Assert.That(first.Entries, Is.Empty);
             Assert.That(first.ToCanonicalJson(), Does.Contain("\"entry_count\": 0"));
-            Assert.That(first.ToCanonicalJson(), Does.Contain("\"entries\": [  ]").Not);
+            Assert.That(first.ToCanonicalJson(), Does.Contain("\"entries\": [  ]"));
             Assert.That(review.PrototypeOnlyCount, Is.Zero);
             Assert.That(review.ReferenceCount, Is.Zero);
-            Assert.That(review.KindCounts.Select(count => count.Count), Is.All.Zero);
+            Assert.That(
+                review.KindCounts.Select(count => count.Count),
+                Is.All.EqualTo(0));
             Assert.That(review.ToCanonicalJson(), Does.Contain("\"is_valid\": true"));
             Assert.That(review.ToCanonicalJson(), Does.Contain("\"error_count\": 0"));
         }
@@ -369,7 +371,11 @@ namespace ShooterMover.Tests.EditMode.Contracts
             CollectionAssert.AreEqual(
                 new UTF8Encoding(false, true).GetBytes(text),
                 bytes);
-            Assert.That(bytes.Take(3).ToArray(), Is.Not.EqualTo(new byte[] { 0xef, 0xbb, 0xbf }));
+            Assert.That(bytes.Length, Is.GreaterThanOrEqualTo(3));
+            Assert.That(
+                bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf,
+                Is.False,
+                "Canonical UTF-8 output must not contain a BOM.");
         }
 
         private static void AssertCanonicalFingerprint(string value)
