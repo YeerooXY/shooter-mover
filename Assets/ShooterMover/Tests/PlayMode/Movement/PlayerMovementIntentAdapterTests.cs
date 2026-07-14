@@ -13,7 +13,9 @@ using UnityEngine.InputSystem.LowLevel;
 
 namespace ShooterMover.Tests.PlayMode.Movement
 {
-    public sealed class PlayerMovementIntentAdapterTests
+    // Virtual-device intent traces must run against Input System's isolated
+    // test runtime rather than the host editor's native input state.
+    public sealed class PlayerMovementIntentAdapterTests : InputTestFixture
     {
         private const string ActionAssetPath =
             "Assets/ShooterMover/Runtime/UnityAdapters/Input/ShooterMoverMovement.inputactions";
@@ -22,30 +24,37 @@ namespace ShooterMover.Tests.PlayMode.Movement
         private readonly List<UnityEngine.Object> createdObjects = new List<UnityEngine.Object>();
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
-            for (int index = createdObjects.Count - 1; index >= 0; index--)
+            try
             {
-                UnityEngine.Object value = createdObjects[index];
-                if (value != null)
+                for (int index = createdObjects.Count - 1; index >= 0; index--)
                 {
-                    UnityEngine.Object.DestroyImmediate(value);
+                    UnityEngine.Object value = createdObjects[index];
+                    if (value != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(value);
+                    }
                 }
+
+                createdObjects.Clear();
+
+                for (int index = addedDevices.Count - 1; index >= 0; index--)
+                {
+                    InputDevice device = addedDevices[index];
+                    if (device != null && device.added)
+                    {
+                        InputSystem.RemoveDevice(device);
+                    }
+                }
+
+                addedDevices.Clear();
+                InputSystem.Update();
             }
-
-            createdObjects.Clear();
-
-            for (int index = addedDevices.Count - 1; index >= 0; index--)
+            finally
             {
-                InputDevice device = addedDevices[index];
-                if (device != null && device.added)
-                {
-                    InputSystem.RemoveDevice(device);
-                }
+                base.TearDown();
             }
-
-            addedDevices.Clear();
-            InputSystem.Update();
         }
 
         [Test]
