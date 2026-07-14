@@ -389,7 +389,14 @@ namespace ShooterMover.Tests.EditMode.Movement
             Assert.That(state.Speed, Is.EqualTo(tuning.BaseMaximumSpeed).Within(Tolerance));
 
             bool activated;
-            state = Activate(state, ref bank, 1d, 1d, tuning, out activated);
+            double diagonalComponent = 1d / Math.Sqrt(2d);
+            state = Activate(
+                state,
+                ref bank,
+                diagonalComponent,
+                diagonalComponent,
+                tuning,
+                out activated);
             Assert.That(activated, Is.True);
             Assert.That(
                 state.Speed,
