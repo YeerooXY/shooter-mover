@@ -399,6 +399,17 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
             temporaryPresentation.UpdateWarning(visible, simulationTimeSeconds);
         }
 
+        private void Update()
+        {
+            if (!configured)
+            {
+                return;
+            }
+
+            simulationTimeSeconds += Time.deltaTime;
+            UpdateWarning();
+        }
+
         private void OnDisable()
         {
             if (actorAdapter != null)
