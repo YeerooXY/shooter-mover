@@ -83,7 +83,10 @@ namespace ShooterMover.Tests.EditMode.Combat
                 coincidentPoint,
                 StandardOrigins());
 
-            AssertAllFallback(result, sharedIntent, coincidentPoint);
+            AssertAllFallback(
+                result,
+                new AimVector2(Math.Sqrt(0.5d), Math.Sqrt(0.5d)),
+                coincidentPoint);
         }
 
         [Test]
