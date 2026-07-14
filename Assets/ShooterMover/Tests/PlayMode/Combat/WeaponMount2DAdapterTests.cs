@@ -77,7 +77,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
             Assert.That(firstHandler.Contexts.Count, Is.EqualTo(2));
             WeaponMount2DExecutionContext context = firstHandler.Contexts[0];
-            Assert.That(context.PhysicsScene.IsValid(), Is.True);
+            Assert.That(context.PhysicsScene2D.IsValid(), Is.True);
             Assert.That(context.SourceId, Is.EqualTo(SourceId));
             Assert.That(context.CombatEventId, Is.EqualTo(plan.CombatEventId));
             Assert.That(context.WeaponId, Is.EqualTo(WeaponId));
