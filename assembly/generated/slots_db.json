@@ -27,7 +27,7 @@
   {
     "slot_id": "unity-foundation",
     "role": "Unity Foundation Builder",
-    "status": "ready",
+    "status": "active",
     "inputs": [
       "assembly/intake/project_intake.json",
       "assembly/requirements/REQUIREMENTS.md",
@@ -48,7 +48,7 @@
       "Baseline is reproducible.",
       "No speculative SDKs."
     ],
-    "notes": "Task readiness is assigned only after planning merge. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
+    "notes": "Stage 1 task coverage is validated. UF-001 is submitted for review in PR #15; downstream Unity foundation work remains dependency-gated."
   },
   {
     "slot_id": "movement-combat",

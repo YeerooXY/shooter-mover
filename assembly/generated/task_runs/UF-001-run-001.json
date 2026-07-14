@@ -1,0 +1,66 @@
+{
+  "schema_version": "0.1.0",
+  "task_id": "UF-001",
+  "run_id": "UF-001-run-001",
+  "actor_id": "web-ai",
+  "status": "review",
+  "implementation_summary": "Pinned Unity 6.3 LTS editor 6000.3.19f1 at changeset 7689f4515d75 and documented the minimal Windows installation, verification, exclusion, and upgrade-isolation policy.",
+  "files_changed": [
+    {
+      "path": "ProjectSettings/ProjectVersion.txt",
+      "change": "Declared the exact editor version and changeset."
+    },
+    {
+      "path": "docs/toolchain/UNITY_BASELINE.md",
+      "change": "Recorded the editor decision, Windows modules and prerequisites, supported host, install verification, scope exclusions, and isolated upgrade procedure."
+    }
+  ],
+  "verification": [
+    {
+      "command": "Parse ProjectSettings/ProjectVersion.txt and require one exact m_EditorVersion plus the matching changeset.",
+      "result": "passed",
+      "output": "6000.3.19f1 / 7689f4515d75"
+    },
+    {
+      "command": "Search the repository for ProjectVersion.txt declarations.",
+      "result": "passed",
+      "output": "Exactly one declaration path: ProjectSettings/ProjectVersion.txt"
+    },
+    {
+      "command": "Verify the release, LTS support line, component name, and changeset against official Unity documentation.",
+      "result": "passed",
+      "output": "Unity 6.3 LTS; 6000.3.19f1 released 2026-07-01; changeset 7689f4515d75; Windows Build Support (IL2CPP) is available."
+    },
+    {
+      "command": "Open the repository through Unity Hub with the pinned editor and confirm no migration.",
+      "result": "not_run",
+      "output": "Unity Hub is installed, but the exact editor is not installed locally and UF-002 has not yet supplied the package lock. The first full import is deferred until UF-002 to avoid generating unowned or floating package state."
+    }
+  ],
+  "proof": [
+    {
+      "kind": "file",
+      "path": "ProjectSettings/ProjectVersion.txt",
+      "summary": "Exact Unity editor version and changeset declaration.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T08:33:14+02:00"
+    },
+    {
+      "kind": "file",
+      "path": "docs/toolchain/UNITY_BASELINE.md",
+      "summary": "Human-readable baseline and Windows module record.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T08:33:14+02:00"
+    },
+    {
+      "kind": "manual_note",
+      "summary": "Human review is required before UF-001 is accepted; full editor import will be performed with the UF-002 package lock.",
+      "status": "needs_review",
+      "recorded_at": "2026-07-14T08:33:14+02:00"
+    }
+  ],
+  "blockers": [],
+  "notes": "The product-file implementation is complete. The manual no-migration import is deliberately deferred to the first locked package resolution to respect UF-001 file ownership and avoid floating package state.",
+  "submitted_at": "2026-07-14T08:33:14+02:00",
+  "updated_at": "2026-07-14T08:33:14+02:00"
+}

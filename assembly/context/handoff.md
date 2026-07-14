@@ -1,30 +1,25 @@
-# Shooter Mover Stage 1 Handoff
+# Shooter Mover UF-001 Handoff
 
-## Current state
+## Outcome
 
-Stage 1 task splitting is complete. The active index contains nine validated batches and the canonical backlog contains 103 tasks. Dependency validation is acyclic and the recorded exact path claims are conflict-free.
+Stage 1 Dispatch began after PR #14 merged. UF-001 pins the Unity editor baseline to:
 
-The human product lead approved the 2026-07-14 capacity amendment:
+- Unity 6.3 LTS;
+- editor `6000.3.19f1`;
+- changeset `7689f4515d75`;
+- Windows x64 development host;
+- Windows Build Support (IL2CPP) and a supported Visual Studio C++ toolchain.
 
-- S1.0: 12 focused lead days / 3 calendar weeks;
-- Stage 1 aggregate: 50 focused lead days / 12 calendar weeks;
-- direct S1.0 estimate: 10.9 days;
-- remaining S1.0 review and integration reserve: 1.1 days.
+The baseline document explicitly excludes mobile, Web, UWP, server, networking, multiplayer, analytics, storefront, advertising, account, and remote-service scope.
 
-Later milestone caps and reserves are unchanged.
+## Review boundary
 
-## Dispatch boundary
+PR #15 contains the two UF-001 product outputs and `UF-001-run-001.json`. Collaboration state is `review`; no completion is claimed before the PR is accepted.
 
-Draft PR #14 is the approval boundary. Until it merges, the backlog is proposed rather than accepted.
-
-After merge, `UF-001` is the only initially ready task. It must be claimed explicitly and implemented on a fresh branch. Downstream tasks stay blocked until their exact dependencies and proof requirements are satisfied.
-
-## Stage 2 boundary
-
-The original seven Stage 2 batch ranges are preserved in `assembly/generated/deferred_full_mvp_task_batch_index.json`. They are not part of the canonical backlog and no Stage 2 task files exist.
-
-`GATE-010` remains the sole Stage 2 unlock. A genuine signed advance decision with `stage2_unlocked=true`, followed by an evidence-backed planning and task amendment, is required before Stage 2 generation or implementation. This includes multiplayer or networking functionality.
+The local machine has Unity Hub but not the exact editor. A full editor import is intentionally deferred until UF-002 supplies the deterministic package manifest and lock, preventing Unity from generating floating or unowned package state during UF-001.
 
 ## Exact next action
 
-Review and merge draft PR #14. Then start a fresh Dispatch context from current `main`, claim `UF-001`, execute it as a bounded implementation change, and continue in dependency order. Run the Stage 1 evidence gate only when all gate prerequisites and real evidence exist.
+Review and merge PR #15. Then, on a fresh branch from current `main`, mark UF-001 done, claim UF-002, create the minimal package manifest/lock/dependency inventory, and run the first complete Unity import and no-migration verification.
+
+Stage 2 remains blocked behind `GATE-010`.
