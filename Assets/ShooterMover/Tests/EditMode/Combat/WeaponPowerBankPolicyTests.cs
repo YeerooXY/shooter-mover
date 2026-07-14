@@ -57,6 +57,12 @@ namespace ShooterMover.Tests.EditMode.Combat
         }
 
         [Test]
+        public void ConfiguredZeroCost_IsRejectedByConsumedProfileInvariant()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => BuildProfile(100d, 0d));
+        }
+
+        [Test]
         public void ResolveFire_ExactCostSpendsAtomicallyAndEmptiesOnlyThatBank()
         {
             DomainPowerBankState original = DomainPowerBankState.FromProfile(
