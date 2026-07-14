@@ -13,6 +13,57 @@ function Get-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Get-GitContentSha256 {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$RepositoryPath
+    )
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "git"
+    $startInfo.Arguments = "show --no-textconv `"HEAD:$RepositoryPath`""
+    $startInfo.WorkingDirectory = $ProjectRoot
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $content = New-Object System.IO.MemoryStream
+
+    try {
+        if (-not $process.Start()) {
+            throw "Git did not start."
+        }
+
+        $process.StandardOutput.BaseStream.CopyTo($content)
+        $errorText = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+
+        if ($process.ExitCode -ne 0) {
+            throw "git show failed with exit code $($process.ExitCode): $errorText"
+        }
+
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hashBytes = $sha256.ComputeHash($content.ToArray())
+        }
+        finally {
+            $sha256.Dispose()
+        }
+
+        return [System.BitConverter]::ToString($hashBytes).Replace("-", "").ToLowerInvariant()
+    }
+    catch {
+        throw "Could not fingerprint canonical repository content for '$RepositoryPath'. Run this script from a Git checkout with git available on PATH. Details: $($_.Exception.Message)"
+    }
+    finally {
+        $content.Dispose()
+        $process.Dispose()
+    }
+}
+
 function Clear-ReadOnlyAttribute {
     param([Parameter(Mandatory = $true)][System.IO.FileSystemInfo]$Item)
 
@@ -167,11 +218,12 @@ $fingerprints = [ordered]@{
     editor = [ordered]@{
         project_version = $editor.Version
         project_version_with_revision = $editor.Revision
-        project_version_sha256 = (Get-FileHash -LiteralPath $projectVersionPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        project_version_worktree_sha256 = (Get-FileHash -LiteralPath $projectVersionPath -Algorithm SHA256).Hash.ToLowerInvariant()
         unity_executable_sha256 = (Get-FileHash -LiteralPath $unityExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
     }
     packages = [ordered]@{
-        package_lock_sha256 = (Get-FileHash -LiteralPath $packageLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        package_lock_repository_sha256 = Get-GitContentSha256 -ProjectRoot $projectRoot -RepositoryPath "Packages/packages-lock.json"
+        package_lock_worktree_sha256 = (Get-FileHash -LiteralPath $packageLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
     }
 }
 
