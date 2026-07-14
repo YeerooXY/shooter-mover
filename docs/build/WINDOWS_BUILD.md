@@ -23,6 +23,7 @@ content or deciding later gameplay flow.
 - Unity `6000.3.19f1 (7689f4515d75)` installed with Windows Build Support.
 - A valid Unity license for batch-mode editor use.
 - Windows PowerShell 5.1 or PowerShell 7.
+- Git available on `PATH` for the canonical package-lock fingerprint.
 - The Unity project must not already be open in another Editor process.
 
 The script accepts an explicit Unity executable path. When omitted, it first
@@ -96,10 +97,16 @@ The script verifies these artifacts before reporting success.
 `build-fingerprints.json` records:
 
 - the pinned editor version and revision;
-- the SHA-256 of `ProjectSettings/ProjectVersion.txt`;
+- the SHA-256 of the working-tree `ProjectSettings/ProjectVersion.txt`;
 - the SHA-256 of the actual `Unity.exe` used;
-- the SHA-256 of `Packages/packages-lock.json`;
+- the canonical `HEAD` repository-content SHA-256 of
+  `Packages/packages-lock.json`;
+- the working-tree SHA-256 of `Packages/packages-lock.json`;
 - target, Development configuration, and repository-relative output path.
+
+The canonical package-lock value follows the accepted dependency-lock procedure,
+so Windows line-ending conversion cannot change it. The worktree value remains
+available to diagnose local rewrites.
 
 These fingerprints are local build evidence only; they do not introduce or
 replace the project's formal identity contracts.
