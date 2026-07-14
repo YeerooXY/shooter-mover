@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:shooter-mover:schema:generated-registry:1",
+  "title": "Shooter Mover Generated Machine Registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "validation_mode",
+    "catalog_version",
+    "definition_fingerprint",
+    "registry_fingerprint",
+    "entry_count",
+    "entries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:shooter-mover:schema:generated-registry:1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "validation_mode": {
+      "enum": [
+        "prototype",
+        "release"
+      ]
+    },
+    "catalog_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "definition_fingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    },
+    "registry_fingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "stable_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "definition_kind": {
+      "enum": [
+        "enemy",
+        "encounter",
+        "environment",
+        "room",
+        "shared-module",
+        "weapon"
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definition_kind",
+        "definition_id",
+        "definition_version"
+      ],
+      "properties": {
+        "definition_kind": {
+          "$ref": "#/$defs/definition_kind"
+        },
+        "definition_id": {
+          "$ref": "#/$defs/stable_id"
+        },
+        "definition_version": {
+          "const": 1
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definition_kind",
+        "definition_id",
+        "definition_version",
+        "provenance_id",
+        "prototype_only",
+        "reference_count",
+        "references"
+      ],
+      "properties": {
+        "definition_kind": {
+          "$ref": "#/$defs/definition_kind"
+        },
+        "definition_id": {
+          "$ref": "#/$defs/stable_id"
+        },
+        "definition_version": {
+          "const": 1
+        },
+        "provenance_id": {
+          "$ref": "#/$defs/stable_id"
+        },
+        "prototype_only": {
+          "type": "boolean"
+        },
+        "reference_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        }
+      }
+    }
+  }
+}
