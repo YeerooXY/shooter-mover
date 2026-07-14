@@ -468,7 +468,7 @@ namespace ShooterMover.TestSupport.Movement
                 return;
             }
 
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 Destroy(value);
             }
