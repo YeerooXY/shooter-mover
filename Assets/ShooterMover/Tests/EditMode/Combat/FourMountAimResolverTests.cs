@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -22,6 +23,9 @@ namespace ShooterMover.Tests.EditMode.Combat
                 StandardOrigins());
 
             Assert.That(result.Count, Is.EqualTo(WeaponMountContractRules.MountCount));
+            Assert.That(
+                FourMountAimSolution.MountCount,
+                Is.EqualTo(WeaponRuntimeProfile.SupportedMountCount));
             for (int index = 0; index < result.Count; index++)
             {
                 SharedAimSolution solution = result.GetByStableIndex(index);
@@ -73,13 +77,13 @@ namespace ShooterMover.Tests.EditMode.Combat
         public void Resolve_AimCoincidentWithOneOrigin_FallsBackForWholeArray()
         {
             AimVector2 coincidentPoint = new AimVector2(-1d, 1d);
+            AimVector2 sharedIntent = ContractAim(1f, 1f);
             FourMountAimSolution result = new FourMountAimResolver().Resolve(
-                ContractAim(1f, 1f),
+                sharedIntent,
                 coincidentPoint,
                 StandardOrigins());
 
-            AimVector2 expected = Normalized(new AimVector2(1d, 1d));
-            AssertAllFallback(result, expected, coincidentPoint);
+            AssertAllFallback(result, sharedIntent, coincidentPoint);
         }
 
         [Test]
@@ -356,12 +360,6 @@ namespace ShooterMover.Tests.EditMode.Combat
             Assert.That(direction.Y, Is.InRange(-1d, 1d));
         }
 
-        private static AimVector2 Normalized(AimVector2 value)
-        {
-            double magnitude = Math.Sqrt((value.X * value.X) + (value.Y * value.Y));
-            return new AimVector2(value.X / magnitude, value.Y / magnitude);
-        }
-
         private static void WriteConvergencePlot(
             string label,
             FourMountAimSolution result,
@@ -386,7 +384,11 @@ namespace ShooterMover.Tests.EditMode.Combat
                     "slot=" + solution.StableSlotNumber
                     + " origin=" + solution.Origin
                     + " direction=" + solution.Direction
-                    + " ray_end=(" + rayEndX.ToString("R") + ", " + rayEndY.ToString("R") + ")"
+                    + " ray_end=("
+                    + rayEndX.ToString("R", CultureInfo.InvariantCulture)
+                    + ", "
+                    + rayEndY.ToString("R", CultureInfo.InvariantCulture)
+                    + ")"
                     + " shared_point=" + solution.SharedAimPoint
                     + " fallback=" + solution.UsedFallbackDirection);
             }
