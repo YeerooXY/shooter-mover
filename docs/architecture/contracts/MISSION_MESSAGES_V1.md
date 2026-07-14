@@ -18,8 +18,11 @@ sequence. Domain code still decides whether the requested transition is valid.
 
 ## Immutable envelope model
 
-All runtime types in `ShooterMover.Contracts.Mission` are sealed or static,
-Unity-free, and expose getter-only state.
+Envelope, version, sequence, evaluation, rejection and concrete payload types
+are sealed and expose getter-only state. The two public payload roots are
+abstract with internal constructors, so consumers can read the typed hierarchy
+but cannot inject mutable external implementations. The gate is static. The
+entire namespace is Unity-free.
 
 ### MissionCommandEnvelope
 
@@ -41,7 +44,7 @@ allowed.
 Every event carries:
 
 1. `EventId` — identity of the accepted fact;
-2. `CommandId` — the causating request;
+2. `CommandId` — the causing request;
 3. `RunId`;
 4. `PayloadVersion`;
 5. a positive committed `Sequence`;
@@ -125,8 +128,7 @@ After duplicate checks:
 
 - a mismatched `MissionPayloadVersion` returns
   `UnsupportedPayloadVersion` without interpreting the payload;
-- an explicit `UnknownMissionCommandPayload` or an unrecognized enum value
-  returns `UnknownCommandType`;
+- an explicit `UnknownMissionCommandPayload` returns `UnknownCommandType`;
 - a lower expected sequence returns `StaleSequence`;
 - a higher expected sequence returns `FutureSequence`.
 
