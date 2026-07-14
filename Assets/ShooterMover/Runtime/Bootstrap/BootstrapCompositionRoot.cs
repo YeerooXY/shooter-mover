@@ -125,9 +125,24 @@ namespace ShooterMover.Bootstrap
                 return;
             }
 
-            Stop();
-            Phase = LifecyclePhase.Disposed;
-            GC.SuppressFinalize(this);
+            if (Phase == LifecyclePhase.Registering
+                || Phase == LifecyclePhase.Starting
+                || Phase == LifecyclePhase.Stopping
+                || Phase == LifecyclePhase.Disposing)
+            {
+                throw new InvalidOperationException(
+                    "Bootstrap cannot dispose while lifecycle phase is " + Phase + ".");
+            }
+
+            try
+            {
+                Stop();
+            }
+            finally
+            {
+                Phase = LifecyclePhase.Disposed;
+                GC.SuppressFinalize(this);
+            }
         }
 
         private void RegisterServices()

@@ -42,7 +42,12 @@ failures after all entries have been attempted.
 
 - `Start()` while already `Running` is a no-op.
 - `Stop()` before startup or after a completed stop is a no-op.
-- `Dispose()` is idempotent and terminal.
+- `Dispose()` is idempotent. A valid call from `Created`, `Running`, or
+  `Stopped` always leaves the root in terminal `Disposed`, even when shutdown
+  callbacks fail; the original cleanup exception is rethrown after the phase is
+  finalized.
+- `Dispose()` during `Registering`, `Starting`, `Stopping`, or `Disposing` is
+  rejected and does not override the active transition.
 - Re-entrant start/stop calls during a transition throw instead of depending on
   incidental callback order.
 - Lifecycle calls are expected on the Unity main thread. The shell does not add
