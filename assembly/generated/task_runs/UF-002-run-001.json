@@ -1,0 +1,93 @@
+{
+  "schema_version": "0.1.0",
+  "task_id": "UF-002",
+  "run_id": "UF-002-run-001",
+  "actor_id": "web-ai",
+  "status": "review",
+  "implementation_summary": "Pinned the minimal Unity 6000.3 package baseline: URP 17.3.0, Input System 1.19.0, and Test Framework 1.6.0, with a complete exact lock, dependency inventory, excluded-SDK policy, rollback procedure, and SHA-256 proof.",
+  "files_changed": [
+    {
+      "path": "Packages/manifest.json",
+      "change": "Declared only the three approved direct packages at exact stable versions."
+    },
+    {
+      "path": "Packages/packages-lock.json",
+      "change": "Recorded the exact 21-entry Unity 6000.3 dependency graph, including sources, depths, and transitive edges."
+    },
+    {
+      "path": "docs/toolchain/DEPENDENCY_LOCK.md",
+      "change": "Documented direct and resolved dependencies, licenses, ownership, update and rollback policy, risk, removal paths, exclusions, verification, and lock fingerprint."
+    }
+  ],
+  "verification": [
+    {
+      "command": "Parse Packages/manifest.json and Packages/packages-lock.json; require every direct dependency to have the same exact lock version at depth 0 and every transitive edge to name a lock entry.",
+      "result": "passed",
+      "output": "3 direct packages; 21 resolved entries; complete dependency graph."
+    },
+    {
+      "command": "Reject direct versions containing ranges, wildcards, preview/experimental suffixes, branch-head names, URLs, or local paths.",
+      "result": "passed",
+      "output": "All direct versions are exact stable semantic versions."
+    },
+    {
+      "command": "Scan manifest and lock package IDs for analytics, crash SaaS, ads, monetization, storefront/IAP, account, networking, netcode, relay, multiplayer, Vivox, and mobile SDK categories.",
+      "result": "passed",
+      "output": "No prohibited package category is present."
+    },
+    {
+      "command": "Validate the direct package inventory contains source, version, purpose, license, owner, update policy, risk, and removal path for every manifest entry.",
+      "result": "passed",
+      "output": "3 manifest entries and 3 complete inventory rows."
+    },
+    {
+      "command": "Get-FileHash Packages/packages-lock.json -Algorithm SHA256",
+      "result": "passed",
+      "output": "2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557"
+    },
+    {
+      "command": "Open the repository with Unity 6000.3.19f1; confirm Package Manager resolves with no errors, direct-package upgrade prompt, or lock rewrite.",
+      "result": "not_run",
+      "output": "The exact editor installation is in progress. This manual check is explicitly documented for reviewer execution before acceptance."
+    }
+  ],
+  "proof": [
+    {
+      "kind": "file",
+      "path": "Packages/manifest.json",
+      "summary": "Minimal three-package direct manifest.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "kind": "file",
+      "path": "Packages/packages-lock.json",
+      "summary": "Complete exact resolved dependency graph.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "kind": "file",
+      "path": "docs/toolchain/DEPENDENCY_LOCK.md",
+      "summary": "Direct dependency inventory and operational lock policy.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "kind": "command_output",
+      "summary": "Lock SHA-256: 2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "kind": "manual_note",
+      "summary": "Human review includes the first exact-editor package resolution and no-rewrite check after the editor installation completes.",
+      "status": "needs_review",
+      "recorded_at": "2026-07-14T08:50:29+02:00"
+    }
+  ],
+  "blockers": [],
+  "notes": "The implementation is complete and statically verified. It remains in review until the exact pinned editor performs the first Package Manager resolution and the human reviewer accepts the result.",
+  "submitted_at": "2026-07-14T08:50:29+02:00",
+  "updated_at": "2026-07-14T08:50:29+02:00"
+}

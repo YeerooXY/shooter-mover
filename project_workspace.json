@@ -66,12 +66,13 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review and merge PR #15 for UF-001. After merge, start UF-002 from a fresh branch and pin the deterministic Unity package manifest and lock.",
+    "human_next_step": "Finish installing Unity 6000.3.19f1, run the UF-002 Package Manager resolution checklist, then review and merge PR #16. After merge, UF-003 and UF-004 become ready on separate branches.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
       "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
       "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
-      "UF-001 pins Unity 6.3 LTS 6000.3.19f1 and is submitted for human review; it is not done until PR #15 is accepted.",
+      "UF-001 is accepted through merged PR #15 and pins Unity 6.3 LTS 6000.3.19f1.",
+      "UF-002 pins the minimal direct package set and complete dependency lock in PR #16; exact-editor resolution is the remaining manual review check.",
       "Seven Stage 2 batch ranges are preserved as deferred planning and remain locked behind GATE-010.",
       "No Stage 2 task file, multiplayer/networking implementation, or Stage 2 dispatch is authorized."
     ]
