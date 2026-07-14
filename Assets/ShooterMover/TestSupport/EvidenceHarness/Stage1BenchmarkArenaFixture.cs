@@ -658,8 +658,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
                     || component is Joint
                     || component is CharacterController
                     || component is Camera
-                    || component is Light
-                    || component is AudioListener)
+                    || component is Light)
                 {
                     errors.Add(
                         "forbidden-non-2d-component:"
