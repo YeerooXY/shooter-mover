@@ -48,7 +48,7 @@
       "Baseline is reproducible.",
       "No speculative SDKs."
     ],
-    "notes": "UF-001 is accepted. UF-002 is submitted for review in PR #16 with static dependency proof; after acceptance, UF-003 and UF-004 become ready and may run in parallel on separate branches."
+    "notes": "UF-001 and UF-002 are accepted. PR #17 persists the successful 21-package editor-resolution proof; after it merges, UF-003 and UF-004 are ready and may run in parallel on separate branches."
   },
   {
     "slot_id": "movement-combat",
