@@ -163,7 +163,7 @@ namespace ShooterMover.Domain.Movement
             }
 
             if (other == null
-                || !Equals(TuningIdentity, other.TuningIdentity)
+                || !object.Equals(TuningIdentity, other.TuningIdentity)
                 || BaselineChargeCount != other.BaselineChargeCount
                 || AdditionalChargeCount != other.AdditionalChargeCount
                 || rechargeSeconds != other.rechargeSeconds
