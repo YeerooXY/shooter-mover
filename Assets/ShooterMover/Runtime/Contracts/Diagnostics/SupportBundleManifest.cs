@@ -254,6 +254,7 @@ namespace ShooterMover.Contracts.Diagnostics
                 });
 
             long totalIncludedBytes = 0L;
+            HashSet<StableId> logicalItemIds = new HashSet<StableId>();
             for (int index = 0; index < _items.Length; index++)
             {
                 SupportBundleItem current = _items[index];
@@ -264,8 +265,7 @@ namespace ShooterMover.Contracts.Diagnostics
                         nameof(items));
                 }
 
-                if (index > 0
-                    && _items[index - 1].LogicalItemId.Equals(current.LogicalItemId))
+                if (!logicalItemIds.Add(current.LogicalItemId))
                 {
                     throw new ArgumentException(
                         "Support-bundle logical item IDs must be unique.",
@@ -320,6 +320,8 @@ namespace ShooterMover.Contracts.Diagnostics
             builder.Append(BuildIdentity.ToCanonicalString());
             builder.Append("\ntechnical_validity:\n");
             builder.Append(TechnicalValidity.ToCanonicalString());
+            builder.Append("\nbounds:\n");
+            builder.Append(Bounds.ToCanonicalString());
             builder.Append("\ntotal_included_bytes=");
             builder.Append(TotalIncludedBytes.ToString(CultureInfo.InvariantCulture));
             builder.Append("\nitem_count=");
