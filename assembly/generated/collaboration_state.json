@@ -57,14 +57,14 @@
       "assigned_to": "web-ai",
       "assignee_type": "web_ai",
       "assignee_label": "Web AI Task Executor",
-      "status": "review",
+      "status": "done",
       "claimed_at": "2026-07-14T08:50:29+02:00",
       "proof": [
         {
           "kind": "task_run",
           "path": "assembly/generated/task_runs/UF-002-run-001.json",
           "summary": "UF-002 implementation and verification report.",
-          "status": "needs_review",
+          "status": "accepted",
           "recorded_at": "2026-07-14T08:50:29+02:00"
         },
         {
@@ -90,13 +90,13 @@
         },
         {
           "kind": "manual_note",
-          "summary": "The first Unity Package Manager resolution and no-rewrite check awaits completion of the exact editor installation.",
-          "status": "needs_review",
-          "recorded_at": "2026-07-14T08:50:29+02:00"
+          "summary": "Unity 6000.3.19f1 resolved and registered all 21 packages with no blocking log error or package-file rewrite.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:08:15+02:00"
         }
       ],
-      "notes": "Implementation is submitted for human review in PR #16. Static graph, version, source, inventory, exclusion, and fingerprint checks pass; the exact-editor resolution check is the remaining manual proof.",
-      "updated_at": "2026-07-14T08:50:29+02:00"
+      "notes": "Accepted after PR #16 merged and Nemo completed the first exact-editor package resolution. All 21 packages registered, no blocking package/compiler error appeared, and Git reported no package-file rewrite.",
+      "updated_at": "2026-07-14T09:08:15+02:00"
     }
   ],
   "task_claims": [
@@ -156,8 +156,8 @@
           "kind": "task_run",
           "path": "assembly/generated/task_runs/UF-002-run-001.json",
           "summary": "Detailed implementation and verification report.",
-          "status": "needs_review",
-          "recorded_at": "2026-07-14T08:50:29+02:00"
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:08:15+02:00"
         },
         {
           "kind": "command_output",
@@ -166,7 +166,7 @@
           "recorded_at": "2026-07-14T08:50:29+02:00"
         }
       ],
-      "status": "submitted",
+      "status": "accepted",
       "submitted_at": "2026-07-14T08:50:29+02:00"
     }
   ],
@@ -180,6 +180,18 @@
         "PR #15 merged, accepting the exact Unity 6000.3.19f1 editor baseline and its documented Windows installation policy."
       ],
       "reviewed_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "review_id": "uf-002-review-001",
+      "submission_id": "uf-002-submission-001",
+      "reviewer_actor_id": "nemo",
+      "status": "approved",
+      "findings": [
+        "PR #16 merged, accepting the minimal exact package manifest and 21-entry lock.",
+        "Unity 6000.3.19f1 resolved and registered all 21 packages in 19.57 seconds with no unresolved-package or compilation failure.",
+        "Git reported no manifest or lock rewrite; the canonical package-lock SHA-256 remained 2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557."
+      ],
+      "reviewed_at": "2026-07-14T09:08:15+02:00"
     }
   ],
   "audit_events": [
@@ -246,6 +258,22 @@
       "target_id": "UF-002",
       "created_at": "2026-07-14T08:50:29+02:00",
       "details": "Moved UF-002 to review; exact-editor Package Manager resolution remains a human verification step."
+    },
+    {
+      "event_id": "uf-002-review-approved-001",
+      "actor_id": "nemo",
+      "event_type": "review_added",
+      "target_id": "uf-002-submission-001",
+      "created_at": "2026-07-14T09:08:15+02:00",
+      "details": "Accepted UF-002 after PR #16 merged and the first exact-editor package resolution completed successfully."
+    },
+    {
+      "event_id": "uf-002-status-done-001",
+      "actor_id": "nemo",
+      "event_type": "status_changed",
+      "target_id": "UF-002",
+      "created_at": "2026-07-14T09:08:15+02:00",
+      "details": "Moved UF-002 to done, satisfying the shared dependency of UF-003 and UF-004."
     }
   ]
 }

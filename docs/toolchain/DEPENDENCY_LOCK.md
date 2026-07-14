@@ -75,14 +75,16 @@ After installing the exact editor, perform the first resolution check:
 2. Confirm the Console reports no unresolved package or compilation error.
 3. In **Window > Package Manager > In Project**, confirm URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0`, with no direct-package upgrade prompt.
 4. Close Unity and require `git diff --exit-code -- Packages/manifest.json Packages/packages-lock.json` to pass. Any silent lock rewrite is a failed baseline check that must be reviewed, not accepted automatically.
-5. Recompute `Get-FileHash Packages/packages-lock.json -Algorithm SHA256` and compare it with the fingerprint below.
+5. Recompute the canonical repository-content fingerprint with `python -c "import hashlib,subprocess; data=subprocess.check_output(['git','show','HEAD:Packages/packages-lock.json']); print(hashlib.sha256(data).hexdigest())"` and compare it with the fingerprint below.
 
 ## Lock fingerprint
 
-`Packages/packages-lock.json` SHA-256:
+Canonical `Packages/packages-lock.json` repository-content SHA-256:
 
 ```text
 2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557
 ```
 
-This fingerprint covers the resolved package list, versions, sources, depths, and dependency edges. It does not cover `manifest.json` or this document.
+This fingerprint covers the resolved package list, versions, sources, depths, and dependency edges. It does not cover `manifest.json` or this document. It is calculated from the canonical Git content so Windows CRLF checkout conversion cannot create a false mismatch. Use `git diff --exit-code -- Packages/manifest.json Packages/packages-lock.json` to detect a working-tree rewrite.
+
+The first Unity `6000.3.19f1` import on 2026-07-14 resolved and registered all 21 locked packages in 19.57 seconds. The editor log contained no unresolved-package or compilation failure, both package files remained clean according to Git, and the canonical fingerprint matched.

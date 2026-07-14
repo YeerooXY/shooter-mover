@@ -16,16 +16,17 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 - Stage 1 Dispatch is active.
 - PR #15 merged and accepted `UF-001`.
 - The editor baseline is Unity 6.3 LTS `6000.3.19f1`, changeset `7689f4515d75`.
-- `UF-002` is submitted for review in PR #16 with only URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0` as direct dependencies.
+- PR #16 merged the UF-002 package baseline with only URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0` as direct dependencies.
 - Its exact 21-entry graph is in `Packages/packages-lock.json`; its inventory and fingerprint are in `docs/toolchain/DEPENDENCY_LOCK.md`.
 - The implementation task run is `assembly/generated/task_runs/UF-002-run-001.json`.
-- No task is marked done before human review.
-- Static graph, exact-version, source, inventory, excluded-SDK, and fingerprint checks pass.
-- The first full Unity Hub project import is now authorized with the UF-002 lock and remains the required manual review proof.
+- UF-002 is human-accepted and recorded as done in PR #17.
+- Static graph, exact-version, source, inventory, excluded-SDK, and canonical fingerprint checks pass.
+- Unity `6000.3.19f1` completed the first import: all 21 packages registered in 19.57 seconds, no blocking package/compiler error appeared, and Git reported no package-file rewrite.
+- The first import generated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Finish installing Unity `6000.3.19f1`, open the project, and perform the documented Package Manager no-error/no-upgrade/no-lock-rewrite check. Then review and merge PR #16. After merge, mark UF-002 done; UF-003 and UF-004 become ready and may proceed in parallel from separate fresh branches.
+Review and merge PR #17. After merge, UF-003 and UF-004 are ready and may proceed in parallel from separate fresh branches or worktrees. Claim each explicitly. UF-003 owns its four listed ProjectSettings files plus `Assets/ShooterMover/Settings/Rendering/`; UF-004 owns the assembly-definition skeleton. Do not bulk-stage the other first-import files.
 
 Do not add gameplay, optional packages, networking, analytics, storefront, mobile, or Stage 2 functionality.

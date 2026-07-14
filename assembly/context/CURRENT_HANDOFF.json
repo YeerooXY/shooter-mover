@@ -4,9 +4,9 @@
   "repository": "YeerooXY/shooter-mover",
   "lifecycle_phase": "development",
   "active_role": "task_executor",
-  "active_branch": "agent/uf-002-unity-package-lock",
-  "active_pr": 16,
-  "last_verified_commit": "335648ea7b988e6d20b7b2c8ac5c7506205a9b1f",
+  "active_branch": "agent/uf-002-acceptance-handoff",
+  "active_pr": 17,
+  "last_verified_commit": "9bc807942269a1b452f8e9a43bc87bdd1abd33b1",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -45,24 +45,23 @@
     "docs/toolchain/DEPENDENCY_LOCK.md",
     "assembly/generated/task_runs/UF-002-run-001.json"
   ],
-  "current_section": "UF-002_review",
-  "last_completed_item": "PR #15 merged, accepting UF-001 and the exact Unity 6000.3.19f1 editor baseline.",
-  "current_item": "UF-002 pins URP 17.3.0, Input System 1.19.0, Test Framework 1.6.0, and the complete exact dependency graph in PR #16.",
-  "next_action": "Finish installing Unity 6000.3.19f1, open the project, run the documented Package Manager resolution and no-lock-rewrite check, then review and merge PR #16. After merge, mark UF-002 done; UF-003 and UF-004 then become ready and may proceed in parallel on separate fresh branches.",
+  "current_section": "UF-002_acceptance_handoff_review",
+  "last_completed_item": "PR #16 merged and Unity 6000.3.19f1 completed the accepted first import: all 21 locked packages registered with no blocking package/compiler error or package-file rewrite.",
+  "current_item": "PR #17 persists UF-002 as done, records its human acceptance, and corrects the fingerprint procedure to hash canonical Git content independently of Windows line endings.",
+  "next_action": "Review and merge PR #17. After merge, UF-003 and UF-004 are ready: claim each explicitly on a separate fresh branch or worktree. UF-003 owns only its four ProjectSettings files and rendering settings; UF-004 owns the assembly skeleton. Do not bulk-stage first-import Unity files.",
   "blockers": [
-    "UF-002 remains in review until the first exact-editor Package Manager resolution passes and PR #16 is accepted.",
-    "Unity 6000.3.19f1 installation is still in progress, so the no-error, no-upgrade-prompt, and no-lock-rewrite checks are pending.",
+    "The UF-002 acceptance and UF-003/UF-004 unlock are not durable until PR #17 merges.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T08:50:29+02:00"
+    "last_persisted_at": "2026-07-14T09:08:15+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T08:50:29+02:00"
+  "updated_at": "2026-07-14T09:08:15+02:00"
 }
