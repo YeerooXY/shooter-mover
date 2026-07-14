@@ -411,13 +411,5 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
                 temporaryPresentation.UpdateWarning(false, simulationTimeSeconds);
             }
         }
-
-        private void OnDestroy()
-        {
-            configured = false;
-            actorId = null;
-            currentState = null;
-            playerTarget = null;
-        }
     }
 }
