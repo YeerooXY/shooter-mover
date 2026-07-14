@@ -142,15 +142,15 @@
       "assigned_to": "web-ai",
       "assignee_type": "web_ai",
       "assignee_label": "Web AI Task Executor",
-      "status": "review",
+      "status": "done",
       "claimed_at": "2026-07-14T09:23:40+02:00",
       "proof": [
         {
           "kind": "task_run",
           "path": "assembly/generated/task_runs/UF-004-run-001.json",
           "summary": "UF-004 implementation and verification report.",
-          "status": "needs_review",
-          "recorded_at": "2026-07-14T09:23:40+02:00"
+          "status": "accepted",
+          "recorded_at": "2026-07-14T10:24:00+02:00"
         },
         {
           "kind": "file",
@@ -174,13 +174,13 @@
         },
         {
           "kind": "manual_note",
-          "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph.",
+          "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph, and PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91.",
           "status": "accepted",
-          "recorded_at": "2026-07-14T09:52:11+02:00"
+          "recorded_at": "2026-07-14T10:24:00+02:00"
         }
       ],
-      "notes": "Static validation, exact-editor combined-tree import, negative-reference proof, and Nemo's Inspector graph review pass. PR #18 merge remains before done.",
-      "updated_at": "2026-07-14T09:52:11+02:00"
+      "notes": "Accepted after static graph validation, exact-editor combined-tree import, deliberate negative-reference proof, Nemo's Inspector review, and PR #18 merge at 22067939458d90b8adfb5d68473f6f179f21bd91.",
+      "updated_at": "2026-07-14T10:24:00+02:00"
     }
   ],
   "task_claims": [
@@ -327,8 +327,8 @@
           "kind": "task_run",
           "path": "assembly/generated/task_runs/UF-004-run-001.json",
           "summary": "Detailed implementation and verification report.",
-          "status": "needs_review",
-          "recorded_at": "2026-07-14T09:23:40+02:00"
+          "status": "accepted",
+          "recorded_at": "2026-07-14T10:24:00+02:00"
         },
         {
           "kind": "command_output",
@@ -344,12 +344,12 @@
         },
         {
           "kind": "manual_note",
-          "summary": "Nemo confirmed all nine Inspector references match the documented graph.",
+          "summary": "Nemo confirmed all nine Inspector references match the documented graph, and PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91.",
           "status": "accepted",
-          "recorded_at": "2026-07-14T09:52:11+02:00"
+          "recorded_at": "2026-07-14T10:24:00+02:00"
         }
       ],
-      "status": "submitted",
+      "status": "accepted",
       "submitted_at": "2026-07-14T09:23:40+02:00"
     }
   ],
@@ -394,6 +394,7 @@
       "reviewer_actor_id": "nemo",
       "status": "approved",
       "findings": [
+        "PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91, accepting the inward-only assembly skeleton.",
         "Nemo confirmed all nine assembly definitions match docs/architecture/ASSEMBLY_DEPENDENCIES.md.",
         "Unity 6000.3.19f1 imported all nine asmdefs with no assembly/compiler errors.",
         "The graph validator passes and rejects the deliberate forbidden outward reference."
@@ -561,6 +562,14 @@
       "target_id": "uf-004-submission-001",
       "created_at": "2026-07-14T09:52:11+02:00",
       "details": "Approved the UF-004 assembly graph after confirming all nine Inspector references match the documentation."
+    },
+    {
+      "event_id": "uf-004-status-done-001",
+      "actor_id": "nemo",
+      "event_type": "status_changed",
+      "target_id": "UF-004",
+      "created_at": "2026-07-14T10:24:00+02:00",
+      "details": "Moved UF-004 to done after PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91, satisfying the shared assembly-skeleton dependency for UF-005, UF-006, UF-009, and CS-001."
     }
   ]
 }

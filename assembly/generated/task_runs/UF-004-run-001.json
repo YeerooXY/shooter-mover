@@ -3,7 +3,7 @@
   "task_id": "UF-004",
   "run_id": "UF-004-run-001",
   "actor_id": "web-ai",
-  "status": "review",
+  "status": "done",
   "implementation_summary": "Created the nine-layer Unity assembly-definition skeleton, deterministic asmdef metadata, an inward-dependency/cycle validator, and architecture documentation without adding gameplay code or crossing UF-004 ownership boundaries.",
   "files_changed": [
     {
@@ -110,13 +110,13 @@
     },
     {
       "kind": "manual_note",
-      "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph.",
+      "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph, and PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91.",
       "status": "accepted",
-      "recorded_at": "2026-07-14T09:52:11+02:00"
+      "recorded_at": "2026-07-14T10:24:00+02:00"
     }
   ],
   "blockers": [],
-  "notes": "All automated, exact-editor, negative-reference, and human Inspector checks pass. Empty assembly folders are intentional; no marker gameplay types were added. UF-004 remains review until PR #18 merges.",
+  "notes": "Accepted through merged PR #18 after static graph validation, deliberate forbidden-reference detection, Unity 6000.3.19f1 combined-tree import, and Nemo's Inspector graph review passed. Empty assembly folders are intentional; no marker gameplay types were added.",
   "submitted_at": "2026-07-14T09:23:40+02:00",
-  "updated_at": "2026-07-14T09:52:11+02:00"
+  "updated_at": "2026-07-14T10:24:00+02:00"
 }
