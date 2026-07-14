@@ -78,6 +78,7 @@ namespace ShooterMover.TestSupport.Movement
         private SpriteRenderer thrusterRenderer;
         private SpriteRenderer[] wallRenderers;
         private bool initialized;
+        private bool activationPending;
 
         public bool IsCompositionRoot
         {
@@ -181,6 +182,27 @@ namespace ShooterMover.TestSupport.Movement
             initialized = true;
         }
 
+        private void Start()
+        {
+            if (!IsCompositionRoot || !initialized || !activationPending)
+            {
+                return;
+            }
+
+            activationPending = false;
+            if (!isActiveAndEnabled
+                || movementLifecycle == null
+                || !movementLifecycle.isActiveAndEnabled
+                || movementLifecycle.IsRunning)
+            {
+                return;
+            }
+
+            movementLifecycle.StartActor();
+            RefreshCameraForTests();
+            RefreshPresentationForTests();
+        }
+
         private void OnEnable()
         {
             if (!IsCompositionRoot || !initialized)
@@ -191,7 +213,14 @@ namespace ShooterMover.TestSupport.Movement
             ResetPlayerPose();
             if (!movementLifecycle.IsRunning)
             {
-                movementLifecycle.StartActor();
+                if (movementLifecycle.isActiveAndEnabled)
+                {
+                    movementLifecycle.StartActor();
+                }
+                else
+                {
+                    activationPending = true;
+                }
             }
 
             RefreshCameraForTests();
@@ -200,6 +229,7 @@ namespace ShooterMover.TestSupport.Movement
 
         private void OnDisable()
         {
+            activationPending = false;
             if (!IsCompositionRoot
                 || movementLifecycle == null
                 || !movementLifecycle.IsConstructed
@@ -275,7 +305,7 @@ namespace ShooterMover.TestSupport.Movement
                 return;
             }
 
-            Vector3 playerPosition = playerTransform.position;
+            Vector2 playerPosition = playerBody.position;
             followCamera.transform.position = new Vector3(
                 playerPosition.x,
                 playerPosition.y,
