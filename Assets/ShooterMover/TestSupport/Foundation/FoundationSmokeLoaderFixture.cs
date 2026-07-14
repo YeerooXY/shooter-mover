@@ -10,8 +10,8 @@ using ShooterMover.Bootstrap.Unity;
 namespace ShooterMover.TestSupport.Foundation
 {
     /// <summary>
-    /// Scene-owned hook and deterministic additive-load driver for FoundationSmoke.
-    /// It creates only a transient 2D marker and never registers runtime services.
+    /// Scene-owned visual hook and deterministic additive-load driver for
+    /// FoundationSmoke. It creates no services and retains no objects after unload.
     /// </summary>
     [ExecuteAlways]
     [DisallowMultipleComponent]
@@ -23,24 +23,13 @@ namespace ShooterMover.TestSupport.Foundation
         public const string SceneName = "FoundationSmoke";
         public const string ScenePath =
             "Assets/ShooterMover/Scenes/Tests/FoundationSmoke.unity";
-        public const string MarkerObjectName = "Foundation Smoke Visual Marker";
-        public const string MarkerLabel = "FOUNDATION SMOKE";
-
-        private const int TextureWidth = 256;
-        private const int TextureHeight = 96;
-        private const int PixelsPerUnit = 32;
-        private const int GlyphWidth = 5;
-        private const int GlyphHeight = 7;
-        private const int GlyphSpacing = 1;
+        public const string MarkerRootName = "Foundation Smoke Visual Marker";
+        public const string MarkerLabel = "FOUNDATION SMOKE\nADDITIVE SCENE ACTIVE";
 
         private static AsyncOperation activeOperation;
-        private static OperationKind activeOperationKind;
         private static int activeInstanceCount;
 
         private GameObject markerObject;
-        private SpriteRenderer markerRenderer;
-        private Texture2D markerTexture;
-        private Sprite markerSprite;
         private bool countedRuntimeInstance;
 
         public static int ActiveInstanceCount
@@ -57,53 +46,42 @@ namespace ShooterMover.TestSupport.Foundation
         {
             get
             {
-                Scene scene = GetLoadedSmokeScene();
+                Scene scene = GetSmokeScene();
                 return scene.IsValid() && scene.isLoaded;
             }
-        }
-
-        public static string ActiveOperationName
-        {
-            get { return activeOperationKind.ToString(); }
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
         {
             activeOperation = null;
-            activeOperationKind = OperationKind.None;
             activeInstanceCount = 0;
         }
 
         private void OnEnable()
         {
-            EnsureMarker();
-            RegisterRuntimeInstance();
+            CreateMarker();
+            CountRuntimeInstance();
         }
 
         private void Start()
         {
-            // Covers domain-reload-disabled Play Mode transitions where an editor-time
-            // OnEnable may have occurred before Application.isPlaying became true.
-            RegisterRuntimeInstance();
+            // Handles domain-reload-disabled Play Mode entry after editor-time OnEnable.
+            CountRuntimeInstance();
         }
 
         private void OnDisable()
         {
-            UnregisterRuntimeInstance();
-            ReleaseMarker();
+            ReleaseRuntimeInstance();
+            DestroyMarker();
         }
 
         private void OnDestroy()
         {
-            UnregisterRuntimeInstance();
-            ReleaseMarker();
+            ReleaseRuntimeInstance();
+            DestroyMarker();
         }
 
-        /// <summary>
-        /// Starts one additive FoundationSmoke load. A second request is rejected
-        /// until the current load or unload operation has completed.
-        /// </summary>
         public static AsyncOperation LoadAdditively()
         {
             RequirePlayMode();
@@ -112,11 +90,10 @@ namespace ShooterMover.TestSupport.Foundation
             if (IsLoaded)
             {
                 throw new InvalidOperationException(
-                    "FoundationSmoke is already loaded; duplicate smoke loads are not allowed.");
+                    "FoundationSmoke is already loaded; duplicate loads are rejected.");
             }
 
-            Scene bootstrapScene = RequireBootstrapScene();
-            EnsureBootstrapRunning(bootstrapScene);
+            EnsureBootstrapRunning(RequireBootstrapScene());
 
             AsyncOperation operation;
 #if UNITY_EDITOR
@@ -126,92 +103,77 @@ namespace ShooterMover.TestSupport.Foundation
 #else
             operation = SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Additive);
 #endif
-            return TrackOperation(operation, OperationKind.Loading);
+            return Track(operation);
         }
 
-        /// <summary>
-        /// Starts one unload of the currently loaded FoundationSmoke scene.
-        /// </summary>
         public static AsyncOperation Unload()
         {
             RequirePlayMode();
             RequireNoOperation();
 
-            Scene smokeScene = GetLoadedSmokeScene();
-            if (!smokeScene.IsValid() || !smokeScene.isLoaded)
+            Scene scene = GetSmokeScene();
+            if (!scene.IsValid() || !scene.isLoaded)
             {
                 throw new InvalidOperationException(
                     "FoundationSmoke cannot unload because it is not loaded.");
             }
 
-            return TrackOperation(
-                SceneManager.UnloadSceneAsync(smokeScene),
-                OperationKind.Unloading);
+            return Track(SceneManager.UnloadSceneAsync(scene));
         }
 
         /// <summary>
-        /// Exercises load, unload, reload, final unload, and explicit return to the
-        /// still-running Bootstrap scene. Callers should yield this enumerator.
+        /// Loads, unloads, reloads, unloads again, and restores Bootstrap as the
+        /// active scene. Callers should yield the returned enumerator.
         /// </summary>
         public static IEnumerator LoadUnloadReloadAndReturnToBootstrap()
         {
             RequirePlayMode();
             RequireNoOperation();
 
-            Scene bootstrapScene = RequireBootstrapScene();
-            EnsureBootstrapRunning(bootstrapScene);
-            SetBootstrapActive(bootstrapScene);
+            Scene bootstrap = RequireBootstrapScene();
+            EnsureBootstrapRunning(bootstrap);
+            SetBootstrapActive(bootstrap);
 
-            AsyncOperation load = LoadAdditively();
-            yield return load;
+            yield return LoadAdditively();
             yield return null;
-            EnsureSmokeLoadedExactlyOnce();
+            EnsureSmokeLoaded();
 
-            AsyncOperation unload = Unload();
-            yield return unload;
+            yield return Unload();
             yield return null;
             EnsureSmokeUnloaded();
 
-            AsyncOperation reload = LoadAdditively();
-            yield return reload;
+            yield return LoadAdditively();
             yield return null;
-            EnsureSmokeLoadedExactlyOnce();
+            EnsureSmokeLoaded();
 
-            AsyncOperation finalUnload = Unload();
-            yield return finalUnload;
+            yield return Unload();
             yield return null;
             EnsureSmokeUnloaded();
 
-            bootstrapScene = RequireBootstrapScene();
-            EnsureBootstrapRunning(bootstrapScene);
-            SetBootstrapActive(bootstrapScene);
+            bootstrap = RequireBootstrapScene();
+            EnsureBootstrapRunning(bootstrap);
+            SetBootstrapActive(bootstrap);
         }
 
-        private static AsyncOperation TrackOperation(
-            AsyncOperation operation,
-            OperationKind operationKind)
+        private static AsyncOperation Track(AsyncOperation operation)
         {
             if (operation == null)
             {
                 throw new InvalidOperationException(
-                    "Unity did not create the requested FoundationSmoke scene operation.");
+                    "Unity did not create the requested FoundationSmoke operation.");
             }
 
             activeOperation = operation;
-            activeOperationKind = operationKind;
-            operation.completed += OnOperationCompleted;
+            operation.completed += CompleteOperation;
             return operation;
         }
 
-        private static void OnOperationCompleted(AsyncOperation operation)
+        private static void CompleteOperation(AsyncOperation operation)
         {
-            if (!ReferenceEquals(activeOperation, operation))
+            if (ReferenceEquals(activeOperation, operation))
             {
-                return;
+                activeOperation = null;
             }
-
-            activeOperation = null;
-            activeOperationKind = OperationKind.None;
         }
 
         private static void RequirePlayMode()
@@ -219,7 +181,7 @@ namespace ShooterMover.TestSupport.Foundation
             if (!Application.isPlaying)
             {
                 throw new InvalidOperationException(
-                    "The FoundationSmoke load sequence may only run in Play Mode.");
+                    "FoundationSmoke scene operations require Play Mode.");
             }
         }
 
@@ -228,8 +190,7 @@ namespace ShooterMover.TestSupport.Foundation
             if (activeOperation != null)
             {
                 throw new InvalidOperationException(
-                    "A FoundationSmoke " + activeOperationKind
-                    + " operation is already in flight. Wait for it to complete before retrying.");
+                    "A FoundationSmoke load or unload is already in flight.");
             }
         }
 
@@ -244,28 +205,23 @@ namespace ShooterMover.TestSupport.Foundation
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 throw new InvalidOperationException(
-                    "Bootstrap must be loaded before FoundationSmoke can be exercised.");
+                    "Bootstrap must be loaded before FoundationSmoke is exercised.");
             }
 
             return scene;
         }
 
-        private static Scene GetLoadedSmokeScene()
+        private static Scene GetSmokeScene()
         {
             Scene scene = SceneManager.GetSceneByPath(ScenePath);
-            if (!scene.IsValid())
-            {
-                scene = SceneManager.GetSceneByName(SceneName);
-            }
-
-            return scene;
+            return scene.IsValid() ? scene : SceneManager.GetSceneByName(SceneName);
         }
 
-        private static void EnsureBootstrapRunning(Scene bootstrapScene)
+        private static void EnsureBootstrapRunning(Scene bootstrap)
         {
-            BootstrapSceneAdapter runningAdapter = null;
             int adapterCount = 0;
-            GameObject[] roots = bootstrapScene.GetRootGameObjects();
+            bool isRunning = false;
+            GameObject[] roots = bootstrap.GetRootGameObjects();
 
             for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
             {
@@ -275,103 +231,67 @@ namespace ShooterMover.TestSupport.Foundation
                 for (int adapterIndex = 0; adapterIndex < adapters.Length; adapterIndex++)
                 {
                     adapterCount++;
-                    if (adapters[adapterIndex].IsCompositionRootRunning)
-                    {
-                        runningAdapter = adapters[adapterIndex];
-                    }
+                    isRunning |= adapters[adapterIndex].IsCompositionRootRunning;
                 }
             }
 
-            if (adapterCount != 1 || runningAdapter == null)
+            if (adapterCount != 1 || !isRunning)
             {
                 throw new InvalidOperationException(
-                    "Bootstrap must contain exactly one running BootstrapSceneAdapter; found "
+                    "Expected exactly one running BootstrapSceneAdapter; found "
                     + adapterCount + ".");
             }
         }
 
-        private static void SetBootstrapActive(Scene bootstrapScene)
+        private static void SetBootstrapActive(Scene bootstrap)
         {
-            if (SceneManager.GetActiveScene() == bootstrapScene)
-            {
-                return;
-            }
-
-            if (!SceneManager.SetActiveScene(bootstrapScene))
+            if (SceneManager.GetActiveScene() != bootstrap
+                && !SceneManager.SetActiveScene(bootstrap))
             {
                 throw new InvalidOperationException(
                     "Unity could not restore Bootstrap as the active scene.");
             }
         }
 
-        private static void EnsureSmokeLoadedExactlyOnce()
+        private static void EnsureSmokeLoaded()
         {
-            if (activeOperation != null)
-            {
-                throw new InvalidOperationException(
-                    "The FoundationSmoke operation reported completion but is still tracked as active.");
-            }
+            Scene scene = GetSmokeScene();
+            GameObject[] roots = scene.IsValid() && scene.isLoaded
+                ? scene.GetRootGameObjects()
+                : new GameObject[0];
 
-            Scene smokeScene = GetLoadedSmokeScene();
-            if (!smokeScene.IsValid() || !smokeScene.isLoaded)
+            if (activeOperation != null
+                || roots.Length != 1
+                || roots[0].name != MarkerRootName
+                || activeInstanceCount != 1)
             {
                 throw new InvalidOperationException(
-                    "FoundationSmoke did not become a loaded additive scene.");
-            }
-
-            GameObject[] roots = smokeScene.GetRootGameObjects();
-            if (roots.Length != 1 || roots[0].name != MarkerObjectName)
-            {
-                throw new InvalidOperationException(
-                    "FoundationSmoke must contain exactly one root named '"
-                    + MarkerObjectName + "'; found " + roots.Length + " root object(s).");
-            }
-
-            FoundationSmokeLoaderFixture[] fixtures =
-                roots[0].GetComponentsInChildren<FoundationSmokeLoaderFixture>(true);
-            if (fixtures.Length != 1 || activeInstanceCount != 1)
-            {
-                throw new InvalidOperationException(
-                    "FoundationSmoke must have exactly one active loader fixture; scene count="
-                    + fixtures.Length + ", active count=" + activeInstanceCount + ".");
+                    "FoundationSmoke did not load as one active labeled marker scene.");
             }
         }
 
         private static void EnsureSmokeUnloaded()
         {
-            if (activeOperation != null)
+            Scene scene = GetSmokeScene();
+            if (activeOperation != null
+                || (scene.IsValid() && scene.isLoaded)
+                || activeInstanceCount != 0)
             {
                 throw new InvalidOperationException(
-                    "The FoundationSmoke operation reported completion but is still tracked as active.");
-            }
-
-            Scene smokeScene = GetLoadedSmokeScene();
-            if (smokeScene.IsValid() && smokeScene.isLoaded)
-            {
-                throw new InvalidOperationException(
-                    "FoundationSmoke remained loaded after its unload operation completed.");
-            }
-
-            if (activeInstanceCount != 0)
-            {
-                throw new InvalidOperationException(
-                    "FoundationSmoke retained " + activeInstanceCount
-                    + " active fixture instance(s) after unload.");
+                    "FoundationSmoke retained a scene object or unfinished operation after unload.");
             }
         }
 
-        private void RegisterRuntimeInstance()
+        private void CountRuntimeInstance()
         {
-            if (!Application.isPlaying || countedRuntimeInstance)
+            if (Application.isPlaying && !countedRuntimeInstance)
             {
-                return;
+                countedRuntimeInstance = true;
+                activeInstanceCount++;
             }
-
-            countedRuntimeInstance = true;
-            activeInstanceCount++;
         }
 
-        private void UnregisterRuntimeInstance()
+        private void ReleaseRuntimeInstance()
         {
             if (!countedRuntimeInstance)
             {
@@ -382,226 +302,63 @@ namespace ShooterMover.TestSupport.Foundation
             activeInstanceCount = Math.Max(0, activeInstanceCount - 1);
         }
 
-        private void EnsureMarker()
+        private void CreateMarker()
         {
-            if (markerObject != null && markerRenderer != null && markerSprite != null)
+            if (markerObject != null)
             {
                 return;
             }
 
-            ReleaseMarker();
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font == null)
+            {
+                font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            }
 
-            markerObject = new GameObject(MarkerObjectName, typeof(SpriteRenderer));
+            if (font == null)
+            {
+                throw new InvalidOperationException(
+                    "Unity's built-in runtime font is unavailable for FoundationSmoke.");
+            }
+
+            markerObject = new GameObject("Foundation Smoke Label", typeof(TextMesh));
             markerObject.hideFlags = HideFlags.DontSave;
             markerObject.transform.SetParent(transform, false);
-            markerObject.transform.localPosition = Vector3.zero;
-            markerObject.transform.localRotation = Quaternion.identity;
-            markerObject.transform.localScale = Vector3.one;
 
-            markerRenderer = markerObject.GetComponent<SpriteRenderer>();
-            markerRenderer.sortingOrder = 0;
-            markerRenderer.color = Color.white;
+            TextMesh text = markerObject.GetComponent<TextMesh>();
+            text.text = MarkerLabel;
+            text.font = font;
+            text.fontSize = 64;
+            text.characterSize = 0.18f;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.lineSpacing = 1.1f;
+            text.richText = false;
+            text.color = new Color32(74, 230, 255, 255);
 
-            markerTexture = BuildMarkerTexture();
-            markerSprite = Sprite.Create(
-                markerTexture,
-                new Rect(0f, 0f, TextureWidth, TextureHeight),
-                new Vector2(0.5f, 0.5f),
-                PixelsPerUnit,
-                0,
-                SpriteMeshType.FullRect);
-            markerSprite.name = MarkerLabel;
-            markerSprite.hideFlags = HideFlags.DontSave;
-            markerRenderer.sprite = markerSprite;
+            MeshRenderer renderer = markerObject.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = font.material;
+            renderer.sortingOrder = 0;
         }
 
-        private static Texture2D BuildMarkerTexture()
+        private void DestroyMarker()
         {
-            Color32 background = new Color32(10, 18, 28, 255);
-            Color32 panel = new Color32(18, 36, 52, 255);
-            Color32 accent = new Color32(74, 230, 255, 255);
-            Color32 text = new Color32(240, 250, 255, 255);
-            Color32[] pixels = new Color32[TextureWidth * TextureHeight];
-
-            Fill(pixels, background);
-            FillRectangle(pixels, 4, 4, TextureWidth - 8, TextureHeight - 8, accent);
-            FillRectangle(pixels, 8, 8, TextureWidth - 16, TextureHeight - 16, panel);
-            FillRectangle(pixels, 18, 47, TextureWidth - 36, 2, accent);
-
-            DrawCenteredText(pixels, "FOUNDATION", 55, 3, text);
-            DrawCenteredText(pixels, "SMOKE", 20, 3, text);
-
-            Texture2D texture = new Texture2D(
-                TextureWidth,
-                TextureHeight,
-                TextureFormat.RGBA32,
-                false,
-                false);
-            texture.name = MarkerLabel + " Texture";
-            texture.filterMode = FilterMode.Point;
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.hideFlags = HideFlags.DontSave;
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
-            return texture;
-        }
-
-        private static void Fill(Color32[] pixels, Color32 color)
-        {
-            for (int index = 0; index < pixels.Length; index++)
-            {
-                pixels[index] = color;
-            }
-        }
-
-        private static void FillRectangle(
-            Color32[] pixels,
-            int x,
-            int y,
-            int width,
-            int height,
-            Color32 color)
-        {
-            for (int pixelY = y; pixelY < y + height; pixelY++)
-            {
-                for (int pixelX = x; pixelX < x + width; pixelX++)
-                {
-                    pixels[(pixelY * TextureWidth) + pixelX] = color;
-                }
-            }
-        }
-
-        private static void DrawCenteredText(
-            Color32[] pixels,
-            string value,
-            int originY,
-            int scale,
-            Color32 color)
-        {
-            int textWidth =
-                (value.Length * (GlyphWidth + GlyphSpacing) * scale)
-                - (GlyphSpacing * scale);
-            int originX = (TextureWidth - textWidth) / 2;
-
-            for (int index = 0; index < value.Length; index++)
-            {
-                char character = value[index];
-                if (character != ' ')
-                {
-                    DrawGlyph(
-                        pixels,
-                        character,
-                        originX,
-                        originY,
-                        scale,
-                        color);
-                }
-
-                originX += (GlyphWidth + GlyphSpacing) * scale;
-            }
-        }
-
-        private static void DrawGlyph(
-            Color32[] pixels,
-            char character,
-            int originX,
-            int originY,
-            int scale,
-            Color32 color)
-        {
-            string glyph = GetGlyph(character);
-
-            for (int row = 0; row < GlyphHeight; row++)
-            {
-                for (int column = 0; column < GlyphWidth; column++)
-                {
-                    if (glyph[(row * 6) + column] != '1')
-                    {
-                        continue;
-                    }
-
-                    int pixelX = originX + (column * scale);
-                    int pixelY = originY + ((GlyphHeight - 1 - row) * scale);
-                    FillRectangle(pixels, pixelX, pixelY, scale, scale, color);
-                }
-            }
-        }
-
-        private static string GetGlyph(char character)
-        {
-            switch (character)
-            {
-                case 'A':
-                    return "01110|10001|10001|11111|10001|10001|10001";
-                case 'D':
-                    return "11110|10001|10001|10001|10001|10001|11110";
-                case 'E':
-                    return "11111|10000|10000|11110|10000|10000|11111";
-                case 'F':
-                    return "11111|10000|10000|11110|10000|10000|10000";
-                case 'I':
-                    return "11111|00100|00100|00100|00100|00100|11111";
-                case 'K':
-                    return "10001|10010|10100|11000|10100|10010|10001";
-                case 'M':
-                    return "10001|11011|10101|10101|10001|10001|10001";
-                case 'N':
-                    return "10001|11001|11001|10101|10011|10011|10001";
-                case 'O':
-                    return "01110|10001|10001|10001|10001|10001|01110";
-                case 'S':
-                    return "01111|10000|10000|01110|00001|00001|11110";
-                case 'T':
-                    return "11111|00100|00100|00100|00100|00100|00100";
-                case 'U':
-                    return "10001|10001|10001|10001|10001|10001|01110";
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        nameof(character),
-                        character,
-                        "No marker glyph is defined for this character.");
-            }
-        }
-
-        private void ReleaseMarker()
-        {
-            if (markerRenderer != null)
-            {
-                markerRenderer.sprite = null;
-            }
-
-            DestroyOwned(markerSprite);
-            DestroyOwned(markerTexture);
-            DestroyOwned(markerObject);
-
-            markerSprite = null;
-            markerTexture = null;
-            markerRenderer = null;
-            markerObject = null;
-        }
-
-        private static void DestroyOwned(UnityEngine.Object ownedObject)
-        {
-            if (ownedObject == null)
+            if (markerObject == null)
             {
                 return;
             }
+
+            GameObject ownedMarker = markerObject;
+            markerObject = null;
 
             if (Application.isPlaying)
             {
-                Destroy(ownedObject);
+                Destroy(ownedMarker);
             }
             else
             {
-                DestroyImmediate(ownedObject);
+                DestroyImmediate(ownedMarker);
             }
-        }
-
-        private enum OperationKind
-        {
-            None,
-            Loading,
-            Unloading
         }
     }
 }
