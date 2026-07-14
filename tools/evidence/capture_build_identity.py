@@ -9,7 +9,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -328,11 +328,6 @@ def compose_record(
             "provisional-build-identity",
             "evidence requires a final artifact checksum; artifact_checksum=null is provisional",
         )
-    if build_identity.content_fingerprint != content_version.definition_fingerprint:
-        raise InvalidEvidence(
-            "inconsistent-content-version",
-            "BuildIdentity content_fingerprint must equal ContentVersion definition_fingerprint for evidence identity v1",
-        )
 
     if dirty_state_policy not in ("reject-dirty", "allow-dirty-development"):
         code = (
@@ -369,6 +364,7 @@ def compose_record(
         "dirty_state_policy=" + dirty_state_policy,
         "unity_version=" + build_identity.unity_version,
         "package_lock_fingerprint=" + build_identity.package_lock_fingerprint,
+        "build_content_fingerprint=" + build_identity.content_fingerprint,
         "content_catalog_version=" + str(content_version.catalog_version),
         "content_definition_fingerprint=" + content_version.definition_fingerprint,
         "save_schema_version=" + str(build_identity.save_schema),
