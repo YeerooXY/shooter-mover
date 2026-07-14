@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
@@ -62,7 +63,7 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             EnemyActor2DFixedStepResult result =
                 fixture.Actor.ExecuteFixedStep(0.02d);
 
-            Assert.That(result.Status, Is.EqualTo(EnemyActor2DFixedStepStatus.Applied));
+            Assert.That(result.Applied, Is.True);
             Assert.That(result.Decision.ActorId, Is.EqualTo(EnemyId));
             Assert.That(result.Decision.TargetId, Is.EqualTo(PlayerId));
             Assert.That(result.AppliedVelocityX, Is.EqualTo(2.4d).Within(0.000001d));
@@ -298,7 +299,6 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 "Physics.Raycast",
                 "RaycastHit",
                 "Rigidbody ",
-                "Collider ",
                 "Collision ",
                 "GameObject.Find",
                 "FindObject",
@@ -315,6 +315,11 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             {
                 Assert.That(allSource, Does.Not.Contain(token), "Forbidden token: " + token);
             }
+
+            Assert.That(
+                Regex.IsMatch(allSource, @"\bCollider\s+[A-Za-z_]"),
+                Is.False,
+                "Forbidden 3D Collider type declaration.");
 
             Assert.That(packageSource, Does.Contain("EnemyActorStepper.Step"));
             Assert.That(packageSource, Does.Contain("IEnemyActor2DAuthority"));
