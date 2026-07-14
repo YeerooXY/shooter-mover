@@ -241,7 +241,7 @@ namespace ShooterMover.Tests.EditMode.Movement
             MovementThrusterTuningProfile changed = BuildProfile(baseMaximumSpeed: 13d);
             ThrusterBankState state = ThrusterBankState.CreateFull(original);
 
-            bool consumed;
+            bool consumed = false;
             Assert.DoesNotThrow(
                 () => state = ThrusterBankStepper.TryConsume(state, equivalent, out consumed));
             Assert.That(consumed, Is.True);
@@ -257,7 +257,7 @@ namespace ShooterMover.Tests.EditMode.Movement
         {
             MovementThrusterTuningProfile tuning = BuildProfile();
             ThrusterBankState full = ThrusterBankState.CreateFull(tuning);
-            bool consumed;
+            bool consumed = false;
 
             Assert.Throws<ArgumentNullException>(
                 () => ThrusterBankStepper.TryConsume(null, tuning, out consumed));
