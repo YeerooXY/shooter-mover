@@ -79,7 +79,7 @@
     {
       "command": "Open with Unity 6000.3.19f1, allow script compilation, and inspect the assembly graph",
       "result": "passed",
-      "output": "Combined-tree batchmode import exited 0, registered all 21 packages, imported all nine Shooter Mover asmdefs, and reported zero assembly or compiler errors. Unity correctly noted that the intentionally empty assemblies have no scripts to compile; Inspector graph review remains for Nemo."
+      "output": "Combined-tree batchmode import exited 0, registered all 21 packages, imported all nine Shooter Mover asmdefs, and reported zero assembly or compiler errors. Unity correctly noted that the intentionally empty assemblies have no scripts to compile. Nemo then confirmed the Inspector graph matches the documented direct references."
     }
   ],
   "proof": [
@@ -110,13 +110,13 @@
     },
     {
       "kind": "manual_note",
-      "summary": "Inspector graph review remains for the human reviewer before UF-004 can be marked done.",
-      "status": "needs_review",
-      "recorded_at": "2026-07-14T09:38:30+02:00"
+      "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph.",
+      "status": "accepted",
+      "recorded_at": "2026-07-14T09:52:11+02:00"
     }
   ],
   "blockers": [],
-  "notes": "Submitted in draft PR #18. Empty assembly folders are intentional; no marker gameplay types were added. Exact-editor import now passes on the combined tree; the implementation stays in review until Nemo inspects and accepts the graph.",
+  "notes": "All automated, exact-editor, negative-reference, and human Inspector checks pass. Empty assembly folders are intentional; no marker gameplay types were added. UF-004 remains review until PR #18 merges.",
   "submitted_at": "2026-07-14T09:23:40+02:00",
-  "updated_at": "2026-07-14T09:38:30+02:00"
+  "updated_at": "2026-07-14T09:52:11+02:00"
 }

@@ -174,13 +174,13 @@
         },
         {
           "kind": "manual_note",
-          "summary": "Inspector graph review remains for human acceptance.",
-          "status": "needs_review",
-          "recorded_at": "2026-07-14T09:38:30+02:00"
+          "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:52:11+02:00"
         }
       ],
-      "notes": "Static validation and exact-editor combined-tree import pass in draft PR #18; Inspector graph review remains before acceptance.",
-      "updated_at": "2026-07-14T09:38:30+02:00"
+      "notes": "Static validation, exact-editor combined-tree import, negative-reference proof, and Nemo's Inspector graph review pass. PR #18 merge remains before done.",
+      "updated_at": "2026-07-14T09:52:11+02:00"
     }
   ],
   "task_claims": [
@@ -344,9 +344,9 @@
         },
         {
           "kind": "manual_note",
-          "summary": "Inspector graph review remains for Nemo.",
-          "status": "needs_review",
-          "recorded_at": "2026-07-14T09:38:30+02:00"
+          "summary": "Nemo confirmed all nine Inspector references match the documented graph.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:52:11+02:00"
         }
       ],
       "status": "submitted",
@@ -387,6 +387,18 @@
         "The automated serialized scan confirmed every quality tier uses the shared rendering pipeline and contains no gameplay-authority field."
       ],
       "reviewed_at": "2026-07-14T09:36:25+02:00"
+    },
+    {
+      "review_id": "uf-004-review-001",
+      "submission_id": "uf-004-submission-001",
+      "reviewer_actor_id": "nemo",
+      "status": "approved",
+      "findings": [
+        "Nemo confirmed all nine assembly definitions match docs/architecture/ASSEMBLY_DEPENDENCIES.md.",
+        "Unity 6000.3.19f1 imported all nine asmdefs with no assembly/compiler errors.",
+        "The graph validator passes and rejects the deliberate forbidden outward reference."
+      ],
+      "reviewed_at": "2026-07-14T09:52:11+02:00"
     }
   ],
   "audit_events": [
@@ -541,6 +553,14 @@
       "target_id": "UF-004",
       "created_at": "2026-07-14T09:38:30+02:00",
       "details": "Recorded the successful Unity 6000.3.19f1 combined-tree import; only human Inspector graph review remains."
+    },
+    {
+      "event_id": "uf-004-review-approved-001",
+      "actor_id": "nemo",
+      "event_type": "review_added",
+      "target_id": "uf-004-submission-001",
+      "created_at": "2026-07-14T09:52:11+02:00",
+      "details": "Approved the UF-004 assembly graph after confirming all nine Inspector references match the documentation."
     }
   ]
 }

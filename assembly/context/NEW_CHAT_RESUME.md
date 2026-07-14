@@ -26,11 +26,12 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 - A deliberate temporary `ShooterMover.Domain -> ShooterMover.UnityAdapters` reference was rejected and removed.
 - PR #18 has been merged locally with current `main` to reconcile the parallel UF-003 workflow state.
 - Unity `6000.3.19f1` imported all nine UF-004 asmdefs on the combined tree with exit code 0 and no assembly/compiler errors. The expected empty-assembly notices are not errors.
+- Nemo confirmed in the Unity Inspector that all nine assembly definitions match `docs/architecture/ASSEMBLY_DEPENDENCIES.md`; all UF-004 verification now passes.
 - The first import generated unrelated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Inspect the nine assembly definitions in PR #18 against `docs/architecture/ASSEMBLY_DEPENDENCIES.md`. The validator and exact-editor import already pass. If the Inspector graph matches the documented direct references, mark PR #18 ready and merge it. After merge, use a fresh handoff branch to record UF-004 as done; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.
+Mark PR #18 ready and merge it. After merge, use a fresh handoff branch to record UF-004 as done; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.
 
 Do not add gameplay, optional packages, networking, analytics, storefront, mobile, or Stage 2 functionality.

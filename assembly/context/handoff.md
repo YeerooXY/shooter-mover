@@ -29,19 +29,16 @@ The task also adds deterministic `.asmdef.meta` files, an executable graph valid
 - The clean graph passes exact-reference, Unity-free-layer, test-flag, inward-direction, missing-reference, and cycle checks.
 - A temporary forbidden `ShooterMover.Domain -> ShooterMover.UnityAdapters` reference was detected, then removed.
 - Unity `6000.3.19f1` imported all nine asmdefs on the combined UF-003/UF-004 tree with exit code 0 and no assembly/compiler errors.
+- Nemo confirmed all nine assembly definitions match the documented dependency graph in the Unity Inspector.
 
 ## Review boundary
 
-UF-004 remains `review`, not `done`. Exact-editor import passes; the remaining proof is Nemo's Inspector graph review:
-
-1. check out PR #18;
-2. inspect the nine assembly definitions against `docs/architecture/ASSEMBLY_DEPENDENCIES.md`;
-3. optionally rerun `python tools/validation/validate_unity_assembly_graph.py` from the repository root.
+UF-004 remains `review`, not `done`, only because PR #18 has not merged. Static validation, the deliberate negative test, exact-editor import, and Nemo's Inspector graph review all pass.
 
 Empty assembly folders are intentional. Do not add marker gameplay types merely to force visible compiled DLLs.
 
 ## Exact next action
 
-If the Inspector graph matches the documentation, mark PR #18 ready and merge it. After merge, create a fresh handoff branch to record UF-004 as done. UF-005, UF-006, UF-009, and CS-001 may treat UF-004 as satisfied only after that acceptance is durable.
+Mark PR #18 ready and merge it. After merge, create a fresh handoff branch to record UF-004 as done. UF-005, UF-006, UF-009, and CS-001 may treat UF-004 as satisfied only after that acceptance is durable.
 
 Stage 2 remains blocked behind `GATE-010`.

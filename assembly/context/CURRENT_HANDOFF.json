@@ -68,21 +68,21 @@
   ],
   "current_section": "UF-004_review",
   "last_completed_item": "PR #19 merged after exact-editor/static quality proof and Nemo's empty-scene URP 2D renderer check passed, accepting UF-003.",
-  "current_item": "Draft PR #18 now includes current main; Unity 6000.3.19f1 imported all nine UF-004 asmdefs on the combined tree with no assembly/compiler errors, and the graph validator passes.",
-  "next_action": "Inspect the nine assembly definitions in PR #18 against docs/architecture/ASSEMBLY_DEPENDENCIES.md. If the Inspector graph matches the documented direct references, mark PR #18 ready and merge it. After merge, record UF-004 as done on a fresh handoff branch; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.",
+  "current_item": "All UF-004 verification is complete: the graph validator, deliberate forbidden-reference detection, Unity combined-tree import, and Nemo's nine-assembly Inspector review pass. PR #18 is ready to merge.",
+  "next_action": "Mark PR #18 ready and merge it. After merge, record UF-004 as done on a fresh handoff branch; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.",
   "blockers": [
-    "UF-004 remains in review until the human reviewer confirms the nine assembly definitions match the documented graph.",
+    "UF-004 remains in review until PR #18 merges.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T09:41:00+02:00"
+    "last_persisted_at": "2026-07-14T09:52:11+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T09:41:00+02:00"
+  "updated_at": "2026-07-14T09:52:11+02:00"
 }
