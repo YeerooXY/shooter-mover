@@ -1,0 +1,25 @@
+{
+  "schema": "shooter-mover.evidence-run-configuration",
+  "version": 1,
+  "runSeed": 104729,
+  "identityReference": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "intentFixtureVersion": 1,
+  "qualityProfile": "Medium",
+  "locale": "en-US",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "fullscreen": false
+  },
+  "diagnostics": {
+    "maxEventCount": 4096,
+    "maxEventPayloadBytes": 4096,
+    "maxLogBytes": 8388608,
+    "retainedLogCount": 3
+  },
+  "timeouts": {
+    "setupSeconds": 30,
+    "smokeRunSeconds": 120,
+    "shutdownSeconds": 15
+  }
+}
