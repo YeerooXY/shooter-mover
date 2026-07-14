@@ -1,0 +1,37 @@
+{
+  "schema": "shooter-mover.performance-budget",
+  "version": 1,
+  "profileId": "performance-budget.stage1-v1",
+  "status": "provisional-evidence-only",
+  "warmUpSeconds": 2.0,
+  "captureSeconds": 10.0,
+  "maximumCompletionOverrunSeconds": 0.25,
+  "maximumFrameSamples": 1200,
+  "maximumQualityObservations": 16,
+  "maximumObjectCounters": 16,
+  "frameTimeMilliseconds": {
+    "p95Warning": 16.667,
+    "p99Warning": 33.333
+  },
+  "managedAllocationBytes": {
+    "totalWarning": 1048576,
+    "perFrameWarning": 262144
+  },
+  "sceneLoadWarningMilliseconds": 5000.0,
+  "memoryWarningBytes": 536870912,
+  "budgetBreachInvalidatesTechnicalEvidence": false,
+  "objectBudgets": [
+    {
+      "counterId": "object.arena-fixture",
+      "maximumCount": 1
+    },
+    {
+      "counterId": "object.evidence-markers",
+      "maximumCount": 20
+    },
+    {
+      "counterId": "object.short-route-fixture",
+      "maximumCount": 1
+    }
+  ]
+}
