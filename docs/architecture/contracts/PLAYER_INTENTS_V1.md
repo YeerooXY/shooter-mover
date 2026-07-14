@@ -28,9 +28,10 @@ aim assistance, gameplay behavior, or an InputAction asset.
 | `UiNavigation` | Two-axis UI navigation intent. |
 | `WasFocusLost` | Marks the synthetic safe sample emitted at focus loss. |
 
-All properties are get-only. `NormalizedIntentVector2` and `ButtonIntent` are
-readonly value types; `PlayerIntentFrame` is a sealed object with get-only
-properties. Consumers must not mutate or reinterpret a frame after publication.
+All properties are get-only. `NormalizedIntentVector2`, `ButtonIntent`, and
+`PlayerIntentFrame` are readonly value types. Publishing one frame therefore does
+not require a managed allocation, and consumers must not mutate or reinterpret a
+frame after publication.
 
 ## Normalized vectors
 
@@ -136,7 +137,8 @@ EditMode contract tests cover:
 - canonical held, pressed, released, tap, and release/repress states;
 - rejection of contradictory single-edge states;
 - simultaneous fire, power, thruster, pause/menu, movement, and navigation;
-- focus-loss neutralization and synthesized releases; and
+- focus-loss neutralization and synthesized releases;
+- a neutral allocation-free value frame; and
 - absence of a UnityEngine assembly reference from the contracts assembly.
 
 Exact Unity execution remains pending when the pinned editor is unavailable.
