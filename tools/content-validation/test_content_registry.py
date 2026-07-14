@@ -110,6 +110,11 @@ class RegistryGenerationTests(unittest.TestCase):
         duplicate_a = descriptor("enemy", "enemy.duplicate")
         duplicate_b = descriptor("room", "enemy.duplicate")
         target = descriptor("enemy", "enemy.target", definition_version=2)
+        no_provenance = descriptor(
+            "environment",
+            "environment.no-provenance",
+            provenance_id=None,
+        )
         source = descriptor(
             "weapon",
             "weapon.source",
@@ -121,7 +126,7 @@ class RegistryGenerationTests(unittest.TestCase):
 
         with self.assertRaises(registry.CatalogValidationError) as captured:
             registry.build_documents(
-                [source, duplicate_b, target, duplicate_a],
+                [source, no_provenance, duplicate_b, target, duplicate_a],
                 catalog_version=1,
                 mode="release",
             )
@@ -133,6 +138,7 @@ class RegistryGenerationTests(unittest.TestCase):
                 "missing-definition",
                 "wrong-definition-kind",
                 "unsupported-definition-version",
+                "missing-provenance",
             ],
             [error.code for error in errors],
         )
@@ -140,6 +146,7 @@ class RegistryGenerationTests(unittest.TestCase):
         self.assertEqual("enemy.missing", errors[1].referenced_id)
         self.assertEqual("room", errors[2].expected_kind)
         self.assertEqual(2, errors[3].actual_version)
+        self.assertEqual("environment.no-provenance", errors[4].definition_id)
 
     def test_cycle_and_release_prototype_errors_are_not_suppressed(self) -> None:
         alpha = descriptor(
