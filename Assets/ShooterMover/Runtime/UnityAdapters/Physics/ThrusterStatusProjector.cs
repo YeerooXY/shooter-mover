@@ -6,6 +6,7 @@ namespace ShooterMover.UnityAdapters.Physics
 {
     /// <summary>
     /// Read-only source contract used by the projector. It intentionally contains getters only.
+    /// Steering input may preserve analogue magnitude; the projector exposes its normalized direction.
     /// </summary>
     public interface IThrusterStatusSource
     {
@@ -150,6 +151,14 @@ namespace ShooterMover.UnityAdapters.Physics
                 throw new ArgumentException("Thruster source exposes an unknown burst phase.", nameof(source));
             }
 
+            double steeringDirectionX;
+            double steeringDirectionY;
+            NormalizeOrZero(
+                source.SteeringIntentX,
+                source.SteeringIntentY,
+                out steeringDirectionX,
+                out steeringDirectionY);
+
             ThrusterStatusState state = Classify(
                 availableCharges,
                 regeneratingCharges,
@@ -168,8 +177,8 @@ namespace ShooterMover.UnityAdapters.Physics
                 source.VelocityY,
                 source.BurstDirectionX,
                 source.BurstDirectionY,
-                source.SteeringIntentX,
-                source.SteeringIntentY,
+                steeringDirectionX,
+                steeringDirectionY,
                 source.BurstElapsedSeconds,
                 source.ExitElapsedSeconds,
                 source.ChainElapsedSeconds,
@@ -227,6 +236,38 @@ namespace ShooterMover.UnityAdapters.Physics
             }
 
             return ThrusterStatusState.Ready;
+        }
+
+        private static void NormalizeOrZero(
+            double x,
+            double y,
+            out double normalizedX,
+            out double normalizedY)
+        {
+            ValidateFinite(x, nameof(x));
+            ValidateFinite(y, nameof(y));
+
+            double magnitudeSquared = (x * x) + (y * y);
+            if (magnitudeSquared == 0d)
+            {
+                normalizedX = 0d;
+                normalizedY = 0d;
+                return;
+            }
+
+            double inverseMagnitude = 1d / Math.Sqrt(magnitudeSquared);
+            normalizedX = x * inverseMagnitude;
+            normalizedY = y * inverseMagnitude;
+        }
+
+        private static void ValidateFinite(double value, string parameterName)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+            {
+                throw new ArgumentException(
+                    "Thruster status source values must be finite.",
+                    parameterName);
+            }
         }
 
         private static void ValidateFinitePositive(double value, string parameterName)
