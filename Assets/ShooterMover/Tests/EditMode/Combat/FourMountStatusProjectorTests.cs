@@ -3,6 +3,8 @@ using NUnit.Framework;
 using ShooterMover.Application.Combat;
 using ShooterMover.Domain.Combat;
 using ShooterMover.Domain.Common;
+using ContractCombat = ShooterMover.Contracts.Combat;
+using ContractPresentation = ShooterMover.Contracts.Presentation;
 
 namespace ShooterMover.Tests.EditMode.Combat
 {
@@ -76,6 +78,42 @@ namespace ShooterMover.Tests.EditMode.Combat
             }
 
             Assert.That(reordered.ToTraceString(), Is.EqualTo(projected.ToTraceString()));
+        }
+
+        [Test]
+        public void AcceptedHudContract_ProjectsCanonicalRowsWithoutFabricatingFireResults()
+        {
+            Fixture fixture = CreateMixedFixture();
+            ContractPresentation.WeaponHudState hud =
+                new FourMountStatusProjector().ProjectAcceptedHudState(
+                    fixture.State,
+                    fixture.Profiles,
+                    fixture.WeaponIds);
+
+            Assert.That(hud.Count, Is.EqualTo(ContractCombat.WeaponMountContractRules.MountCount));
+            for (int stableIndex = 0; stableIndex < hud.Count; stableIndex++)
+            {
+                ContractPresentation.WeaponHudSlotState row = hud.GetByHudIndex(stableIndex);
+                Assert.That(
+                    row.Slot,
+                    Is.EqualTo(ContractCombat.WeaponMountContractRules.GetSlotAtHudIndex(stableIndex)));
+                Assert.That(row.LatestFireResult, Is.Null);
+            }
+
+            Assert.That(
+                hud.GetByHudIndex(0).CycleResource.Kind,
+                Is.EqualTo(ContractCombat.WeaponCycleResourceKind.Heat));
+            Assert.That(hud.GetByHudIndex(0).CycleResource.Current, Is.EqualTo(4d));
+            Assert.That(hud.GetByHudIndex(0).PowerBank.AvailableUnits, Is.EqualTo(8d));
+            Assert.That(
+                hud.GetByHudIndex(1).Readiness,
+                Is.EqualTo(ContractCombat.WeaponMountReadiness.Charging));
+            Assert.That(
+                hud.GetByHudIndex(2).Readiness,
+                Is.EqualTo(ContractCombat.WeaponMountReadiness.Recovering));
+            Assert.That(
+                hud.GetByHudIndex(3).Readiness,
+                Is.EqualTo(ContractCombat.WeaponMountReadiness.Ready));
         }
 
         [Test]
