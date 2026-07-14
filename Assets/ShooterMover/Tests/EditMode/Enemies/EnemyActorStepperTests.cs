@@ -256,7 +256,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                     .OfType<EnemyContactNotification>()
                     .Single()
                     .ResultValue,
-                Is.EqualTo((int)ContactResult.DuplicateEventIgnored));
+                Is.EqualTo((int)ContactResult.GracePeriodIgnored));
             Assert.That(
                 grace.Notifications
                     .OfType<EnemyContactNotification>()
