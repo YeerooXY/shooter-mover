@@ -71,7 +71,7 @@ namespace ShooterMover.UnityAdapters.Combat
             Vector2 direction,
             int planOperationIndex)
         {
-            PhysicsScene2D = physicsScene;
+            PhysicsScene = physicsScene;
             SourceId = sourceId;
             CombatEventId = combatEventId;
             WeaponId = weaponId;
@@ -82,7 +82,7 @@ namespace ShooterMover.UnityAdapters.Combat
             PlanOperationIndex = planOperationIndex;
         }
 
-        public PhysicsScene2D PhysicsScene2D { get; }
+        public PhysicsScene2D PhysicsScene { get; }
 
         public StableId SourceId { get; }
 

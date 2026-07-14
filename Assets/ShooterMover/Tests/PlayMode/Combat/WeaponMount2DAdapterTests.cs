@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Combat;
@@ -77,7 +78,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
             Assert.That(firstHandler.Contexts.Count, Is.EqualTo(2));
             WeaponMount2DExecutionContext context = firstHandler.Contexts[0];
-            Assert.That(context.PhysicsScene2D.IsValid(), Is.True);
+            Assert.That(context.PhysicsScene.IsValid(), Is.True);
             Assert.That(context.SourceId, Is.EqualTo(SourceId));
             Assert.That(context.CombatEventId, Is.EqualTo(plan.CombatEventId));
             Assert.That(context.WeaponId, Is.EqualTo(WeaponId));
@@ -366,11 +367,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             string[] forbiddenTokens =
             {
                 "Physics.Raycast",
-                "PhysicsScene ",
-                "Collider ",
-                "Rigidbody ",
                 "RaycastHit",
-                "Collision ",
                 "Vector3",
                 "Quaternion",
                 "FindObject",
@@ -384,6 +381,22 @@ namespace ShooterMover.Tests.PlayMode.Combat
             foreach (string token in forbiddenTokens)
             {
                 Assert.That(source, Does.Not.Contain(token), "Forbidden token: " + token);
+            }
+
+            string[] forbiddenThreeDimensionalTypePatterns =
+            {
+                @"\bPhysicsScene\b\s+[A-Za-z_]",
+                @"\bCollider\b\s+[A-Za-z_]",
+                @"\bRigidbody\b\s+[A-Za-z_]",
+                @"\bCollision\b\s+[A-Za-z_]",
+            };
+
+            foreach (string pattern in forbiddenThreeDimensionalTypePatterns)
+            {
+                Assert.That(
+                    Regex.IsMatch(source, pattern),
+                    Is.False,
+                    "Forbidden 3D type pattern: " + pattern);
             }
 
             Assert.That(source, Does.Contain("PhysicsScene2D"));
