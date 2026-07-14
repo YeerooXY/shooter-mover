@@ -1,0 +1,122 @@
+{
+  "schema_version": "0.1.0",
+  "task_id": "UF-004",
+  "run_id": "UF-004-run-001",
+  "actor_id": "web-ai",
+  "status": "review",
+  "implementation_summary": "Created the nine-layer Unity assembly-definition skeleton, deterministic asmdef metadata, an inward-dependency/cycle validator, and architecture documentation without adding gameplay code or crossing UF-004 ownership boundaries.",
+  "files_changed": [
+    {
+      "path": "Assets/ShooterMover/Runtime/Domain/ShooterMover.Domain.asmdef",
+      "change": "Defines the innermost Unity-free Domain assembly."
+    },
+    {
+      "path": "Assets/ShooterMover/Runtime/Contracts/ShooterMover.Contracts.asmdef",
+      "change": "Defines Unity-free Contracts depending only on Domain."
+    },
+    {
+      "path": "Assets/ShooterMover/Runtime/Application/ShooterMover.Application.asmdef",
+      "change": "Defines Unity-free Application depending on Domain and Contracts."
+    },
+    {
+      "path": "Assets/ShooterMover/Runtime/UnityAdapters/ShooterMover.UnityAdapters.asmdef",
+      "change": "Defines UnityAdapters pointing inward to the engine-independent layers."
+    },
+    {
+      "path": "Assets/ShooterMover/Content/Definitions/ShooterMover.Content.Definitions.asmdef",
+      "change": "Defines Unity-facing content definitions pointing inward to Domain, Contracts, and Application."
+    },
+    {
+      "path": "Assets/ShooterMover/Runtime/Presentation/ShooterMover.Presentation.asmdef",
+      "change": "Defines Presentation depending inward on Domain, Contracts, Application, and UnityAdapters."
+    },
+    {
+      "path": "Assets/ShooterMover/Runtime/Bootstrap/ShooterMover.Bootstrap.asmdef",
+      "change": "Defines the outward composition root over all six lower product assemblies."
+    },
+    {
+      "path": "Assets/ShooterMover/Tests/EditMode/ShooterMover.Tests.EditMode.asmdef",
+      "change": "Defines an Editor-only test assembly referencing all product assemblies."
+    },
+    {
+      "path": "Assets/ShooterMover/Tests/PlayMode/ShooterMover.Tests.PlayMode.asmdef",
+      "change": "Defines a player-capable PlayMode test assembly referencing all product assemblies."
+    },
+    {
+      "path": "Assets/ShooterMover/**/*.asmdef.meta",
+      "change": "Adds deterministic Unity metadata for the nine owned assembly-definition assets."
+    },
+    {
+      "path": "tools/validation/validate_unity_assembly_graph.py",
+      "change": "Validates required definitions, exact references, Unity-free layers, test flags, inward direction, missing internal references, and cycles."
+    },
+    {
+      "path": "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
+      "change": "Documents the exact graph, layer rules, test policy, validation command, and Unity review procedure."
+    }
+  ],
+  "verification": [
+    {
+      "command": "Parse every proposed Assets/ShooterMover/**/*.asmdef with Python json.load",
+      "result": "passed",
+      "output": "Parsed 9 assembly-definition JSON files."
+    },
+    {
+      "command": "python -m py_compile tools/validation/validate_unity_assembly_graph.py",
+      "result": "passed",
+      "output": "Validator compiled without Python syntax errors."
+    },
+    {
+      "command": "python tools/validation/validate_unity_assembly_graph.py --root <proposed-tree>",
+      "result": "passed",
+      "output": "Shooter Mover assembly graph validation passed: 9 required assemblies, inward-only references, no cycles."
+    },
+    {
+      "command": "Temporarily add ShooterMover.Domain -> ShooterMover.UnityAdapters and rerun validation, then remove it",
+      "result": "passed",
+      "output": "The validator rejected the exact reference mismatch, forbidden outward dependency, and resulting cycle; the clean graph passed again after removal."
+    },
+    {
+      "command": "Open with Unity 6000.3.19f1, allow script compilation, and inspect the assembly graph",
+      "result": "passed",
+      "output": "Combined-tree batchmode import exited 0, registered all 21 packages, imported all nine Shooter Mover asmdefs, and reported zero assembly or compiler errors. Unity correctly noted that the intentionally empty assemblies have no scripts to compile. Nemo then confirmed the Inspector graph matches the documented direct references."
+    }
+  ],
+  "proof": [
+    {
+      "kind": "command_output",
+      "summary": "Static assembly graph validation passed for all nine required definitions.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:23:40+02:00"
+    },
+    {
+      "kind": "command_output",
+      "summary": "A deliberate Domain-to-UnityAdapters outward reference was detected and rejected.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:23:40+02:00"
+    },
+    {
+      "kind": "file",
+      "path": "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
+      "summary": "Records the direct-reference table and manual Unity review procedure.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:23:40+02:00"
+    },
+    {
+      "kind": "log",
+      "summary": "Unity 6000.3.19f1 imported all nine asmdefs on the combined UF-003/UF-004 tree with exit code 0 and no assembly/compiler errors.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:38:30+02:00"
+    },
+    {
+      "kind": "manual_note",
+      "summary": "Nemo confirmed all nine assembly definitions match the documented dependency graph.",
+      "status": "accepted",
+      "recorded_at": "2026-07-14T09:52:11+02:00"
+    }
+  ],
+  "blockers": [],
+  "notes": "All automated, exact-editor, negative-reference, and human Inspector checks pass. Empty assembly folders are intentional; no marker gameplay types were added. UF-004 remains review until PR #18 merges.",
+  "submitted_at": "2026-07-14T09:23:40+02:00",
+  "updated_at": "2026-07-14T09:52:11+02:00"
+}

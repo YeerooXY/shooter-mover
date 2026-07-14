@@ -66,14 +66,14 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review PR #19 in Unity 6000.3.19f1: confirm the 2D renderer in an empty scene, switch quality profiles to verify visual-only differences, and merge if accepted. UF-004 can proceed independently in its prepared worktree.",
+    "human_next_step": "Merge ready PR #18, then record UF-004 acceptance on a fresh handoff branch.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
       "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
       "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
-      "UF-001 is accepted through merged PR #15 and pins Unity 6.3 LTS 6000.3.19f1.",
-      "UF-002 is accepted through merged PRs #16 and #17; Unity 6000.3.19f1 completed the first clean 21-package resolution.",
-      "UF-003 is in review in PR #19 after exact-editor setup and clean-import checks passed. UF-004 remains independent on branch nemo/uf-004-assembly-skeleton in the separate shooter-mover-uf004 worktree.",
+      "UF-001 and UF-002 are accepted; Unity 6000.3.19f1 completed the first clean 21-package resolution.",
+      "UF-003 is accepted through merged PR #19 after exact-editor/static policy proof and Nemo's empty-scene renderer check passed.",
+      "All UF-004 checks pass in PR #18, including Nemo's Inspector graph review; it remains in review only until the PR merges.",
       "Seven Stage 2 batch ranges are preserved as deferred planning and remain locked behind GATE-010.",
       "No Stage 2 task file, multiplayer/networking implementation, or Stage 2 dispatch is authorized."
     ]

@@ -1,0 +1,17 @@
+{
+  "name": "ShooterMover.Application",
+  "rootNamespace": "ShooterMover.Application",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

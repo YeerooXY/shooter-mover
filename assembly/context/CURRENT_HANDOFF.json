@@ -4,9 +4,9 @@
   "repository": "YeerooXY/shooter-mover",
   "lifecycle_phase": "development",
   "active_role": "task_executor",
-  "active_branch": "agent/uf-003-2d-baseline",
-  "active_pr": 19,
-  "last_verified_commit": "e9b2410901dc6b376a43f7f650ef11256cede74b",
+  "active_branch": "agent/uf-004-inward-assembly-skeleton",
+  "active_pr": 18,
+  "last_verified_commit": "0f216bebbb1fcc747bc525b67b7b592d9b8e5cdc",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -52,25 +52,37 @@
     "Assets/ShooterMover/Settings/Rendering/ShooterMoverURP2D.asset",
     "Assets/ShooterMover/Settings/Rendering/ShooterMoverURPGlobalSettings.asset",
     "Assets/ShooterMover/Settings/Rendering/ShooterMoverDefaultVolumeProfile.asset",
-    "assembly/generated/task_runs/UF-003-run-001.json"
+    "assembly/generated/task_runs/UF-003-run-001.json",
+    "Assets/ShooterMover/Runtime/Domain/ShooterMover.Domain.asmdef",
+    "Assets/ShooterMover/Runtime/Contracts/ShooterMover.Contracts.asmdef",
+    "Assets/ShooterMover/Runtime/Application/ShooterMover.Application.asmdef",
+    "Assets/ShooterMover/Runtime/UnityAdapters/ShooterMover.UnityAdapters.asmdef",
+    "Assets/ShooterMover/Runtime/Bootstrap/ShooterMover.Bootstrap.asmdef",
+    "Assets/ShooterMover/Runtime/Presentation/ShooterMover.Presentation.asmdef",
+    "Assets/ShooterMover/Content/Definitions/ShooterMover.Content.Definitions.asmdef",
+    "Assets/ShooterMover/Tests/EditMode/ShooterMover.Tests.EditMode.asmdef",
+    "Assets/ShooterMover/Tests/PlayMode/ShooterMover.Tests.PlayMode.asmdef",
+    "tools/validation/validate_unity_assembly_graph.py",
+    "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
+    "assembly/generated/task_runs/UF-004-run-001.json"
   ],
-  "current_section": "UF-003_review",
-  "last_completed_item": "PR #17 merged, durably accepting UF-002 and unlocking UF-003 and UF-004 for parallel execution on separate branches.",
-  "current_item": "PR #19 submits the UF-003 fully 2D project baseline: linear color, new Input System backend, zero 2D gravity, and one Renderer2D-backed URP pipeline shared by all quality profiles.",
-  "next_action": "Review PR #19 in Unity 6000.3.19f1: open an empty scene, confirm URP 2D is active, switch quality profiles and confirm only visual cost changes, then merge if accepted. UF-004 may proceed independently on branch nemo/uf-004-assembly-skeleton in the separate shooter-mover-uf004 worktree.",
+  "current_section": "UF-004_review",
+  "last_completed_item": "PR #19 merged after exact-editor/static quality proof and Nemo's empty-scene URP 2D renderer check passed, accepting UF-003.",
+  "current_item": "All UF-004 verification is complete: the graph validator, deliberate forbidden-reference detection, Unity combined-tree import, and Nemo's nine-assembly Inspector review pass. PR #18 is ready to merge.",
+  "next_action": "Mark PR #18 ready and merge it. After merge, record UF-004 as done on a fresh handoff branch; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.",
   "blockers": [
-    "UF-003 remains in review until the manual empty-scene and quality-profile checks pass and PR #19 merges.",
+    "UF-004 remains in review until PR #18 merges.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T09:19:30+02:00"
+    "last_persisted_at": "2026-07-14T09:55:01+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T09:19:30+02:00"
+  "updated_at": "2026-07-14T09:55:01+02:00"
 }

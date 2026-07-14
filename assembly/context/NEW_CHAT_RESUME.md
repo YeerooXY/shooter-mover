@@ -17,20 +17,21 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 - PR #15 merged and accepted `UF-001`.
 - The editor baseline is Unity 6.3 LTS `6000.3.19f1`, changeset `7689f4515d75`.
 - PR #16 merged the UF-002 package baseline with only URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0` as direct dependencies.
-- Its exact 21-entry graph is in `Packages/packages-lock.json`; its inventory and fingerprint are in `docs/toolchain/DEPENDENCY_LOCK.md`.
-- The implementation task run is `assembly/generated/task_runs/UF-002-run-001.json`.
-- UF-002 is human-accepted and recorded as done in PR #17.
-- Static graph, exact-version, source, inventory, excluded-SDK, and canonical fingerprint checks pass.
-- Unity `6000.3.19f1` completed the first import: all 21 packages registered in 19.57 seconds, no blocking package/compiler error appeared, and Git reported no package-file rewrite.
-- PR #17 merged, so UF-003 and UF-004 are unblocked and may proceed independently.
-- UF-003 is submitted for review in PR #19. It pins linear color, the new Input System backend, zero 2D gravity, and a Unity-authored URP 2D pipeline shared by all six rendering-only quality profiles.
-- UF-003 exact-editor setup and clean-import checks exited 0; serialized GUID checks and the forbidden 3D-physics scan pass.
-- UF-004 has a clean separate worktree at `../shooter-mover-uf004` on branch `nemo/uf-004-assembly-skeleton`; it still needs its explicit task claim and implementation.
-- The first import generated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
+- PR #17 recorded the successful first exact-editor import and accepted `UF-002` as done.
+- PR #19 merged after exact-editor/static quality proof and Nemo's empty-scene renderer check passed, accepting `UF-003`.
+- `UF-003` pins linear color, the new Input System backend, zero 2D gravity, and a Unity-authored URP 2D pipeline shared by all six rendering-only quality profiles.
+- `UF-004` is claimed by `web-ai` and submitted in draft PR #18 on `agent/uf-004-inward-assembly-skeleton`.
+- PR #18 adds nine assembly definitions and their metadata, `tools/validation/validate_unity_assembly_graph.py`, `docs/architecture/ASSEMBLY_DEPENDENCIES.md`, and `UF-004-run-001.json`.
+- Static validation passes for the required graph, exact direct references, Unity-free inner layers, test flags, inward direction, missing internal references, and cycles.
+- A deliberate temporary `ShooterMover.Domain -> ShooterMover.UnityAdapters` reference was rejected and removed.
+- PR #18 has been merged locally with current `main` to reconcile the parallel UF-003 workflow state.
+- Unity `6000.3.19f1` imported all nine UF-004 asmdefs on the combined tree with exit code 0 and no assembly/compiler errors. The expected empty-assembly notices are not errors.
+- Nemo confirmed in the Unity Inspector that all nine assembly definitions match `docs/architecture/ASSEMBLY_DEPENDENCIES.md`; all UF-004 verification now passes.
+- The first import generated unrelated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Review PR #19 in Unity `6000.3.19f1`. Open an empty scene and confirm URP 2D is active; switch quality profiles and confirm only visual-cost settings differ; merge if accepted. UF-004 may proceed independently in its prepared worktree and must claim only its assembly-skeleton task paths. Do not bulk-stage first-import Unity files in either worktree.
+Mark PR #18 ready and merge it. After merge, use a fresh handoff branch to record UF-004 as done; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.
 
 Do not add gameplay, optional packages, networking, analytics, storefront, mobile, or Stage 2 functionality.
