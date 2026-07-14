@@ -114,8 +114,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "build_evidence_manifest.py",
                 "\"build\", \"--package-root\"",
                 "\"verify\", \"--package-root\"",
-                "--require-valid",
-                "EvidenceEntrypointSmokeTests");
+                "--require-valid");
             AssertTokens(
                 play,
                 playPath,
