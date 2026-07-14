@@ -264,7 +264,8 @@ Write-Host "Output:  $ownedOutputRoot"
 
 $unityProcess = $null
 try {
-    $unityProcess = Start-Process -FilePath $unityExecutable -ArgumentList $unityArgumentLine -PassThru -Wait
+    $unityProcess = Start-Process -FilePath $unityExecutable -ArgumentList $unityArgumentLine -PassThru
+    Wait-Process -Id $unityProcess.Id
     $unityProcess.Refresh()
     $unityExitCode = $unityProcess.ExitCode
 }
