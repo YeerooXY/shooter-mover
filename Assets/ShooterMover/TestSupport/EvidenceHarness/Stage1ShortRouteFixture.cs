@@ -318,7 +318,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private void OnEnable()
         {
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 if (activeInstance != null && activeInstance != this)
                 {
@@ -335,7 +335,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
             InitializeModel();
             EnsurePlaceholderVisuals();
 
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 EnterRouteInternal();
             }
@@ -348,7 +348,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private void Update()
         {
-            if (!Application.isPlaying || activeInstance != this)
+            if (!UnityEngine.Application.isPlaying || activeInstance != this)
             {
                 return;
             }
@@ -1471,7 +1471,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
                 return;
             }
 
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 Destroy(owned);
             }
@@ -1483,7 +1483,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private void ReleaseRouteInstance()
         {
-            if (Application.isPlaying && modelInitialized && activeInstance == this)
+            if (UnityEngine.Application.isPlaying && modelInitialized && activeInstance == this)
             {
                 LeaveRouteInternal();
             }
@@ -1498,7 +1498,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private void CountRuntimeInstance()
         {
-            if (Application.isPlaying && !countedRuntimeInstance)
+            if (UnityEngine.Application.isPlaying && !countedRuntimeInstance)
             {
                 countedRuntimeInstance = true;
                 activeInstanceCount++;
@@ -1539,7 +1539,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private static void RequirePlayMode()
         {
-            if (!Application.isPlaying)
+            if (!UnityEngine.Application.isPlaying)
             {
                 throw new InvalidOperationException(
                     "Stage1ShortRouteShell scene operations require Play Mode.");
