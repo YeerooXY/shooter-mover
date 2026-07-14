@@ -74,7 +74,6 @@ namespace ShooterMover.Domain.Combat
         public WeaponRuntimeProfile GetProfile(int index) { return profiles[index]; }
         public StableId GetWeaponId(int index) { return weaponIds[index]; }
         public StableId GetMountId(int index) { return mountIds[index]; }
-        public WeaponMountOrigin GetMountOrigin(int index) { return mountOrigins[index]; }
         public string GetExternalFaultDetail(int index) { return externalFaultDetails[index]; }
 
         internal WeaponMountOrigin[] CopyOrigins()
@@ -173,7 +172,6 @@ namespace ShooterMover.Domain.Combat
                 input.SharedAimIntent,
                 input.SharedAimPoint,
                 input.CopyOrigins());
-
             WeaponMountState[] nextMounts = new WeaponMountState[FourMountCombatState.MountCount];
             WeaponPowerBankState[] nextBanks = new WeaponPowerBankState[FourMountCombatState.MountCount];
             FourMountCombatLaneResult[] lanes = new FourMountCombatLaneResult[FourMountCombatState.MountCount];
@@ -218,17 +216,16 @@ namespace ShooterMover.Domain.Combat
                     return;
                 }
 
-                bool requestsCycle = input.FireRequested && mountBefore.IsReady;
+                bool readyAtSample = input.FireRequested && mountBefore.IsReady;
                 WeaponPowerFireDecision power = WeaponPowerBankPolicy.ResolveFire(
                     bankBefore,
-                    requestsCycle,
+                    readyAtSample,
                     input.EmpoweredRequested);
-
                 WeaponMountStepResult mountResult = WeaponMountStepper.Step(
                     profile,
                     mountBefore,
                     input.ElapsedSeconds,
-                    new WeaponMountStepInput(input.FireRequested && power.Fires));
+                    new WeaponMountStepInput(input.FireRequested));
 
                 WeaponFireExecutionPlan plan = null;
                 if (mountResult.CyclesStarted > 0 && !mountResult.State.IsFaulted)
