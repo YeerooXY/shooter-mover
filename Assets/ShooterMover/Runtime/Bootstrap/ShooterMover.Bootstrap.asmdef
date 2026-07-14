@@ -1,0 +1,21 @@
+{
+  "name": "ShooterMover.Bootstrap",
+  "rootNamespace": "ShooterMover.Bootstrap",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.Application",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.Presentation",
+    "ShooterMover.Content.Definitions"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
