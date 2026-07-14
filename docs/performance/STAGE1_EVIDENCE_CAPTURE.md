@@ -47,9 +47,9 @@ The object counters are stable IDs with explicit maxima:
 ## Capture lifecycle
 
 1. Load the canonical EH-002 evidence configuration and start an EH-003 diagnostics session when a formal run is being recorded.
-2. Load either the EH-004 arena shell or EH-005 short-route shell through its existing owner API. Record the externally observed start and end timestamps with `RecordSceneLoad`.
-3. Construct `EvidencePerformanceProbe` with the versioned budget and, optionally, the active `EvidenceDiagnosticsRecorder`.
-4. Call `Begin(monotonicSeconds, qualityProfileId)`. The profile ID is an annotation only and must use bounded lowercase ASCII identifiers.
+2. Construct `EvidencePerformanceProbe` with the versioned budget and, optionally, the active `EvidenceDiagnosticsRecorder`.
+3. Call `Begin(monotonicSeconds, qualityProfileId)` immediately before the measured load/setup boundary. The profile ID is an annotation only and must use bounded lowercase ASCII identifiers.
+4. Load either the EH-004 arena shell or EH-005 short-route shell through its existing owner API. Supply the externally observed load start and end timestamps to `RecordSceneLoad`; the probe does not initiate or modify the load.
 5. During warm-up, calls to `RecordFrame` are accepted as clock observations but excluded from all capture metrics.
 6. During the capture window, call `RecordFrame` with total frame time, managed allocation bytes, memory bytes, and the configured object-counter samples. Unconfigured, duplicate, negative, or oversized counter payloads are rejected.
 7. Call `RecordQualityProfile` only when the externally observed profile identity changes. The method records the identity and timestamp; it has no API that can apply a profile or change gameplay.
