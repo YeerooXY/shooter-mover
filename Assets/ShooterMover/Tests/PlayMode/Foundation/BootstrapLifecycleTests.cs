@@ -71,8 +71,8 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             Assert.That(
                 FindAllBootstrapAdapters(),
                 Is.Empty,
-                "Destroying Bootstrap root '" + adapterRoot.name
-                + "' retained an adapter. " + DescribeAdapters());
+                "Destroying Bootstrap root at " + adapterPath
+                + " retained an adapter. " + DescribeAdapters());
         }
 
         [UnityTest]
