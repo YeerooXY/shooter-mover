@@ -1,0 +1,28 @@
+{
+  "$schema": "urn:shooter-mover:schema:generated-registry-review:1",
+  "schema_version": 1,
+  "machine_registry_schema_version": 1,
+  "validation": {
+    "mode": "release",
+    "is_valid": true,
+    "error_count": 0
+  },
+  "catalog_version": 1,
+  "definition_fingerprint": "sha256:8686ed4c0b51a764f183445dfef31ee052abd5e43e5ae3892034eac0dde293ba",
+  "registry_fingerprint": "sha256:74081397e7331836d11edb05668a90751a10e6efee00dbb3ae35fce5da2fbf6a",
+  "snapshot_fingerprint": "sha256:93ec6fcd352e0937cc7e22f310e3e444d2d932d4bb4011e4fc03118b92f4fdc9",
+  "summary": {
+    "entry_count": 0,
+    "prototype_only_count": 0,
+    "reference_count": 0,
+    "kind_counts": [
+      { "definition_kind": "enemy", "count": 0 },
+      { "definition_kind": "encounter", "count": 0 },
+      { "definition_kind": "environment", "count": 0 },
+      { "definition_kind": "room", "count": 0 },
+      { "definition_kind": "shared-module", "count": 0 },
+      { "definition_kind": "weapon", "count": 0 }
+    ]
+  },
+  "entries": [  ]
+}
