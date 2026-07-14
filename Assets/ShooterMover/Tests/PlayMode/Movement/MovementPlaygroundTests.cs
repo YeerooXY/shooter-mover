@@ -26,6 +26,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
         private const string RootName = "Movement Playground";
         private const string HarnessTypeName =
             "ShooterMover.TestSupport.Movement.MovementPlaygroundHarness";
+        private const string CleanupSceneName = "MT-013 Cleanup";
         private const float VelocityTolerance = 0.00001f;
         private const float PositionTolerance = 0.0001f;
         private const float ReferenceAspect = 16f / 9f;
@@ -38,6 +39,12 @@ namespace ShooterMover.Tests.PlayMode.Movement
             Scene playground = SceneManager.GetSceneByName(SceneName);
             if (playground.IsValid() && playground.isLoaded)
             {
+                if (SceneManager.sceneCount == 1)
+                {
+                    Scene cleanup = SceneManager.CreateScene(CleanupSceneName);
+                    SceneManager.SetActiveScene(cleanup);
+                }
+
                 AsyncOperation unload = SceneManager.UnloadSceneAsync(playground);
                 while (unload != null && !unload.isDone)
                 {
@@ -343,7 +350,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             try
             {
                 object result = method.Invoke(target, arguments);
-                return result == null ? default : (T)result;
+                return result == null ? default(T) : (T)result;
             }
             catch (TargetInvocationException exception)
                 when (exception.InnerException != null)
