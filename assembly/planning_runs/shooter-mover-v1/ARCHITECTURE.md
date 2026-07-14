@@ -111,7 +111,7 @@ Unity Input System actions are device-independent from the first playable: move,
 
 ## 6. Four-weapon combat
 
-One shared aim point drives four independently simulated mounts. Each mount owns cadence/burst state, heat or charge, recovery, recoil/movement influence, projectile or hit behavior, power bank, empowered cost, and presentation priority.
+One shared aim point drives four independently simulated mounts. Each mount owns cadence/burst state, heat or charge, recovery, optional recoil/presentation state, projectile or hit behavior, power bank, empowered cost, and presentation priority. Weapon fire must never alter player position, velocity, thruster state, wall/contact resolution, or any other player-movement authority.
 
 Normal fire has no consumable ammunition. Holding the power modifier attempts to empower every ready mount. An empty bank falls back to normal fire while other mounts remain empowered.
 

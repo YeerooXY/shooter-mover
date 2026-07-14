@@ -7,8 +7,8 @@
       "id": "CB-001",
       "title": "Define the weapon runtime profile",
       "summary": "Define immutable validated four-mount runtime tuning without defining weapon content packages.",
-      "objective": "Represent cadence, burst timing, heat or charge, recovery, power-bank cost rules, recoil influence, behavior-module references, and presentation priority in one deterministic engine-independent profile.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "objective": "Represent cadence, burst timing, heat or charge, recovery, power-bank cost rules, recoil/presentation influence, behavior-module references, and presentation priority in one deterministic engine-independent profile.",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -38,7 +38,7 @@
         "Rollback: remove the three owned files before any consumer lands. Prototype debt: none."
       ],
       "acceptance_criteria": [
-        "Profiles are immutable, Unity-free, deterministically identifiable, and reject invalid cadence, cost, heat/charge, recovery, recoil-influence, module-reference, and priority values.",
+        "Profiles are immutable, Unity-free, deterministically identifiable, and reject invalid cadence, cost, heat/charge, recovery, recoil/presentation-influence, module-reference, and priority values.",
         "Normal fire has no consumable ammunition field; every mount profile has an independent optional power bank and authored empowered cost.",
         "The model does not encode the five amended Stage 1 weapon packages or switch on weapon IDs."
       ],
@@ -59,7 +59,7 @@
       "title": "Implement the independent weapon-mount state machine",
       "summary": "Define deterministic cadence, burst, heat/charge, recovery, readiness, and fault transitions for one mount.",
       "objective": "Ensure every mounted weapon advances independently so one cooldown, charge, recovery, or fault cannot stall another mount.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -103,7 +103,7 @@
       "title": "Implement independent power-bank and fallback rules",
       "summary": "Define deterministic per-mount power expenditure, authored refill eligibility, and normal-fire fallback.",
       "objective": "Keep every power-ammo bank independent so depletion falls back immediately for that mount while other ready mounts remain empowered.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -147,7 +147,7 @@
       "title": "Define the modular weapon-behavior pipeline",
       "summary": "Define an engine-independent module boundary and deterministic fire execution plan without implementing weapon packages.",
       "objective": "Allow compact reusable automatic, projectile, spread/burst, beam/heat, charge/pierce, homing, chain, and lobbed-area modules without a global weapon switch statement.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -192,7 +192,7 @@
       "title": "Resolve shared aim for four mount origins",
       "summary": "Resolve one aim intent and world point into four stable per-mount firing solutions.",
       "objective": "Preserve one player aim point while accounting for independent mount origins, close-range convergence safeguards, minimum direction, and stable slot ordering.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -236,7 +236,7 @@
       "title": "Implement the four-mount combat coordinator",
       "summary": "Apply one aim, fire, and power intent to exactly four independent mount simulations.",
       "objective": "Combine readiness, per-mount power fallback, behavior planning, and fire results without synchronizing cadence or allowing one fault to suppress another mount.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -249,7 +249,7 @@
         "Assets/ShooterMover/Tests/EditMode/Combat/FourMountCombatStepperTests.cs"
       ],
       "depends_on": ["CS-003", "CS-004", "CS-005", "CB-002", "CB-003", "CB-004", "CB-005"],
-      "blocks": ["CB-007", "CB-009", "CB-010"],
+      "blocks": ["CB-009", "CB-010"],
       "inputs": [
         "Consumed contracts: Player Intents v1, Combat Messages v1, and Four-Mount Weapons v1.",
         "Per-mount stepper, power policy, behavior pipeline, and shared-aim resolver from CB-002 through CB-005."
@@ -279,55 +279,11 @@
       "notes": "Milestone-cap spend: 0.55 focused lead day."
     },
     {
-      "id": "CB-007",
-      "title": "Bridge recoil and firing influence into movement",
-      "summary": "Apply validated combat movement influence through an explicit adapter without creating another velocity authority.",
-      "objective": "Translate bounded recoil and authored heavy-weapon movement influence into the accepted movement runtime while preserving thruster and collision authority.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
-      "owner_role": "Movement and Combat Builder",
-      "lane": "unity-combat",
-      "repo_target": "YeerooXY/shooter-mover",
-      "status": "blocked",
-      "priority": "P0",
-      "milestone": "S1.2 Four-weapon combat",
-      "allowed_areas": [
-        "Assets/ShooterMover/Runtime/Domain/Combat/CombatMovementInfluencePolicy.cs",
-        "Assets/ShooterMover/Runtime/UnityAdapters/Combat/CombatMovementInfluenceAdapter.cs",
-        "Assets/ShooterMover/Tests/PlayMode/Combat/CombatMovementInfluenceAdapterTests.cs"
-      ],
-      "depends_on": ["MT-008", "MT-010", "CB-001", "CB-006"],
-      "blocks": ["CB-011"],
-      "inputs": ["Movement body/application boundaries from MT-008 and MT-010.", "Validated recoil/movement influence and immutable combat results from CB-001/CB-006."],
-      "outputs": ["Bounded combat influence policy", "Unity-to-movement influence adapter", "Play-mode bridge tests"],
-      "implementation_notes": [
-        "Forbidden paths: accepted planning/requirements, all movement-owned files, Rigidbody2D authority, thruster policies, ContentPackages, scenes, prefabs, UI, registries, and saves.",
-        "Serialized ownership: none. Save-schema impact: none. Content-registry impact: none.",
-        "The adapter submits bounded influence through the movement-owned boundary and may not set velocity directly, edit MT files, bypass wall/contact rules, or accumulate an unbounded penalty.",
-        "Rollback: remove the three owned files; movement remains independently playable. Prototype debt: none."
-      ],
-      "acceptance_criteria": [
-        "Combat influence is capped, deterministic, and enters through one explicit movement boundary.",
-        "No combat file writes Rigidbody2D velocity or mutates movement/thruster state directly.",
-        "Combined heavy-weapon effects preserve accepted movement and thruster invariants."
-      ],
-      "verification": [
-        "Automated: zero/one/four influence, cap, opposite recoil, simultaneous fire, thruster-active, wall-contact, and adapter-removal tests.",
-        "Manual/playable: human review compares no-fire and synthetic four-mount recoil traces for responsiveness and bounded influence."
-      ],
-      "proof_required": ["CombatMovementInfluenceAdapterTests log", "before/after movement influence traces"],
-      "edge_cases": ["four simultaneous heavy impulses", "influence during wall reflection", "adapter disabled mid-frame"],
-      "non_goals": ["no movement tuning edits", "no camera shake", "no final recoil feel approval"],
-      "estimated_size": "M",
-      "risk_tags": ["movement-boundary", "recoil", "shared-system", "human-review"],
-      "handoff_notes": "This is the sole combat-to-movement bridge and requires stronger review because it crosses subsystem boundaries.",
-      "notes": "Milestone-cap spend: 0.40 focused lead day."
-    },
-    {
       "id": "CB-008",
       "title": "Create the combat input action map and adapter",
       "summary": "Map keyboard, mouse, and gamepad combat actions into device-independent player intent contracts.",
       "objective": "Produce shared aim, fire, and power intents with consistent held/pressed/released, focus-loss, and disconnect behavior without device checks in combat rules.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "unity-combat",
       "repo_target": "YeerooXY/shooter-mover",
@@ -371,7 +327,7 @@
       "title": "Bridge combat execution plans to Unity 2D",
       "summary": "Translate validated engine-independent fire plans and confirmed 2D hits through explicit Unity adapters.",
       "objective": "Provide 2D mount and hit-facing adapter boundaries without adding concrete weapon prefabs, enemy implementations, three-dimensional physics, or combat authority in scenes.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "unity-combat",
       "repo_target": "YeerooXY/shooter-mover",
@@ -415,7 +371,7 @@
       "title": "Expose read-only four-mount HUD status",
       "summary": "Project immutable four-slot combat state through the accepted HUD contract without Unity or HUD visuals.",
       "objective": "Expose stable slot order, readiness, firing phase, heat/charge, recovery, power level, normal/empowered/fallback mode, and mount fault state to later presentation work.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "core-domain",
       "repo_target": "YeerooXY/shooter-mover",
@@ -458,8 +414,8 @@
       "id": "CB-011",
       "title": "Add four-mount combat-foundation evidence scenarios",
       "summary": "Exercise the complete combat foundation with frozen synthetic profiles in the existing benchmark arena.",
-      "objective": "Verify shared aim, mixed cadence, simultaneous fire, mixed readiness, independent power fallback, fault isolation, bounded movement influence, input lifecycle, restart, diagnostics, performance, and evidence identity without claiming weapon-package completion.",
-      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, bounded movement influence, readable state, and modular behavior inside the accepted ten-day cap?",
+      "objective": "Verify shared aim, mixed cadence, simultaneous fire, mixed readiness, independent power fallback, fault isolation, no player-motion recoil, input lifecycle, restart, diagnostics, performance, and evidence identity without claiming weapon-package completion.",
+      "context": "S1.2 frozen question: can one shared aim/fire intent drive four independently simulated mounts with unlimited normal fire, independent power banks, no player-motion recoil, readable state, and modular behavior inside the accepted ten-day cap?",
       "owner_role": "Movement and Combat Builder",
       "lane": "unity-combat",
       "repo_target": "YeerooXY/shooter-mover",
@@ -471,10 +427,10 @@
         "Assets/ShooterMover/Tests/PlayMode/Combat/FourMountCombatEvidenceScenarioTests.cs",
         "Assets/ShooterMover/Tests/PlayMode/Combat/Fixtures/four-mount-combat-foundation-profile-v1.json"
       ],
-      "depends_on": ["EH-002", "EH-003", "EH-004", "EH-006", "EH-007", "EH-008", "EH-009", "EH-010", "MT-010", "MT-011", "MT-012", "CB-006", "CB-007", "CB-008", "CB-009", "CB-010"],
+      "depends_on": ["EH-002", "EH-003", "EH-004", "EH-006", "EH-007", "EH-008", "EH-009", "EH-010", "MT-010", "MT-011", "MT-012", "CB-006", "CB-008", "CB-009", "CB-010"],
       "inputs": [
         "Evidence configuration, diagnostics, benchmark arena, lifecycle, performance, manifests, smoke, and review protocol from EH-002/003/004/006/007/008/009/010.",
-        "Movement runtime/status/evidence from MT-010/011/012 and complete combat foundation from CB-006 through CB-010."
+        "Movement runtime/status/evidence from MT-010/011/012 and complete combat foundation from CB-006 and CB-008 through CB-010."
       ],
       "outputs": ["Synthetic combat evidence fixture", "Play-mode foundation scenarios", "Frozen synthetic four-mount evidence profile"],
       "implementation_notes": [
@@ -485,27 +441,27 @@
       ],
       "acceptance_criteria": [
         "The frozen session demonstrates one shared aim/fire stream driving exactly four mounts with different cadence and simultaneous mixed readiness.",
-        "Per-mount power depletion falls back independently, one injected mount fault leaves the other three operational, and combat movement influence remains bounded.",
+        "Per-mount power depletion falls back independently, one injected mount fault leaves the other three operational, and firing leaves player movement, thruster, and collision authority unchanged.",
         "Focus loss clears held combat input, rapid restart returns to the same frozen initial state, diagnostics classify invalid sessions, and evidence identity/manifests remain reproducible.",
         "The scenario explicitly states that five amended Stage 1 weapon packages, final audiovisual identity, HUD visuals, and encounter balance are not complete."
       ],
       "verification": [
-        "Automated: deterministic replay, shared aim, mixed cadence/readiness/power, fault isolation, recoil cap, focus-loss, restart, diagnostics, manifest, and performance-budget scenario tests.",
-        "Manual/playable: human lead reviews shared aiming, four independent firing traces, recoil/movement interaction, color-independent status readability, rapid restart, and injected fault isolation; record pass/fail notes and required bounded iteration.",
+        "Automated: deterministic replay, shared aim, mixed cadence/readiness/power, fault isolation, no-player-motion-recoil, focus-loss, restart, diagnostics, manifest, and performance-budget scenario tests.",
+        "Manual/playable: human lead reviews shared aiming, four independent firing traces, unchanged player motion while firing, color-independent status readability, rapid restart, and injected fault isolation; record pass/fail notes and required bounded iteration.",
         "Manual/playable dependency: WP package implementation may not claim combat-foundation acceptance until this human review is recorded in the evidence package."
       ],
       "proof_required": [
         "FourMountCombatEvidenceScenarioTests log",
         "valid and intentionally invalid manifested evidence packages",
         "performance capture summary",
-        "human playable review record covering aim, independence, recoil, readability, restart, and fault isolation"
+        "human playable review record covering aim, independence, unchanged player motion while firing, readability, restart, and fault isolation"
       ],
       "edge_cases": ["all mounts recovering", "one mount faults during power fire", "focus loss during simultaneous fire", "restart during pending plan"],
       "non_goals": ["no five-weapon completion claim", "no final audiovisual identity", "no HUD prefab", "no encounter or enemy work"],
       "estimated_size": "M",
       "risk_tags": ["integration-evidence", "human-review", "performance", "combat-foundation"],
       "handoff_notes": "WP tasks consume this accepted foundation and replace synthetic profiles with package-owned evidence without editing EH-004.",
-      "notes": "Milestone-cap spend: 0.65 focused lead day. Batch direct spend totals 4.50 focused lead days, leaving 5.50 of the S1.2 ten-day cap for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
+      "notes": "Milestone-cap spend: 0.65 focused lead day. Batch direct spend totals 4.10 focused lead days, leaving 5.90 of the S1.2 ten-day cap for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
     }
   ]
 }

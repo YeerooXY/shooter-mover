@@ -14,7 +14,8 @@ branch whose pull request has merged.
 
 ## Durable state
 
-- Stage 1 Dispatch is active with 103 canonical tasks and a 50-focused-day cap.
+- Stage 1 Dispatch is active with 102 canonical tasks and a 50-focused-day cap.
+- The human-selected no-player-motion recoil amendment retires CB-007. Weapon fire must not alter player velocity, position, thruster state, wall/contact resolution, or another movement authority; CB-011 proves this invariant instead.
 - UF-001 through UF-004 are accepted through merged PRs #15–#19 and #21.
 - PR #20 merged at `63e488b17f1899fdad89645a167a97a6d24c3bb7`
   after UF-005's positive and adversarial repository-layout validation passed.
