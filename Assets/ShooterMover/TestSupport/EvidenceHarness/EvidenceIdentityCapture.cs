@@ -39,6 +39,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
             DirtyStatePolicy = dirtyStatePolicy;
             UnityVersion = buildIdentity.UnityVersion;
             PackageLockFingerprint = buildIdentity.PackageLockFingerprint;
+            BuildContentFingerprint = buildIdentity.ContentFingerprint;
             ContentCatalogVersion = contentVersion.CatalogVersion;
             ContentDefinitionFingerprint = contentVersion.DefinitionFingerprint;
             SaveSchemaVersion = buildIdentity.SaveSchema;
@@ -65,6 +66,8 @@ namespace ShooterMover.TestSupport.EvidenceHarness
         public string UnityVersion { get; }
 
         public string PackageLockFingerprint { get; }
+
+        public string BuildContentFingerprint { get; }
 
         public int ContentCatalogVersion { get; }
 
@@ -125,6 +128,8 @@ namespace ShooterMover.TestSupport.EvidenceHarness
                 + UnityVersion
                 + "\npackage_lock_fingerprint="
                 + PackageLockFingerprint
+                + "\nbuild_content_fingerprint="
+                + BuildContentFingerprint
                 + "\ncontent_catalog_version="
                 + ContentCatalogVersion.ToString(CultureInfo.InvariantCulture)
                 + "\ncontent_definition_fingerprint="
@@ -284,16 +289,6 @@ namespace ShooterMover.TestSupport.EvidenceHarness
                 || exception is FormatException)
             {
                 return Invalid("malformed-content-version", exception.Message);
-            }
-
-            if (!string.Equals(
-                buildIdentity.ContentFingerprint,
-                contentVersion.DefinitionFingerprint,
-                StringComparison.Ordinal))
-            {
-                return Invalid(
-                    "inconsistent-content-version",
-                    "BuildIdentity content_fingerprint must equal ContentVersion definition_fingerprint for evidence identity v1.");
             }
 
             EvidenceDirtyStatePolicy parsedPolicy;
