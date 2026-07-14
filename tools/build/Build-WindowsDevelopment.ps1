@@ -191,18 +191,18 @@ function Show-LogTail {
 
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Get-FullPath -Path (Join-Path $scriptDirectory "..\..")
-$tempRoot = Get-FullPath -Path (Join-Path $projectRoot "Temp")
-$ownedOutputRoot = Get-FullPath -Path (Join-Path $tempRoot "ShooterMoverBuild")
-$expectedOutputRoot = Get-FullPath -Path (Join-Path $projectRoot "Temp\ShooterMoverBuild")
+$localApplicationData = [System.Environment]::GetFolderPath(
+    [System.Environment+SpecialFolder]::LocalApplicationData)
+if ([string]::IsNullOrWhiteSpace($localApplicationData)) {
+    throw "Windows LocalApplicationData could not be resolved for the owned build output."
+}
+
+$ownedOutputRoot = Get-FullPath -Path (Join-Path $localApplicationData "ShooterMover\Builds\WindowsDevelopment")
+$expectedOutputRoot = Get-FullPath -Path (Join-Path $localApplicationData "ShooterMover\Builds\WindowsDevelopment")
 $pathTrimCharacters = [char[]]@(
     [System.IO.Path]::DirectorySeparatorChar,
     [System.IO.Path]::AltDirectorySeparatorChar
 )
-
-$tempPrefix = $tempRoot.TrimEnd($pathTrimCharacters) + [System.IO.Path]::DirectorySeparatorChar
-if (-not $ownedOutputRoot.StartsWith($tempPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Owned output must remain under the project Temp directory."
-}
 
 $projectVersionPath = Join-Path $projectRoot "ProjectSettings\ProjectVersion.txt"
 $packageLockPath = Join-Path $projectRoot "Packages\packages-lock.json"
@@ -228,7 +228,7 @@ $fingerprints = [ordered]@{
     schema_version = 1
     target = "StandaloneWindows64"
     configuration = "Development"
-    output = "Temp/ShooterMoverBuild/ShooterMover.exe"
+    output = "LocalAppData/ShooterMover/Builds/WindowsDevelopment/ShooterMover.exe"
     editor = [ordered]@{
         project_version = $editor.Version
         project_version_with_revision = $editor.Revision
@@ -245,13 +245,13 @@ $fingerprints | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $fingerprintP
 
 $unityArguments = @(
     "-batchmode",
-    "-quit",
     "-projectPath", $projectRoot,
     "-buildTarget", "win64",
     "-standaloneBuildSubtarget", "Player",
     "-development",
     "-buildWindows64Player", $playerPath,
-    "-logFile", $logPath
+    "-logFile", $logPath,
+    "-quit"
 )
 $unityArgumentLine = ($unityArguments | ForEach-Object {
     ConvertTo-ProcessArgument -Argument $_

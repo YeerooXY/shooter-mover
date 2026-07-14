@@ -33,7 +33,7 @@ the version pinned in `ProjectSettings/ProjectVersion.txt`.
 ## Clean import
 
 For proof from a clean local import, close Unity and remove only the repository's
-ignored local cache before running the build:
+local cache before running the build:
 
 ```powershell
 Remove-Item -LiteralPath ".\Library" -Recurse -Force -ErrorAction SilentlyContinue
@@ -60,28 +60,32 @@ $env:UNITY_EDITOR_PATH = "C:\Program Files\Unity\Hub\Editor\6000.3.19f1\Editor\U
 
 The script invokes Unity in batch mode for target `win64`, requests a
 Development build, and writes the full Unity log into the owned output folder.
-A Unity compile/build failure is returned as a non-zero process exit.
+It places Unity's -quit argument after the build and log arguments so a clean
+import can finish before the editor exits. A Unity compile/build failure is
+returned as a non-zero process exit.
 
 ## Owned output and stale builds
 
 The only build-output location owned by this script is:
 
 ```text
-Temp/ShooterMoverBuild/
+%LOCALAPPDATA%\ShooterMover\Builds\WindowsDevelopment
 ```
 
-Before each run, the script verifies that exact path, rejects reparse points,
-clears read-only attributes inside it, and removes stale contents. It never
-cleans another directory. If a running player, Explorer window, permission, or
-file lock prevents cleanup, the script stops with a clear error instead of
-falling back to another output path.
+This repository-external location survives Unity's cleanup of the project's
+temporary directory and cannot be added to the repository. Before each run,
+the script verifies that exact path, rejects reparse points, clears read-only
+attributes inside it, and removes stale contents. It never cleans another
+directory. If a running player, Explorer window, permission, or file lock
+prevents cleanup, the script stops with a clear error instead of falling back
+to another output path.
 
 ## Expected output
 
 A successful build contains at least:
 
 ```text
-Temp/ShooterMoverBuild/
+%LOCALAPPDATA%\ShooterMover\Builds\WindowsDevelopment
 ├── ShooterMover.exe
 ├── ShooterMover_Data/
 │   ├── boot.config
@@ -93,7 +97,7 @@ Temp/ShooterMoverBuild/
 ```
 
 The script verifies these artifacts before reporting success.
-`build-artifacts.txt` records the complete repository-relative output file list.
+`build-artifacts.txt` records the complete output-relative file list.
 `build-fingerprints.json` records:
 
 - the pinned editor version and revision;
@@ -102,7 +106,8 @@ The script verifies these artifacts before reporting success.
 - the canonical `HEAD` repository-content SHA-256 of
   `Packages/packages-lock.json`;
 - the working-tree SHA-256 of `Packages/packages-lock.json`;
-- target, Development configuration, and repository-relative output path.
+- target, Development configuration, and local-application-data-relative
+  output path.
 
 The canonical package-lock value follows the accepted dependency-lock procedure,
 so Windows line-ending conversion cannot change it. The worktree value remains
@@ -116,7 +121,7 @@ replace the project's formal identity contracts.
 From the repository root:
 
 ```powershell
-& ".\Temp\ShooterMoverBuild\ShooterMover.exe"
+& "$env:LOCALAPPDATA\ShooterMover\Builds\WindowsDevelopment\ShooterMover.exe"
 ```
 
 The player starts from build index 0, `Bootstrap.unity`. Exit the player
@@ -127,9 +132,11 @@ normally, then repeat the launch when performing manual smoke proof.
 Close the built player, then remove only the disposable owned output:
 
 ```powershell
-Remove-Item -LiteralPath ".\Temp\ShooterMoverBuild" -Recurse -Force
+$output = Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)) "ShooterMover\Builds\WindowsDevelopment"
+Remove-Item -LiteralPath $output -Recurse -Force
 ```
 
 If cleanup reports an access or sharing violation, close the player and any
 process holding the output, then retry. No cleanup outside
-`Temp/ShooterMoverBuild/` is required for ordinary builds.
+`%LOCALAPPDATA%\ShooterMover\Builds\WindowsDevelopment` is required for
+ordinary builds.
