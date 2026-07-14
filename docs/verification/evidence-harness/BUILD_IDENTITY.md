@@ -3,8 +3,8 @@
 ## Purpose and boundary
 
 EH-001 composes one immutable identity for a local evidence session. The record
-answers which source, editor, package lock, content version, save schema, build
-shape, artifact, and tuning profile produced the evidence.
+answers which source, editor, package lock, build-content set, content version,
+save schema, build shape, artifact, and tuning profile produced the evidence.
 
 The implementation is deliberately split into two small adapters:
 
@@ -26,8 +26,8 @@ optional local output path.
 
 | Input | Rule |
 |---|---|
-| `BuildIdentity v1` | Strict canonical CS-002 text. A final `artifact_checksum` is mandatory for evidence, including development builds. |
-| `ContentVersion v1` | Strict canonical CS-002 text. |
+| `BuildIdentity v1` | Strict canonical CS-002 text. A final `artifact_checksum` is mandatory for evidence, including development builds. Its package-lock, build-content, source, editor, and save-schema fields are retained exactly. |
+| `ContentVersion v1` | Strict canonical CS-002 text. Its catalog version and definition fingerprint are retained exactly. |
 | Dirty-state policy | Exactly `reject-dirty` or `allow-dirty-development`. |
 | Unity/editor version | Taken from `BuildIdentity.unity_version`; the CLI requires it to equal the pinned `m_EditorVersion`. |
 | Package-lock fingerprint | Taken from `BuildIdentity.package_lock_fingerprint`; the CLI requires it to equal SHA-256 of the exact supplied package-lock bytes. |
@@ -36,10 +36,11 @@ optional local output path.
 | Build configuration | Same token rules as build target. |
 | Tuning-profile ID | Canonical StableId v1, for example `movement-tuning.stage1-baseline`. |
 
-Evidence identity v1 uses the Stage 1 content boundary where
-`BuildIdentity.content_fingerprint` must equal
-`ContentVersion.definition_fingerprint`. A mismatch is inconsistent evidence;
-the adapter does not guess which value is authoritative.
+`BuildIdentity.content_fingerprint` and
+`ContentVersion.definition_fingerprint` identify different CS-002 boundaries:
+the complete accepted build-content input set and the accepted definition
+snapshot. Evidence identity v1 records both independently and does not invent an
+unstated equality or derivation rule between them.
 
 ## Dirty-source policy
 
@@ -56,10 +57,10 @@ clean capture at the same commit.
 
 ## Canonical record
 
-The first fourteen lines are the fingerprint payload. UTF-8 bytes are hashed
+The first fifteen lines are the fingerprint payload. UTF-8 bytes are hashed
 exactly as shown: ASCII LF separators, no BOM, no trailing newline, no trimming,
-and no case normalization. The fifteenth line stores
-`sha256(<first fourteen UTF-8 lines>)`.
+and no case normalization. The sixteenth line stores
+`sha256(<first fifteen UTF-8 lines>)`.
 
 ```text
 evidence_identity_schema=1
@@ -69,6 +70,7 @@ source_state=<clean|dirty>
 dirty_state_policy=<reject-dirty|allow-dirty-development>
 unity_version=<canonical Unity editor version>
 package_lock_fingerprint=sha256:<64 lowercase hex characters>
+build_content_fingerprint=sha256:<64 lowercase hex characters>
 content_catalog_version=<positive integer>
 content_definition_fingerprint=sha256:<64 lowercase hex characters>
 save_schema_version=<positive integer>
@@ -82,7 +84,7 @@ record_fingerprint=sha256:<64 lowercase hex characters>
 There is no timestamp, machine name, path, username, locale, random value, or
 unordered serialization in the fingerprint. Two captures from the same frozen
 inputs therefore serialize byte-for-byte identically. Changing any required
-field changes the fourteen-line payload and therefore changes the fingerprint.
+field changes the fifteen-line payload and therefore changes the fingerprint.
 
 ## Fail-closed classifications
 
@@ -98,7 +100,6 @@ Representative classifications include:
 | Missing or non-canonical BuildIdentity | `missing-build-identity` / `malformed-build-identity` |
 | Development identity with `artifact_checksum=null` | `provisional-build-identity` |
 | Missing or non-canonical ContentVersion | `missing-content-version` / `malformed-content-version` |
-| Build/content fingerprint disagreement | `inconsistent-content-version` |
 | Dirty identity under `reject-dirty` | `inconsistent-dirty-state-policy` |
 | Permissive policy without a dirty development identity | `inconsistent-dirty-state-policy` |
 | Unsupported or absent policy | `unsupported-dirty-state-policy` / `missing-dirty-state-policy` |
@@ -148,9 +149,10 @@ reserved for invalid-evidence messages.
 
 The focused EditMode fixture captures the same frozen inputs twice and asserts
 identical canonical text and identical fingerprints. It then changes source
-commit, editor version, package lock, content version, save schema, target,
-configuration, tuning-profile ID, and dirty-source policy cases and asserts that
-every valid changed record has a different fingerprint.
+commit, editor version, package lock, build-content fingerprint, content-version
+fingerprint, save schema, target, configuration, tuning-profile ID, and
+dirty-source policy cases and asserts that every valid changed record has a
+different fingerprint.
 
 For manual proof, run the CLI twice without changing any input and compare the
 files byte-for-byte. Then change only the tuning-profile ID to another accepted
@@ -163,9 +165,10 @@ source unless a later task explicitly owns an evidence artifact path.
 
 An editor-side producer and the UF-010 Windows development build may be compared
 only when they supply the same source commit, source state/policy, editor
-version, package-lock fingerprint, content version, save schema, and tuning ID.
-Their build target/configuration and artifact checksum remain explicit, so two
-different artifacts do not collapse to one identity.
+version, package-lock fingerprint, build-content fingerprint, content version,
+save schema, and tuning ID. Their build target/configuration and artifact
+checksum remain explicit, so two different artifacts do not collapse to one
+identity.
 
 EH-001 does not modify UF-010. A later integration may call the Python wrapper
 against UF-010's local fingerprint outputs, but it must not invent a second
@@ -176,7 +179,8 @@ record grammar or weaken any fail-closed rule here.
 Static review can verify that:
 
 - all required fields occur once in fixed order;
-- SHA-256 covers the complete payload and not the final fingerprint line;
+- SHA-256 covers the complete fifteen-line payload and not the final fingerprint
+  line;
 - the C# record/result types expose get-only properties;
 - invalid results carry no partial record;
 - the Python tool imports only the standard library and contains no network,
