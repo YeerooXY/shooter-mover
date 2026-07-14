@@ -57,6 +57,7 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
 
             definition = packageDefinition;
             warningText.text = packageDefinition.WarningLabel;
+            EnsureTemporaryFont();
             UpdateWarning(false, 0d);
         }
 
@@ -89,6 +90,27 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
             float pulse = 1f
                 + ((float)Math.Sin(phase) * definition.WarningPulseAmplitude);
             warningRoot.localScale = Vector2.one * pulse;
+        }
+
+        private void EnsureTemporaryFont()
+        {
+            if (warningText.font != null)
+            {
+                return;
+            }
+
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font == null)
+            {
+                return;
+            }
+
+            warningText.font = font;
+            MeshRenderer renderer = warningText.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = font.material;
+            }
         }
 
         private void OnDisable()
