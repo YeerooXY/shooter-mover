@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace ShooterMover.Domain.Combat
 {
@@ -58,7 +59,11 @@ namespace ShooterMover.Domain.Combat
 
         public override string ToString()
         {
-            return "(" + X.ToString("R") + ", " + Y.ToString("R") + ")";
+            return "("
+                + X.ToString("R", CultureInfo.InvariantCulture)
+                + ", "
+                + Y.ToString("R", CultureInfo.InvariantCulture)
+                + ")";
         }
 
         public static bool operator ==(AimVector2 left, AimVector2 right)
@@ -177,7 +182,7 @@ namespace ShooterMover.Domain.Combat
     /// </summary>
     public sealed class FourMountAimSolution
     {
-        public const int MountCount = 4;
+        public const int MountCount = WeaponRuntimeProfile.SupportedMountCount;
 
         private readonly SharedAimSolution[] solutions;
 
