@@ -101,7 +101,7 @@ namespace ShooterMover.Domain.Enemies
                 if (moverDamageAmount != 0d)
                 {
                     throw new ArgumentException(
-                        "A contact-disabled actor cannot request target damage.",
+                        "A contact-disabled actor cannot request mover damage.",
                         nameof(moverDamageAmount));
                 }
             }
@@ -238,7 +238,7 @@ namespace ShooterMover.Domain.Enemies
                 if (elapsed <= simultaneousWindowSeconds)
                 {
                     decision = EnemyContactDecision.DuplicateWithinSimultaneousWindow;
-                    contractResult = ContactDuplicateEventIgnoredResultValue;
+                    contractResult = ContactGracePeriodIgnoredResultValue;
                 }
                 else
                 {
