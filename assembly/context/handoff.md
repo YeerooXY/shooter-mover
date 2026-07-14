@@ -1,25 +1,26 @@
-# Shooter Mover UF-001 Handoff
+# Shooter Mover UF-003 Handoff
 
 ## Outcome
 
-Stage 1 Dispatch began after PR #14 merged. UF-001 pins the Unity editor baseline to:
+PR #17 merged and accepted UF-002, unlocking UF-003 and UF-004. UF-003 now pins the runtime baseline to:
 
-- Unity 6.3 LTS;
-- editor `6000.3.19f1`;
-- changeset `7689f4515d75`;
-- Windows x64 development host;
-- Windows Build Support (IL2CPP) and a supported Visual Studio C++ toolchain.
+- linear color;
+- the new Input System native backend;
+- zero 2D gravity for the top-down plane;
+- a Unity-authored URP asset whose default renderer is Renderer2D;
+- the same URP 2D pipeline across all six rendering-only quality profiles;
+- owned URP global settings and default volume profile under `Assets/ShooterMover/Settings/Rendering/`.
 
-The baseline document explicitly excludes mobile, Web, UWP, server, networking, multiplayer, analytics, storefront, advertising, account, and remote-service scope.
+Unity `6000.3.19f1` created the assets. Both the setup run and a clean follow-up batchmode import exited 0. Static checks confirmed all serialized GUID relationships, the input/color/physics settings, six shared-pipeline quality profiles, and zero forbidden 3D runtime references.
 
 ## Review boundary
 
-PR #15 contains the two UF-001 product outputs and `UF-001-run-001.json`. Collaboration state is `review`; no completion is claimed before the PR is accepted.
+PR #18 contains only UF-003-owned settings/rendering assets plus workflow proof. Collaboration state is `review`; no completion is claimed before the PR is manually inspected and merged.
 
-The local machine has Unity Hub but not the exact editor. A full editor import is intentionally deferred until UF-002 supplies the deterministic package manifest and lock, preventing Unity from generating floating or unowned package state during UF-001.
+The other first-import Unity files remain untracked and must not be bulk-staged. UF-004 is isolated in `../shooter-mover-uf004` on branch `nemo/uf-004-assembly-skeleton`.
 
 ## Exact next action
 
-Review and merge PR #15. Then, on a fresh branch from current `main`, mark UF-001 done, claim UF-002, create the minimal package manifest/lock/dependency inventory, and run the first complete Unity import and no-migration verification.
+Review PR #18 in Unity `6000.3.19f1`. Open an empty scene, confirm URP 2D is active, switch quality profiles and confirm only visual-cost settings differ, then merge if accepted. UF-004 may proceed independently in its prepared worktree.
 
 Stage 2 remains blocked behind `GATE-010`.
