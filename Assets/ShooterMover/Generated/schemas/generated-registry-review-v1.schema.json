@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:shooter-mover:schema:generated-registry-review:1",
+  "title": "Shooter Mover Generated Registry Review Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "machine_registry_schema_version",
+    "validation",
+    "catalog_version",
+    "definition_fingerprint",
+    "registry_fingerprint",
+    "snapshot_fingerprint",
+    "summary",
+    "entries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:shooter-mover:schema:generated-registry-review:1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "machine_registry_schema_version": {
+      "const": 1
+    },
+    "validation": {
+      "$ref": "#/$defs/validation"
+    },
+    "catalog_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "definition_fingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    },
+    "registry_fingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    },
+    "snapshot_fingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/review_entry"
+      }
+    }
+  },
+  "$defs": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "stable_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "definition_kind": {
+      "enum": [
+        "enemy",
+        "encounter",
+        "environment",
+        "room",
+        "shared-module",
+        "weapon"
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "is_valid",
+        "error_count"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "prototype",
+            "release"
+          ]
+        },
+        "is_valid": {
+          "const": true
+        },
+        "error_count": {
+          "const": 0
+        }
+      }
+    },
+    "kind_count": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definition_kind",
+        "count"
+      ],
+      "properties": {
+        "definition_kind": {
+          "$ref": "#/$defs/definition_kind"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_count",
+        "prototype_only_count",
+        "reference_count",
+        "kind_counts"
+      ],
+      "properties": {
+        "entry_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prototype_only_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reference_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind_counts": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/kind_count"
+          }
+        }
+      }
+    },
+    "review_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definition_kind",
+        "definition_id",
+        "definition_version",
+        "reference_count"
+      ],
+      "properties": {
+        "definition_kind": {
+          "$ref": "#/$defs/definition_kind"
+        },
+        "definition_id": {
+          "$ref": "#/$defs/stable_id"
+        },
+        "definition_version": {
+          "const": 1
+        },
+        "reference_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
