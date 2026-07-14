@@ -48,7 +48,7 @@
       "Baseline is reproducible.",
       "No speculative SDKs."
     ],
-    "notes": "UF-001, UF-002, and UF-003 are accepted. All UF-004 checks pass in PR #18, including Nemo's Inspector graph review; it awaits merge."
+    "notes": "UF-001 through UF-004 are accepted. PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91 after all static, exact-editor, negative-reference, and human Inspector proof passed; UF-005 and UF-006 are unblocked once this acceptance handoff merges."
   },
   {
     "slot_id": "movement-combat",

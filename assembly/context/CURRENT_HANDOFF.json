@@ -4,9 +4,9 @@
   "repository": "YeerooXY/shooter-mover",
   "lifecycle_phase": "development",
   "active_role": "task_executor",
-  "active_branch": "agent/uf-004-inward-assembly-skeleton",
-  "active_pr": 18,
-  "last_verified_commit": "0f216bebbb1fcc747bc525b67b7b592d9b8e5cdc",
+  "active_branch": "agent/uf-004-acceptance-handoff",
+  "active_pr": 21,
+  "last_verified_commit": "22067939458d90b8adfb5d68473f6f179f21bd91",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -66,23 +66,24 @@
     "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
     "assembly/generated/task_runs/UF-004-run-001.json"
   ],
-  "current_section": "UF-004_review",
-  "last_completed_item": "PR #19 merged after exact-editor/static quality proof and Nemo's empty-scene URP 2D renderer check passed, accepting UF-003.",
-  "current_item": "All UF-004 verification is complete: the graph validator, deliberate forbidden-reference detection, Unity combined-tree import, and Nemo's nine-assembly Inspector review pass. PR #18 is ready to merge.",
-  "next_action": "Mark PR #18 ready and merge it. After merge, record UF-004 as done on a fresh handoff branch; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.",
+  "current_section": "UF-004_acceptance_handoff_review",
+  "last_completed_item": "PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91 after the graph validator, deliberate forbidden-reference detection, Unity combined-tree import, and Nemo's nine-assembly Inspector review passed.",
+  "current_item": "PR #21 records UF-004 as done on a fresh handoff branch and makes the UF-005, UF-006, UF-009, and CS-001 dependency unlock durable.",
+  "next_action": "Review and merge PR #21. After it merges, merge ready PR #20 for UF-005 and launch UF-006 from fresh current main; do not reuse either merged branch.",
   "blockers": [
-    "UF-004 remains in review until PR #18 merges.",
+    "UF-004 acceptance and its downstream unlock are not durable until PR #21 merges.",
+    "PR #20 must not merge before PR #21.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T09:55:01+02:00"
+    "last_persisted_at": "2026-07-14T10:27:27+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T09:55:01+02:00"
+  "updated_at": "2026-07-14T10:27:27+02:00"
 }
