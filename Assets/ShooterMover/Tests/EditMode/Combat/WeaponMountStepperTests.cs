@@ -470,7 +470,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             WeaponRuntimeProfile[] profiles =
             {
                 BuildProfile("traceone", 0.1d, recoverySeconds: 0d),
-                BuildProfile("tracetwo", 0.3d, 3, 0.05d, 0.1d),
+                BuildProfile("tracetwo", 0.5d, 3, 0.05d, 0.1d),
                 BuildProfile(
                     "tracethree",
                     0.2d,
