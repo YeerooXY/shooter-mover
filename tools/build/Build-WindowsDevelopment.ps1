@@ -129,8 +129,12 @@ $projectRoot = Get-FullPath -Path (Join-Path $scriptDirectory "..\..")
 $tempRoot = Get-FullPath -Path (Join-Path $projectRoot "Temp")
 $ownedOutputRoot = Get-FullPath -Path (Join-Path $tempRoot "ShooterMoverBuild")
 $expectedOutputRoot = Get-FullPath -Path (Join-Path $projectRoot "Temp\ShooterMoverBuild")
+$pathTrimCharacters = [char[]]@(
+    [System.IO.Path]::DirectorySeparatorChar,
+    [System.IO.Path]::AltDirectorySeparatorChar
+)
 
-$tempPrefix = $tempRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+$tempPrefix = $tempRoot.TrimEnd($pathTrimCharacters) + [System.IO.Path]::DirectorySeparatorChar
 if (-not $ownedOutputRoot.StartsWith($tempPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Owned output must remain under the project Temp directory."
 }
@@ -194,7 +198,7 @@ $unityExitCode = $LASTEXITCODE
 
 if ($unityExitCode -ne 0) {
     Show-LogTail -LogPath $logPath
-    Write-Error "Unity compile/build failed with exit code $unityExitCode. Full log: '$logPath'."
+    [Console]::Error.WriteLine("Unity compile/build failed with exit code $unityExitCode. Full log: '$logPath'.")
     exit $unityExitCode
 }
 
@@ -220,11 +224,11 @@ if ($missingArtifacts.Count -gt 0) {
     throw "Unity returned success but expected artifacts are missing: $($missingArtifacts -join ', ')."
 }
 
-$outputPrefix = $ownedOutputRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+New-Item -ItemType File -Path $artifactListPath -Force | Out-Null
+$outputPrefix = $ownedOutputRoot.TrimEnd($pathTrimCharacters) + [System.IO.Path]::DirectorySeparatorChar
 $artifactLines = Get-ChildItem -LiteralPath $ownedOutputRoot -File -Recurse |
     ForEach-Object {
-        $relativePath = $_.FullName.Substring($outputPrefix.Length).Replace('\', '/')
-        "{0}`t{1}" -f $relativePath, $_.Length
+        $_.FullName.Substring($outputPrefix.Length) -replace '\\', '/'
     } |
     Sort-Object
 
