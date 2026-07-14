@@ -3,17 +3,11 @@ using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Contracts.Combat
 {
-    /// <summary>
-    /// Common immutable envelope fields carried by every combat event message.
-    /// </summary>
     public interface ICombatEventMessage
     {
         StableId EventId { get; }
-
         StableId SourceId { get; }
-
         StableId TargetId { get; }
-
         CombatChannel Channel { get; }
     }
 
@@ -150,13 +144,9 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public double Health { get; }
-
         public double MaximumHealth { get; }
-
         public double Shield { get; }
-
         public double MaximumShield { get; }
-
         public bool IsDestroyed => Health == 0d;
 
         public bool Equals(VitalState other)
@@ -188,7 +178,7 @@ namespace ShooterMover.Contracts.Combat
     }
 
     /// <summary>
-    /// Immutable proposed-damage result. It validates a supplied result but never mutates vitals.
+    /// Validates and carries a supplied damage result without mutating combat state.
     /// </summary>
     public sealed class DamageMessage : ICombatEventMessage
     {
@@ -229,64 +219,41 @@ namespace ShooterMover.Contracts.Combat
                 nameof(healthDamageApplied));
             CombatMessageValidation.RequireFiniteNonNegative(unappliedAmount, nameof(unappliedAmount));
 
-            switch (result)
+            if (result == DamageResult.Applied)
             {
-                case DamageResult.Applied:
-                    ValidateApplied(
-                        requestedAmount,
-                        before,
-                        after,
-                        shieldDamageApplied,
-                        shieldOverflowAmount,
-                        healthDamageApplied,
-                        unappliedAmount);
-                    break;
-                case DamageResult.Blocked:
-                    if (before.IsDestroyed)
-                    {
-                        throw new ArgumentException(
-                            "A hit on an already destroyed target must use TargetAlreadyDestroyed.",
-                            nameof(result));
-                    }
+                ValidateApplied(
+                    requestedAmount,
+                    before,
+                    after,
+                    shieldDamageApplied,
+                    shieldOverflowAmount,
+                    healthDamageApplied,
+                    unappliedAmount);
+            }
+            else
+            {
+                if (result == DamageResult.Blocked && before.IsDestroyed)
+                {
+                    throw new ArgumentException(
+                        "A hit on an already destroyed target must use TargetAlreadyDestroyed.",
+                        nameof(result));
+                }
 
-                    ValidateNotApplied(
-                        requestedAmount,
-                        before,
-                        after,
-                        shieldDamageApplied,
-                        shieldOverflowAmount,
-                        healthDamageApplied,
-                        unappliedAmount);
-                    break;
-                case DamageResult.DuplicateEventIgnored:
-                    ValidateNotApplied(
-                        requestedAmount,
-                        before,
-                        after,
-                        shieldDamageApplied,
-                        shieldOverflowAmount,
-                        healthDamageApplied,
-                        unappliedAmount);
-                    break;
-                case DamageResult.TargetAlreadyDestroyed:
-                    if (!before.IsDestroyed)
-                    {
-                        throw new ArgumentException(
-                            "TargetAlreadyDestroyed requires a destroyed before-state.",
-                            nameof(result));
-                    }
+                if (result == DamageResult.TargetAlreadyDestroyed && !before.IsDestroyed)
+                {
+                    throw new ArgumentException(
+                        "TargetAlreadyDestroyed requires a destroyed before-state.",
+                        nameof(result));
+                }
 
-                    ValidateNotApplied(
-                        requestedAmount,
-                        before,
-                        after,
-                        shieldDamageApplied,
-                        shieldOverflowAmount,
-                        healthDamageApplied,
-                        unappliedAmount);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(result));
+                ValidateNotApplied(
+                    requestedAmount,
+                    before,
+                    after,
+                    shieldDamageApplied,
+                    shieldOverflowAmount,
+                    healthDamageApplied,
+                    unappliedAmount);
             }
 
             EventId = eventId;
@@ -304,27 +271,16 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public StableId EventId { get; }
-
         public StableId SourceId { get; }
-
         public StableId TargetId { get; }
-
         public CombatChannel Channel { get; }
-
         public double RequestedAmount { get; }
-
         public DamageResult Result { get; }
-
         public VitalState Before { get; }
-
         public VitalState After { get; }
-
         public double ShieldDamageApplied { get; }
-
         public double ShieldOverflowAmount { get; }
-
         public double HealthDamageApplied { get; }
-
         public double UnappliedAmount { get; }
 
         private static void ValidateApplied(
@@ -450,13 +406,9 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public StableId EventId { get; }
-
         public StableId SourceId { get; }
-
         public StableId TargetId { get; }
-
         public CombatChannel Channel { get; }
-
         public HitResult Result { get; }
     }
 
@@ -497,15 +449,10 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public StableId EventId { get; }
-
         public StableId SourceId { get; }
-
         public StableId TargetId { get; }
-
         public CombatChannel Channel { get; }
-
         public VitalResult Result { get; }
-
         public VitalState State { get; }
     }
 
@@ -535,15 +482,10 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public StableId EventId { get; }
-
         public StableId SourceId { get; }
-
         public StableId TargetId { get; }
-
         public CombatChannel Channel { get; }
-
         public ContactClassification Classification { get; }
-
         public ContactResult Result { get; }
     }
 
@@ -594,17 +536,11 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public StableId EventId { get; }
-
         public StableId SourceId { get; }
-
         public StableId TargetId { get; }
-
         public CombatChannel Channel { get; }
-
         public CombatWeightClass SourceWeight { get; }
-
         public CombatWeightClass TargetWeight { get; }
-
         public WeightResult Result { get; }
 
         public static WeightResult DetermineResult(
@@ -626,12 +562,14 @@ namespace ShooterMover.Contracts.Combat
                 return WeightResult.TargetImmovable;
             }
 
-            if (sourceWeight < targetWeight)
+            int sourceRank = (int)sourceWeight;
+            int targetRank = (int)targetWeight;
+            if (sourceRank < targetRank)
             {
                 return WeightResult.SourceLighter;
             }
 
-            if (sourceWeight > targetWeight)
+            if (sourceRank > targetRank)
             {
                 return WeightResult.SourceHeavier;
             }
@@ -686,24 +624,17 @@ namespace ShooterMover.Contracts.Combat
         }
 
         public StableId EventId { get; }
-
         public StableId SourceId { get; }
-
         public StableId TargetId { get; }
-
         public CombatChannel Channel { get; }
-
         public CombatStatus Status { get; }
-
         public StatusResult Result { get; }
-
         public double DurationSeconds { get; }
-
         public double Magnitude { get; }
     }
 
     /// <summary>
-    /// Classifies whether two messages are distinct, exact retries, or conflicting reuse of one event ID.
+    /// Compares the stable identity envelope of two combat messages.
     /// </summary>
     public static class CombatEventIdentity
     {
