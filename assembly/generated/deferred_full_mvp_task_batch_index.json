@@ -151,7 +151,7 @@
       "milestones": [
         "S1.2 Four-weapon combat"
       ],
-      "expected_task_count": 11,
+      "expected_task_count": 10,
       "expected_task_ids": [
         "CB-001",
         "CB-002",
@@ -159,7 +159,6 @@
         "CB-004",
         "CB-005",
         "CB-006",
-        "CB-007",
         "CB-008",
         "CB-009",
         "CB-010",
@@ -172,7 +171,7 @@
       ],
       "output_path": "assembly/generated/task_batches/combat-four-mount.json",
       "status": "validated",
-      "notes": "Validated 11-task four-mount combat foundation. Direct implementation and proof spend is 4.50 focused lead days against the accepted S1.2 ten-day cap, leaving 5.50 days for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
+      "notes": "Validated 10-task four-mount combat foundation after retiring player-motion recoil. Direct implementation and proof spend is 4.10 focused lead days against the accepted S1.2 ten-day cap, leaving 5.90 days for the amended five-weapon set, HUD, temporary audiovisual/readability work, human review, and bounded iteration."
     },
     {
       "batch_id": "stage1-weapons",
@@ -206,7 +205,7 @@
       ],
       "output_path": "assembly/generated/task_batches/stage1-weapons.json",
       "status": "validated",
-      "notes": "Validated 12-task amended five-weapon workload. Direct implementation and proof spend is 4.60 focused lead days; combined with combat-four-mount, S1.2 consumes 9.10 of 10 days and preserves 0.90 day for review reserve and bounded approved follow-up."
+      "notes": "Validated 12-task amended five-weapon workload. Direct implementation and proof spend is 4.60 focused lead days; combined with combat-four-mount, S1.2 consumes 8.70 of 10 days and preserves 1.30 days for review reserve and bounded approved follow-up."
     },
     {
       "batch_id": "stage1-enemies-route",

@@ -96,6 +96,10 @@ At a cap preserve evidence-critical work and cut additional polish/variants, ext
 
 Before generating `stage1-weapons`, consume `AMENDMENT_STAGE1_WEAPONS.md`. Keep `WP-001` through `WP-012`, but decompose exactly five weapon packages. Empowered fire may only tune existing numeric coefficients in Stage 1; it may not increase the Arc Gun chain cap or Ricochet Gun bounce cap. The three remaining Stage 2 weapon identities stay blocked behind the Stage 1 gate and a later evidence-backed planning amendment.
 
+## Stage 1 no-player-motion recoil amendment
+
+Before dispatching or regenerating combat and later dependent work, consume `AMENDMENT_STAGE1_NO_PLAYER_MOTION_RECOIL.md`. Retire `CB-007`; do not create a combat-to-movement bridge or an MT-owned influence port. Remove its `CB-011` dependency and require later combat evidence to prove that firing leaves player movement, thruster, and collision authority unchanged. Existing recoil fields remain non-authoritative compatibility/presentation data unless a later explicitly owned presentation task is approved.
+
 ## Stage 1 enemy amendment
 
 Before generating `stage1-enemies-route`, consume `AMENDMENT_STAGE1_ENEMIES.md`. Keep `EN-001` through `EN-013`, but decompose the Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and easy Four-Blaster Elite. Reuse the accepted blaster projectile behavior. The Four-Blaster Elite replaces Foreman Elite, while Prototype Overseer remains Stage 2. The one remaining Stage 2 ordinary role stays blocked behind the Stage 1 gate and a later evidence-backed planning amendment.
