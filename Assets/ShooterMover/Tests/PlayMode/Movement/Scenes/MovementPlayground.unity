@@ -104,7 +104,7 @@ MonoBehaviour:
   inputAdapter: {fileID: 2004}
   contactAdapter: {fileID: 2005}
   movementLifecycle: {fileID: 2006}
-  movementInputActions: {fileID: 11400000, guid: a6bab2ca48d241c2b49ca1e810292bc1, type: 2}
+  movementInputActions: {fileID: -944628639613478452, guid: a6bab2ca48d241c2b49ca1e810292bc1, type: 3}
   followCamera: {fileID: 3002}
   playerVisual: {fileID: 2100}
   thrusterVisual: {fileID: 2200}
