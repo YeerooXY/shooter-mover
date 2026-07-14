@@ -252,7 +252,7 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
         public bool TryReadState(out EnemyActorState state)
         {
             state = currentState;
-            return configured && state != null;
+            return state != null;
         }
 
         public EnemyActorStepResult Apply(EnemyActorCommand command)
@@ -383,7 +383,7 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
                 return;
             }
 
-            EnemyTarget2DObservation observation;
+            EnemyTarget2DObservation observation = null;
             bool targetAvailable = playerTarget != null
                 && playerTarget.TryReadTarget(out observation);
             bool visible = false;
