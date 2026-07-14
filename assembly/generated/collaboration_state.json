@@ -97,6 +97,45 @@
       ],
       "notes": "Accepted after PR #16 merged and Nemo completed the first exact-editor package resolution. All 21 packages registered, no blocking package/compiler error appeared, and Git reported no package-file rewrite.",
       "updated_at": "2026-07-14T09:08:15+02:00"
+    },
+    {
+      "task_id": "UF-004",
+      "assigned_to": "web-ai",
+      "assignee_type": "web_ai",
+      "assignee_label": "Web AI Task Executor",
+      "status": "review",
+      "claimed_at": "2026-07-14T09:23:40+02:00",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-004-run-001.json",
+          "summary": "UF-004 implementation and verification report.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "tools/validation/validate_unity_assembly_graph.py",
+          "summary": "Validates the required graph, inward references, test flags, missing internal references, and cycles.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
+          "summary": "Documents the exact baseline graph and Unity review procedure.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        },
+        {
+          "kind": "manual_note",
+          "summary": "Unity 6000.3.19f1 compilation and Inspector graph review remain for human acceptance.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        }
+      ],
+      "notes": "Claimed after PR #17 merged. Static validation is complete in draft PR #18; exact-editor compilation and Inspector review remain before acceptance.",
+      "updated_at": "2026-07-14T09:23:40+02:00"
     }
   ],
   "task_claims": [
@@ -115,6 +154,14 @@
       "status": "submitted",
       "claimed_at": "2026-07-14T08:50:29+02:00",
       "notes": "Claimed after PR #15 merged and submitted for review in PR #16."
+    },
+    {
+      "claim_id": "uf-004-claim-001",
+      "task_id": "UF-004",
+      "actor_id": "web-ai",
+      "status": "submitted",
+      "claimed_at": "2026-07-14T09:23:40+02:00",
+      "notes": "Claimed after UF-002 acceptance and submitted for review in draft PR #18."
     }
   ],
   "artifact_submissions": [
@@ -168,6 +215,49 @@
       ],
       "status": "accepted",
       "submitted_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "submission_id": "uf-004-submission-001",
+      "task_id": "UF-004",
+      "actor_id": "web-ai",
+      "artifact_paths": [
+        "Assets/ShooterMover/Runtime/Domain/ShooterMover.Domain.asmdef",
+        "Assets/ShooterMover/Runtime/Contracts/ShooterMover.Contracts.asmdef",
+        "Assets/ShooterMover/Runtime/Application/ShooterMover.Application.asmdef",
+        "Assets/ShooterMover/Runtime/UnityAdapters/ShooterMover.UnityAdapters.asmdef",
+        "Assets/ShooterMover/Runtime/Bootstrap/ShooterMover.Bootstrap.asmdef",
+        "Assets/ShooterMover/Runtime/Presentation/ShooterMover.Presentation.asmdef",
+        "Assets/ShooterMover/Content/Definitions/ShooterMover.Content.Definitions.asmdef",
+        "Assets/ShooterMover/Tests/EditMode/ShooterMover.Tests.EditMode.asmdef",
+        "Assets/ShooterMover/Tests/PlayMode/ShooterMover.Tests.PlayMode.asmdef",
+        "tools/validation/validate_unity_assembly_graph.py",
+        "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
+        "assembly/generated/task_runs/UF-004-run-001.json"
+      ],
+      "summary": "Created the inward-only Unity assembly skeleton with deterministic metadata, executable graph validation, and architecture documentation.",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-004-run-001.json",
+          "summary": "Detailed implementation and verification report.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        },
+        {
+          "kind": "command_output",
+          "summary": "Nine asmdefs parsed, Python syntax validation passed, the clean graph passed, and a deliberate outward reference was rejected.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        },
+        {
+          "kind": "manual_note",
+          "summary": "Pinned-editor compilation and Inspector graph review remain for Nemo.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T09:23:40+02:00"
+        }
+      ],
+      "status": "submitted",
+      "submitted_at": "2026-07-14T09:23:40+02:00"
     }
   ],
   "reviews": [
@@ -274,6 +364,30 @@
       "target_id": "UF-002",
       "created_at": "2026-07-14T09:08:15+02:00",
       "details": "Moved UF-002 to done, satisfying the shared dependency of UF-003 and UF-004."
+    },
+    {
+      "event_id": "uf-004-claim-created-001",
+      "actor_id": "web-ai",
+      "event_type": "claim_created",
+      "target_id": "uf-004-claim-001",
+      "created_at": "2026-07-14T09:23:40+02:00",
+      "details": "Claimed UF-004 from current main after PR #17 merged and UF-002 became done."
+    },
+    {
+      "event_id": "uf-004-artifact-submitted-001",
+      "actor_id": "web-ai",
+      "event_type": "artifact_submitted",
+      "target_id": "uf-004-submission-001",
+      "created_at": "2026-07-14T09:23:40+02:00",
+      "details": "Submitted the assembly definitions, metadata, validator, documentation, and task-run proof in draft PR #18."
+    },
+    {
+      "event_id": "uf-004-status-review-001",
+      "actor_id": "web-ai",
+      "event_type": "status_changed",
+      "target_id": "UF-004",
+      "created_at": "2026-07-14T09:23:40+02:00",
+      "details": "Moved UF-004 to review; exact-editor compilation and Inspector graph review remain human proof."
     }
   ]
 }
