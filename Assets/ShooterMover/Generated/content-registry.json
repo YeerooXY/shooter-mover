@@ -1,0 +1,10 @@
+{
+  "$schema": "urn:shooter-mover:schema:generated-registry:1",
+  "schema_version": 1,
+  "validation_mode": "release",
+  "catalog_version": 1,
+  "definition_fingerprint": "sha256:8686ed4c0b51a764f183445dfef31ee052abd5e43e5ae3892034eac0dde293ba",
+  "registry_fingerprint": "sha256:74081397e7331836d11edb05668a90751a10e6efee00dbb3ae35fce5da2fbf6a",
+  "entry_count": 0,
+  "entries": [  ]
+}
