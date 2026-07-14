@@ -66,7 +66,7 @@
       ],
       "output_path": "assembly/generated/task_batches/shared-contracts-core.json",
       "status": "validated",
-      "notes": "Validated 12-task Contract Steward workload. The approved Stage 1 capacity amendment raises S1.0 to 12 focused lead days, preserving evidence-critical contracts and review reserve."
+      "notes": "Validated 12-task Contract Steward workload. Foundation plus contract estimates exceed the accepted S1.0 five-day cap; dispatch requires human cap review, re-estimation or approved amendment without cutting evidence-critical contracts."
     },
     {
       "batch_id": "stage1-evidence-harness",
@@ -100,7 +100,7 @@
       ],
       "output_path": "assembly/generated/task_batches/stage1-evidence-harness.json",
       "status": "validated",
-      "notes": "Validated 10-task Stage 1 evidence-harness workload. Combined S1.0 direct spend is 10.9 focused lead days against the approved 12-day cap, leaving 1.1 days of review and integration reserve."
+      "notes": "Validated 10-task Stage 1 evidence-harness workload. Its 3.6 focused lead days bring the recorded S1.0 planning total to 10.9 days against the accepted five-day cap; Dispatch requires human cap review or approved amendment."
     },
     {
       "batch_id": "movement-thruster",
@@ -324,6 +324,265 @@
       "output_path": "assembly/generated/task_batches/stage1-gate.json",
       "status": "validated",
       "notes": "Validated 10-task explicit human Stage 1 gate. GATE-010 is the sole Stage 2 unlock and can complete only after a valid advance decision. S1.4 gate allocation is 1.90 days and S1.5 external-round allocation is 3.40 days."
+    },
+    {
+      "batch_id": "mission-state-continuity",
+      "owner_role": "Mission, Persistence, Rewards, and UI Builder",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "mission-state",
+        "persistence"
+      ],
+      "milestones": [
+        "S2.1 Mission state and continuity"
+      ],
+      "expected_task_count": 13,
+      "expected_task_ids": [
+        "MS-001",
+        "MS-002",
+        "MS-003",
+        "MS-004",
+        "MS-005",
+        "MS-006",
+        "MS-007",
+        "MS-008",
+        "MS-009",
+        "MS-010",
+        "MS-011",
+        "MS-012",
+        "MS-013"
+      ],
+      "depends_on_batches": [
+        "stage1-gate"
+      ],
+      "output_path": "assembly/generated/task_batches/mission-state-continuity.json",
+      "status": "planned",
+      "notes": "Stage 2 implementation; must depend on explicit Stage 1 approval."
+    },
+    {
+      "batch_id": "factory-graph-rooms",
+      "owner_role": "Mission, Persistence, Rewards, and UI Builder",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "level-graph",
+        "room-projection"
+      ],
+      "milestones": [
+        "S2.2 Factory combat content"
+      ],
+      "expected_task_count": 12,
+      "expected_task_ids": [
+        "RM-001",
+        "RM-002",
+        "RM-003",
+        "RM-004",
+        "RM-005",
+        "RM-006",
+        "RM-007",
+        "RM-008",
+        "RM-009",
+        "RM-010",
+        "RM-011",
+        "RM-012"
+      ],
+      "depends_on_batches": [
+        "mission-state-continuity"
+      ],
+      "output_path": "assembly/generated/task_batches/factory-graph-rooms.json",
+      "status": "planned",
+      "notes": "Stage 2 implementation."
+    },
+    {
+      "batch_id": "stage2-combat-content",
+      "owner_role": "Enemy and Encounter Builder",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "stage2-weapons",
+        "stage2-enemies",
+        "complete-encounters"
+      ],
+      "milestones": [
+        "S2.2 Factory combat content"
+      ],
+      "expected_task_count": 12,
+      "expected_task_ids": [
+        "SC-001",
+        "SC-002",
+        "SC-003",
+        "SC-004",
+        "SC-005",
+        "SC-006",
+        "SC-007",
+        "SC-008",
+        "SC-009",
+        "SC-010",
+        "SC-011",
+        "SC-012"
+      ],
+      "depends_on_batches": [
+        "factory-graph-rooms",
+        "stage1-weapons",
+        "stage1-enemies-route"
+      ],
+      "output_path": "assembly/generated/task_batches/stage2-combat-content.json",
+      "status": "planned",
+      "notes": "Stage 2 implementation."
+    },
+    {
+      "batch_id": "ui-economy-replay",
+      "owner_role": "Mission, Persistence, Rewards, and UI Builder",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "presentation-ui",
+        "rewards-economy"
+      ],
+      "milestones": [
+        "S2.3 Connected replay loop"
+      ],
+      "expected_task_count": 13,
+      "expected_task_ids": [
+        "UI-001",
+        "UI-002",
+        "UI-003",
+        "UI-004",
+        "UI-005",
+        "UI-006",
+        "UI-007",
+        "UI-008",
+        "UI-009",
+        "UI-010",
+        "UI-011",
+        "UI-012",
+        "UI-013"
+      ],
+      "depends_on_batches": [
+        "mission-state-continuity",
+        "factory-graph-rooms",
+        "stage2-combat-content"
+      ],
+      "output_path": "assembly/generated/task_batches/ui-economy-replay.json",
+      "status": "planned",
+      "notes": "Stage 2 implementation."
+    },
+    {
+      "batch_id": "full-verification-matrices",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "tests-verification",
+        "release"
+      ],
+      "milestones": [
+        "S2.4 Accessibility, diagnostics, performance, builds"
+      ],
+      "expected_task_count": 12,
+      "expected_task_ids": [
+        "QA-001",
+        "QA-002",
+        "QA-003",
+        "QA-004",
+        "QA-005",
+        "QA-006",
+        "QA-007",
+        "QA-008",
+        "QA-009",
+        "QA-010",
+        "QA-011",
+        "QA-012"
+      ],
+      "depends_on_batches": [
+        "mission-state-continuity",
+        "factory-graph-rooms",
+        "stage2-combat-content",
+        "ui-economy-replay"
+      ],
+      "output_path": "assembly/generated/task_batches/full-verification-matrices.json",
+      "status": "planned",
+      "notes": "Stage 2 verification."
+    },
+    {
+      "batch_id": "final-art-pipeline",
+      "owner_role": "Content and Art Pipeline Builder",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "content-pipeline",
+        "provenance"
+      ],
+      "milestones": [
+        "S2.5 Art and content-pipeline proof"
+      ],
+      "expected_task_count": 11,
+      "expected_task_ids": [
+        "ART-001",
+        "ART-002",
+        "ART-003",
+        "ART-004",
+        "ART-005",
+        "ART-006",
+        "ART-007",
+        "ART-008",
+        "ART-009",
+        "ART-010",
+        "ART-011"
+      ],
+      "depends_on_batches": [
+        "full-verification-matrices",
+        "stage2-combat-content",
+        "factory-graph-rooms"
+      ],
+      "output_path": "assembly/generated/task_batches/final-art-pipeline.json",
+      "status": "planned",
+      "notes": "Stage 2 production pipeline proof."
+    },
+    {
+      "batch_id": "production-readiness",
+      "owner_role": "Human Lead Integration and Review",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "readiness-review",
+        "red-team"
+      ],
+      "milestones": [
+        "S2.6 Reliability and readiness"
+      ],
+      "expected_task_count": 10,
+      "expected_task_ids": [
+        "READY-001",
+        "READY-002",
+        "READY-003",
+        "READY-004",
+        "READY-005",
+        "READY-006",
+        "READY-007",
+        "READY-008",
+        "READY-009",
+        "READY-010"
+      ],
+      "depends_on_batches": [
+        "mission-state-continuity",
+        "factory-graph-rooms",
+        "stage2-combat-content",
+        "ui-economy-replay",
+        "full-verification-matrices",
+        "final-art-pipeline"
+      ],
+      "output_path": "assembly/generated/task_batches/production-readiness.json",
+      "status": "planned",
+      "notes": "Final human production-readiness review."
     }
   ]
 }

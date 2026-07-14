@@ -29,27 +29,33 @@ The Task Splitter creates, in a separate branch and PR:
 
 It must not silently revise requirements or architecture. Material change returns to a planning amendment.
 
-## Decomposition sequence
+## Stage-first decomposition sequence
 
-Create batches in this dependency order without assigning task IDs here:
+The accepted Stage 1 canonical backlog contains these nine validated batches in dependency order:
 
-1. repository/Unity baseline, contracts, stable IDs, assemblies, generated validation;
-2. Stage 1 evidence harness, arena shell, input, build identity;
-3. movement/thruster domain and adapters;
-4. shared combat contracts and four-mount foundation;
-5. five Stage 1 weapon packages defined by `AMENDMENT_STAGE1_WEAPONS.md`;
-6. four ordinary enemy roles, Four-Blaster Elite and short route as defined by `AMENDMENT_STAGE1_ENEMIES.md`;
-7. Stage 1 reliability, accessibility, diagnostics, performance, formal evidence;
-8. Stage 1 gate execution and explicitly approved bounded iteration;
-9. Stage 2 mission state, room projection, snapshots, journal, checkpoint, banking, suspend, recovery;
-10. factory graph and modular rooms;
-11. remaining weapons, enemies, Prototype Overseer, complete encounters;
-12. menu, shop, refresh tokens, strongboxes, reward review, loadout, records, replay;
-13. full accessibility, diagnostics, build, stress, clean-machine, and save matrices;
-14. representative final-art pipeline and independent reproduction;
-15. Stage 2 reliability and production-readiness review.
+1. `unity-foundation`;
+2. `shared-contracts-core`;
+3. `stage1-evidence-harness`;
+4. `movement-thruster`;
+5. `combat-four-mount`;
+6. `stage1-weapons`;
+7. `stage1-enemies-route`;
+8. `stage1-accessibility-reliability`;
+9. `stage1-gate`.
 
-Do not schedule Stage 2 implementation as ready work until Stage 1 passes.
+The seven Stage 2 batch ranges remain preserved in `assembly/generated/deferred_full_mvp_task_batch_index.json`. Stop decomposition after Stage 1. Only after `GATE-010` genuinely passes may a fresh planning amendment confirm Stage 2 scope, estimates, multiplayer/networking boundaries, and task identities before those batches are generated.
+
+## Stage 1 finalization rule
+
+After the nine Stage 1 batches validate:
+
+- build `assembly/generated/task_backlog.json` from exactly those batches;
+- initialize collaboration state without auto-claiming work;
+- mark only Stage 1 execution slots ready;
+- keep Stage 2 slots blocked;
+- use the backlog pull request as the approval boundary before Dispatch.
+
+The approved 2026-07-14 capacity amendment sets S1.0 to 12 focused lead days / 3 calendar weeks and Stage 1 to 50 focused lead days / 12 calendar weeks. Direct S1.0 work is 10.9 days, leaving 1.1 days of reserve.
 
 ## Parallel safety
 
