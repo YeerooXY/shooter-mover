@@ -99,6 +99,45 @@
       "updated_at": "2026-07-14T09:08:15+02:00"
     },
     {
+      "task_id": "UF-003",
+      "assigned_to": "web-ai",
+      "assignee_type": "web_ai",
+      "assignee_label": "Web AI Task Executor",
+      "status": "done",
+      "claimed_at": "2026-07-14T09:19:30+02:00",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-003-run-001.json",
+          "summary": "UF-003 implementation and verification report.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:36:25+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverRenderer2D.asset",
+          "summary": "Unity-authored URP Renderer2D data.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:19:30+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverURP2D.asset",
+          "summary": "Unity-authored project pipeline with Renderer2D at default index zero.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:19:30+02:00"
+        },
+        {
+          "kind": "manual_note",
+          "summary": "Nemo confirmed the empty-scene URP 2D renderer before merging PR #19; automated proof confirmed the six shared quality-pipeline references and visual-only policy.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:36:25+02:00"
+        }
+      ],
+      "notes": "Accepted after exact-editor/static quality proof and Nemo's empty-scene renderer check passed and PR #19 merged.",
+      "updated_at": "2026-07-14T09:36:25+02:00"
+    },
+    {
       "task_id": "UF-004",
       "assigned_to": "web-ai",
       "assignee_type": "web_ai",
@@ -128,14 +167,20 @@
           "recorded_at": "2026-07-14T09:23:40+02:00"
         },
         {
+          "kind": "log",
+          "summary": "Unity 6000.3.19f1 imported all nine asmdefs on the combined tree with exit code 0 and no assembly/compiler errors.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:38:30+02:00"
+        },
+        {
           "kind": "manual_note",
-          "summary": "Unity 6000.3.19f1 compilation and Inspector graph review remain for human acceptance.",
+          "summary": "Inspector graph review remains for human acceptance.",
           "status": "needs_review",
-          "recorded_at": "2026-07-14T09:23:40+02:00"
+          "recorded_at": "2026-07-14T09:38:30+02:00"
         }
       ],
-      "notes": "Claimed after PR #17 merged. Static validation is complete in draft PR #18; exact-editor compilation and Inspector review remain before acceptance.",
-      "updated_at": "2026-07-14T09:23:40+02:00"
+      "notes": "Static validation and exact-editor combined-tree import pass in draft PR #18; Inspector graph review remains before acceptance.",
+      "updated_at": "2026-07-14T09:38:30+02:00"
     }
   ],
   "task_claims": [
@@ -154,6 +199,14 @@
       "status": "submitted",
       "claimed_at": "2026-07-14T08:50:29+02:00",
       "notes": "Claimed after PR #15 merged and submitted for review in PR #16."
+    },
+    {
+      "claim_id": "uf-003-claim-001",
+      "task_id": "UF-003",
+      "actor_id": "web-ai",
+      "status": "submitted",
+      "claimed_at": "2026-07-14T09:19:30+02:00",
+      "notes": "Claimed after PR #17 merged and UF-001/UF-002 were accepted; submitted for review in PR #19."
     },
     {
       "claim_id": "uf-004-claim-001",
@@ -217,6 +270,40 @@
       "submitted_at": "2026-07-14T08:50:29+02:00"
     },
     {
+      "submission_id": "uf-003-submission-001",
+      "task_id": "UF-003",
+      "actor_id": "web-ai",
+      "artifact_paths": [
+        "ProjectSettings/ProjectSettings.asset",
+        "ProjectSettings/GraphicsSettings.asset",
+        "ProjectSettings/QualitySettings.asset",
+        "ProjectSettings/Physics2DSettings.asset",
+        "Assets/ShooterMover/Settings/Rendering/ShooterMoverRenderer2D.asset",
+        "Assets/ShooterMover/Settings/Rendering/ShooterMoverURP2D.asset",
+        "Assets/ShooterMover/Settings/Rendering/ShooterMoverURPGlobalSettings.asset",
+        "Assets/ShooterMover/Settings/Rendering/ShooterMoverDefaultVolumeProfile.asset",
+        "assembly/generated/task_runs/UF-003-run-001.json"
+      ],
+      "summary": "Pinned a fully 2D Unity baseline with a shared Renderer2D-backed URP pipeline, 2D physics defaults, linear color, and the new Input System backend.",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-003-run-001.json",
+          "summary": "Detailed implementation and verification report.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:36:25+02:00"
+        },
+        {
+          "kind": "manual_note",
+          "summary": "Nemo confirmed the empty-scene Renderer2D and merged PR #19; automated proof covered the six quality profiles.",
+          "status": "accepted",
+          "recorded_at": "2026-07-14T09:36:25+02:00"
+        }
+      ],
+      "status": "accepted",
+      "submitted_at": "2026-07-14T09:19:30+02:00"
+    },
+    {
       "submission_id": "uf-004-submission-001",
       "task_id": "UF-004",
       "actor_id": "web-ai",
@@ -250,10 +337,16 @@
           "recorded_at": "2026-07-14T09:23:40+02:00"
         },
         {
+          "kind": "log",
+          "summary": "Pinned-editor combined-tree import passed for all nine asmdefs with no assembly/compiler errors.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T09:38:30+02:00"
+        },
+        {
           "kind": "manual_note",
-          "summary": "Pinned-editor compilation and Inspector graph review remain for Nemo.",
+          "summary": "Inspector graph review remains for Nemo.",
           "status": "needs_review",
-          "recorded_at": "2026-07-14T09:23:40+02:00"
+          "recorded_at": "2026-07-14T09:38:30+02:00"
         }
       ],
       "status": "submitted",
@@ -282,6 +375,18 @@
         "Git reported no manifest or lock rewrite; the canonical package-lock SHA-256 remained 2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557."
       ],
       "reviewed_at": "2026-07-14T09:08:15+02:00"
+    },
+    {
+      "review_id": "uf-003-review-001",
+      "submission_id": "uf-003-submission-001",
+      "reviewer_actor_id": "nemo",
+      "status": "approved",
+      "findings": [
+        "PR #19 merged, accepting the fully 2D project baseline.",
+        "Nemo confirmed the empty-scene project uses ShooterMoverURP2D with ShooterMoverRenderer2D.",
+        "The automated serialized scan confirmed every quality tier uses the shared rendering pipeline and contains no gameplay-authority field."
+      ],
+      "reviewed_at": "2026-07-14T09:36:25+02:00"
     }
   ],
   "audit_events": [
@@ -366,6 +471,46 @@
       "details": "Moved UF-002 to done, satisfying the shared dependency of UF-003 and UF-004."
     },
     {
+      "event_id": "uf-003-claim-created-001",
+      "actor_id": "web-ai",
+      "event_type": "claim_created",
+      "target_id": "uf-003-claim-001",
+      "created_at": "2026-07-14T09:19:30+02:00",
+      "details": "Claimed UF-003 from fresh main after PR #17 merged and both dependencies were accepted."
+    },
+    {
+      "event_id": "uf-003-artifact-submitted-001",
+      "actor_id": "web-ai",
+      "event_type": "artifact_submitted",
+      "target_id": "uf-003-submission-001",
+      "created_at": "2026-07-14T09:19:30+02:00",
+      "details": "Submitted the four owned project settings, URP 2D rendering assets, and exact-editor verification proof."
+    },
+    {
+      "event_id": "uf-003-status-review-001",
+      "actor_id": "web-ai",
+      "event_type": "status_changed",
+      "target_id": "UF-003",
+      "created_at": "2026-07-14T09:19:30+02:00",
+      "details": "Moved UF-003 to review; human empty-scene inspection and PR acceptance remain required."
+    },
+    {
+      "event_id": "uf-003-review-approved-001",
+      "actor_id": "nemo",
+      "event_type": "review_added",
+      "target_id": "uf-003-submission-001",
+      "created_at": "2026-07-14T09:36:25+02:00",
+      "details": "Accepted UF-003 after exact-editor/static quality proof, Nemo's empty-scene renderer check, and PR #19 merge."
+    },
+    {
+      "event_id": "uf-003-status-done-001",
+      "actor_id": "nemo",
+      "event_type": "status_changed",
+      "target_id": "UF-003",
+      "created_at": "2026-07-14T09:36:25+02:00",
+      "details": "Moved UF-003 to done, satisfying the 2D project-baseline dependency."
+    },
+    {
       "event_id": "uf-004-claim-created-001",
       "actor_id": "web-ai",
       "event_type": "claim_created",
@@ -387,7 +532,15 @@
       "event_type": "status_changed",
       "target_id": "UF-004",
       "created_at": "2026-07-14T09:23:40+02:00",
-      "details": "Moved UF-004 to review; exact-editor compilation and Inspector graph review remain human proof."
+      "details": "Moved UF-004 to review; exact-editor compilation and Inspector graph review remained human proof."
+    },
+    {
+      "event_id": "uf-004-verification-updated-001",
+      "actor_id": "web-ai",
+      "event_type": "assignment_updated",
+      "target_id": "UF-004",
+      "created_at": "2026-07-14T09:38:30+02:00",
+      "details": "Recorded the successful Unity 6000.3.19f1 combined-tree import; only human Inspector graph review remains."
     }
   ]
 }

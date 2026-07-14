@@ -78,8 +78,8 @@
     },
     {
       "command": "Open with Unity 6000.3.19f1, allow script compilation, and inspect the assembly graph",
-      "result": "not_run",
-      "output": "Requires Nemo's local pinned Unity editor and is the remaining human review proof before acceptance."
+      "result": "passed",
+      "output": "Combined-tree batchmode import exited 0, registered all 21 packages, imported all nine Shooter Mover asmdefs, and reported zero assembly or compiler errors. Unity correctly noted that the intentionally empty assemblies have no scripts to compile; Inspector graph review remains for Nemo."
     }
   ],
   "proof": [
@@ -103,16 +103,20 @@
       "recorded_at": "2026-07-14T09:23:40+02:00"
     },
     {
+      "kind": "log",
+      "summary": "Unity 6000.3.19f1 imported all nine asmdefs on the combined UF-003/UF-004 tree with exit code 0 and no assembly/compiler errors.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:38:30+02:00"
+    },
+    {
       "kind": "manual_note",
-      "summary": "Unity compilation and Inspector graph review remain for the human reviewer before UF-004 can be marked done.",
+      "summary": "Inspector graph review remains for the human reviewer before UF-004 can be marked done.",
       "status": "needs_review",
-      "recorded_at": "2026-07-14T09:23:40+02:00"
+      "recorded_at": "2026-07-14T09:38:30+02:00"
     }
   ],
-  "blockers": [
-    "The pinned Unity 6000.3.19f1 compilation log and Inspector graph review have not yet been produced in this environment."
-  ],
-  "notes": "Submitted in draft PR #18. Empty assembly folders are intentional; no marker gameplay types were added. The implementation stays in review until Nemo completes the exact-editor compilation and accepts the graph.",
+  "blockers": [],
+  "notes": "Submitted in draft PR #18. Empty assembly folders are intentional; no marker gameplay types were added. Exact-editor import now passes on the combined tree; the implementation stays in review until Nemo inspects and accepts the graph.",
   "submitted_at": "2026-07-14T09:23:40+02:00",
-  "updated_at": "2026-07-14T09:23:40+02:00"
+  "updated_at": "2026-07-14T09:38:30+02:00"
 }

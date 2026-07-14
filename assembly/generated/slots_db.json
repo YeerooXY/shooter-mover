@@ -48,7 +48,7 @@
       "Baseline is reproducible.",
       "No speculative SDKs."
     ],
-    "notes": "UF-001 and UF-002 are accepted. UF-003 remains independently ready. UF-004 is submitted in draft PR #18 with static graph proof and remains in review until Unity 6000.3.19f1 compilation and human assembly-graph inspection pass."
+    "notes": "UF-001, UF-002, and UF-003 are accepted. UF-004 graph validation and Unity 6000.3.19f1 combined-tree import pass in draft PR #18; human Inspector graph review remains."
   },
   {
     "slot_id": "movement-combat",

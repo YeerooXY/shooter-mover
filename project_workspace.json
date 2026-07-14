@@ -66,14 +66,14 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review draft PR #18 by opening it with Unity 6000.3.19f1, confirming clean script compilation, inspecting the nine assembly definitions, and running the assembly graph validator. Merge only after those checks pass; then record UF-004 acceptance on a fresh handoff branch.",
+    "human_next_step": "Review draft PR #18 by inspecting its nine assembly definitions against docs/architecture/ASSEMBLY_DEPENDENCIES.md. Exact-editor import and graph validation pass; merge only if the Inspector graph matches, then record UF-004 acceptance on a fresh handoff branch.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
       "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
       "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
       "UF-001 and UF-002 are accepted; Unity 6000.3.19f1 completed the first clean 21-package resolution.",
-      "UF-004 is statically validated and submitted in draft PR #18, but remains in review until exact-editor compilation and human graph inspection pass.",
-      "UF-003 remains independently ready and must use a separate fresh branch or worktree.",
+      "UF-003 is accepted through merged PR #19 after exact-editor/static policy proof and Nemo's empty-scene renderer check passed.",
+      "UF-004 graph validation and exact-editor combined-tree import pass in draft PR #18; it remains in review until human Inspector graph inspection passes.",
       "Seven Stage 2 batch ranges are preserved as deferred planning and remain locked behind GATE-010.",
       "No Stage 2 task file, multiplayer/networking implementation, or Stage 2 dispatch is authorized."
     ]

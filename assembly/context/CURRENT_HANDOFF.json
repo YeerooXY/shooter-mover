@@ -6,7 +6,7 @@
   "active_role": "task_executor",
   "active_branch": "agent/uf-004-inward-assembly-skeleton",
   "active_pr": 18,
-  "last_verified_commit": "0133f8d7d46d9eddd640d536b5c61e6a8dfb965c",
+  "last_verified_commit": "28ed78e5a3601444e62a33c48ecbc1b5ca55998f",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -44,6 +44,15 @@
     "Packages/packages-lock.json",
     "docs/toolchain/DEPENDENCY_LOCK.md",
     "assembly/generated/task_runs/UF-002-run-001.json",
+    "ProjectSettings/ProjectSettings.asset",
+    "ProjectSettings/GraphicsSettings.asset",
+    "ProjectSettings/QualitySettings.asset",
+    "ProjectSettings/Physics2DSettings.asset",
+    "Assets/ShooterMover/Settings/Rendering/ShooterMoverRenderer2D.asset",
+    "Assets/ShooterMover/Settings/Rendering/ShooterMoverURP2D.asset",
+    "Assets/ShooterMover/Settings/Rendering/ShooterMoverURPGlobalSettings.asset",
+    "Assets/ShooterMover/Settings/Rendering/ShooterMoverDefaultVolumeProfile.asset",
+    "assembly/generated/task_runs/UF-003-run-001.json",
     "Assets/ShooterMover/Runtime/Domain/ShooterMover.Domain.asmdef",
     "Assets/ShooterMover/Runtime/Contracts/ShooterMover.Contracts.asmdef",
     "Assets/ShooterMover/Runtime/Application/ShooterMover.Application.asmdef",
@@ -58,22 +67,22 @@
     "assembly/generated/task_runs/UF-004-run-001.json"
   ],
   "current_section": "UF-004_review",
-  "last_completed_item": "PR #17 merged and durably accepted UF-002, unlocking UF-003 and UF-004 from current main.",
-  "current_item": "Draft PR #18 contains the UF-004 inward assembly-definition skeleton, deterministic asmdef metadata, executable graph validator, documentation, collaboration claim, and review-status task run.",
-  "next_action": "Check out PR #18 with Unity 6000.3.19f1, allow script compilation to finish, confirm there are no compiler errors, inspect the nine assembly definitions and run python tools/validation/validate_unity_assembly_graph.py. If the graph matches docs/architecture/ASSEMBLY_DEPENDENCIES.md and compilation succeeds, review and merge PR #18. After merge, record UF-004 as done on a fresh handoff branch; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.",
+  "last_completed_item": "PR #19 merged after exact-editor/static quality proof and Nemo's empty-scene URP 2D renderer check passed, accepting UF-003.",
+  "current_item": "Draft PR #18 now includes current main; Unity 6000.3.19f1 imported all nine UF-004 asmdefs on the combined tree with no assembly/compiler errors, and the graph validator passes.",
+  "next_action": "Inspect the nine assembly definitions in PR #18 against docs/architecture/ASSEMBLY_DEPENDENCIES.md. If the Inspector graph matches the documented direct references, mark PR #18 ready and merge it. After merge, record UF-004 as done on a fresh handoff branch; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.",
   "blockers": [
-    "UF-004 remains in review until the pinned Unity 6000.3.19f1 editor compiles the project and the human reviewer confirms the assembly graph.",
+    "UF-004 remains in review until the human reviewer confirms the nine assembly definitions match the documented graph.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T09:28:00+02:00"
+    "last_persisted_at": "2026-07-14T09:38:30+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T09:28:00+02:00"
+  "updated_at": "2026-07-14T09:38:30+02:00"
 }

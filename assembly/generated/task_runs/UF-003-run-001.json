@@ -1,0 +1,96 @@
+{
+  "schema_version": "0.1.0",
+  "task_id": "UF-003",
+  "run_id": "UF-003-run-001",
+  "actor_id": "web-ai",
+  "status": "done",
+  "implementation_summary": "Configured the Unity 6000.3.19f1 project as a planar URP 2D baseline with linear color, the new Input System backend, zero 2D gravity, one Renderer2D-backed pipeline shared by all quality profiles, and owned URP global/volume settings.",
+  "files_changed": [
+    {
+      "path": "ProjectSettings/ProjectSettings.asset",
+      "change": "Pinned linear color and enabled the new Input System native backend."
+    },
+    {
+      "path": "ProjectSettings/GraphicsSettings.asset",
+      "change": "Selected the owned URP 2D pipeline and URP global settings as project defaults."
+    },
+    {
+      "path": "ProjectSettings/QualitySettings.asset",
+      "change": "Pinned six rendering-only quality profiles to the same URP 2D pipeline."
+    },
+    {
+      "path": "ProjectSettings/Physics2DSettings.asset",
+      "change": "Pinned the owned 2D physics configuration with zero planar gravity."
+    },
+    {
+      "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverRenderer2D.asset",
+      "change": "Created the default URP Renderer2D data asset through Unity."
+    },
+    {
+      "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverURP2D.asset",
+      "change": "Created the project URP asset with Renderer2D at default renderer index zero."
+    },
+    {
+      "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverURPGlobalSettings.asset",
+      "change": "Moved the generated URP global settings into the task-owned rendering directory."
+    },
+    {
+      "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverDefaultVolumeProfile.asset",
+      "change": "Moved the generated empty default volume profile beside its owning URP settings."
+    }
+  ],
+  "verification": [
+    {
+      "command": "Unity.exe -batchmode -nographics -quit -projectPath <repo> -executeMethod UF003Setup.Apply",
+      "result": "passed",
+      "output": "Unity exited 0 and reported UF003_SETUP_COMPLETE with Renderer2D, the URP 2D pipeline, and all 6 quality profiles. The temporary setup helper was removed afterward."
+    },
+    {
+      "command": "Unity.exe -batchmode -nographics -quit -projectPath <repo>",
+      "result": "passed",
+      "output": "Fresh Unity 6000.3.19f1 verification import exited 0, registered all 21 locked packages, and reported no compiler, graphics-setting, shader, or batchmode error."
+    },
+    {
+      "command": "PowerShell UF-003 serialized-reference and policy scan",
+      "result": "passed",
+      "output": "UF003_STATIC_OK pipeline=fbad363524ccb9a4db2ca0fb949c9846 renderer2d=eada7f6314848b04faa330d51b6bc632 quality_profiles=6 color_space=linear input=new physics2d_gravity=zero forbidden_3d_refs=0"
+    },
+    {
+      "command": "Manual empty-scene renderer and quality-profile inspection",
+      "result": "passed",
+      "output": "Nemo confirmed the unsaved empty scene uses ShooterMoverURP2D with ShooterMoverRenderer2D and accepted PR #19. The automated serialized scan separately confirmed all six quality profiles share that pipeline and contain no gameplay-authority fields."
+    }
+  ],
+  "proof": [
+    {
+      "kind": "file",
+      "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverRenderer2D.asset",
+      "summary": "Unity-authored Renderer2D data referenced by the pipeline asset.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:19:30+02:00"
+    },
+    {
+      "kind": "file",
+      "path": "Assets/ShooterMover/Settings/Rendering/ShooterMoverURP2D.asset",
+      "summary": "Unity-authored URP asset with the 2D renderer at default index zero.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:19:30+02:00"
+    },
+    {
+      "kind": "command_output",
+      "summary": "Exact-editor setup, clean re-import, GUID/reference validation, quality-policy scan, and forbidden 3D-physics scan passed.",
+      "status": "passed",
+      "recorded_at": "2026-07-14T09:19:30+02:00"
+    },
+    {
+      "kind": "manual_note",
+      "summary": "Nemo confirmed the empty-scene URP 2D renderer and merged PR #19, accepting UF-003.",
+      "status": "accepted",
+      "recorded_at": "2026-07-14T09:36:25+02:00"
+    }
+  ],
+  "blockers": [],
+  "notes": "Accepted through merged PR #19 after exact-editor, static quality-policy, and human empty-scene renderer checks passed. No scene, camera, gameplay, or 3D-physics asset is part of UF-003.",
+  "submitted_at": "2026-07-14T09:19:30+02:00",
+  "updated_at": "2026-07-14T09:36:25+02:00"
+}
