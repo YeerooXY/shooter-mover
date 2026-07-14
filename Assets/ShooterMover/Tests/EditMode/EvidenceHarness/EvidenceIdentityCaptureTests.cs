@@ -9,6 +9,7 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
     {
         private const string CaptureTypeName =
             "ShooterMover.TestSupport.EvidenceHarness.EvidenceIdentityCapture";
+        private const string UseDefaultCanonical = "<use-default-canonical>";
         private const string SourceCommit =
             "eb80374cb669f0f8c9e36210c45f935f28c3acc2";
         private const string OtherSourceCommit =
@@ -183,8 +184,8 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
         }
 
         private static object Capture(
-            string buildIdentityCanonical = null,
-            string contentVersionCanonical = null,
+            string buildIdentityCanonical = UseDefaultCanonical,
+            string contentVersionCanonical = UseDefaultCanonical,
             string dirtyStatePolicy = "reject-dirty",
             string buildTarget = BuildTarget,
             string buildConfiguration = BuildConfiguration,
@@ -200,8 +201,12 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
                 null,
                 new object[]
                 {
-                    buildIdentityCanonical ?? CreateBuildIdentity(),
-                    contentVersionCanonical ?? CreateContentVersion(),
+                    buildIdentityCanonical == UseDefaultCanonical
+                        ? CreateBuildIdentity()
+                        : buildIdentityCanonical,
+                    contentVersionCanonical == UseDefaultCanonical
+                        ? CreateContentVersion()
+                        : contentVersionCanonical,
                     dirtyStatePolicy,
                     buildTarget,
                     buildConfiguration,
