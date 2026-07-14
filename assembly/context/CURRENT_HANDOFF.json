@@ -4,9 +4,9 @@
   "repository": "YeerooXY/shooter-mover",
   "lifecycle_phase": "development",
   "active_role": "task_executor",
-  "active_branch": "agent/uf-004-acceptance-handoff",
-  "active_pr": 21,
-  "last_verified_commit": "22067939458d90b8adfb5d68473f6f179f21bd91",
+  "active_branch": "agent/simplify-stage1-wow",
+  "active_pr": 22,
+  "last_verified_commit": "63e488b17f1899fdad89645a167a97a6d24c3bb7",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -64,26 +64,29 @@
     "Assets/ShooterMover/Tests/PlayMode/ShooterMover.Tests.PlayMode.asmdef",
     "tools/validation/validate_unity_assembly_graph.py",
     "docs/architecture/ASSEMBLY_DEPENDENCIES.md",
-    "assembly/generated/task_runs/UF-004-run-001.json"
+    "assembly/generated/task_runs/UF-004-run-001.json",
+    "Assets/ShooterMover/README.md",
+    "tools/README.md",
+    "tools/validation/validate_repository_layout.py",
+    "docs/architecture/FILE_OWNERSHIP.md"
   ],
-  "current_section": "UF-004_acceptance_handoff_review",
-  "last_completed_item": "PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91 after the graph validator, deliberate forbidden-reference detection, Unity combined-tree import, and Nemo's nine-assembly Inspector review passed.",
-  "current_item": "PR #21 records UF-004 as done on a fresh handoff branch and makes the UF-005, UF-006, UF-009, and CS-001 dependency unlock durable.",
-  "next_action": "Review and merge PR #21. After it merges, merge ready PR #20 for UF-005 and launch UF-006 from fresh current main; do not reuse either merged branch.",
+  "current_section": "stage1_way_of_working_simplification_review",
+  "last_completed_item": "PR #21 merged, recording UF-004 done, and PR #20 then merged at 63e488b17f1899fdad89645a167a97a6d24c3bb7 after UF-005 repository-layout and adversarial ownership validation passed.",
+  "current_item": "PR #22 makes a proof-complete implementation PR merge the acceptance boundary for ordinary Stage 1 tasks, removes per-task handoff PRs, batches bookkeeping once per wave, and records UF-005 as accepted from merged PR #20.",
+  "next_action": "Review and merge PR #22. After merge, launch UF-006, CS-001, and UF-011 on separate fresh branches from current main; keep ordinary proof in each implementation PR and do not edit central bookkeeping from those branches.",
   "blockers": [
-    "UF-004 acceptance and its downstream unlock are not durable until PR #21 merges.",
-    "PR #20 must not merge before PR #21.",
+    "The streamlined merge-as-acceptance rule and UF-005 acceptance record are not durable until PR #22 merges.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T10:27:27+02:00"
+    "last_persisted_at": "2026-07-14T10:41:14+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T10:27:27+02:00"
+  "updated_at": "2026-07-14T10:41:14+02:00"
 }

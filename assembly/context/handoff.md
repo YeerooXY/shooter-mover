@@ -1,41 +1,32 @@
-# Shooter Mover UF-004 Acceptance Handoff
+# Shooter Mover Stage 1 Streamlined Dispatch
 
-## Outcome
+## Accepted through UF-005
 
-UF-004 is accepted. PR #18 merged to `main` at
-`22067939458d90b8adfb5d68473f6f179f21bd91` after every required proof passed:
+UF-001 through UF-004 remain accepted with their existing repository proof.
+PR #20 merged after UF-005's four owned files passed repository-layout review,
+positive validation, and adversarial ownership checks. Under the streamlined
+rule in `AGENTS.md`, that proof-complete human merge accepts UF-005 without a
+second handoff PR or duplicated task-run file.
 
-- the nine assembly definitions match the documented inward-only graph;
-- Domain, Contracts, and Application remain UnityEngine-free;
-- the graph validator passes and rejects a deliberate forbidden outward
-  reference;
-- Unity `6000.3.19f1` imported all nine assembly definitions with no assembly or
-  compiler errors; and
-- Nemo confirmed the complete dependency graph in the Unity Inspector.
+## Way of working
 
-`assembly/generated/task_runs/UF-004-run-001.json` and the collaboration state
-now record UF-004 as `done`. Empty assembly folders remain intentional; do not
-add marker gameplay types merely to force visible compiled DLLs.
+- One ordinary implementation task uses one pull request.
+- Nemo's merge after required automated and manual proof records acceptance.
+- Agents use fresh branches/worktrees and edit only task-owned paths.
+- Implementation PRs contain dependency, scope, validation, manual-proof,
+  limitation, and rollback evidence.
+- Ordinary agents do not edit central lifecycle bookkeeping.
+- A coordinator batches handoff/collaboration/slot reconciliation once per
+  development wave; that reconciliation is not a dependency gate.
+- Explicit strong-review and milestone evidence requirements remain unchanged.
 
-## Unlocked work
+## Next parallel work
 
-Once PR #21 merges, UF-005, UF-006, UF-009, and CS-001 may
-treat UF-004 as satisfied, subject to their remaining dependencies.
+After PR #22 merges, launch from fresh current `main`:
 
-UF-005 is already implemented and validated in PR #20. That PR changes only
-its four owned paths and passes positive repository-layout validation plus
-negative checks for missing roots, unknown generated outputs, conflicting
-ownership, Windows case variants, and unsupported wildcards.
+- UF-006 — explicit bootstrap composition-root shell;
+- CS-001 — StableId v1; and
+- UF-011 — prototype-debt register.
 
-UF-006 may then start from fresh current `main` and owns only:
-
-- `Assets/ShooterMover/Runtime/Bootstrap/BootstrapCompositionRoot.cs`; and
-- `Assets/ShooterMover/Runtime/Bootstrap/BOOTSTRAP_LIFECYCLE.md`.
-
-## Exact next action
-
-Review and merge PR #21. Then merge ready PR #20 for UF-005 and launch UF-006
-from fresh current `main`. Never reuse a merged branch, and do not bulk-stage
-unrelated Unity-generated files.
-
-Stage 2 remains blocked behind `GATE-010`.
+Keep their branches and owned paths disjoint. Stage 2 remains blocked behind
+`GATE-010`.
