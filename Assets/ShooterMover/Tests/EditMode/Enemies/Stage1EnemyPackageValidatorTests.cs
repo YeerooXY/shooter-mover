@@ -1,9 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
-using ShooterMover.ContentPackages.Enemies.Stage1;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Content;
 using ShooterMover.Contracts.Encounters;
@@ -12,47 +12,84 @@ using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Tests.EditMode.Enemies
 {
+    /// <summary>
+    /// ContentPackages currently compile into Unity's predefined Assembly-CSharp,
+    /// which an asmdef-backed test assembly cannot reference statically. This narrow
+    /// bridge exercises the real production types without adding an out-of-scope
+    /// assembly asset or copying package logic into the fixture.
+    /// </summary>
     public sealed class Stage1EnemyPackageValidatorTests
     {
+        private const int OrdinaryClassification = 1;
+        private const int EliteClassification = 2;
+
+        private const ulong DirectPursuit = 1UL << 0;
+        private const ulong OrdinaryContactDamage = 1UL << 1;
+        private const ulong DisposableImpactAttack = 1UL << 2;
+        private const ulong MobilePositioning = 1UL << 3;
+        private const ulong StationaryPositioning = 1UL << 4;
+        private const ulong BlasterProjectile = 1UL << 5;
+        private const ulong FourBlasterOrigins = 1UL << 6;
+        private const ulong MildBoundedSpread = 1UL << 7;
+        private const ulong SafeRecoveryWindow = 1UL << 8;
+        private const ulong LineOfFireTelegraph = 1UL << 9;
+        private const ulong PhaseTransition = 1UL << 16;
+        private const ulong DenialPulse = 1UL << 17;
+        private const ulong MortarAttack = 1UL << 18;
+        private const ulong ReinforcementCall = 1UL << 19;
+        private const ulong Teleport = 1UL << 20;
+        private const ulong ComplexRepositioning = 1UL << 21;
+        private const ulong BulletHell = 1UL << 22;
+
+        private static readonly StableId PursuerDroneId =
+            StableId.Parse("enemy.pursuer-drone");
+        private static readonly StableId RamDroidId =
+            StableId.Parse("enemy.ram-droid");
+        private static readonly StableId MobileBlasterDroidId =
+            StableId.Parse("enemy.mobile-blaster-droid");
+        private static readonly StableId BlasterTurretId =
+            StableId.Parse("enemy.blaster-turret");
+        private static readonly StableId FourBlasterEliteId =
+            StableId.Parse("enemy.four-blaster-elite");
+        private static readonly StableId BlasterMachineGunId =
+            StableId.Parse("weapon.blaster-machine-gun");
+
         [Test]
         public void AcceptedRoster_ValidatesExactlyFourOrdinaryAndOneElite()
         {
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(AcceptedRoster());
+            object result = Validate(AcceptedRoster());
+            List<object> packages = GetObjectList(result, "Packages");
+            List<StableId> declaredIds = GetStaticEnumerable<StableId>(
+                RuntimeTypes.Descriptor,
+                "AcceptedEnemyIds");
 
-            Assert.That(result.IsValid, Is.True, result.ToCanonicalString());
-            Assert.That(result.Errors, Is.Empty);
-            Assert.That(result.Packages, Has.Count.EqualTo(5));
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.True, Canonical(result));
+            Assert.That(GetObjectList(result, "Errors"), Is.Empty);
+            Assert.That(packages, Has.Count.EqualTo(5));
             Assert.That(
-                result.Packages.Count(
-                    package => package.Classification
-                        == Stage1EnemyPackageClassification.Ordinary),
+                packages.Count(package => GetEnumInt(package, "Classification") == OrdinaryClassification),
                 Is.EqualTo(4));
             Assert.That(
-                result.Packages.Count(
-                    package => package.Classification
-                        == Stage1EnemyPackageClassification.Elite),
+                packages.Count(package => GetEnumInt(package, "Classification") == EliteClassification),
                 Is.EqualTo(1));
-
-            for (int index = 0;
-                 index < Stage1EnemyPackageDescriptor.AcceptedEnemyIds.Count;
-                 index++)
-            {
-                Stage1EnemyPackageDescriptor package;
-                Assert.That(
-                    result.TryGetPackage(
-                        Stage1EnemyPackageDescriptor.AcceptedEnemyIds[index],
-                        out package),
-                    Is.True);
-                Assert.That(package, Is.Not.Null);
-            }
+            Assert.That(
+                declaredIds,
+                Is.EqualTo(
+                    new[]
+                    {
+                        PursuerDroneId,
+                        RamDroidId,
+                        MobileBlasterDroidId,
+                        BlasterTurretId,
+                        FourBlasterEliteId,
+                    }));
         }
 
         [Test]
         public void Validation_ShuffledInputProducesIdenticalCanonicalResult()
         {
-            Stage1EnemyPackageDescriptor[] ordered = AcceptedRoster();
-            Stage1EnemyPackageDescriptor[] shuffled =
+            object[] ordered = AcceptedRoster();
+            object[] shuffled =
             {
                 ordered[4],
                 ordered[1],
@@ -61,22 +98,20 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 ordered[2],
             };
 
-            Stage1EnemyPackageValidationResult first =
-                Stage1EnemyPackageValidator.Validate(ordered);
-            Stage1EnemyPackageValidationResult second =
-                Stage1EnemyPackageValidator.Validate(shuffled);
+            object first = Validate(ordered);
+            object second = Validate(shuffled);
 
-            Assert.That(first.ToCanonicalString(), Is.EqualTo(second.ToCanonicalString()));
+            Assert.That(Canonical(first), Is.EqualTo(Canonical(second)));
             Assert.That(
-                first.GetRegistryInputs().Select(input => input.DefinitionId),
-                Is.EqualTo(second.GetRegistryInputs().Select(input => input.DefinitionId)));
+                GetRegistryInputs(first).Select(input => input.DefinitionId),
+                Is.EqualTo(GetRegistryInputs(second).Select(input => input.DefinitionId)));
         }
 
         [Test]
         public void DuplicateIdAndMissingRole_AreReportedDeterministically()
         {
-            Stage1EnemyPackageDescriptor[] accepted = AcceptedRoster();
-            Stage1EnemyPackageDescriptor[] firstInput =
+            object[] accepted = AcceptedRoster();
+            object[] firstInput =
             {
                 accepted[0],
                 accepted[0],
@@ -84,7 +119,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 accepted[3],
                 accepted[4],
             };
-            Stage1EnemyPackageDescriptor[] secondInput =
+            object[] secondInput =
             {
                 accepted[4],
                 accepted[3],
@@ -93,106 +128,70 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 accepted[0],
             };
 
-            Stage1EnemyPackageValidationResult first =
-                Stage1EnemyPackageValidator.Validate(firstInput);
-            Stage1EnemyPackageValidationResult second =
-                Stage1EnemyPackageValidator.Validate(secondInput);
+            object first = Validate(firstInput);
+            object second = Validate(secondInput);
 
-            Assert.That(first.IsValid, Is.False);
-            Assert.That(first.ToCanonicalString(), Is.EqualTo(second.ToCanonicalString()));
-            Assert.That(
-                HasError(
-                    first,
-                    Stage1EnemyPackageValidationErrorCode.DuplicatePackageId,
-                    Stage1EnemyPackageDescriptor.PursuerDroneId),
-                Is.True);
-            Assert.That(
-                HasError(
-                    first,
-                    Stage1EnemyPackageValidationErrorCode.MissingPackage,
-                    Stage1EnemyPackageDescriptor.RamDroidId),
-                Is.True);
-            Assert.Throws<InvalidOperationException>(() => first.GetRegistryInputs());
+            Assert.That(GetProperty<bool>(first, "IsValid"), Is.False);
+            Assert.That(Canonical(first), Is.EqualTo(Canonical(second)));
+            Assert.That(HasError(first, "DuplicatePackageId", PursuerDroneId), Is.True);
+            Assert.That(HasError(first, "MissingPackage", RamDroidId), Is.True);
+            Assert.Throws<InvalidOperationException>(() => GetRegistryInputs(first));
         }
 
         [Test]
         public void UnknownId_DoesNotSatisfyTheAcceptedRoster()
         {
-            Stage1EnemyPackageDescriptor[] roster = AcceptedRoster();
-            Stage1EnemyPackageDescriptor template = roster[0];
+            object[] roster = AcceptedRoster();
+            object template = roster[0];
             StableId unknownId = StableId.Parse("enemy.unapproved-sentinel");
+            ContentReference movement = GetProperty<ContentReference>(template, "MovementReference");
+            ContentReference attack = GetProperty<ContentReference>(template, "AttackReference");
+            ContentReference telegraph = GetProperty<ContentReference>(template, "TelegraphReference");
             ContentDefinitionDescriptor unknownContent = ContentDefinitionDescriptor.Create(
                 unknownId,
                 ContentDefinitionKind.Enemy,
                 ContentReference.SupportedDefinitionVersion,
                 StableId.Parse("provenance.unapproved-sentinel"),
                 false,
-                template.MovementReference,
-                template.AttackReference,
-                template.TelegraphReference);
-            roster[0] = Stage1EnemyPackageDescriptor.Create(
-                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
+                movement,
+                attack,
+                telegraph);
+            roster[0] = CreateDescriptor(
+                1,
                 unknownContent,
-                Stage1EnemyPackageClassification.Ordinary,
+                OrdinaryClassification,
                 CombatChannel.Contact,
                 CombatWeightClass.Standard,
-                template.MovementReference,
-                template.AttackReference,
-                template.TelegraphReference,
-                template.Capabilities);
+                movement,
+                attack,
+                telegraph,
+                GetCapabilities(template));
 
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(roster);
+            object result = Validate(roster);
 
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                HasError(
-                    result,
-                    Stage1EnemyPackageValidationErrorCode.UnknownPackageId,
-                    unknownId),
-                Is.True);
-            Assert.That(
-                HasError(
-                    result,
-                    Stage1EnemyPackageValidationErrorCode.MissingPackage,
-                    Stage1EnemyPackageDescriptor.PursuerDroneId),
-                Is.True);
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.False);
+            Assert.That(HasError(result, "UnknownPackageId", unknownId), Is.True);
+            Assert.That(HasError(result, "MissingPackage", PursuerDroneId), Is.True);
         }
 
         [Test]
         public void OrdinaryAndEliteClassificationMismatches_AreRejected()
         {
-            Stage1EnemyPackageDescriptor[] roster = AcceptedRoster();
-            roster[0] = WithClassification(
-                roster[0],
-                Stage1EnemyPackageClassification.Elite);
-            roster[4] = WithClassification(
-                roster[4],
-                Stage1EnemyPackageClassification.Ordinary);
+            object[] roster = AcceptedRoster();
+            roster[0] = WithClassification(roster[0], EliteClassification);
+            roster[4] = WithClassification(roster[4], OrdinaryClassification);
 
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(roster);
+            object result = Validate(roster);
 
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                HasError(
-                    result,
-                    Stage1EnemyPackageValidationErrorCode.ClassificationMismatch,
-                    Stage1EnemyPackageDescriptor.PursuerDroneId),
-                Is.True);
-            Assert.That(
-                HasError(
-                    result,
-                    Stage1EnemyPackageValidationErrorCode.ClassificationMismatch,
-                    Stage1EnemyPackageDescriptor.FourBlasterEliteId),
-                Is.True);
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.False);
+            Assert.That(HasError(result, "ClassificationMismatch", PursuerDroneId), Is.True);
+            Assert.That(HasError(result, "ClassificationMismatch", FourBlasterEliteId), Is.True);
         }
 
         [Test]
         public void MalformedDescriptor_ReportsStableStructuredFailures()
         {
-            Stage1EnemyPackageDescriptor[] roster = AcceptedRoster();
-            StableId packageId = Stage1EnemyPackageDescriptor.PursuerDroneId;
+            object[] roster = AcceptedRoster();
             ContentReference wrongAttack = ContentReference.Create(
                 StableId.Parse("module.enemy-ordinary-contact"),
                 ContentDefinitionKind.Weapon,
@@ -201,190 +200,150 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 StableId.Parse("module.enemy-contact-telegraph"),
                 ContentDefinitionKind.SharedModule,
                 2);
-            ContentDefinitionDescriptor malformedContent =
-                ContentDefinitionDescriptor.Create(
-                    packageId,
-                    ContentDefinitionKind.Encounter,
-                    2,
-                    null,
-                    true,
-                    wrongAttack,
-                    unsupportedTelegraph);
-            roster[0] = Stage1EnemyPackageDescriptor.Create(
+            ContentDefinitionDescriptor malformedContent = ContentDefinitionDescriptor.Create(
+                PursuerDroneId,
+                ContentDefinitionKind.Encounter,
+                2,
+                null,
+                true,
+                wrongAttack,
+                unsupportedTelegraph);
+            roster[0] = CreateDescriptor(
                 2,
                 malformedContent,
-                (Stage1EnemyPackageClassification)99,
+                99,
                 CombatChannel.System,
                 (CombatWeightClass)99,
                 null,
                 wrongAttack,
                 unsupportedTelegraph,
-                (Stage1EnemyCapability)(1UL << 63));
+                1UL << 63);
 
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(roster);
+            object result = Validate(roster);
 
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.UnsupportedDescriptorVersion),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.WrongDefinitionKind),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.UnsupportedDefinitionVersion),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.MissingProvenance),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.PrototypeOnlyDefinition),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.InvalidClassification),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.InvalidCombatChannel),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.InvalidWeightClass),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.MissingMovementReference),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.WrongReferenceKind),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.UnsupportedReferenceVersion),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.OutOfBoundRegistryReference),
-                Is.True);
-            Assert.That(
-                HasError(result, Stage1EnemyPackageValidationErrorCode.UnknownCapability),
-                Is.True);
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.False);
+            Assert.That(HasError(result, "UnsupportedDescriptorVersion"), Is.True);
+            Assert.That(HasError(result, "WrongDefinitionKind"), Is.True);
+            Assert.That(HasError(result, "UnsupportedDefinitionVersion"), Is.True);
+            Assert.That(HasError(result, "MissingProvenance"), Is.True);
+            Assert.That(HasError(result, "PrototypeOnlyDefinition"), Is.True);
+            Assert.That(HasError(result, "InvalidClassification"), Is.True);
+            Assert.That(HasError(result, "InvalidCombatChannel"), Is.True);
+            Assert.That(HasError(result, "InvalidWeightClass"), Is.True);
+            Assert.That(HasError(result, "MissingMovementReference"), Is.True);
+            Assert.That(HasError(result, "WrongReferenceKind"), Is.True);
+            Assert.That(HasError(result, "UnsupportedReferenceVersion"), Is.True);
+            Assert.That(HasError(result, "OutOfBoundRegistryReference"), Is.True);
+            Assert.That(HasError(result, "UnknownCapability"), Is.True);
 
-            Stage1EnemyPackageValidationErrorCode[] orderedCodes =
-                result.Errors.Select(error => error.Code).ToArray();
-            Stage1EnemyPackageValidationErrorCode[] sortedCodes =
-                orderedCodes.OrderBy(code => code).ToArray();
-            Assert.That(orderedCodes, Is.EqualTo(sortedCodes));
+            int[] orderedCodes = GetObjectList(result, "Errors")
+                .Select(error => GetEnumInt(error, "Code"))
+                .ToArray();
+            Assert.That(orderedCodes, Is.EqualTo(orderedCodes.OrderBy(code => code).ToArray()));
         }
 
         [Test]
         public void MissingTelegraphReference_IsRejected()
         {
-            Stage1EnemyPackageDescriptor[] roster = AcceptedRoster();
-            Stage1EnemyPackageDescriptor template = roster[0];
+            object[] roster = AcceptedRoster();
+            object template = roster[0];
+            ContentReference movement = GetProperty<ContentReference>(template, "MovementReference");
+            ContentReference attack = GetProperty<ContentReference>(template, "AttackReference");
+            ContentDefinitionDescriptor templateContent =
+                GetProperty<ContentDefinitionDescriptor>(template, "ContentDefinition");
             ContentDefinitionDescriptor content = ContentDefinitionDescriptor.Create(
-                template.DefinitionId,
+                PursuerDroneId,
                 ContentDefinitionKind.Enemy,
                 ContentReference.SupportedDefinitionVersion,
-                template.ContentDefinition.ProvenanceId,
+                templateContent.ProvenanceId,
                 false,
-                template.MovementReference,
-                template.AttackReference);
-            roster[0] = Stage1EnemyPackageDescriptor.Create(
-                template.DescriptorVersion,
+                movement,
+                attack);
+            roster[0] = CreateDescriptor(
+                1,
                 content,
-                template.Classification,
-                template.DamageChannel,
-                template.WeightClass,
-                template.MovementReference,
-                template.AttackReference,
+                OrdinaryClassification,
+                CombatChannel.Contact,
+                CombatWeightClass.Standard,
+                movement,
+                attack,
                 null,
-                template.Capabilities);
+                GetCapabilities(template));
 
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(roster);
+            object result = Validate(roster);
 
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                HasError(
-                    result,
-                    Stage1EnemyPackageValidationErrorCode.MissingTelegraphReference,
-                    template.DefinitionId),
-                Is.True);
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.False);
+            Assert.That(HasError(result, "MissingTelegraphReference", PursuerDroneId), Is.True);
         }
 
-        [TestCase(Stage1EnemyCapability.PhaseTransition)]
-        [TestCase(Stage1EnemyCapability.DenialPulse)]
-        [TestCase(Stage1EnemyCapability.MortarAttack)]
-        [TestCase(Stage1EnemyCapability.ReinforcementCall)]
-        [TestCase(Stage1EnemyCapability.Teleport)]
-        [TestCase(Stage1EnemyCapability.ComplexRepositioning)]
-        [TestCase(Stage1EnemyCapability.BulletHell)]
-        public void FourBlasterElite_RejectsEveryForbiddenCapability(
-            Stage1EnemyCapability forbiddenCapability)
+        [TestCase(PhaseTransition)]
+        [TestCase(DenialPulse)]
+        [TestCase(MortarAttack)]
+        [TestCase(ReinforcementCall)]
+        [TestCase(Teleport)]
+        [TestCase(ComplexRepositioning)]
+        [TestCase(BulletHell)]
+        public void FourBlasterElite_RejectsEveryForbiddenCapability(ulong forbiddenCapability)
         {
-            Stage1EnemyPackageDescriptor[] roster = AcceptedRoster();
-            Stage1EnemyPackageDescriptor elite = roster[4];
+            object[] roster = AcceptedRoster();
             roster[4] = WithCapabilities(
-                elite,
-                elite.Capabilities | forbiddenCapability);
+                roster[4],
+                GetCapabilities(roster[4]) | forbiddenCapability);
 
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(roster);
+            object result = Validate(roster);
 
-            Assert.That(result.IsValid, Is.False);
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.False);
             Assert.That(
-                result.Errors.Any(
-                    error => error.Code
-                            == Stage1EnemyPackageValidationErrorCode.ForbiddenEliteCapability
-                        && error.PackageId.Equals(
-                            Stage1EnemyPackageDescriptor.FourBlasterEliteId)
-                        && error.Detail != null),
+                HasError(result, "ForbiddenEliteCapability", FourBlasterEliteId),
                 Is.True,
-                result.ToCanonicalString());
+                Canonical(result));
         }
 
         [Test]
         public void OrdinaryRole_RejectsBehaviorOutsideItsAcceptedBoundary()
         {
-            Stage1EnemyPackageDescriptor[] roster = AcceptedRoster();
-            Stage1EnemyPackageDescriptor pursuer = roster[0];
+            object[] roster = AcceptedRoster();
             roster[0] = WithCapabilities(
-                pursuer,
-                pursuer.Capabilities | Stage1EnemyCapability.BlasterProjectile);
+                roster[0],
+                GetCapabilities(roster[0]) | BlasterProjectile);
 
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(roster);
+            object result = Validate(roster);
 
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                HasError(
-                    result,
-                    Stage1EnemyPackageValidationErrorCode.OutOfBoundCapability,
-                    Stage1EnemyPackageDescriptor.PursuerDroneId),
-                Is.True);
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.False);
+            Assert.That(HasError(result, "OutOfBoundCapability", PursuerDroneId), Is.True);
         }
 
         [Test]
         public void AcceptedPackages_ProjectIntoEncounterAndGeneratedRegistryContracts()
         {
-            Stage1EnemyPackageValidationResult result =
-                Stage1EnemyPackageValidator.Validate(AcceptedRoster());
-            Assert.That(result.IsValid, Is.True, result.ToCanonicalString());
+            object result = Validate(AcceptedRoster());
+            Assert.That(GetProperty<bool>(result, "IsValid"), Is.True, Canonical(result));
 
-            for (int index = 0; index < result.Packages.Count; index++)
+            List<object> packages = GetObjectList(result, "Packages");
+            for (int index = 0; index < packages.Count; index++)
             {
-                Stage1EnemyPackageDescriptor package = result.Packages[index];
-                ContentReference enemyReference = package.CreateEnemyReference();
-                EncounterParticipantEntry entry = package.CreateEncounterParticipantEntry(
+                object package = packages[index];
+                ContentReference enemyReference = (ContentReference)InvokeInstance(
+                    package,
+                    "CreateEnemyReference");
+                EncounterParticipantEntry entry = (EncounterParticipantEntry)InvokeInstance(
+                    package,
+                    "CreateEncounterParticipantEntry",
                     StableId.Parse("entry.fixture-" + index),
                     StableId.Parse("actor.fixture-" + index),
                     index);
+                StableId definitionId = GetProperty<StableId>(package, "DefinitionId");
 
-                Assert.That(enemyReference.DefinitionId, Is.EqualTo(package.DefinitionId));
+                Assert.That(enemyReference.DefinitionId, Is.EqualTo(definitionId));
                 Assert.That(enemyReference.ExpectedKind, Is.EqualTo(ContentDefinitionKind.Enemy));
-                Assert.That(entry.RoleId, Is.EqualTo(package.DefinitionId));
+                Assert.That(entry.RoleId, Is.EqualTo(definitionId));
                 Assert.That(entry.Order, Is.EqualTo(index));
             }
 
+            List<ContentDefinitionDescriptor> registryInputs = GetRegistryInputs(result);
             List<ContentDefinitionDescriptor> catalog =
-                new List<ContentDefinitionDescriptor>(result.GetRegistryInputs());
-            catalog.AddRange(CreateSupportingDefinitions(result.GetRegistryInputs()));
+                new List<ContentDefinitionDescriptor>(registryInputs);
+            catalog.AddRange(CreateSupportingDefinitions(registryInputs));
 
             GeneratedMachineRegistry registry = GeneratedMachineRegistry.Create(
                 1,
@@ -406,98 +365,94 @@ namespace ShooterMover.Tests.EditMode.Enemies
         [Test]
         public void Descriptor_PublicStateIsImmutable()
         {
-            PropertyInfo[] properties = typeof(Stage1EnemyPackageDescriptor)
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            PropertyInfo[] properties = RuntimeTypes.Descriptor.GetProperties(
+                BindingFlags.Instance | BindingFlags.Public);
+            FieldInfo[] fields = RuntimeTypes.Descriptor.GetFields(
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
             Assert.That(properties, Is.Not.Empty);
             Assert.That(properties.All(property => property.SetMethod == null), Is.True);
-
-            FieldInfo[] fields = typeof(Stage1EnemyPackageDescriptor)
-                .GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(fields, Is.Not.Empty);
             Assert.That(fields.All(field => field.IsInitOnly), Is.True);
         }
 
-        private static Stage1EnemyPackageDescriptor[] AcceptedRoster()
+        private static object[] AcceptedRoster()
         {
             return new[]
             {
-                CreateAcceptedPackage(Stage1EnemyPackageDescriptor.PursuerDroneId),
-                CreateAcceptedPackage(Stage1EnemyPackageDescriptor.RamDroidId),
-                CreateAcceptedPackage(Stage1EnemyPackageDescriptor.MobileBlasterDroidId),
-                CreateAcceptedPackage(Stage1EnemyPackageDescriptor.BlasterTurretId),
-                CreateAcceptedPackage(Stage1EnemyPackageDescriptor.FourBlasterEliteId),
+                CreateAcceptedPackage(PursuerDroneId),
+                CreateAcceptedPackage(RamDroidId),
+                CreateAcceptedPackage(MobileBlasterDroidId),
+                CreateAcceptedPackage(BlasterTurretId),
+                CreateAcceptedPackage(FourBlasterEliteId),
             };
         }
 
-        private static Stage1EnemyPackageDescriptor CreateAcceptedPackage(StableId packageId)
+        private static object CreateAcceptedPackage(StableId packageId)
         {
             ContentReference movement;
             ContentReference attack;
             ContentReference telegraph;
-            Stage1EnemyPackageClassification classification;
+            int classification;
             CombatChannel channel;
             CombatWeightClass weight;
-            Stage1EnemyCapability capabilities;
+            ulong capabilities;
 
-            if (packageId.Equals(Stage1EnemyPackageDescriptor.PursuerDroneId))
+            if (packageId.Equals(PursuerDroneId))
             {
                 movement = SharedModule("module.enemy-direct-pursuit");
                 attack = SharedModule("module.enemy-ordinary-contact");
                 telegraph = SharedModule("module.enemy-contact-telegraph");
-                classification = Stage1EnemyPackageClassification.Ordinary;
+                classification = OrdinaryClassification;
                 channel = CombatChannel.Contact;
                 weight = CombatWeightClass.Standard;
-                capabilities = Stage1EnemyCapability.DirectPursuit
-                    | Stage1EnemyCapability.OrdinaryContactDamage;
+                capabilities = DirectPursuit | OrdinaryContactDamage;
             }
-            else if (packageId.Equals(Stage1EnemyPackageDescriptor.RamDroidId))
+            else if (packageId.Equals(RamDroidId))
             {
                 movement = SharedModule("module.enemy-direct-pursuit");
                 attack = SharedModule("module.enemy-disposable-impact");
                 telegraph = SharedModule("module.enemy-impact-telegraph");
-                classification = Stage1EnemyPackageClassification.Ordinary;
+                classification = OrdinaryClassification;
                 channel = CombatChannel.Contact;
                 weight = CombatWeightClass.Light;
-                capabilities = Stage1EnemyCapability.DirectPursuit
-                    | Stage1EnemyCapability.DisposableImpactAttack;
+                capabilities = DirectPursuit | DisposableImpactAttack;
             }
-            else if (packageId.Equals(Stage1EnemyPackageDescriptor.MobileBlasterDroidId))
+            else if (packageId.Equals(MobileBlasterDroidId))
             {
                 movement = SharedModule("module.enemy-mobile-positioning");
                 attack = BlasterReference();
                 telegraph = SharedModule("module.enemy-blaster-telegraph");
-                classification = Stage1EnemyPackageClassification.Ordinary;
+                classification = OrdinaryClassification;
                 channel = CombatChannel.Kinetic;
                 weight = CombatWeightClass.Standard;
-                capabilities = Stage1EnemyCapability.MobilePositioning
-                    | Stage1EnemyCapability.BlasterProjectile
-                    | Stage1EnemyCapability.SafeRecoveryWindow;
+                capabilities = MobilePositioning | BlasterProjectile | SafeRecoveryWindow;
             }
-            else if (packageId.Equals(Stage1EnemyPackageDescriptor.BlasterTurretId))
+            else if (packageId.Equals(BlasterTurretId))
             {
                 movement = SharedModule("module.enemy-stationary-positioning");
                 attack = BlasterReference();
                 telegraph = SharedModule("module.enemy-line-of-fire-telegraph");
-                classification = Stage1EnemyPackageClassification.Ordinary;
+                classification = OrdinaryClassification;
                 channel = CombatChannel.Kinetic;
                 weight = CombatWeightClass.Immovable;
-                capabilities = Stage1EnemyCapability.StationaryPositioning
-                    | Stage1EnemyCapability.BlasterProjectile
-                    | Stage1EnemyCapability.SafeRecoveryWindow
-                    | Stage1EnemyCapability.LineOfFireTelegraph;
+                capabilities = StationaryPositioning
+                    | BlasterProjectile
+                    | SafeRecoveryWindow
+                    | LineOfFireTelegraph;
             }
-            else if (packageId.Equals(Stage1EnemyPackageDescriptor.FourBlasterEliteId))
+            else if (packageId.Equals(FourBlasterEliteId))
             {
                 movement = SharedModule("module.enemy-simple-elite-positioning");
                 attack = BlasterReference();
                 telegraph = SharedModule("module.enemy-four-blaster-telegraph");
-                classification = Stage1EnemyPackageClassification.Elite;
+                classification = EliteClassification;
                 channel = CombatChannel.Kinetic;
                 weight = CombatWeightClass.Heavy;
-                capabilities = Stage1EnemyCapability.BlasterProjectile
-                    | Stage1EnemyCapability.FourBlasterOrigins
-                    | Stage1EnemyCapability.MildBoundedSpread
-                    | Stage1EnemyCapability.SafeRecoveryWindow;
+                capabilities = BlasterProjectile
+                    | FourBlasterOrigins
+                    | MildBoundedSpread
+                    | SafeRecoveryWindow;
             }
             else
             {
@@ -513,8 +468,8 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 movement,
                 attack,
                 telegraph);
-            return Stage1EnemyPackageDescriptor.Create(
-                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
+            return CreateDescriptor(
+                1,
                 content,
                 classification,
                 channel,
@@ -525,36 +480,203 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 capabilities);
         }
 
-        private static Stage1EnemyPackageDescriptor WithClassification(
-            Stage1EnemyPackageDescriptor source,
-            Stage1EnemyPackageClassification classification)
+        private static object CreateDescriptor(
+            int descriptorVersion,
+            ContentDefinitionDescriptor contentDefinition,
+            int classification,
+            CombatChannel damageChannel,
+            CombatWeightClass weightClass,
+            ContentReference movementReference,
+            ContentReference attackReference,
+            ContentReference telegraphReference,
+            ulong capabilities)
         {
-            return Stage1EnemyPackageDescriptor.Create(
-                source.DescriptorVersion,
-                source.ContentDefinition,
-                classification,
-                source.DamageChannel,
-                source.WeightClass,
-                source.MovementReference,
-                source.AttackReference,
-                source.TelegraphReference,
-                source.Capabilities);
+            return InvokeStatic(
+                RuntimeTypes.Descriptor,
+                "Create",
+                descriptorVersion,
+                contentDefinition,
+                Enum.ToObject(RuntimeTypes.Classification, classification),
+                damageChannel,
+                weightClass,
+                movementReference,
+                attackReference,
+                telegraphReference,
+                Enum.ToObject(RuntimeTypes.Capability, capabilities));
         }
 
-        private static Stage1EnemyPackageDescriptor WithCapabilities(
-            Stage1EnemyPackageDescriptor source,
-            Stage1EnemyCapability capabilities)
+        private static object WithClassification(object source, int classification)
         {
-            return Stage1EnemyPackageDescriptor.Create(
-                source.DescriptorVersion,
-                source.ContentDefinition,
-                source.Classification,
-                source.DamageChannel,
-                source.WeightClass,
-                source.MovementReference,
-                source.AttackReference,
-                source.TelegraphReference,
+            return CreateDescriptor(
+                GetProperty<int>(source, "DescriptorVersion"),
+                GetProperty<ContentDefinitionDescriptor>(source, "ContentDefinition"),
+                classification,
+                GetProperty<CombatChannel>(source, "DamageChannel"),
+                GetProperty<CombatWeightClass>(source, "WeightClass"),
+                GetProperty<ContentReference>(source, "MovementReference"),
+                GetProperty<ContentReference>(source, "AttackReference"),
+                GetProperty<ContentReference>(source, "TelegraphReference"),
+                GetCapabilities(source));
+        }
+
+        private static object WithCapabilities(object source, ulong capabilities)
+        {
+            return CreateDescriptor(
+                GetProperty<int>(source, "DescriptorVersion"),
+                GetProperty<ContentDefinitionDescriptor>(source, "ContentDefinition"),
+                GetEnumInt(source, "Classification"),
+                GetProperty<CombatChannel>(source, "DamageChannel"),
+                GetProperty<CombatWeightClass>(source, "WeightClass"),
+                GetProperty<ContentReference>(source, "MovementReference"),
+                GetProperty<ContentReference>(source, "AttackReference"),
+                GetProperty<ContentReference>(source, "TelegraphReference"),
                 capabilities);
+        }
+
+        private static object Validate(IEnumerable<object> descriptors)
+        {
+            List<object> copied = descriptors.ToList();
+            Array runtimeArray = Array.CreateInstance(RuntimeTypes.Descriptor, copied.Count);
+            for (int index = 0; index < copied.Count; index++)
+            {
+                runtimeArray.SetValue(copied[index], index);
+            }
+
+            return InvokeStatic(RuntimeTypes.Validator, "Validate", runtimeArray);
+        }
+
+        private static string Canonical(object result)
+        {
+            return (string)InvokeInstance(result, "ToCanonicalString");
+        }
+
+        private static List<ContentDefinitionDescriptor> GetRegistryInputs(object result)
+        {
+            return ((IEnumerable)InvokeInstance(result, "GetRegistryInputs"))
+                .Cast<ContentDefinitionDescriptor>()
+                .ToList();
+        }
+
+        private static bool HasError(object result, string codeName, StableId packageId = null)
+        {
+            return GetObjectList(result, "Errors").Any(
+                error => string.Equals(
+                        GetProperty<object>(error, "Code").ToString(),
+                        codeName,
+                        StringComparison.Ordinal)
+                    && (packageId == null
+                        || Equals(GetProperty<StableId>(error, "PackageId"), packageId)));
+        }
+
+        private static List<object> GetObjectList(object instance, string propertyName)
+        {
+            return ((IEnumerable)GetProperty<object>(instance, propertyName))
+                .Cast<object>()
+                .ToList();
+        }
+
+        private static List<T> GetStaticEnumerable<T>(Type type, string propertyName)
+        {
+            PropertyInfo property = RequireProperty(type, propertyName, BindingFlags.Public | BindingFlags.Static);
+            return ((IEnumerable)property.GetValue(null, null)).Cast<T>().ToList();
+        }
+
+        private static T GetProperty<T>(object instance, string propertyName)
+        {
+            PropertyInfo property = RequireProperty(
+                instance.GetType(),
+                propertyName,
+                BindingFlags.Public | BindingFlags.Instance);
+            return (T)property.GetValue(instance, null);
+        }
+
+        private static int GetEnumInt(object instance, string propertyName)
+        {
+            return Convert.ToInt32(GetProperty<object>(instance, propertyName));
+        }
+
+        private static ulong GetCapabilities(object descriptor)
+        {
+            return Convert.ToUInt64(GetProperty<object>(descriptor, "Capabilities"));
+        }
+
+        private static object InvokeStatic(Type type, string methodName, params object[] arguments)
+        {
+            MethodInfo method = RequireMethod(
+                type,
+                methodName,
+                BindingFlags.Public | BindingFlags.Static,
+                arguments.Length);
+            return Invoke(method, null, arguments);
+        }
+
+        private static object InvokeInstance(object instance, string methodName, params object[] arguments)
+        {
+            MethodInfo method = RequireMethod(
+                instance.GetType(),
+                methodName,
+                BindingFlags.Public | BindingFlags.Instance,
+                arguments.Length);
+            return Invoke(method, instance, arguments);
+        }
+
+        private static object Invoke(MethodInfo method, object instance, object[] arguments)
+        {
+            try
+            {
+                return method.Invoke(instance, arguments);
+            }
+            catch (TargetInvocationException exception)
+            {
+                if (exception.InnerException != null)
+                {
+                    throw exception.InnerException;
+                }
+
+                throw;
+            }
+        }
+
+        private static MethodInfo RequireMethod(
+            Type type,
+            string methodName,
+            BindingFlags flags,
+            int argumentCount)
+        {
+            MethodInfo[] matches = type.GetMethods(flags)
+                .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+                .Where(method => method.GetParameters().Length == argumentCount)
+                .ToArray();
+            if (matches.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    "Expected one "
+                    + type.FullName
+                    + "."
+                    + methodName
+                    + " overload with "
+                    + argumentCount
+                    + " parameters, found "
+                    + matches.Length
+                    + ".");
+            }
+
+            return matches[0];
+        }
+
+        private static PropertyInfo RequireProperty(
+            Type type,
+            string propertyName,
+            BindingFlags flags)
+        {
+            PropertyInfo property = type.GetProperty(propertyName, flags);
+            if (property == null)
+            {
+                throw new InvalidOperationException(
+                    "Missing property " + type.FullName + "." + propertyName + ".");
+            }
+
+            return property;
         }
 
         private static ContentReference SharedModule(string id)
@@ -568,7 +690,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         private static ContentReference BlasterReference()
         {
             return ContentReference.Create(
-                Stage1EnemyPackageDescriptor.BlasterMachineGunId,
+                BlasterMachineGunId,
                 ContentDefinitionKind.Weapon,
                 ContentReference.SupportedDefinitionVersion);
         }
@@ -615,14 +737,32 @@ namespace ShooterMover.Tests.EditMode.Enemies
             return definitions;
         }
 
-        private static bool HasError(
-            Stage1EnemyPackageValidationResult result,
-            Stage1EnemyPackageValidationErrorCode code,
-            StableId packageId = null)
+        private static class RuntimeTypes
         {
-            return result.Errors.Any(
-                error => error.Code == code
-                    && (packageId == null || Equals(error.PackageId, packageId)));
+            public static readonly Type Descriptor = Find(
+                "ShooterMover.ContentPackages.Enemies.Stage1.Stage1EnemyPackageDescriptor");
+            public static readonly Type Validator = Find(
+                "ShooterMover.ContentPackages.Enemies.Stage1.Stage1EnemyPackageValidator");
+            public static readonly Type Classification = Find(
+                "ShooterMover.ContentPackages.Enemies.Stage1.Stage1EnemyPackageClassification");
+            public static readonly Type Capability = Find(
+                "ShooterMover.ContentPackages.Enemies.Stage1.Stage1EnemyCapability");
+
+            private static Type Find(string fullName)
+            {
+                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                for (int index = 0; index < assemblies.Length; index++)
+                {
+                    Type type = assemblies[index].GetType(fullName, false);
+                    if (type != null)
+                    {
+                        return type;
+                    }
+                }
+
+                throw new InvalidOperationException(
+                    "Production type was not loaded from the Unity project: " + fullName + ".");
+            }
         }
     }
 }
