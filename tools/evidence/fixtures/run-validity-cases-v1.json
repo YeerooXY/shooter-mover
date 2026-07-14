@@ -1,0 +1,80 @@
+{
+  "schema": "shooter-mover.run-validity-cases",
+  "version": 1,
+  "diagnosticsSchemaVersion": 1,
+  "cases": [
+    {
+      "id": "valid-completed-session",
+      "events": [
+        "run-started",
+        "performance-warning:non-invalidating",
+        "run-ended:completed",
+        "evidence-validity"
+      ],
+      "expectedTechnicalValidity": "valid",
+      "expectedReasonCodes": []
+    },
+    {
+      "id": "invalid-missing-asset-session",
+      "events": [
+        "run-started",
+        "missing-asset",
+        "run-ended:completed",
+        "evidence-validity"
+      ],
+      "expectedTechnicalValidity": "invalid",
+      "expectedReasonCodes": [
+        "missing-required-asset"
+      ]
+    },
+    {
+      "id": "invalid-duplicate-start-session",
+      "events": [
+        "run-started",
+        "run-started",
+        "run-ended:completed",
+        "evidence-validity"
+      ],
+      "expectedTechnicalValidity": "invalid",
+      "expectedReasonCodes": [
+        "duplicate-run-start"
+      ]
+    },
+    {
+      "id": "invalid-end-without-start-session",
+      "events": [
+        "run-ended:completed",
+        "evidence-validity"
+      ],
+      "expectedTechnicalValidity": "invalid",
+      "expectedReasonCodes": [
+        "run-end-without-start",
+        "missing-run-start"
+      ]
+    },
+    {
+      "id": "invalid-event-count-overflow-session",
+      "events": [
+        "run-started",
+        "performance-warning:non-invalidating",
+        "capacity-reached:event-count"
+      ],
+      "expectedTechnicalValidity": "invalid",
+      "expectedReasonCodes": [
+        "missing-run-end",
+        "diagnostics-capacity-reached"
+      ]
+    },
+    {
+      "id": "negative-fun-valid-technical-session",
+      "events": [
+        "run-started",
+        "run-ended:completed",
+        "evidence-validity"
+      ],
+      "humanFunOutcome": "negative",
+      "expectedTechnicalValidity": "valid",
+      "expectedReasonCodes": []
+    }
+  ]
+}
