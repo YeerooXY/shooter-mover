@@ -19,7 +19,7 @@ add marker gameplay types merely to force visible compiled DLLs.
 
 ## Unlocked work
 
-Once this acceptance handoff merges, UF-005, UF-006, UF-009, and CS-001 may
+Once PR #21 merges, UF-005, UF-006, UF-009, and CS-001 may
 treat UF-004 as satisfied, subject to their remaining dependencies.
 
 UF-005 is already implemented and validated in PR #20. That PR changes only
@@ -34,8 +34,8 @@ UF-006 may then start from fresh current `main` and owns only:
 
 ## Exact next action
 
-Review and merge this UF-004 acceptance handoff PR. Then merge ready PR #20 for
-UF-005 and launch UF-006 from fresh current `main`. Never reuse a merged branch,
-and do not bulk-stage unrelated Unity-generated files.
+Review and merge PR #21. Then merge ready PR #20 for UF-005 and launch UF-006
+from fresh current `main`. Never reuse a merged branch, and do not bulk-stage
+unrelated Unity-generated files.
 
 Stage 2 remains blocked behind `GATE-010`.

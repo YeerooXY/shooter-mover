@@ -66,15 +66,15 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review and merge the UF-004 acceptance handoff PR. Then merge ready PR #20 for UF-005 and launch UF-006 from fresh current main.",
+    "human_next_step": "Review and merge PR #21, the UF-004 acceptance handoff. Then merge ready PR #20 for UF-005 and launch UF-006 from fresh current main.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
       "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
       "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
       "UF-001 and UF-002 are accepted; Unity 6000.3.19f1 completed the first clean 21-package resolution.",
       "UF-003 is accepted through merged PR #19 after exact-editor/static policy proof and Nemo's empty-scene renderer check passed.",
-      "UF-004 is accepted through merged PR #18 at 22067939458d90b8adfb5d68473f6f179f21bd91 after all static, exact-editor, negative-reference, and human Inspector proof passed; this handoff makes the unlock durable.",
-      "UF-005 is ready in PR #20 after repository-layout and adversarial ownership validation passed; it must merge only after the UF-004 acceptance handoff.",
+      "UF-004 is accepted through merged PR #18 at 22067939458d90b8adfb5d68473f6f179f21bd91 after all static, exact-editor, negative-reference, and human Inspector proof passed; PR #21 makes the unlock durable.",
+      "UF-005 is ready in PR #20 after repository-layout and adversarial ownership validation passed; it must merge only after PR #21.",
       "Seven Stage 2 batch ranges are preserved as deferred planning and remain locked behind GATE-010.",
       "No Stage 2 task file, multiplayer/networking implementation, or Stage 2 dispatch is authorized."
     ]

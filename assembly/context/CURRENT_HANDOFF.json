@@ -5,7 +5,7 @@
   "lifecycle_phase": "development",
   "active_role": "task_executor",
   "active_branch": "agent/uf-004-acceptance-handoff",
-  "active_pr": null,
+  "active_pr": 21,
   "last_verified_commit": "22067939458d90b8adfb5d68473f6f179f21bd91",
   "authoritative_artifacts": [
     "AGENTS.md",
@@ -68,22 +68,22 @@
   ],
   "current_section": "UF-004_acceptance_handoff_review",
   "last_completed_item": "PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91 after the graph validator, deliberate forbidden-reference detection, Unity combined-tree import, and Nemo's nine-assembly Inspector review passed.",
-  "current_item": "This fresh handoff branch records UF-004 as done and makes the UF-005, UF-006, UF-009, and CS-001 dependency unlock durable.",
-  "next_action": "Review and merge the UF-004 acceptance handoff PR. After it merges, merge ready PR #20 for UF-005 and launch UF-006 from fresh current main; do not reuse either merged branch.",
+  "current_item": "PR #21 records UF-004 as done on a fresh handoff branch and makes the UF-005, UF-006, UF-009, and CS-001 dependency unlock durable.",
+  "next_action": "Review and merge PR #21. After it merges, merge ready PR #20 for UF-005 and launch UF-006 from fresh current main; do not reuse either merged branch.",
   "blockers": [
-    "UF-004 acceptance and its downstream unlock are not durable until this handoff PR merges.",
-    "PR #20 must not merge before this acceptance handoff.",
+    "UF-004 acceptance and its downstream unlock are not durable until PR #21 merges.",
+    "PR #20 must not merge before PR #21.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T10:24:00+02:00"
+    "last_persisted_at": "2026-07-14T10:27:27+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T10:24:00+02:00"
+  "updated_at": "2026-07-14T10:27:27+02:00"
 }

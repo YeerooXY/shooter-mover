@@ -24,8 +24,8 @@ write to a branch whose pull request has merged.
 - PR #18 merged at `22067939458d90b8adfb5d68473f6f179f21bd91`,
   accepting the UF-004 inward-only assembly skeleton after all static,
   negative-reference, exact-editor, and human Inspector checks passed.
-- This fresh handoff branch records UF-004 as `done` and makes its downstream
-  dependency unlock durable.
+- PR #21 records UF-004 as `done` on this fresh handoff branch and makes its
+  downstream dependency unlock durable.
 - PR #20 implements UF-005 on `nemo/uf-005-repository-layout`. It changes only
   the four owned files and passes positive and adversarial repository-layout
   validation.
@@ -37,9 +37,8 @@ write to a branch whose pull request has merged.
 
 ## Exact next action
 
-Review and merge the UF-004 acceptance handoff PR. Then merge ready PR #20 for
-UF-005 and launch UF-006 from fresh current `main`. Do not reuse either merged
-branch.
+Review and merge PR #21. Then merge ready PR #20 for UF-005 and launch UF-006
+from fresh current `main`. Do not reuse either merged branch.
 
 Do not add gameplay, optional packages, networking, analytics, storefront,
 mobile, or Stage 2 functionality.
