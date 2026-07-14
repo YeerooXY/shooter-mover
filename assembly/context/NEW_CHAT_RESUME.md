@@ -17,16 +17,18 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 - PR #15 merged and accepted `UF-001`.
 - The editor baseline is Unity 6.3 LTS `6000.3.19f1`, changeset `7689f4515d75`.
 - PR #16 merged the UF-002 package baseline with only URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0` as direct dependencies.
-- Its exact 21-entry graph is in `Packages/packages-lock.json`; its inventory and fingerprint are in `docs/toolchain/DEPENDENCY_LOCK.md`.
-- The implementation task run is `assembly/generated/task_runs/UF-002-run-001.json`.
-- UF-002 is human-accepted and recorded as done in PR #17.
-- Static graph, exact-version, source, inventory, excluded-SDK, and canonical fingerprint checks pass.
-- Unity `6000.3.19f1` completed the first import: all 21 packages registered in 19.57 seconds, no blocking package/compiler error appeared, and Git reported no package-file rewrite.
-- The first import generated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
+- PR #17 recorded the successful first exact-editor import and accepted `UF-002` as done.
+- `UF-003` remains independently ready on a separate fresh branch or worktree.
+- `UF-004` is claimed by `web-ai` and submitted in draft PR #18 on `agent/uf-004-inward-assembly-skeleton`.
+- PR #18 adds nine assembly definitions and their metadata, `tools/validation/validate_unity_assembly_graph.py`, `docs/architecture/ASSEMBLY_DEPENDENCIES.md`, and `UF-004-run-001.json`.
+- Static validation passes for the required graph, exact direct references, Unity-free inner layers, test flags, inward direction, missing internal references, and cycles.
+- A deliberate temporary `ShooterMover.Domain -> ShooterMover.UnityAdapters` reference was rejected and removed.
+- Unity compilation has not yet been performed for PR #18, so `UF-004` remains in review rather than done.
+- The first import generated unrelated untracked Unity files. Preserve them, never bulk-stage them, and commit only paths owned by the active task.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Review and merge PR #17. After merge, UF-003 and UF-004 are ready and may proceed in parallel from separate fresh branches or worktrees. Claim each explicitly. UF-003 owns its four listed ProjectSettings files plus `Assets/ShooterMover/Settings/Rendering/`; UF-004 owns the assembly-definition skeleton. Do not bulk-stage the other first-import files.
+Check out PR #18 with Unity `6000.3.19f1`, allow script compilation to finish, confirm there are no compiler errors, inspect the nine assembly definitions, and run `python tools/validation/validate_unity_assembly_graph.py`. If the graph matches `docs/architecture/ASSEMBLY_DEPENDENCIES.md` and compilation succeeds, review and merge PR #18. After merge, use a fresh handoff branch to record UF-004 as done; only then may UF-005, UF-006, UF-009, and CS-001 treat UF-004 as satisfied.
 
 Do not add gameplay, optional packages, networking, analytics, storefront, mobile, or Stage 2 functionality.
