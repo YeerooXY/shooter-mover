@@ -1,6 +1,7 @@
 using System;
 using ShooterMover.Domain.Common;
 using ContractCombat = ShooterMover.Contracts.Combat;
+using ContractPresentation = ShooterMover.Contracts.Presentation;
 using DomainCombat = ShooterMover.Domain.Combat;
 
 namespace ShooterMover.Application.Combat
@@ -105,6 +106,148 @@ namespace ShooterMover.Application.Combat
             }
 
             return new DomainCombat.FourMountStatusSnapshot(slots);
+        }
+
+        /// <summary>
+        /// Projects the same authoritative source into the accepted CS-005 mount/HUD
+        /// contract. Its optional latest-fire result is intentionally left empty because
+        /// CB-006 does not own a CombatChannel and this projector must not fabricate one.
+        /// Exact coordinator mode, fallback, recovery duration, and fault detail remain
+        /// available on the richer FourMountStatusSnapshot returned by Project.
+        /// </summary>
+        public ContractPresentation.WeaponHudState ProjectAcceptedHudState(
+            DomainCombat.FourMountCombatState combatState,
+            DomainCombat.WeaponRuntimeProfile[] profiles,
+            StableId[] weaponIds)
+        {
+            DomainCombat.FourMountStatusSnapshot status = Project(
+                combatState,
+                profiles,
+                weaponIds);
+            ContractCombat.WeaponMountState[] mounts =
+                new ContractCombat.WeaponMountState[ContractCombat.WeaponMountContractRules.MountCount];
+
+            for (int stableIndex = 0; stableIndex < mounts.Length; stableIndex++)
+            {
+                DomainCombat.FourMountSlotStatusSnapshot slot = status.GetByStableIndex(stableIndex);
+                ContractCombat.WeaponMountSlot contractSlot =
+                    ContractCombat.WeaponMountContractRules.GetSlotAtHudIndex(stableIndex);
+
+                if (!slot.IsEquipped)
+                {
+                    mounts[stableIndex] = ContractCombat.WeaponMountState.Unequipped(contractSlot);
+                    continue;
+                }
+
+                DomainCombat.WeaponRuntimeProfile profile = profiles[stableIndex];
+                DomainCombat.WeaponMountState sourceMount =
+                    combatState.GetMountByStableIndex(stableIndex);
+                DomainCombat.WeaponPowerBankState sourcePower =
+                    combatState.GetPowerBankByStableIndex(stableIndex);
+                ContractCombat.WeaponMountReadiness readiness =
+                    MapAcceptedReadiness(profile, sourceMount);
+                double cadenceRemaining = sourceMount.CadenceRemainingSeconds;
+
+                if (readiness == ContractCombat.WeaponMountReadiness.CadenceBlocked)
+                {
+                    cadenceRemaining = Math.Max(
+                        sourceMount.CadenceRemainingSeconds,
+                        sourceMount.BurstIntervalRemainingSeconds);
+                    if (cadenceRemaining == 0d)
+                    {
+                        throw new ArgumentException(
+                            "A firing mount must expose a positive cadence or burst interval.",
+                            nameof(combatState));
+                    }
+                }
+
+                mounts[stableIndex] = new ContractCombat.WeaponMountState(
+                    contractSlot,
+                    slot.WeaponId,
+                    readiness,
+                    new ContractCombat.WeaponCadenceState(
+                        cadenceRemaining,
+                        sourceMount.BurstShotsRemaining),
+                    BuildAcceptedCycleResource(profile, sourceMount),
+                    new ContractCombat.WeaponRecoilState(0d, profile.RecoilInfluence),
+                    BuildAcceptedPowerBank(sourcePower));
+            }
+
+            return new ContractPresentation.WeaponHudState(
+                new ContractCombat.FourMountWeaponState(mounts));
+        }
+
+        private static ContractCombat.WeaponMountReadiness MapAcceptedReadiness(
+            DomainCombat.WeaponRuntimeProfile profile,
+            DomainCombat.WeaponMountState mountState)
+        {
+            switch (mountState.Phase)
+            {
+                case DomainCombat.WeaponMountPhase.Ready:
+                    return ContractCombat.WeaponMountReadiness.Ready;
+                case DomainCombat.WeaponMountPhase.Firing:
+                    return ContractCombat.WeaponMountReadiness.CadenceBlocked;
+                case DomainCombat.WeaponMountPhase.Recovering:
+                    return ContractCombat.WeaponMountReadiness.Recovering;
+                case DomainCombat.WeaponMountPhase.Depleted:
+                    if (profile.CycleMode == DomainCombat.WeaponCycleMode.Charge)
+                    {
+                        return ContractCombat.WeaponMountReadiness.Charging;
+                    }
+
+                    if (profile.CycleMode == DomainCombat.WeaponCycleMode.Heat
+                        && mountState.HeatUnits == profile.HeatCapacityUnits)
+                    {
+                        return ContractCombat.WeaponMountReadiness.Overheated;
+                    }
+
+                    return ContractCombat.WeaponMountReadiness.Recovering;
+                case DomainCombat.WeaponMountPhase.Faulted:
+                    return ContractCombat.WeaponMountReadiness.Faulted;
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(mountState),
+                        mountState.Phase,
+                        "Unknown weapon-mount phase.");
+            }
+        }
+
+        private static ContractCombat.WeaponCycleResourceState BuildAcceptedCycleResource(
+            DomainCombat.WeaponRuntimeProfile profile,
+            DomainCombat.WeaponMountState mountState)
+        {
+            switch (profile.CycleMode)
+            {
+                case DomainCombat.WeaponCycleMode.None:
+                    return ContractCombat.WeaponCycleResourceState.None;
+                case DomainCombat.WeaponCycleMode.Heat:
+                    return new ContractCombat.WeaponCycleResourceState(
+                        ContractCombat.WeaponCycleResourceKind.Heat,
+                        mountState.HeatUnits,
+                        profile.HeatCapacityUnits);
+                case DomainCombat.WeaponCycleMode.Charge:
+                    return new ContractCombat.WeaponCycleResourceState(
+                        ContractCombat.WeaponCycleResourceKind.Charge,
+                        mountState.ChargeProgressSeconds,
+                        profile.ChargeSeconds);
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(profile),
+                        profile.CycleMode,
+                        "Unknown weapon cycle mode.");
+            }
+        }
+
+        private static ContractCombat.WeaponPowerBankState BuildAcceptedPowerBank(
+            DomainCombat.WeaponPowerBankState powerBank)
+        {
+            return powerBank.IsConfigured
+                ? new ContractCombat.WeaponPowerBankState(
+                    true,
+                    powerBank.AvailableUnits,
+                    powerBank.CapacityUnits,
+                    powerBank.EmpoweredCostUnits)
+                : ContractCombat.WeaponPowerBankState.None;
         }
 
         private static void ValidateContractCompatibility()
