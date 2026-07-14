@@ -160,7 +160,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
         [Test]
         public void PowerShellContractTests_CoverParsingPathsStaleOutputAndExitPropagation()
         {
-            if (Application.platform != RuntimePlatform.WindowsEditor)
+            if (UnityEngine.Application.platform != RuntimePlatform.WindowsEditor)
             {
                 Assert.Ignore("PowerShell contract execution requires Windows Editor.");
             }
@@ -310,7 +310,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
 
         private static string RepositoryRoot()
         {
-            DirectoryInfo parent = Directory.GetParent(Application.dataPath);
+            DirectoryInfo parent = Directory.GetParent(UnityEngine.Application.dataPath);
             Assert.That(parent, Is.Not.Null, "Could not resolve the repository root from Application.dataPath.");
             return parent.FullName;
         }
