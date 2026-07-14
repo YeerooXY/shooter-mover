@@ -48,7 +48,7 @@
       "Baseline is reproducible.",
       "No speculative SDKs."
     ],
-    "notes": "UF-001 and UF-002 are accepted. PR #17 persists the successful 21-package editor-resolution proof; after it merges, UF-003 and UF-004 are ready and may run in parallel on separate branches."
+    "notes": "UF-001 and UF-002 are accepted. UF-003 is submitted for review in PR #19 with exact-editor proof; UF-004 may run independently on branch nemo/uf-004-assembly-skeleton in its separate worktree."
   },
   {
     "slot_id": "movement-combat",
