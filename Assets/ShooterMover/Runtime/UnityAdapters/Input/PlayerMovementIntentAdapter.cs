@@ -140,6 +140,14 @@ namespace ShooterMover.UnityAdapters.Input
             return frame;
         }
 
+        private void Awake()
+        {
+            if (inputActions != null && movementMap == null)
+            {
+                Configure(inputActions);
+            }
+        }
+
         private void OnEnable()
         {
             isComponentActive = true;
