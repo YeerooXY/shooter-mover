@@ -14,16 +14,18 @@ Continue from committed repository state in `YeerooXY/shooter-mover`. Never writ
 
 - Stage 1 backlog PR #14 merged at `377fb612a413a6e2af4dff1674374f7ec9ff5710`.
 - Stage 1 Dispatch is active.
-- `UF-001` was the only initially ready task and is now submitted for review in PR #15.
-- The proposed baseline is Unity 6.3 LTS `6000.3.19f1`, changeset `7689f4515d75`.
-- The task changes only `ProjectSettings/ProjectVersion.txt` and `docs/toolchain/UNITY_BASELINE.md`, plus workflow proof and handoff state.
-- The implementation task run is `assembly/generated/task_runs/UF-001-run-001.json`.
+- PR #15 merged and accepted `UF-001`.
+- The editor baseline is Unity 6.3 LTS `6000.3.19f1`, changeset `7689f4515d75`.
+- `UF-002` is submitted for review in PR #16 with only URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0` as direct dependencies.
+- Its exact 21-entry graph is in `Packages/packages-lock.json`; its inventory and fingerprint are in `docs/toolchain/DEPENDENCY_LOCK.md`.
+- The implementation task run is `assembly/generated/task_runs/UF-002-run-001.json`.
 - No task is marked done before human review.
-- The first full Unity Hub project import is paired with UF-002 so a deterministic package manifest and lock exist before Unity resolves packages or generates project state.
+- Static graph, exact-version, source, inventory, excluded-SDK, and fingerprint checks pass.
+- The first full Unity Hub project import is now authorized with the UF-002 lock and remains the required manual review proof.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Review and merge PR #15. After merge, start a fresh branch from current `main`, record UF-001 as done, claim UF-002, and pin the approved Unity package manifest and lock. Perform the first full editor import and no-migration check with the locked package set.
+Finish installing Unity `6000.3.19f1`, open the project, and perform the documented Package Manager no-error/no-upgrade/no-lock-rewrite check. Then review and merge PR #16. After merge, mark UF-002 done; UF-003 and UF-004 become ready and may proceed in parallel from separate fresh branches.
 
 Do not add gameplay, optional packages, networking, analytics, storefront, mobile, or Stage 2 functionality.

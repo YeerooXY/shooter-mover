@@ -24,14 +24,14 @@
       "assigned_to": "web-ai",
       "assignee_type": "web_ai",
       "assignee_label": "Web AI Task Executor",
-      "status": "review",
+      "status": "done",
       "claimed_at": "2026-07-14T08:33:14+02:00",
       "proof": [
         {
           "kind": "task_run",
           "path": "assembly/generated/task_runs/UF-001-run-001.json",
           "summary": "UF-001 implementation and verification report.",
-          "status": "needs_review",
+          "status": "accepted",
           "recorded_at": "2026-07-14T08:33:14+02:00"
         },
         {
@@ -49,8 +49,54 @@
           "recorded_at": "2026-07-14T08:33:14+02:00"
         }
       ],
-      "notes": "Implementation is submitted for human review in PR #15. The first full Unity Hub project-open check is intentionally paired with UF-002 so package resolution is locked before import.",
-      "updated_at": "2026-07-14T08:33:14+02:00"
+      "notes": "Accepted when PR #15 merged. The first full Unity Hub project-open check remains paired with UF-002 so package resolution is locked before import.",
+      "updated_at": "2026-07-14T08:50:29+02:00"
+    },
+    {
+      "task_id": "UF-002",
+      "assigned_to": "web-ai",
+      "assignee_type": "web_ai",
+      "assignee_label": "Web AI Task Executor",
+      "status": "review",
+      "claimed_at": "2026-07-14T08:50:29+02:00",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-002-run-001.json",
+          "summary": "UF-002 implementation and verification report.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "Packages/manifest.json",
+          "summary": "Pins the three approved direct Unity packages at exact versions.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "Packages/packages-lock.json",
+          "summary": "Pins the complete 21-entry dependency graph without floating sources.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "docs/toolchain/DEPENDENCY_LOCK.md",
+          "summary": "Records the direct inventory, resolved set, exclusions, update policy, rollback, and lock fingerprint.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        },
+        {
+          "kind": "manual_note",
+          "summary": "The first Unity Package Manager resolution and no-rewrite check awaits completion of the exact editor installation.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        }
+      ],
+      "notes": "Implementation is submitted for human review in PR #16. Static graph, version, source, inventory, exclusion, and fingerprint checks pass; the exact-editor resolution check is the remaining manual proof.",
+      "updated_at": "2026-07-14T08:50:29+02:00"
     }
   ],
   "task_claims": [
@@ -61,6 +107,14 @@
       "status": "submitted",
       "claimed_at": "2026-07-14T08:33:14+02:00",
       "notes": "Claimed from the merged Stage 1 backlog and submitted for review in PR #15."
+    },
+    {
+      "claim_id": "uf-002-claim-001",
+      "task_id": "UF-002",
+      "actor_id": "web-ai",
+      "status": "submitted",
+      "claimed_at": "2026-07-14T08:50:29+02:00",
+      "notes": "Claimed after PR #15 merged and submitted for review in PR #16."
     }
   ],
   "artifact_submissions": [
@@ -83,11 +137,51 @@
           "recorded_at": "2026-07-14T08:33:14+02:00"
         }
       ],
-      "status": "submitted",
+      "status": "accepted",
       "submitted_at": "2026-07-14T08:33:14+02:00"
+    },
+    {
+      "submission_id": "uf-002-submission-001",
+      "task_id": "UF-002",
+      "actor_id": "web-ai",
+      "artifact_paths": [
+        "Packages/manifest.json",
+        "Packages/packages-lock.json",
+        "docs/toolchain/DEPENDENCY_LOCK.md",
+        "assembly/generated/task_runs/UF-002-run-001.json"
+      ],
+      "summary": "Pinned the minimal Unity package manifest, complete lock graph, direct dependency inventory, and SHA-256 proof.",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-002-run-001.json",
+          "summary": "Detailed implementation and verification report.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        },
+        {
+          "kind": "command_output",
+          "summary": "Manifest/lock graph and exclusion checks passed; lock SHA-256 is 2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T08:50:29+02:00"
+        }
+      ],
+      "status": "submitted",
+      "submitted_at": "2026-07-14T08:50:29+02:00"
     }
   ],
-  "reviews": [],
+  "reviews": [
+    {
+      "review_id": "uf-001-review-001",
+      "submission_id": "uf-001-submission-001",
+      "reviewer_actor_id": "nemo",
+      "status": "approved",
+      "findings": [
+        "PR #15 merged, accepting the exact Unity 6000.3.19f1 editor baseline and its documented Windows installation policy."
+      ],
+      "reviewed_at": "2026-07-14T08:50:29+02:00"
+    }
+  ],
   "audit_events": [
     {
       "event_id": "uf-001-claim-created-001",
@@ -112,6 +206,46 @@
       "target_id": "UF-001",
       "created_at": "2026-07-14T08:33:14+02:00",
       "details": "Moved UF-001 to review; no completion was claimed before human acceptance."
+    },
+    {
+      "event_id": "uf-001-review-approved-001",
+      "actor_id": "nemo",
+      "event_type": "review_added",
+      "target_id": "uf-001-submission-001",
+      "created_at": "2026-07-14T08:50:29+02:00",
+      "details": "Accepted UF-001 through the merge of PR #15."
+    },
+    {
+      "event_id": "uf-001-status-done-001",
+      "actor_id": "nemo",
+      "event_type": "status_changed",
+      "target_id": "UF-001",
+      "created_at": "2026-07-14T08:50:29+02:00",
+      "details": "Moved UF-001 to done after human acceptance and merge."
+    },
+    {
+      "event_id": "uf-002-claim-created-001",
+      "actor_id": "web-ai",
+      "event_type": "claim_created",
+      "target_id": "uf-002-claim-001",
+      "created_at": "2026-07-14T08:50:29+02:00",
+      "details": "Claimed UF-002 after its sole dependency, UF-001, was accepted."
+    },
+    {
+      "event_id": "uf-002-artifact-submitted-001",
+      "actor_id": "web-ai",
+      "event_type": "artifact_submitted",
+      "target_id": "uf-002-submission-001",
+      "created_at": "2026-07-14T08:50:29+02:00",
+      "details": "Submitted the exact manifest, package lock, dependency inventory, and task-run proof."
+    },
+    {
+      "event_id": "uf-002-status-review-001",
+      "actor_id": "web-ai",
+      "event_type": "status_changed",
+      "target_id": "UF-002",
+      "created_at": "2026-07-14T08:50:29+02:00",
+      "details": "Moved UF-002 to review; exact-editor Package Manager resolution remains a human verification step."
     }
   ]
 }
