@@ -92,7 +92,7 @@ Temp/ShooterMoverBuild/
 ```
 
 The script verifies these artifacts before reporting success.
-`build-artifacts.txt` records the complete output file list and byte sizes.
+`build-artifacts.txt` records the complete repository-relative output file list.
 `build-fingerprints.json` records:
 
 - the pinned editor version and revision;
