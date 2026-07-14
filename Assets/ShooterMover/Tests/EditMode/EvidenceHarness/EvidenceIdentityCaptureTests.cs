@@ -48,7 +48,7 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
                 Is.EqualTo(GetPropertyValue<string>(secondRecord, "Fingerprint")));
 
             string[] lines = firstCanonical.Split('\n');
-            Assert.That(lines, Has.Length.EqualTo(15));
+            Assert.That(lines, Has.Length.EqualTo(16));
             Assert.That(lines[0], Is.EqualTo("evidence_identity_schema=1"));
             Assert.That(lines[1], Is.EqualTo("build_identity_kind=formal-release"));
             Assert.That(lines[2], Is.EqualTo("source_commit=" + SourceCommit));
@@ -58,16 +58,19 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
             Assert.That(
                 lines[6],
                 Is.EqualTo("package_lock_fingerprint=" + PackageLockFingerprint));
-            Assert.That(lines[7], Is.EqualTo("content_catalog_version=1"));
             Assert.That(
-                lines[8],
+                lines[7],
+                Is.EqualTo("build_content_fingerprint=" + DefinitionFingerprint));
+            Assert.That(lines[8], Is.EqualTo("content_catalog_version=1"));
+            Assert.That(
+                lines[9],
                 Is.EqualTo("content_definition_fingerprint=" + DefinitionFingerprint));
-            Assert.That(lines[9], Is.EqualTo("save_schema_version=1"));
-            Assert.That(lines[10], Is.EqualTo("artifact_checksum=" + ArtifactChecksum));
-            Assert.That(lines[11], Is.EqualTo("build_target=" + BuildTarget));
-            Assert.That(lines[12], Is.EqualTo("build_configuration=" + BuildConfiguration));
-            Assert.That(lines[13], Is.EqualTo("tuning_profile_id=" + TuningProfileId));
-            Assert.That(lines[14], Does.StartWith("record_fingerprint=sha256:"));
+            Assert.That(lines[10], Is.EqualTo("save_schema_version=1"));
+            Assert.That(lines[11], Is.EqualTo("artifact_checksum=" + ArtifactChecksum));
+            Assert.That(lines[12], Is.EqualTo("build_target=" + BuildTarget));
+            Assert.That(lines[13], Is.EqualTo("build_configuration=" + BuildConfiguration));
+            Assert.That(lines[14], Is.EqualTo("tuning_profile_id=" + TuningProfileId));
+            Assert.That(lines[15], Does.StartWith("record_fingerprint=sha256:"));
         }
 
         [Test]
@@ -84,7 +87,8 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
                         packageLockFingerprint: OtherPackageLockFingerprint)),
                 Capture(
                     buildIdentityCanonical: CreateBuildIdentity(
-                        contentFingerprint: OtherDefinitionFingerprint),
+                        contentFingerprint: OtherDefinitionFingerprint)),
+                Capture(
                     contentVersionCanonical: CreateContentVersion(
                         definitionFingerprint: OtherDefinitionFingerprint)),
                 Capture(buildIdentityCanonical: CreateBuildIdentity(saveSchema: 2)),
@@ -161,11 +165,6 @@ namespace ShooterMover.Tests.EditMode.EvidenceHarness
             AssertInvalid(
                 Capture(tuningProfileId: "movement-tuning.provisional"),
                 "provisional-tuning-profile-id");
-            AssertInvalid(
-                Capture(
-                    buildIdentityCanonical: CreateBuildIdentity(
-                        contentFingerprint: OtherDefinitionFingerprint)),
-                "inconsistent-content-version");
         }
 
         [Test]
