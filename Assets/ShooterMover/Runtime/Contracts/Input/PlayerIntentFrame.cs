@@ -197,7 +197,7 @@ namespace ShooterMover.Contracts.Input
     /// <summary>
     /// One immutable, engine-independent sample of player intent.
     /// </summary>
-    public sealed class PlayerIntentFrame
+    public readonly struct PlayerIntentFrame
     {
         public PlayerIntentFrame(
             NormalizedIntentVector2 move,
@@ -290,11 +290,6 @@ namespace ShooterMover.Contracts.Input
         /// </summary>
         public static PlayerIntentFrame FromFocusLoss(PlayerIntentFrame previous)
         {
-            if (previous == null)
-            {
-                throw new ArgumentNullException(nameof(previous));
-            }
-
             return new PlayerIntentFrame(
                 NormalizedIntentVector2.Zero,
                 NormalizedIntentVector2.Zero,
