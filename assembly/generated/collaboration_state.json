@@ -18,9 +18,100 @@
       "notes": "Repository-first coordination agent. Implementation work is claimed explicitly during Dispatch; no task is auto-claimed."
     }
   ],
-  "task_assignments": [],
-  "task_claims": [],
-  "artifact_submissions": [],
+  "task_assignments": [
+    {
+      "task_id": "UF-001",
+      "assigned_to": "web-ai",
+      "assignee_type": "web_ai",
+      "assignee_label": "Web AI Task Executor",
+      "status": "review",
+      "claimed_at": "2026-07-14T08:33:14+02:00",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-001-run-001.json",
+          "summary": "UF-001 implementation and verification report.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T08:33:14+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "ProjectSettings/ProjectVersion.txt",
+          "summary": "Pins Unity 6000.3.19f1 and changeset 7689f4515d75.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T08:33:14+02:00"
+        },
+        {
+          "kind": "file",
+          "path": "docs/toolchain/UNITY_BASELINE.md",
+          "summary": "Records required Windows modules, install verification, exclusions, and upgrade isolation.",
+          "status": "passed",
+          "recorded_at": "2026-07-14T08:33:14+02:00"
+        }
+      ],
+      "notes": "Implementation is submitted for human review in PR #15. The first full Unity Hub project-open check is intentionally paired with UF-002 so package resolution is locked before import.",
+      "updated_at": "2026-07-14T08:33:14+02:00"
+    }
+  ],
+  "task_claims": [
+    {
+      "claim_id": "uf-001-claim-001",
+      "task_id": "UF-001",
+      "actor_id": "web-ai",
+      "status": "submitted",
+      "claimed_at": "2026-07-14T08:33:14+02:00",
+      "notes": "Claimed from the merged Stage 1 backlog and submitted for review in PR #15."
+    }
+  ],
+  "artifact_submissions": [
+    {
+      "submission_id": "uf-001-submission-001",
+      "task_id": "UF-001",
+      "actor_id": "web-ai",
+      "artifact_paths": [
+        "ProjectSettings/ProjectVersion.txt",
+        "docs/toolchain/UNITY_BASELINE.md",
+        "assembly/generated/task_runs/UF-001-run-001.json"
+      ],
+      "summary": "Pinned Unity 6.3 LTS editor baseline with exact revision and Windows installation policy.",
+      "proof": [
+        {
+          "kind": "task_run",
+          "path": "assembly/generated/task_runs/UF-001-run-001.json",
+          "summary": "Detailed implementation and verification report.",
+          "status": "needs_review",
+          "recorded_at": "2026-07-14T08:33:14+02:00"
+        }
+      ],
+      "status": "submitted",
+      "submitted_at": "2026-07-14T08:33:14+02:00"
+    }
+  ],
   "reviews": [],
-  "audit_events": []
+  "audit_events": [
+    {
+      "event_id": "uf-001-claim-created-001",
+      "actor_id": "web-ai",
+      "event_type": "claim_created",
+      "target_id": "uf-001-claim-001",
+      "created_at": "2026-07-14T08:33:14+02:00",
+      "details": "Claimed the only ready Stage 1 task after PR #14 merged."
+    },
+    {
+      "event_id": "uf-001-artifact-submitted-001",
+      "actor_id": "web-ai",
+      "event_type": "artifact_submitted",
+      "target_id": "uf-001-submission-001",
+      "created_at": "2026-07-14T08:33:14+02:00",
+      "details": "Submitted the pinned editor declaration, baseline documentation, and task-run proof."
+    },
+    {
+      "event_id": "uf-001-status-review-001",
+      "actor_id": "web-ai",
+      "event_type": "status_changed",
+      "target_id": "UF-001",
+      "created_at": "2026-07-14T08:33:14+02:00",
+      "details": "Moved UF-001 to review; no completion was claimed before human acceptance."
+    }
+  ]
 }

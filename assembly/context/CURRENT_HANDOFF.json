@@ -2,11 +2,11 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "task_review",
-  "active_role": "task_splitter",
-  "active_branch": "agent/stage1-first-dispatch",
-  "active_pr": 14,
-  "last_verified_commit": "bcf86cd41cd01bb8c3ca4f137c223049fc23e5cf",
+  "lifecycle_phase": "development",
+  "active_role": "task_executor",
+  "active_branch": "agent/uf-001-unity-lts-baseline",
+  "active_pr": 15,
+  "last_verified_commit": "377fb612a413a6e2af4dff1674374f7ec9ff5710",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -36,26 +36,29 @@
     "assembly/generated/task_batches/stage1-weapons.json",
     "assembly/generated/task_batches/stage1-enemies-route.json",
     "assembly/generated/task_batches/stage1-accessibility-reliability.json",
-    "assembly/generated/task_batches/stage1-gate.json"
+    "assembly/generated/task_batches/stage1-gate.json",
+    "ProjectSettings/ProjectVersion.txt",
+    "docs/toolchain/UNITY_BASELINE.md",
+    "assembly/generated/task_runs/UF-001-run-001.json"
   ],
-  "current_section": "stage1_backlog_review",
-  "last_completed_item": "Finalized nine validated Stage 1 batches into a 103-task canonical backlog and recorded the approved 50-day Stage 1 capacity amendment.",
-  "current_item": "Draft pull request #14 is the approval boundary for Stage 1 Dispatch.",
-  "next_action": "Review and merge draft PR #14. Then start a fresh Dispatch context from current main, claim UF-001, implement it in a bounded implementation PR, and continue in dependency order. Execute the Stage 1 evidence gate only after its implementation prerequisites and required proof exist.",
+  "current_section": "UF-001_review",
+  "last_completed_item": "PR #14 merged, accepting the 103-task Stage 1 backlog and opening Dispatch.",
+  "current_item": "UF-001 pins Unity 6.3 LTS 6000.3.19f1 at changeset 7689f4515d75 and is submitted for review in PR #15.",
+  "next_action": "Review and merge PR #15. After merge, treat UF-001 as accepted, update its collaboration state to done, claim UF-002 on a fresh branch from main, and pin the approved Unity package manifest and lock. Perform the first full Unity Hub import only with that package lock.",
   "blockers": [
-    "Dispatch must not treat the Stage 1 backlog as accepted until draft PR #14 is reviewed and merged.",
-    "Stage 2 task generation and implementation remain blocked until GATE-010 records a genuine signed advance decision with stage2_unlocked=true.",
-    "No task may bypass its exact dependencies, proof requirements, milestone reserve, or human review gate."
+    "UF-001 remains in review until PR #15 is accepted and merged.",
+    "The first full Unity Hub import is deferred until UF-002 supplies a deterministic package manifest and lock; opening earlier would create floating or unowned project state.",
+    "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-14T00:00:00+02:00"
+    "last_persisted_at": "2026-07-14T08:33:14+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-14T00:00:00+02:00"
+  "updated_at": "2026-07-14T08:33:14+02:00"
 }
