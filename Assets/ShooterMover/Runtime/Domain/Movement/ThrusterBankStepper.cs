@@ -125,7 +125,7 @@ namespace ShooterMover.Domain.Movement
 
             MovementThrusterTuningProfileValidator.Validate(tuning);
 
-            if (!Equals(state.TuningIdentity, tuning.DeterministicIdentity))
+            if (!object.Equals(state.TuningIdentity, tuning.DeterministicIdentity))
             {
                 throw new InvalidOperationException(
                     "Thruster bank state was created for a different movement-thruster tuning profile.");
