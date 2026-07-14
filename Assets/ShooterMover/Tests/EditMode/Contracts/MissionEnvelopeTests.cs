@@ -85,15 +85,15 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void RepresentativeMissionRequests_AreExplicitlyTypedWithoutDecidingState()
         {
-            IMissionCommandPayload room = new RoomClearRequest(
+            MissionCommandPayload room = new RoomClearRequest(
                 Id("room.factory-receiving"),
                 Id("encounter.receiving-wave"));
-            IMissionCommandPayload checkpoint = new CheckpointActivationRequest(
+            MissionCommandPayload checkpoint = new CheckpointActivationRequest(
                 Id("checkpoint.teleport-a"),
                 Id("room.factory-teleport-a"));
-            IMissionCommandPayload banking = new RewardBankingRequest(
+            MissionCommandPayload banking = new RewardBankingRequest(
                 Id("bank.secure-storage-a"));
-            IMissionCommandPayload completion = new MissionCompletionRequest(
+            MissionCommandPayload completion = new MissionCompletionRequest(
                 Id("mission.factory-shutdown"));
 
             Assert.That(room.CommandType, Is.EqualTo(MissionCommandType.RoomClear));
@@ -259,7 +259,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 Id("run.factory-run-0001"),
                 CreateVersion(2, DefinitionFingerprint),
                 new MissionSequence(1L),
-                new FutureCommandPayload());
+                new UnknownMissionCommandPayload(Id("type.future-command")));
 
             MissionCommandEvaluation result = MissionCommandGate.Evaluate(
                 command,
@@ -274,28 +274,16 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void UnknownCommandType_IsRejectedAfterVersionPasses()
         {
-            MissionCommandEnvelope explicitUnknown = new MissionCommandEnvelope(
+            MissionCommandEnvelope command = new MissionCommandEnvelope(
                 Id("command.future-0001"),
                 Id("run.factory-run-0001"),
                 CreateVersion(),
                 new MissionSequence(3L),
                 new UnknownMissionCommandPayload(Id("type.future-command")));
-            MissionCommandEnvelope numericUnknown = new MissionCommandEnvelope(
-                Id("command.future-0002"),
-                Id("run.factory-run-0001"),
-                CreateVersion(),
-                new MissionSequence(3L),
-                new FutureCommandPayload());
 
             Assert.That(
                 MissionCommandGate.Evaluate(
-                    explicitUnknown,
-                    new MissionSequence(3L),
-                    CreateVersion()).Rejection.RejectionType,
-                Is.EqualTo(MissionRejectionType.UnknownCommandType));
-            Assert.That(
-                MissionCommandGate.Evaluate(
-                    numericUnknown,
+                    command,
                     new MissionSequence(3L),
                     CreateVersion()).Rejection.RejectionType,
                 Is.EqualTo(MissionRejectionType.UnknownCommandType));
@@ -346,7 +334,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         }
 
         [Test]
-        public void MissionEnvelopeTypes_AreImmutableAndUnityFree()
+        public void MissionEnvelopeTypes_AreImmutableClosedAndUnityFree()
         {
             Type[] immutableTypes =
             {
@@ -356,6 +344,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 typeof(MissionEventEnvelope),
                 typeof(MissionRejectionEnvelope),
                 typeof(MissionCommandEvaluation),
+                typeof(UnknownMissionCommandPayload),
                 typeof(RoomClearRequest),
                 typeof(CheckpointActivationRequest),
                 typeof(RewardBankingRequest),
@@ -379,6 +368,16 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 }
             }
 
+            Assert.That(typeof(MissionCommandPayload).IsAbstract, Is.True);
+            Assert.That(typeof(MissionEventPayload).IsAbstract, Is.True);
+            Assert.That(
+                typeof(MissionCommandPayload).GetConstructors(
+                    BindingFlags.Instance | BindingFlags.Public),
+                Is.Empty);
+            Assert.That(
+                typeof(MissionEventPayload).GetConstructors(
+                    BindingFlags.Instance | BindingFlags.Public),
+                Is.Empty);
             Assert.That(
                 typeof(MissionCommandEnvelope).Assembly.GetReferencedAssemblies()
                     .Any(name => name.Name.StartsWith("UnityEngine", StringComparison.Ordinal)),
@@ -426,19 +425,6 @@ namespace ShooterMover.Tests.EditMode.Contracts
         private static StableId Id(string text)
         {
             return StableId.Parse(text);
-        }
-
-        private sealed class FutureCommandPayload : IMissionCommandPayload
-        {
-            public MissionCommandType CommandType
-            {
-                get { return (MissionCommandType)99; }
-            }
-
-            public string ToCanonicalString()
-            {
-                return "future=value";
-            }
         }
     }
 }
