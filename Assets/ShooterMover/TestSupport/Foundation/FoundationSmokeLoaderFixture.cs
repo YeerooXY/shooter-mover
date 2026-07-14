@@ -178,7 +178,7 @@ namespace ShooterMover.TestSupport.Foundation
 
         private static void RequirePlayMode()
         {
-            if (!Application.isPlaying)
+            if (!UnityEngine.Application.isPlaying)
             {
                 throw new InvalidOperationException(
                     "FoundationSmoke scene operations require Play Mode.");
@@ -284,7 +284,7 @@ namespace ShooterMover.TestSupport.Foundation
 
         private void CountRuntimeInstance()
         {
-            if (Application.isPlaying && !countedRuntimeInstance)
+            if (UnityEngine.Application.isPlaying && !countedRuntimeInstance)
             {
                 countedRuntimeInstance = true;
                 activeInstanceCount++;
@@ -351,7 +351,7 @@ namespace ShooterMover.TestSupport.Foundation
             GameObject ownedMarker = markerObject;
             markerObject = null;
 
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 Destroy(ownedMarker);
             }

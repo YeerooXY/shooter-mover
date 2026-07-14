@@ -201,7 +201,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
             EnsurePlaceholderVisuals();
             ResetArenaInternal();
 
-            if (!Application.isPlaying)
+            if (!UnityEngine.Application.isPlaying)
             {
                 return;
             }
@@ -1079,7 +1079,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
                 return;
             }
 
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 Destroy(ownedObject);
             }
@@ -1091,7 +1091,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private void CountRuntimeInstance()
         {
-            if (Application.isPlaying && !countedRuntimeInstance)
+            if (UnityEngine.Application.isPlaying && !countedRuntimeInstance)
             {
                 countedRuntimeInstance = true;
                 activeInstanceCount++;
@@ -1148,7 +1148,7 @@ namespace ShooterMover.TestSupport.EvidenceHarness
 
         private static void RequirePlayMode()
         {
-            if (!Application.isPlaying)
+            if (!UnityEngine.Application.isPlaying)
             {
                 throw new InvalidOperationException(
                     "Stage1BenchmarkArena scene operations require Play Mode.");

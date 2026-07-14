@@ -147,7 +147,7 @@ namespace ShooterMover.Tests.EditMode.Foundation
         {
             failures = new List<string>();
             var loaded = new Dictionary<string, LoadedAssembly>(StringComparer.Ordinal);
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
 
             for (int index = 0; index < ExpectedAssemblies.Length; index++)
             {
