@@ -22,7 +22,7 @@
       "Contracts precede consumers.",
       "No scene-owned durable truth."
     ],
-    "notes": "First implementation lane to sequence. Stage 1 task coverage is validated; individual work remains governed by task dependencies and explicit claims."
+    "notes": "UF-005 is accepted through merged PR #20, so CS-001 is ready after the streamlined Stage 1 workflow amendment merges. Ordinary proof lives in the implementation PR and central bookkeeping is reconciled once per wave."
   },
   {
     "slot_id": "unity-foundation",
@@ -48,7 +48,7 @@
       "Baseline is reproducible.",
       "No speculative SDKs."
     ],
-    "notes": "UF-001 through UF-004 are accepted. PR #18 merged at 22067939458d90b8adfb5d68473f6f179f21bd91 after all static, exact-editor, negative-reference, and human Inspector proof passed; UF-005 and UF-006 are unblocked once this acceptance handoff merges."
+    "notes": "UF-001 through UF-005 are accepted through merged proof-complete PRs. UF-006 and UF-011 are ready after the streamlined Stage 1 workflow amendment merges; ordinary implementation PRs no longer require separate acceptance handoffs."
   },
   {
     "slot_id": "movement-combat",

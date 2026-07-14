@@ -4,16 +4,21 @@ This product repository uses the AI Assembly Line repository-first lifecycle.
 
 ## Start from committed state
 
-Before responding, read:
+Before ordinary implementation work, read:
 
-1. `project_workspace.json`
-2. `assembly/context/CURRENT_HANDOFF.json`
-3. `assembly/context/NEW_CHAT_RESUME.md`
-4. every path listed in `authoritative_artifacts`
-5. the complete active-role prompt under `assembly/prompts/`
-6. relevant branch and pull-request state
+1. `project_workspace.json`, `assembly/context/CURRENT_HANDOFF.json`, and
+   `assembly/context/NEW_CHAT_RESUME.md`;
+2. the exact task card, its dependencies, inputs, allowed areas, and required
+   proof;
+3. the authoritative artifacts and role guidance directly relevant to that
+   task; and
+4. current `main` plus relevant branch and pull-request state.
 
-Do not reconstruct project state from remembered chat.
+Do not require an ordinary task agent to load unrelated planning batches or
+evidence files. Planning, stage-transition, wave-coordination, and formal-gate
+work must still read every path listed in `authoritative_artifacts` and the
+complete active-role guidance. Never reconstruct project state from remembered
+chat.
 
 ## Active lifecycle routing
 
@@ -93,6 +98,41 @@ Do not blur stages.
 ## Durable-state rule
 
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
+
+## Streamlined Stage 1 task execution
+
+For ordinary Stage 1 implementation tasks, the reviewed implementation pull
+request is both the delivery and acceptance boundary. Do not create a second
+per-task acceptance or handoff pull request.
+
+1. Start from current `main` in a fresh branch and worktree. Never reuse a
+   branch whose pull request merged.
+2. Treat the task card's `depends_on` list as the dispatch authority. Its
+   `blocks` list is an advisory reverse index. A dependency is satisfied when
+   its implementation pull request has merged after required proof and human
+   review; a separate bookkeeping merge is not required.
+3. Change only the task's `allowed_areas` and inseparable Unity metadata
+   permitted by the accepted ownership map. Parallel agents never edit shared
+   lifecycle bookkeeping from their implementation branches.
+4. Put the task ID, dependency check, exact changed paths, automated results,
+   required manual proof, known limitations, and rollback note in the pull
+   request. Keep the pull request draft until required proof is complete.
+5. Nemo's intentional merge of a proof-complete task pull request records
+   acceptance. A closed-unmerged pull request, draft, failed check, unresolved
+   review finding, or premature merge does not satisfy a dependency.
+6. Ordinary tasks do not create `task_runs`, duplicate submissions/reviews, or
+   post-merge acceptance pull requests unless the task explicitly requires a
+   repository evidence artifact or the human lead requests stronger review.
+7. A coordinator may reconcile `CURRENT_HANDOFF.json`, collaboration state,
+   slots, and resume notes once per development wave. Wave bookkeeping is for
+   discoverability and may lag merged task pull requests by one wave; it is not
+   a dependency gate.
+
+Full repository evidence remains mandatory where the task requires it,
+especially milestone gates, persistence/migration, shared serialized assets,
+build/release artifacts, and other explicit strong-review boundaries. This
+streamlining never weakens path ownership, automated tests, manual/playable
+proof, human merge authority, milestone caps, or the Stage 2 gate.
 
 ## Stage-first task-decomposition approval gate
 
