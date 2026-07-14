@@ -38,7 +38,9 @@ namespace ShooterMover.Tests.EditMode.Combat
 
             Type profileType = typeof(WeaponRuntimeProfile);
             Assert.That(profileType.IsSealed, Is.True);
-            Assert.That(profileType.GetConstructors(BindingFlags.Instance | BindingFlags.Public), Is.Empty);
+            Assert.That(
+                profileType.GetConstructors(BindingFlags.Instance | BindingFlags.Public),
+                Is.Empty);
             Assert.That(
                 profileType
                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -60,8 +62,8 @@ namespace ShooterMover.Tests.EditMode.Combat
                 AutomaticModule,
                 ProjectileModule,
             };
-            FixtureValues values = new FixtureValues { BehaviorModuleIds = moduleIds };
-            WeaponRuntimeProfile profile = Build(values);
+            WeaponRuntimeProfile profile = Build(
+                new FixtureValues { BehaviorModuleIds = moduleIds });
             string canonical = profile.ToCanonicalString();
 
             moduleIds[0] = SpreadModule;
@@ -166,9 +168,8 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void KnownModuleRegistryOrderAndExtraEntries_DoNotChangeIdentity()
         {
-            FixtureValues values = new FixtureValues();
             WeaponRuntimeProfile first = Build(
-                values,
+                new FixtureValues(),
                 new[] { AutomaticModule, ProjectileModule, SpreadModule, ChainModule });
             WeaponRuntimeProfile second = Build(
                 new FixtureValues(),
@@ -176,6 +177,15 @@ namespace ShooterMover.Tests.EditMode.Combat
 
             Assert.That(second, Is.EqualTo(first));
             Assert.That(second.DeterministicIdentity, Is.EqualTo(first.DeterministicIdentity));
+        }
+
+        [Test]
+        public void Create_RejectsMissingProfileIdAndUnsupportedVersion()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => Build(new FixtureValues { ProfileId = null }));
+            Assert.Throws<NotSupportedException>(
+                () => Build(new FixtureValues { ProfileVersion = 2 }));
         }
 
         [Test]
@@ -237,7 +247,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             {
                 FixtureValues values = new FixtureValues();
                 mutation.Apply(values);
-                Assert.Throws<Exception>(
+                Assert.Catch<ArgumentException>(
                     () => Build(values),
                     mutation.Name + " should have failed validation.");
             }
@@ -381,7 +391,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             Assert.Throws<ArgumentNullException>(
                 () => Build(new FixtureValues { BehaviorModuleIds = null }));
             Assert.Throws<ArgumentNullException>(
-                () => Build(new FixtureValues(), null));
+                () => WeaponRuntimeProfileValidator.Validate(Build(new FixtureValues()), null));
             Assert.Throws<ArgumentException>(
                 () => Build(
                     new FixtureValues(),
