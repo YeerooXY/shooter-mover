@@ -458,13 +458,12 @@ namespace ShooterMover.Domain.Movement
             {
                 return (decimal)observedAtSeconds;
             }
-            catch (OverflowException exception)
+            catch (OverflowException)
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(observedAtSeconds),
                     observedAtSeconds,
-                    "Contact-grace time is outside the supported deterministic range.",
-                    exception);
+                    "Contact-grace time is outside the supported deterministic range.");
             }
         }
 
