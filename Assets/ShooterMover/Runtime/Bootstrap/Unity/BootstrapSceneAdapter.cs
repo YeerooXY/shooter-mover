@@ -42,8 +42,8 @@ namespace ShooterMover.Bootstrap.Unity
 
             try
             {
-                // A retained component instance can survive when scene reload is disabled.
-                // Dispose any stale instance before creating this session's root.
+                // Defensively dispose any previous instance before creating the root
+                // for this enable cycle.
                 ShutdownCompositionRoot();
 
                 compositionRoot = new BootstrapCompositionRoot();
