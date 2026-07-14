@@ -80,7 +80,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
         {
             BootstrapSceneAdapter original = RequireSingleBootstrapAdapter();
             int originalInstanceId = original.GetInstanceID();
-            var existingHandles = new HashSet<int>(
+            var existingHandles = new HashSet<SceneHandle>(
                 LoadedScenesNamed(BootstrapSceneName).Select(scene => scene.handle));
 
             AsyncOperation load = SceneManager.LoadSceneAsync(
@@ -221,7 +221,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             return scenes;
         }
 
-        private static Scene RequireNewBootstrapScene(ISet<int> existingHandles)
+        private static Scene RequireNewBootstrapScene(ISet<SceneHandle> existingHandles)
         {
             List<Scene> candidates = LoadedScenesNamed(BootstrapSceneName)
                 .Where(scene => !existingHandles.Contains(scene.handle))
