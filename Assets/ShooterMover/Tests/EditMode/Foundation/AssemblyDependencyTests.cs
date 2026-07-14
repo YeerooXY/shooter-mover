@@ -32,7 +32,8 @@ namespace ShooterMover.Tests.EditMode.Foundation
                 false,
                 "ShooterMover.Domain",
                 "ShooterMover.Contracts",
-                "ShooterMover.Application"),
+                "ShooterMover.Application",
+                "Unity.InputSystem"),
             new ExpectedAssembly(
                 "Assets/ShooterMover/Content/Definitions/ShooterMover.Content.Definitions.asmdef",
                 "ShooterMover.Content.Definitions",
@@ -79,8 +80,17 @@ namespace ShooterMover.Tests.EditMode.Foundation
                 "ShooterMover.UnityAdapters",
                 "ShooterMover.Presentation",
                 "ShooterMover.Content.Definitions",
-                "ShooterMover.Bootstrap"),
+                "ShooterMover.Bootstrap",
+                "Unity.InputSystem",
+                "Unity.InputSystem.TestFramework"),
         };
+
+        private static readonly HashSet<string> AllowedExternalAssemblyReferences =
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                "Unity.InputSystem",
+                "Unity.InputSystem.TestFramework",
+            };
 
         [Test]
         public void AssemblyDefinitions_MatchExactInwardOnlyGraph()
@@ -265,7 +275,8 @@ namespace ShooterMover.Tests.EditMode.Foundation
                     referenceIndex++)
                 {
                     string reference = actual.References[referenceIndex];
-                    if (!knownNames.Contains(reference))
+                    if (!knownNames.Contains(reference)
+                        && !AllowedExternalAssemblyReferences.Contains(reference))
                     {
                         failures.Add(
                             actual.AssetPath + " references unknown internal assembly '"

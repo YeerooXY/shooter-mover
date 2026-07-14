@@ -43,7 +43,12 @@ EXPECTED: tuple[ExpectedAssembly, ...] = (
     ExpectedAssembly(
         "Assets/ShooterMover/Runtime/UnityAdapters/ShooterMover.UnityAdapters.asmdef",
         "ShooterMover.UnityAdapters",
-        ("ShooterMover.Domain", "ShooterMover.Contracts", "ShooterMover.Application"),
+        (
+            "ShooterMover.Domain",
+            "ShooterMover.Contracts",
+            "ShooterMover.Application",
+            "Unity.InputSystem",
+        ),
         False,
     ),
     ExpectedAssembly(
@@ -103,6 +108,8 @@ EXPECTED: tuple[ExpectedAssembly, ...] = (
             "ShooterMover.Presentation",
             "ShooterMover.Content.Definitions",
             "ShooterMover.Bootstrap",
+            "Unity.InputSystem",
+            "Unity.InputSystem.TestFramework",
         ),
         False,
         test_assembly=True,

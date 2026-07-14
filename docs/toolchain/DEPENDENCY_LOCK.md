@@ -2,9 +2,9 @@
 
 ## Baseline
 
-This project uses the exact editor declared in `ProjectSettings/ProjectVersion.txt`: Unity `6000.3.19f1` (`7689f4515d75`). The package manifest intentionally contains only the three direct dependencies required by the Stage 1 fully 2D baseline. Official Unity packages use the default Unity registry; no scoped or third-party registry is configured.
+This project uses the exact editor declared in `ProjectSettings/ProjectVersion.txt`: Unity `6000.3.19f1` (`7689f4515d75`). The package manifest intentionally contains only the four direct dependencies required by the Stage 1 fully 2D baseline. Official Unity packages use the default Unity registry; no scoped or third-party registry is configured.
 
-The committed package lock contains 21 exact resolved entries. Core packages whose lock source is `builtin` are supplied by the pinned editor. Registry packages use `https://packages.unity.com`. Version ranges, wildcards, Git branches, previews, local paths, and floating tags are not permitted.
+The committed package lock contains 22 exact resolved entries. Core packages whose lock source is `builtin` are supplied by the pinned editor. Registry packages use `https://packages.unity.com`. Version ranges, wildcards, Git branches, previews, local paths, and floating tags are not permitted.
 
 ## Direct dependency inventory
 
@@ -12,6 +12,7 @@ The committed package lock contains 21 exact resolved entries. Core packages who
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `com.unity.render-pipelines.universal` | `17.3.0`; Unity 6000.3 built-in core package | URP and its 2D renderer baseline | Unity Companion License; see the package `LICENSE.md` | Unity Foundation lane | Changes only with an approved editor/package-baseline task on an isolated branch; regenerate and review the whole lock | High: rendering assets, shaders, and quality settings will depend on this major line | Remove URP assets and project-setting references first, replace the rendering path, then remove the manifest entry and regenerate the lock as one reviewed change |
 | `com.unity.inputsystem` | `1.19.0`; official Unity registry | Device-agnostic keyboard, mouse, and gamepad input through owned adapters | Unity Companion License; see the package `LICENSE.md` | Unity Foundation lane | Exact version only; no automatic upgrades; validate input and build smoke tests on a dedicated upgrade branch | Medium: package/API or device-behavior changes can affect every control path | Remove project input assets and adapter references, restore an approved input implementation, then remove the manifest entry and regenerate the lock |
+| `com.unity.modules.physics2d` | `1.0.0`; Unity 6000.3 built-in module | Enables Unity's 2D physics API for approved `Rigidbody2D`/collider adapters and test-owned 2D arena shells; simulation truth remains outside Unity | Unity Companion License; see the module `LICENSE.md` | Unity Foundation lane | Follows the pinned editor; review its exact lock entry and rerun 2D adapter/play-mode tests on a dedicated baseline branch | Medium: removing or changing it breaks compilation of Unity-facing 2D adapters | Remove all approved `Rigidbody2D`/2D-collider adapters and test shells first, then remove the manifest entry and regenerate the lock |
 | `com.unity.test-framework` | `1.6.0`; Unity 6000.3 built-in core package | EditMode and PlayMode test discovery and execution | Unity Companion License; see the package `LICENSE.md` | Verification and Release lane, baseline owned by Unity Foundation | Follows the pinned editor unless an approved test-baseline task says otherwise; rerun the complete test harness after change | Low runtime risk, medium verification risk: runner changes can invalidate evidence | Migrate or remove Unity Test Framework assemblies/tests, then remove the manifest entry and regenerate the lock |
 
 License files shipped inside the resolved packages are authoritative. A license change is a dependency change and requires review even when the semantic version appears compatible.
@@ -29,6 +30,7 @@ License files shipped inside the resolved packages are authoritative. A license 
 | `com.unity.modules.imgui` | `1.0.0` | Editor built-in | No |
 | `com.unity.modules.jsonserialize` | `1.0.0` | Editor built-in | No |
 | `com.unity.modules.physics` | `1.0.0` | Editor built-in | No |
+| `com.unity.modules.physics2d` | `1.0.0` | Editor built-in | Yes |
 | `com.unity.modules.terrain` | `1.0.0` | Editor built-in | No |
 | `com.unity.modules.ui` | `1.0.0` | Editor built-in | No |
 | `com.unity.modules.uielements` | `1.0.0` | Editor built-in | No |
@@ -67,13 +69,13 @@ Static verification requires all of the following:
 - every transitive edge names an entry present in the lock;
 - no direct version contains a range, wildcard, preview suffix, Git reference, branch head, URL, or local path;
 - the prohibited SDK scan returns no package names;
-- all three direct dependencies have complete inventory rows above.
+- all four direct dependencies have complete inventory rows above.
 
 After installing the exact editor, perform the first resolution check:
 
 1. Open the repository through Unity Hub with `6000.3.19f1` and allow Package Manager to finish.
 2. Confirm the Console reports no unresolved package or compilation error.
-3. In **Window > Package Manager > In Project**, confirm URP `17.3.0`, Input System `1.19.0`, and Test Framework `1.6.0`, with no direct-package upgrade prompt.
+3. In **Window > Package Manager > In Project**, confirm URP `17.3.0`, Input System `1.19.0`, Physics 2D `1.0.0`, and Test Framework `1.6.0`, with no direct-package upgrade prompt.
 4. Close Unity and require `git diff --exit-code -- Packages/manifest.json Packages/packages-lock.json` to pass. Any silent lock rewrite is a failed baseline check that must be reviewed, not accepted automatically.
 5. Recompute the canonical repository-content fingerprint with `python -c "import hashlib,subprocess; data=subprocess.check_output(['git','show','HEAD:Packages/packages-lock.json']); print(hashlib.sha256(data).hexdigest())"` and compare it with the fingerprint below.
 
@@ -82,9 +84,12 @@ After installing the exact editor, perform the first resolution check:
 Canonical `Packages/packages-lock.json` repository-content SHA-256:
 
 ```text
-2d681f0409804236336a38ee67c46f5e823205e42b2b092b226b60758411d557
+9d6ac75d469e47ca20d983ac3b28da054608556cbf722851ebe782a2df0659bd
 ```
 
 This fingerprint covers the resolved package list, versions, sources, depths, and dependency edges. It does not cover `manifest.json` or this document. It is calculated from the canonical Git content so Windows CRLF checkout conversion cannot create a false mismatch. Use `git diff --exit-code -- Packages/manifest.json Packages/packages-lock.json` to detect a working-tree rewrite.
 
-The first Unity `6000.3.19f1` import on 2026-07-14 resolved and registered all 21 locked packages in 19.57 seconds. The editor log contained no unresolved-package or compilation failure, both package files remained clean according to Git, and the canonical fingerprint matched.
+The initial Unity `6000.3.19f1` import on 2026-07-14 resolved the prior
+21-entry lock in 19.57 seconds. The approved Physics 2D amendment adds one
+built-in entry; rerun the resolution check and require a clean package-file
+diff before accepting the current fingerprint.

@@ -30,12 +30,19 @@ The diagram is a layer summary. The exact direct references are:
 | `ShooterMover.Domain` | none | no |
 | `ShooterMover.Contracts` | Domain | no |
 | `ShooterMover.Application` | Domain, Contracts | no |
-| `ShooterMover.UnityAdapters` | Domain, Contracts, Application | yes |
+| `ShooterMover.UnityAdapters` | Domain, Contracts, Application, `Unity.InputSystem` | yes |
 | `ShooterMover.Content.Definitions` | Domain, Contracts, Application | yes |
 | `ShooterMover.Presentation` | Domain, Contracts, Application, UnityAdapters | yes |
 | `ShooterMover.Bootstrap` | all six lower runtime/content assemblies | yes |
 | `ShooterMover.Tests.EditMode` | all seven product assemblies | yes, Editor only |
-| `ShooterMover.Tests.PlayMode` | all seven product assemblies | yes |
+| `ShooterMover.Tests.PlayMode` | all seven product assemblies, `Unity.InputSystem`, `Unity.InputSystem.TestFramework` | yes |
+
+`Unity.InputSystem` is the pinned package assembly used at the Unity boundary;
+it is not a Shooter Mover architectural layer. It is intentionally referenced
+only by the input adapter and the PlayMode tests that exercise it.
+`Unity.InputSystem.TestFramework` is an editor/test-only companion assembly
+within that same pinned package, referenced only by PlayMode fixtures that need
+isolated virtual-device input.
 
 ## Boundary rules
 
@@ -57,6 +64,10 @@ The diagram is a layer summary. The exact direct references are:
 7. Tests point inward to product assemblies. Product assemblies never reference
    tests.
 8. Baseline references use stable assembly names, not `GUID:` references.
+   The only approved external package assemblies are `Unity.InputSystem` and
+   its test-only companion `Unity.InputSystem.TestFramework`.
+   `ShooterMover.UnityAdapters` may reference only the former;
+   `ShooterMover.Tests.PlayMode` may reference both.
 9. New assembly definitions must remain acyclic and may not introduce a
    reference from a more-inward layer to a more-outward layer.
 
