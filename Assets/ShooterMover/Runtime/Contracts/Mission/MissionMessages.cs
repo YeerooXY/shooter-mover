@@ -31,18 +31,34 @@ namespace ShooterMover.Contracts.Mission
         FutureSequence = 6,
     }
 
-    public interface IMissionCommandPayload
+    /// <summary>
+    /// Closed immutable command-payload hierarchy for Mission Messages v1.
+    /// The internal constructor prevents external mutable implementations from
+    /// being stored behind the public base type.
+    /// </summary>
+    public abstract class MissionCommandPayload
     {
-        MissionCommandType CommandType { get; }
+        internal MissionCommandPayload()
+        {
+        }
 
-        string ToCanonicalString();
+        public abstract MissionCommandType CommandType { get; }
+
+        public abstract string ToCanonicalString();
     }
 
-    public interface IMissionEventPayload
+    /// <summary>
+    /// Closed immutable event-payload hierarchy for Mission Messages v1.
+    /// </summary>
+    public abstract class MissionEventPayload
     {
-        MissionEventType EventType { get; }
+        internal MissionEventPayload()
+        {
+        }
 
-        string ToCanonicalString();
+        public abstract MissionEventType EventType { get; }
+
+        public abstract string ToCanonicalString();
     }
 
     /// <summary>
@@ -50,7 +66,7 @@ namespace ShooterMover.Contracts.Mission
     /// treating its opaque type identifier as an accepted mission operation.
     /// </summary>
     public sealed class UnknownMissionCommandPayload :
-        IMissionCommandPayload,
+        MissionCommandPayload,
         IEquatable<UnknownMissionCommandPayload>
     {
         public UnknownMissionCommandPayload(StableId typeId)
@@ -60,12 +76,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId TypeId { get; }
 
-        public MissionCommandType CommandType
+        public override MissionCommandType CommandType
         {
             get { return MissionCommandType.Unknown; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "unknown_type_id=" + TypeId;
         }
@@ -87,7 +103,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class RoomClearRequest :
-        IMissionCommandPayload,
+        MissionCommandPayload,
         IEquatable<RoomClearRequest>
     {
         public RoomClearRequest(StableId roomId, StableId encounterId)
@@ -100,12 +116,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId EncounterId { get; }
 
-        public MissionCommandType CommandType
+        public override MissionCommandType CommandType
         {
             get { return MissionCommandType.RoomClear; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "room_id=" + RoomId + "\nencounter_id=" + EncounterId;
         }
@@ -129,7 +145,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class CheckpointActivationRequest :
-        IMissionCommandPayload,
+        MissionCommandPayload,
         IEquatable<CheckpointActivationRequest>
     {
         public CheckpointActivationRequest(StableId checkpointId, StableId roomId)
@@ -142,12 +158,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId RoomId { get; }
 
-        public MissionCommandType CommandType
+        public override MissionCommandType CommandType
         {
             get { return MissionCommandType.CheckpointActivation; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "checkpoint_id=" + CheckpointId + "\nroom_id=" + RoomId;
         }
@@ -171,7 +187,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class RewardBankingRequest :
-        IMissionCommandPayload,
+        MissionCommandPayload,
         IEquatable<RewardBankingRequest>
     {
         public RewardBankingRequest(StableId bankId)
@@ -181,12 +197,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId BankId { get; }
 
-        public MissionCommandType CommandType
+        public override MissionCommandType CommandType
         {
             get { return MissionCommandType.RewardBanking; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "bank_id=" + BankId;
         }
@@ -208,7 +224,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class MissionCompletionRequest :
-        IMissionCommandPayload,
+        MissionCommandPayload,
         IEquatable<MissionCompletionRequest>
     {
         public MissionCompletionRequest(StableId missionId)
@@ -218,12 +234,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId MissionId { get; }
 
-        public MissionCommandType CommandType
+        public override MissionCommandType CommandType
         {
             get { return MissionCommandType.MissionCompletion; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "mission_id=" + MissionId;
         }
@@ -245,7 +261,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class RoomClearedEvent :
-        IMissionEventPayload,
+        MissionEventPayload,
         IEquatable<RoomClearedEvent>
     {
         public RoomClearedEvent(StableId roomId, StableId encounterId)
@@ -258,12 +274,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId EncounterId { get; }
 
-        public MissionEventType EventType
+        public override MissionEventType EventType
         {
             get { return MissionEventType.RoomCleared; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "room_id=" + RoomId + "\nencounter_id=" + EncounterId;
         }
@@ -287,7 +303,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class CheckpointActivatedEvent :
-        IMissionEventPayload,
+        MissionEventPayload,
         IEquatable<CheckpointActivatedEvent>
     {
         public CheckpointActivatedEvent(StableId checkpointId, StableId roomId)
@@ -300,12 +316,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId RoomId { get; }
 
-        public MissionEventType EventType
+        public override MissionEventType EventType
         {
             get { return MissionEventType.CheckpointActivated; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "checkpoint_id=" + CheckpointId + "\nroom_id=" + RoomId;
         }
@@ -329,7 +345,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class RewardsBankedEvent :
-        IMissionEventPayload,
+        MissionEventPayload,
         IEquatable<RewardsBankedEvent>
     {
         public RewardsBankedEvent(StableId bankId, StableId transactionId)
@@ -342,12 +358,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId TransactionId { get; }
 
-        public MissionEventType EventType
+        public override MissionEventType EventType
         {
             get { return MissionEventType.RewardsBanked; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "bank_id=" + BankId + "\ntransaction_id=" + TransactionId;
         }
@@ -371,7 +387,7 @@ namespace ShooterMover.Contracts.Mission
     }
 
     public sealed class MissionCompletedEvent :
-        IMissionEventPayload,
+        MissionEventPayload,
         IEquatable<MissionCompletedEvent>
     {
         public MissionCompletedEvent(StableId missionId, StableId completionId)
@@ -384,12 +400,12 @@ namespace ShooterMover.Contracts.Mission
 
         public StableId CompletionId { get; }
 
-        public MissionEventType EventType
+        public override MissionEventType EventType
         {
             get { return MissionEventType.MissionCompleted; }
         }
 
-        public string ToCanonicalString()
+        public override string ToCanonicalString()
         {
             return "mission_id=" + MissionId + "\ncompletion_id=" + CompletionId;
         }
@@ -423,7 +439,7 @@ namespace ShooterMover.Contracts.Mission
             StableId runId,
             MissionPayloadVersion payloadVersion,
             MissionSequence expectedSequence,
-            IMissionCommandPayload payload)
+            MissionCommandPayload payload)
         {
             CommandId = MissionContractFormat.RequireNotNull(commandId, nameof(commandId));
             RunId = MissionContractFormat.RequireNotNull(runId, nameof(runId));
@@ -444,7 +460,7 @@ namespace ShooterMover.Contracts.Mission
 
         public MissionSequence ExpectedSequence { get; }
 
-        public IMissionCommandPayload Payload { get; }
+        public MissionCommandPayload Payload { get; }
 
         public MissionCommandType CommandType
         {
@@ -508,7 +524,7 @@ namespace ShooterMover.Contracts.Mission
             StableId runId,
             MissionPayloadVersion payloadVersion,
             MissionSequence sequence,
-            IMissionEventPayload payload)
+            MissionEventPayload payload)
         {
             EventId = MissionContractFormat.RequireNotNull(eventId, nameof(eventId));
             CommandId = MissionContractFormat.RequireNotNull(commandId, nameof(commandId));
@@ -546,7 +562,7 @@ namespace ShooterMover.Contracts.Mission
 
         public MissionSequence Sequence { get; }
 
-        public IMissionEventPayload Payload { get; }
+        public MissionEventPayload Payload { get; }
 
         public MissionEventType EventType
         {
