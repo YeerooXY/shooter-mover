@@ -237,6 +237,6 @@
       "No architecture is invented.",
       "Dependencies use exact task IDs."
     ],
-    "notes": "Stage 1 split complete: 9 validated batches and 102 tasks. Stage 2 decomposition is deferred behind GATE-010."
+    "notes": "Stage 1 split complete: 9 validated batches and 103 tasks. MT-013 is an optional test-only movement-playground leaf and blocks no existing task. Stage 2 decomposition is deferred behind GATE-010."
   }
 ]

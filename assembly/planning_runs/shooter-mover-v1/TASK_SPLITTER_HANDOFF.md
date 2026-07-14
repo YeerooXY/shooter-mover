@@ -100,6 +100,17 @@ Before generating `stage1-weapons`, consume `AMENDMENT_STAGE1_WEAPONS.md`. Keep 
 
 Before dispatching or regenerating combat and later dependent work, consume `AMENDMENT_STAGE1_NO_PLAYER_MOTION_RECOIL.md`. Retire `CB-007`; do not create a combat-to-movement bridge or an MT-owned influence port. Remove its `CB-011` dependency and require later combat evidence to prove that firing leaves player movement, thruster, and collision authority unchanged. Existing recoil fields remain non-authoritative compatibility/presentation data unless a later explicitly owned presentation task is approved.
 
+## Stage 1 movement playground amendment
+
+Before dispatching `MT-013`, consume `AMENDMENT_STAGE1_MOVEMENT_PLAYGROUND.md`.
+`MT-013` is an optional, test-only S1.1 leaf that composes the accepted
+`MT-007` input and `MT-010` lifecycle-owned movement runtime into a manual
+playground. It owns only its exact test scene, harness, focused tests and
+operator instructions. It must not edit Bootstrap, build settings, shared
+movement/input adapters, production scenes, or gameplay authority. No existing
+task may depend on `MT-013`; it changes neither the active development-wave
+order nor any later task's acceptance path.
+
 ## Stage 1 enemy amendment
 
 Before generating `stage1-enemies-route`, consume `AMENDMENT_STAGE1_ENEMIES.md`. Keep `EN-001` through `EN-013`, but decompose the Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and easy Four-Blaster Elite. Reuse the accepted blaster projectile behavior. The Four-Blaster Elite replaces Foreman Elite, while Prototype Overseer remains Stage 2. The one remaining Stage 2 ordinary role stays blocked behind the Stage 1 gate and a later evidence-backed planning amendment.
