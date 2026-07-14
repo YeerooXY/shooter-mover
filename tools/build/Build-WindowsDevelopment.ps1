@@ -13,6 +13,20 @@ function Get-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function ConvertTo-ProcessArgument {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Argument)
+
+    if ($Argument.Contains('"')) {
+        throw "Process arguments containing a double quote are not supported: '$Argument'."
+    }
+
+    if ($Argument.Length -eq 0 -or $Argument -match '\s') {
+        return '"' + $Argument + '"'
+    }
+
+    return $Argument
+}
+
 function Get-GitContentSha256 {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -239,14 +253,26 @@ $unityArguments = @(
     "-buildWindows64Player", $playerPath,
     "-logFile", $logPath
 )
+$unityArgumentLine = ($unityArguments | ForEach-Object {
+    ConvertTo-ProcessArgument -Argument $_
+}) -join " "
 
 Write-Host "Building ShooterMover Windows x86-64 Development player"
 Write-Host "Unity:  $unityExecutable"
 Write-Host "Project: $projectRoot"
 Write-Host "Output:  $ownedOutputRoot"
 
-& $unityExecutable @unityArguments
-$unityExitCode = $LASTEXITCODE
+$unityProcess = $null
+try {
+    $unityProcess = Start-Process -FilePath $unityExecutable -ArgumentList $unityArgumentLine -PassThru -Wait
+    $unityProcess.Refresh()
+    $unityExitCode = $unityProcess.ExitCode
+}
+finally {
+    if ($null -ne $unityProcess) {
+        $unityProcess.Dispose()
+    }
+}
 
 if ($unityExitCode -ne 0) {
     Show-LogTail -LogPath $logPath
