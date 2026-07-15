@@ -1,0 +1,22 @@
+{
+  "name": "ShooterMover.Tests.EditMode.Presentation.LoadoutPreview",
+  "rootNamespace": "ShooterMover.Tests.EditMode.Presentation.LoadoutPreview",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Presentation.LoadoutPreview"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

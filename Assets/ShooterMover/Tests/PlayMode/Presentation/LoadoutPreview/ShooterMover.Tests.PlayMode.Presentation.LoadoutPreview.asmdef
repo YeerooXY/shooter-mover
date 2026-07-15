@@ -1,0 +1,22 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Presentation.LoadoutPreview",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Presentation.LoadoutPreview",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Presentation.LoadoutPreview",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

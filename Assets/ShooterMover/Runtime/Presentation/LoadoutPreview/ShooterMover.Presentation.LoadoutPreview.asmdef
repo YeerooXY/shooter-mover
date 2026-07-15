@@ -1,0 +1,17 @@
+{
+  "name": "ShooterMover.Presentation.LoadoutPreview",
+  "rootNamespace": "ShooterMover.Presentation.LoadoutPreview",
+  "references": [
+    "ShooterMover.Domain",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
