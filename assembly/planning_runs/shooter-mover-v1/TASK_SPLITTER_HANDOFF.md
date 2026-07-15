@@ -114,3 +114,42 @@ order nor any later task's acceptance path.
 ## Stage 1 enemy amendment
 
 Before generating `stage1-enemies-route`, consume `AMENDMENT_STAGE1_ENEMIES.md`. Keep `EN-001` through `EN-013`, but decompose the Pursuer Drone, Ram Droid, Mobile Blaster Droid, Blaster Turret and easy Four-Blaster Elite. Reuse the accepted blaster projectile behavior. The Four-Blaster Elite replaces Foreman Elite, while Prototype Overseer remains Stage 2. The one remaining Stage 2 ordinary role stays blocked behind the Stage 1 gate and a later evidence-backed planning amendment.
+
+## Stage 1 visible-slice amendment
+
+Use `AMENDMENT_STAGE1_VISIBLE_SLICE.md` only after its planning pull request is
+merged into current `main`. The planning PR itself must not generate or dispatch
+implementation tasks.
+
+In a fresh, separate Task Splitter branch and PR:
+
+- add one dedicated `stage1-visible-slice` batch containing stable tasks
+  `VS-001` through `VS-007` exactly;
+- keep `assembly/generated/task_backlog.json` unchanged until that separate PR;
+- preserve WP-010's exclusive ownership of
+  `Assets/ShooterMover/ContentPackages/Weapons/Stage1Presentation/` and
+  `Assets/ShooterMover/Tests/PlayMode/Combat/Stage1WeaponPresentationTests.cs`;
+- make VS-001 the sole local art-intake owner and a dependency of every visual
+  consumer;
+- allow VS-002 through VS-006 to run concurrently after VS-001 and their
+  existing non-VS dependencies merge;
+- reject any VS-002 through VS-006 card whose allowed paths include a `.unity`
+  scene;
+- assign `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`
+  exclusively to VS-007;
+- keep EH-004 and EH-005 scenes read-only;
+- make VS-007 depend on VS-001 through VS-006, merged WP-010, EN-009, EN-010,
+  EN-011, and the accepted movement/combat/enemy/restart authorities named in
+  the amendment;
+- keep all state session-only: no inventory, reward, unlock, mission, save,
+  registry, or persistence output;
+- allocate exactly 0.60 day to S1.2 reserve and 2.55 days to S1.3 reserve, for
+  3.15 total days, without changing the 50-day aggregate cap;
+- fail validation rather than silently raising a cap if any task estimate or
+  scope exceeds those allocations.
+
+The generated graph must place VS-001 before all consumers, permit the five
+independent presentation tasks to proceed in parallel, and make VS-007 the
+single final serial integration task. The Task Splitter PR must stop after
+materializing and validating the task graph; it must not dispatch VS agents or
+implement Unity code/assets in the same PR.
