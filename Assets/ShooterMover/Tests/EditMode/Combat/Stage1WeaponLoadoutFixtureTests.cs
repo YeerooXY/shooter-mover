@@ -488,7 +488,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         private static string ReadProjectFile(string assetPath)
         {
             string projectRoot = Directory.GetParent(
-                Application.dataPath).FullName;
+                UnityEngine.Application.dataPath).FullName;
             return File.ReadAllText(
                 Path.Combine(
                     projectRoot,
