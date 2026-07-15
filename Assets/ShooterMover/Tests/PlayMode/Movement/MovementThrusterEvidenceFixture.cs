@@ -115,7 +115,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             "Assets/ShooterMover/Runtime/UnityAdapters/Input/ShooterMoverMovement.inputactions";
         public const string ArenaName = "Stage1BenchmarkArena";
         public const string ExpectedProfileSha256 =
-            "sha256:8de91211d22e7e196f27b43589ae08b6e810a2753ebc23eee1171e4ae8585a83";
+            "sha256:531356cb51ad17e108b48a1806e03de31d7035c2e32fad6613ca10db123d7677";
         public const string ExpectedTuningFingerprint =
             "sha256:72e7cba54aaf6829cd8e9806d3dca578f64fbed232089b0d352e6edf0e377d21";
 
@@ -254,7 +254,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
                 50d, 100d, 1048576L, 262144L, 1000d, 1073741824L,
                 false, objectBudgets);
             object probe = Activator.CreateInstance(probeType, new object[] { budget, null });
-            Invoke(probe, "Begin", 0d, "Medium");
+            Invoke(probe, "Begin", 0d, "medium");
             Invoke(probe, "RecordSceneLoad", 0d, 0.01d);
             double[] times = { 0.02d, 0.04d, 0.06d, 0.08d, 0.1d };
             for (int i = 0; i < times.Length; i++)
@@ -415,9 +415,22 @@ namespace ShooterMover.Tests.PlayMode.Movement
                 + "  \"intentFixtureVersion\": 1,\n"
                 + "  \"qualityProfile\": \"Medium\",\n"
                 + "  \"locale\": \"en-US\",\n"
-                + "  \"viewport\": {\"width\": 1280, \"height\": 720, \"fullscreen\": false},\n"
-                + "  \"diagnostics\": {\"maxEventCount\": 4096, \"maxEventPayloadBytes\": 4096, \"maxLogBytes\": 8388608, \"retainedLogCount\": 3},\n"
-                + "  \"timeouts\": {\"setupSeconds\": 30, \"smokeRunSeconds\": 120, \"shutdownSeconds\": 15}\n"
+                + "  \"viewport\": {\n"
+                + "    \"width\": 1280,\n"
+                + "    \"height\": 720,\n"
+                + "    \"fullscreen\": false\n"
+                + "  },\n"
+                + "  \"diagnostics\": {\n"
+                + "    \"maxEventCount\": 4096,\n"
+                + "    \"maxEventPayloadBytes\": 4096,\n"
+                + "    \"maxLogBytes\": 8388608,\n"
+                + "    \"retainedLogCount\": 3\n"
+                + "  },\n"
+                + "  \"timeouts\": {\n"
+                + "    \"setupSeconds\": 30,\n"
+                + "    \"smokeRunSeconds\": 120,\n"
+                + "    \"shutdownSeconds\": 15\n"
+                + "  }\n"
                 + "}\n";
         }
 
