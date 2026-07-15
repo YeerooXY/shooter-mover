@@ -1,14 +1,13 @@
-# Shooter Mover Stage 1 Visible-Slice Planning Handoff
+# Shooter Mover Stage 1 Visible-Slice Materialization Handoff
 
 ## Current boundary
 
-Draft PR #104 is the sole visible-slice planning-amendment PR. It proposes a
-bounded screen-visible Stage 1 prototype and stable future task identities
-`VS-001` through `VS-007`.
+Merged PR #104 authorizes the bounded screen-visible Stage 1 prototype and
+stable task identities `VS-001` through `VS-007`.
 
-The amendment is not authoritative until PR #104 merges. Current generated task
-batches, the 103-task canonical backlog, collaboration state, and slots remain
-unchanged.
+Draft generated-only PR #110 materializes those identities as the tenth Stage 1
+batch, expands the canonical backlog from 103 to 110 tasks, and updates bounded
+collaboration/slot state without adding Unity implementation.
 
 ## Verified planning facts
 
@@ -28,11 +27,10 @@ unchanged.
   ideas are recorded in the amendment, but their submitted diffs are not merge
   candidates.
 
-## Proposed execution shape after merge
+## Accepted execution shape
 
-1. After PR #104 merges, the repository prompt preparer creates one
-   `stage1-visible-slice` batch containing VS-001 through VS-007, validates it,
-   and emits copy-ready contexts without another planning review.
+1. PR #110 contains one validated `stage1-visible-slice` batch with VS-001
+   through VS-007 and the rebuilt canonical backlog.
 2. VS-001 performs local temporary-art intake.
 3. VS-004, VS-005, and VS-006 may begin from accepted non-VS dependencies;
    VS-002 and VS-003 begin after VS-001 merges.
@@ -56,7 +54,7 @@ days and a 12.55-day S1.3 cap plus a revised calendar cap.
 
 ## Next action
 
-Review and merge PR #104. After the merge, run the repository prompt preparer
-from fresh current `main`, validate the generated graph, and emit the VS
-contexts. Do not generate, dispatch, or implement VS work before that approval
-boundary.
+Review and merge PR #110. Then dispatch EN-010, EN-011, VS-001, VS-004,
+VS-005, and VS-006 from the combined prepared context file. Keep WP-011
+deliberately deferred until after VS-007 and do not dispatch VS-002/VS-003 until
+VS-001 merges.
