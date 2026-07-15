@@ -39,10 +39,11 @@ simulation behavior.
 1. Open `Bootstrap`, enter Play Mode, and load the canonical EH-004 benchmark
    arena.
 2. While still in Play Mode, add
-   `Stage1BenchmarkEnemyEncounterArenaLoader` to the
-   `Stage1 Benchmark Arena` root, or invoke
-   `Stage1BenchmarkEnemyEncounterArenaLoader.AttachToLoadedArena()` from a
-   task-owned runner.
+   `Stage1BenchmarkEnemyEncounterManualRunner` to any loaded object. Its matching
+   script asset calls
+   `Stage1BenchmarkEnemyEncounterArenaLoader.AttachToLoadedArena()`, attaches the
+   selector to the arena root at runtime, and disables itself. This does not save
+   either scene.
 3. Use the on-screen buttons to select all seven fixtures in sequence.
 4. Use **Replay selected fixture** twice for each fixture.
 5. Confirm actor labels return to their original sockets and the active count
