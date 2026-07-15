@@ -46,8 +46,8 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   _floorSprite: {fileID: 21300000, guid: 8de5d0331ff04de4d907f37c89c6ffc6, type: 3}
   _crateSprite: {fileID: 21300000, guid: 372cfb91a69c59447b4e786a52011d16, type: 3}
-  _doorSprite: {fileID: 0}
-  _explosiveSprite: {fileID: 0}
+  _doorSprite: {fileID: 21300000, guid: afc7063bb434de4429eb628d3c83cbda, type: 3}
+  _explosiveSprite: {fileID: 21300000, guid: 6b445ca30fc647040803ad2012f4a163, type: 3}
   _reducedEffects: 0
   _roomSize: {x: 32, y: 18}
   _wallThickness: 0.75
