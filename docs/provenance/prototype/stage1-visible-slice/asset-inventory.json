@@ -1,34 +1,35 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "taskId": "VS-001",
   "intakeDate": "2026-07-15",
+  "latestRevisionDate": "2026-07-15",
   "status": "prototype-only",
   "originStatement": "Project owner states each selected image was generated with ChatGPT for this project and may be used in the project.",
   "unityVersion": "6000.3.19f1",
   "assets": [
     {
       "role": "floor",
-      "source": "source-assets/prototype/stage1-visible-slice/tile_concept_1.jfif",
-      "unityAsset": "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/floor_tile_concept_1.jpg",
-      "sha256": "76a31e7bc8dc9902d7e640ad9afc23dcb0d74dbdb573d384436ede095167bb4e",
-      "width": 1014,
-      "height": 1024,
-      "pixelFormat": "24-bit RGB",
-      "alpha": "none",
-      "import": "single sprite; 256 PPU; mipmaps off; repeat wrap; sRGB",
-      "limitation": "Near-square source; consumers must avoid visible seams and distortion when tiling."
-    },
-    {
-      "role": "enemy presentation reference",
-      "source": "source-assets/prototype/stage1-visible-slice/standing_turret_weak.png",
-      "unityAsset": "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/enemy_standing_turret_weak.png",
-      "sha256": "576ca873b3a671c99eb9aef326638473846e45a99f7661f66a453a03014e8ccd",
+      "source": "source-assets/prototype/stage1-visible-slice/replacements-2026-07-15/tile_concept_1.png",
+      "unityAsset": "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/floor_tile_concept_1.png",
+      "sha256": "0bd96d65a36f1cf68c3b8c117a63040f2e6d5521f7a9367fd223657299a06fa7",
       "width": 1254,
       "height": 1254,
       "pixelFormat": "24-bit RGB PNG",
-      "alpha": "none; checkerboard is baked into RGB pixels",
-      "import": "single opaque sprite; 256 PPU; mipmaps off; clamp wrap; sRGB",
-      "limitation": "Requires a clean transparent replacement before production use."
+      "alpha": "none; intentionally opaque",
+      "import": "single sprite; 256 PPU; mipmaps off; repeat wrap; sRGB",
+      "limitation": "Prototype floor; continuity must still be checked at the integration camera scale."
+    },
+    {
+      "role": "enemy presentation",
+      "source": "source-assets/prototype/stage1-visible-slice/replacements-2026-07-15/standing_turret_weak.png",
+      "unityAsset": "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/enemy_standing_turret_weak.png",
+      "sha256": "d98a39c8308f62a4a9a28b4207b4fbb5af36abe94decf2efae441d1e9ffbab8c",
+      "width": 1024,
+      "height": 1024,
+      "pixelFormat": "32-bit ARGB PNG",
+      "alpha": "real alpha; transparent corners confirmed",
+      "import": "single alpha sprite; alpha-as-transparency on; 256 PPU; mipmaps off; clamp wrap; sRGB",
+      "limitation": "Prototype scale, glow, and actor contrast require integration review."
     },
     {
       "role": "composition reference",
@@ -40,19 +41,19 @@
       "pixelFormat": "24-bit RGB PNG",
       "alpha": "none",
       "import": "single opaque sprite; 256 PPU; mipmaps off; clamp wrap; sRGB",
-      "limitation": "Reference image only; not a room layout, collision source, or shippable background."
+      "limitation": "Reference image only; not room layout, collision truth, or a shippable background."
     },
     {
-      "role": "door prop reference",
-      "source": "source-assets/prototype/stage1-visible-slice/door_idea_1.png",
+      "role": "door prop",
+      "source": "source-assets/prototype/stage1-visible-slice/replacements-2026-07-15/door_idea_1.png",
       "unityAsset": "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/prop_door_idea_1.png",
-      "sha256": "9fc279f3874927ab9b56bab489418024a9235275233de07a1bdbe59a40c44220",
+      "sha256": "a548d0ac037211352472a96c923102ef7ea0e8e030b4a1d08472f632491ec621",
       "width": 1024,
       "height": 1536,
-      "pixelFormat": "24-bit RGB PNG",
-      "alpha": "none; checkerboard is baked into RGB pixels",
-      "import": "single opaque sprite; 256 PPU; mipmaps off; clamp wrap; sRGB",
-      "limitation": "Requires a clean transparent replacement before production use."
+      "pixelFormat": "32-bit ARGB PNG",
+      "alpha": "real alpha; transparent corners confirmed",
+      "import": "single alpha sprite; alpha-as-transparency on; 256 PPU; mipmaps off; clamp wrap; sRGB",
+      "limitation": "Prototype orientation and scale require room-shell review."
     },
     {
       "role": "crate prop",
@@ -67,16 +68,34 @@
       "limitation": "Prototype scale and visual footprint must be checked at the intended camera framing."
     },
     {
-      "role": "explosive prop reference",
-      "source": "source-assets/prototype/stage1-visible-slice/explosive_1.png",
+      "role": "explosive prop presentation",
+      "source": "source-assets/prototype/stage1-visible-slice/replacements-2026-07-15/explosive_1.png",
       "unityAsset": "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/prop_explosive_1.png",
-      "sha256": "729d59736f78078af696d886cb686c925fb7ea9ae71853fb6f81ea9288ac1e85",
-      "width": 1254,
-      "height": 1254,
-      "pixelFormat": "24-bit RGB PNG",
-      "alpha": "none; checkerboard is baked into RGB pixels",
-      "import": "single opaque sprite; 256 PPU; mipmaps off; clamp wrap; sRGB",
-      "limitation": "Presentation only; it grants no explosive behavior and needs a clean cutout before production use."
+      "sha256": "300001466156dc8b513efdafc03319dbf883496094f45653c02d7fc176c69634",
+      "width": 1024,
+      "height": 1024,
+      "pixelFormat": "32-bit ARGB PNG",
+      "alpha": "real alpha; transparent corners confirmed",
+      "import": "single alpha sprite; alpha-as-transparency on; 256 PPU; mipmaps off; clamp wrap; sRGB",
+      "limitation": "Presentation only; this image grants no explosive behavior."
+    }
+  ],
+  "supersededSources": [
+    {
+      "source": "source-assets/prototype/stage1-visible-slice/tile_concept_1.jfif",
+      "sha256": "76a31e7bc8dc9902d7e640ad9afc23dcb0d74dbdb573d384436ede095167bb4e"
+    },
+    {
+      "source": "source-assets/prototype/stage1-visible-slice/standing_turret_weak.png",
+      "sha256": "576ca873b3a671c99eb9aef326638473846e45a99f7661f66a453a03014e8ccd"
+    },
+    {
+      "source": "source-assets/prototype/stage1-visible-slice/door_idea_1.png",
+      "sha256": "9fc279f3874927ab9b56bab489418024a9235275233de07a1bdbe59a40c44220"
+    },
+    {
+      "source": "source-assets/prototype/stage1-visible-slice/explosive_1.png",
+      "sha256": "729d59736f78078af696d886cb686c925fb7ea9ae71853fb6f81ea9288ac1e85"
     }
   ]
 }
