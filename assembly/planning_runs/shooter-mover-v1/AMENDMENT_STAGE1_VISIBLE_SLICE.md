@@ -8,15 +8,17 @@
 
 Prioritize one screen-visible Stage 1 prototype that reads as a dark industrial game room rather than placeholder/debug geometry. The prototype must let the human lead select a fixed loadout, enter one readable room, move, aim, fire, damage and destroy an enemy, read the Blaster Turret warning, observe HUD feedback, and restart to a clean initial state.
 
-This is a presentation and composition amendment, not a second game architecture. It does not authorize inventory, rewards, unlocks, progression, mission persistence, campaign saves, registry edits, final art acceptance, or a new collision/movement/combat authority.
+This is a presentation and composition amendment, not a second game architecture. It does not authorize inventory, rewards, unlocks, progression, mission persistence, campaign saves, registry edits, final-art acceptance, or a new collision/movement/combat authority.
 
 The accepted Stage 1 aggregate cap remains **50 focused lead days / 12 calendar weeks**. The amendment is funded by explicit resequencing and use of existing S1.2/S1.3 reserve; it does not silently increase either cap.
 
 ## Current-main verification and lifecycle gate
 
-At the planning branch point, current `main` is `103e6fdc3ba8024662137f660507ce6102e0a76c` (merged PR #101, EN-007). No merged visible-slice amendment, `VS-*` task card, generated visible-slice batch, or canonical-backlog entry exists on that commit.
+The planning branch was created from then-current `main` at `103e6fdc3ba8024662137f660507ce6102e0a76c` (merged PR #101, EN-007). While the planning PR was being prepared, `main` advanced through non-overlapping implementation merges, including the UF-002 audio-module follow-up and merged WP-010 PR #102. The latest verified `main` is `bf5f35fa439a1121e8f44e3ea523170a9e4aecdd`.
 
-WP-010 is an open draft implementation PR, not a merged dependency. Therefore this pull request performs the **planning-amendment stage only**. It must not create a `VS-*` task batch, modify `assembly/generated/task_backlog.json`, initialize slots, dispatch agents, or implement Unity assets. After this amendment merges, a fresh Task Splitter branch and separate PR may materialize the seven proposed tasks.
+No merged visible-slice amendment, `VS-*` task card, generated visible-slice batch, or canonical-backlog entry exists on that current main. WP-010 is now a **merged** dependency; its ownership remains exclusive and read-only to all VS tasks.
+
+Therefore this pull request performs the **planning-amendment stage only**. It must not create a `VS-*` task batch, modify `assembly/generated/task_backlog.json`, initialize slots, dispatch agents, or implement Unity assets. After this amendment merges, a fresh Task Splitter branch and separate PR may materialize the seven proposed tasks.
 
 ## Temporary art intake boundary
 
@@ -40,7 +42,7 @@ VS-001 is the sole local-intake task. It must copy only selected inputs, compute
 5. Scenes and presentation components consume immutable/read-only state or submit accepted messages. They do not decide durable room completion, reward, inventory, mission, or save truth.
 6. The visible slice may keep one deterministic **session-only** player-vital value inside the VS-007 TestSupport composition so incoming accepted damage can be shown and reset. It is prototype debt, cannot persist, cannot alter movement/collision authority, and cannot become a campaign-health or MissionRunState substitute.
 7. Reduced-effects behavior preserves timing, text/shape/count warnings, and essential HUD information. Color is always supplemental.
-8. WP-010 retains exclusive ownership of its four-slot weapon-status strip, temporary weapon audiovisual identity, folder, and focused test. VS-004 may position a reserved viewport region for that strip but may not duplicate, wrap, modify, restyle, or test its four slots.
+8. WP-010 retains exclusive ownership of its four-slot weapon-status strip, temporary weapon audiovisual identity, folder, and focused test. VS-004 may reserve viewport space for that strip but may not duplicate, wrap, modify, restyle, or test its four slots.
 
 ## Serialized ownership and concurrency
 
@@ -53,7 +55,7 @@ Only one task may own a serialized scene at a time.
 - VS-004 and VS-005 author task-local UI prefabs/assets, not the integration scene.
 - VS-006 authors a task-local camera/readability rig/configuration, not the integration scene.
 - Parallel VS-002 through VS-006 branches must contain no `.unity` scene change.
-- VS-007 starts only after its dependencies merge, composes their immutable assets into the one integration scene, and is the serial conflict-resolution owner. It does not copy another task's assets into a second folder.
+- VS-007 starts only after its dependencies merge, composes their immutable assets into the one integration scene, and is the serial conflict-resolution owner.
 
 Inseparable Unity `.meta` files are allowed only beside the exact task-owned paths. Parent-folder metadata must be assigned to the task that first creates that exact task-owned folder; no two tasks may create or rewrite the same parent `.meta`.
 
@@ -75,7 +77,7 @@ The following identities and ownership boundaries are proposed for the later Tas
 **Blocks:** VS-002, VS-003, VS-004, VS-005, VS-006, VS-007.  
 **Focused lead days:** **0.30**, allocated to S1.3 reserve.
 
-**Acceptance boundary:** exact originals and any Unity-ready derivatives are inventoried and checksummed after local intake; prototype-only use and removal path are explicit; unknown-rights assets are rejected; no gameplay, scene, prefab, UI, test, or generated-registry edit.
+**Acceptance boundary:** originals and Unity-ready derivatives are inventoried and checksummed after local intake; prototype-only use and removal are explicit; unknown-rights assets are rejected; no gameplay, scene, prefab, UI, test, or generated-registry edit.
 
 ### VS-002 — Build the dark industrial room presentation shell
 
@@ -105,7 +107,7 @@ The following identities and ownership boundaries are proposed for the later Tas
 **Blocks:** VS-007.  
 **Focused lead days:** **0.45**, allocated to S1.3 reserve.
 
-**Acceptance boundary:** EN-002/EN-007 remain authoritative; the presentation consumes immutable state/events and never applies damage, advances cadence, chooses a target, owns projectile execution, or edits `ContentPackages/Enemies/BlasterTurret/`. Warning timing remains EN-007-owned and readable without color or full effects.
+**Acceptance boundary:** EN-002/EN-007 remain authoritative; presentation consumes immutable state/events and never applies damage, advances cadence, chooses a target, owns projectile execution, or edits `ContentPackages/Enemies/BlasterTurret/`. Warning timing remains EN-007-owned and readable without color or full effects.
 
 ### VS-004 — Add the general combat HUD
 
@@ -116,11 +118,11 @@ The following identities and ownership boundaries are proposed for the later Tas
 - `Assets/ShooterMover/UI/VisibleSliceGeneralCombatHud/`
 - `Assets/ShooterMover/Tests/PlayMode/VisibleSliceGeneralCombatHud/`
 
-**Dependencies:** VS-001, CS-004, MT-011, CB-009, EN-002/EN-003; WP-010 is a layout input but remains separately owned.  
+**Dependencies:** VS-001, CS-004, MT-011, CB-009, EN-002/EN-003; merged WP-010 is a read-only layout input.  
 **Blocks:** VS-007.  
 **Focused lead days:** **0.45**, allocated to S1.2 reserve.
 
-**Acceptance boundary:** injected read-only status sources only; no player-vital mutation, enemy mutation, objective completion decision, scene edit, persistence, or WP-010 folder/test change. Reticle/hit confirmation must correspond to accepted aim/confirmed-hit facts. Critical health/thruster/objective information cannot depend on color.
+**Acceptance boundary:** injected read-only status sources only; no player-vital mutation, enemy mutation, objective completion decision, scene edit, persistence, or WP-010 folder/test change. Reticle/hit confirmation corresponds to accepted aim/confirmed-hit facts. Critical health/thruster/objective information cannot depend on color.
 
 ### VS-005 — Add the temporary fixed-loadout selector
 
@@ -154,7 +156,7 @@ The following identities and ownership boundaries are proposed for the later Tas
 
 ### VS-007 — Compose and prove the final Stage 1 visible slice
 
-**Purpose:** serially compose the accepted runtime, encounter fixtures, imported/presentation assets, general HUD, WP-010 strip, fixed-loadout selector, and camera rig into one playable prototype scene.
+**Purpose:** serially compose accepted runtime/encounter fixtures, imported presentation assets, general HUD, WP-010 strip, fixed-loadout selector, and camera rig into one playable prototype scene.
 
 **Allowed paths:**
 
@@ -172,14 +174,14 @@ The following identities and ownership boundaries are proposed for the later Tas
 ## Dependency and dispatch order
 
 1. Merge this planning amendment.
-2. In a **separate Task Splitter PR**, create a dedicated `stage1-visible-slice` batch, materialize VS-001 through VS-007, update the canonical backlog/index/collaboration artifacts, and validate exact path ownership and an acyclic graph.
+2. In a **separate Task Splitter PR**, create a dedicated `stage1-visible-slice` batch, materialize VS-001 through VS-007, update canonical backlog/index/collaboration artifacts, and validate exact path ownership and an acyclic graph.
 3. Do not dispatch any VS task from the planning PR.
 4. Dispatch VS-001 first through a local worktree that can access the named files.
 5. After VS-001 merges, VS-002 through VS-006 may run concurrently when their non-VS dependencies are merged. None may edit `Stage1VisibleSlice.unity`.
-6. WP-010 must merge with its own focused proof before VS-007; its open draft does not satisfy the dependency.
+6. WP-010 is merged on current main; every VS card must preserve its exact ownership and consume it read-only.
 7. EN-009 validates the enemy roster; EN-010 and EN-011 provide accepted encounter inputs before VS-007.
 8. VS-007 runs last, on fresh current `main`, as the sole integration-scene owner.
-9. After VS-007 proof, resume the deeper WP-011/WP-012, EN-012/EN-013, AR, and Stage 1 gate evidence sequence against the materially visible prototype. This is resequencing, not evidence removal.
+9. After VS-007 proof, resume deeper WP-011/WP-012, EN-012/EN-013, AR, and Stage 1 gate evidence against the materially visible prototype. This is resequencing, not evidence removal.
 
 ## Focused-day and cap impact
 
@@ -209,7 +211,7 @@ The later task cards must require, at minimum:
 - loadout-selection trace proving WP-008 fixture identity and no persistence;
 - VS-007 end-to-end PlayMode log and fifty-restart leak summary;
 - manual playable check for loadout selection, room readability, movement, aiming, firing, hit confirmation, enemy health/damage/death, turret warning, objective/room clear, and clean restart;
-- explicit statement that the evidence demonstrates a prototype composition, not final art, final balance, Stage 1 gate acceptance, or durable game state.
+- explicit statement that evidence demonstrates a prototype composition, not final art, final balance, Stage 1 gate acceptance, or durable game state.
 
 Where EH-008/EH-009/EH-010 manifested evidence entrypoints are available, VS-007 should be captured through them after the direct focused test passes. Technical validity remains separate from visual/feel observations.
 
@@ -218,7 +220,7 @@ Where EH-008/EH-009/EH-010 manifested evidence entrypoints are available, VS-007
 - no Unity implementation in this amendment;
 - no generated backlog/batch/slot/collaboration update in this amendment;
 - no local-asset inspection or checksum claim in this amendment;
-- no final art, animation, VFX, audio, shader, or lighting pipeline acceptance;
+- no final art, animation, VFX, audio, shader, or lighting-pipeline acceptance;
 - no inventory, rewards, unlocks, shops, progression, save, mission persistence, or durable room-clear state;
 - no collision, movement, combat, enemy-health, turret-cadence, encounter, registry, or input-authority redesign;
 - no edit to WP-010-owned paths or tests;
@@ -226,4 +228,4 @@ Where EH-008/EH-009/EH-010 manifested evidence entrypoints are available, VS-007
 
 ## Rollback
 
-Before task generation, rollback is one planning revert: remove this amendment and restore the prior milestone/handoff wording. After a later Task Splitter PR materializes VS tasks, rollback must remove the dedicated visible-slice batch and VS-001 through VS-007 from generated artifacts as one graph change. Implementation rollback remains task-local; VS-007 scene/composition removal must not require reverting accepted movement, combat, enemy, WP-010, EN-009, EN-010, or EN-011 work.
+Before task generation, rollback is one planning revert: remove this amendment and restore prior milestone/handoff wording. After a later Task Splitter PR materializes VS tasks, rollback must remove the dedicated visible-slice batch and VS-001 through VS-007 from generated artifacts as one graph change. Implementation rollback remains task-local; VS-007 scene/composition removal must not require reverting accepted movement, combat, enemy, WP-010, EN-009, EN-010, or EN-011 work.
