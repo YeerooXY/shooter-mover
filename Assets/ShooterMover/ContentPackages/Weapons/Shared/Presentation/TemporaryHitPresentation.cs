@@ -5,7 +5,8 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Presentation
     /// <summary>
     /// Optional short-lived presentation marker detached from a projectile on a
     /// confirmed hit. It owns no damage, target identity, target selection, audio,
-    /// or final visual-effect policy.
+    /// or final visual-effect policy. Projectile execution remains bound to the
+    /// explicit PhysicsScene2D supplied by the accepted mount adapter.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class TemporaryHitPresentation : MonoBehaviour
