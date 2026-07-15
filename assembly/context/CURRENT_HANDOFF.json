@@ -6,7 +6,7 @@
   "active_role": "planning_amendment_agent",
   "active_branch": "agent/amend-stage1-visible-slice",
   "active_pr": 104,
-  "last_verified_commit": "7d0783f5dc0823f65cffcf2da1e4cfb3921cdf07",
+  "last_verified_commit": "bf5f35fa439a1121e8f44e3ea523170a9e4aecdd",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -72,24 +72,23 @@
     "docs/architecture/FILE_OWNERSHIP.md"
   ],
   "current_section": "stage1_visible_slice_planning_amendment_review",
-  "last_completed_item": "Planning PR #104 was opened from a fresh branch with a bounded VS-001 through VS-007 proposal, exact serialized ownership, dependency gates, Unity proof requirements, and a 3.15-focused-day reserve allocation. No generated backlog or Unity implementation was changed.",
+  "last_completed_item": "Planning PR #104 was opened with a bounded VS-001 through VS-007 proposal. Current main was reverified after WP-010 merged through PR #102; its presentation folder and focused test remain exclusive VS read-only inputs.",
   "current_item": "Review draft PR #104. It is the planning-amendment boundary only; the visible-slice amendment and VS identities are not authoritative until merge.",
   "next_action": "Review and merge PR #104. After it merges, verify the amendment from fresh current main, then open one separate Task Splitter PR that materializes and validates VS-001 through VS-007 without dispatching or implementing them.",
   "blockers": [
     "The visible-slice amendment is not authoritative until PR #104 merges.",
-    "WP-010 remains open draft PR #102 and does not satisfy the VS-007 dependency until merged with its own proof.",
     "The named local sprites remain unavailable through GitHub and cannot be inspected or checksummed until VS-001 runs in a local intake worktree.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-15T17:34:00+02:00"
+    "last_persisted_at": "2026-07-15T17:40:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-15T17:34:00+02:00"
+  "updated_at": "2026-07-15T17:40:00+02:00"
 }
