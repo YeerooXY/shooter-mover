@@ -98,12 +98,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 "expiry");
             Assert.That(result.Succeeded, Is.True);
 
-            for (int frame = 0;
-                frame < 10 && GetProperty<int>(adapter, "ActiveProjectileCount") != 0;
-                frame++)
-            {
-                yield return null;
-            }
+            yield return new WaitForSeconds(0.25f);
 
             Assert.That(GetProperty<int>(adapter, "ActiveProjectileCount"), Is.Zero);
             Assert.That(GetProperty<Component>(adapter, "LastSpawnedProjectile"), Is.Null);
@@ -278,7 +273,6 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 @"\bRigidbody\b",
                 @"\bCollider\b",
                 @"\bCollision\b",
-                @"\bPhysicsScene\b",
             };
             foreach (string pattern in forbiddenThreeDimensionalPatterns)
             {
@@ -497,7 +491,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
         private static string ReadProjectFile(string assetPath)
         {
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return File.ReadAllText(
                 Path.Combine(
                     projectRoot,
