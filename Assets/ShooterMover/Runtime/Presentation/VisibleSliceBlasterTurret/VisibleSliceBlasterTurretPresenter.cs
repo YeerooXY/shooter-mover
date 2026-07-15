@@ -38,7 +38,6 @@ namespace ShooterMover.Presentation.VisibleSliceBlasterTurret
         private LineRenderer warningTriangle;
         private LineRenderer[] warningTicks;
         private LineRenderer firingFlash;
-        private Vector3 initialBodyScale;
         private bool visualsCreated;
         private VisibleSliceBlasterTurretSnapshot lastSnapshot;
 
@@ -295,7 +294,6 @@ namespace ShooterMover.Presentation.VisibleSliceBlasterTurret
             }
 
             bodyRenderer = GetComponent<SpriteRenderer>();
-            initialBodyScale = transform.localScale;
             lineMaterial = CreateLineMaterial();
             stateText = CreateText("State", new Vector3(0f, 1.18f, 0f), 0.12f, 40);
             healthText = CreateText("Health", new Vector3(0f, 0.94f, 0f), 0.10f, 40);
@@ -371,7 +369,7 @@ namespace ShooterMover.Presentation.VisibleSliceBlasterTurret
             line.endWidth = width;
             line.numCapVertices = 2;
             line.numCornerVertices = 2;
-            line.material = lineMaterial;
+            line.sharedMaterial = lineMaterial;
             line.sortingLayerID = bodyRenderer.sortingLayerID;
             line.sortingOrder = sortingOrder;
             return line;
@@ -400,18 +398,20 @@ namespace ShooterMover.Presentation.VisibleSliceBlasterTurret
                 out damageColor);
 
             bodyRenderer.enabled = true;
-            bodyRenderer.color = bodyColor;
+            float luminancePulse = frame.OptionalPulse
+                ? 1f + (0.06f * Mathf.Sin((float)nowSeconds * 12f))
+                : 1f;
+            bodyRenderer.color = new Color(
+                Mathf.Clamp01(bodyColor.r * luminancePulse),
+                Mathf.Clamp01(bodyColor.g * luminancePulse),
+                Mathf.Clamp01(bodyColor.b * luminancePulse),
+                bodyColor.a);
             stateText.gameObject.SetActive(true);
             healthText.gameObject.SetActive(true);
             stateText.text = frame.StateText;
             healthText.text = frame.HealthText;
             stateText.color = primaryColor;
             healthText.color = primaryColor;
-
-            float pulse = frame.OptionalPulse
-                ? 1f + (0.06f * Mathf.Sin((float)nowSeconds * 12f))
-                : 1f;
-            transform.localScale = initialBodyScale * pulse;
 
             healthBackground.gameObject.SetActive(true);
             healthFill.gameObject.SetActive(true);
@@ -529,7 +529,6 @@ namespace ShooterMover.Presentation.VisibleSliceBlasterTurret
                 return;
             }
 
-            transform.localScale = initialBodyScale;
             bodyRenderer.enabled = false;
             stateText.gameObject.SetActive(false);
             healthText.gameObject.SetActive(false);
