@@ -526,7 +526,7 @@ namespace ShooterMover.Tests.PlayMode.Enemies
 
         private static string ProjectPath(string projectPath)
         {
-            string root = Directory.GetParent(Application.dataPath).FullName;
+            string root = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             string localPath = projectPath.Replace('/', Path.DirectorySeparatorChar);
             return Path.Combine(root, localPath);
         }
