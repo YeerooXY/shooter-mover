@@ -1,4 +1,5 @@
 using ShooterMover.Contracts.Content;
+using ShooterMover.ContentPackages.Weapons.Stage1;
 using ShooterMover.Domain.Combat;
 using ShooterMover.Domain.Common;
 

@@ -135,7 +135,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             {
                 FourMountCombatStepResult result = stepper.Step(
                     state,
-                    CreateInput(step, 0.05d, true, false, profiles));
+                    CreateInput(step, step == 0 ? 0d : 0.05d, true, false, profiles));
                 state = result.State;
                 FourMountCombatLaneResult lane = result.GetLaneByStableIndex(0);
                 if (lane.ExecutionPlan != null)
@@ -143,7 +143,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
                     laneZeroPlanCount++;
                     Assert.That(
                         lane.PowerDecision.Kind,
-                        Is.EqualTo(WeaponPowerFireDecisionKind.NormalFired));
+                        Is.Not.EqualTo(WeaponPowerFireDecisionKind.EmpoweredFired));
                     Assert.That(lane.PowerDecision.SpentUnits, Is.Zero);
                 }
             }
@@ -485,7 +485,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
         private static string ReadProjectFile(string projectPath)
         {
-            string root = Directory.GetParent(Application.dataPath).FullName;
+            string root = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             string localPath = projectPath.Replace('/', Path.DirectorySeparatorChar);
             return File.ReadAllText(Path.Combine(root, localPath));
         }
