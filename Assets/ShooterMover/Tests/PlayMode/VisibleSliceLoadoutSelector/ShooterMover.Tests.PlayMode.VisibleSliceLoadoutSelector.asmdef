@@ -1,0 +1,21 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.VisibleSliceLoadoutSelector",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.VisibleSliceLoadoutSelector",
+  "references": [
+    "ShooterMover.UI.VisibleSliceLoadoutSelector.Core",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
