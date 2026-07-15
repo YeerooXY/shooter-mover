@@ -21,7 +21,7 @@ Normal and empowered fire use the same automatic-projectile behavior module, the
 one-projectile topology, the same operation kind, and the same kinetic combat channel.
 Empowerment changes numeric projectile and descriptor coefficient values only. When a
 mount's independent power bank cannot afford an empowered shot, CB-003/CB-006 immediately
-select normal fire; the module therefore emits the identical normal-fire topology without
+select normal fire. The fallback preserves the same one-projectile topology without
 consulting or affecting another mount's bank.
 
 ## Manual baseline/readability note
