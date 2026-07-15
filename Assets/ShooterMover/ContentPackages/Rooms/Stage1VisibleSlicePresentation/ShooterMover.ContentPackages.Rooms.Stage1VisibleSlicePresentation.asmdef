@@ -1,0 +1,14 @@
+{
+  "name": "ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation",
+  "rootNamespace": "ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
