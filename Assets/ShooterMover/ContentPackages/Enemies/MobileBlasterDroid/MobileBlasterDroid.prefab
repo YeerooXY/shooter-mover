@@ -1,5 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+# MobileBlasterDroidDefinition and the accepted shared BoundedProjectile2D prefab are serialized below.
 --- !u!1 &100100000
 GameObject:
   m_ObjectHideFlags: 0
