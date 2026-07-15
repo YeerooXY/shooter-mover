@@ -305,13 +305,16 @@ if ($missingArtifacts.Count -gt 0) {
 
 New-Item -ItemType File -Path $artifactListPath -Force | Out-Null
 $outputPrefix = $ownedOutputRoot.TrimEnd($pathTrimCharacters) + [System.IO.Path]::DirectorySeparatorChar
-$artifactLines = Get-ChildItem -LiteralPath $ownedOutputRoot -File -Recurse |
+$artifactLines = @(Get-ChildItem -LiteralPath $ownedOutputRoot -File -Recurse |
     ForEach-Object {
         $_.FullName.Substring($outputPrefix.Length) -replace '\\', '/'
-    } |
-    Sort-Object
-
-$artifactLines | Set-Content -LiteralPath $artifactListPath -Encoding UTF8
+    })
+[System.Array]::Sort($artifactLines, [System.StringComparer]::Ordinal)
+$artifactListText = [string]::Join("`n", $artifactLines) + "`n"
+[System.IO.File]::WriteAllText(
+    $artifactListPath,
+    $artifactListText,
+    (New-Object System.Text.UTF8Encoding($false)))
 
 if (-not (Test-Path -LiteralPath $artifactListPath -PathType Leaf)) {
     throw "Artifact inventory was not written to '$artifactListPath'."

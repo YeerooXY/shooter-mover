@@ -92,8 +92,12 @@ function Assert-Uf010BuildContract {
     param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
 
     $buildSettingsPath = Join-Path $RepositoryRoot "ProjectSettings\EditorBuildSettings.asset"
+    $buildScriptPath = Join-Path $RepositoryRoot "tools\build\Build-WindowsDevelopment.ps1"
     if (-not (Test-Path -LiteralPath $buildSettingsPath -PathType Leaf)) {
         throw "UF-010 EditorBuildSettings.asset is missing."
+    }
+    if (-not (Test-Path -LiteralPath $buildScriptPath -PathType Leaf)) {
+        throw "UF-010 Build-WindowsDevelopment.ps1 is missing."
     }
     $text = [System.IO.File]::ReadAllText($buildSettingsPath)
     $enabledCount = [regex]::Matches(
@@ -104,6 +108,11 @@ function Assert-Uf010BuildContract {
     }
     if (-not $text.Contains("path: Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity")) {
         throw "UF-010 enabled build scene is not the accepted Bootstrap shell."
+    }
+
+    $buildScript = [System.IO.File]::ReadAllText($buildScriptPath)
+    if (-not $buildScript.Contains("[System.StringComparer]::Ordinal")) {
+        throw "UF-010 build-artifacts.txt must use ordinal artifact ordering for EH-008 manifests."
     }
 }
 

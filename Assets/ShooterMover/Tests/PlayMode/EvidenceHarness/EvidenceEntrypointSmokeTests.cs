@@ -143,6 +143,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "Stopwatch",
                 "StartupTimeoutSeconds",
                 "& $PowerShellExecutable @Arguments",
+                "StringComparer]::Ordinal",
                 "startupPasses = 2",
                 "restartVerified = $true",
                 "run_editmode_smoke.ps1");
