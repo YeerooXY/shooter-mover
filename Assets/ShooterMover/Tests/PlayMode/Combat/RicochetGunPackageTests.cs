@@ -286,8 +286,8 @@ namespace ShooterMover.Tests.PlayMode.Combat
                     RuntimeTypes.Package,
                     "CreateRuntimeProfile",
                     false);
-            WeaponPowerBankState emptyBank =
-                WeaponPowerBankState.FromProfile(normalProfile, 0d);
+            ShooterMover.Domain.Combat.WeaponPowerBankState emptyBank =
+                ShooterMover.Domain.Combat.WeaponPowerBankState.FromProfile(normalProfile, 0d);
             WeaponPowerFireDecision decision =
                 WeaponPowerBankPolicy.ResolveFire(emptyBank, true, true);
 
@@ -628,7 +628,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
         private static string ProjectPath(string assetPath)
         {
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return Path.Combine(
                 projectRoot,
                 assetPath.Replace('/', Path.DirectorySeparatorChar));
