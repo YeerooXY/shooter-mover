@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.Contracts.Combat;
@@ -427,6 +428,9 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
     {
         public const double StationaryAdapterSpeedBoundary = 1d;
 
+        private const ulong Fnv64OffsetBasis = 14695981039346656037UL;
+        private const ulong Fnv64Prime = 1099511628211UL;
+
         private static readonly StableId MountIdValue =
             StableId.Parse("weapon-mount.blaster-turret-primary");
 
@@ -731,9 +735,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 return Result(BlasterTurretStepStatus.Inactive, step, false, -1L, null, null);
             }
 
-            actorAdapter.ExecuteFixedStep(deltaTimeSeconds);
-            RestoreStationaryAnchor();
-
             EnemyActorState state;
             if (!authority.TryReadState(out state) || state == null || !state.IsActive)
             {
@@ -769,7 +770,10 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 (float)target.PositionY);
             Vector2 delta = targetPosition - anchorPosition;
             float distance = delta.magnitude;
-            if (distance <= 0.0001f)
+            float minimumTargetDistance = Mathf.Max(
+                0.0001f,
+                (float)definition.MuzzleOffset + 0.0001f);
+            if (distance <= minimumTargetDistance)
             {
                 CancelAttackState(true);
                 AdvanceFixedStep();
@@ -797,11 +801,28 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
             Vector2 direction = delta / distance;
             Vector2 muzzle = anchorPosition + (direction * (float)definition.MuzzleOffset);
-            bool clear = lineOfFireSource.HasClearLine(
-                muzzle,
-                targetPosition,
-                fireTargetCollider,
-                enemyCollider);
+            bool clear;
+            try
+            {
+                clear = lineOfFireSource.HasClearLine(
+                    muzzle,
+                    targetPosition,
+                    fireTargetCollider,
+                    enemyCollider);
+            }
+            catch (MissingReferenceException)
+            {
+                clear = false;
+            }
+            catch (InvalidOperationException)
+            {
+                clear = false;
+            }
+            catch (ArgumentException)
+            {
+                clear = false;
+            }
+
             if (!clear)
             {
                 CancelAttackState(true);
@@ -1004,14 +1025,29 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
         private StableId CreateCombatEventId(long shotSequence)
         {
-            uint actorHash = unchecked((uint)authority.CurrentState.ActorId.GetHashCode());
             string value = "turret-"
-                + actorHash.ToString("x8")
+                + CreateActorToken(authority.CurrentState.ActorId)
                 + "-g"
-                + generation
+                + generation.ToString(CultureInfo.InvariantCulture)
                 + "-s"
-                + shotSequence;
+                + shotSequence.ToString(CultureInfo.InvariantCulture);
             return StableId.Create("combat-event", value);
+        }
+
+        private static string CreateActorToken(StableId actorId)
+        {
+            string canonical = actorId.ToString();
+            ulong hash = Fnv64OffsetBasis;
+            unchecked
+            {
+                for (int index = 0; index < canonical.Length; index++)
+                {
+                    hash ^= canonical[index];
+                    hash *= Fnv64Prime;
+                }
+            }
+
+            return hash.ToString("x16", CultureInfo.InvariantCulture);
         }
 
         private void CancelAttackState(bool cancelProjectiles)
