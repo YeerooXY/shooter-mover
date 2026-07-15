@@ -62,25 +62,8 @@ function Invoke-EditorEngine {
         throw "Could not resolve the current PowerShell executable."
     }
 
-    $argumentLine = ($Arguments | ForEach-Object {
-        ConvertTo-ProcessArgument -Argument $_
-    }) -join " "
-
-    $process = $null
-    try {
-        $process = Start-Process `
-            -FilePath $hostExecutable `
-            -ArgumentList $argumentLine `
-            -PassThru `
-            -Wait `
-            -NoNewWindow
-        return $process.ExitCode
-    }
-    finally {
-        if ($null -ne $process) {
-            $process.Dispose()
-        }
-    }
+    & $hostExecutable @Arguments
+    return $LASTEXITCODE
 }
 
 try {

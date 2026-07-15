@@ -116,6 +116,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "build_evidence_manifest.py",
                 "\"build\", \"--package-root\"",
                 "\"verify\", \"--package-root\"",
+                "& $FilePath @Arguments",
                 "--require-valid");
             AssertTokens(
                 play,
@@ -125,6 +126,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "PlayMode",
                 "-InternalEntrypointName",
                 "playmode",
+                "& $hostExecutable @Arguments",
                 "EntryPoint_SceneAndSessionSmoke_ReturnsToCleanBootstrap");
             AssertTokens(
                 windows,
@@ -137,6 +139,7 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "MainWindowHandle",
                 "Stopwatch",
                 "StartupTimeoutSeconds",
+                "& $PowerShellExecutable @Arguments",
                 "startupPasses = 2",
                 "restartVerified = $true",
                 "run_editmode_smoke.ps1");

@@ -213,7 +213,9 @@ The scripts return `0` only after the requested layer passes and EH-008 builds
 and verifies a valid manifest. Expected local validation failures use actionable
 nonzero codes. Most importantly, a Unity, Python, UF-010, nested PowerShell, or
 standalone-player nonzero result is returned unchanged rather than collapsed to
-a false success. Unexpected orchestration exceptions return `1`.
+a false success. Wrapper processes invoke only their direct child rather than
+waiting on an unrelated descendant process tree. Unexpected orchestration
+exceptions return `1`.
 
 A failed run may leave a partial caller-owned directory for diagnosis. That
 partial directory is intentionally not reusable: rerunning against it is

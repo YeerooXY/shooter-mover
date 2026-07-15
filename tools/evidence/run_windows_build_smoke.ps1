@@ -58,52 +58,33 @@ function Invoke-PowerShellChild {
         [Parameter()][string]$LogPath
     )
 
-    $argumentLine = ($Arguments | ForEach-Object {
-        ConvertTo-ProcessArgument -Argument $_
-    }) -join " "
+    if ([string]::IsNullOrWhiteSpace($LogPath)) {
+        & $PowerShellExecutable @Arguments
+        return $LASTEXITCODE
+    }
 
-    $process = $null
+    $stdoutPath = $LogPath + ".stdout.tmp"
+    $stderrPath = $LogPath + ".stderr.tmp"
+    Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
     try {
-        if ([string]::IsNullOrWhiteSpace($LogPath)) {
-            $process = Start-Process `
-                -FilePath $PowerShellExecutable `
-                -ArgumentList $argumentLine `
-                -PassThru `
-                -Wait `
-                -NoNewWindow
-        }
-        else {
-            $stdoutPath = $LogPath + ".stdout.tmp"
-            $stderrPath = $LogPath + ".stderr.tmp"
-            Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
-            $process = Start-Process `
-                -FilePath $PowerShellExecutable `
-                -ArgumentList $argumentLine `
-                -PassThru `
-                -Wait `
-                -NoNewWindow `
-                -RedirectStandardOutput $stdoutPath `
-                -RedirectStandardError $stderrPath
+        & $PowerShellExecutable @Arguments 1> $stdoutPath 2> $stderrPath
+        $childExit = $LASTEXITCODE
 
-            $text = ""
-            if (Test-Path -LiteralPath $stdoutPath -PathType Leaf) {
-                $text += [System.IO.File]::ReadAllText($stdoutPath)
-            }
-            if (Test-Path -LiteralPath $stderrPath -PathType Leaf) {
-                if ($text.Length -gt 0) {
-                    $text += "`n"
-                }
-                $text += [System.IO.File]::ReadAllText($stderrPath)
-            }
-            [System.IO.File]::WriteAllText($LogPath, $text, $script:Utf8NoBom)
-            Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        $text = ""
+        if (Test-Path -LiteralPath $stdoutPath -PathType Leaf) {
+            $text += [System.IO.File]::ReadAllText($stdoutPath)
         }
-        return $process.ExitCode
+        if (Test-Path -LiteralPath $stderrPath -PathType Leaf) {
+            if ($text.Length -gt 0) {
+                $text += "`n"
+            }
+            $text += [System.IO.File]::ReadAllText($stderrPath)
+        }
+        [System.IO.File]::WriteAllText($LogPath, $text, $script:Utf8NoBom)
+        return $childExit
     }
     finally {
-        if ($null -ne $process) {
-            $process.Dispose()
-        }
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
     }
 }
 

@@ -188,17 +188,9 @@ function Invoke-Child {
     $stderrPath = $LogPath + ".stderr.tmp"
     Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
 
-    $argumentLine = ($Arguments | ForEach-Object { ConvertTo-ProcessArgument -Argument $_ }) -join " "
-    $process = $null
     try {
-        $process = Start-Process `
-            -FilePath $FilePath `
-            -ArgumentList $argumentLine `
-            -PassThru `
-            -Wait `
-            -NoNewWindow `
-            -RedirectStandardOutput $stdoutPath `
-            -RedirectStandardError $stderrPath
+        & $FilePath @Arguments 1> $stdoutPath 2> $stderrPath
+        $childExit = $LASTEXITCODE
 
         $builder = New-Object System.Text.StringBuilder
         if (Test-Path -LiteralPath $stdoutPath -PathType Leaf) {
@@ -211,15 +203,12 @@ function Invoke-Child {
             [void]$builder.Append([System.IO.File]::ReadAllText($stderrPath))
         }
         [System.IO.File]::WriteAllText($LogPath, $builder.ToString(), $script:Utf8NoBom)
-        return $process.ExitCode
+        return $childExit
     }
     catch {
         Throw-Eh009 -Code 5 -Message "Could not start child process '$FilePath'. Details: $($_.Exception.Message)"
     }
     finally {
-        if ($null -ne $process) {
-            $process.Dispose()
-        }
         Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
     }
 }
