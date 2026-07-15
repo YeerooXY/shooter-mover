@@ -8,6 +8,8 @@ using ShooterMover.Domain.Movement;
 using ShooterMover.UI.VisibleSliceGeneralCombatHud;
 using UnityEngine;
 using UnityEngine.TestTools;
+using GeneralCombatHudComponent =
+    ShooterMover.UI.VisibleSliceGeneralCombatHud.VisibleSliceGeneralCombatHud;
 
 namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
 {
@@ -77,8 +79,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
             GameObject host = new GameObject("VS-004 HUD Test");
             try
             {
-                VisibleSliceGeneralCombatHud hud =
-                    host.AddComponent<VisibleSliceGeneralCombatHud>();
+                GeneralCombatHudComponent hud =
+                    host.AddComponent<GeneralCombatHudComponent>();
                 hud.SetHitConfirmationSeconds(0.20f);
                 hud.Present(CreateSnapshot(), 10d);
 
@@ -125,8 +127,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
             GeneralCombatHudSnapshot generationTwo = CreateSnapshot(restartGeneration: 2L);
             try
             {
-                VisibleSliceGeneralCombatHud hud =
-                    host.AddComponent<VisibleSliceGeneralCombatHud>();
+                GeneralCombatHudComponent hud =
+                    host.AddComponent<GeneralCombatHudComponent>();
                 hud.Present(generationOne, 2d);
                 Assert.That(
                     hud.AcceptHitFact(
@@ -162,8 +164,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
             GameObject host = new GameObject("VS-004 Source Test");
             try
             {
-                VisibleSliceGeneralCombatHud hud =
-                    host.AddComponent<VisibleSliceGeneralCombatHud>();
+                GeneralCombatHudComponent hud =
+                    host.AddComponent<GeneralCombatHudComponent>();
                 hud.BindSources(stateSource, hitSource);
 
                 Assert.That(hud.RefreshFromSources(4d), Is.True);
@@ -191,8 +193,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
             GameObject host = new GameObject("VS-004 Visibility Test");
             try
             {
-                VisibleSliceGeneralCombatHud hud =
-                    host.AddComponent<VisibleSliceGeneralCombatHud>();
+                GeneralCombatHudComponent hud =
+                    host.AddComponent<GeneralCombatHudComponent>();
                 GeneralCombatHudSnapshot snapshot = CreateSnapshot(playerHealth: 60d);
                 hud.Present(snapshot, 1d);
                 GeneralCombatHudFrame projected = hud.CurrentFrame;
