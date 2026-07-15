@@ -53,14 +53,20 @@ namespace ShooterMover.Tests.PlayMode.Presentation.RoomOverlay
             Assert.That(layout.ContentArea.yMin, Is.GreaterThanOrEqualTo(view.SafeMargin));
             Assert.That(layout.ContentArea.xMax, Is.LessThanOrEqualTo(safeArea.xMax - view.SafeMargin));
             Assert.That(layout.ContentArea.yMax, Is.LessThanOrEqualTo(safeArea.yMax - view.SafeMargin - view.BottomHudReserve));
-            Assert.That(layout.ContentArea.Contains(layout.PrimaryPanel.min), Is.True);
-            Assert.That(layout.ContentArea.Contains(layout.PrimaryPanel.max), Is.True);
+            AssertInside(layout.PrimaryPanel, layout.ContentArea);
             Assert.That(layout.HasStatusPanel, Is.True);
-            Assert.That(layout.ContentArea.Contains(layout.StatusPanel.min), Is.True);
-            Assert.That(layout.ContentArea.Contains(layout.StatusPanel.max), Is.True);
+            AssertInside(layout.StatusPanel, layout.ContentArea);
 
             Object.Destroy(root);
             yield return null;
+        }
+
+        private static void AssertInside(Rect inner, Rect outer)
+        {
+            Assert.That(inner.xMin, Is.GreaterThanOrEqualTo(outer.xMin));
+            Assert.That(inner.yMin, Is.GreaterThanOrEqualTo(outer.yMin));
+            Assert.That(inner.xMax, Is.LessThanOrEqualTo(outer.xMax));
+            Assert.That(inner.yMax, Is.LessThanOrEqualTo(outer.yMax));
         }
     }
 }
