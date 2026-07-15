@@ -126,7 +126,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                     return id != disappearing;
                 });
 
-            Assert.That(GetTargetIds(result), Does.Not.Contain(disappearing));
+            Assert.That(GetTargetIds(result).Contains(disappearing), Is.False);
             Assert.That(GetTargetIds(result).First(), Is.EqualTo(Id("enemy.arc-b")));
             Assert.That(confirmationAttempts, Does.Contain(disappearing));
             Assert.That(confirmationAttempts.Count(id => id == disappearing), Is.EqualTo(1));
@@ -153,7 +153,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             List<StableId> ids = GetTargetIds(result);
 
             Assert.That(ids, Is.Unique);
-            Assert.That(ids, Does.Not.Contain(Id("enemy.arc-primary")));
+            Assert.That(ids.Contains(Id("enemy.arc-primary")), Is.False);
             Assert.That(ids.Count(id => id == Id("enemy.arc-a")), Is.EqualTo(1));
             TestContext.WriteLine("no-repeat primary=false duplicate-a-hits=1 unique=true");
         }
@@ -271,7 +271,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             MethodInfo method = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .Single(candidate => candidate.Name == methodName
                     && candidate.GetParameters().Length == arguments.Length);
-            return Invoke(method, null, arguments);
+            return InvokeMethod(method, null, arguments);
         }
 
         private static object Invoke(object instance, string methodName, params object[] arguments)
@@ -280,10 +280,10 @@ namespace ShooterMover.Tests.EditMode.Combat
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Single(candidate => candidate.Name == methodName
                     && candidate.GetParameters().Length == arguments.Length);
-            return Invoke(method, instance, arguments);
+            return InvokeMethod(method, instance, arguments);
         }
 
-        private static object Invoke(MethodInfo method, object instance, object[] arguments)
+        private static object InvokeMethod(MethodInfo method, object instance, object[] arguments)
         {
             try
             {

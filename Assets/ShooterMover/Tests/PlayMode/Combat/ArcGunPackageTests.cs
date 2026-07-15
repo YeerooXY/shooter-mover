@@ -257,7 +257,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             MethodInfo method = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .Single(candidate => candidate.Name == methodName
                     && candidate.GetParameters().Length == arguments.Length);
-            return Invoke(method, null, arguments);
+            return InvokeMethod(method, null, arguments);
         }
 
         private static object Invoke(object instance, string methodName, params object[] arguments)
@@ -266,10 +266,10 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Single(candidate => candidate.Name == methodName
                     && candidate.GetParameters().Length == arguments.Length);
-            return Invoke(method, instance, arguments);
+            return InvokeMethod(method, instance, arguments);
         }
 
-        private static object Invoke(MethodInfo method, object instance, object[] arguments)
+        private static object InvokeMethod(MethodInfo method, object instance, object[] arguments)
         {
             try
             {
