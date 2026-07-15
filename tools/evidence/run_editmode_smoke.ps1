@@ -486,6 +486,7 @@ function Assert-TestResultsPassed {
 function Wait-ForUnityTestResults {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$UnityLogPath,
         [Parameter(Mandatory = $true)][int]$TimeoutSeconds
     )
 
@@ -500,7 +501,18 @@ function Wait-ForUnityTestResults {
             $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
             if ($null -ne $item -and $item.Length -gt 0) {
                 if ($item.Length -eq $previousLength) {
-                    return
+                    try {
+                        $logStream = [System.IO.File]::Open(
+                            $UnityLogPath,
+                            [System.IO.FileMode]::Open,
+                            [System.IO.FileAccess]::Read,
+                            [System.IO.FileShare]::Read)
+                        $logStream.Dispose()
+                        return
+                    }
+                    catch {
+                        # Unity is still closing its writer; keep the bounded wait active.
+                    }
                 }
                 $previousLength = $item.Length
             }
@@ -672,6 +684,7 @@ function Invoke-EditorSmoke {
     }
     Wait-ForUnityTestResults `
         -Path $rawResults `
+        -UnityLogPath $rawUnityLog `
         -TimeoutSeconds ([int]$configuration.timeouts.smokeRunSeconds)
     Assert-TestResultsPassed -Path $rawResults
 

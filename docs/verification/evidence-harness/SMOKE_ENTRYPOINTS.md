@@ -126,8 +126,8 @@ and configuration are resolved before Unity starts. Unity test failure, missing
 or malformed XML, diagnostic overflow, or EH-008 build/verify failure makes the
 command fail. Unity is allowed to finish its test-runner shutdown itself after
 it writes the XML; the entrypoint deliberately does not force `-quit` and waits
-up to the configured `smokeRunSeconds` for the result file to settle before it
-validates it.
+up to the configured `smokeRunSeconds` for the result file to settle and the
+Unity log to close before it validates and sanitizes them.
 
 ## PlayMode smoke
 
