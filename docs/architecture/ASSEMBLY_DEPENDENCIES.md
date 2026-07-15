@@ -58,7 +58,9 @@ isolated virtual-device input.
 4. Content.Definitions contains authored Unity-facing definitions and may
    reference only the engine-independent layers.
 5. Presentation may consume immutable read models and UnityAdapters, but it may
-   not become a state authority.
+   not become a state authority. Task-local assemblies beneath
+   `Assets/ShooterMover/UI/` are classified at this same presentation layer;
+   they must follow the same inward-only rule.
 6. Bootstrap is the composition root. It is the only baseline runtime assembly
    that references every outward product layer.
 7. Tests point inward to product assemblies. Product assemblies never reference

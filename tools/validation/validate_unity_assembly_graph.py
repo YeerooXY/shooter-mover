@@ -125,6 +125,7 @@ PATH_LAYER_MARKERS: tuple[tuple[str, int], ...] = (
     ("/Content/", 3),
     ("/ContentPackages/", 3),
     ("/Runtime/Presentation/", 3),
+    ("/UI/", 3),
     ("/Runtime/Bootstrap/", 4),
     ("/Tests/", 5),
 )
