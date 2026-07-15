@@ -20,9 +20,9 @@ branch whose pull request has merged.
   50-focused-lead-day / 12-calendar-week cap.
 - Draft PR #104 proposes a bounded visible-slice-first amendment. Until that PR
   merges, no `VS-*` task is authoritative or dispatchable.
-- The planning proposal contains VS-001 through VS-007: local art intake first,
-  five disjoint presentation tasks that may run concurrently, and one final
-  serial integration-scene owner.
+- The planning proposal contains VS-001 through VS-007: local art intake,
+  art-dependent room/turret presentation, three immediately parallel UI/camera
+  tasks, and one final serial integration-scene owner.
 - VS-007 alone may own
   `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`.
 - WP-010 is merged through PR #102 and exclusively owns its Stage1Presentation
@@ -30,10 +30,16 @@ branch whose pull request has merged.
   weapon-status strip.
 - The local files `tile_concept_1.jfif`, `level_idea_1.png`,
   `standing_turret_weak.png`, and candidate props under
-  `C:\Users\Yeeroo\Desktop\sprites` have not been inspected or checksummed by
-  the planning agent. VS-001 must perform that local intake.
-- The proposal uses 3.15 focused lead days from existing reserve: 0.60 S1.2 and
-  2.55 S1.3. It does not raise the 50-day aggregate cap.
+  `C:\Users\Yeeroo\Desktop\sprites` have not been accepted into Git. VS-001
+  must inspect, inventory, checksum, and import selected inputs locally.
+- The proposal authorizes 3.15 focused lead days from existing reserve: 2.55
+  days of task estimates and 0.60 day of explicit VS-007 integration
+  contingency. It does not raise the 50-day aggregate cap.
+- PRs #106, #107, and #108 are superseded prototype branches. Their useful
+  floor replacement, overlay projection, and loadout state-machine ideas are
+  recorded in the amendment, but their submitted branches must not merge.
+- VS branches may add only exact leaf-folder `.meta` files, never shared
+  ancestor metadata.
 - Accepted movement, combat, enemy, encounter, mission, collision, registry, and
   persistence authorities remain unchanged. Visible-slice state is session-only.
 - Stage 2 remains locked behind `GATE-010`.
@@ -42,11 +48,11 @@ branch whose pull request has merged.
 
 Review and merge draft PR #104.
 
-After it merges, start from fresh current `main` and open one separate Task
-Splitter PR that materializes a dedicated `stage1-visible-slice` batch and
-VS-001 through VS-007, updates generated backlog/index/collaboration artifacts,
-validates the acyclic ownership graph, and stops. Do not dispatch VS agents or
-implement Unity code/assets in the task-split PR.
+After it merges, run the repository prompt preparer once from fresh current
+`main`. It must materialize a dedicated `stage1-visible-slice` batch and VS-001
+through VS-007, update generated backlog/index/collaboration artifacts, validate
+the acyclic ownership graph, and emit copy-ready contexts. A generated-only PR
+is mechanical bookkeeping, not another planning approval gate.
 
-Do not proceed to Task Splitter while PR #104 is unmerged. Do not add networking,
-mobile, analytics, storefront, or Stage 2 work.
+Do not materialize or dispatch VS tasks while PR #104 is unmerged. Do not add
+networking, mobile, analytics, storefront, or Stage 2 work.

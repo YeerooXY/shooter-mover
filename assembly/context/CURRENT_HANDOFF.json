@@ -6,7 +6,7 @@
   "active_role": "planning_amendment_agent",
   "active_branch": "agent/amend-stage1-visible-slice",
   "active_pr": 104,
-  "last_verified_commit": "bf5f35fa439a1121e8f44e3ea523170a9e4aecdd",
+  "last_verified_commit": "d867861454c97674b3f57e360c7427df7f4ec37d",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -72,23 +72,23 @@
     "docs/architecture/FILE_OWNERSHIP.md"
   ],
   "current_section": "stage1_visible_slice_planning_amendment_review",
-  "last_completed_item": "Planning PR #104 was opened with a bounded VS-001 through VS-007 proposal. Current main was reverified after WP-010 merged through PR #102; its presentation folder and focused test remain exclusive VS read-only inputs.",
-  "current_item": "Review draft PR #104. It is the planning-amendment boundary only; the visible-slice amendment and VS identities are not authoritative until merge.",
-  "next_action": "Review and merge PR #104. After it merges, verify the amendment from fresh current main, then open one separate Task Splitter PR that materializes and validates VS-001 through VS-007 without dispatching or implementing them.",
+  "last_completed_item": "Planning PR #104 was rebased onto merged EN-009 / PR #105, corrected for parallel dependencies and shared metadata ownership, and records PRs #106-#108 as superseded prototypes.",
+  "current_item": "Review draft PR #104. It is the single visible-slice planning approval boundary; VS identities become authoritative when it merges.",
+  "next_action": "Merge PR #104, then run the repository prompt preparer once to materialize and validate VS-001 through VS-007 and emit copy-ready contexts without another planning review.",
   "blockers": [
     "The visible-slice amendment is not authoritative until PR #104 merges.",
-    "The named local sprites remain unavailable through GitHub and cannot be inspected or checksummed until VS-001 runs in a local intake worktree.",
+    "The named local sprites must be inspected and checksummed by VS-001 from a local worktree with access to C:\\Users\\Yeeroo\\Desktop\\sprites.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-15T17:40:00+02:00"
+    "last_persisted_at": "2026-07-15T19:33:55+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-15T17:40:00+02:00"
+  "updated_at": "2026-07-15T19:33:55+02:00"
 }

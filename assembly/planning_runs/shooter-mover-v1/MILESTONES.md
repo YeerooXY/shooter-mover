@@ -97,12 +97,15 @@ test-only `MT-013` leaf to S1.1. Direct S1.1 spend is therefore 6.55 of 8
 days, leaving 1.45 days of review and bounded iteration reserve. It blocks no
 existing task and does not change the 50-day Stage 1 aggregate cap.
 
-The 2026-07-15 visible-slice amendment proposes seven tasks totaling 3.15
-focused lead days. It is a resequencing of existing reserve, not a cap increase:
+The 2026-07-15 visible-slice amendment authorizes 3.15 focused lead days: seven
+tasks estimated at 2.55 days plus 0.60 day held for VS-007 integration defects.
+It is a resequencing of existing reserve, not a cap increase:
 S1.2 changes from 9.10 to 9.70 of 10 days and S1.3 changes from 7.45 to 10.00
-of 10 days. This leaves 0.30 S1.2 day and no S1.3 reserve. The aggregate cap
-remains 50 days only if the human lead accepts that reserve consumption and the
-visible-slice-first ordering. Any estimate growth, additional visible-slice
-scope, or retained S1.3 reserve requires an explicit cap review. The exact
-unfunded alternative is 53.15 aggregate days and a 12.55-day S1.3 cap, plus a
-revised calendar cap; that alternative is not approved by this amendment.
+of 10 days. This leaves 0.30 S1.2 day outside the amendment and no unallocated
+S1.3 reserve, while retaining 0.60 day as explicit integration contingency
+inside the amendment. The aggregate cap remains 50 days only if the human lead
+accepts that reserve consumption and visible-slice-first ordering. Any growth
+beyond the contingency or additional visible-slice scope requires an explicit
+cap review. The exact unfunded alternative is 53.15 aggregate days and a
+12.55-day S1.3 cap, plus a revised calendar cap; that alternative is not
+approved by this amendment.

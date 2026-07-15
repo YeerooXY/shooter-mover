@@ -118,21 +118,22 @@ Before generating `stage1-enemies-route`, consume `AMENDMENT_STAGE1_ENEMIES.md`.
 ## Stage 1 visible-slice amendment
 
 Use `AMENDMENT_STAGE1_VISIBLE_SLICE.md` only after its planning pull request is
-merged into current `main`. The planning PR itself must not generate or dispatch
-implementation tasks.
+merged into current `main`. The merged amendment is the approval boundary; the
+prompt preparer may materialize it mechanically without a second planning review.
 
-In a fresh, separate Task Splitter branch and PR:
+In one generated-only backlog/context update:
 
 - add one dedicated `stage1-visible-slice` batch containing stable tasks
   `VS-001` through `VS-007` exactly;
-- keep `assembly/generated/task_backlog.json` unchanged until that separate PR;
+- update `assembly/generated/task_backlog.json`, batch index, collaboration state,
+  and copy-ready contexts together;
 - preserve WP-010's exclusive ownership of
   `Assets/ShooterMover/ContentPackages/Weapons/Stage1Presentation/` and
   `Assets/ShooterMover/Tests/PlayMode/Combat/Stage1WeaponPresentationTests.cs`;
-- make VS-001 the sole local art-intake owner and a dependency of every visual
-  consumer;
-- allow VS-002 through VS-006 to run concurrently after VS-001 and their
-  existing non-VS dependencies merge;
+- make VS-001 the sole local art-intake owner and a dependency of VS-002,
+  VS-003, and VS-007 only;
+- allow VS-004, VS-005, and VS-006 to start from accepted non-VS dependencies
+  while VS-001 runs; allow VS-002 and VS-003 after VS-001 merges;
 - reject any VS-002 through VS-006 card whose allowed paths include a `.unity`
   scene;
 - assign `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`
@@ -143,13 +144,16 @@ In a fresh, separate Task Splitter branch and PR:
   the amendment;
 - keep all state session-only: no inventory, reward, unlock, mission, save,
   registry, or persistence output;
-- allocate exactly 0.60 day to S1.2 reserve and 2.55 days to S1.3 reserve, for
-  3.15 total days, without changing the 50-day aggregate cap;
+- forbid VS branches from adding shared ancestor `.meta` files; only exact
+  task-local leaf metadata is allowed;
+- estimate the seven tasks at 2.55 days and reserve 0.60 day inside the approved
+  3.15-day allocation for VS-007 integration defects, without changing the
+  50-day aggregate cap;
 - fail validation rather than silently raising a cap if any task estimate or
   scope exceeds those allocations.
 
-The generated graph must place VS-001 before all consumers, permit the five
-independent presentation tasks to proceed in parallel, and make VS-007 the
-single final serial integration task. The Task Splitter PR must stop after
-materializing and validating the task graph; it must not dispatch VS agents or
-implement Unity code/assets in the same PR.
+The generated graph must place VS-001 before VS-002 and VS-003, permit VS-004,
+VS-005, and VS-006 to proceed independently, and make VS-007 the single final
+serial integration task. The generated update must contain no Unity code/assets.
+Once its local validation passes, the prompt preparer may emit copy-ready
+contexts immediately; there is no second planning approval gate.
