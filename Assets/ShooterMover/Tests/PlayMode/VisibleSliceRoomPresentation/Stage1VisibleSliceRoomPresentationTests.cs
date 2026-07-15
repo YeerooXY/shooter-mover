@@ -14,6 +14,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceRoomPresentation
     {
         private const string FloorGuid = "8de5d0331ff04de4d907f37c89c6ffc6";
         private const string CrateGuid = "372cfb91a69c59447b4e786a52011d16";
+        private const string DoorGuid = "afc7063bb434de4429eb628d3c83cbda";
+        private const string ExplosiveGuid = "6b445ca30fc647040803ad2012f4a163";
 
         private readonly List<UnityEngine.Object> _ownedObjects = new List<UnityEngine.Object>();
 
@@ -58,8 +60,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceRoomPresentation
             string prefabText = File.ReadAllText(GetOwnedPackagePath("Stage1VisibleSliceRoomPresentation.prefab"));
             Assert.That(prefabText, Does.Contain("guid: " + FloorGuid));
             Assert.That(prefabText, Does.Contain("guid: " + CrateGuid));
-            Assert.That(prefabText, Does.Contain("_doorSprite: {fileID: 0}"));
-            Assert.That(prefabText, Does.Contain("_explosiveSprite: {fileID: 0}"));
+            Assert.That(prefabText, Does.Contain("guid: " + DoorGuid));
+            Assert.That(prefabText, Does.Contain("guid: " + ExplosiveGuid));
         }
 
         [Test]

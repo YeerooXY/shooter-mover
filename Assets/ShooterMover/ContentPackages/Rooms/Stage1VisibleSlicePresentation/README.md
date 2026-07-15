@@ -9,13 +9,12 @@ mission state, rewards, persistence, camera behavior, or gameplay truth.
 ## Default bindings
 
 - Floor: the merged VS-001 sprite
-  `Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/floor_tile_concept_1.jpg`.
+  `Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/floor_tile_concept_1.png`.
 - Props: the merged transparent crate
   `Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/prop_crate_1.png`.
-- Door and explosive sprites: intentionally unassigned because the currently
-  merged assets contain checkerboards baked into opaque RGB pixels. The
-  serialized fields remain replaceable for a later clean VS-001 provenance
-  follow-up.
+- Door and explosive: the clean transparent VS-001 replacement sprites
+  `door_idea_1.png` and `prop_explosive_1.png`. Their stable Unity GUIDs keep
+  the prefab binding intact while preserving the original source revisions.
 
 The accepted floor is the default. A flat dark fallback appears only when the
 floor binding is missing and displays a visible fallback marker.
