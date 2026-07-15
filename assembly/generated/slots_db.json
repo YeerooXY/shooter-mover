@@ -105,7 +105,7 @@
   {
     "slot_id": "mission-rewards-ui",
     "role": "Mission, Persistence, Rewards, and UI Builder",
-    "status": "blocked",
+    "status": "ready",
     "inputs": [
       "assembly/intake/project_intake.json",
       "assembly/requirements/REQUIREMENTS.md",
@@ -128,12 +128,12 @@
       "Rewards grant once.",
       "Shop refresh rules resist abuse."
     ],
-    "notes": "Stage 2 lane; blocked until GATE-010 records stage2_unlocked=true and an evidence-backed Stage 2 planning/task amendment is merged."
+    "notes": "Stage 2 mission, persistence, rewards, and economy work remains blocked behind GATE-010. Merged visible-slice amendment PR #104 authorizes only the bounded session-only VS-004 combat HUD and VS-005 fixed-loadout selector in this slot."
   },
   {
     "slot_id": "content-art-pipeline",
     "role": "Content and Art Pipeline Builder",
-    "status": "blocked",
+    "status": "ready",
     "inputs": [
       "assembly/intake/project_intake.json",
       "assembly/requirements/REQUIREMENTS.md",
@@ -156,7 +156,7 @@
       "Release assets have provenance.",
       "Independent reproduction succeeds."
     ],
-    "notes": "Stage 2 lane; blocked until GATE-010 records stage2_unlocked=true and an evidence-backed Stage 2 planning/task amendment is merged."
+    "notes": "Stage 2 production-art work remains blocked behind GATE-010. Merged visible-slice amendment PR #104 authorizes only VS-001 local prototype-art intake and VS-002 room presentation in this slot."
   },
   {
     "slot_id": "verification-release",
@@ -237,6 +237,6 @@
       "No architecture is invented.",
       "Dependencies use exact task IDs."
     ],
-    "notes": "Stage 1 split complete: 9 validated batches and 103 tasks. MT-013 is an optional test-only movement-playground leaf and blocks no existing task. Stage 2 decomposition is deferred behind GATE-010."
+    "notes": "Stage 1 split complete: 10 validated batches and 110 tasks after merged visible-slice amendment PR #104. VS-001, VS-004, VS-005, and VS-006 are the first dependency-ready visible-slice tasks. Stage 2 decomposition remains deferred behind GATE-010."
   }
 ]

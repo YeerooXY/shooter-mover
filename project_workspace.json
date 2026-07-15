@@ -70,10 +70,10 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Review and merge the Stage 1 visible-slice planning amendment. After merge, run the repository prompt preparer once to materialize and validate VS-001 through VS-007 and emit copy-ready contexts without another planning review.",
+    "human_next_step": "Review and merge generated-only PR #110. Then dispatch EN-010, EN-011, VS-001, VS-004, VS-005, and VS-006 from the combined prepared context file; keep WP-011 deferred until after VS-007.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
-      "Current main has no merged visible-slice amendment or VS task cards. The planning amendment deliberately leaves the 103-task canonical backlog and generated collaboration artifacts unchanged.",
+      "Merged PR #104 authorizes VS-001 through VS-007. Draft PR #110 materializes the tenth Stage 1 batch and a 110-task canonical backlog without Unity implementation.",
       "The proposed visible-slice batch contains VS-001 through VS-007: local art intake blocks only room/turret art consumers, HUD/loadout/camera may begin independently, and one serial integration-scene owner runs last.",
       "WP-010 is merged through PR #102 and retains exclusive ownership of its Stage1Presentation folder and focused test; VS tasks consume it read-only.",
       "The visible-slice proposal authorizes 3.15 focused lead days without raising the accepted 50-day Stage 1 cap: 2.55 days of task estimates plus 0.60 day held for integration defects.",
