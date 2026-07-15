@@ -58,7 +58,7 @@ namespace ShooterMover.ContentPackages.Weapons.Stage1Presentation
                 Stage1WeaponPresentationOptions.Create(reducedEffects, unavailableCueIds));
             previous = current;
 
-            if (playTemporaryAudio && Application.isPlaying)
+            if (playTemporaryAudio && UnityEngine.Application.isPlaying)
             {
                 if (temporaryAudio == null)
                     temporaryAudio = new Stage1WeaponTemporaryAudio(transform);
