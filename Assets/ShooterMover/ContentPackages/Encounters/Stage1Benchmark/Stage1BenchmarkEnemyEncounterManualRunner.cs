@@ -12,7 +12,7 @@ namespace ShooterMover.ContentPackages.Encounters.Stage1Benchmark
     {
         private void OnEnable()
         {
-            if (!Application.isPlaying)
+            if (!UnityEngine.Application.isPlaying)
             {
                 return;
             }

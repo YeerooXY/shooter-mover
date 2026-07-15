@@ -1191,7 +1191,7 @@ namespace ShooterMover.ContentPackages.Encounters.Stage1Benchmark
                 return;
             }
 
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 Destroy(runtimeRoot);
             }
@@ -1205,7 +1205,7 @@ namespace ShooterMover.ContentPackages.Encounters.Stage1Benchmark
 
         private void OnEnable()
         {
-            if (Application.isPlaying && session == null)
+            if (UnityEngine.Application.isPlaying && session == null)
             {
                 SelectFixture(
                     Stage1BenchmarkEnemyEncounterCatalog.DefaultFixtureIdText);
