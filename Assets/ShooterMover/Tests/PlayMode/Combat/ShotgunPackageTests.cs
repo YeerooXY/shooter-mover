@@ -179,14 +179,14 @@ namespace ShooterMover.Tests.PlayMode.Combat
             WeaponRuntimeProfile empoweredProfile =
                 GetProperty<WeaponRuntimeProfile>(empoweredFire, "RuntimeProfile");
 
-            WeaponPowerBankState emptyBank =
-                WeaponPowerBankState.FromProfile(empoweredProfile, 0d);
+            ShooterMover.Domain.Combat.WeaponPowerBankState emptyBank =
+                ShooterMover.Domain.Combat.WeaponPowerBankState.FromProfile(empoweredProfile, 0d);
             WeaponPowerFireDecision fallback = WeaponPowerBankPolicy.ResolveFire(
                 emptyBank,
                 true,
                 true);
             WeaponPowerFireDecision empowered = WeaponPowerBankPolicy.ResolveFire(
-                WeaponPowerBankState.FullFromProfile(empoweredProfile),
+                ShooterMover.Domain.Combat.WeaponPowerBankState.FullFromProfile(empoweredProfile),
                 true,
                 true);
 
