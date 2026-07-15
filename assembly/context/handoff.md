@@ -12,13 +12,14 @@ unchanged.
 
 ## Verified planning facts
 
-- The planning branch started from current `main` at EN-007 merge commit
-  `103e6fdc3ba8024662137f660507ce6102e0a76c`; `main` subsequently advanced by
-  the non-overlapping UF-002 audio-module follow-up in PR #103.
+- The planning branch started from then-current `main` at EN-007 merge commit
+  `103e6fdc3ba8024662137f660507ce6102e0a76c`.
+- Current `main` subsequently advanced through non-overlapping implementation
+  work and is verified at `bf5f35fa439a1121e8f44e3ea523170a9e4aecdd`.
 - No earlier visible-slice amendment, `VS-*` task card, or visible-slice batch
-  existed on current main when PR #104 opened.
-- WP-010 remains open draft PR #102. It exclusively owns its weapon-presentation
-  folder and focused test and is a required later VS-007 dependency.
+  exists on current main.
+- WP-010 is merged through PR #102. It exclusively owns its weapon-presentation
+  folder and focused test and remains a required read-only VS-007 dependency.
 - The named local art files and `C:\Users\Yeeroo\Desktop\sprites` directory were
   not accessible through GitHub and were not inspected or checksummed.
 
