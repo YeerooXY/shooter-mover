@@ -204,7 +204,10 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 0.01f,
                 (float)HardMaximumRecoverySeconds);
             maximumRange = Mathf.Clamp(maximumRange, 0.01f, (float)HardMaximumRange);
-            muzzleOffset = Mathf.Clamp(muzzleOffset, 0f, (float)HardMaximumMuzzleOffset);
+            float maximumSafeMuzzleOffset = Mathf.Max(
+                0f,
+                Mathf.Min((float)HardMaximumMuzzleOffset, maximumRange - 0.001f));
+            muzzleOffset = Mathf.Clamp(muzzleOffset, 0f, maximumSafeMuzzleOffset);
             warningLineWidth = Mathf.Clamp(
                 warningLineWidth,
                 0.005f,
@@ -251,6 +254,14 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 HardMaximumMuzzleOffset,
                 nameof(muzzleOffset),
                 true);
+            if (muzzleOffset >= maximumRange)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(muzzleOffset),
+                    muzzleOffset,
+                    "Muzzle offset must remain strictly inside the authored firing range.");
+            }
+
             RequireFiniteRange(
                 warningLineWidth,
                 0d,
