@@ -63,6 +63,45 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceRoomPresentation
         }
 
         [Test]
+        public void CleanDoorAndExplosiveBindings_AppearOnlyWhenAssigned()
+        {
+            Stage1VisibleSliceRoomPresentation presentation = CreatePresentation();
+            Sprite door = CreateSprite("Clean Door", 4, 10);
+            Sprite explosive = CreateSprite("Clean Explosive", 8, 8);
+
+            presentation.SetDoorSprite(door);
+            presentation.SetExplosiveSprite(explosive);
+
+            Assert.That(presentation.DoorRoot.childCount, Is.EqualTo(2));
+            for (int index = 0; index < presentation.DoorRoot.childCount; index++)
+            {
+                SpriteRenderer renderer =
+                    presentation.DoorRoot.GetChild(index).GetComponent<SpriteRenderer>();
+                Assert.That(renderer, Is.Not.Null);
+                Assert.That(renderer.sprite, Is.SameAs(door));
+            }
+
+            Assert.That(presentation.PropRoot.childCount, Is.EqualTo(4));
+            Transform optionalExplosive =
+                FindDescendant(presentation.PropRoot, "Explosive_Optional");
+            Assert.That(optionalExplosive, Is.Not.Null);
+            Assert.That(
+                optionalExplosive.GetComponent<SpriteRenderer>().sprite,
+                Is.SameAs(explosive));
+
+            presentation.SetDoorSprite(null);
+            presentation.SetExplosiveSprite(null);
+
+            Assert.That(presentation.PropRoot.childCount, Is.EqualTo(3));
+            Assert.That(
+                FindDescendant(presentation.PropRoot, "Explosive_Optional"),
+                Is.Null);
+            Assert.That(
+                presentation.DoorRoot.GetComponentsInChildren<SpriteRenderer>(true).Length,
+                Is.EqualTo(4));
+        }
+
+        [Test]
         public void MissingFloor_UsesGracefulPresentationOnlyFallback()
         {
             Stage1VisibleSliceRoomPresentation presentation = CreatePresentation();
@@ -151,7 +190,19 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceRoomPresentation
                     Mathf.Abs(point.y),
                     Is.LessThan(roomBounds.height * 0.5f - 1f),
                     prop.name);
+
+                SpriteRenderer renderer = prop.GetComponent<SpriteRenderer>();
+                Assert.That(renderer, Is.Not.Null, prop.name);
+                Bounds visualBounds = renderer.bounds;
+                Assert.That(visualBounds.min.x, Is.GreaterThan(roomBounds.xMin), prop.name);
+                Assert.That(visualBounds.max.x, Is.LessThan(roomBounds.xMax), prop.name);
+                Assert.That(visualBounds.min.y, Is.GreaterThan(roomBounds.yMin), prop.name);
+                Assert.That(visualBounds.max.y, Is.LessThan(roomBounds.yMax), prop.name);
             }
+
+            Assert.That(
+                Stage1VisibleSliceRoomPresentation.MarkerSortingOrder,
+                Is.LessThan(0));
         }
 
         [Test]
