@@ -90,6 +90,18 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
                 Assert.That(hud.AcceptHitFact(missed, 10d), Is.False);
                 Assert.That(hud.CurrentFrame.ConfirmedHitVisible, Is.False);
 
+                HitMessage duplicate = CreateHit(
+                    "duplicate",
+                    HitResult.DuplicateEventIgnored);
+                Assert.That(hud.AcceptHitFact(duplicate, 10d), Is.False);
+                Assert.That(hud.CurrentFrame.ConfirmedHitVisible, Is.False);
+
+                HitMessage destroyed = CreateHit(
+                    "already-destroyed",
+                    HitResult.TargetAlreadyDestroyed);
+                Assert.That(hud.AcceptHitFact(destroyed, 10d), Is.False);
+                Assert.That(hud.CurrentFrame.ConfirmedHitVisible, Is.False);
+
                 HitMessage confirmed = CreateHit("confirmed", HitResult.Confirmed);
                 Assert.That(hud.AcceptHitFact(confirmed, 10d), Is.True);
                 Assert.That(hud.CurrentFrame.ConfirmedHitVisible, Is.True);
@@ -165,6 +177,34 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud
                 Assert.That(snapshot.FocusedEnemy.Health, Is.EqualTo(100d));
                 Assert.That(snapshot.ThrusterStatus.AvailableCharges, Is.EqualTo(3));
                 Assert.That(hud.CurrentFrame.RestartGeneration, Is.EqualTo(5L));
+                yield return null;
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Presenter_VisibilityTogglePreservesProjectedReadOnlyFrame()
+        {
+            GameObject host = new GameObject("VS-004 Visibility Test");
+            try
+            {
+                VisibleSliceGeneralCombatHud hud =
+                    host.AddComponent<VisibleSliceGeneralCombatHud>();
+                GeneralCombatHudSnapshot snapshot = CreateSnapshot(playerHealth: 60d);
+                hud.Present(snapshot, 1d);
+                GeneralCombatHudFrame projected = hud.CurrentFrame;
+
+                hud.SetVisible(false);
+                Assert.That(hud.IsVisible, Is.False);
+                Assert.That(hud.CurrentFrame, Is.SameAs(projected));
+                Assert.That(snapshot.PlayerVital.Health, Is.EqualTo(60d));
+
+                hud.SetVisible(true);
+                Assert.That(hud.IsVisible, Is.True);
+                Assert.That(hud.CurrentFrame, Is.SameAs(projected));
                 yield return null;
             }
             finally
