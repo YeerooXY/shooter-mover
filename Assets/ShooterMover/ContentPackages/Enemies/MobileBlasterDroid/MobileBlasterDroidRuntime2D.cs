@@ -270,6 +270,10 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             UpdatePresentation();
         }
 
+        /// <summary>
+        /// Deterministic test/lifecycle boundary. In normal play EN-003 drives movement
+        /// from its own FixedUpdate while this package's FixedUpdate advances only fire.
+        /// </summary>
         public EnemyActor2DFixedStepResult ExecuteFixedStep(double deltaTimeSeconds)
         {
             if (!configured)
@@ -278,46 +282,10 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                     "Mobile Blaster Droid must be configured before fixed-step execution.");
             }
 
-            if (double.IsNaN(deltaTimeSeconds)
-                || double.IsInfinity(deltaTimeSeconds)
-                || deltaTimeSeconds < 0d)
-            {
-                throw new ArgumentOutOfRangeException(nameof(deltaTimeSeconds));
-            }
-
+            ValidateDeltaTime(deltaTimeSeconds);
             EnemyActor2DFixedStepResult movementResult =
                 actorAdapter.ExecuteFixedStep(deltaTimeSeconds);
-            presentationElapsedSeconds += deltaTimeSeconds;
-
-            EnemyActorState state;
-            EnemyTarget2DObservation target = null;
-            bool actorAvailable = TryReadState(out state)
-                && state != null
-                && state.IsActive;
-            bool targetAvailable = actorAvailable
-                && playerTarget != null
-                && playerTarget.TryReadTarget(out target)
-                && target != null;
-
-            if (!actorAvailable || !targetAvailable || !IsActive)
-            {
-                CancelPendingFire();
-                if (!actorAvailable && projectileExecutor != null)
-                {
-                    projectileExecutor.ResetSession();
-                }
-            }
-            else
-            {
-                AdvanceFireState(target, deltaTimeSeconds);
-            }
-
-            if (simulationStep < long.MaxValue)
-            {
-                simulationStep++;
-            }
-
-            UpdatePresentation();
+            ExecuteFireFixedStep(deltaTimeSeconds);
             return movementResult;
         }
 
@@ -518,6 +486,25 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
         }
 
+        private void FixedUpdate()
+        {
+            if (configured)
+            {
+                ExecuteFireFixedStep(Time.fixedDeltaTime);
+            }
+        }
+
+        private void Update()
+        {
+            if (!configured)
+            {
+                return;
+            }
+
+            presentationElapsedSeconds += Time.deltaTime;
+            UpdatePresentation();
+        }
+
         private void OnDisable()
         {
             if (actorAdapter != null)
@@ -560,15 +547,50 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             blasterPipeline = null;
         }
 
-        private void Update()
+        private void ExecuteFireFixedStep(double deltaTimeSeconds)
         {
-            if (!configured)
+            ValidateDeltaTime(deltaTimeSeconds);
+            presentationElapsedSeconds += deltaTimeSeconds;
+
+            EnemyActorState state;
+            EnemyTarget2DObservation target = null;
+            bool actorAvailable = TryReadState(out state)
+                && state != null
+                && state.IsActive;
+            bool targetAvailable = actorAvailable
+                && playerTarget != null
+                && playerTarget.TryReadTarget(out target)
+                && target != null;
+
+            if (!actorAvailable || !targetAvailable || !IsActive)
             {
-                return;
+                CancelPendingFire();
+                if (!actorAvailable && projectileExecutor != null)
+                {
+                    projectileExecutor.ResetSession();
+                }
+            }
+            else
+            {
+                AdvanceFireState(target, deltaTimeSeconds);
             }
 
-            presentationElapsedSeconds += Time.deltaTime;
+            if (simulationStep < long.MaxValue)
+            {
+                simulationStep++;
+            }
+
             UpdatePresentation();
+        }
+
+        private static void ValidateDeltaTime(double deltaTimeSeconds)
+        {
+            if (double.IsNaN(deltaTimeSeconds)
+                || double.IsInfinity(deltaTimeSeconds)
+                || deltaTimeSeconds < 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(deltaTimeSeconds));
+            }
         }
 
         private void RegisterPlayerColliders(
