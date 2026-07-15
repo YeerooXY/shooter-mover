@@ -1,0 +1,15 @@
+{
+  "$schema": "urn:shooter-mover:schema:content-definition-descriptor-input:1",
+  "definition_kind": "weapon",
+  "definition_id": "weapon.blaster-machine-gun",
+  "definition_version": 1,
+  "provenance_id": "provenance.blaster-machine-gun",
+  "prototype_only": false,
+  "references": [
+    {
+      "definition_kind": "shared-module",
+      "definition_id": "module.weapon-automatic-projectile",
+      "definition_version": 1
+    }
+  ]
+}
