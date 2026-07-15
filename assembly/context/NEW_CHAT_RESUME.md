@@ -1,4 +1,4 @@
-# Resume Shooter Mover Stage 1 Development
+# Resume Shooter Mover Stage 1 Visible-Slice Planning
 
 Continue from committed state in `YeerooXY/shooter-mover`. Never write to a
 branch whose pull request has merged.
@@ -7,35 +7,45 @@ branch whose pull request has merged.
 
 1. Read `AGENTS.md`, `project_workspace.json`, and
    `assembly/context/CURRENT_HANDOFF.json`.
-2. Read the exact task card and its dependencies.
-3. Verify current `main`, relevant merged pull requests, and path ownership
+2. Verify current `main`, PR #104 status, WP-010 status, and exact path ownership
    before writing.
-4. Use a fresh branch and separate worktree for each task.
+3. Read `AMENDMENT_STAGE1_VISIBLE_SLICE.md` only from merged current `main`
+   before acting as Task Splitter.
+4. Use a fresh branch and separate worktree for every planning, task-split, or
+   implementation change.
 
 ## Durable state
 
-- Stage 1 Dispatch is active with 103 canonical tasks and a 50-focused-day cap.
-- MT-013 is an optional test-only movement-playground leaf. It consumes the accepted MT-007/MT-010 runtime read-only, blocks no existing task, and is the first manual movement/thruster/camera check.
-- The human-selected no-player-motion recoil amendment retires CB-007. Weapon fire must not alter player velocity, position, thruster state, wall/contact resolution, or another movement authority; CB-011 proves this invariant instead.
-- UF-001 through UF-004 are accepted through merged PRs #15–#19 and #21.
-- PR #20 merged at `63e488b17f1899fdad89645a167a97a6d24c3bb7`
-  after UF-005's positive and adversarial repository-layout validation passed.
-- This amendment records UF-005 as accepted and streamlines ordinary Stage 1
-  work: a proof-complete implementation PR merged by Nemo is the acceptance
-  boundary; no second per-task handoff PR is required.
-- Ordinary proof stays in the implementation PR. Central handoff,
-  collaboration, and slot bookkeeping is reconciled once per development wave
-  and is not a dependency gate.
-- Explicit repository evidence remains mandatory when required by a task,
-  especially milestone gates, persistence/migration, shared serialized assets,
-  build/release artifacts, and strong-review boundaries.
+- Stage 1 Dispatch currently retains 103 canonical tasks and a
+  50-focused-lead-day / 12-calendar-week cap.
+- Draft PR #104 proposes a bounded visible-slice-first amendment. Until that PR
+  merges, no `VS-*` task is authoritative or dispatchable.
+- The planning proposal contains VS-001 through VS-007: local art intake first,
+  five disjoint presentation tasks that may run concurrently, and one final
+  serial integration-scene owner.
+- VS-007 alone may own
+  `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`.
+- WP-010 exclusively owns its Stage1Presentation folder and focused test; no VS
+  task may duplicate or edit the four-slot weapon-status strip.
+- The local files `tile_concept_1.jfif`, `level_idea_1.png`,
+  `standing_turret_weak.png`, and candidate props under
+  `C:\Users\Yeeroo\Desktop\sprites` have not been inspected or checksummed by
+  the planning agent. VS-001 must perform that local intake.
+- The proposal uses 3.15 focused lead days from existing reserve: 0.60 S1.2 and
+  2.55 S1.3. It does not raise the 50-day aggregate cap.
+- Accepted movement, combat, enemy, encounter, mission, collision, registry, and
+  persistence authorities remain unchanged. Visible-slice state is session-only.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Review and merge PR #22. Then launch UF-006, CS-001, and UF-011 on separate
-fresh branches from current `main`.
-Implementation agents must change only their owned paths, put all required
-proof in their PRs, and leave central lifecycle bookkeeping untouched.
+Review and merge draft PR #104.
 
-Do not add networking, mobile, analytics, storefront, or Stage 2 work.
+After it merges, start from fresh current `main` and open one separate Task
+Splitter PR that materializes a dedicated `stage1-visible-slice` batch and
+VS-001 through VS-007, updates generated backlog/index/collaboration artifacts,
+validates the acyclic ownership graph, and stops. Do not dispatch VS agents or
+implement Unity code/assets in the task-split PR.
+
+Do not proceed to Task Splitter while PR #104 is unmerged. Do not add networking,
+mobile, analytics, storefront, or Stage 2 work.
