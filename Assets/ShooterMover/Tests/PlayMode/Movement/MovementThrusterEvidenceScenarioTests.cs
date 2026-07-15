@@ -23,7 +23,6 @@ namespace ShooterMover.Tests.PlayMode.Movement
         [UnitySetUp]
         public IEnumerator SetUpArena()
         {
-            keyboard = InputSystem.AddDevice<Keyboard>();
             profile = MovementThrusterEvidenceFixture.LoadProfile();
             yield return MovementThrusterEvidenceFixture.LoadArena();
         }
@@ -32,11 +31,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
         public IEnumerator TearDownArena()
         {
             DisposeFixture();
-            if (keyboard != null && keyboard.added)
-            {
-                InputSystem.RemoveDevice(keyboard);
-                InputSystem.Update();
-            }
+            keyboard = null;
             yield return MovementThrusterEvidenceFixture.UnloadArena();
         }
 
@@ -95,38 +90,38 @@ namespace ShooterMover.Tests.PlayMode.Movement
             fixture = NewFixture();
             Stopwatch timer = Stopwatch.StartNew();
 
-            fixture.Queue(Key.A);
+            fixture.Queue(Key.D);
             ThrusterStatusSnapshot state = null;
             for (int i = 0; i < 10; i++) state = fixture.Step("wall-approach-" + i);
-            Assert.That(state.VelocityX, Is.LessThan(0d));
-            Collider2D wall = fixture.Wall("Wall West");
+            Assert.That(state.VelocityX, Is.GreaterThan(0d));
+            Collider2D wall = fixture.Wall("Wall East");
             Assert.That(
-                fixture.Process(1L, wall, Vector2.right, 1d, "wall-reflection"),
+                fixture.Process(1L, wall, Vector2.left, 1d, "wall-reflection"),
                 Is.EqualTo(MovementContact2DProcessResult.WallReflected));
-            Assert.That(fixture.Lifecycle.Actor.CurrentVelocityX, Is.GreaterThan(0d));
+            Assert.That(fixture.Lifecycle.Actor.CurrentVelocityX, Is.LessThan(0d));
 
             fixture.Restart();
             Neutralize();
-            fixture.Queue(Key.A);
+            fixture.Queue(Key.D);
             for (int i = 0; i < 10; i++) fixture.Step("light-approach-" + i);
             double incoming = fixture.Lifecycle.Actor.CurrentVelocityX;
             Collider2D light = fixture.Weighted(
                 "light", CombatWeightClass.Heavy, CombatWeightClass.Light);
             Assert.That(
-                fixture.Process(2L, light, Vector2.right, 2d, "light-shove"),
+                fixture.Process(2L, light, Vector2.left, 2d, "light-shove"),
                 Is.EqualTo(MovementContact2DProcessResult.EnemyResolved));
-            Assert.That(fixture.Lifecycle.Actor.CurrentVelocityX, Is.LessThan(0d));
+            Assert.That(fixture.Lifecycle.Actor.CurrentVelocityX, Is.GreaterThan(0d));
             Assert.That(Math.Abs(fixture.Lifecycle.Actor.CurrentVelocityX),
                 Is.LessThan(Math.Abs(incoming)));
 
             fixture.Restart();
             Neutralize();
-            fixture.Queue(Key.A);
+            fixture.Queue(Key.D);
             for (int i = 0; i < 10; i++) fixture.Step("heavy-approach-" + i);
             Collider2D heavy = fixture.Weighted(
                 "heavy", CombatWeightClass.Light, CombatWeightClass.Heavy);
             Assert.That(
-                fixture.Process(3L, heavy, Vector2.right, 3d, "heavy-block"),
+                fixture.Process(3L, heavy, Vector2.left, 3d, "heavy-block"),
                 Is.EqualTo(MovementContact2DProcessResult.EnemyResolved));
             Assert.That(fixture.Lifecycle.Actor.CurrentVelocityX,
                 Is.EqualTo(0d).Within(Tolerance));
@@ -272,6 +267,10 @@ namespace ShooterMover.Tests.PlayMode.Movement
         {
             Scene arena = SceneManager.GetSceneByName(MovementThrusterEvidenceFixture.ArenaName);
             Assert.That(arena.IsValid() && arena.isLoaded, Is.True);
+            if (keyboard == null || !keyboard.added)
+            {
+                keyboard = InputSystem.AddDevice<Keyboard>();
+            }
             return new MovementThrusterEvidenceFixture(arena, keyboard, profile);
         }
 
