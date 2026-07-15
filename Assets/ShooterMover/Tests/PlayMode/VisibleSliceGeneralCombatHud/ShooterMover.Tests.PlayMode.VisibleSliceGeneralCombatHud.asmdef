@@ -1,0 +1,21 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.VisibleSliceGeneralCombatHud",
+  "references": [
+    "ShooterMover.UI.VisibleSliceGeneralCombatHud",
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
