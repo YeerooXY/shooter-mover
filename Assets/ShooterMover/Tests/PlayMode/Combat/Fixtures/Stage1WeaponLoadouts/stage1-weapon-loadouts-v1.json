@@ -1,0 +1,52 @@
+{
+  "schema": "shooter-mover.stage1-weapon-loadout-fixtures",
+  "version": 1,
+  "approvedWeaponIds": [
+    "weapon.blaster-machine-gun",
+    "weapon.shotgun",
+    "weapon.rocket-launcher",
+    "weapon.arc-gun",
+    "weapon.ricochet-gun"
+  ],
+  "fixedLoadouts": [
+    {
+      "fixtureId": "loadout.stage1-default-comparison",
+      "orderedWeaponIds": [
+        "weapon.blaster-machine-gun",
+        "weapon.shotgun",
+        "weapon.rocket-launcher",
+        "weapon.arc-gun"
+      ],
+      "checksum": "sha256:050ff39c21815ab0e3f3b41ff074aef86bbdb6103691dbc49aaf9cd7cc0d320e"
+    },
+    {
+      "fixtureId": "loadout.stage1-ricochet-comparison",
+      "orderedWeaponIds": [
+        "weapon.blaster-machine-gun",
+        "weapon.ricochet-gun",
+        "weapon.shotgun",
+        "weapon.rocket-launcher"
+      ],
+      "checksum": "sha256:11c952ba7fcb44ad24eed162e34536a38fa6375c42166b3b947c8bac5204a26f"
+    }
+  ],
+  "canonicalSeedFixture": {
+    "runSeed": 104729,
+    "sourceCommit": "807f74e614509c4e6d9ca0d09b7276353cbfc00d",
+    "unityVersion": "6000.3.19f1",
+    "packageLockFingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "contentFingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "catalogVersion": 1,
+    "fixtureId": "loadout.stage1-seed-104729-90edaf8625a3",
+    "orderedWeaponIds": [
+      "weapon.blaster-machine-gun",
+      "weapon.arc-gun",
+      "weapon.shotgun",
+      "weapon.rocket-launcher"
+    ],
+    "loadoutChecksum": "sha256:13e182ba0c2fe6f67ff68f059842b924fa1c45b10b710c58f8a9cb70efb67803",
+    "sessionChecksum": "sha256:6969084b932809eb16814ab5377d12f04599701e03fca624389d9c16f0e2722d"
+  },
+  "persistence": "none",
+  "randomizedModifiers": "none"
+}
