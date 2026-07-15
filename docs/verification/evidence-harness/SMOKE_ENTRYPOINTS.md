@@ -58,9 +58,10 @@ captured EH-001 record fingerprint. The strict EH-001 tool then verifies the
 pinned editor and exact package-lock bytes. A custom configuration may be given
 as a repository-relative or absolute path with `-ConfigurationPath`.
 
-The frozen default configuration is pinned to UTF-8/LF in `.gitattributes`,
-because the evidence contract validates its exact canonical bytes. A custom
-configuration must likewise be UTF-8/LF with exactly one trailing newline.
+The frozen default configuration and package lock are pinned to UTF-8/LF in
+`.gitattributes`, because the evidence contract validates their exact canonical
+bytes. A custom configuration must likewise be UTF-8/LF with exactly one
+trailing newline.
 
 Python must be available as `python` or selected with `-PythonPath`. Unity must
 be the pinned editor, selected by `-UnityPath`, `UNITY_EDITOR_PATH`, or the

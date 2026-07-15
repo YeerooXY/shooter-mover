@@ -169,6 +169,10 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 attributes,
                 Does.Contain("tools/evidence/fixtures/stage1-evidence-config-v1.json text eol=lf"),
                 "The frozen EH-002 configuration must retain LF bytes in Windows checkouts.");
+            Assert.That(
+                attributes,
+                Does.Contain("Packages/packages-lock.json text eol=lf"),
+                "The frozen EH-001 package lock must retain LF bytes in Windows checkouts.");
 
             foreach (Tuple<string, string> source in new[]
             {

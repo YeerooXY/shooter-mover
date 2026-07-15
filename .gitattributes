@@ -1,2 +1,4 @@
 # EH-009 validates this frozen configuration as exact canonical UTF-8/LF bytes.
 tools/evidence/fixtures/stage1-evidence-config-v1.json text eol=lf
+# EH-001 and UF-010 bind exact canonical package-lock bytes.
+Packages/packages-lock.json text eol=lf
