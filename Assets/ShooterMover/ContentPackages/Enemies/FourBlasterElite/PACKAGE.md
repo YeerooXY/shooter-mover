@@ -11,6 +11,13 @@ EN-008 supplies the approachable **easy first boss** for Stage 1. The package de
 - Damage channel: kinetic
 - Registry behavior: contributes one package-owned enemy definition input; it never edits generated registry output
 
+## Accepted contract boundary
+
+`FourBlasterEliteContracts` makes both required v1 inputs explicit without taking shared authority:
+
+- Combat Messages v1 `HitMessage` envelopes are target-checked and only confirmed hits are forwarded into the single EN-002 health state. Blocked, missed, duplicate-result, and already-destroyed envelopes do not invent damage.
+- Encounter Lifecycle v1 participant entries are projected from the package descriptor with role `enemy.four-blaster-elite`; encounter identity, lifecycle transitions, completion authority, rewards, and persistence remain outside the package.
+
 ## Cadence and spread trace
 
 The target vector is normalized once at the boss center. Four package-owned origin offsets then fire in stable order with a mild symmetric angular adjustment.
