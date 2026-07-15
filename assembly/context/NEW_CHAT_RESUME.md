@@ -7,8 +7,8 @@ branch whose pull request has merged.
 
 1. Read `AGENTS.md`, `project_workspace.json`, and
    `assembly/context/CURRENT_HANDOFF.json`.
-2. Verify current `main`, PR #104 status, WP-010 status, and exact path ownership
-   before writing.
+2. Verify current `main`, PR #104 status, and exact path ownership before
+   writing.
 3. Read `AMENDMENT_STAGE1_VISIBLE_SLICE.md` only from merged current `main`
    before acting as Task Splitter.
 4. Use a fresh branch and separate worktree for every planning, task-split, or
@@ -25,8 +25,9 @@ branch whose pull request has merged.
   serial integration-scene owner.
 - VS-007 alone may own
   `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`.
-- WP-010 exclusively owns its Stage1Presentation folder and focused test; no VS
-  task may duplicate or edit the four-slot weapon-status strip.
+- WP-010 is merged through PR #102 and exclusively owns its Stage1Presentation
+  folder and focused test; no VS task may duplicate or edit the four-slot
+  weapon-status strip.
 - The local files `tile_concept_1.jfif`, `level_idea_1.png`,
   `standing_turret_weak.png`, and candidate props under
   `C:\Users\Yeeroo\Desktop\sprites` have not been inspected or checksummed by
