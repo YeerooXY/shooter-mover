@@ -467,7 +467,7 @@ namespace ShooterMover.Tests.PlayMode.Enemies
 
         private static string ReadProjectFile(string relativePath)
         {
-            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            string projectRoot = Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, ".."));
             return File.ReadAllText(Path.Combine(projectRoot, relativePath));
         }
     }
