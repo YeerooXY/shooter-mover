@@ -1,0 +1,53 @@
+{
+  "$schema": "urn:shooter-mover:fixture:stage1-weapon-registry-input:1",
+  "schema_version": 1,
+  "catalog_version": 1,
+  "validation_mode": "release",
+  "packages": [
+    {
+      "weapon_id": "weapon.blaster-machine-gun",
+      "package_type": "ShooterMover.ContentPackages.Weapons.BlasterMachineGun.BlasterMachineGunPackage",
+      "descriptor_member": "CreateDescriptor",
+      "descriptor_member_kind": "method",
+      "module_id": "module.weapon-automatic-projectile",
+      "module_provenance_id": "provenance.wp-009-automatic-projectile-module",
+      "is_default_starting_weapon": true
+    },
+    {
+      "weapon_id": "weapon.shotgun",
+      "package_type": "ShooterMover.ContentPackages.Weapons.Shotgun.ShotgunPackageDefinition",
+      "descriptor_member": "CreateDefaultDescriptor",
+      "descriptor_member_kind": "method",
+      "module_id": "module.weapon-spread-projectile",
+      "module_provenance_id": "provenance.wp-009-spread-projectile-module",
+      "is_default_starting_weapon": false
+    },
+    {
+      "weapon_id": "weapon.rocket-launcher",
+      "package_type": "ShooterMover.ContentPackages.Weapons.RocketLauncher.Runtime.RocketLauncherPackage",
+      "descriptor_member": "Descriptor",
+      "descriptor_member_kind": "property",
+      "module_id": "module.weapon-rocket-area-detonation",
+      "module_provenance_id": "provenance.wp-009-rocket-area-detonation-module",
+      "is_default_starting_weapon": false
+    },
+    {
+      "weapon_id": "weapon.arc-gun",
+      "package_type": "ShooterMover.ContentPackages.Weapons.ArcGun.ArcGunPackage",
+      "descriptor_member": "CreateDescriptor",
+      "descriptor_member_kind": "method",
+      "module_id": "module.weapon-arc-chain",
+      "module_provenance_id": "provenance.wp-009-arc-chain-module",
+      "is_default_starting_weapon": false
+    },
+    {
+      "weapon_id": "weapon.ricochet-gun",
+      "package_type": "ShooterMover.ContentPackages.Weapons.RicochetGun.Runtime.RicochetGunPackage",
+      "descriptor_member": "CreateDescriptor",
+      "descriptor_member_kind": "method",
+      "module_id": "module.weapon-ricochet-projectile",
+      "module_provenance_id": "provenance.wp-009-ricochet-projectile-module",
+      "is_default_starting_weapon": false
+    }
+  ]
+}
