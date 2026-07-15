@@ -47,6 +47,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
     /// </summary>
     public sealed class BlasterTurretCadence
     {
+        private const decimal TimeEpsilonSeconds = 0.000001m;
+
         private readonly decimal warningSeconds;
         private readonly decimal recoverySeconds;
         private BlasterTurretCadencePhase phase;
@@ -97,7 +99,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             if (phase == BlasterTurretCadencePhase.Warning)
             {
                 phaseElapsedSeconds += elapsed;
-                if (phaseElapsedSeconds < warningSeconds)
+                if (phaseElapsedSeconds + TimeEpsilonSeconds < warningSeconds)
                 {
                     return Result(true, false, -1L);
                 }
@@ -114,7 +116,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             }
 
             phaseElapsedSeconds += elapsed;
-            if (phaseElapsedSeconds >= recoverySeconds)
+            if (phaseElapsedSeconds + TimeEpsilonSeconds >= recoverySeconds)
             {
                 phase = BlasterTurretCadencePhase.Warning;
                 phaseElapsedSeconds = 0m;
@@ -452,7 +454,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         private long generation;
         private bool configured;
         private bool activeRequested;
-        private bool lastAttackAvailable;
 
         public bool IsConfigured
         {
@@ -669,7 +670,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             generation = 0L;
             configured = true;
             activeRequested = true;
-            lastAttackAvailable = false;
             RestoreStationaryAnchor();
             if (isActiveAndEnabled)
             {
@@ -815,7 +815,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                     null);
             }
 
-            lastAttackAvailable = true;
             BlasterTurretCadenceResult cadenceResult = cadence.Step(deltaTimeSeconds, true);
             if (cadenceResult.WarningVisible)
             {
@@ -902,6 +901,11 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
         private void LateUpdate()
         {
+            if (!configured)
+            {
+                return;
+            }
+
             SynchronizeLifecyclePresentation();
             RestoreStationaryAnchor();
         }
@@ -1012,7 +1016,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
         private void CancelAttackState(bool cancelProjectiles)
         {
-            lastAttackAvailable = false;
             if (cadence != null)
             {
                 cadence.CancelPendingShot();
@@ -1049,17 +1052,14 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
         private void RestoreStationaryAnchor()
         {
-            if (!configured && enemyBody == null)
+            if (!configured || enemyBody == null)
             {
                 return;
             }
 
-            if (enemyBody != null)
-            {
-                enemyBody.position = anchorPosition;
-                enemyBody.angularVelocity = 0f;
-                enemyBody.linearVelocity = Vector2.zero;
-            }
+            enemyBody.position = anchorPosition;
+            enemyBody.angularVelocity = 0f;
+            enemyBody.linearVelocity = Vector2.zero;
 
             Vector3 current = transform.position;
             transform.position = new Vector3(anchorPosition.x, anchorPosition.y, current.z);
