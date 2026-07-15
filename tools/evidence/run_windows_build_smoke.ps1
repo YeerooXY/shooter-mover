@@ -163,6 +163,7 @@ function Invoke-PlayerPass {
     param(
         [Parameter(Mandatory = $true)][string]$PlayerPath,
         [Parameter(Mandatory = $true)][string]$LogPath,
+        [Parameter(Mandatory = $true)][int]$StartupTimeoutSeconds,
         [Parameter(Mandatory = $true)][int]$ShutdownTimeoutSeconds,
         [Parameter(Mandatory = $true)][string[]]$SensitiveRoots,
         [Parameter(Mandatory = $true)][int]$PassNumber
@@ -177,18 +178,31 @@ function Invoke-PlayerPass {
     $process = $null
     try {
         $process = Start-Process -FilePath $PlayerPath -ArgumentList $argumentLine -PassThru
-        Start-Sleep -Seconds 3
-        $process.Refresh()
-        if ($process.HasExited) {
-            $earlyExit = $process.ExitCode
-            if ($earlyExit -ne 0) {
-                throw "[EH009-CHILD:$earlyExit] Windows player pass $PassNumber exited during startup."
-            }
-            throw "Windows player pass $PassNumber exited before startup verification."
-        }
+        $startupStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $closeRequested = $false
+        try {
+            while ($startupStopwatch.Elapsed.TotalSeconds -lt $StartupTimeoutSeconds) {
+                Start-Sleep -Milliseconds 100
+                $process.Refresh()
+                if ($process.HasExited) {
+                    $earlyExit = $process.ExitCode
+                    if ($earlyExit -ne 0) {
+                        throw "[EH009-CHILD:$earlyExit] Windows player pass $PassNumber exited during startup."
+                    }
+                    throw "Windows player pass $PassNumber exited before startup verification."
+                }
 
-        if (-not $process.CloseMainWindow()) {
-            throw "Windows player pass $PassNumber did not expose a closeable main window."
+                if ($process.MainWindowHandle -ne [System.IntPtr]::Zero -and $process.CloseMainWindow()) {
+                    $closeRequested = $true
+                    break
+                }
+            }
+        }
+        finally {
+            $startupStopwatch.Stop()
+        }
+        if (-not $closeRequested) {
+            throw "Windows player pass $PassNumber did not expose a closeable main window within $StartupTimeoutSeconds seconds."
         }
         if (-not $process.WaitForExit($ShutdownTimeoutSeconds * 1000)) {
             try {
@@ -205,7 +219,24 @@ function Invoke-PlayerPass {
     }
     finally {
         if ($null -ne $process) {
-            $process.Dispose()
+            try {
+                $process.Refresh()
+                if (-not $process.HasExited) {
+                    if ($process.MainWindowHandle -ne [System.IntPtr]::Zero) {
+                        [void]$process.CloseMainWindow()
+                    }
+                    if (-not $process.WaitForExit(1000)) {
+                        $process.Kill()
+                        [void]$process.WaitForExit(5000)
+                    }
+                }
+            }
+            catch {
+                # Cleanup is best effort; preserve the original smoke failure.
+            }
+            finally {
+                $process.Dispose()
+            }
         }
     }
 
@@ -270,6 +301,8 @@ try {
             "Assert-Uf010BuildContract",
             "Invoke-PlayerPass",
             "CloseMainWindow",
+            "MainWindowHandle",
+            "Stopwatch",
             "run_editmode_smoke.ps1")) {
             if (-not $source.Contains($token)) {
                 [Console]::Error.WriteLine("Windows wrapper contract is missing '$token'.")
@@ -346,12 +379,14 @@ try {
         Invoke-PlayerPass `
             -PlayerPath $playerPath `
             -LogPath $firstLog `
+            -StartupTimeoutSeconds $shutdownTimeoutSeconds `
             -ShutdownTimeoutSeconds $shutdownTimeoutSeconds `
             -SensitiveRoots $sensitiveRoots `
             -PassNumber 1
         Invoke-PlayerPass `
             -PlayerPath $playerPath `
             -LogPath $secondLog `
+            -StartupTimeoutSeconds $shutdownTimeoutSeconds `
             -ShutdownTimeoutSeconds $shutdownTimeoutSeconds `
             -SensitiveRoots $sensitiveRoots `
             -PassNumber 2

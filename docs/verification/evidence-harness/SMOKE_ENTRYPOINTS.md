@@ -58,6 +58,10 @@ captured EH-001 record fingerprint. The strict EH-001 tool then verifies the
 pinned editor and exact package-lock bytes. A custom configuration may be given
 as a repository-relative or absolute path with `-ConfigurationPath`.
 
+The frozen default configuration is pinned to UTF-8/LF in `.gitattributes`,
+because the evidence contract validates its exact canonical bytes. A custom
+configuration must likewise be UTF-8/LF with exactly one trailing newline.
+
 Python must be available as `python` or selected with `-PythonPath`. Unity must
 be the pinned editor, selected by `-UnityPath`, `UNITY_EDITOR_PATH`, or the
 standard Unity Hub location.
@@ -120,7 +124,8 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 The public EditMode default runs the accepted EditMode test assembly. Identity
 and configuration are resolved before Unity starts. Unity test failure, missing
 or malformed XML, diagnostic overflow, or EH-008 build/verify failure makes the
-command fail.
+command fail. Unity is allowed to finish its test-runner shutdown itself after
+it writes the XML; the entrypoint deliberately does not force `-quit`.
 
 ## PlayMode smoke
 
@@ -165,9 +170,9 @@ The command performs these fail-closed stages:
 2. Invoke `tools/build/Build-WindowsDevelopment.ps1` as the accepted build
    contract and preserve its nonzero exit code.
 3. Require the complete UF-010 artifact root.
-4. Launch `ShooterMover.exe`, require it to remain alive through startup,
-   request a normal main-window close, require exit code `0`, and reject crash,
-   unhandled-exception, null-reference, or assertion signatures.
+4. Launch `ShooterMover.exe`, poll within the bounded startup window for a
+   closeable main window, request a normal close, require exit code `0`, and
+   reject crash, unhandled-exception, null-reference, or assertion signatures.
 5. Repeat the launch/clean-close flow as the standalone restart smoke.
 6. Run the focused Editor PlayMode fixture to prove harness-shell load and
    EH-006 restart/cleanup semantics directly.
@@ -241,8 +246,9 @@ Windows player. Source inspection is not represented as passing execution.
 ## One-unit rollback
 
 Revert the three `tools/evidence/run_*_smoke.ps1` files,
-`EvidenceEntrypointSmokeTests.cs` and its inseparable `.meta`, and this document
-together. The accepted UF-009 tests, UF-010 build contract, EH-006 lifecycle,
-EH-008 manifest generator, scenes, project settings, registries, and gameplay
-remain unchanged. Caller-owned local evidence directories may be removed after
-all related Unity/player processes are closed.
+`EvidenceEntrypointSmokeTests.cs` and its inseparable `.meta`, the root
+`.gitattributes` rule, and this document together. The accepted UF-009 tests,
+UF-010 build contract, EH-006 lifecycle, EH-008 manifest generator, scenes,
+project settings, registries, and gameplay remain unchanged. Caller-owned local
+evidence directories may be removed after all related Unity/player processes
+are closed.

@@ -97,10 +97,12 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "tools",
                 "evidence",
                 "run_windows_build_smoke.ps1");
+            string attributesPath = Path.Combine(repositoryRoot, ".gitattributes");
 
             string edit = RequireText(editPath);
             string play = RequireText(playPath);
             string windows = RequireText(windowsPath);
+            string attributes = RequireText(attributesPath);
 
             AssertTokens(
                 edit,
@@ -132,6 +134,9 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity",
                 "Invoke-PlayerPass",
                 "CloseMainWindow",
+                "MainWindowHandle",
+                "Stopwatch",
+                "StartupTimeoutSeconds",
                 "startupPasses = 2",
                 "restartVerified = $true",
                 "run_editmode_smoke.ps1");
@@ -145,6 +150,18 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 play,
                 Does.Not.Contain("Build-WindowsDevelopment.ps1"),
                 "PlayMode must remain distinct from the Windows build entrypoint.");
+            Assert.That(
+                edit,
+                Does.Not.Contain("\"-quit\""),
+                "Unity test runner must not be forced to quit before it writes test XML.");
+            Assert.That(
+                windows,
+                Does.Not.Contain("Start-Sleep -Seconds 3"),
+                "Windows player startup must wait for a closeable window instead of assuming a fixed delay.");
+            Assert.That(
+                attributes,
+                Does.Contain("tools/evidence/fixtures/stage1-evidence-config-v1.json text eol=lf"),
+                "The frozen EH-002 configuration must retain LF bytes in Windows checkouts.");
 
             foreach (Tuple<string, string> source in new[]
             {

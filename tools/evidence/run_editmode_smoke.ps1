@@ -540,6 +540,11 @@ function Invoke-ContractTests {
         if (-not (Test-Path -LiteralPath $manifestTool -PathType Leaf)) {
             throw "EH-008 manifest tool was not found through the repository-relative path."
         }
+
+        $forcedQuitToken = '"' + '-quit' + '"'
+        if ([System.IO.File]::ReadAllText($PSCommandPath).Contains($forcedQuitToken)) {
+            throw "Unity test invocation must not force -quit before test XML is written."
+        }
     }
     finally {
         Remove-Item -LiteralPath $temporaryRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -620,6 +625,8 @@ function Invoke-EditorSmoke {
     $commandLog = Join-Path ([System.IO.Path]::GetTempPath()) ("eh009-unity-command-" + [guid]::NewGuid().ToString("N") + ".log")
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     try {
+        # Unity's test runner exits after it has written the requested XML. A forced
+        # -quit can interrupt that shutdown and leave the evidence incomplete.
         $unityArguments = @(
             "-batchmode",
             "-projectPath", $repositoryRoot,
@@ -627,8 +634,7 @@ function Invoke-EditorSmoke {
             "-testPlatform", $InternalTestPlatform,
             "-testFilter", $InternalTestFilter,
             "-testResults", $rawResults,
-            "-logFile", $rawUnityLog,
-            "-quit")
+            "-logFile", $rawUnityLog)
         $unityExit = Invoke-Child -FilePath $unityExecutable -Arguments $unityArguments -LogPath $commandLog
     }
     finally {
