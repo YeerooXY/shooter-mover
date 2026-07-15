@@ -50,14 +50,13 @@ The renderer reference is replaceable through `SetBodySprite` or by replacing th
 prefab's `SpriteRenderer.sprite`. No gameplay code changes are required for later
 production art.
 
-### Current art limitation
+### Accepted art revision
 
-At the current `main` state, VS-001 records that the turret PNG contains an
-opaque checkerboard baked into its pixels rather than clean transparency. VS-003
-consumes that accepted asset without editing, cropping, regenerating, renaming,
-or re-importing it. The package is therefore **not clean visual proof and not a
-final-art claim**. A clean VS-001 provenance follow-up may replace the referenced
-sprite later.
+VS-003 consumes the clean transparent turret replacement recorded by the VS-001
+art refresh. The replacement retains the established Unity GUID, so this prefab
+needs no rebinding and the original source revision remains available through
+the VS-001 provenance record. This is prototype visual proof, not a final-art
+claim.
 
 ## Readability contract
 
@@ -105,8 +104,8 @@ Required captures after VS-007 binds the prefab:
 1. default warning/fire/recovery/damage/deactivation sequence;
 2. reduced-effects sequence with identical warning identity and timing;
 3. grayscale sequence with distinguishable shape/text/count/timing;
-4. explicit capture of the current opaque-checkerboard limitation unless a clean
-   VS-001 replacement has merged.
+4. transparent-edge inspection against the room floor with no checkerboard or
+   opaque source rectangle visible.
 
 The tests cover idle, warning, firing, recovery, damage, numeric/normalized
 health, zero health, deactivation, restart generation, simultaneous
