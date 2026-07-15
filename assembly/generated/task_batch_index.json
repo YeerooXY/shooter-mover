@@ -324,6 +324,48 @@
       "output_path": "assembly/generated/task_batches/stage1-gate.json",
       "status": "validated",
       "notes": "Validated 10-task explicit human Stage 1 gate. GATE-010 is the sole Stage 2 unlock and can complete only after a valid advance decision. S1.4 gate allocation is 1.90 days and S1.5 external-round allocation is 3.40 days."
+    },
+    {
+      "batch_id": "stage1-visible-slice",
+      "owner_role": "Human Lead Integration and Review",
+      "repo_targets": [
+        "YeerooXY/shooter-mover"
+      ],
+      "lanes": [
+        "visible-slice-art-intake",
+        "visible-slice-room-presentation",
+        "visible-slice-enemy-presentation",
+        "visible-slice-combat-hud",
+        "visible-slice-loadout-selector",
+        "visible-slice-camera-readability",
+        "visible-slice-integration"
+      ],
+      "milestones": [
+        "S1.2 Four-weapon combat",
+        "S1.3 Enemies and short route"
+      ],
+      "expected_task_count": 7,
+      "expected_task_ids": [
+        "VS-001",
+        "VS-002",
+        "VS-003",
+        "VS-004",
+        "VS-005",
+        "VS-006",
+        "VS-007"
+      ],
+      "depends_on_batches": [
+        "unity-foundation",
+        "shared-contracts-core",
+        "stage1-evidence-harness",
+        "movement-thruster",
+        "combat-four-mount",
+        "stage1-weapons",
+        "stage1-enemies-route"
+      ],
+      "output_path": "assembly/generated/task_batches/stage1-visible-slice.json",
+      "status": "validated",
+      "notes": "Approved by merged PR #104. Seven tasks estimate 2.55 focused lead days with 0.60 day reserved for VS-007 integration defects. VS-004 through VS-006 may start independently; VS-002 and VS-003 follow VS-001; VS-007 is the sole serial scene owner."
     }
   ]
 }

@@ -1,0 +1,401 @@
+{
+  "schema_version": "0.1.0",
+  "batch_id": "stage1-visible-slice",
+  "source_plan_path": "assembly/planning_runs/shooter-mover-v1/AMENDMENT_STAGE1_VISIBLE_SLICE.md",
+  "tasks": [
+    {
+      "id": "VS-001",
+      "title": "Intake temporary visible-slice art",
+      "summary": "Import the selected local floor, room-reference, turret, and prop assets with deterministic provenance and Unity-ready derivatives.",
+      "objective": "Create the sole accepted local-art intake for the Stage 1 visible slice so every art consumer uses the same preserved sources, checksums, provenance, and import settings.",
+      "context": "The assets under C:/Users/Yeeroo/Desktop/sprites are prototype inputs generated for this project. Intake must preserve originals, record provenance and prototype-only status, and reject any source whose origin cannot be recorded.",
+      "owner_role": "Content and Art Pipeline Builder",
+      "lane": "visible-slice-art-intake",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.3 Enemies and short route",
+      "allowed_areas": [
+        "source-assets/prototype/stage1-visible-slice/",
+        "Assets/ShooterMover/Art/Prototype/Stage1VisibleSlice/",
+        "docs/provenance/prototype/stage1-visible-slice/"
+      ],
+      "depends_on": [],
+      "blocks": ["VS-002", "VS-003", "VS-007"],
+      "inputs": [
+        "assembly/planning_runs/shooter-mover-v1/AMENDMENT_STAGE1_VISIBLE_SLICE.md",
+        "C:/Users/Yeeroo/Desktop/sprites/map_items/tile_concept_1.jfif",
+        "C:/Users/Yeeroo/Desktop/sprites/enemies/standing_turret_weak.png",
+        "C:/Users/Yeeroo/Desktop/sprites/level_idea_1.png when present, plus a deliberately selected small prop subset",
+        "docs/architecture/FILE_OWNERSHIP.md"
+      ],
+      "outputs": [
+        "Preserved prototype source assets",
+        "Unity-ready imported derivatives and metadata",
+        "Provenance inventory with SHA-256 checksums"
+      ],
+      "implementation_notes": [
+        "This task requires a local worktree with access to C:/Users/Yeeroo/Desktop/sprites; a GitHub-only web agent cannot complete it.",
+        "Use only ordinary non-destructive Git commands in the fresh worktree: status, fetch, switch, add explicit owned paths, commit, and push. Do not use reset --hard, checkout --, or improvised cross-shell file commands.",
+        "Add only task-local leaf .meta files. Do not add shared ancestor metadata such as Runtime/Presentation.meta, Tests/EditMode/Presentation.meta, Tests/PlayMode/Presentation.meta, or UI.meta.",
+        "Do not create scenes, prefabs, UI, gameplay code, registries, or persistence state.",
+        "Rollback: remove the three task-owned roots together; no runtime migration is required.",
+        "Milestone-cap spend: 0.25 focused lead day."
+      ],
+      "acceptance_criteria": [
+        "Selected originals are preserved without silent regeneration or renaming and every accepted file has source, provenance, prototype-only status, and SHA-256 recorded.",
+        "Unity-ready derivatives use explicit import settings appropriate to top-down 2D presentation, including alpha handling where applicable.",
+        "The real tile and turret assets are included; the floor is not replaced by a procedural substitute.",
+        "No unknown-rights asset, gameplay logic, scene, prefab, UI, registry, or durable state is introduced."
+      ],
+      "verification": [
+        "Automated: recompute every recorded SHA-256 and fail on missing, extra, or mismatched inventory entries; verify changed paths stay inside the three owned roots.",
+        "Unity: import with Unity 6000.3.19f1 and confirm no import/compiler errors and expected texture dimensions, alpha, filter, wrap, compression, and pixels-per-unit settings.",
+        "Manual: inspect the floor, turret, and selected props at intended camera scale and record suitability limitations without claiming final-art acceptance."
+      ],
+      "proof_required": [
+        "Complete provenance/checksum inventory",
+        "Exact changed-path list and Unity import log",
+        "Contact sheet or inspector captures of accepted assets",
+        "Explicit list of rejected or deferred local candidates"
+      ],
+      "edge_cases": [
+        "JPEG floor input has no alpha channel.",
+        "A generated image contains a checkerboard baked into RGB rather than true transparency.",
+        "Two local files have similar names or visually duplicate content."
+      ],
+      "non_goals": [
+        "Do not create final art or accept visual quality for release.",
+        "Do not implement room, turret, HUD, loadout, camera, or scene behavior."
+      ],
+      "estimated_size": "S",
+      "risk_tags": ["local-assets", "provenance", "unity-import", "parallel-gate"],
+      "handoff_notes": "VS-002 and VS-003 must consume these accepted assets read-only and may not independently re-import them.",
+      "notes": "Authoritative through merged visible-slice amendment PR #104."
+    },
+    {
+      "id": "VS-002",
+      "title": "Build the dark industrial room presentation shell",
+      "summary": "Create a task-local visual room package using the accepted floor and props without taking collision, encounter, or mission authority.",
+      "objective": "Turn the debug rectangle into a readable dark industrial room shell with floor, walls, doors, props, markers, sorting, and lighting presentation that can later be composed by VS-007.",
+      "context": "This is presentation over accepted EH-004/EH-005 architectural inputs. The package must use VS-001 art and remain detachable from gameplay truth.",
+      "owner_role": "Content and Art Pipeline Builder",
+      "lane": "visible-slice-room-presentation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.3 Enemies and short route",
+      "allowed_areas": [
+        "Assets/ShooterMover/ContentPackages/Rooms/Stage1VisibleSlicePresentation/",
+        "Assets/ShooterMover/Tests/PlayMode/VisibleSliceRoomPresentation/"
+      ],
+      "depends_on": ["VS-001", "EH-004", "EH-005", "UF-003"],
+      "blocks": ["VS-007"],
+      "inputs": [
+        "VS-001 accepted art inventory and Unity-ready derivatives",
+        "EH-004 Stage1BenchmarkArena and EH-005 Stage1ShortRouteShell as read-only architectural references",
+        "assembly/planning_runs/shooter-mover-v1/AMENDMENT_STAGE1_VISIBLE_SLICE.md"
+      ],
+      "outputs": [
+        "Task-local Stage 1 room-presentation prefab/package",
+        "Focused room-presentation PlayMode tests"
+      ],
+      "implementation_notes": [
+        "Use the real accepted VS-001 floor asset. A replaceable sprite field is allowed; a procedural generator is not the default floor.",
+        "Do not edit any .unity scene or duplicate EH-004/EH-005 collision and geometry authority.",
+        "Add only exact leaf-folder metadata; never add shared ancestor .meta files.",
+        "When operating as a GitHub web agent, use the authenticated connector only and do not attempt random local git, gh, clone, shell-authentication, or browser-login commands.",
+        "Rollback: remove the two owned folders; no gameplay or save migration is required.",
+        "Milestone-cap spend: 0.35 focused lead day."
+      ],
+      "acceptance_criteria": [
+        "A task-local prefab/package presents a dark tiled floor, bounded walls/doors, selected props, room markers, sorting, and restrained lighting without adding collision or mission truth.",
+        "The floor is readable at prototype camera scale and does not overpower actors, projectiles, telegraphs, or HUD.",
+        "No scene, gameplay authority, registry, persistence, or WP-010-owned path changes."
+      ],
+      "verification": [
+        "Unity 6000.3.19f1 compilation and focused PlayMode tests pass.",
+        "Automated component audit proves no Collider2D, Rigidbody2D, camera, mission, encounter, or persistence authority exists in the package.",
+        "Manual 1920x1080 capture demonstrates floor continuity, prop readability, and actor contrast."
+      ],
+      "proof_required": [
+        "Focused PlayMode XML/log",
+        "Prefab/component audit",
+        "Reference-resolution room capture",
+        "Exact changed-path and rollback summary"
+      ],
+      "edge_cases": ["Floor replacement sprite is absent.", "Camera shows a room edge.", "Reduced effects disables optional lighting."],
+      "non_goals": ["Do not edit Stage1VisibleSlice.unity.", "Do not implement collisions, encounters, objectives, rewards, or final art."],
+      "estimated_size": "M",
+      "risk_tags": ["presentation", "serialized-prefab", "readability"],
+      "handoff_notes": "VS-007 composes the package; it must not fork its visuals into the integration scene.",
+      "notes": "Consumes the accepted VS-001 art package."
+    },
+    {
+      "id": "VS-003",
+      "title": "Present the accepted Blaster Turret",
+      "summary": "Attach the accepted standing-turret art to EN-007 through a detachable, read-only presentation layer.",
+      "objective": "Make the Blaster Turret visibly communicate health, damage, warning, firing, recovery, destruction, and restart state without changing enemy or projectile authority.",
+      "context": "EN-002, EN-003, and EN-007 remain authoritative. Presentation reads accepted state/events and the VS-001 turret asset only.",
+      "owner_role": "Enemy and Encounter Builder",
+      "lane": "visible-slice-enemy-presentation",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.3 Enemies and short route",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Presentation/VisibleSliceBlasterTurret/",
+        "Assets/ShooterMover/Tests/PlayMode/VisibleSliceBlasterTurretPresentation/"
+      ],
+      "depends_on": ["VS-001", "EN-002", "EN-003", "EN-007", "EN-009"],
+      "blocks": ["VS-007"],
+      "inputs": [
+        "VS-001 accepted standing_turret_weak asset",
+        "EN-002 enemy health/lifecycle state",
+        "EN-003 Unity 2D enemy bridge",
+        "EN-007 Blaster Turret warning/fire/recovery behavior"
+      ],
+      "outputs": ["Detachable Blaster Turret presentation package", "Focused presentation PlayMode tests"],
+      "implementation_notes": [
+        "Consume immutable state/events; never apply damage, advance cadence, choose targets, or execute projectiles.",
+        "Do not edit Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/ or any .unity scene.",
+        "Warnings must remain understandable without color and under reduced effects.",
+        "Add only exact leaf-folder metadata; never add shared ancestor .meta files.",
+        "When operating as a GitHub web agent, use the authenticated connector only and do not attempt random local git, gh, clone, shell-authentication, or browser-login commands.",
+        "Rollback: remove the two owned folders; EN-007 behavior remains intact.",
+        "Milestone-cap spend: 0.30 focused lead day."
+      ],
+      "acceptance_criteria": [
+        "The accepted turret sprite tracks authoritative active, warning, firing, recovery, damaged, health, destroyed/deactivated, and restart-generation states.",
+        "Warning timing remains EN-007-owned and readable by shape/text/count as well as color.",
+        "Presentation removal leaves EN-007 simulation behavior unchanged."
+      ],
+      "verification": [
+        "Unity compilation and focused PlayMode tests cover the full warning/fire/recovery/damage/deactivation/restart path.",
+        "A parity test proves the presentation never mutates enemy health, cadence, target selection, or projectile execution.",
+        "Manual default, reduced-effects, and grayscale captures remain readable."
+      ],
+      "proof_required": ["Focused PlayMode XML/log", "State-transition trace", "Default/reduced-effects/grayscale captures", "Ownership audit"],
+      "edge_cases": ["Damage and warning occur in the same frame.", "Restart generation changes while a warning is pending.", "Health reaches zero before a scheduled shot."],
+      "non_goals": ["Do not rebalance or rewrite EN-007.", "Do not add targeting, projectile, encounter, reward, or persistence authority."],
+      "estimated_size": "M",
+      "risk_tags": ["enemy-presentation", "telegraph-readability", "authority-boundary"],
+      "handoff_notes": "VS-007 binds the package to the accepted EN-007 fixture.",
+      "notes": "Consumes VS-001 turret art read-only."
+    },
+    {
+      "id": "VS-004",
+      "title": "Add the general combat HUD",
+      "summary": "Provide a temporary but reusable combat HUD around the existing WP-010 four-slot strip.",
+      "objective": "Show player health, thruster, reticle, hit confirmation, focused-enemy health, room/objective state, and restart framing so the prototype reads as a game screen.",
+      "context": "The HUD is read-only presentation. WP-010 exclusively owns its four-slot weapon strip; this task reserves space for it and must not wrap, duplicate, restyle, or test it.",
+      "owner_role": "Mission, Persistence, Rewards, and UI Builder",
+      "lane": "visible-slice-combat-hud",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.2 Four-weapon combat",
+      "allowed_areas": [
+        "Assets/ShooterMover/UI/VisibleSliceGeneralCombatHud/",
+        "Assets/ShooterMover/Tests/PlayMode/VisibleSliceGeneralCombatHud/"
+      ],
+      "depends_on": ["CS-004", "MT-011", "CB-009", "EN-002", "EN-003", "WP-010"],
+      "blocks": ["VS-007"],
+      "inputs": [
+        "CS-004 combat messages",
+        "MT-011 read-only thruster status",
+        "CB-009 confirmed combat execution/hit facts",
+        "EN-002/EN-003 enemy health and Unity bridge",
+        "WP-010 layout region as an exclusive read-only input",
+        "Reusable room/objective/restart projection intent recorded from superseded PR #107"
+      ],
+      "outputs": ["General visible-slice combat HUD package", "Focused HUD PlayMode tests"],
+      "implementation_notes": [
+        "Qualify UnityEngine.Application explicitly anywhere the ShooterMover.Application namespace could shadow it.",
+        "Use injected read-only status sources. Do not create player-health, objective-completion, mission, save, or enemy mutation authority.",
+        "Do not edit WP-010-owned paths or its focused test.",
+        "Do not edit any .unity scene. Add only exact leaf-folder metadata and never shared ancestor UI/Test metadata.",
+        "When operating as a GitHub web agent, use the authenticated connector only. Do not attempt gh, local Git, cloning, shell authentication checks, or browser login; start a fresh branch from current main through the connector.",
+        "Rollback: remove the two owned folders; combat and enemy simulation remain unchanged.",
+        "Milestone-cap spend: 0.45 focused lead day."
+      ],
+      "acceptance_criteria": [
+        "HUD presents player health, thruster, reticle, confirmed hit, focused-enemy health, room/objective framing, restart hint, and reduced-effects warning from injected read-only state.",
+        "Layout reserves the WP-010 strip region and remains readable at 1920x1080 and one smaller 16:9 resolution.",
+        "Critical state is readable without color and no gameplay, persistence, objective, or WP-010 authority is introduced."
+      ],
+      "verification": [
+        "Unity compilation and focused PlayMode tests cover visibility, safe margins, state projection, restart reset, and reduced-effects behavior.",
+        "Tests prove confirmed-hit UI appears only from accepted hit facts and that HUD actions never mutate source state.",
+        "Manual keyboard/controller-distance and grayscale captures show no overlap with the WP-010 region."
+      ],
+      "proof_required": ["Focused PlayMode XML/log", "1920x1080 and smaller-16:9 captures", "Reduced-effects and grayscale captures", "WP-010 ownership/path audit"],
+      "edge_cases": ["No focused enemy.", "Zero thruster or critical player health.", "Objective text is long.", "Restart occurs while transient hit feedback is visible."],
+      "non_goals": ["Do not implement final UI art, localization, inventory, rewards, saves, or mission truth.", "Do not edit Stage1VisibleSlice.unity or WP-010."],
+      "estimated_size": "M",
+      "risk_tags": ["ui", "readability", "authority-boundary", "wp-010-exclusion"],
+      "handoff_notes": "VS-007 composes this HUD beside the unmodified WP-010 strip.",
+      "notes": "May start immediately; it does not depend on VS-001."
+    },
+    {
+      "id": "VS-005",
+      "title": "Add the temporary fixed-loadout selector",
+      "summary": "Present the accepted WP-008 fixed four-slot comparisons before room entry without inventory or persistence.",
+      "objective": "Provide a deterministic keyboard/controller loadout-selection flow that emits one immutable WP-008 fixture for VS-007 and resets cleanly.",
+      "context": "This is a temporary selector, not an inventory system. It consumes WP-008 directly and treats WP-010 as entirely outside its ownership.",
+      "owner_role": "Mission, Persistence, Rewards, and UI Builder",
+      "lane": "visible-slice-loadout-selector",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.2 Four-weapon combat",
+      "allowed_areas": [
+        "Assets/ShooterMover/UI/VisibleSliceLoadoutSelector/",
+        "Assets/ShooterMover/Tests/PlayMode/VisibleSliceLoadoutSelector/"
+      ],
+      "depends_on": ["WP-008"],
+      "blocks": ["VS-007"],
+      "inputs": [
+        "WP-008 deterministic Stage 1 loadout fixtures",
+        "Reusable deterministic menu-state/input intent recorded from superseded PR #108"
+      ],
+      "outputs": ["Temporary fixed-loadout selector package", "Focused keyboard/controller PlayMode tests"],
+      "implementation_notes": [
+        "Consume WP-008 fixture IDs and ordered four slots directly; do not use reflection into WP-010 or Assembly-CSharp.",
+        "Use InputSystem.AddDevice<T>() or a locally defined valid helper in tests; do not call the nonexistent bare AddDevice<T>() inherited from InputTestFixture.",
+        "Confirmation emits an immutable fixture selection only. It does not load a scene or configure live mounts.",
+        "Do not edit any .unity scene. Add only exact leaf-folder metadata and never shared ancestor UI/Test metadata.",
+        "When operating as a GitHub web agent, use the authenticated connector only. Do not attempt gh, local Git, cloning, shell authentication checks, or browser login; start a fresh branch from current main through the connector.",
+        "Rollback: remove the two owned folders; no saved state or migration exists.",
+        "Milestone-cap spend: 0.15 focused lead day."
+      ],
+      "acceptance_criteria": [
+        "The selector shows exactly the approved WP-008 fixtures and their ordered four-slot weapon IDs.",
+        "Keyboard and controller navigation, wraparound, confirm, cancel, terminal behavior, and deterministic restart reset work.",
+        "No inventory, unlock, reward, shop, reroll, random modifier, PlayerPrefs, save, scene loading, reflection bridge, or package tuning is introduced."
+      ],
+      "verification": [
+        "Unity compilation and focused PlayMode tests pass with real virtual keyboard/controller devices.",
+        "Tests cover wraparound, confirm/cancel terminal states, invalid input neutrality, and ResetForRestart returning the default fixture with no retained confirmation.",
+        "Static audit proves direct WP-008 consumption and no WP-010 reflection or persistence API usage."
+      ],
+      "proof_required": ["Focused PlayMode XML/log", "Keyboard/controller navigation trace", "WP-008 identity trace", "Reflection/persistence/path audit"],
+      "edge_cases": ["Simultaneous confirm and navigation input.", "Controller disconnect.", "Restart after confirmation.", "Unknown fixture ID fails closed."],
+      "non_goals": ["Do not implement editable per-slot inventory or actual mount configuration.", "Do not edit Stage1VisibleSlice.unity, WP-008 definitions, or WP-010."],
+      "estimated_size": "S",
+      "risk_tags": ["ui", "input-system", "determinism", "wp-008"],
+      "handoff_notes": "VS-007 consumes the immutable confirmed fixture and owns room entry/live composition.",
+      "notes": "May start immediately; it does not depend on VS-001."
+    },
+    {
+      "id": "VS-006",
+      "title": "Apply the orthographic camera and readability pass",
+      "summary": "Create a task-local orthographic camera/readability rig with bounded framing, safe HUD margins, and reduced-effects parity.",
+      "objective": "Provide stable room framing and visual-readability constraints for the visible slice without writing movement, combat, or global settings authority.",
+      "context": "The camera consumes accepted movement state and injected reduced-effects state. VS-007 owns scene composition; this task owns only a reusable rig/configuration and focused proof.",
+      "owner_role": "Verification, Performance, and Release Builder",
+      "lane": "visible-slice-camera-readability",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.3 Enemies and short route",
+      "allowed_areas": [
+        "Assets/ShooterMover/Runtime/Presentation/VisibleSliceCameraReadability/",
+        "Assets/ShooterMover/Tests/PlayMode/VisibleSliceCameraReadability/"
+      ],
+      "depends_on": ["UF-003", "MT-010", "MT-011"],
+      "blocks": ["VS-007"],
+      "inputs": [
+        "UF-003 accepted URP 2D baseline",
+        "MT-010 movement actor runtime as read-only follow input",
+        "MT-011 read-only thruster state",
+        "Visible-slice safe-margin and reduced-effects rules from the merged amendment"
+      ],
+      "outputs": ["Reusable orthographic camera/readability rig or configuration", "Focused camera/readability PlayMode tests"],
+      "implementation_notes": [
+        "Do not edit any .unity scene, Rigidbody2D, player transform, movement state, combat simulation, global quality setting, or persistence setting.",
+        "Essential warnings and information must survive reduced effects and grayscale; color is supplemental.",
+        "Add only exact leaf-folder metadata and never shared ancestor .meta files.",
+        "When operating as a GitHub web agent, use the authenticated connector only. Do not attempt gh, local Git, cloning, shell authentication checks, or browser login; start a fresh branch from current main through the connector.",
+        "Rollback: remove the two owned folders; accepted movement and project rendering remain unchanged.",
+        "Milestone-cap spend: 0.25 focused lead day."
+      ],
+      "acceptance_criteria": [
+        "A task-local orthographic rig/configuration provides bounded follow or room clamp, reference framing, HUD safe margins, and screen-edge warning constraints.",
+        "Default and reduced-effects modes preserve timing and essential information without depending on color.",
+        "The rig does not mutate player movement, combat, global settings, scenes, or persistence."
+      ],
+      "verification": [
+        "Unity compilation and focused PlayMode tests cover 16:9 framing, clamp boundaries, safe margins, restart reset, reduced-effects parity, and grayscale warning readability.",
+        "Tests prove the camera never writes Rigidbody2D velocity, player position, movement intent, combat state, or global quality state.",
+        "Manual captures at 1920x1080 and one smaller 16:9 resolution show stable actor/telegraph framing."
+      ],
+      "proof_required": ["Focused PlayMode XML/log", "Reference-resolution capture pair", "Reduced-effects/grayscale evidence", "Movement/global-settings mutation audit"],
+      "edge_cases": ["Player reaches every room boundary.", "Viewport aspect changes within supported 16:9 sizes.", "Restart occurs at a clamp edge."],
+      "non_goals": ["Do not implement cinematic camera effects or final post-processing.", "Do not edit Stage1VisibleSlice.unity or global project settings."],
+      "estimated_size": "S",
+      "risk_tags": ["camera", "readability", "reduced-effects", "authority-boundary"],
+      "handoff_notes": "VS-007 instantiates and binds the rig in the sole integration scene.",
+      "notes": "May start immediately; it does not depend on VS-001."
+    },
+    {
+      "id": "VS-007",
+      "title": "Compose and prove the final Stage 1 visible slice",
+      "summary": "Serially compose the accepted movement, combat, enemy, room, HUD, loadout, weapon-strip, and camera packages into one playable prototype scene.",
+      "objective": "Deliver one screen-visible Stage 1 prototype where the human lead selects a fixed loadout, enters a readable room, moves, aims, fires, damages and kills an enemy, reads turret warning and HUD feedback, and restarts cleanly.",
+      "context": "This is the sole serialized scene owner and final composition boundary. It may use one deterministic TestSupport-only session health value but introduces no durable game state.",
+      "owner_role": "Human Lead Integration and Review",
+      "lane": "visible-slice-integration",
+      "repo_target": "YeerooXY/shooter-mover",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "S1.3 Enemies and short route",
+      "allowed_areas": [
+        "Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity",
+        "Assets/ShooterMover/TestSupport/VisibleSlice/",
+        "Assets/ShooterMover/Tests/PlayMode/VisibleSliceIntegration/",
+        "docs/verification/visible-slice/STAGE1_VISIBLE_SLICE_PLAYABLE.md"
+      ],
+      "depends_on": [
+        "VS-001", "VS-002", "VS-003", "VS-004", "VS-005", "VS-006",
+        "WP-008", "WP-010", "EN-009", "EN-010", "EN-011", "EH-006",
+        "MT-010", "MT-011", "CB-006", "CB-008", "CB-009", "CB-010",
+        "EN-002", "EN-003", "EN-007"
+      ],
+      "blocks": [],
+      "inputs": [
+        "All accepted VS-001 through VS-006 outputs",
+        "Accepted movement, four-mount combat, weapon, enemy, encounter, restart, and evidence authorities listed in the merged amendment"
+      ],
+      "outputs": ["Stage1VisibleSlice.unity", "Integration TestSupport and PlayMode proof", "Human-playable verification guide"],
+      "implementation_notes": [
+        "This task starts only after all dependencies merge and is the sole owner of Stage1VisibleSlice.unity.",
+        "Compose accepted packages; do not fork their logic or duplicate their serialized assets into new authorities.",
+        "One deterministic session-only player-vital value is allowed inside the owned TestSupport composition. It cannot persist or become MissionRunState/campaign health.",
+        "No build-settings, registry, save, inventory, reward, unlock, mission persistence, or durable room-clear change.",
+        "Add only exact task-local metadata; never rewrite shared ancestor .meta files.",
+        "Rollback: remove the four owned outputs; accepted component packages remain independently valid.",
+        "Milestone-cap spend: 0.80 focused lead day plus up to 0.60 day explicit integration contingency for compile, composition, readability, or restart defects only."
+      ],
+      "acceptance_criteria": [
+        "The player selects a WP-008 loadout, enters the room, moves, aims, fires, receives session-only health feedback, damages and kills at least one enemy, observes the complete EN-007 warning/fire/recovery/deactivation path, sees objective/room-clear presentation, and quick-restarts cleanly.",
+        "The room uses accepted floor/prop/turret art, general HUD, unmodified WP-010 strip, loadout selector, and camera rig and reads as a game screen rather than debug geometry.",
+        "Fifty restart cycles leave no duplicate scene objects, callbacks, projectiles, enemies, HUD owners, camera owners, selected-loadout state, or session-health state.",
+        "No durable state, build-settings edit, MissionRunState, inventory, reward, save, registry, or persistence output is created."
+      ],
+      "verification": [
+        "Unity 6000.3.19f1 imports and compiles the merged dependency tree and focused end-to-end PlayMode suite.",
+        "Run the fifty-restart leak test and record object/callback/projectile/enemy/HUD/camera counts.",
+        "Capture default, reduced-effects, and grayscale evidence plus a manual playable check at reference resolution.",
+        "Where available, capture through EH-008/EH-009/EH-010 after the direct focused suite passes."
+      ],
+      "proof_required": ["Focused integration XML/log", "Fifty-restart leak summary", "Playable verification document", "Default/reduced-effects/grayscale captures", "Exact scene ownership and no-durable-state audit"],
+      "edge_cases": ["Restart during turret warning or active projectiles.", "Loadout confirm/cancel transition.", "Enemy destroyed on the same frame as incoming damage.", "Reduced effects enabled before scene entry."],
+      "non_goals": ["Do not claim final art, final balance, formal Stage 1 gate acceptance, inventory, rewards, progression, or campaign persistence.", "Do not expand into WP-012, EN-012, EN-013, AR, GATE, networking, mobile, analytics, or storefront work."],
+      "estimated_size": "M",
+      "risk_tags": ["serialized-scene", "integration", "restart", "human-playable", "strong-review"],
+      "handoff_notes": "This is the only serial integration task; deeper evidence work resumes after its proof.",
+      "notes": "Uses the 0.60-day amendment contingency only for bounded integration defects."
+    }
+  ]
+}
