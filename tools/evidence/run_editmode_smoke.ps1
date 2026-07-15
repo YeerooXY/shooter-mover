@@ -483,6 +483,37 @@ function Assert-TestResultsPassed {
     }
 }
 
+function Wait-ForUnityTestResults {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][int]$TimeoutSeconds
+    )
+
+    if ($TimeoutSeconds -lt 1) {
+        Throw-Eh009 -Code 4 -Message "Unity test-results timeout must be positive."
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $previousLength = -1L
+    try {
+        while ($stopwatch.Elapsed.TotalSeconds -lt $TimeoutSeconds) {
+            $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+            if ($null -ne $item -and $item.Length -gt 0) {
+                if ($item.Length -eq $previousLength) {
+                    return
+                }
+                $previousLength = $item.Length
+            }
+            Start-Sleep -Milliseconds 100
+        }
+    }
+    finally {
+        $stopwatch.Stop()
+    }
+
+    Throw-Eh009 -Code 6 -Message "Unity did not write stable test results to '$Path' within $TimeoutSeconds seconds."
+}
+
 function Invoke-ContractTests {
     param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
 
@@ -639,6 +670,9 @@ function Invoke-EditorSmoke {
         }
         Throw-ChildExit -Code $unityExit -Message "$InternalTestPlatform smoke tests failed."
     }
+    Wait-ForUnityTestResults `
+        -Path $rawResults `
+        -TimeoutSeconds ([int]$configuration.timeouts.smokeRunSeconds)
     Assert-TestResultsPassed -Path $rawResults
 
     $replacements = @{}

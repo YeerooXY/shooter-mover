@@ -117,6 +117,8 @@ namespace ShooterMover.Tests.PlayMode.EvidenceHarness
                 "\"build\", \"--package-root\"",
                 "\"verify\", \"--package-root\"",
                 "& $FilePath @Arguments",
+                "Wait-ForUnityTestResults",
+                "smokeRunSeconds",
                 "--require-valid");
             AssertTokens(
                 play,
