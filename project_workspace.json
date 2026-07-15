@@ -3,7 +3,7 @@
   "project_id": "shooter-mover",
   "name": "Shooter Mover",
   "status": "active",
-  "default_view": "dispatch",
+  "default_view": "planning",
   "repository": {
     "provider": "github",
     "full_name": "YeerooXY/shooter-mover",
@@ -70,17 +70,16 @@
   ],
   "ai_guidance": {
     "onboarding_mode": "guided_pr",
-    "human_next_step": "Dispatch dependency-ready Stage 1 tasks from current main. Do not dispatch retired CB-007; weapon fire must not alter player movement authority.",
+    "human_next_step": "Review and merge the Stage 1 visible-slice planning amendment. Only after that merge may a fresh Task Splitter PR materialize VS-001 through VS-007; do not dispatch or implement VS work from the planning PR.",
     "notes": [
       "Chat context is temporary; merged repository files are authoritative.",
-      "Stage 1 task decomposition is complete: 9 validated batches and 103 canonical tasks.",
-      "MT-013 is an optional test-only movement-playground leaf: it consumes accepted MT-007/MT-010 runtime read-only, blocks no existing task, and introduces no production scene or gameplay authority.",
+      "Current main has no merged visible-slice amendment or VS task cards. The planning amendment deliberately leaves the 103-task canonical backlog and generated collaboration artifacts unchanged.",
+      "The proposed visible-slice batch contains VS-001 through VS-007: local art intake first, five parallel task-local presentation tasks, then one serial integration-scene owner.",
+      "WP-010 retains exclusive ownership of its Stage1Presentation folder and focused test. It is currently an open draft dependency, not merged proof.",
+      "The visible-slice proposal consumes 0.60 S1.2 reserve and 2.55 S1.3 reserve, totaling 3.15 focused lead days without raising the accepted 50-day Stage 1 cap.",
+      "MT-013 remains an optional test-only movement-playground leaf: it consumes accepted MT-007/MT-010 runtime read-only, blocks no existing task, and introduces no production scene or gameplay authority.",
       "The human-selected no-player-motion recoil amendment retires CB-007; existing recoil data is non-authoritative and may not alter player velocity, position, thruster, or collision state.",
       "The approved Stage 1 cap is 50 focused lead days / 12 calendar weeks; S1.0 is 12 focused lead days / 3 calendar weeks.",
-      "UF-001 and UF-002 are accepted; Unity 6000.3.19f1 completed the first clean 21-package resolution.",
-      "UF-003 is accepted through merged PR #19 after exact-editor/static policy proof and Nemo's empty-scene renderer check passed.",
-      "UF-004 is accepted through merged PRs #18 and #21 after all static, exact-editor, negative-reference, and human Inspector proof passed.",
-      "UF-005 is accepted through merged PR #20 after repository-layout and adversarial ownership validation passed.",
       "Ordinary Stage 1 implementation PRs are accepted by Nemo's proof-complete merge; central lifecycle bookkeeping is batched once per wave and is not a dependency gate.",
       "Seven Stage 2 batch ranges are preserved as deferred planning and remain locked behind GATE-010.",
       "No Stage 2 task file, multiplayer/networking implementation, or Stage 2 dispatch is authorized."
