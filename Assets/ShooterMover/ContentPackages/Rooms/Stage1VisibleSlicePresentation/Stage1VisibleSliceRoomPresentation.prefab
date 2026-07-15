@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400000}
+  - component: {fileID: 11400000}
+  m_Layer: 0
+  m_Name: Stage1VisibleSliceRoomPresentation
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &400000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0c42319316b417d9990d8112de5dcca, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _floorSprite: {fileID: 21300000, guid: 8de5d0331ff04de4d907f37c89c6ffc6, type: 3}
+  _crateSprite: {fileID: 21300000, guid: 372cfb91a69c59447b4e786a52011d16, type: 3}
+  _doorSprite: {fileID: 0}
+  _explosiveSprite: {fileID: 0}
+  _reducedEffects: 0
+  _roomSize: {x: 32, y: 18}
+  _wallThickness: 0.75
+  _floorTint: {r: 0.34, g: 0.38, b: 0.42, a: 1}
+  _fallbackFloorTint: {r: 0.1, g: 0.12, b: 0.15, a: 1}
+  _wallTint: {r: 0.08, g: 0.1, b: 0.14, a: 1}
+  _doorTint: {r: 0.62, g: 0.47, b: 0.18, a: 1}
+  _propTint: {r: 0.7, g: 0.74, b: 0.78, a: 1}
+  _markerTint: {r: 0.2, g: 0.72, b: 0.82, a: 0.65}
+  _optionalAccentTint: {r: 0.18, g: 0.62, b: 0.72, a: 0.28}
