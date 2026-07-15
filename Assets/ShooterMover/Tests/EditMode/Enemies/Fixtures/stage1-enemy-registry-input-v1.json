@@ -1,0 +1,90 @@
+{
+  "$schema": "urn:shooter-mover:fixture:stage1-enemy-registry-input:1",
+  "schema_version": 1,
+  "catalog_version": 1,
+  "validation_mode": "release",
+  "packages": [
+    {
+      "enemy_id": "enemy.pursuer-drone",
+      "classification": "ordinary",
+      "package_root": "Assets/ShooterMover/ContentPackages/Enemies/PursuerDrone",
+      "package_type": "ShooterMover.ContentPackages.Enemies.PursuerDrone.PursuerDroneDefinition",
+      "descriptor_member": "CreatePackageDescriptor",
+      "descriptor_member_kind": "scriptable-object-method",
+      "movement_id": "module.enemy-direct-pursuit",
+      "attack_kind": "shared-module",
+      "attack_id": "module.enemy-ordinary-contact",
+      "telegraph_id": "module.enemy-contact-telegraph",
+      "serialized_assets": [
+        "Assets/ShooterMover/ContentPackages/Enemies/PursuerDrone/PursuerDrone.prefab",
+        "Assets/ShooterMover/ContentPackages/Enemies/PursuerDrone/PursuerDroneDefinition.asset"
+      ],
+      "temporary_presentation_debt": "Temporary generated grayscale body and pulsing detached fins; replace with final package art without changing gameplay authority."
+    },
+    {
+      "enemy_id": "enemy.ram-droid",
+      "classification": "ordinary",
+      "package_root": "Assets/ShooterMover/ContentPackages/Enemies/RamDroid",
+      "package_type": "ShooterMover.ContentPackages.Enemies.RamDroid.RamDroidDefinition",
+      "descriptor_member": "CreatePackageDescriptor",
+      "descriptor_member_kind": "scriptable-object-method",
+      "movement_id": "module.enemy-direct-pursuit",
+      "attack_kind": "shared-module",
+      "attack_id": "module.enemy-disposable-impact",
+      "telegraph_id": "module.enemy-impact-telegraph",
+      "serialized_assets": [
+        "Assets/ShooterMover/ContentPackages/Enemies/RamDroid/RamDroid.prefab",
+        "Assets/ShooterMover/ContentPackages/Enemies/RamDroid/RamDroidDefinition.asset"
+      ],
+      "temporary_presentation_debt": "Temporary RAM! label and geometric warning pulse; replace with final package art while preserving non-color readability."
+    },
+    {
+      "enemy_id": "enemy.mobile-blaster-droid",
+      "classification": "ordinary",
+      "package_root": "Assets/ShooterMover/ContentPackages/Enemies/MobileBlasterDroid",
+      "package_type": "ShooterMover.ContentPackages.Enemies.MobileBlasterDroid.MobileBlasterDroidDefinition",
+      "descriptor_member": "CreatePackageDescriptor",
+      "descriptor_member_kind": "scriptable-object-method",
+      "movement_id": "module.enemy-mobile-positioning",
+      "attack_kind": "weapon",
+      "attack_id": "weapon.blaster-machine-gun",
+      "telegraph_id": "module.enemy-ranged-windup",
+      "serialized_assets": [
+        "Assets/ShooterMover/ContentPackages/Enemies/MobileBlasterDroid/MobileBlasterDroid.prefab",
+        "Assets/ShooterMover/ContentPackages/Enemies/MobileBlasterDroid/MobileBlasterDroidDefinition.asset"
+      ],
+      "temporary_presentation_debt": "Temporary generated wind-up direction line and compressed recovery outline; expires when final enemy art is accepted."
+    },
+    {
+      "enemy_id": "enemy.blaster-turret",
+      "classification": "ordinary",
+      "package_root": "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret",
+      "package_type": "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretDefinition",
+      "descriptor_member": "CreatePackageDescriptor",
+      "descriptor_member_kind": "scriptable-object-method",
+      "movement_id": "module.enemy-stationary-positioning",
+      "attack_kind": "weapon",
+      "attack_id": "weapon.blaster-machine-gun",
+      "telegraph_id": "module.enemy-line-of-fire-telegraph",
+      "serialized_assets": [
+        "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurret.prefab",
+        "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretDefinition.asset"
+      ],
+      "temporary_presentation_debt": "Temporary generated turret base, line-of-fire rail, and repeated shape ticks; expires when final turret art is accepted."
+    },
+    {
+      "enemy_id": "enemy.four-blaster-elite",
+      "classification": "elite",
+      "package_root": "Assets/ShooterMover/ContentPackages/Enemies/FourBlasterElite",
+      "package_type": "ShooterMover.ContentPackages.Enemies.FourBlasterElite.FourBlasterElitePackage",
+      "descriptor_member": "CreateDescriptor",
+      "descriptor_member_kind": "static-method",
+      "movement_id": "module.enemy-elite-hold-position",
+      "attack_kind": "weapon",
+      "attack_id": "weapon.blaster-machine-gun",
+      "telegraph_id": "module.enemy-four-origin-telegraph",
+      "serialized_assets": [],
+      "temporary_presentation_debt": "Temporary four-spoke and countdown-bar readability contract only; EN-008 owns no final art or serialized presentation asset."
+    }
+  ]
+}
