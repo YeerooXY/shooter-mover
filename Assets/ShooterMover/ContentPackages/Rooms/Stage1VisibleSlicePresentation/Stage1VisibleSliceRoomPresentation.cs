@@ -112,6 +112,7 @@ namespace ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation
         public void SetExplosiveSprite(Sprite sprite)
         {
             _explosiveSprite = sprite;
+            Rebuild();
         }
 
         public void SetReducedEffects(bool reducedEffects)
@@ -268,6 +269,15 @@ namespace ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation
             CreateCrate("Crate_NorthWest", new Vector2(-10.0f, 5.2f), 0f);
             CreateCrate("Crate_NorthEast", new Vector2(9.6f, 5.0f), 0f);
             CreateCrate("Crate_SouthWest", new Vector2(-8.6f, -5.2f), 0f);
+
+            if (_explosiveSprite != null)
+            {
+                CreateSpriteProp(
+                    "Explosive_Optional",
+                    _explosiveSprite,
+                    new Vector2(9.0f, -5.0f),
+                    new Vector2(1.6f, 1.6f));
+            }
         }
 
         private void CreateCrate(string name, Vector2 localPosition, float rotation)
@@ -290,6 +300,22 @@ namespace ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation
                 renderer.drawMode = SpriteDrawMode.Tiled;
                 renderer.size = new Vector2(2.2f, 1.4f);
             }
+        }
+
+        private void CreateSpriteProp(
+            string name,
+            Sprite sprite,
+            Vector2 localPosition,
+            Vector2 desiredSize)
+        {
+            GameObject prop = CreateChild(_propRoot, name);
+            prop.transform.localPosition = localPosition;
+
+            SpriteRenderer renderer = prop.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = Color.white;
+            ConfigureSorting(renderer, PropSortingOrder);
+            FitSpriteToSize(prop.transform, sprite, desiredSize);
         }
 
         private void BuildMarkers()
