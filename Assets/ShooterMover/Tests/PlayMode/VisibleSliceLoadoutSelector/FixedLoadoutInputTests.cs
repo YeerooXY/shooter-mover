@@ -107,6 +107,21 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceLoadoutSelector
         }
 
         [Test]
+        public void UnmappedKeyboardInputIsNeutral()
+        {
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            FixedLoadoutSelectionState state = CreateState();
+
+            Press(keyboard.aKey);
+            LoadoutSelectorCommand command = FixedLoadoutInput.Read(keyboard, null);
+
+            Assert.That(command, Is.EqualTo(LoadoutSelectorCommand.None));
+            Assert.That(state.Apply(command), Is.False);
+            Assert.That(state.SelectedIndex, Is.Zero);
+            Assert.That(state.Phase, Is.EqualTo(LoadoutSelectorPhase.Browsing));
+        }
+
+        [Test]
         public void MissingOrDisconnectedDevicesAreNeutral()
         {
             Gamepad gamepad = InputSystem.AddDevice<Gamepad>();
