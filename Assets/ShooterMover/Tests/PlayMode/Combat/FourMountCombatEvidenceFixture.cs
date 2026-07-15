@@ -129,7 +129,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             "Assets/ShooterMover/Runtime/UnityAdapters/Input/ShooterMoverMovement.inputactions";
         public const string ArenaName = "Stage1BenchmarkArena";
         public const string ExpectedProfileSha256 =
-            "sha256:6a2aa7a7bf90ec63ea310ba985fd1557662755d6ec157c97e99ac43bdb443f13";
+            "sha256:6461028c1bce88dbf6006b845fbdcaf2ed282ef01cf5f472bdb905d77bea331d";
 
         internal static readonly StableId EvidenceModuleId =
             StableId.Parse("weapon-module.cb011-evidence-only");
@@ -558,9 +558,22 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 + "  \"intentFixtureVersion\": 1,\n"
                 + "  \"qualityProfile\": \"Medium\",\n"
                 + "  \"locale\": \"en-US\",\n"
-                + "  \"viewport\": { \"width\": 1280, \"height\": 720, \"fullscreen\": false },\n"
-                + "  \"diagnostics\": { \"maxEventCount\": 4096, \"maxEventPayloadBytes\": 4096, \"maxLogBytes\": 8388608, \"retainedLogCount\": 3 },\n"
-                + "  \"timeouts\": { \"setupSeconds\": 30, \"smokeRunSeconds\": 120, \"shutdownSeconds\": 15 }\n"
+                + "  \"viewport\": {\n"
+                + "    \"width\": 1280,\n"
+                + "    \"height\": 720,\n"
+                + "    \"fullscreen\": false\n"
+                + "  },\n"
+                + "  \"diagnostics\": {\n"
+                + "    \"maxEventCount\": 4096,\n"
+                + "    \"maxEventPayloadBytes\": 4096,\n"
+                + "    \"maxLogBytes\": 8388608,\n"
+                + "    \"retainedLogCount\": 3\n"
+                + "  },\n"
+                + "  \"timeouts\": {\n"
+                + "    \"setupSeconds\": 30,\n"
+                + "    \"smokeRunSeconds\": 120,\n"
+                + "    \"shutdownSeconds\": 15\n"
+                + "  }\n"
                 + "}\n";
         }
 

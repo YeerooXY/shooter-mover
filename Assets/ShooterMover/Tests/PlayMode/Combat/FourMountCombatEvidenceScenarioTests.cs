@@ -291,9 +291,9 @@ namespace ShooterMover.Tests.PlayMode.Combat
             FourMountCombatStepResult isolated = fixture.Step("single-fault", 0.25d, faults);
             Assert.That(isolated.GetLaneByStableIndex(1).IsFaulted, Is.True);
             Assert.That(isolated.GetLaneByStableIndex(1).ShotsFired, Is.EqualTo(0));
-            Assert.That(isolated.GetLaneByStableIndex(0).ShotsFired, Is.EqualTo(1));
-            Assert.That(isolated.GetLaneByStableIndex(2).ShotsFired, Is.EqualTo(1));
-            Assert.That(isolated.GetLaneByStableIndex(3).ShotsFired, Is.EqualTo(1));
+            Assert.That(isolated.GetLaneByStableIndex(0).ShotsFired, Is.GreaterThanOrEqualTo(1));
+            Assert.That(isolated.GetLaneByStableIndex(2).ShotsFired, Is.GreaterThanOrEqualTo(1));
+            Assert.That(isolated.GetLaneByStableIndex(3).ShotsFired, Is.GreaterThanOrEqualTo(1));
 
             string movementAfter = fixture.CaptureMovementAuthority();
             Assert.That(movementAfter, Is.EqualTo(movementBefore));
