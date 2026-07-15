@@ -97,9 +97,12 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Presentation
 
         private void OnDisable()
         {
-            if (!isPlaying)
+            bool wasPlaying = isPlaying;
+            isPlaying = false;
+            remainingLifetimeSeconds = 0f;
+            if (wasPlaying)
             {
-                remainingLifetimeSeconds = 0f;
+                Destroy(gameObject);
             }
         }
 
