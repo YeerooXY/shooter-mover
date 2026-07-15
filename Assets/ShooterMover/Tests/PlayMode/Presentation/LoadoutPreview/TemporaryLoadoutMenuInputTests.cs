@@ -22,8 +22,8 @@ namespace ShooterMover.Tests.PlayMode.Presentation.LoadoutPreview
         [Test]
         public void KeyboardAndControllerMapToDeterministicMenuCommands()
         {
-            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-            Gamepad gamepad = InputSystem.AddDevice<Gamepad>();
+            Keyboard keyboard = AddDevice<Keyboard>();
+            Gamepad gamepad = AddDevice<Gamepad>();
 
             Press(keyboard.rightArrowKey);
             Assert.That(
