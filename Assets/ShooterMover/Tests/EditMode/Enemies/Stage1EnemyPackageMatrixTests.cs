@@ -450,8 +450,10 @@ namespace ShooterMover.Tests.EditMode.Enemies
             Assert.That(File.Exists(path), Is.True, "Missing EN-009 registry input fixture.");
 
             byte[] bytes = File.ReadAllBytes(path);
-            Assert.That(ComputeSha256(bytes), Is.EqualTo(FixtureSha256));
-            string json = new UTF8Encoding(false, true).GetString(bytes);
+            string json = CanonicalizeFixtureJson(bytes);
+            Assert.That(
+                ComputeSha256(new UTF8Encoding(false).GetBytes(json)),
+                Is.EqualTo(FixtureSha256));
             Assert.That(
                 json,
                 Does.Contain("\"$schema\": \"" + FixtureSchema + "\""));
@@ -483,6 +485,22 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 fixture.packages.Select(package => package.package_root).Distinct().Count(),
                 Is.EqualTo(5));
             return fixture;
+        }
+
+        private static string CanonicalizeFixtureJson(byte[] bytes)
+        {
+            string json = new UTF8Encoding(false, true).GetString(bytes);
+            Assert.That(
+                json.Length == 0 || json[0] != '\uFEFF',
+                Is.True,
+                "EN-009 registry input fixture must not include a UTF-8 BOM.");
+
+            string normalized = json.Replace("\r\n", "\n");
+            Assert.That(
+                normalized.IndexOf('\r'),
+                Is.EqualTo(-1),
+                "EN-009 registry input fixture contains unsupported carriage returns.");
+            return normalized;
         }
 
         private static object[] CreateProductionRoster(RegistryFixture fixture)

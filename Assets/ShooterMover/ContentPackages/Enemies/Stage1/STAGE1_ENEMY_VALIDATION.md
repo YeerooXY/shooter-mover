@@ -39,6 +39,10 @@ Canonical UTF-8/LF SHA-256:
 3dd27a97474939c408d9676c0c81f9b41bf2052b38b037aade35d8a2d0b43d8f
 ```
 
+The focused test decodes the checked-out file as strict UTF-8, normalizes
+Windows CRLF checkout line endings back to canonical LF for checksum
+comparison, and still rejects BOM-prefixed or lone-carriage-return content.
+
 The fixture records, for every package:
 
 - stable enemy ID and ordinary/elite classification;
