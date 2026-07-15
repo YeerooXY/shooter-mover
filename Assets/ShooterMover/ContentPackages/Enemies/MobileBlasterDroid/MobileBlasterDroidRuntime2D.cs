@@ -66,10 +66,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         private WeaponFireExecutionPlan lastExecutionPlan;
         private WeaponMount2DExecutionResult lastExecutionResult;
 
-        public bool IsConfigured
-        {
-            get { return configured; }
-        }
+        public bool IsConfigured { get { return configured; } }
 
         public bool IsActive
         {
@@ -83,55 +80,28 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
         }
 
-        public MobileBlasterDroidDefinition Definition
-        {
-            get { return definition; }
-        }
+        public MobileBlasterDroidDefinition Definition { get { return definition; } }
 
-        public EnemyActorState CurrentState
-        {
-            get { return currentState; }
-        }
+        public EnemyActorState CurrentState { get { return currentState; } }
 
-        public MobileBlasterDroidFirePhase FirePhase
-        {
-            get { return firePhase; }
-        }
+        public MobileBlasterDroidFirePhase FirePhase { get { return firePhase; } }
 
-        public double FirePhaseElapsedSeconds
-        {
-            get { return firePhaseElapsedSeconds; }
-        }
+        public double FirePhaseElapsedSeconds { get { return firePhaseElapsedSeconds; } }
 
-        public long FireAttemptCount
-        {
-            get { return fireAttemptCount; }
-        }
+        public long FireAttemptCount { get { return fireAttemptCount; } }
 
-        public long SuccessfulShotCount
-        {
-            get { return successfulShotCount; }
-        }
+        public long SuccessfulShotCount { get { return successfulShotCount; } }
 
-        public long DecisionSequence
-        {
-            get { return decisionSequence; }
-        }
+        public long DecisionSequence { get { return decisionSequence; } }
 
-        public long Generation
-        {
-            get { return generation; }
-        }
+        public long Generation { get { return generation; } }
 
         public Vector2 LockedDirection
         {
             get { return new Vector2((float)lockedDirectionX, (float)lockedDirectionY); }
         }
 
-        public bool HasLockedDirection
-        {
-            get { return hasLockedDirection; }
-        }
+        public bool HasLockedDirection { get { return hasLockedDirection; } }
 
         public int ActiveProjectileCount
         {
@@ -143,45 +113,21 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             get { return projectileExecutor == null ? null : projectileExecutor.LastSpawnedProjectile; }
         }
 
-        public WeaponFireExecutionPlan LastExecutionPlan
-        {
-            get { return lastExecutionPlan; }
-        }
+        public WeaponFireExecutionPlan LastExecutionPlan { get { return lastExecutionPlan; } }
 
-        public WeaponMount2DExecutionResult LastExecutionResult
-        {
-            get { return lastExecutionResult; }
-        }
+        public WeaponMount2DExecutionResult LastExecutionResult { get { return lastExecutionResult; } }
 
-        public EnemyActor2DAdapter ActorAdapter
-        {
-            get { return actorAdapter; }
-        }
+        public EnemyActor2DAdapter ActorAdapter { get { return actorAdapter; } }
 
-        public EnemyTarget2DAdapter EnemyTarget
-        {
-            get { return enemyTarget; }
-        }
+        public EnemyTarget2DAdapter EnemyTarget { get { return enemyTarget; } }
 
-        public EnemyContact2DAdapter ContactAdapter
-        {
-            get { return contactAdapter; }
-        }
+        public EnemyContact2DAdapter ContactAdapter { get { return contactAdapter; } }
 
-        public WeaponMount2DAdapter WeaponMount
-        {
-            get { return weaponMount; }
-        }
+        public WeaponMount2DAdapter WeaponMount { get { return weaponMount; } }
 
-        public Rigidbody2D EnemyBody
-        {
-            get { return enemyBody; }
-        }
+        public Rigidbody2D EnemyBody { get { return enemyBody; } }
 
-        public Collider2D EnemyCollider
-        {
-            get { return enemyCollider; }
-        }
+        public Collider2D EnemyCollider { get { return enemyCollider; } }
 
         public MobileBlasterDroidTemporaryPresentation Presentation
         {
@@ -200,7 +146,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             if (configured)
             {
                 throw new InvalidOperationException(
-                    "Mobile Blaster Droid session composition is explicit and may only be configured once.");
+                    "Mobile Blaster Droid session composition may only be configured once.");
             }
 
             if (packageDefinition == null)
@@ -256,7 +202,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             actorId = stableActorId;
             playerTarget = observedPlayerTarget;
             currentState = definition.CreateInitialState(actorId);
-            ResetCountersAndFireState(false);
+            ResetSessionState(false);
 
             enemyBody.bodyType = RigidbodyType2D.Dynamic;
             enemyBody.gravityScale = 0f;
@@ -273,29 +219,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 playerId,
                 playerWeight,
                 definition.ContactCapacity);
-            for (int index = 0; index < playerColliders.Length; index++)
-            {
-                Collider2D playerCollider = playerColliders[index];
-                if (playerCollider == null)
-                {
-                    throw new ArgumentException(
-                        "Player collider collection cannot contain null.",
-                        nameof(playerColliders));
-                }
-
-                EnemyContact2DRegistrationStatus registration =
-                    contactAdapter.RegisterMoverCollider(
-                        playerCollider,
-                        playerId,
-                        playerWeight);
-                if (registration != EnemyContact2DRegistrationStatus.Registered
-                    && registration != EnemyContact2DRegistrationStatus.AlreadyRegistered)
-                {
-                    throw new InvalidOperationException(
-                        "The accepted EN-003 contact adapter rejected a player collider: "
-                        + registration);
-                }
-            }
+            RegisterPlayerColliders(playerColliders, playerId, playerWeight);
 
             hitAdapter = new CombatHit2DAdapter(actorId);
             CombatHit2DTargetRegistrationStatus targetRegistration =
@@ -366,7 +290,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             presentationElapsedSeconds += deltaTimeSeconds;
 
             EnemyActorState state;
-            EnemyTarget2DObservation target;
+            EnemyTarget2DObservation target = null;
             bool actorAvailable = TryReadState(out state)
                 && state != null
                 && state.IsActive;
@@ -532,24 +456,17 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             if (distanceSquared > DirectionEpsilonSquared)
             {
                 double distance = Math.Sqrt(distanceSquared);
-                double outerDistance = definition.PreferredDistance
-                    + definition.PositioningTolerance;
                 double innerDistance = Math.Max(
                     0d,
                     definition.PreferredDistance - definition.PositioningTolerance);
-                double sign = 0d;
-                if (distance > outerDistance)
+                double outerDistance = definition.PreferredDistance
+                    + definition.PositioningTolerance;
+                double directionSign = distance > outerDistance
+                    ? 1d
+                    : distance < innerDistance ? -1d : 0d;
+                if (directionSign != 0d)
                 {
-                    sign = 1d;
-                }
-                else if (distance < innerDistance)
-                {
-                    sign = -1d;
-                }
-
-                if (sign != 0d)
-                {
-                    double scale = sign * definition.MovementSpeed / distance;
+                    double scale = directionSign * definition.MovementSpeed / distance;
                     velocityX = offsetX * scale;
                     velocityY = offsetY * scale;
                 }
@@ -577,7 +494,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
 
             currentState = definition.CreateInitialState(actorId);
-            ResetCountersAndFireState(true);
+            ResetSessionState(true);
             return true;
         }
 
@@ -654,6 +571,36 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             UpdatePresentation();
         }
 
+        private void RegisterPlayerColliders(
+            Collider2D[] playerColliders,
+            StableId playerId,
+            CombatWeightClass playerWeight)
+        {
+            for (int index = 0; index < playerColliders.Length; index++)
+            {
+                Collider2D playerCollider = playerColliders[index];
+                if (playerCollider == null)
+                {
+                    throw new ArgumentException(
+                        "Player collider collection cannot contain null.",
+                        nameof(playerColliders));
+                }
+
+                EnemyContact2DRegistrationStatus registration =
+                    contactAdapter.RegisterMoverCollider(
+                        playerCollider,
+                        playerId,
+                        playerWeight);
+                if (registration != EnemyContact2DRegistrationStatus.Registered
+                    && registration != EnemyContact2DRegistrationStatus.AlreadyRegistered)
+                {
+                    throw new InvalidOperationException(
+                        "The accepted EN-003 contact adapter rejected a player collider: "
+                        + registration);
+                }
+            }
+        }
+
         private void AdvanceFireState(
             EnemyTarget2DObservation target,
             double deltaTimeSeconds)
@@ -662,7 +609,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             {
                 case MobileBlasterDroidFirePhase.Ready:
                     BeginWindUp(target);
-                    break;
+                    return;
 
                 case MobileBlasterDroidFirePhase.WindUp:
                     firePhaseElapsedSeconds += deltaTimeSeconds;
@@ -673,7 +620,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                         firePhaseElapsedSeconds = 0d;
                         hasLockedDirection = false;
                     }
-                    break;
+                    return;
 
                 case MobileBlasterDroidFirePhase.Recovery:
                     firePhaseElapsedSeconds += deltaTimeSeconds;
@@ -682,11 +629,11 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                         firePhase = MobileBlasterDroidFirePhase.Ready;
                         firePhaseElapsedSeconds = 0d;
                     }
-                    break;
+                    return;
 
                 default:
                     CancelPendingFire();
-                    break;
+                    return;
             }
         }
 
@@ -717,8 +664,8 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         {
             if (blasterPipeline == null
                 || weaponMount == null
-                || !hasLockedDirection
-                || muzzle == null)
+                || muzzle == null
+                || !hasLockedDirection)
             {
                 return false;
             }
@@ -730,12 +677,12 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
             try
             {
-                StableId combatEventId = StableId.Create(
+                StableId eventId = StableId.Create(
                     "event",
                     "en006-g" + generation + "-f" + fireAttemptCount);
                 Vector3 origin = muzzle.position;
                 WeaponBehaviorInput input = new WeaponBehaviorInput(
-                    combatEventId,
+                    eventId,
                     BlasterMachineGunPackage.WeaponId,
                     MountIdValue,
                     simulationStep,
@@ -779,7 +726,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             hasLockedDirection = false;
         }
 
-        private void ResetCountersAndFireState(bool resetProjectiles)
+        private void ResetSessionState(bool resetProjectiles)
         {
             decisionSequence = 0L;
             simulationStep = 0L;
