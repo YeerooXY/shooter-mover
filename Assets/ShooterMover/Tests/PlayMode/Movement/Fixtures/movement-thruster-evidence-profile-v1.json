@@ -1,0 +1,98 @@
+{
+  "schema": "shooter-mover.movement-thruster-evidence-profile",
+  "version": 1,
+  "profileId": "movement-evidence.stage1-v1",
+  "evidenceConfiguration": {
+    "schema": "shooter-mover.evidence-run-configuration",
+    "version": 1,
+    "runSeed": 104729,
+    "intentFixtureVersion": 1,
+    "qualityProfile": "Medium"
+  },
+  "simulation": {
+    "fixedDeltaSeconds": 0.02,
+    "tracePrecisionDecimals": 6,
+    "maximumScenarioSteps": 512,
+    "maximumScenarioWallClockMilliseconds": 30000
+  },
+  "tuning": {
+    "baseMaximumSpeed": 12.0,
+    "baseAcceleration": 50.0,
+    "baseBraking": 60.0,
+    "baseCounterSteerBraking": 90.0,
+    "baseVelocityResponseExponent": 1.25,
+    "thrusterBaselineChargeCount": 2,
+    "thrusterMaximumAdditionalCharges": 1,
+    "thrusterRechargeSeconds": 1.75,
+    "thrusterSpeedMultiplier": 2.5,
+    "thrusterBurstDurationSeconds": 0.3,
+    "thrusterDirectionInputThreshold": 0.1,
+    "thrusterMinimumChainIntervalSeconds": 0.05,
+    "thrusterSteeringDegreesPerSecond": 120.0,
+    "thrusterStartupForgivenessSeconds": 0.04,
+    "thrusterExitMomentumSeconds": 0.2,
+    "thrusterExitSpeedRetention": 0.75,
+    "thrusterExitDecayExponent": 2.0,
+    "wallReflectionSpeedRetention": 0.8,
+    "wallReflectionInputInfluence": 0.15,
+    "wallReflectionMinimumSpeed": 5.0,
+    "wallReflectionMaximumContacts": 4,
+    "lightContactMomentumRetention": 0.8,
+    "lightContactSteeringRetention": 0.9,
+    "heavyContactMomentumRetention": 0.1,
+    "perEnemyContactGraceSeconds": 0.5,
+    "simultaneousContactWindowSeconds": 0.02,
+    "contactGraceCapacity": 128
+  },
+  "scenarios": [
+    {
+      "id": "locomotion.acceleration-braking",
+      "maximumSteps": 160
+    },
+    {
+      "id": "thruster.burst-chain-steering",
+      "maximumSteps": 96
+    },
+    {
+      "id": "thruster.startup-forgiveness",
+      "maximumSteps": 32
+    },
+    {
+      "id": "thruster.exit-momentum",
+      "maximumSteps": 64
+    },
+    {
+      "id": "contact.wall-reflection",
+      "maximumSteps": 16
+    },
+    {
+      "id": "contact.light-shove",
+      "maximumSteps": 16
+    },
+    {
+      "id": "contact.heavy-block",
+      "maximumSteps": 16
+    },
+    {
+      "id": "input.focus-loss",
+      "maximumSteps": 16
+    },
+    {
+      "id": "session.restart-identity",
+      "maximumSteps": 16
+    },
+    {
+      "id": "contact.restart-pending",
+      "maximumSteps": 16
+    }
+  ],
+  "evidence": {
+    "technicalValidity": "cs-012-monotonic",
+    "performanceCapture": "eh-007-bounded-observation",
+    "manifestSchema": "shooter-mover.evidence-manifest",
+    "manifestVersion": 1,
+    "reviewProtocol": "shooter-mover.stage1-evidence-protocol",
+    "reviewProtocolVersion": 1,
+    "gameplayObservationSeparated": true
+  }
+}
