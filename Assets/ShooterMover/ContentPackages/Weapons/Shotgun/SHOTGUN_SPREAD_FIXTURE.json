@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "fixture_id": "wp-004-default-shotgun-spread",
+  "weapon_id": "weapon.shotgun",
+  "operation_kind_id": "operation-kind.shotgun-pellet-2d",
+  "ordering": "left-to-right ascending angular offset",
+  "normal": {
+    "pellet_count": 7,
+    "spread_degrees": 24.0,
+    "ordered_offsets_degrees": [
+      -12.0,
+      -8.0,
+      -4.0,
+      0.0,
+      4.0,
+      8.0,
+      12.0
+    ],
+    "damage_per_pellet": 5.0,
+    "cadence_seconds": 0.55,
+    "projectile_speed": 18.0,
+    "projectile_lifetime_seconds": 0.7,
+    "projectile_radius": 0.08,
+    "recovery_seconds": 0.15,
+    "pellets_per_second": 12.727272727272727,
+    "estimated_concurrent_pellets": 14
+  },
+  "empowered": {
+    "pellet_count": 7,
+    "spread_degrees": 18.0,
+    "ordered_offsets_degrees": [
+      -9.0,
+      -6.0,
+      -3.0,
+      0.0,
+      3.0,
+      6.0,
+      9.0
+    ],
+    "damage_per_pellet": 7.0,
+    "cadence_seconds": 0.45,
+    "projectile_speed": 20.0,
+    "projectile_lifetime_seconds": 0.7,
+    "projectile_radius": 0.08,
+    "recovery_seconds": 0.1,
+    "pellets_per_second": 15.555555555555555,
+    "estimated_concurrent_pellets": 14
+  },
+  "hard_limits": {
+    "minimum_pellet_count": 3,
+    "maximum_pellet_count": 12,
+    "minimum_spread_degrees": 1.0,
+    "maximum_spread_degrees": 60.0,
+    "maximum_pellets_per_second": 48.0,
+    "maximum_concurrent_pellets_per_handler": 48
+  }
+}
