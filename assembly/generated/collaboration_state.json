@@ -618,6 +618,14 @@
       "target_id": "UF-005",
       "created_at": "2026-07-14T10:38:00+02:00",
       "details": "Recorded UF-005 done from merged PR #20 and its accepted repository-layout and adversarial ownership proof; CS-001, UF-011, and EH-001 may use the merged PR as the dependency record."
+    },
+    {
+      "event_id": "stage1-visible-slice-authorized-001",
+      "actor_id": "nemo",
+      "event_type": "workflow_changed",
+      "target_id": "stage1-visible-slice",
+      "created_at": "2026-07-15T19:45:00+02:00",
+      "details": "Merged PR #104 authorized VS-001 through VS-007, parallel dispatch of VS-001/VS-004/VS-005/VS-006 after dependency discovery, leaf-only Unity metadata ownership, and VS-007 as the sole serial integration-scene owner. No task is auto-claimed by this event."
     }
   ]
 }

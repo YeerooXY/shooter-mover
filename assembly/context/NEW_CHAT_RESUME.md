@@ -1,4 +1,4 @@
-# Resume Shooter Mover Stage 1 Visible-Slice Planning
+# Resume Shooter Mover Stage 1 Visible-Slice Materialization
 
 Continue from committed state in `YeerooXY/shooter-mover`. Never write to a
 branch whose pull request has merged.
@@ -7,20 +7,19 @@ branch whose pull request has merged.
 
 1. Read `AGENTS.md`, `project_workspace.json`, and
    `assembly/context/CURRENT_HANDOFF.json`.
-2. Verify current `main`, PR #104 status, and exact path ownership before
+2. Verify current `main`, PR #110 status, and exact path ownership before
    writing.
-3. Read `AMENDMENT_STAGE1_VISIBLE_SLICE.md` only from merged current `main`
-   before acting as Task Splitter.
+3. Read merged `AMENDMENT_STAGE1_VISIBLE_SLICE.md` and the generated
+   `stage1-visible-slice.json` batch before acting as Task Splitter or Dispatch.
 4. Use a fresh branch and separate worktree for every planning, task-split, or
    implementation change.
 
 ## Durable state
 
-- Stage 1 Dispatch currently retains 103 canonical tasks and a
-  50-focused-lead-day / 12-calendar-week cap.
-- Draft PR #104 proposes a bounded visible-slice-first amendment. Until that PR
-  merges, no `VS-*` task is authoritative or dispatchable.
-- The planning proposal contains VS-001 through VS-007: local art intake,
+- Merged PR #104 authorizes the bounded visible-slice-first amendment.
+- Draft generated-only PR #110 materializes the tenth Stage 1 batch and expands
+  the canonical backlog from 103 to 110 tasks. It contains no Unity implementation.
+- The accepted visible-slice batch contains VS-001 through VS-007: local art intake,
   art-dependent room/turret presentation, three immediately parallel UI/camera
   tasks, and one final serial integration-scene owner.
 - VS-007 alone may own
@@ -46,13 +45,11 @@ branch whose pull request has merged.
 
 ## Exact next action
 
-Review and merge draft PR #104.
+Review and merge draft PR #110. After it merges, dispatch EN-010, EN-011,
+VS-001, VS-004, VS-005, and VS-006 from the combined prepared context file.
+VS-001 requires local filesystem access; the other five prompts include
+GitHub-connector-only web-agent instructions. WP-011 is dependency-ready but
+deliberately deferred until after VS-007 by the merged amendment.
 
-After it merges, run the repository prompt preparer once from fresh current
-`main`. It must materialize a dedicated `stage1-visible-slice` batch and VS-001
-through VS-007, update generated backlog/index/collaboration artifacts, validate
-the acyclic ownership graph, and emit copy-ready contexts. A generated-only PR
-is mechanical bookkeeping, not another planning approval gate.
-
-Do not materialize or dispatch VS tasks while PR #104 is unmerged. Do not add
+Do not dispatch VS tasks from an unmerged generated backlog. Do not add
 networking, mobile, analytics, storefront, or Stage 2 work.

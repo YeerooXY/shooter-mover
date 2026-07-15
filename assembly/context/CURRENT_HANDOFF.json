@@ -2,11 +2,11 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "planning_amendment",
-  "active_role": "planning_amendment_agent",
-  "active_branch": "agent/amend-stage1-visible-slice",
-  "active_pr": 104,
-  "last_verified_commit": "d867861454c97674b3f57e360c7427df7f4ec37d",
+  "lifecycle_phase": "task_decomposition",
+  "active_role": "task_splitter",
+  "active_branch": "agent/materialize-stage1-visible-slice",
+  "active_pr": 110,
+  "last_verified_commit": "34d79011e0473cd6824cbc1cbf885d739007480b",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -38,6 +38,7 @@
     "assembly/generated/task_batches/stage1-enemies-route.json",
     "assembly/generated/task_batches/stage1-accessibility-reliability.json",
     "assembly/generated/task_batches/stage1-gate.json",
+    "assembly/generated/task_batches/stage1-visible-slice.json",
     "ProjectSettings/ProjectVersion.txt",
     "docs/toolchain/UNITY_BASELINE.md",
     "assembly/generated/task_runs/UF-001-run-001.json",
@@ -71,24 +72,24 @@
     "tools/validation/validate_repository_layout.py",
     "docs/architecture/FILE_OWNERSHIP.md"
   ],
-  "current_section": "stage1_visible_slice_planning_amendment_review",
-  "last_completed_item": "Planning PR #104 was rebased onto merged EN-009 / PR #105, corrected for parallel dependencies and shared metadata ownership, and records PRs #106-#108 as superseded prototypes.",
-  "current_item": "Review draft PR #104. It is the single visible-slice planning approval boundary; VS identities become authoritative when it merges.",
-  "next_action": "Merge PR #104, then run the repository prompt preparer once to materialize and validate VS-001 through VS-007 and emit copy-ready contexts without another planning review.",
+  "current_section": "stage1_visible_slice_task_materialization_review",
+  "last_completed_item": "Planning PR #104 merged at 34d7901, authorizing VS-001 through VS-007. The schema-valid tenth batch and 110-task canonical backlog were generated and opened in draft PR #110.",
+  "current_item": "Review generated-only PR #110. It contains the visible-slice batch/index/backlog plus bounded collaboration and slot updates and no Unity implementation.",
+  "next_action": "Merge PR #110, then dispatch EN-010, EN-011, VS-001, VS-004, VS-005, and VS-006 from the prepared combined prompt file. Keep WP-011 deliberately deferred until after VS-007.",
   "blockers": [
-    "The visible-slice amendment is not authoritative until PR #104 merges.",
+    "The generated visible-slice backlog is not accepted until PR #110 merges.",
     "The named local sprites must be inspected and checksummed by VS-001 from a local worktree with access to C:\\Users\\Yeeroo\\Desktop\\sprites.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-15T19:33:55+02:00"
+    "last_persisted_at": "2026-07-15T20:57:11+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-15T19:33:55+02:00"
+  "updated_at": "2026-07-15T20:57:11+02:00"
 }
