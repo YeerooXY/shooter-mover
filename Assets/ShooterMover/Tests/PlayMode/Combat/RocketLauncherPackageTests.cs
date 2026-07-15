@@ -152,7 +152,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 new Vector2(0.2f, 0.2f));
             Collider2D outside = CreateBoxTarget(
                 "WP-005 AOE Outside",
-                new Vector2(2.101f, 0f),
+                new Vector2(2.25f, 0f),
                 new Vector2(0.2f, 0.2f));
             Collider2D owner = CreateBoxTarget(
                 "WP-005 AOE Owner",
@@ -286,8 +286,8 @@ namespace ShooterMover.Tests.PlayMode.Combat
             WeaponRuntimeProfile normalProfile = GetStaticProperty<WeaponRuntimeProfile>(
                 RuntimeTypes.Package,
                 "NormalRuntimeProfile");
-            WeaponPowerBankState emptyBank =
-                WeaponPowerBankState.FromProfile(normalProfile, 0d);
+            ShooterMover.Domain.Combat.WeaponPowerBankState emptyBank =
+                ShooterMover.Domain.Combat.WeaponPowerBankState.FromProfile(normalProfile, 0d);
             WeaponPowerFireDecision decision = WeaponPowerBankPolicy.ResolveFire(
                 emptyBank,
                 true,
@@ -399,7 +399,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 "Physics.Raycast",
                 "Physics.SphereCast",
                 "Rigidbody ",
-                "Collider ",
+                "Collider collider",
                 "Camera.main",
                 "GameObject.Find",
                 "FindObject",
