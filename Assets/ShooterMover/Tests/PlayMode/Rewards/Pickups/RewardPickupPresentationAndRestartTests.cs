@@ -1,6 +1,7 @@
 using System.Collections;
 using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
+using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Application;
 using ShooterMover.UnityAdapters.Authoring;
