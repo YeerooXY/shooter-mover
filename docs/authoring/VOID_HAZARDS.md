@@ -112,6 +112,25 @@ unique placed ID, checkpoint provider, and concrete gameplay authority adapters.
 The package does not edit or call `Stage1VisibleSliceController`, load scenes,
 search maps, or create private replacement authorities.
 
+## Assembly boundary
+
+The package compiles into the package-local
+`ShooterMover.ContentPackages.Environment.VoidHazards` assembly. It references
+only the accepted inward dependencies used by production source:
+
+- `ShooterMover.Domain`;
+- `ShooterMover.Contracts`; and
+- `ShooterMover.UnityAdapters`.
+
+Focused tests compile in separate package-local test assemblies:
+
+- `ShooterMover.Tests.EditMode.Environment.VoidHazards`; and
+- `ShooterMover.Tests.PlayMode.Environment.VoidHazards`.
+
+Those test assemblies explicitly reference the runtime package and their direct
+shared test inputs. They do not require changes to the repository-wide EditMode,
+PlayMode, runtime, or project asmdefs.
+
 ## Focused proof
 
 Authored tests cover:
