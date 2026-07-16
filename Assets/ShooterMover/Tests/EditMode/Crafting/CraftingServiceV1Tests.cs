@@ -30,8 +30,13 @@ namespace ShooterMover.Tests.EditMode.Crafting
         [Test]
         public void RecipeUnlockDerivesFromNaturalLevelPlusPositiveDelayAndVariance()
         {
-            CraftingRecipeV1 recipe = Recipe(delay: 5, minimumVariance: 0, maximumVariance: 2);
+            CraftingRecipeV1 recipe = CreateRecipe(
+                delay: 5,
+                minimumVariance: 0,
+                maximumVariance: 2);
+
             int unlock = recipe.ResolveUnlockLevel(991UL);
+
             Assert.That(recipe.MinimumUnlockLevel, Is.EqualTo(55));
             Assert.That(recipe.MaximumUnlockLevel, Is.EqualTo(57));
             Assert.That(unlock, Is.InRange(55, 57));
@@ -41,28 +46,38 @@ namespace ShooterMover.Tests.EditMode.Crafting
         [TestCase(-1)]
         public void ZeroOrNegativeDelayIsRejected(int delay)
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => Recipe(delay: delay));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => CreateRecipe(delay: delay));
         }
 
         [Test]
         public void RecipeCannotUnlockAtOrBeforeOrdinaryDiscoveryActivation()
         {
-            Assert.Throws<ArgumentException>(() => Recipe(
-                naturalLevel: 50,
-                ordinaryActivationLevel: 55,
-                delay: 5));
+            Assert.Throws<ArgumentException>(
+                () => CreateRecipe(
+                    naturalLevel: 50,
+                    ordinaryActivationLevel: 55,
+                    delay: 5));
         }
 
         [Test]
         public void EligibleRecipeCraftsSuccessfullyThroughRealAuthorities()
         {
             Fixture fixture = new Fixture();
+
             CraftingResultV1 result = fixture.Service.Craft(fixture.Command());
+
             Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.Crafted));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(90L));
             UniqueHoldingSnapshotV1 holding;
-            Assert.That(fixture.Holdings.TryGetUnique(result.EquipmentInstanceStableId, out holding), Is.True);
-            Assert.That(holding.EquipmentInstance.Fingerprint, Is.EqualTo(result.EquipmentFingerprint));
+            Assert.That(
+                fixture.Holdings.TryGetUnique(
+                    result.EquipmentInstanceStableId,
+                    out holding),
+                Is.True);
+            Assert.That(
+                holding.EquipmentInstance.Fingerprint,
+                Is.EqualTo(result.EquipmentFingerprint));
         }
 
         [Test]
@@ -70,8 +85,10 @@ namespace ShooterMover.Tests.EditMode.Crafting
         {
             Fixture fixture = new Fixture();
             CraftEquipmentCommandV1 command = fixture.Command();
+
             fixture.Service.Craft(command);
             fixture.Service.Craft(command);
+
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(90L));
             Assert.That(fixture.Scrap.Sequence, Is.EqualTo(2L));
         }
@@ -81,11 +98,17 @@ namespace ShooterMover.Tests.EditMode.Crafting
         {
             Fixture fixture = new Fixture();
             CraftEquipmentCommandV1 command = fixture.Command();
+
             CraftingResultV1 first = fixture.Service.Craft(command);
             CraftingResultV1 replay = fixture.Service.Craft(command);
-            Assert.That(replay.Status, Is.EqualTo(CraftingResultStatusV1.ExactDuplicateNoChange));
+
+            Assert.That(
+                replay.Status,
+                Is.EqualTo(CraftingResultStatusV1.ExactDuplicateNoChange));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(1L));
-            Assert.That(replay.EquipmentInstanceStableId, Is.EqualTo(first.EquipmentInstanceStableId));
+            Assert.That(
+                replay.EquipmentInstanceStableId,
+                Is.EqualTo(first.EquipmentInstanceStableId));
         }
 
         [Test]
@@ -93,8 +116,12 @@ namespace ShooterMover.Tests.EditMode.Crafting
         {
             Fixture fixture = new Fixture(initialScrap: 9L);
             long scrapSequence = fixture.Scrap.Sequence;
+
             CraftingResultV1 result = fixture.Service.Craft(fixture.Command());
-            Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.InsufficientScrap));
+
+            Assert.That(
+                result.Status,
+                Is.EqualTo(CraftingResultStatusV1.InsufficientScrap));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(9L));
             Assert.That(fixture.Scrap.Sequence, Is.EqualTo(scrapSequence));
             Assert.That(fixture.Holdings.Sequence, Is.Zero);
@@ -102,15 +129,20 @@ namespace ShooterMover.Tests.EditMode.Crafting
         }
 
         [Test]
-        public void ExactDuplicateCraftIsNoChangeReplay()
+        public void ExactDuplicateCraftIsNoChangeReplayAfterSpendingEntireBalance()
         {
-            Fixture fixture = new Fixture();
+            Fixture fixture = new Fixture(initialScrap: 10L);
             CraftEquipmentCommandV1 command = fixture.Command();
+
             CraftingResultV1 first = fixture.Service.Craft(command);
             long rapSequence = fixture.Rap.Sequence;
             CraftingResultV1 second = fixture.Service.Craft(command);
-            Assert.That(second.Status, Is.EqualTo(CraftingResultStatusV1.ExactDuplicateNoChange));
+
+            Assert.That(
+                second.Status,
+                Is.EqualTo(CraftingResultStatusV1.ExactDuplicateNoChange));
             Assert.That(second.EquipmentFingerprint, Is.EqualTo(first.EquipmentFingerprint));
+            Assert.That(fixture.Scrap.Balance, Is.Zero);
             Assert.That(fixture.Rap.Sequence, Is.EqualTo(rapSequence));
         }
 
@@ -123,8 +155,12 @@ namespace ShooterMover.Tests.EditMode.Crafting
             fixture.Service.Craft(first);
             long scrap = fixture.Scrap.Balance;
             long holdingsSequence = fixture.Holdings.Sequence;
+
             CraftingResultV1 result = fixture.Service.Craft(conflict);
-            Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.ConflictingDuplicate));
+
+            Assert.That(
+                result.Status,
+                Is.EqualTo(CraftingResultStatusV1.ConflictingDuplicate));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(scrap));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(holdingsSequence));
         }
@@ -140,18 +176,28 @@ namespace ShooterMover.Tests.EditMode.Crafting
                 Id("player.test"),
                 Context(99),
                 1UL);
+
             CraftingResultV1 result = fixture.Service.Craft(command);
-            Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.UnknownRecipe));
+
+            Assert.That(
+                result.Status,
+                Is.EqualTo(CraftingResultStatusV1.UnknownRecipe));
             Assert.That(fixture.Rap.Sequence, Is.Zero);
         }
 
         [Test]
         public void UnknownTargetEquipmentIsRejectedWithoutMutation()
         {
-            CraftingRecipeV1 bad = Recipe(target: Id("equipment.missing"));
+            CraftingRecipeV1 bad = CreateRecipe(
+                target: Id("equipment.missing"));
             Fixture fixture = new Fixture(recipes: new[] { bad });
-            CraftingResultV1 result = fixture.Service.Craft(fixture.Command(recipeId: bad.RecipeStableId));
-            Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.UnknownTargetEquipment));
+
+            CraftingResultV1 result = fixture.Service.Craft(
+                fixture.Command(recipeId: bad.RecipeStableId));
+
+            Assert.That(
+                result.Status,
+                Is.EqualTo(CraftingResultStatusV1.UnknownTargetEquipment));
             Assert.That(fixture.Rap.Sequence, Is.Zero);
         }
 
@@ -159,8 +205,13 @@ namespace ShooterMover.Tests.EditMode.Crafting
         public void ProgressionBelowCraftingAvailabilityIsRejected()
         {
             Fixture fixture = new Fixture();
-            CraftingResultV1 result = fixture.Service.Craft(fixture.Command(characterLevel: 54));
-            Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.ProgressionUnavailable));
+
+            CraftingResultV1 result = fixture.Service.Craft(
+                fixture.Command(characterLevel: 54));
+
+            Assert.That(
+                result.Status,
+                Is.EqualTo(CraftingResultStatusV1.ProgressionUnavailable));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(100L));
             Assert.That(fixture.Rap.Sequence, Is.Zero);
         }
@@ -168,10 +219,13 @@ namespace ShooterMover.Tests.EditMode.Crafting
         [Test]
         public void FixedQualityCraftingObeysGuarantee()
         {
-            Fixture fixture = new Fixture(recipe: Recipe(
-                qualityPolicy: CraftingQualityPolicyKindV1.Fixed,
-                qualities: new[] { Weighted(CommonQuality, 999UL) }));
+            Fixture fixture = new Fixture(
+                recipe: CreateRecipe(
+                    qualityPolicy: CraftingQualityPolicyKindV1.Fixed,
+                    qualities: new[] { Weighted(CommonQuality, 999UL) }));
+
             CraftingResultV1 result = fixture.Service.Craft(fixture.Command());
+
             Assert.That(result.Succeeded, Is.True);
             Assert.That(result.Equipment.QualityId, Is.EqualTo(CommonQuality));
         }
@@ -179,13 +233,22 @@ namespace ShooterMover.Tests.EditMode.Crafting
         [Test]
         public void RandomQualityCraftingIsDeterministic()
         {
-            CraftingRecipeV1 recipe = Recipe(
-                qualityPolicy: CraftingQualityPolicyKindV1.DeterministicWeightedRandom,
-                qualities: new[] { Weighted(CommonQuality, 1UL), Weighted(RareQuality, 3UL) });
+            CraftingRecipeV1 recipe = CreateRecipe(
+                qualityPolicy:
+                    CraftingQualityPolicyKindV1.DeterministicWeightedRandom,
+                qualities: new[]
+                {
+                    Weighted(CommonQuality, 1UL),
+                    Weighted(RareQuality, 3UL),
+                });
             Fixture first = new Fixture(recipe: recipe);
             Fixture second = new Fixture(recipe: recipe);
-            CraftingResultV1 left = first.Service.Craft(first.Command(rootSeed: 7788UL));
-            CraftingResultV1 right = second.Service.Craft(second.Command(rootSeed: 7788UL));
+
+            CraftingResultV1 left = first.Service.Craft(
+                first.Command(rootSeed: 7788UL));
+            CraftingResultV1 right = second.Service.Craft(
+                second.Command(rootSeed: 7788UL));
+
             Assert.That(left.Equipment.QualityId, Is.EqualTo(right.Equipment.QualityId));
             Assert.That(left.EquipmentFingerprint, Is.EqualTo(right.EquipmentFingerprint));
         }
@@ -193,14 +256,17 @@ namespace ShooterMover.Tests.EditMode.Crafting
         [Test]
         public void SlotTierAndLevelCapsAreEnforced()
         {
-            CraftingRecipeV1 recipe = Recipe(
+            CraftingRecipeV1 recipe = CreateRecipe(
                 minimumSlots: 1,
                 maximumSlots: 1,
                 maximumTier: 1,
                 maximumAugmentLevel: 2,
                 augments: new[] { Weighted(AugmentAlpha, 1UL) });
             Fixture fixture = new Fixture(recipe: recipe);
-            CraftingResultV1 result = fixture.Service.Craft(fixture.Command(rootSeed: 812UL));
+
+            CraftingResultV1 result = fixture.Service.Craft(
+                fixture.Command(rootSeed: 812UL));
+
             Assert.That(result.Succeeded, Is.True);
             Assert.That(result.Equipment.Augments.Count, Is.EqualTo(1));
             Assert.That(result.Equipment.Augments[0].Tier, Is.LessThanOrEqualTo(1));
@@ -212,12 +278,20 @@ namespace ShooterMover.Tests.EditMode.Crafting
         {
             Fixture fixture = new Fixture(failHoldingsApplyOnce: true);
             CraftEquipmentCommandV1 command = fixture.Command(rootSeed: 123456UL);
+
             CraftingResultV1 first = fixture.Service.Craft(command);
             CraftingResultV1 retry = fixture.Service.Craft(command);
-            Assert.That(first.Status, Is.EqualTo(CraftingResultStatusV1.RewardApplicationRetryRequired));
+
+            Assert.That(
+                first.Status,
+                Is.EqualTo(CraftingResultStatusV1.RewardApplicationRetryRequired));
             Assert.That(retry.Succeeded, Is.True);
-            Assert.That(retry.EquipmentInstanceStableId, Is.EqualTo(first.EquipmentInstanceStableId));
-            Assert.That(retry.EquipmentFingerprint, Is.EqualTo(first.EquipmentFingerprint));
+            Assert.That(
+                retry.EquipmentInstanceStableId,
+                Is.EqualTo(first.EquipmentInstanceStableId));
+            Assert.That(
+                retry.EquipmentFingerprint,
+                Is.EqualTo(first.EquipmentFingerprint));
         }
 
         [Test]
@@ -225,40 +299,69 @@ namespace ShooterMover.Tests.EditMode.Crafting
         {
             Fixture fixture = new Fixture(failHoldingsApplyOnce: true);
             CraftEquipmentCommandV1 command = fixture.Command();
+
             fixture.Service.Craft(command);
             CraftingResultV1 retry = fixture.Service.Craft(command);
+
             Assert.That(retry.Succeeded, Is.True);
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(90L));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(1L));
             UniqueHoldingSnapshotV1 holding;
-            Assert.That(fixture.Holdings.TryGetUnique(retry.EquipmentInstanceStableId, out holding), Is.True);
+            Assert.That(
+                fixture.Holdings.TryGetUnique(
+                    retry.EquipmentInstanceStableId,
+                    out holding),
+                Is.True);
         }
 
         [Test]
         public void RecipeSnapshotsAndFingerprintsAreCanonical()
         {
-            CraftingRecipeV1 left = Recipe(
-                qualityPolicy: CraftingQualityPolicyKindV1.DeterministicWeightedRandom,
-                qualities: new[] { Weighted(RareQuality, 3UL), Weighted(CommonQuality, 1UL) });
-            CraftingRecipeV1 right = Recipe(
-                qualityPolicy: CraftingQualityPolicyKindV1.DeterministicWeightedRandom,
-                qualities: new[] { Weighted(CommonQuality, 1UL), Weighted(RareQuality, 3UL) });
+            CraftingRecipeV1 left = CreateRecipe(
+                qualityPolicy:
+                    CraftingQualityPolicyKindV1.DeterministicWeightedRandom,
+                qualities: new[]
+                {
+                    Weighted(RareQuality, 3UL),
+                    Weighted(CommonQuality, 1UL),
+                });
+            CraftingRecipeV1 right = CreateRecipe(
+                qualityPolicy:
+                    CraftingQualityPolicyKindV1.DeterministicWeightedRandom,
+                qualities: new[]
+                {
+                    Weighted(CommonQuality, 1UL),
+                    Weighted(RareQuality, 3UL),
+                });
+
             Assert.That(left.ToCanonicalString(), Is.EqualTo(right.ToCanonicalString()));
             Assert.That(left.Fingerprint, Is.EqualTo(right.Fingerprint));
-            Assert.That(new CraftingRecipeCatalogV1(new[] { left }).Fingerprint,
-                Is.EqualTo(new CraftingRecipeCatalogV1(new[] { right }).Fingerprint));
+            Assert.That(
+                new CraftingRecipeCatalogV1(new[] { left }).Fingerprint,
+                Is.EqualTo(
+                    new CraftingRecipeCatalogV1(new[] { right }).Fingerprint));
         }
 
         [Test]
         public void MultipleRecipesTargetDifferentEquipmentWithoutCodeChanges()
         {
-            CraftingRecipeV1 alpha = Recipe(recipeId: Id("recipe.alpha"), target: EquipmentAlpha);
-            CraftingRecipeV1 beta = Recipe(recipeId: Id("recipe.beta"), target: EquipmentBeta);
+            CraftingRecipeV1 alpha = CreateRecipe(
+                recipeId: Id("recipe.alpha"),
+                target: EquipmentAlpha);
+            CraftingRecipeV1 beta = CreateRecipe(
+                recipeId: Id("recipe.beta"),
+                target: EquipmentBeta);
             Fixture fixture = new Fixture(recipes: new[] { alpha, beta });
-            CraftingResultV1 first = fixture.Service.Craft(fixture.Command(
-                craftId: Id("craft.alpha"), recipeId: alpha.RecipeStableId));
-            CraftingResultV1 second = fixture.Service.Craft(fixture.Command(
-                craftId: Id("craft.beta"), recipeId: beta.RecipeStableId));
+
+            CraftingResultV1 first = fixture.Service.Craft(
+                fixture.Command(
+                    craftId: Id("craft.alpha"),
+                    recipeId: alpha.RecipeStableId));
+            CraftingResultV1 second = fixture.Service.Craft(
+                fixture.Command(
+                    craftId: Id("craft.beta"),
+                    recipeId: beta.RecipeStableId));
+
             Assert.That(first.Equipment.DefinitionId, Is.EqualTo(EquipmentAlpha));
             Assert.That(second.Equipment.DefinitionId, Is.EqualTo(EquipmentBeta));
         }
@@ -269,12 +372,15 @@ namespace ShooterMover.Tests.EditMode.Crafting
             Fixture fixture = new Fixture();
             long scrapSequence = fixture.Scrap.Sequence;
             long rapSequence = fixture.Rap.Sequence;
+
             CraftingResultV1 result = fixture.Service.Craft(fixture.Command());
+
             Assert.That(result.Status, Is.EqualTo(CraftingResultStatusV1.Crafted));
             Assert.That(fixture.Scrap.Sequence, Is.EqualTo(scrapSequence + 1L));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(1L));
             Assert.That(fixture.Rap.Sequence, Is.GreaterThan(rapSequence));
-            Assert.That(result.RewardApplicationResult.Status,
+            Assert.That(
+                result.RewardApplicationResult.Status,
                 Is.EqualTo(RewardApplicationResultStatusV1.Applied));
         }
 
@@ -288,26 +394,36 @@ namespace ShooterMover.Tests.EditMode.Crafting
             {
                 Catalog = BuildEquipmentCatalog();
                 Validator = new CatalogValidator(Catalog);
-                Scrap = new ScrapWalletServiceV1(Id("authority.scrap"), Id("currency.scrap"));
+                Scrap = new ScrapWalletServiceV1(
+                    Id("authority.scrap"),
+                    Id("currency.scrap"));
                 Fund(Scrap, initialScrap);
-                Holdings = new PlayerHoldingsService(Id("holdings.player"), 1000L, Validator);
-                IRewardChildAuthorityV1 holdingsAdapter = new PlayerHoldingsRewardChildAuthorityV1(
-                    Holdings,
+                Holdings = new PlayerHoldingsService(
+                    Id("holdings.player"),
+                    1000L,
                     Validator);
+
+                IRewardChildAuthorityV1 holdingsAdapter =
+                    new PlayerHoldingsRewardChildAuthorityV1(
+                        Holdings,
+                        Validator);
                 if (failHoldingsApplyOnce)
                 {
-                    holdingsAdapter = new FailOnceApplyAuthority(holdingsAdapter);
+                    holdingsAdapter = new FailOnceApplyAuthority(
+                        holdingsAdapter);
                 }
+
                 Rap = new RewardApplicationServiceV1(
                     Id("authority.crafting-rap"),
                     new CraftingUnusedMoneyRewardChildAuthorityV1(),
                     new CraftingScrapSpendRewardChildAuthorityV1(Scrap),
                     holdingsAdapter);
-                CraftingRecipeV1 selected = recipe ?? Recipe();
+                CraftingRecipeV1 selected = recipe
+                    ?? CraftingServiceV1Tests.CreateRecipe();
                 var catalogRecipes = recipes == null
                     ? new[] { selected }
                     : new List<CraftingRecipeV1>(recipes).ToArray();
-                Recipe = catalogRecipes[0];
+                PrimaryRecipe = catalogRecipes[0];
                 Service = new CraftingServiceV1(
                     new CraftingRecipeCatalogV1(catalogRecipes),
                     Catalog,
@@ -323,7 +439,7 @@ namespace ShooterMover.Tests.EditMode.Crafting
             public ScrapWalletServiceV1 Scrap { get; }
             public PlayerHoldingsService Holdings { get; }
             public RewardApplicationServiceV1 Rap { get; }
-            public CraftingRecipeV1 Recipe { get; }
+            public CraftingRecipeV1 PrimaryRecipe { get; }
             public CraftingServiceV1 Service { get; }
 
             public CraftEquipmentCommandV1 Command(
@@ -334,7 +450,7 @@ namespace ShooterMover.Tests.EditMode.Crafting
             {
                 return new CraftEquipmentCommandV1(
                     craftId ?? Id("craft.transaction"),
-                    recipeId ?? Recipe.RecipeStableId,
+                    recipeId ?? PrimaryRecipe.RecipeStableId,
                     Id("run.test"),
                     Id("player.test"),
                     Context(characterLevel),
@@ -345,10 +461,18 @@ namespace ShooterMover.Tests.EditMode.Crafting
         private sealed class CatalogValidator : IEquipmentInstanceValidator
         {
             private readonly EquipmentCatalog catalog;
-            public CatalogValidator(EquipmentCatalog catalog) { this.catalog = catalog; }
-            public EquipmentInstanceValidationResponse Validate(EquipmentInstanceValidationRequest request)
+
+            public CatalogValidator(EquipmentCatalog catalog)
             {
-                EquipmentInstance instance = request == null ? null : request.Instance;
+                this.catalog = catalog;
+            }
+
+            public EquipmentInstanceValidationResponse Validate(
+                EquipmentInstanceValidationRequest request)
+            {
+                EquipmentInstance instance = request == null
+                    ? null
+                    : request.Instance;
                 return EquipmentInstanceValidationResponse.From(
                     catalog,
                     instance,
@@ -360,14 +484,27 @@ namespace ShooterMover.Tests.EditMode.Crafting
         {
             private readonly IRewardChildAuthorityV1 inner;
             private bool failed;
-            public FailOnceApplyAuthority(IRewardChildAuthorityV1 inner) { this.inner = inner; }
-            public StableId AuthorityStableId { get { return inner.AuthorityStableId; } }
+
+            public FailOnceApplyAuthority(IRewardChildAuthorityV1 inner)
+            {
+                this.inner = inner;
+            }
+
+            public StableId AuthorityStableId
+            {
+                get { return inner.AuthorityStableId; }
+            }
+
             public long Sequence { get { return inner.Sequence; } }
-            public RewardAuthorityPreflightResultV1 Preflight(IReadOnlyList<RewardChildGrantCommandV1> commands)
+
+            public RewardAuthorityPreflightResultV1 Preflight(
+                IReadOnlyList<RewardChildGrantCommandV1> commands)
             {
                 return inner.Preflight(commands);
             }
-            public RewardChildApplyResultV1 Apply(RewardChildGrantCommandV1 command)
+
+            public RewardChildApplyResultV1 Apply(
+                RewardChildGrantCommandV1 command)
             {
                 if (!failed)
                 {
@@ -382,7 +519,7 @@ namespace ShooterMover.Tests.EditMode.Crafting
             }
         }
 
-        private static CraftingRecipeV1 Recipe(
+        private static CraftingRecipeV1 CreateRecipe(
             StableId recipeId = null,
             StableId target = null,
             int naturalLevel = 50,
@@ -390,7 +527,8 @@ namespace ShooterMover.Tests.EditMode.Crafting
             int delay = 5,
             int minimumVariance = 0,
             int maximumVariance = 2,
-            CraftingQualityPolicyKindV1 qualityPolicy = CraftingQualityPolicyKindV1.Fixed,
+            CraftingQualityPolicyKindV1 qualityPolicy =
+                CraftingQualityPolicyKindV1.Fixed,
             IEnumerable<CraftingWeightedDefinitionV1> qualities = null,
             int minimumSlots = 0,
             int maximumSlots = 0,
@@ -406,7 +544,9 @@ namespace ShooterMover.Tests.EditMode.Crafting
                 naturalLevel,
                 ordinaryActivationLevel,
                 delay,
-                new CraftingDelayVarianceV1(minimumVariance, maximumVariance),
+                new CraftingDelayVarianceV1(
+                    minimumVariance,
+                    maximumVariance),
                 10L,
                 qualityPolicy,
                 qualities ?? new[] { Weighted(CommonQuality, 1UL) },
@@ -421,7 +561,10 @@ namespace ShooterMover.Tests.EditMode.Crafting
                     Id("generator-policy.crafting"),
                     1,
                     new SoftActivationCurveParameters(0.25, 2L, 2L),
-                    new ObsolescenceCurveParameters(1000L, 1000.0, 1.0)));
+                    new ObsolescenceCurveParameters(
+                        1000L,
+                        1000.0,
+                        1.0)));
         }
 
         private static EquipmentCatalog BuildEquipmentCatalog()
@@ -471,21 +614,28 @@ namespace ShooterMover.Tests.EditMode.Crafting
             return build.Catalog;
         }
 
-        private static void Fund(ScrapWalletServiceV1 wallet, long amount)
+        private static void Fund(
+            ScrapWalletServiceV1 wallet,
+            long amount)
         {
-            if (amount == 0L) { return; }
-            ScrapTransactionResultV1 result = wallet.Apply(new ScrapTransactionCommandV1(
-                Id("scrap-tx.initial"),
-                Id("scrap-op.initial"),
-                wallet.AuthorityStableId,
-                wallet.CurrencyStableId,
-                ScrapMutationKindV1.Grant,
-                amount,
-                ScrapIdentityV1.RewardGrantReason,
-                new ScrapProvenanceV1(
-                    ScrapIdentityV1.RewardSourceKind,
-                    Id("reward-op.initial"),
-                    Id("player.test"))));
+            if (amount == 0L)
+            {
+                return;
+            }
+
+            ScrapTransactionResultV1 result = wallet.Apply(
+                new ScrapTransactionCommandV1(
+                    Id("scrap-tx.initial"),
+                    Id("scrap-op.initial"),
+                    wallet.AuthorityStableId,
+                    wallet.CurrencyStableId,
+                    ScrapMutationKindV1.Grant,
+                    amount,
+                    ScrapIdentityV1.RewardGrantReason,
+                    new ScrapProvenanceV1(
+                        ScrapIdentityV1.RewardSourceKind,
+                        Id("reward-op.initial"),
+                        Id("player.test"))));
             Assert.That(result.ChangedState, Is.True);
         }
 
@@ -499,11 +649,16 @@ namespace ShooterMover.Tests.EditMode.Crafting
                 Array.Empty<StableId>());
         }
 
-        private static CraftingWeightedDefinitionV1 Weighted(StableId id, ulong weight)
+        private static CraftingWeightedDefinitionV1 Weighted(
+            StableId id,
+            ulong weight)
         {
             return new CraftingWeightedDefinitionV1(id, weight);
         }
 
-        private static StableId Id(string value) { return StableId.Parse(value); }
+        private static StableId Id(string value)
+        {
+            return StableId.Parse(value);
+        }
     }
 }
