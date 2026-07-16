@@ -23,6 +23,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private int destructionNotificationCount;
 
         public event Action<DestructiblePropDestructionResult> Destroyed;
+        public event Action Restarted;
 
         public bool IsConfigured
         {
@@ -154,6 +155,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             destructionNotificationPublished = false;
             destructionNotificationCount = 0;
             ApplyActivePresentation();
+            PublishRestarted();
         }
 
         private void ApplyDestroyedPresentation()
@@ -221,9 +223,31 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             }
         }
 
+        private void PublishRestarted()
+        {
+            Action handler = Restarted;
+            if (handler == null)
+            {
+                return;
+            }
+
+            foreach (Delegate subscriber in handler.GetInvocationList())
+            {
+                try
+                {
+                    ((Action)subscriber)();
+                }
+                catch (Exception)
+                {
+                    // Optional presentation observers cannot block authoritative restart.
+                }
+            }
+        }
+
         private void OnDestroy()
         {
             Destroyed = null;
+            Restarted = null;
         }
     }
 }

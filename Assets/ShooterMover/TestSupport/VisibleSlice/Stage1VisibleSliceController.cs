@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
+using ShooterMover.ContentPackages.Props.DestructibleProps;
 using ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.ContentPackages.Weapons.Stage1Loadouts;
@@ -54,6 +55,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
         [SerializeField] private VisibleSliceBlasterTurretPresenter turretPresentationPrefab;
         [SerializeField] private Sprite blasterShotSprite;
         [SerializeField] private Sprite turretShotSprite;
+        [Header("Destructible prop VFX")]
+        [SerializeField]
+        private DestructiblePropDestructionAnimation crateDestructionAnimation;
+        [SerializeField]
+        private DestructiblePropDestructionAnimation explosiveDestructionAnimation;
         [SerializeField] private bool shootingSandbox = true;
         [SerializeField] private bool reducedEffects;
         [SerializeField] private bool grayscale;
@@ -70,6 +76,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private BlasterTurretPackage turretPackage;
         private BlasterTurretSceneContext2D turretSceneContext;
         private BlasterTurretDefinition turretDefinition;
+        private DestructiblePropSet2D destructiblePropSet;
         private MovementActorLifecycle movementLifecycle;
         private MovementThrusterTuningProfile movementTuning;
         private MovementActorThrusterStatusReader thrusterReader;
@@ -107,6 +114,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public long RestartGeneration => restartGeneration;
         public Transform PlayerTransform => playerTransform;
         public BlasterTurretPackage TurretPackage => turretPackage;
+        public DestructiblePropSet2D DestructiblePropSet => destructiblePropSet;
         public Stage1VisibleSliceRoomPresentation RoomPresentation => roomPresentation;
         public VisibleSliceLoadoutSelector LoadoutSelector => loadoutSelector;
         public VisibleSliceGeneralCombatHud CombatHud => combatHud;
@@ -430,6 +438,13 @@ namespace ShooterMover.TestSupport.VisibleSlice
             BuildWalls();
             BuildPlayer();
             playerHitAdapter = new CombatHit2DAdapter(StableId.Parse("actor.vs007-player"));
+            destructiblePropSet = Stage1DestructiblePropIntegration.Attach(
+                gameObject,
+                roomPresentation.PropRoot,
+                transform,
+                playerHitAdapter,
+                PlayerShotDamage,
+                () => RestartGeneration);
             GameObject turretContextObject = new GameObject("BlasterTurretSceneContext");
             turretContextObject.transform.SetParent(transform, false);
             sessionObjects.Add(turretContextObject);
@@ -647,7 +662,36 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 visual.localPosition = SnapToGrid(visual.localPosition, PropGridSize);
 
                 Vector2 collisionSize;
-                if (visual.name.StartsWith("Crate_", StringComparison.Ordinal))
+                Vector2 collisionOffset = Vector2.zero;
+                DestructiblePropAuthoring2D authoring =
+                    visual.GetComponent<DestructiblePropAuthoring2D>();
+                if (authoring == null
+                    && visual.name.StartsWith("Crate_", StringComparison.Ordinal))
+                {
+                    authoring = visual.gameObject.AddComponent<DestructiblePropAuthoring2D>();
+                    authoring.ConfigureGenerated(
+                        Stage1DestructiblePropIntegration.CrateMaximumHealth,
+                        CrateCollisionSize,
+                        Vector2.zero,
+                        crateDestructionAnimation);
+                }
+                else if (authoring == null
+                    && visual.name.StartsWith("Explosive_", StringComparison.Ordinal))
+                {
+                    authoring = visual.gameObject.AddComponent<DestructiblePropAuthoring2D>();
+                    authoring.ConfigureGenerated(
+                        Stage1DestructiblePropIntegration.ExplosiveMaximumHealth,
+                        ExplosiveCollisionSize,
+                        Vector2.zero,
+                        explosiveDestructionAnimation);
+                }
+
+                if (authoring != null)
+                {
+                    collisionSize = authoring.ColliderSize;
+                    collisionOffset = authoring.ColliderOffset;
+                }
+                else if (visual.name.StartsWith("Crate_", StringComparison.Ordinal))
                 {
                     collisionSize = CrateCollisionSize;
                 }
@@ -663,8 +707,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 GameObject obstacle = new GameObject(visual.name + "_Collision");
                 obstacle.transform.SetParent(transform, false);
                 obstacle.transform.position = new Vector3(
-                    visual.position.x,
-                    visual.position.y,
+                    visual.position.x + collisionOffset.x,
+                    visual.position.y + collisionOffset.y,
                     0f);
                 obstacle.transform.rotation = visual.rotation;
                 BoxCollider2D collider = obstacle.AddComponent<BoxCollider2D>();

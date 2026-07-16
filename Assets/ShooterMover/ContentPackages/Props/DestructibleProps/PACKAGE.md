@@ -20,6 +20,25 @@ This package provides the session-local runtime foundation for destructible Stag
 - `Restart()` restores authored collider/renderer states and clears session event history.
 - `DestructiblePropProjectileRelay2D` observes the existing WP-002 projectile completion
   result and forwards only the confirmed `HitMessage`; raw contact never mutates health.
+- `DestructiblePropAuthoring2D` exposes maximum health, collider size/offset, and one
+  optional destruction-animation asset for each prop variant.
+- `DestructiblePropDestructionPlayer2D` listens to the existing destruction/restart
+  lifecycle and plays an ordered sprite sequence without owning health or damage.
+
+## Configuring destruction animations
+
+The package includes two ready-to-fill assets:
+
+- `CrateDestructionAnimation.asset`
+- `ExplosiveDestructionAnimation.asset`
+
+Select an asset and drag ordered sprites into `Frames`. Then set frame duration, visual
+scale, local offset, and sorting order. Empty frame lists are valid, so prop destruction
+continues to work before final VFX arrives. Restart cancels any animation in progress.
+
+For a new prop variant, add or duplicate `DestructiblePropAuthoring2D`, set HP and
+collider dimensions, and assign any destruction-animation asset. No combat-runtime
+change is required.
 
 ## Stage 1 authoring defaults
 
@@ -31,9 +50,8 @@ The explosive is an ordinary destructible prop. It has no area effect or chain b
 ## Visible-slice handoff
 
 After `playerHitAdapter` is created in
-`Stage1VisibleSliceController.BuildSession()`, the owner of the shooting-sandbox
-integration can attach every existing grid-aligned crate/explosive collider and bind
-restart generation with one statement:
+`Stage1VisibleSliceController.BuildSession()`, the shooting sandbox attaches every
+existing grid-aligned crate/explosive collider and binds restart generation with:
 
 ```csharp
 Stage1DestructiblePropIntegration.Attach(

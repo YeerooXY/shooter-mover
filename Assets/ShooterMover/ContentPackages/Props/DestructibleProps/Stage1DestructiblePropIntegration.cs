@@ -170,8 +170,14 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             for (int index = 0; index < presentationRoot.childCount; index++)
             {
                 Transform visual = presentationRoot.GetChild(index);
+                DestructiblePropAuthoring2D authoring =
+                    visual.GetComponent<DestructiblePropAuthoring2D>();
                 double maximumHealth;
-                if (visual.name.StartsWith("Crate_", StringComparison.Ordinal))
+                if (authoring != null)
+                {
+                    maximumHealth = authoring.MaximumHealth;
+                }
+                else if (visual.name.StartsWith("Crate_", StringComparison.Ordinal))
                 {
                     maximumHealth = CrateMaximumHealth;
                 }
@@ -209,7 +215,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     hitAdapter,
                     propId,
                     maximumHealth,
-                    confirmedHitDamage));
+                    confirmedHitDamage,
+                    authoring == null ? null : authoring.DestructionAnimation));
             }
 
             DestructiblePropSet2D set =
@@ -247,7 +254,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             CombatHit2DAdapter hitAdapter,
             StableId propId,
             double maximumHealth,
-            double confirmedHitDamage)
+            double confirmedHitDamage,
+            DestructiblePropDestructionAnimation destructionAnimation)
         {
             DestructibleProp2D prop =
                 colliderObject.AddComponent<DestructibleProp2D>();
@@ -273,6 +281,13 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             DestructiblePropProjectileRelay2D relay =
                 colliderObject.AddComponent<DestructiblePropProjectileRelay2D>();
             relay.Configure(prop, confirmedHitDamage);
+
+            DestructiblePropDestructionPlayer2D player =
+                colliderObject.AddComponent<DestructiblePropDestructionPlayer2D>();
+            player.Configure(
+                prop,
+                presentationRoot.transform,
+                destructionAnimation);
             return prop;
         }
 
