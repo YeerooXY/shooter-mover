@@ -148,6 +148,27 @@ Cold compilation plus both focused test assemblies must pass in Unity
 unrelated baseline PlayMode failures in `assembly/dispatch/wave2/VALIDATION.md`
 are outside VOID-001 ownership and must not be repaired here.
 
+## Coordinator rerun commands
+
+From a clean checkout with no reused `Library` directory:
+
+```powershell
+& <PINNED_UNITY_EDITOR> -batchmode -nographics -projectPath . `
+  -logFile artifacts/void-001-cold-compile.log -quit
+
+& <PINNED_UNITY_EDITOR> -batchmode -nographics -projectPath . -runTests `
+  -testPlatform EditMode `
+  -testFilter ShooterMover.Tests.EditMode.Environment.VoidHazards `
+  -testResults artifacts/void-001-editmode-results.xml `
+  -logFile artifacts/void-001-editmode.log -quit
+
+& <PINNED_UNITY_EDITOR> -batchmode -nographics -projectPath . -runTests `
+  -testPlatform PlayMode `
+  -testFilter ShooterMover.Tests.PlayMode.Environment.VoidHazards `
+  -testResults artifacts/void-001-playmode-results.xml `
+  -logFile artifacts/void-001-playmode.log -quit
+```
+
 ## Rollback
 
 Remove the `VoidHazards` runtime, EditMode, and PlayMode subtrees plus this document
