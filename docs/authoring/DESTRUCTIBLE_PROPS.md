@@ -9,7 +9,7 @@ the object is renamed or reparented.
 
 ## Components
 
-Each placed prefab uses:
+Each new placed prefab uses:
 
 1. `PlacedObjectAuthoring2D` for the stable placed-instance ID, family definition, selected
    variant, scope binding, and generic capability fingerprint.
@@ -88,6 +88,23 @@ notification. GEN-001, RAP-001, wallet, holdings, and claim authorities remain u
 Use `reward-profile.none` with no asset for a prop that grants no reward. A non-none reward
 profile ID requires an assigned profile asset.
 
+## Existing Stage 1 migration seam
+
+The existing Stage 1 host is intentionally not edited by PROP-001. Its temporary
+`Stage1DestructiblePropIntegration.Attach` seam first attempts the normal definition-driven
+path. Only a marker with no `PlacedObjectAuthoring2D` may use legacy migration behavior.
+That path matches one unique collider using authored world position and rotation within the
+explicitly supplied roots and derives a temporary deterministic identity from position,
+collider values, and HP.
+
+The migration seam never reads `Crate_*`, `Explosive_*`, another object-name prefix,
+hierarchy path, or sibling index. Renaming or reparenting while preserving world placement
+does not alter its temporary identity. Any object that contains a placed-object component
+must satisfy the full new model and cannot silently fall back.
+
+New prefabs must not use this seam. Migrate them by assigning `PlacedObjectAuthoring2D`, a
+family/variant, explicit collider, and explicit renderer.
+
 ## Prefab duplication checklist
 
 - Assign a new unique placed-instance ID.
@@ -108,5 +125,5 @@ Unity import/compile, full EditMode tests, focused prop PlayMode tests, and exis
 prop-authority/runtime regressions. The focused coverage verifies arbitrary names, ten
 independent instances, duplicate identity rejection, all three resolution layers, distinct
 variant HP/sprites, collider values, once-only destruction and reward notification,
-collision policies, optional animation, restart, rename/reparent stability, compatibility,
-and deterministic fingerprints.
+collision policies, optional animation, restart, rename/reparent stability, legacy
+compatibility, and deterministic fingerprints.
