@@ -23,16 +23,26 @@ fire/recover policy, prefab root, and package-local composition only.
 No weapon implementation, shared adapter, scene, registry output, persistence, reward,
 or other enemy is modified.
 
-## Directional eligibility
+## Tracking and directional eligibility
 
-The turret captures one cardinal facing from its authored transform when configured.
-It may begin its cadence only while the target is inside both its maximum range and
-its configured cone around that facing. Projectile direction is always the authored
-facing; it is never recomputed toward the target or predicted from target motion.
+The turret captures one cardinal home facing from its authored transform. The prefab
+can either remain a fixed-direction hazard or rotate toward an in-range player at a
+bounded authored angular speed. It fires only when the target is inside the configured
+cone around its current barrel direction. Projectiles remain non-homing and preserve
+the barrel direction they had when fired.
+
+When tracking is enabled and the player leaves range, the turret returns toward its
+authored home facing at a separately configurable speed.
 
 Moving outside the cone stops new attacks and resets pending cadence, but projectiles
 already in flight remain active. Walls and solid props stop those projectiles through
 ordinary Physics2D collision.
+
+## Destroyed collision
+
+`BlasterTurretAuthoring2D` exposes `Keep Collider When Destroyed`. Disable it for a
+non-blocking wreck or enable it when the destroyed turret should remain solid cover.
+Restart restores the authored collider state.
 
 ## Drag-and-drop scene authoring
 
