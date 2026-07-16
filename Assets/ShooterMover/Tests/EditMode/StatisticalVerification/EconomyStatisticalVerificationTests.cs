@@ -393,7 +393,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 EquipmentCategoryIds.Weapon,
                 Id("stat.craft.weapon-family"),
                 "Stat Craft Weapon",
-                Id("stat.craft.weapon-runtime"),
+                Id("weapon.craft-weapon-runtime"),
                 InclusiveIntRange.Create(1, 100),
                 0,
                 new[] { common },
@@ -526,7 +526,15 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
 
         private static StableId Id(string value)
         {
-            return StableId.Parse(value);
+            int separatorIndex = value.IndexOf('.');
+            if (separatorIndex < 1 || separatorIndex == value.Length - 1)
+            {
+                return StableId.Create("statistical-verification", value.Replace('.', '-'));
+            }
+
+            return StableId.Create(
+                value.Substring(0, separatorIndex),
+                value.Substring(separatorIndex + 1).Replace('.', '-'));
         }
 
         private sealed class ShopFixture

@@ -413,7 +413,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 EquipmentCategoryIds.Weapon,
                 Id("stat.weapon-family.alpha"),
                 "Stat Weapon Alpha",
-                Id("stat.weapon-runtime.alpha"),
+                Id("weapon.runtime-alpha"),
                 InclusiveIntRange.Create(1, 100),
                 4,
                 new[] { common, rare },
@@ -423,7 +423,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 EquipmentCategoryIds.Weapon,
                 Id("stat.weapon-family.beta"),
                 "Stat Weapon Beta",
-                Id("stat.weapon-runtime.beta"),
+                Id("weapon.runtime-beta"),
                 InclusiveIntRange.Create(1, 100),
                 4,
                 new[] { common, rare },
@@ -454,7 +454,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 EquipmentCategoryIds.Weapon,
                 Id("stat.weapon-family.soft-level"),
                 "Soft Level Weapon",
-                Id("stat.weapon-runtime.soft-level"),
+                Id("weapon.runtime-soft-level"),
                 InclusiveIntRange.Create(1, 100),
                 0,
                 new[] { common },
@@ -511,7 +511,15 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
 
         private static StableId Id(string value)
         {
-            return StableId.Parse(value);
+            int separatorIndex = value.IndexOf('.');
+            if (separatorIndex < 1 || separatorIndex == value.Length - 1)
+            {
+                return StableId.Create("statistical-verification", value.Replace('.', '-'));
+            }
+
+            return StableId.Create(
+                value.Substring(0, separatorIndex),
+                value.Substring(separatorIndex + 1).Replace('.', '-'));
         }
 
         private sealed class StrongboxEquipmentFixture
