@@ -1,0 +1,19 @@
+{
+  "name": "ShooterMover.UI.MainMenu",
+  "rootNamespace": "ShooterMover.UI.MainMenu",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
