@@ -67,3 +67,7 @@ MonoBehaviour:
   projectileSortingOrder: 40
   targetOverride: {fileID: 0}
   sceneContextOverride: {fileID: 0}
+  trackPlayer: 1
+  trackingDegreesPerSecond: 120
+  returnDegreesPerSecond: 90
+  keepColliderWhenDestroyed: 0

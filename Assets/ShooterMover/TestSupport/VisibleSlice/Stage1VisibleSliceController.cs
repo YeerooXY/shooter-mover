@@ -399,8 +399,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 phase = VisibleSliceBlasterTurretPhase.Idle;
             }
 
-            Vector2 warningDirection = ((Vector2)playerTransform.position
-                - (Vector2)turretPackage.transform.position).normalized;
+            Vector2 warningDirection = turretPackage.CurrentFacing;
             double phaseDuration = cadence.Phase == BlasterTurretCadencePhase.Warning
                 ? turretDefinition.WarningSeconds
                 : turretDefinition.RecoverySeconds;
@@ -780,6 +779,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             if (turretPresenter != null)
             {
+                if (turretPackage != null)
+                {
+                    float angle = Vector2.SignedAngle(
+                        Vector2.left,
+                        turretPackage.CurrentFacing);
+                    turretPresenter.transform.rotation =
+                        Quaternion.Euler(0f, 0f, angle);
+                }
+
                 turretPresenter.RefreshFromSource(Time.unscaledTimeAsDouble);
             }
         }

@@ -65,6 +65,34 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             return normalized.y >= 0f ? Vector2.up : Vector2.down;
         }
 
+        public static Vector2 RotateTowards(
+            Vector2 currentFacing,
+            Vector2 desiredFacing,
+            double maximumDegreesDelta)
+        {
+            if (!IsFinite(currentFacing)
+                || !IsFinite(desiredFacing)
+                || currentFacing.sqrMagnitude <= 0.0000001f
+                || desiredFacing.sqrMagnitude <= 0.0000001f
+                || double.IsNaN(maximumDegreesDelta)
+                || double.IsInfinity(maximumDegreesDelta)
+                || maximumDegreesDelta < 0d)
+            {
+                return Vector2.right;
+            }
+
+            float currentAngle = Mathf.Atan2(currentFacing.y, currentFacing.x)
+                * Mathf.Rad2Deg;
+            float desiredAngle = Mathf.Atan2(desiredFacing.y, desiredFacing.x)
+                * Mathf.Rad2Deg;
+            float angle = Mathf.MoveTowardsAngle(
+                currentAngle,
+                desiredAngle,
+                (float)maximumDegreesDelta);
+            float radians = angle * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)).normalized;
+        }
+
         private static bool IsFinite(Vector2 value)
         {
             return !float.IsNaN(value.x)
@@ -538,6 +566,12 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         private bool configured;
         private bool activeRequested;
         private Vector2 authoredFacing;
+        private Vector2 currentFacing;
+        private bool trackTarget;
+        private float trackingDegreesPerSecond;
+        private float returnDegreesPerSecond;
+        private bool keepColliderWhenDestroyed = true;
+        private bool initialColliderEnabled;
         private BoundedProjectile2DCompletionReason lastProjectileCompletionReason;
         private CombatHit2DTranslationStatus? lastProjectileHitStatus;
         private string lastProjectileCollisionObjectName;
@@ -645,6 +679,21 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             get { return authoredFacing; }
         }
 
+        public Vector2 CurrentFacing
+        {
+            get { return currentFacing; }
+        }
+
+        public bool TracksTarget
+        {
+            get { return trackTarget; }
+        }
+
+        public bool KeepColliderWhenDestroyed
+        {
+            get { return keepColliderWhenDestroyed; }
+        }
+
         public int ConfirmedHitCount
         {
             get { return hitAdapter == null ? 0 : hitAdapter.ProcessedEventCount; }
@@ -668,6 +717,30 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         public Vector2 LastProjectileCollisionPoint
         {
             get { return lastProjectileCollisionPoint; }
+        }
+
+        public void ConfigureBehavior(
+            bool configuredTrackTarget,
+            float configuredTrackingDegreesPerSecond,
+            float configuredReturnDegreesPerSecond,
+            bool configuredKeepColliderWhenDestroyed)
+        {
+            if (configured)
+            {
+                throw new InvalidOperationException(
+                    "Turret behavior must be configured before runtime binding.");
+            }
+
+            RequirePositiveFinite(
+                configuredTrackingDegreesPerSecond,
+                nameof(configuredTrackingDegreesPerSecond));
+            RequirePositiveFinite(
+                configuredReturnDegreesPerSecond,
+                nameof(configuredReturnDegreesPerSecond));
+            trackTarget = configuredTrackTarget;
+            trackingDegreesPerSecond = configuredTrackingDegreesPerSecond;
+            returnDegreesPerSecond = configuredReturnDegreesPerSecond;
+            keepColliderWhenDestroyed = configuredKeepColliderWhenDestroyed;
         }
 
         public void Configure(
@@ -794,8 +867,9 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             anchorPosition = transform.position;
             enemyBody.position = anchorPosition;
             authoredFacing = BlasterTurretFacingRules.SnapToCardinal(transform.right);
-            transform.right = authoredFacing;
-            presentation.SetFacing(authoredFacing, (float)definition.MuzzleOffset);
+            currentFacing = authoredFacing;
+            ApplyCurrentFacing();
+            initialColliderEnabled = enemyCollider.enabled;
             fixedStepCount = 0L;
             generation = 0L;
             lastProjectileCompletionReason = BoundedProjectile2DCompletionReason.None;
@@ -869,6 +943,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             if (!authority.TryReadState(out state) || state == null || !state.IsActive)
             {
                 presentation.SetDestroyed(state != null && state.IsDestroyed);
+                SynchronizeCollider(state != null && state.IsDestroyed);
                 CancelAttackState(true);
                 AdvanceFixedStep();
                 return Result(
@@ -881,9 +956,11 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             }
 
             presentation.SetDestroyed(false);
+            SynchronizeCollider(false);
             EnemyTarget2DObservation target;
             if (!TryReadTarget(out target))
             {
+                ReturnToAuthoredFacing(deltaTimeSeconds);
                 CancelAttackState(false);
                 AdvanceFixedStep();
                 return Result(
@@ -918,6 +995,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
             if (distance > definition.MaximumRange)
             {
+                ReturnToAuthoredFacing(deltaTimeSeconds);
                 CancelAttackState(false);
                 AdvanceFixedStep();
                 return Result(
@@ -930,9 +1008,18 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             }
 
             Vector2 direction = delta / distance;
+            if (trackTarget)
+            {
+                currentFacing = BlasterTurretFacingRules.RotateTowards(
+                    currentFacing,
+                    direction,
+                    trackingDegreesPerSecond * deltaTimeSeconds);
+                ApplyCurrentFacing();
+            }
+
             if (!BlasterTurretFacingRules.IsWithinCone(
                     anchorPosition,
-                    authoredFacing,
+                    currentFacing,
                     targetPosition,
                     definition.FacingConeDegrees))
             {
@@ -947,7 +1034,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                     null);
             }
 
-            direction = authoredFacing;
+            direction = currentFacing;
             Vector2 muzzle = anchorPosition + (direction * (float)definition.MuzzleOffset);
             BlasterTurretCadenceResult cadenceResult = cadence.Step(deltaTimeSeconds, true);
             if (cadenceResult.WarningVisible)
@@ -1016,6 +1103,9 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             fixedStepCount = 0L;
             generation = generation == long.MaxValue ? long.MaxValue : generation + 1L;
             RestoreStationaryAnchor();
+            currentFacing = authoredFacing;
+            ApplyCurrentFacing();
+            SynchronizeCollider(false);
             presentation.SetDestroyed(false);
             presentation.HideWarning();
             if (!reset)
@@ -1204,6 +1294,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 || state == null
                 || state.IsDestroyed;
             presentation.SetDestroyed(destroyed);
+            SynchronizeCollider(destroyed);
             if (destroyed)
             {
                 CancelAttackState(true);
@@ -1223,6 +1314,49 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
             Vector3 current = transform.position;
             transform.position = new Vector3(anchorPosition.x, anchorPosition.y, current.z);
+        }
+
+        private void ReturnToAuthoredFacing(double deltaTimeSeconds)
+        {
+            if (!trackTarget)
+            {
+                return;
+            }
+
+            currentFacing = BlasterTurretFacingRules.RotateTowards(
+                currentFacing,
+                authoredFacing,
+                returnDegreesPerSecond * deltaTimeSeconds);
+            ApplyCurrentFacing();
+        }
+
+        private void ApplyCurrentFacing()
+        {
+            if (currentFacing.sqrMagnitude <= 0.0000001f)
+            {
+                currentFacing = Vector2.right;
+            }
+
+            currentFacing.Normalize();
+            transform.right = currentFacing;
+            if (presentation != null && definition != null)
+            {
+                presentation.SetFacing(
+                    currentFacing,
+                    (float)definition.MuzzleOffset);
+            }
+        }
+
+        private void SynchronizeCollider(bool destroyed)
+        {
+            if (enemyCollider == null)
+            {
+                return;
+            }
+
+            enemyCollider.enabled = destroyed && !keepColliderWhenDestroyed
+                ? false
+                : initialColliderEnabled;
         }
 
         private void AdvanceFixedStep()
@@ -1271,6 +1405,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
             enemyCollider.isTrigger = false;
             enemyCollider.size = new Vector2(1.3f, 1f);
+            initialColliderEnabled = enemyCollider.enabled;
 
             enemyTargetAdapter = GetComponent<EnemyTarget2DAdapter>();
             if (enemyTargetAdapter == null)
@@ -1300,6 +1435,14 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             if (presentation == null)
             {
                 presentation = gameObject.AddComponent<BlasterTurretPresentation2D>();
+            }
+        }
+
+        private static void RequirePositiveFinite(float value, string parameterName)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value) || value <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
             }
         }
 

@@ -135,6 +135,25 @@ namespace ShooterMover.Tests.PlayMode.Enemies
         }
 
         [Test]
+        public void RotateTowards_UsesBoundedAngularSpeed()
+        {
+            MethodInfo rotate = FacingRulesType.GetMethod(
+                "RotateTowards",
+                BindingFlags.Public | BindingFlags.Static);
+            Assert.That(rotate, Is.Not.Null);
+
+            Vector2 halfway = (Vector2)rotate.Invoke(
+                null,
+                new object[] { Vector2.right, Vector2.up, 45d });
+            Vector2 reached = (Vector2)rotate.Invoke(
+                null,
+                new object[] { Vector2.right, Vector2.up, 120d });
+
+            Assert.That(Vector2.Angle(Vector2.right, halfway), Is.EqualTo(45f).Within(0.01f));
+            Assert.That(Vector2.Angle(Vector2.up, reached), Is.LessThan(0.01f));
+        }
+
+        [Test]
         public void SourceSurface_StaysBoundedAndColorIndependent()
         {
             string source = ReadProjectFile(
@@ -147,8 +166,9 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurret.prefab");
             Assert.That(source, Does.Contain("RestartSession"));
             Assert.That(source, Does.Contain("BlasterTurretProjectileModule"));
-            Assert.That(source, Does.Contain("direction = authoredFacing"));
+            Assert.That(source, Does.Contain("direction = currentFacing"));
             Assert.That(source, Does.Contain("BlasterTurretFacingRules.IsWithinCone"));
+            Assert.That(source, Does.Contain("SynchronizeCollider"));
             Assert.That(presentation, Does.Contain("WarningTickCount"));
             Assert.That(presentation, Does.Not.Contain("ColorUtility"));
             Assert.That(source, Does.Not.Contain("Physics.Raycast"));
@@ -156,6 +176,8 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(authoring, Does.Contain("snapToGrid"));
             Assert.That(authoring, Does.Contain("BlasterTurretCardinalFacing"));
             Assert.That(authoring, Does.Contain("CreateActorId"));
+            Assert.That(authoring, Does.Contain("trackPlayer"));
+            Assert.That(authoring, Does.Contain("keepColliderWhenDestroyed"));
             Assert.That(prefab, Does.Contain("c1bfe54ad71d4f0090fbd0b7d4cf35a4"));
             TestContext.WriteLine("surface bounded-2d=true restart=true color-independent=true");
         }

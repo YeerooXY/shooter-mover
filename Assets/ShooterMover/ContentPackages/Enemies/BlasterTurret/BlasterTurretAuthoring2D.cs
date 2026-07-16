@@ -42,6 +42,15 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         [SerializeField] private EnemyTarget2DAdapter targetOverride;
         [SerializeField] private BlasterTurretSceneContext2D sceneContextOverride;
 
+        [Header("Aggro and wreck")]
+        [SerializeField] private bool trackPlayer = true;
+        [Min(1f)]
+        [SerializeField] private float trackingDegreesPerSecond = 120f;
+        [Min(1f)]
+        [SerializeField] private float returnDegreesPerSecond = 90f;
+        [Tooltip("Disable this to let the player move through a destroyed turret.")]
+        [SerializeField] private bool keepColliderWhenDestroyed;
+
         private BlasterTurretPackage package;
         private BlasterTurretSceneContext2D boundContext;
         private BoundedProjectile2D projectileTemplate;
@@ -57,6 +66,14 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         public BlasterTurretCardinalFacing Facing => facing;
 
         public float GridSize => gridSize;
+
+        public bool TrackPlayer => trackPlayer;
+
+        public float TrackingDegreesPerSecond => trackingDegreesPerSecond;
+
+        public float ReturnDegreesPerSecond => returnDegreesPerSecond;
+
+        public bool KeepColliderWhenDestroyed => keepColliderWhenDestroyed;
 
         public void SetRuntimeOverrides(
             BlasterTurretDefinition definitionOverride,
@@ -111,6 +128,11 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             ApplyPlacement();
             projectileTemplate = CreateProjectileTemplate();
             actorId = CreateActorId();
+            package.ConfigureBehavior(
+                trackPlayer,
+                trackingDegreesPerSecond,
+                returnDegreesPerSecond,
+                keepColliderWhenDestroyed);
             package.Configure(
                 runtimeDefinition,
                 target,
@@ -161,6 +183,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             gridSize = Mathf.Max(MinimumGridSize, gridSize);
             projectileVisualScale.x = Mathf.Max(0.001f, projectileVisualScale.x);
             projectileVisualScale.y = Mathf.Max(0.001f, projectileVisualScale.y);
+            trackingDegreesPerSecond = Mathf.Max(1f, trackingDegreesPerSecond);
+            returnDegreesPerSecond = Mathf.Max(1f, returnDegreesPerSecond);
             ApplyPlacement();
         }
 

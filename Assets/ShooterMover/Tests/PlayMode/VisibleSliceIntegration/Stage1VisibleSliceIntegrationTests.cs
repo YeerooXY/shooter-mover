@@ -4,6 +4,9 @@ using System.Collections;
 using System.IO;
 using System.Reflection;
 using NUnit.Framework;
+using ShooterMover.Contracts.Combat;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Enemies;
 using ShooterMover.Presentation.VisibleSliceBlasterTurret;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -149,6 +152,56 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             }
 
             Assert.That(after.CurrentHealth, Is.EqualTo(before.CurrentHealth - 6));
+        }
+
+        [UnityTest]
+        public IEnumerator Turret_TracksPlayerAndDestroyedWreckStopsBlocking()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            object turret = Read<object>(controller, "TurretPackage");
+            Component turretComponent = turret as Component;
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            Assert.That(turretComponent, Is.Not.Null);
+            Assert.That(Read<bool>(turret, "TracksTarget"), Is.True);
+            Assert.That(Read<bool>(turret, "KeepColliderWhenDestroyed"), Is.False);
+
+            Vector2 initialFacing = Read<Vector2>(turret, "CurrentFacing");
+            player.position = turretComponent.transform.position + Vector3.up * 5f;
+            yield return new WaitForSeconds(0.4f);
+            Vector2 trackedFacing = Read<Vector2>(turret, "CurrentFacing");
+            Assert.That(
+                Vector2.Angle(trackedFacing, Vector2.up),
+                Is.LessThan(Vector2.Angle(initialFacing, Vector2.up)));
+            GameObject visiblePresenter = GameObject.Find("VisibleSliceTurretPresentation");
+            Assert.That(visiblePresenter, Is.Not.Null);
+            Assert.That(
+                Mathf.Abs(Mathf.DeltaAngle(visiblePresenter.transform.eulerAngles.z, 0f)),
+                Is.GreaterThan(1f));
+
+            object authority = Read<object>(turret, "Authority");
+            Invoke<object>(
+                authority,
+                "Apply",
+                EnemyActorCommand.Damage(
+                    100L,
+                    StableId.Parse("combat-event.test-destroy-tracking-turret"),
+                    StableId.Parse("actor.test-player"),
+                    (int)CombatChannel.Kinetic,
+                    1000d));
+            yield return new WaitForFixedUpdate();
+
+            Assert.That(
+                Read<bool>(Read<object>(authority, "CurrentState"), "IsDestroyed"),
+                Is.True);
+            Collider2D turretCollider = Read<Collider2D>(turret, "EnemyCollider");
+            Assert.That(turretCollider.enabled, Is.False);
+
+            Invoke<object>(controller, "QuickRestart");
+            yield return null;
+            Assert.That(turretCollider.enabled, Is.True);
+            Assert.That(Read<Vector2>(turret, "CurrentFacing"), Is.EqualTo(Vector2.left));
         }
 
         [UnityTest]
