@@ -869,7 +869,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
 
         private static string Hash(char value)
         {
-            return "sha256:" + new string(value, 64);
+            return RewardApplicationCanonicalV1.Fingerprint(value.ToString());
         }
 
         private sealed class Fixture
