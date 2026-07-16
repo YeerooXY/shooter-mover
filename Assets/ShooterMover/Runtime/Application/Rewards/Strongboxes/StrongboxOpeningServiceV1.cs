@@ -29,6 +29,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         private readonly IStrongboxGrantPayloadResolverV1 payloadResolver;
         private Dictionary<StableId, StrongboxInstanceContextV1> contexts;
         private Dictionary<StableId, OpeningRecord> openings;
+        private Dictionary<StableId, StableId> openingByBox;
         private long sequence;
 
         public StrongboxOpeningServiceV1(
@@ -45,6 +46,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             this.payloadResolver = payloadResolver ?? throw new ArgumentNullException(nameof(payloadResolver));
             contexts = new Dictionary<StableId, StrongboxInstanceContextV1>();
             openings = new Dictionary<StableId, OpeningRecord>();
+            openingByBox = new Dictionary<StableId, StableId>();
         }
 
         public long Sequence
@@ -85,8 +87,15 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 StrongboxDefinitionV1 definition;
-                if (catalog.TryGet(context.TierStableId, out definition)
-                    && context.AlgorithmContentFingerprint != null
+                if (!catalog.TryGet(context.TierStableId, out definition))
+                {
+                    return new StrongboxRegistrationResultV1(
+                        StrongboxRegistrationStatusV1.UnknownDefinition,
+                        context.InstanceStableId,
+                        context.Fingerprint,
+                        "strongbox-tier-unknown");
+                }
+                if (context.AlgorithmContentFingerprint != null
                     && !string.Equals(
                         context.AlgorithmContentFingerprint,
                         definition.Fingerprint,
@@ -192,6 +201,20 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     return Continue(existing, before);
                 }
 
+                StableId boundOpeningStableId;
+                if (openingByBox.TryGetValue(
+                    command.StrongboxInstanceStableId,
+                    out boundOpeningStableId))
+                {
+                    return Rejected(
+                        command,
+                        StrongboxOpeningRuntimeStatusV1.ConflictingDuplicate,
+                        StrongboxOpeningStatusV1.ConflictingDuplicate,
+                        before,
+                        null,
+                        "strongbox-instance-opening-already-bound-" + boundOpeningStableId);
+                }
+
                 if (command.ExpectedOpeningSequence.HasValue
                     && command.ExpectedOpeningSequence.Value != sequence)
                 {
@@ -265,6 +288,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
 
                 OpeningRecord prepared = Prepare(command, context, definition);
                 openings.Add(command.OpeningStableId, prepared);
+                openingByBox.Add(command.StrongboxInstanceStableId, command.OpeningStableId);
                 if (prepared.Stage == StrongboxOpeningStageV1.GeneratorRejected)
                 {
                     return Rejected(
@@ -351,17 +375,30 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     {
                         return InvalidImport("snapshot-context-duplicate-or-null");
                     }
+                    StrongboxDefinitionV1 importedDefinition;
+                    if (!catalog.TryGet(context.TierStableId, out importedDefinition)
+                        || (context.AlgorithmContentFingerprint != null
+                            && !string.Equals(
+                                context.AlgorithmContentFingerprint,
+                                importedDefinition.Fingerprint,
+                                StringComparison.Ordinal)))
+                    {
+                        return InvalidImport("snapshot-context-definition-invalid");
+                    }
                     importedContexts.Add(context.InstanceStableId, context);
                 }
 
                 Dictionary<StableId, OpeningRecord> importedOpenings =
                     new Dictionary<StableId, OpeningRecord>();
+                Dictionary<StableId, StableId> importedOpeningByBox =
+                    new Dictionary<StableId, StableId>();
                 long openedCount = 0L;
                 for (int index = 0; index < snapshot.Openings.Count; index++)
                 {
                     StrongboxOpeningRecordSnapshotV1 opening = snapshot.Openings[index];
                     if (opening == null
                         || importedOpenings.ContainsKey(opening.Command.OpeningStableId)
+                        || importedOpeningByBox.ContainsKey(opening.Command.StrongboxInstanceStableId)
                         || !importedContexts.ContainsKey(opening.Command.StrongboxInstanceStableId))
                     {
                         return InvalidImport("snapshot-opening-invalid");
@@ -377,6 +414,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         openedCount++;
                     }
                     importedOpenings.Add(opening.Command.OpeningStableId, OpeningRecord.FromSnapshot(opening));
+                    importedOpeningByBox.Add(
+                        opening.Command.StrongboxInstanceStableId,
+                        opening.Command.OpeningStableId);
                 }
 
                 if (openedCount != snapshot.Sequence)
@@ -386,6 +426,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
 
                 contexts = importedContexts;
                 openings = importedOpenings;
+                openingByBox = importedOpeningByBox;
                 sequence = snapshot.Sequence;
                 return new StrongboxOpeningImportResultV1(
                     StrongboxOpeningImportStatusV1.Imported,
@@ -493,7 +534,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     StrongboxOpeningStageV1.GeneratorRejected,
                     "generator-exception-" + exception.GetType().Name.ToLowerInvariant());
             }
-            if (generated == null || !generated.IsSuccess || generated.Result == null || generated.RewardTrace == null)
+            if (generated == null
+                || !generated.IsSuccess
+                || generated.Result == null
+                || generated.RewardTrace == null
+                || generated.GenerationTrace == null)
             {
                 return OpeningRecord.Rejected(
                     command,
@@ -509,11 +554,22 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 return OpeningRecord.Rejected(command, StrongboxOpeningStageV1.GeneratorRejected, "generated-mandatory-scrap-missing");
             }
 
-            StrongboxGrantPayloadResolutionV1 resolved = payloadResolver.Resolve(
-                definition,
-                context,
-                operation,
-                generated.Result);
+            StrongboxGrantPayloadResolutionV1 resolved;
+            try
+            {
+                resolved = payloadResolver.Resolve(
+                    definition,
+                    context,
+                    operation,
+                    generated.Result);
+            }
+            catch (Exception exception)
+            {
+                return OpeningRecord.Rejected(
+                    command,
+                    StrongboxOpeningStageV1.PayloadRejected,
+                    "payload-resolution-exception-" + exception.GetType().Name.ToLowerInvariant());
+            }
             if (resolved == null || !resolved.Succeeded)
             {
                 return OpeningRecord.Rejected(
