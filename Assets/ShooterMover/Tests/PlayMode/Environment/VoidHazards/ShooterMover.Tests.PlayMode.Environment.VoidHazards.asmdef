@@ -1,0 +1,23 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Environment.VoidHazards",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Environment.VoidHazards",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.ContentPackages.Environment.VoidHazards"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
