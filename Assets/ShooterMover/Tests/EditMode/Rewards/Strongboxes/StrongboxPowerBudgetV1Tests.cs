@@ -104,7 +104,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         {
             StableId tierId = Id("strongbox.tier-duplicate-test");
             StableId weaponId = Id("equipment.weapon-only-candidate");
-            StrongboxPowerBudgetPolicyV1 powerBudget = Policy(0, 1000, 0, 0, 0);
+            StrongboxPowerBudgetPolicyV1 powerBudget = Policy(5, 1000, 0, 0, 0);
             EquipmentCatalog catalog = BuildSingleWeaponCatalog(weaponId);
             EquipmentGenerationPolicyV1 equipmentPolicy = EquipmentGenerationPolicyV1.Create(
                 Id("generation-policy.duplicate-test"),
@@ -112,7 +112,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                 {
                     EquipmentGenerationCandidateV1.Create(
                         weaponId,
-                        0,
+                        25,
                         100,
                         0,
                         100,
