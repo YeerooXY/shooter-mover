@@ -124,6 +124,30 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         }
 
         [UnityTest]
+        public IEnumerator Demo002_MobileBlasterDroidIsConfiguredAndFires()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            object droid = Read<object>(controller, "MobileBlasterDroid");
+            Assert.That(droid, Is.Not.Null);
+            Assert.That(Read<bool>(droid, "IsConfigured"), Is.True);
+            Assert.That(Read<bool>(droid, "IsActive"), Is.True);
+            Assert.That(Read<object>(droid, "CurrentState"), Is.Not.Null);
+            Assert.That(
+                ((Component)droid).transform.position,
+                Is.EqualTo(new Vector3(0f, 5.5f, 0f)));
+
+            float deadline = Time.time + 1.5f;
+            while (Time.time < deadline && Read<long>(droid, "SuccessfulShotCount") == 0L)
+            {
+                yield return null;
+            }
+
+            Assert.That(Read<long>(droid, "SuccessfulShotCount"), Is.GreaterThanOrEqualTo(1L));
+        }
+
+        [UnityTest]
         public IEnumerator Demo002_TurretDestructionUnlocksExitAndCompletesArena()
         {
             MonoBehaviour controller = null;

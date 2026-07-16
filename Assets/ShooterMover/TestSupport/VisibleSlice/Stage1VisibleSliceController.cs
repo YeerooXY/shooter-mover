@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ShooterMover.Content.Definitions.Objects;
 using ShooterMover.ContentPackages.Environment.Doors;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
+using ShooterMover.ContentPackages.Enemies.MobileBlasterDroid;
 using ShooterMover.ContentPackages.Props.DestructibleProps;
 using ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation;
 using ShooterMover.ContentPackages.Environment.VoidHazards;
@@ -89,6 +90,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private BlasterTurretPackage turretPackage;
         private BlasterTurretSceneContext2D turretSceneContext;
         private BlasterTurretDefinition turretDefinition;
+        private MobileBlasterDroidRuntime2D mobileBlasterDroid;
+        private MobileBlasterDroidDefinition mobileBlasterDroidDefinition;
         private DestructiblePropSet2D destructiblePropSet;
         private MovementActorLifecycle movementLifecycle;
         private MovementThrusterTuningProfile movementTuning;
@@ -133,6 +136,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public Transform PlayerTransform => playerTransform;
         public SpriteRenderer PlayerBodyRenderer => playerBodyRenderer;
         public BlasterTurretPackage TurretPackage => turretPackage;
+        public MobileBlasterDroidRuntime2D MobileBlasterDroid => mobileBlasterDroid;
         public DestructiblePropSet2D DestructiblePropSet => destructiblePropSet;
         public Stage1VisibleSliceRoomPresentation RoomPresentation => roomPresentation;
         public VisibleSliceLoadoutSelector LoadoutSelector => loadoutSelector;
@@ -357,6 +361,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
             {
                 turretPackage.RestartSession();
             }
+            if (mobileBlasterDroid != null)
+            {
+                mobileBlasterDroid.RestartSession();
+            }
             if (gameplayScope != null && gameplayScope.IsConfigured)
             {
                 gameplayScope.RunRestart(restartGeneration);
@@ -529,6 +537,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 new Vector3(0.09f, 0.09f, 1f));
             BuildCamera();
             BuildTurret();
+            BuildMobileBlasterDroid();
             BuildExitDoor();
             BuildUi();
             sessionActive = shootingSandbox;
@@ -693,6 +702,43 @@ namespace ShooterMover.TestSupport.VisibleSlice
             turretPresenter.SetReducedEffectsOverride(reducedEffects);
             turretPresenter.SetGrayscaleOverride(grayscale);
             sessionObjects.Add(turretPresenter.gameObject);
+        }
+
+        private void BuildMobileBlasterDroid()
+        {
+            GameObject droidObject = new GameObject("MobileBlasterDroid_01");
+            droidObject.transform.SetParent(transform, false);
+            droidObject.transform.position = new Vector3(0f, 5.5f, 0f);
+            sessionObjects.Add(droidObject);
+
+            SpriteRenderer bodyRenderer = droidObject.AddComponent<SpriteRenderer>();
+            bodyRenderer.sprite = CreateRuntimeSprite(
+                "DEMO-002 Mobile Blaster Droid",
+                new Color(0.88f, 0.42f, 0.16f, 0.9f));
+            bodyRenderer.transform.localScale = new Vector3(0.72f, 0.72f, 1f);
+            bodyRenderer.sortingOrder = 6;
+
+            mobileBlasterDroid = droidObject.AddComponent<MobileBlasterDroidRuntime2D>();
+            mobileBlasterDroidDefinition = MobileBlasterDroidDefinition.CreateRuntime(
+                16d,
+                2.5d,
+                5d,
+                0.5d,
+                0.3d,
+                0.8d,
+                0.65d,
+                4,
+                0.55d,
+                4d,
+                0.2d);
+            mobileBlasterDroid.ConfigureSession(
+                mobileBlasterDroidDefinition,
+                StableId.Parse("actor.demo002-mobile-blaster-droid"),
+                playerTargetAdapter,
+                new Collider2D[] { playerCollider },
+                StableId.Parse("actor.vs007-player"),
+                CombatWeightClass.Standard,
+                playerProjectileTemplate);
         }
 
         private void BuildExitDoor()
@@ -916,18 +962,24 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 compactBodyStyle);
 
             GUI.Label(new Rect(Screen.width - 241f, 26f, 210f, 22f),
-                "BLASTER TURRET",
+                "ENEMIES 2",
                 compactTitleStyle);
             GUI.Label(new Rect(Screen.width - 241f, 51f, 210f, 20f),
                 turretState == null
-                    ? "OFFLINE"
+                    ? "TURRET OFFLINE"
                     : (turretDestroyed
-                        ? "DESTROYED"
-                        : "HP " + Mathf.RoundToInt((float)turretState.Health)
+                        ? "TURRET DESTROYED"
+                        : "TURRET HP " + Mathf.RoundToInt((float)turretState.Health)
                             + "/" + Mathf.RoundToInt((float)turretState.MaximumHealth)),
                 compactBodyStyle);
             GUI.Label(new Rect(Screen.width - 241f, 72f, 210f, 18f),
-                "R RESTART   F2 EFFECTS",
+                mobileBlasterDroid == null || mobileBlasterDroid.CurrentState == null
+                    ? "DROID OFFLINE"
+                    : "DROID HP "
+                        + Mathf.RoundToInt((float)mobileBlasterDroid.CurrentState.Health)
+                        + "/"
+                        + Mathf.RoundToInt(
+                            (float)mobileBlasterDroid.CurrentState.MaximumHealth),
                 compactBodyStyle);
             GUI.Label(
                 new Rect(Screen.width * 0.5f - 220f, 24f, 440f, 28f),
@@ -1458,6 +1510,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (turretDefinition != null)
             {
                 DestroyImmediate(turretDefinition);
+            }
+
+            if (mobileBlasterDroidDefinition != null)
+            {
+                DestroyImmediate(mobileBlasterDroidDefinition);
             }
 
             if (runtimeEnvironmentFamily != null)
