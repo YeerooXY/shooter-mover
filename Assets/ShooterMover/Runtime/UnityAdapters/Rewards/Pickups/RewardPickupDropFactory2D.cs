@@ -191,6 +191,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
         public bool TryGetPickup(StableId pickupStableId, out RewardPickup2D pickup)
         {
+            pickup = null;
             return pickupStableId != null
                 && spawnedPickups.TryGetValue(pickupStableId, out pickup);
         }

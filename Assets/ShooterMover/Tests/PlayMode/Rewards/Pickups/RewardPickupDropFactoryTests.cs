@@ -3,6 +3,7 @@ using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Rewards.Pickups;
 using ShooterMover.UnityAdapters.Rewards.Sources;

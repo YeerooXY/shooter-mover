@@ -4,6 +4,7 @@ using ShooterMover.Contracts.Rewards;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Application;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Rewards.Pickups;
 using UnityEngine;
