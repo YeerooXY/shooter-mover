@@ -4,8 +4,13 @@
   "references": [
     "ShooterMover.Domain",
     "ShooterMover.Contracts",
+    "ShooterMover.Application",
     "ShooterMover.UnityAdapters",
+    "ShooterMover.Presentation",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.Bootstrap",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
     "ShooterMover.ContentPackages.Environment.VoidHazards"
   ],
   "includePlatforms": [],
