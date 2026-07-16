@@ -34,6 +34,20 @@ Moving outside the cone stops new attacks and resets pending cadence, but projec
 already in flight remain active. Walls and solid props stop those projectiles through
 ordinary Physics2D collision.
 
+## Drag-and-drop scene authoring
+
+`BlasterTurret.prefab` includes `BlasterTurretAuthoring2D`. A level author can drag any
+number of copies into a scene, choose Right/Up/Left/Down facing, and move them freely.
+The component snaps each copy to its configured grid size and locks rotation to the
+chosen cardinal direction in edit mode and again when play starts.
+
+The player/bootstrap owns one `BlasterTurretSceneContext2D`. Once that context receives
+the player target and player-shot hit adapter, every placed turret configures itself,
+creates its visible finite projectile template, receives a hierarchy-derived unique
+runtime identity, registers for player shots, and routes confirmed projectile damage.
+Duplicated prefab instances therefore remain independent without per-turret controller
+code.
+
 ## Deterministic cadence
 
 The package supports two presentation modes:
@@ -94,7 +108,8 @@ both normal color and grayscale:
 - Temporary generated line geometry is not final art.
 - No tracking beam persists outside the optional warning phase.
 - No homing, target prediction, burst, or area projectile is used.
-- No encounter placement or registry generation is included.
+- A scene still needs one player-owned `BlasterTurretSceneContext2D`; turrets deliberately
+  do not locate private player combat state through names, tags, or global singletons.
 
 ## Rollback
 

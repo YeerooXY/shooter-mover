@@ -23,6 +23,10 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretCadence");
         private static readonly Type FacingRulesType = Find(
             "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretFacingRules");
+        private static readonly Type AuthoringType = Find(
+            "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretAuthoring2D");
+        private static readonly Type SceneContextType = Find(
+            "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretSceneContext2D");
 
         [Test]
         public void PackageTypes_ArePresentInPredefinedAssembly()
@@ -31,6 +35,8 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(PackageType, Is.Not.Null);
             Assert.That(CadenceType, Is.Not.Null);
             Assert.That(FacingRulesType, Is.Not.Null);
+            Assert.That(AuthoringType, Is.Not.Null);
+            Assert.That(SceneContextType, Is.Not.Null);
             Assert.That(PackageType.GetMethod("RestartSession"), Is.Not.Null);
             TestContext.WriteLine("package-types definition=true package=true cadence=true restart=true");
         }
@@ -135,6 +141,10 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretPackage.cs");
             string presentation = ReadProjectFile(
                 "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretPresentation2D.cs");
+            string authoring = ReadProjectFile(
+                "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretAuthoring2D.cs");
+            string prefab = ReadProjectFile(
+                "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurret.prefab");
             Assert.That(source, Does.Contain("RestartSession"));
             Assert.That(source, Does.Contain("BlasterTurretProjectileModule"));
             Assert.That(source, Does.Contain("direction = authoredFacing"));
@@ -143,6 +153,10 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(presentation, Does.Not.Contain("ColorUtility"));
             Assert.That(source, Does.Not.Contain("Physics.Raycast"));
             Assert.That(source, Does.Not.Contain("GameObject.Find"));
+            Assert.That(authoring, Does.Contain("snapToGrid"));
+            Assert.That(authoring, Does.Contain("BlasterTurretCardinalFacing"));
+            Assert.That(authoring, Does.Contain("CreateActorId"));
+            Assert.That(prefab, Does.Contain("c1bfe54ad71d4f0090fbd0b7d4cf35a4"));
             TestContext.WriteLine("surface bounded-2d=true restart=true color-independent=true");
         }
 

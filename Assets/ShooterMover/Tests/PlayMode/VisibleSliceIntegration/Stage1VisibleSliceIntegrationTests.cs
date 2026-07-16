@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Presentation.VisibleSliceBlasterTurret;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -145,6 +146,47 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             }
 
             Assert.That(after.CurrentHealth, Is.EqualTo(before.CurrentHealth - 6));
+        }
+
+        [UnityTest]
+        public IEnumerator DuplicatedAuthoredTurret_SnapsAndRegistersIndependently()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurret.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            GameObject duplicate = UnityEngine.Object.Instantiate(prefab);
+            duplicate.name = "PlacedTurretDuplicate";
+            duplicate.transform.position = new Vector3(1.4f, 2.6f, 0f);
+
+            Type authoringType = FindType(
+                "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretAuthoring2D");
+            Component duplicateAuthoring = duplicate.GetComponent(authoringType);
+            Assert.That(duplicateAuthoring, Is.Not.Null);
+            Assert.That(Invoke<bool>(duplicateAuthoring, "TryConfigureNow"), Is.True);
+
+            Component firstPackage = Read<object>(controller, "TurretPackage") as Component;
+            Component firstAuthoring = firstPackage.GetComponent(authoringType);
+            Assert.That(firstAuthoring, Is.Not.Null);
+            Assert.That(
+                Read<object>(duplicateAuthoring, "ActorId").ToString(),
+                Is.Not.EqualTo(Read<object>(firstAuthoring, "ActorId").ToString()));
+            Assert.That(duplicate.transform.position, Is.EqualTo(new Vector3(1f, 3f, 0f)));
+            Assert.That(
+                Read<Vector2>(Read<object>(duplicateAuthoring, "Package"), "AuthoredFacing"),
+                Is.EqualTo(Vector2.left));
+
+            Type contextType = FindType(
+                "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretSceneContext2D");
+            Component context = UnityEngine.Object.FindFirstObjectByType(contextType) as Component;
+            Assert.That(context, Is.Not.Null);
+            Assert.That(Read<int>(context, "RegisteredTurretCount"), Is.EqualTo(2));
+
+            UnityEngine.Object.Destroy(duplicate);
+            yield return null;
+            Assert.That(Read<int>(context, "RegisteredTurretCount"), Is.EqualTo(1));
         }
 
         [UnityTest]

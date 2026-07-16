@@ -68,6 +68,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private VisibleSliceCameraRig cameraRig;
         private VisibleSliceBlasterTurretPresenter turretPresenter;
         private BlasterTurretPackage turretPackage;
+        private BlasterTurretSceneContext2D turretSceneContext;
         private BlasterTurretDefinition turretDefinition;
         private MovementActorLifecycle movementLifecycle;
         private MovementThrusterTuningProfile movementTuning;
@@ -79,6 +80,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private Transform playerTransform;
         private Rigidbody2D playerBody;
         private Collider2D playerCollider;
+        private EnemyTarget2DAdapter playerTargetAdapter;
         private SpriteRenderer playerBodyRenderer;
         private TrailRenderer playerBoostTrail;
         private Camera sceneCamera;
@@ -195,7 +197,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
             while (observedTurretHitCount < turretHitCount)
             {
                 observedTurretHitCount++;
-                playerHealth = Mathf.Max(0, playerHealth - TurretShotDamage);
             }
 
             int playerHitCount = playerHitAdapter == null
@@ -204,7 +205,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
             while (observedPlayerHitCount < playerHitCount)
             {
                 observedPlayerHitCount++;
-                ApplyPlayerProjectileDamageToTurret();
+                damageSequence++;
+                damageObserved = true;
             }
         }
 
@@ -428,6 +430,17 @@ namespace ShooterMover.TestSupport.VisibleSlice
             BuildWalls();
             BuildPlayer();
             playerHitAdapter = new CombatHit2DAdapter(StableId.Parse("actor.vs007-player"));
+            GameObject turretContextObject = new GameObject("BlasterTurretSceneContext");
+            turretContextObject.transform.SetParent(transform, false);
+            sessionObjects.Add(turretContextObject);
+            turretSceneContext =
+                turretContextObject.AddComponent<BlasterTurretSceneContext2D>();
+            turretSceneContext.Configure(
+                playerTargetAdapter,
+                playerHitAdapter,
+                PlayerShotDamage,
+                TurretShotDamage,
+                ApplyTurretProjectileDamageToPlayer);
             playerProjectileTemplate = CreateProjectileTemplate(
                 "PlayerBlasterProjectileTemplate",
                 blasterShotSprite,
@@ -471,8 +484,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
             combatInput = player.AddComponent<PlayerCombatIntentAdapter>();
             combatInput.Configure(inputActions);
 
-            EnemyTarget2DAdapter playerTarget = player.AddComponent<EnemyTarget2DAdapter>();
-            playerTarget.Configure(
+            playerTargetAdapter = player.AddComponent<EnemyTarget2DAdapter>();
+            playerTargetAdapter.Configure(
                 StableId.Parse("actor.vs007-player"),
                 player.transform,
                 playerCollider);
@@ -522,11 +535,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 PropGridSize);
             turretObject.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
             sessionObjects.Add(turretObject);
-            turretPackage = turretObject.GetComponent<BlasterTurretPackage>();
-            BoundedProjectile2D projectileTemplate = CreateProjectileTemplate(
-                "TurretProjectileTemplate",
-                turretShotSprite == null ? blasterShotSprite : turretShotSprite,
-                new Vector3(0.07f, 0.07f, 1f));
             turretDefinition = BlasterTurretDefinition.CreateRuntime(
                 60d,
                 0d,
@@ -539,18 +547,18 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 0.5d,
                 0.02d,
                 4);
-            EnemyTarget2DAdapter playerTarget = playerTransform.GetComponent<EnemyTarget2DAdapter>();
-            turretPackage.Configure(
+            BlasterTurretAuthoring2D authoring =
+                turretObject.GetComponent<BlasterTurretAuthoring2D>();
+            authoring.SetRuntimeOverrides(
                 turretDefinition,
-                playerTarget,
-                playerCollider,
-                projectileTemplate,
-                StableId.Parse("enemy.vs007-blaster-turret"),
-                StableId.Parse("actor.vs007-player"),
-                CombatWeightClass.Standard);
-            playerHitAdapter.RegisterTarget(
-                turretPackage.EnemyCollider,
-                StableId.Parse("enemy.vs007-blaster-turret"));
+                turretShotSprite == null ? blasterShotSprite : turretShotSprite);
+            if (!authoring.TryConfigureNow())
+            {
+                throw new InvalidOperationException(
+                    "The authored Stage 1 Blaster Turret could not bind to its scene context.");
+            }
+
+            turretPackage = authoring.Package;
 
             turretPresenter = Instantiate(turretPresentationPrefab, transform);
             turretPresenter.name = "VisibleSliceTurretPresentation";
@@ -851,6 +859,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     PlayerShotDamage));
             damageSequence++;
             damageObserved = true;
+        }
+
+        private void ApplyTurretProjectileDamageToPlayer(double damage)
+        {
+            playerHealth = Mathf.Max(0, playerHealth - Mathf.RoundToInt((float)damage));
         }
 
         private Vector2 ReadReticleViewport()

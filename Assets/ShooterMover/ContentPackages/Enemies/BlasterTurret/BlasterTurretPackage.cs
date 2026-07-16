@@ -610,6 +610,11 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             get { return presentation; }
         }
 
+        public CombatHit2DAdapter HitAdapter
+        {
+            get { return hitAdapter; }
+        }
+
         public Rigidbody2D EnemyBody
         {
             get { return enemyBody; }
