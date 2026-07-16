@@ -74,6 +74,8 @@ namespace ShooterMover.UnityAdapters.Combat
         private readonly Dictionary<StableId, HitMessage> firstMessagesByEventId =
             new Dictionary<StableId, HitMessage>();
 
+        public event Action<CombatHit2DTranslationResult> HitTranslated;
+
         public CombatHit2DAdapter(StableId sourceId)
         {
             if (sourceId == null)
@@ -225,11 +227,18 @@ namespace ShooterMover.UnityAdapters.Combat
             }
 
             firstMessagesByEventId.Add(eventId, candidate);
-            return Result(
+            CombatHit2DTranslationResult result = Result(
                 targetAlreadyDestroyed
                     ? CombatHit2DTranslationStatus.TargetAlreadyDestroyed
                     : CombatHit2DTranslationStatus.Confirmed,
                 candidate);
+            Action<CombatHit2DTranslationResult> translated = HitTranslated;
+            if (translated != null)
+            {
+                translated(result);
+            }
+
+            return result;
         }
 
         private static CombatHit2DTranslationResult Result(

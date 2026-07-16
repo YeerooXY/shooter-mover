@@ -141,6 +141,24 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             }
         }
 
+        public void SetFacing(Vector2 facing, float muzzleOffset)
+        {
+            EnsureGeometry();
+            if (!IsFinite(facing)
+                || facing.sqrMagnitude <= 0.0000001f
+                || float.IsNaN(muzzleOffset)
+                || float.IsInfinity(muzzleOffset)
+                || muzzleOffset < 0f)
+            {
+                return;
+            }
+
+            Vector2 origin = transform.position;
+            barrel.positionCount = 2;
+            barrel.SetPosition(0, origin);
+            barrel.SetPosition(1, origin + (facing.normalized * muzzleOffset));
+        }
+
         public void SetDestroyed(bool value)
         {
             destroyed = value;

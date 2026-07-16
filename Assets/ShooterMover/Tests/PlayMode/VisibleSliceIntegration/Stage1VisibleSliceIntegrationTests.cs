@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Presentation.VisibleSliceBlasterTurret;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -42,43 +43,150 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         }
 
         [UnityTest]
-        public IEnumerator SceneBoot_ComposesAcceptedRoomPlayerTurretHudStripSelectorAndCamera()
+        public IEnumerator SceneBoot_ComposesDirectionalTurretShootingSandbox()
         {
             MonoBehaviour controller = null;
             yield return LoadController(value => controller = value);
 
             Assert.That(Read<bool>(controller, "IsInitialized"), Is.True);
             Assert.That(Read<object>(controller, "RoomPresentation"), Is.Not.Null);
-            Assert.That(Read<object>(controller, "TurretPackage"), Is.Not.Null);
+            object turret = Read<object>(controller, "TurretPackage");
+            Assert.That(turret, Is.Not.Null);
             Assert.That(Read<object>(controller, "CombatHud"), Is.Not.Null);
-            Assert.That(Read<object>(controller, "WeaponStrip"), Is.Not.Null);
-            Assert.That(Read<object>(controller, "LoadoutSelector"), Is.Not.Null);
+            Assert.That(Read<object>(controller, "WeaponStrip"), Is.Null);
+            Assert.That(Read<object>(controller, "LoadoutSelector"), Is.Null);
             Assert.That(Read<object>(controller, "CameraRig"), Is.Not.Null);
             Assert.That(Read<int>(controller, "HudOwnerCount"), Is.EqualTo(1));
             Assert.That(Read<int>(controller, "CameraOwnerCount"), Is.EqualTo(1));
-            Assert.That(Read<bool>(controller, "IsSessionActive"), Is.False);
+            Assert.That(Read<bool>(controller, "IsSessionActive"), Is.True);
+
+            Component turretComponent = turret as Component;
+            Assert.That(turretComponent, Is.Not.Null);
+            Assert.That(
+                turretComponent.transform.position.x / 0.5f,
+                Is.EqualTo(Mathf.Round(turretComponent.transform.position.x / 0.5f))
+                    .Within(0.0001f));
+            Assert.That(
+                turretComponent.transform.position.y / 0.5f,
+                Is.EqualTo(Mathf.Round(turretComponent.transform.position.y / 0.5f))
+                    .Within(0.0001f));
+            Assert.That(Read<Vector2>(turret, "AuthoredFacing"), Is.EqualTo(Vector2.left));
         }
 
         [UnityTest]
-        public IEnumerator ConfirmAndFire_UsesAcceptedEnemyHealthUntilRoomClear()
+        public IEnumerator TurretShot_DamagesOnlyAfterPhysicalTravelTime()
         {
             MonoBehaviour controller = null;
             yield return LoadController(value => controller = value);
 
-            Assert.That(Invoke<bool>(controller, "ConfirmDefaultLoadout"), Is.True);
             Assert.That(Read<bool>(controller, "IsSessionActive"), Is.True);
+            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(100));
 
-            for (int shot = 0; shot < 5; shot++)
+            yield return new WaitForSeconds(0.5f);
+            Assert.That(
+                Read<int>(controller, "PlayerHealth"),
+                Is.EqualTo(100),
+                "A turret shot must not apply damage merely because it was emitted.");
+            object turret = Read<object>(controller, "TurretPackage");
+            object projectileAdapter = Read<object>(turret, "ProjectileAdapter");
+            Assert.That(
+                Read<int>(projectileAdapter, "ActiveProjectileCount"),
+                Is.GreaterThanOrEqualTo(1),
+                "The eligible directional turret must emit a physical projectile.");
+
+            float deadline = Time.time + 1.5f;
+            while (Time.time < deadline && Read<int>(controller, "PlayerHealth") == 100)
             {
-                Assert.That(Invoke<bool>(controller, "FireAtTurretForTests"), Is.True);
+                yield return null;
             }
+
+            Assert.That(
+                Read<int>(controller, "PlayerHealth"),
+                Is.EqualTo(90),
+                "completion="
+                + Read<object>(turret, "LastProjectileCompletionReason")
+                + " hit-status="
+                + (Read<object>(turret, "LastProjectileHitStatus") ?? "none")
+                + " collision="
+                + Read<string>(turret, "LastProjectileCollisionObjectName")
+                + " collision-point="
+                + Read<Vector2>(turret, "LastProjectileCollisionPoint")
+                + " player-position="
+                + Read<Transform>(controller, "PlayerTransform").position
+                + " path-colliders="
+                + DescribePathColliders(
+                    ((Component)turret).transform.position,
+                    Read<Transform>(controller, "PlayerTransform").position));
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerShot_DamagesTurretOnlyAfterPhysicalContact()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
 
             IVisibleSliceBlasterTurretPresentationSource source =
                 controller as IVisibleSliceBlasterTurretPresentationSource;
             Assert.That(source, Is.Not.Null);
-            Assert.That(source.TryReadSnapshot(out VisibleSliceBlasterTurretSnapshot snapshot), Is.True);
-            Assert.That(snapshot.CurrentHealth, Is.Zero);
-            Assert.That(snapshot.Phase, Is.EqualTo(VisibleSliceBlasterTurretPhase.Destroyed));
+            Assert.That(
+                source.TryReadSnapshot(out VisibleSliceBlasterTurretSnapshot before),
+                Is.True);
+            Assert.That(Invoke<bool>(controller, "FireAtTurretForTests"), Is.True);
+            Assert.That(
+                source.TryReadSnapshot(out VisibleSliceBlasterTurretSnapshot immediate),
+                Is.True);
+            Assert.That(immediate.CurrentHealth, Is.EqualTo(before.CurrentHealth));
+
+            float deadline = Time.time + 1.2f;
+            VisibleSliceBlasterTurretSnapshot after = immediate;
+            while (Time.time < deadline && after.CurrentHealth == before.CurrentHealth)
+            {
+                yield return null;
+                source.TryReadSnapshot(out after);
+            }
+
+            Assert.That(after.CurrentHealth, Is.EqualTo(before.CurrentHealth - 6));
+        }
+
+        [UnityTest]
+        public IEnumerator DuplicatedAuthoredTurret_SnapsAndRegistersIndependently()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurret.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            GameObject duplicate = UnityEngine.Object.Instantiate(prefab);
+            duplicate.name = "PlacedTurretDuplicate";
+            duplicate.transform.position = new Vector3(1.4f, 2.6f, 0f);
+
+            Type authoringType = FindType(
+                "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretAuthoring2D");
+            Component duplicateAuthoring = duplicate.GetComponent(authoringType);
+            Assert.That(duplicateAuthoring, Is.Not.Null);
+            Assert.That(Invoke<bool>(duplicateAuthoring, "TryConfigureNow"), Is.True);
+
+            Component firstPackage = Read<object>(controller, "TurretPackage") as Component;
+            Component firstAuthoring = firstPackage.GetComponent(authoringType);
+            Assert.That(firstAuthoring, Is.Not.Null);
+            Assert.That(
+                Read<object>(duplicateAuthoring, "ActorId").ToString(),
+                Is.Not.EqualTo(Read<object>(firstAuthoring, "ActorId").ToString()));
+            Assert.That(duplicate.transform.position, Is.EqualTo(new Vector3(1f, 3f, 0f)));
+            Assert.That(
+                Read<Vector2>(Read<object>(duplicateAuthoring, "Package"), "AuthoredFacing"),
+                Is.EqualTo(Vector2.left));
+
+            Type contextType = FindType(
+                "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretSceneContext2D");
+            Component context = UnityEngine.Object.FindFirstObjectByType(contextType) as Component;
+            Assert.That(context, Is.Not.Null);
+            Assert.That(Read<int>(context, "RegisteredTurretCount"), Is.EqualTo(2));
+
+            UnityEngine.Object.Destroy(duplicate);
+            yield return null;
+            Assert.That(Read<int>(context, "RegisteredTurretCount"), Is.EqualTo(1));
         }
 
         [UnityTest]
@@ -95,7 +203,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 Invoke<object>(controller, "QuickRestart");
                 Assert.That(Read<long>(controller, "RestartGeneration"), Is.EqualTo(cycle));
                 Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(100));
-                Assert.That(Read<bool>(controller, "IsSessionActive"), Is.False);
+                Assert.That(Read<bool>(controller, "IsSessionActive"), Is.True);
                 Assert.That(Read<int>(controller, "SessionObjectCount"), Is.EqualTo(objects));
                 Assert.That(Read<int>(controller, "HudOwnerCount"), Is.EqualTo(hudOwners));
                 Assert.That(Read<int>(controller, "CameraOwnerCount"), Is.EqualTo(cameraOwners));
@@ -191,6 +299,16 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             }
 
             throw new InvalidOperationException("Required type not found: " + fullName);
+        }
+
+        private static string DescribePathColliders(Vector2 start, Vector2 end)
+        {
+            RaycastHit2D[] hits = Physics2D.LinecastAll(start, end);
+            return string.Join(
+                ",",
+                Array.ConvertAll(
+                    hits,
+                    hit => hit.collider == null ? "null" : hit.collider.gameObject.name));
         }
     }
 }

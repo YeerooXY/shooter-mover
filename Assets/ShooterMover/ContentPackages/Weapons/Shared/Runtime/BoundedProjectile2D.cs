@@ -52,6 +52,8 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
         private bool isInitialized;
         private bool isComplete;
         private CombatHit2DTranslationResult lastHitTranslation;
+        private Collider2D lastCollisionCollider;
+        private Vector2 lastCollisionPoint;
         private BoundedProjectile2DCompletionReason completionReason;
 
         public event Action<BoundedProjectile2D> Completed;
@@ -84,6 +86,16 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
         public CombatHit2DTranslationResult LastHitTranslation
         {
             get { return lastHitTranslation; }
+        }
+
+        public Collider2D LastCollisionCollider
+        {
+            get { return lastCollisionCollider; }
+        }
+
+        public Vector2 LastCollisionPoint
+        {
+            get { return lastCollisionPoint; }
         }
 
         public bool TryInitialize(
@@ -133,6 +145,8 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
             presentationEnabled = enablePresentation;
             completionReason = BoundedProjectile2DCompletionReason.None;
             lastHitTranslation = null;
+            lastCollisionCollider = null;
+            lastCollisionPoint = Vector2.zero;
             isComplete = false;
             isInitialized = true;
 
@@ -268,6 +282,8 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
                 other,
                 channel,
                 false);
+            lastCollisionCollider = other;
+            lastCollisionPoint = contactPoint;
             bool confirmed = translation != null
                 && translation.Status == CombatHit2DTranslationStatus.Confirmed;
 

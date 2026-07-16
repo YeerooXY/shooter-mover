@@ -3,8 +3,8 @@
 ## Role
 
 `enemy.blaster-turret` is the fixed-position ranged enemy for Stage 1. The package owns
-its tuning, temporary presentation, deterministic warn/fire/recover policy, prefab root,
-and package-local composition only.
+its tuning, fixed map-facing attack cone, temporary presentation, deterministic
+fire/recover policy, prefab root, and package-local composition only.
 
 ## Accepted contracts consumed
 
@@ -23,18 +23,42 @@ and package-local composition only.
 No weapon implementation, shared adapter, scene, registry output, persistence, reward,
 or other enemy is modified.
 
+## Directional eligibility
+
+The turret captures one cardinal facing from its authored transform when configured.
+It may begin its cadence only while the target is inside both its maximum range and
+its configured cone around that facing. Projectile direction is always the authored
+facing; it is never recomputed toward the target or predicted from target motion.
+
+Moving outside the cone stops new attacks and resets pending cadence, but projectiles
+already in flight remain active. Walls and solid props stop those projectiles through
+ordinary Physics2D collision.
+
+## Drag-and-drop scene authoring
+
+`BlasterTurret.prefab` includes `BlasterTurretAuthoring2D`. A level author can drag any
+number of copies into a scene, choose Right/Up/Left/Down facing, and move them freely.
+The component snaps each copy to its configured grid size and locks rotation to the
+chosen cardinal direction in edit mode and again when play starts.
+
+The player/bootstrap owns one `BlasterTurretSceneContext2D`. Once that context receives
+the player target and player-shot hit adapter, every placed turret configures itself,
+creates its visible finite projectile template, receives a hierarchy-derived unique
+runtime identity, registers for player shots, and routes confirmed projectile damage.
+Duplicated prefab instances therefore remain independent without per-turret controller
+code.
+
 ## Deterministic cadence
 
-The package cycles through three explicit states:
+The package supports two presentation modes:
 
-1. **Idle** enters Warning but cannot fire in the same fixed step.
-2. **Warning** shows a solid rail with four perpendicular shape ticks. When the authored
-   warning duration has elapsed, exactly one normal Blaster plan is executed.
-3. **Recovery** hides the warning and must finish before a new complete Warning step.
+1. A positive warning duration enters Warning before firing and retains the legacy
+   color-independent warning geometry.
+2. A zero warning duration fires immediately when eligible, without showing a warning.
+3. Recovery must finish before another shot can begin.
 
-Target loss, range loss, obstruction, point-blank ambiguity, disable, death, and restart
-reset pending cadence. They also cancel package-owned projectiles still in flight, so a
-stale shot cannot survive a lifecycle or line-of-fire invalidation.
+Target loss, range loss, facing-cone loss, and point-blank ambiguity reset pending
+cadence. Disable, death, and restart additionally cancel package-owned projectiles.
 
 ## Stationary identity
 
@@ -62,10 +86,9 @@ Run with the pinned editor:
 "C:\Program Files\Unity\Hub\Editor\6000.3.19f1\Editor\Unity.exe" -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Enemies.BlasterTurretPackageTests -testResults Artifacts\TestResults\BlasterTurretPackageTests.xml -logFile Artifacts\Logs\BlasterTurretPackageTests.log -quit
 ```
 
-The fixture covers descriptor identity, stationary projection, deterministic cadence,
-accepted Blaster plan and bounded projectile execution, obstruction, target loss, death,
-restart, color-independent warning geometry, target-behind line of fire, and point-blank
-fail-safe behavior.
+The fixture covers descriptor identity, stationary projection, zero-warning and legacy
+warning cadence, cardinal facing, cone boundaries, bounded projectile execution,
+target loss, death, restart, and point-blank fail-safe behavior.
 
 ## Manual warning capture
 
@@ -83,9 +106,10 @@ both normal color and grayscale:
 ## Limitations
 
 - Temporary generated line geometry is not final art.
-- No tracking beam persists outside the warning phase.
-- No alternate, empowered, homing, burst, or area projectile is used.
-- No encounter placement or registry generation is included.
+- No tracking beam persists outside the optional warning phase.
+- No homing, target prediction, burst, or area projectile is used.
+- A scene still needs one player-owned `BlasterTurretSceneContext2D`; turrets deliberately
+  do not locate private player combat state through names, tags, or global singletons.
 
 ## Rollback
 
