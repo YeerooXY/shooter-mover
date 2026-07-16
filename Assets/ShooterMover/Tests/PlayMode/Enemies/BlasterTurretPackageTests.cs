@@ -287,7 +287,7 @@ namespace ShooterMover.Tests.PlayMode.Enemies
         }
 
         [Test]
-        public void SameAuthoredId_IsolatedAcrossSeparateScopes()
+        public void DistinctTurrets_RegisterInTwoIndependentScopes()
         {
             EnemyTarget2DAdapter playerTarget = CreatePlayerTarget();
             ScopeHarness firstScope = CreateScope(
@@ -300,11 +300,11 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 CreatePlayerHitAdapter("source.player-isolated-b"));
             Component first = CreateTurret(
                 firstScope.Root.transform,
-                "placed.blaster-turret-shared",
+                "placed.blaster-turret-isolated-a",
                 null);
             Component second = CreateTurret(
                 secondScope.Root.transform,
-                "placed.blaster-turret-shared",
+                "placed.blaster-turret-isolated-b",
                 null);
 
             Assert.That((bool)Invoke(first, "TryConfigureNow"), Is.True);
@@ -383,6 +383,41 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(
                 Read(malformed, "LastBindingDiagnostic").ToString(),
                 Does.Contain("malformed"));
+        }
+
+        [Test]
+        public void MultipleCompatibleNearestParentScopes_FailClosed()
+        {
+            EnemyTarget2DAdapter playerTarget = CreatePlayerTarget();
+            CombatHit2DAdapter playerHits = CreatePlayerHitAdapter("source.player-conflict");
+            GameObject root = Track(new GameObject("ConflictingTurretScopes"));
+            GameplaySceneScope2D firstScope = root.AddComponent<GameplaySceneScope2D>();
+            firstScope.ConfigureForTests(
+                "scope.turret-conflict-a",
+                "scope.gameplay",
+                "projection.turret-conflict-a",
+                "run.turret-tests",
+                0L);
+            GameplaySceneScope2D secondScope = root.AddComponent<GameplaySceneScope2D>();
+            secondScope.ConfigureForTests(
+                "scope.turret-conflict-b",
+                "scope.gameplay",
+                "projection.turret-conflict-b",
+                "run.turret-tests",
+                0L);
+            Component context = (Component)root.AddComponent(SceneContextType);
+            Invoke(context, "Configure", playerTarget, playerHits, 10d, 5d, null);
+            Component turret = CreateTurret(
+                root.transform,
+                "placed.blaster-turret-conflicting-scope",
+                null);
+
+            Assert.That((bool)Invoke(turret, "TryConfigureNow"), Is.False);
+            Assert.That(firstScope.RegisteredParticipantCount, Is.Zero);
+            Assert.That(secondScope.RegisteredParticipantCount, Is.Zero);
+            Assert.That(
+                Read(turret, "LastBindingDiagnostic").ToString(),
+                Does.Contain("multiple compatible"));
         }
 
         [Test]
