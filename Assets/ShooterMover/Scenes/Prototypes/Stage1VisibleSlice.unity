@@ -100,6 +100,7 @@ MonoBehaviour:
   turretPresentationPrefab: {fileID: 11400000, guid: 05dcb140d7d245f1a4a03675967c9103, type: 3}
   blasterShotSprite: {fileID: 21300000, guid: 87563c16613a47debd8e73fc9db1ab15, type: 3}
   turretShotSprite: {fileID: 21300000, guid: e65b0f92e3f94a1489eeb138efc80aa9, type: 3}
+  playerSprite: {fileID: 21300000, guid: a4f7d1c2e6b8493a9c8d2e7f105b6a31, type: 3}
   crateDestructionAnimation: {fileID: 11400000, guid: c3c15a703e274257adf626083da3d8e2, type: 2}
   explosiveDestructionAnimation: {fileID: 11400000, guid: 57635762d1ab47529786c2db175e0f49, type: 2}
   shootingSandbox: 1

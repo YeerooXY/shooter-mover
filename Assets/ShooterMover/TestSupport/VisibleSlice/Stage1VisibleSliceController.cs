@@ -55,6 +55,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         [SerializeField] private VisibleSliceBlasterTurretPresenter turretPresentationPrefab;
         [SerializeField] private Sprite blasterShotSprite;
         [SerializeField] private Sprite turretShotSprite;
+        [SerializeField] private Sprite playerSprite;
         [Header("Destructible prop VFX")]
         [SerializeField]
         private DestructiblePropDestructionAnimation crateDestructionAnimation;
@@ -113,6 +114,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public int PlayerHealth => playerHealth;
         public long RestartGeneration => restartGeneration;
         public Transform PlayerTransform => playerTransform;
+        public SpriteRenderer PlayerBodyRenderer => playerBodyRenderer;
         public BlasterTurretPackage TurretPackage => turretPackage;
         public DestructiblePropSet2D DestructiblePropSet => destructiblePropSet;
         public Stage1VisibleSliceRoomPresentation RoomPresentation => roomPresentation;
@@ -505,18 +507,24 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 playerCollider);
 
             playerBodyRenderer = player.AddComponent<SpriteRenderer>();
-            playerBodyRenderer.sprite = CreateRuntimeSprite(
-                "VS007 Player",
-                new Color(0.14f, 0.82f, 1f, 1f));
+            playerBodyRenderer.sprite = playerSprite != null
+                ? playerSprite
+                : CreateRuntimeSprite(
+                    "VS007 Player",
+                    new Color(0.14f, 0.82f, 1f, 1f));
             playerBodyRenderer.sortingOrder = 10;
             player.transform.localScale = new Vector3(
                 PlayerVisualScale,
                 PlayerVisualScale,
                 1f);
-            CreateGunMount(player.transform, new Vector2(-0.48f, 0.34f));
-            CreateGunMount(player.transform, new Vector2(0.48f, 0.34f));
-            CreateGunMount(player.transform, new Vector2(-0.48f, -0.34f));
-            CreateGunMount(player.transform, new Vector2(0.48f, -0.34f));
+            if (playerSprite == null)
+            {
+                CreateGunMount(player.transform, new Vector2(-0.48f, 0.34f));
+                CreateGunMount(player.transform, new Vector2(0.48f, 0.34f));
+                CreateGunMount(player.transform, new Vector2(-0.48f, -0.34f));
+                CreateGunMount(player.transform, new Vector2(0.48f, -0.34f));
+            }
+
             CreateBoostTrail(player.transform);
         }
 
