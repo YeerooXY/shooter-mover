@@ -119,7 +119,7 @@ namespace ShooterMover.ContentPackages.Weapons.Stage1Presentation
 
             const float margin = 14f;
             const float gap = 6f;
-            const float height = 170f;
+            const float height = 108f;
             float width = Mathf.Max(760f, Screen.width - margin * 2f);
             float slotWidth = (width - gap * 3f) / 4f;
             float startX = (Screen.width - width) * 0.5f;
@@ -144,15 +144,12 @@ namespace ShooterMover.ContentPackages.Weapons.Stage1Presentation
             line.y += 23f;
             GUI.Label(line, slot.Pattern + " / " + slot.State, critical);
             line.y += 20f;
-            GUI.Label(line, slot.StateDetail, text);
             line.y += 20f;
-            GUI.Label(line, slot.Mode, critical);
-            line.y += 21f;
             GUI.Label(line, slot.Power, text);
 
             if (slot.HasPower)
             {
-                line.y += 19f;
+                line.y += 17f;
                 line.height = 8f;
                 GUI.Box(line, GUIContent.none);
                 Rect fill = new Rect(
@@ -165,14 +162,9 @@ namespace ShooterMover.ContentPackages.Weapons.Stage1Presentation
                 GUI.color = previousColor;
             }
 
-            line.y += 14f;
+            line.y += 15f;
             line.height = 20f;
             GUI.Label(line, First(slot.Fault, slot.ReferenceWarning, slot.PowerChange), critical);
-            line.y += 22f;
-            string effectText = reducedEffects
-                ? "FX REDUCED " + slot.Glyph
-                : "FX " + new string('*', Mathf.Max(0, slot.Pulses)) + " " + slot.Pattern;
-            GUI.Label(line, effectText, title);
         }
 
         private void EnsureStyles()

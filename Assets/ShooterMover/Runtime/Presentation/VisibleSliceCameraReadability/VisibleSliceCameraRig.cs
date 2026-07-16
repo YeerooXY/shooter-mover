@@ -12,6 +12,8 @@ namespace ShooterMover.Presentation.VisibleSliceCameraReadability
     [RequireComponent(typeof(Camera))]
     public sealed class VisibleSliceCameraRig : MonoBehaviour
     {
+        private const float RuntimeFollowSharpness = 18f;
+
         private Camera ownedCamera;
         private IVisibleSliceCameraFollowSource followSource;
         private IVisibleSliceThrusterStatusReader thrusterStatusReader;
@@ -100,6 +102,11 @@ namespace ShooterMover.Presentation.VisibleSliceCameraReadability
 
         public bool ApplyFrame(float aspect)
         {
+            return ApplyFrameInternal(aspect, false);
+        }
+
+        private bool ApplyFrameInternal(float aspect, bool smoothRuntimeMotion)
+        {
             EnsureConfigured();
 
             Vector2 actorWorldPosition;
@@ -120,9 +127,21 @@ namespace ShooterMover.Presentation.VisibleSliceCameraReadability
                 aspect);
 
             Transform cameraTransform = ownedCamera.transform;
+            Vector2 appliedCenter = frame.Center;
+            if (smoothRuntimeMotion && hasFrame)
+            {
+                float deltaTime = Mathf.Max(0f, Time.unscaledDeltaTime);
+                float blend = deltaTime <= 0f
+                    ? 1f
+                    : 1f - Mathf.Exp(-RuntimeFollowSharpness * deltaTime);
+                appliedCenter = Vector2.Lerp(
+                    new Vector2(cameraTransform.position.x, cameraTransform.position.y),
+                    frame.Center,
+                    blend);
+            }
             cameraTransform.position = new Vector3(
-                frame.Center.x,
-                frame.Center.y,
+                appliedCenter.x,
+                appliedCenter.y,
                 cameraDepth);
             ownedCamera.orthographic = true;
             ownedCamera.orthographicSize = configuration.OrthographicSize;
@@ -161,12 +180,15 @@ namespace ShooterMover.Presentation.VisibleSliceCameraReadability
 
         private void LateUpdate()
         {
-            if (!isConfigured || ownedCamera == null)
+            if (!isConfigured
+                || ownedCamera == null
+                || followSource == null
+                || configuration == null)
             {
                 return;
             }
 
-            ApplyFrame(ownedCamera.aspect);
+            ApplyFrameInternal(ownedCamera.aspect, true);
         }
 
         private void OnDestroy()

@@ -481,8 +481,8 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
     }
 
     /// <summary>
-    /// Deterministic screen-space layout. The bottom 196 pixels are an exclusive
-    /// no-draw reservation around WP-010's existing 170 px strip and 14 px margin.
+    /// Deterministic screen-space layout. The bottom 134 pixels are an exclusive
+    /// no-draw reservation around WP-010's compact 108 px strip and 14 px margin.
     /// </summary>
     public sealed class GeneralCombatHudLayout
     {
@@ -546,7 +546,7 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
     {
         public const float SafeMargin = 24f;
         public const float PanelGap = 12f;
-        public const float Wp010ReservedHeight = 196f;
+        public const float Wp010ReservedHeight = 134f;
         public const int MinimumSupportedWidth = 960;
         public const int MinimumSupportedHeight = 540;
 
@@ -589,7 +589,7 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
                 gameplayBottom);
 
             float sideWidth = Mathf.Clamp(width * 0.24f, 260f, 360f);
-            const float panelHeight = 126f;
+            const float panelHeight = 92f;
             Rect player = new Rect(
                 SafeMargin,
                 SafeMargin,
@@ -607,7 +607,7 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
                 roomX,
                 SafeMargin,
                 roomWidth,
-                92f);
+                54f);
             Rect warning = new Rect(
                 roomX,
                 room.yMax + PanelGap,
@@ -913,7 +913,10 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
             GeneralCombatHudLayout layout = ComputeLayout(Screen.width, Screen.height);
             DrawPlayerPanel(layout.PlayerPanel, currentFrame);
             DrawRoomPanel(layout.RoomPanel, currentFrame);
-            DrawEnemyPanel(layout.FocusedEnemyPanel, currentFrame);
+            if (currentFrame.HasFocusedEnemy)
+            {
+                DrawEnemyPanel(layout.FocusedEnemyPanel, currentFrame);
+            }
             DrawReducedEffectsWarning(layout.ReducedEffectsPanel, currentFrame);
             DrawRestartHint(layout.RestartPanel, currentFrame);
 
@@ -942,21 +945,13 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
             line.y += 21f;
             DrawMeter(line, frame.PlayerHealthFraction);
             line.y += 18f;
-            GUI.Label(line, "STATE: " + frame.PlayerStateText, frame.PlayerCritical
-                ? criticalStyle
-                : bodyStyle);
-            line.y += 21f;
             GUI.Label(line, frame.ThrusterText, bodyStyle);
         }
 
         private void DrawRoomPanel(Rect rect, GeneralCombatHudFrame frame)
         {
-            GUI.Box(rect, GUIContent.none);
-            Rect line = InsetLine(rect, 10f, 6f, 22f);
-            GUI.Label(line, frame.RoomText, titleStyle);
-            line.y += 24f;
-            line.height = rect.height - 34f;
-            GUI.Label(line, frame.ObjectiveText, bodyStyle);
+            Rect line = InsetLine(rect, 10f, 4f, 20f);
+            GUI.Label(line, frame.RoomText + "  /  " + frame.ObjectiveText, titleStyle);
         }
 
         private void DrawEnemyPanel(Rect rect, GeneralCombatHudFrame frame)
@@ -968,8 +963,6 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
             GUI.Label(line, frame.FocusedEnemyHealthText, bodyStyle);
             line.y += 21f;
             DrawMeter(line, frame.FocusedEnemyHealthFraction);
-            line.y += 18f;
-            GUI.Label(line, "STATE: " + frame.FocusedEnemyStateText, bodyStyle);
         }
 
         private void DrawReducedEffectsWarning(Rect rect, GeneralCombatHudFrame frame)
@@ -985,7 +978,6 @@ namespace ShooterMover.UI.VisibleSliceGeneralCombatHud
 
         private void DrawRestartHint(Rect rect, GeneralCombatHudFrame frame)
         {
-            GUI.Box(rect, GUIContent.none);
             GUI.Label(rect, frame.RestartHint, centeredStyle);
         }
 

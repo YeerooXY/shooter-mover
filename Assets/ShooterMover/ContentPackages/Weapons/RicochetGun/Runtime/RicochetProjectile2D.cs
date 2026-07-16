@@ -184,10 +184,23 @@ namespace ShooterMover.ContentPackages.Weapons.RicochetGun.Runtime
                 return;
             }
 
+            UpdateVisualRotation();
+
             if (!policy.AdvanceLifetime(Time.fixedDeltaTime))
             {
                 Complete(RicochetProjectile2DCompletionReason.LifetimeExpired, null);
             }
+        }
+
+        private void UpdateVisualRotation()
+        {
+            if (body == null || body.linearVelocity.sqrMagnitude <= 0.000001f)
+            {
+                return;
+            }
+
+            Vector2 direction = body.linearVelocity.normalized;
+            body.rotation = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

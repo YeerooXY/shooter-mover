@@ -179,27 +179,32 @@ namespace ShooterMover.Tests.EditMode.Combat
         }
 
         [Test]
-        public void DuplicateWeaponId_IsRejected()
+        public void DuplicateWeaponIds_AreAllowedAcrossDistinctMounts()
         {
             Array slots = CreateSlots(
                 BlasterId,
-                ShotgunId,
-                RocketId,
-                RocketId);
+                BlasterId,
+                BlasterId,
+                BlasterId);
 
-            TargetInvocationException exception =
-                Assert.Throws<TargetInvocationException>(
-                    () => InvokeStatic(
-                        RuntimeTypes.Fixture,
-                        "Create",
-                        StableId.Parse("loadout.invalid-duplicate"),
-                        slots));
-            Assert.That(exception.InnerException, Is.TypeOf<ArgumentException>());
+            object fixture = InvokeStatic(
+                RuntimeTypes.Fixture,
+                "Create",
+                StableId.Parse("loadout.four-blasters"),
+                slots);
+
             Assert.That(
-                exception.InnerException.Message,
-                Does.Contain("cannot repeat a weapon identity"));
+                CopyWeaponIds(fixture),
+                Is.EqualTo(
+                    new[]
+                    {
+                        BlasterId,
+                        BlasterId,
+                        BlasterId,
+                        BlasterId,
+                    }));
 
-            TestContext.WriteLine("duplicate-weapon-id rejected=true");
+            TestContext.WriteLine("duplicate-weapon-id allowed=true mounts=4 weapon=blaster");
         }
 
         [Test]
