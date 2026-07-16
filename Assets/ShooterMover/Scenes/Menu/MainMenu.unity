@@ -36,6 +36,8 @@ RenderSettings:
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
   m_ReflectionIntensity: 1
+  m_CustomReflectionMode: 0
+  m_CustomReflectionResolution: 128
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
   m_UseRadianceAmbientProbe: 0
@@ -61,6 +63,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1001}
   - component: {fileID: 1002}
+  - component: {fileID: 1003}
   m_Layer: 0
   m_Name: MainMenu
   m_TagString: Untagged
@@ -90,11 +93,28 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1000}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6cfba4f8dd3a40f198353ed92c6f631d, type: 3}
   m_Name:
   m_EditorClassIdentifier: ShooterMover.UI.MainMenu::ShooterMover.UI.MainMenu.MainMenuController
+--- !u!114 &1003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f24915fcf4c44c9871873e7720c1126, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ShooterMover.UI.MainMenu::ShooterMover.UI.MainMenu.MainMenuArtworkController
+  menuBackend: {fileID: 1002}
+  mainMenuBackgroundAsset: {fileID: 4900000, guid: f36cdfe6cc704f1aa61e924788ce1ca5, type: 3}
+  levelSelectBackgroundAsset: {fileID: 4900000, guid: 272b84c1ee624dd6b71017566886ed57, type: 3}
+  skillsBackgroundAsset: {fileID: 4900000, guid: 2a5fcb546c8d4d4a970d8b4161f7a1b5, type: 3}
+  resultsBackgroundAsset: {fileID: 4900000, guid: 8ed90f5a36d9439ea176bb3e6e015991, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
