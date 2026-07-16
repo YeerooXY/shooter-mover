@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.Contracts.Combat;
+using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Props.DestructibleProps
