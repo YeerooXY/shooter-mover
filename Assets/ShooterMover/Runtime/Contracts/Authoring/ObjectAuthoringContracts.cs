@@ -322,7 +322,8 @@ namespace ShooterMover.Contracts.Authoring
                 placedInstanceId,
                 existingLocation,
                 attemptedLocation,
-                "A different runtime owner attempted to reuse an identity already registered in this scope.");
+                "Duplicate placed identity rejected: a different runtime owner attempted "
+                + "to reuse an identity already registered in this scope.");
         }
 
         public static SceneScopeRegistrationResult ConflictingRegistration(

@@ -9,6 +9,7 @@ using ShooterMover.Contracts.Authoring;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Authoring;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Rewards.Sources;
