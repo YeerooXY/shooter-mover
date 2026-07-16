@@ -214,6 +214,13 @@ namespace ShooterMover.Application.Economy.Money
                 return false;
             }
 
+            if (!IsCanonicalLedgerFingerprint(snapshot.Fingerprint))
+            {
+                status = MoneyWalletImportStatus.FingerprintMismatch;
+                rejectionCode = "money-snapshot-fingerprint-invalid";
+                return false;
+            }
+
             long computedBalance = 0L;
             for (int index = 0; index < snapshot.Contributions.Count; index++)
             {
@@ -300,7 +307,8 @@ namespace ShooterMover.Application.Economy.Money
                 }
 
                 if (!IsCanonicalFingerprint(transaction.CommandFingerprint)
-                    || !IsCanonicalFingerprint(transaction.MutationFingerprint))
+                    || !IsCanonicalLedgerFingerprint(
+                        transaction.MutationFingerprint))
                 {
                     status = MoneyWalletImportStatus.ValidationRejected;
                     rejectionCode =
@@ -360,6 +368,27 @@ namespace ShooterMover.Application.Economy.Money
 
             status = MoneyWalletImportStatus.Imported;
             rejectionCode = null;
+            return true;
+        }
+
+        private static bool IsCanonicalLedgerFingerprint(string value)
+        {
+            if (value == null || value.Length != 64)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < value.Length; index++)
+            {
+                char current = value[index];
+                bool digit = current >= '0' && current <= '9';
+                bool lowerHex = current >= 'a' && current <= 'f';
+                if (!digit && !lowerHex)
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 
