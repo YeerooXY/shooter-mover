@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.EditMode.BalanceSimulator",
+  "rootNamespace": "ShooterMover.Editor.BalanceSimulator.Tests",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.Application",
+    "ShooterMover.Editor.BalanceSimulator"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
