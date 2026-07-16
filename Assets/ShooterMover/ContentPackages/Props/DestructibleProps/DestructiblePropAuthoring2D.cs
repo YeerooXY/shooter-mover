@@ -86,6 +86,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         [SerializeField] private MonoBehaviour rewardOperationSink;
 
         private CombatHit2DAdapter hitAdapter;
+        private GameplaySceneScope2D registeredRestartScope;
         private DestructibleProp2D runtimeProp;
         private DestructiblePropRewardBridge2D rewardBridge;
         private DestructiblePropResolvedPreview resolvedPreview;
@@ -184,13 +185,14 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             }
 
             SceneScopeBindingResult binding = resolvedPlaced.TryBind();
-            if (!binding.IsBound)
+            if (!binding.IsBound || resolvedPlaced.BoundScope == null)
             {
                 return Failure(
                     DestructiblePropConfigurationStatus.PlacedObjectBindingFailed,
                     binding.Diagnostic);
             }
 
+            GameplaySceneScope2D resolvedScope = resolvedPlaced.BoundScope;
             if (familyDefinition == null)
             {
                 return Failure(
@@ -285,7 +287,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             if (target != CombatHit2DTargetRegistrationStatus.Registered
                 && target != CombatHit2DTargetRegistrationStatus.AlreadyRegistered)
             {
-                resolvedPlaced.UnregisterRestartParticipant(restartParticipantId, this);
+                resolvedScope.UnregisterRestartParticipant(restartParticipantId, this);
                 restartParticipantId = null;
                 return Failure(
                     DestructiblePropConfigurationStatus.TargetRegistrationFailed,
@@ -335,6 +337,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
 
                 placedObject = resolvedPlaced;
                 hitAdapter = configuredHitAdapter;
+                registeredRestartScope = resolvedScope;
                 runtimeProp = prop;
                 rewardSource = configuredRewardSource;
                 rewardBridge = bridge;
@@ -347,7 +350,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 configuredHitAdapter.UnregisterTarget(
                     blockingCollider,
                     resolvedPlaced.ResolvedIdentity.Value);
-                resolvedPlaced.UnregisterRestartParticipant(restartParticipantId, this);
+                resolvedScope.UnregisterRestartParticipant(restartParticipantId, this);
                 restartParticipantId = null;
                 return Failure(
                     DestructiblePropConfigurationStatus.InvalidDefinition,
@@ -368,9 +371,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 return;
             }
 
-            if (placedObject == null
-                || placedObject.BoundScope == null
-                || !context.RunId.Equals(placedObject.BoundScope.RunId))
+            if (registeredRestartScope == null
+                || !context.RunId.Equals(registeredRestartScope.RunId))
             {
                 throw new InvalidOperationException(
                     "Destructible prop received restart context for a different run.");
@@ -548,10 +550,14 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 hitAdapter.UnregisterTarget(blockingCollider, runtimeProp.PropId);
             }
 
-            if (placedObject != null && restartParticipantId != null)
+            if (registeredRestartScope != null && restartParticipantId != null)
             {
-                placedObject.UnregisterRestartParticipant(restartParticipantId, this);
+                registeredRestartScope.UnregisterRestartParticipant(
+                    restartParticipantId,
+                    this);
             }
+
+            registeredRestartScope = null;
         }
 
         private void OnValidate()
