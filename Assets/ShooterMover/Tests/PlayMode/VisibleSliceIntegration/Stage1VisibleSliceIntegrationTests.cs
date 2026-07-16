@@ -62,6 +62,26 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(Read<int>(controller, "HudOwnerCount"), Is.EqualTo(1));
             Assert.That(Read<int>(controller, "CameraOwnerCount"), Is.EqualTo(1));
             Assert.That(Read<bool>(controller, "IsSessionActive"), Is.True);
+            SpriteRenderer playerRenderer =
+                Read<SpriteRenderer>(controller, "PlayerBodyRenderer");
+            Assert.That(playerRenderer, Is.Not.Null);
+            Assert.That(playerRenderer.sprite, Is.Not.Null);
+            Assert.That(playerRenderer.sprite.name, Is.EqualTo("player_robot"));
+            Assert.That(playerRenderer.sortingOrder, Is.EqualTo(10));
+            Assert.That(
+                Mathf.Max(
+                    playerRenderer.bounds.size.x,
+                    playerRenderer.bounds.size.y),
+                Is.InRange(1.3f, 1.5f));
+            Assert.That(
+                Mathf.Min(
+                    playerRenderer.bounds.size.x,
+                    playerRenderer.bounds.size.y),
+                Is.InRange(0.8f, 0.95f));
+            Assert.That(
+                GameObject.Find("ParallelBlasterMount"),
+                Is.Null,
+                "The authored robot already contains four visible weapon sockets.");
             object destructibleSet = Read<object>(controller, "DestructiblePropSet");
             Assert.That(destructibleSet, Is.Not.Null);
             Assert.That(Read<int>(destructibleSet, "PropCount"), Is.EqualTo(4));
