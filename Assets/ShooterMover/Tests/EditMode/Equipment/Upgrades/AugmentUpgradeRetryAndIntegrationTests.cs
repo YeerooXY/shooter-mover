@@ -323,7 +323,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                     EquipmentCategoryIds.Weapon,
                     Id("equipment-family.blaster"),
                     "Blaster",
-                    Id("weapon-runtime.blaster"),
+                    Id("weapon.blaster"),
                     InclusiveIntRange.Create(1, 100),
                     3,
                     new[]
