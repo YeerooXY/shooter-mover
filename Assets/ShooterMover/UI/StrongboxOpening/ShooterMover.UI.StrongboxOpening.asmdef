@@ -1,0 +1,19 @@
+{
+  "name": "ShooterMover.UI.StrongboxOpening",
+  "rootNamespace": "ShooterMover.UI.StrongboxOpening",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
