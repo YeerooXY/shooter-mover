@@ -281,6 +281,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             double requestedDamage)
         {
             if (hit == null
+                || hit.Channel == CombatChannel.System
                 || double.IsNaN(requestedDamage)
                 || double.IsInfinity(requestedDamage)
                 || requestedDamage <= 0d)
