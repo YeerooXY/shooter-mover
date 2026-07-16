@@ -81,8 +81,8 @@ self-registers with both the generic scope and the package context.
 There is no `FindFirstObjectByType`, `FindObjectsByType`, tag, scene-name, object-name,
 static registry, or controller fallback. Missing, cross-scene, incompatible, conflicting,
 or unconfigured scopes fail closed with `LastBindingDiagnostic`. Separate gameplay
-scopes own isolated registration dictionaries, so the same authored ID may be projected
-in two intentionally independent scopes while duplicates inside one scope are rejected.
+scopes own isolated registration dictionaries and independently register their own
+distinct authored placements; normal duplication still requires a new deliberate ID.
 
 ## Deterministic cadence
 
@@ -125,10 +125,11 @@ Run with the pinned editor:
 The focused fixture covers the retained descriptor, cadence, facing, bounds, and source
 surface plus:
 
-- two independently registered and restarted turret placements;
+- two independently registered and restarted turret placements in one scope;
+- distinct authored placements under two independent scopes;
 - duplicate authored-ID rejection before the second package configures;
 - explicit-scope precedence over nearest-parent binding;
-- isolated identical IDs in separate scopes;
+- conflicting compatible scopes at the nearest parent failing closed;
 - rename, transform, sibling-order, reparent, unbind, and rebind identity stability;
 - malformed identity and missing-scope fail-closed behavior; and
 - absence of global scene-discovery APIs in production turret authoring/context code.
@@ -147,8 +148,9 @@ Create two compatible gameplay roots, each with `GameplaySceneScope2D` and a con
    override and confirm the nearest compatible parent A wins.
 4. Rename, move, reorder, and reparent a disabled turret, then re-enable it. Confirm its
    `ActorId` is unchanged and it registers only in the new selected scope.
-5. Remove the reachable scope or its package context. Confirm no private authority or
-   global fallback is created.
+5. Remove the reachable scope or its package context, and separately place two compatible
+   scopes on the same nearest parent. Confirm both configurations fail closed without
+   creating private authority or a global fallback.
 
 For retained combat readability, capture normal-color and grayscale frames for idle,
 warning, shot, obstruction cancellation, destroyed-passable/solid variants, and restart.
