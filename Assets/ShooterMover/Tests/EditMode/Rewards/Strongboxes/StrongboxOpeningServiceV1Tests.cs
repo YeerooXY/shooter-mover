@@ -154,15 +154,17 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         {
             Fixture fixture = new Fixture();
             StableId unknownTier = Id("strongbox.unknown-tier");
-            fixture.RegisterBox(unknownTier);
             fixture.AddBox(unknownTier);
 
+            StrongboxRegistrationResultV1 registration = fixture.RegisterBox(unknownTier);
             StrongboxOpeningResultRuntimeV1 result = fixture.Open();
 
-            Assert.That(result.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.InvalidDefinition));
+            Assert.That(registration.Status, Is.EqualTo(StrongboxRegistrationStatusV1.UnknownDefinition));
+            Assert.That(result.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.UnknownBoxInstance));
             UniqueHoldingSnapshotV1 owned;
             Assert.That(fixture.Holdings.TryGetUnique(BoxId, out owned), Is.True);
             Assert.That(fixture.Scrap.Balance, Is.Zero);
+            Assert.That(fixture.Service.Sequence, Is.Zero);
         }
 
         [Test]
@@ -246,6 +248,23 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             Assert.That(pending.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.ConsumePending));
             Assert.That(retried.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.Opened));
             Assert.That(after.ConsumeCommand.PayloadFingerprint, Is.EqualTo(before.ConsumeCommand.PayloadFingerprint));
+            Assert.That(fixture.Scrap.Balance, Is.EqualTo(4L));
+        }
+
+        [Test]
+        public void SecondOpeningIdentityWhileConsumePendingCannotAwardAgain()
+        {
+            CapturingGenerator capture = new CapturingGenerator();
+            Fixture fixture = new Fixture(generator: capture, throwOnceOnConsume: true);
+            fixture.AddAndRegisterBox();
+
+            StrongboxOpeningResultRuntimeV1 pending = fixture.Open();
+            StrongboxOpeningResultRuntimeV1 conflict = fixture.Service.Open(
+                fixture.CommandWithOpening(Id("opening.secondary")));
+
+            Assert.That(pending.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.ConsumePending));
+            Assert.That(conflict.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.ConflictingDuplicate));
+            Assert.That(capture.CallCount, Is.EqualTo(1));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(4L));
         }
 
@@ -537,6 +556,18 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                     ScrapAuthority,
                     HoldingsAuthority,
                     expectedSequence);
+            }
+
+            public StrongboxOpenCommandV1 CommandWithOpening(StableId openingStableId)
+            {
+                return StrongboxOpenCommandV1.Create(
+                    openingStableId,
+                    Id("run.primary"),
+                    BoxId,
+                    PlayerId,
+                    MoneyWalletIdsV1.AuthorityStableId,
+                    ScrapAuthority,
+                    HoldingsAuthority);
             }
 
             public StrongboxOpeningResultRuntimeV1 Open()
