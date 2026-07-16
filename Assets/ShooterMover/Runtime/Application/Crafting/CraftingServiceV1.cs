@@ -794,7 +794,7 @@ namespace ShooterMover.Application.Crafting
         public RewardChildApplyResultV1 Apply(
             RewardChildGrantCommandV1 command)
         {
-            string validationCode;
+            string validationCode = null;
             RewardAuthorityAdmissionStatusV1 ignored;
             if (command == null
                 || !TryValidateChild(command, out ignored, out validationCode))
