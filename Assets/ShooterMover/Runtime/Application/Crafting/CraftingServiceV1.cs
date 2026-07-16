@@ -58,14 +58,8 @@ namespace ShooterMover.Application.Crafting
             ClaimantStableId = claimantStableId ?? throw new ArgumentNullException(nameof(claimantStableId));
             ProgressionContext = progressionContext
                 ?? throw new ArgumentNullException(nameof(progressionContext));
-            if (expectedScrapSequence.HasValue && expectedScrapSequence.Value < 0L)
-            {
-                throw new ArgumentOutOfRangeException(nameof(expectedScrapSequence));
-            }
-            if (expectedHoldingsSequence.HasValue && expectedHoldingsSequence.Value < 0L)
-            {
-                throw new ArgumentOutOfRangeException(nameof(expectedHoldingsSequence));
-            }
+            ValidateExpectedSequence(expectedScrapSequence, nameof(expectedScrapSequence));
+            ValidateExpectedSequence(expectedHoldingsSequence, nameof(expectedHoldingsSequence));
 
             RootSeed = rootSeed;
             ExpectedScrapSequence = expectedScrapSequence;
@@ -91,6 +85,7 @@ namespace ShooterMover.Application.Crafting
         public long? ExpectedScrapSequence { get; }
         public long? ExpectedHoldingsSequence { get; }
         public string Fingerprint { get; }
+
         public string ToCanonicalString() { return canonicalText; }
 
         public bool Equals(CraftEquipmentCommandV1 other)
@@ -101,6 +96,14 @@ namespace ShooterMover.Application.Crafting
 
         public override bool Equals(object obj) { return Equals(obj as CraftEquipmentCommandV1); }
         public override int GetHashCode() { return CraftingCanonicalV1.DeterministicHash(canonicalText); }
+
+        private static void ValidateExpectedSequence(long? value, string parameterName)
+        {
+            if (value.HasValue && value.Value < 0L)
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
+            }
+        }
 
         private static string Optional(long? value)
         {
@@ -137,8 +140,14 @@ namespace ShooterMover.Application.Crafting
         public int? UnlockLevel { get; }
         public long ScrapCost { get; }
         public EquipmentInstance Equipment { get; }
-        public StableId EquipmentInstanceStableId { get { return Equipment == null ? null : Equipment.InstanceId; } }
-        public string EquipmentFingerprint { get { return Equipment == null ? null : Equipment.Fingerprint; } }
+        public StableId EquipmentInstanceStableId
+        {
+            get { return Equipment == null ? null : Equipment.InstanceId; }
+        }
+        public string EquipmentFingerprint
+        {
+            get { return Equipment == null ? null : Equipment.Fingerprint; }
+        }
         public string RecipeFingerprint { get; }
         public string CommandFingerprint { get; }
         public RewardApplicationResultV1 RewardApplicationResult { get; }
@@ -187,51 +196,105 @@ namespace ShooterMover.Application.Crafting
         {
             if (command == null)
             {
-                return Result(CraftingResultStatusV1.InvalidCommand, null, null, 0L, null, null, "command-null");
+                return Result(
+                    CraftingResultStatusV1.InvalidCommand,
+                    null,
+                    null,
+                    0L,
+                    null,
+                    null,
+                    "command-null");
             }
 
             CraftingRecipeV1 recipe = recipeCatalog.Find(command.RecipeStableId);
             if (recipe == null)
             {
-                return Result(CraftingResultStatusV1.UnknownRecipe, command, null, 0L, null, null, "recipe-unknown");
+                return Result(
+                    CraftingResultStatusV1.UnknownRecipe,
+                    command,
+                    null,
+                    0L,
+                    null,
+                    null,
+                    "recipe-unknown");
             }
 
             EquipmentDefinition target = equipmentCatalog.FindEquipmentDefinition(
                 recipe.TargetEquipmentDefinitionStableId);
             if (target == null)
             {
-                return Result(CraftingResultStatusV1.UnknownTargetEquipment, command, recipe, recipe.ScrapCost, null, null, "target-equipment-unknown");
+                return Result(
+                    CraftingResultStatusV1.UnknownTargetEquipment,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    null,
+                    null,
+                    "target-equipment-unknown");
             }
 
             int unlockLevel = recipe.ResolveUnlockLevel(command.RootSeed);
             if (command.ProgressionContext.CharacterLevel < unlockLevel)
             {
-                return Result(CraftingResultStatusV1.ProgressionUnavailable, command, recipe, recipe.ScrapCost, null, null, "crafting-not-unlocked", unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.ProgressionUnavailable,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    null,
+                    null,
+                    "crafting-not-unlocked",
+                    unlockLevel);
             }
 
-            if (scrapWallet.Balance < recipe.ScrapCost)
+            StableId commitmentId = Derive("craftcommit", command, "commitment");
+            RewardCommitmentSnapshotV1 existingCommitment;
+            bool isReplay = rewardApplication.TryGetCommitment(
+                commitmentId,
+                out existingCommitment);
+            if (!isReplay && scrapWallet.Balance < recipe.ScrapCost)
             {
-                return Result(CraftingResultStatusV1.InsufficientScrap, command, recipe, recipe.ScrapCost, null, null, "insufficient-scrap", unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.InsufficientScrap,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    null,
+                    null,
+                    "insufficient-scrap",
+                    unlockLevel);
             }
 
             CraftingGenerationInput generationInput;
             string preparationFailure;
-            if (!TryPrepareGeneration(recipe, target, out generationInput, out preparationFailure))
+            if (!TryPrepareGeneration(
+                recipe,
+                target,
+                out generationInput,
+                out preparationFailure))
             {
-                return Result(CraftingResultStatusV1.InvalidRecipeForCatalog, command, recipe, recipe.ScrapCost, null, null, preparationFailure, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.InvalidRecipeForCatalog,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    null,
+                    null,
+                    preparationFailure,
+                    unlockLevel);
             }
 
             StableId sourceOperationId = Derive("craftop", command, "source-operation");
             StableId equipmentInstanceId = Derive("craftitem", command, "equipment-instance");
-            EquipmentGenerationRequestV1 generationRequest = EquipmentGenerationRequestV1.Create(
-                sourceOperationId,
-                equipmentInstanceId,
-                generationInput.Policy,
-                generationInput.Catalog,
-                command.ProgressionContext,
-                command.RootSeed,
-                recipe.GeneratorPolicy.AlgorithmVersion);
-            EquipmentGenerationResultV1 generated = generator.GenerateEquipment(generationRequest);
+            EquipmentGenerationResultV1 generated = generator.GenerateEquipment(
+                EquipmentGenerationRequestV1.Create(
+                    sourceOperationId,
+                    equipmentInstanceId,
+                    generationInput.Policy,
+                    generationInput.Catalog,
+                    command.ProgressionContext,
+                    command.RootSeed,
+                    recipe.GeneratorPolicy.AlgorithmVersion));
             if (generated == null || !generated.IsSuccess || generated.Equipment == null)
             {
                 return Result(
@@ -245,14 +308,21 @@ namespace ShooterMover.Application.Crafting
                     unlockLevel);
             }
 
-            EquipmentValidationResult originalCatalogValidation = equipmentCatalog.ValidateInstance(generated.Equipment);
-            if (!originalCatalogValidation.IsValid)
+            EquipmentValidationResult validation =
+                equipmentCatalog.ValidateInstance(generated.Equipment);
+            if (!validation.IsValid)
             {
-                return Result(CraftingResultStatusV1.GenerationRejected, command, recipe, recipe.ScrapCost, generated.Equipment, null, "generated-instance-invalid-for-authoritative-catalog", unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.GenerationRejected,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    generated.Equipment,
+                    null,
+                    "generated-instance-invalid-for-authoritative-catalog",
+                    unlockLevel);
             }
 
-            StableId commitmentId = Derive("craftcommit", command, "commitment");
-            StableId sourceInstanceId = Derive("craftsource", command, "source-instance");
             StableId scrapGrantId = Derive("craftgrant", command, "scrap-spend");
             StableId equipmentGrantId = Derive("craftgrant", command, "equipment-grant");
             RewardGrantV1 scrapGrant = RewardGrantV1.Create(
@@ -277,7 +347,7 @@ namespace ShooterMover.Application.Crafting
                 + "\nequipment_fingerprint=" + generated.Equipment.Fingerprint);
             RewardOperationRequestV1 operation = RewardOperationRequestV1.Create(
                 command.RunStableId,
-                sourceInstanceId,
+                Derive("craftsource", command, "source-instance"),
                 sourceOperationId,
                 commitmentId,
                 recipe.GeneratorPolicy.PolicyStableId,
@@ -297,27 +367,50 @@ namespace ShooterMover.Application.Crafting
             RewardApplicationResultV1 commit = rewardApplication.Commit(commitCommand);
             if (commit.Status == RewardApplicationResultStatusV1.ConflictingDuplicate)
             {
-                return Result(CraftingResultStatusV1.ConflictingDuplicate, command, recipe, recipe.ScrapCost, generated.Equipment, commit, commit.RejectionCode, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.ConflictingDuplicate,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    generated.Equipment,
+                    commit,
+                    commit.RejectionCode,
+                    unlockLevel);
             }
             if (commit.Status != RewardApplicationResultStatusV1.Generated
                 && commit.Status != RewardApplicationResultStatusV1.ExactDuplicateNoChange)
             {
-                return Result(CraftingResultStatusV1.RewardApplicationRejected, command, recipe, recipe.ScrapCost, generated.Equipment, commit, commit.RejectionCode, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.RewardApplicationRejected,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    generated.Equipment,
+                    commit,
+                    commit.RejectionCode,
+                    unlockLevel);
             }
 
             StableId claimId = Derive("craftclaim", command, "claim");
-            RewardClaimCommandV1 claimCommand = RewardClaimCommandV1.Create(
+            RewardApplicationResultV1 claim = rewardApplication.Claim(
+                RewardClaimCommandV1.Create(
+                    claimId,
+                    commitmentId,
+                    command.ClaimantStableId,
+                    moneyAuthorityStableId,
+                    scrapWallet.AuthorityStableId,
+                    holdingsAuthorityStableId,
+                    null,
+                    command.ExpectedScrapSequence,
+                    command.ExpectedHoldingsSequence));
+            return MapClaim(
+                command,
+                recipe,
+                unlockLevel,
+                generated.Equipment,
+                claim,
                 claimId,
-                commitmentId,
-                command.ClaimantStableId,
-                moneyAuthorityStableId,
-                scrapWallet.AuthorityStableId,
-                holdingsAuthorityStableId,
-                null,
-                command.ExpectedScrapSequence,
-                command.ExpectedHoldingsSequence);
-            RewardApplicationResultV1 claim = rewardApplication.Claim(claimCommand);
-            return MapClaim(command, recipe, unlockLevel, generated.Equipment, claim, claimId, commitmentId);
+                commitmentId);
         }
 
         private CraftingResultV1 MapClaim(
@@ -331,13 +424,29 @@ namespace ShooterMover.Application.Crafting
         {
             if (claim.Status == RewardApplicationResultStatusV1.Applied)
             {
-                return Result(CraftingResultStatusV1.Crafted, command, recipe, recipe.ScrapCost, equipment, claim, null, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.Crafted,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    equipment,
+                    claim,
+                    null,
+                    unlockLevel);
             }
             if (claim.Status == RewardApplicationResultStatusV1.AlreadyAppliedNoChange
                 || (claim.Status == RewardApplicationResultStatusV1.ExactDuplicateNoChange
                     && claim.CommitmentState == RewardCommitmentStateV1.Applied))
             {
-                return Result(CraftingResultStatusV1.ExactDuplicateNoChange, command, recipe, recipe.ScrapCost, equipment, claim, null, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.ExactDuplicateNoChange,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    equipment,
+                    claim,
+                    null,
+                    unlockLevel);
             }
             if ((claim.Status == RewardApplicationResultStatusV1.ExactDuplicateNoChange
                     || claim.Status == RewardApplicationResultStatusV1.InvalidStateTransition)
@@ -347,27 +456,83 @@ namespace ShooterMover.Application.Crafting
                     RewardRetryClaimCommandV1.Create(commitmentId, claimId));
                 if (retry.Status == RewardApplicationResultStatusV1.Applied)
                 {
-                    return Result(CraftingResultStatusV1.Crafted, command, recipe, recipe.ScrapCost, equipment, retry, null, unlockLevel);
+                    return Result(
+                        CraftingResultStatusV1.Crafted,
+                        command,
+                        recipe,
+                        recipe.ScrapCost,
+                        equipment,
+                        retry,
+                        null,
+                        unlockLevel);
                 }
                 if (retry.Status == RewardApplicationResultStatusV1.AlreadyAppliedNoChange)
                 {
-                    return Result(CraftingResultStatusV1.ExactDuplicateNoChange, command, recipe, recipe.ScrapCost, equipment, retry, null, unlockLevel);
+                    return Result(
+                        CraftingResultStatusV1.ExactDuplicateNoChange,
+                        command,
+                        recipe,
+                        recipe.ScrapCost,
+                        equipment,
+                        retry,
+                        null,
+                        unlockLevel);
                 }
-                return Result(CraftingResultStatusV1.RewardApplicationRetryRequired, command, recipe, recipe.ScrapCost, equipment, retry, retry.RejectionCode, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.RewardApplicationRetryRequired,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    equipment,
+                    retry,
+                    retry.RejectionCode,
+                    unlockLevel);
             }
             if (claim.Status == RewardApplicationResultStatusV1.ClaimedPendingApplication)
             {
-                return Result(CraftingResultStatusV1.RewardApplicationRetryRequired, command, recipe, recipe.ScrapCost, equipment, claim, claim.RejectionCode, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.RewardApplicationRetryRequired,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    equipment,
+                    claim,
+                    claim.RejectionCode,
+                    unlockLevel);
             }
             if (claim.Status == RewardApplicationResultStatusV1.InsufficientFunds)
             {
-                return Result(CraftingResultStatusV1.InsufficientScrap, command, recipe, recipe.ScrapCost, equipment, claim, claim.RejectionCode, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.InsufficientScrap,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    equipment,
+                    claim,
+                    claim.RejectionCode,
+                    unlockLevel);
             }
             if (claim.Status == RewardApplicationResultStatusV1.ConflictingDuplicate)
             {
-                return Result(CraftingResultStatusV1.ConflictingDuplicate, command, recipe, recipe.ScrapCost, equipment, claim, claim.RejectionCode, unlockLevel);
+                return Result(
+                    CraftingResultStatusV1.ConflictingDuplicate,
+                    command,
+                    recipe,
+                    recipe.ScrapCost,
+                    equipment,
+                    claim,
+                    claim.RejectionCode,
+                    unlockLevel);
             }
-            return Result(CraftingResultStatusV1.RewardApplicationRejected, command, recipe, recipe.ScrapCost, equipment, claim, claim.RejectionCode, unlockLevel);
+            return Result(
+                CraftingResultStatusV1.RewardApplicationRejected,
+                command,
+                recipe,
+                recipe.ScrapCost,
+                equipment,
+                claim,
+                claim.RejectionCode,
+                unlockLevel);
         }
 
         private bool TryPrepareGeneration(
@@ -377,9 +542,15 @@ namespace ShooterMover.Application.Crafting
             out string failure)
         {
             input = null;
-            int minimumItemLevel = Math.Max(recipe.MinimumItemLevel, target.ItemLevelRange.Minimum);
-            int maximumItemLevel = Math.Min(recipe.MaximumItemLevel, target.ItemLevelRange.Maximum);
-            int maximumSlots = Math.Min(recipe.MaximumAugmentSlots, target.MaximumAugmentSlots);
+            int minimumItemLevel = Math.Max(
+                recipe.MinimumItemLevel,
+                target.ItemLevelRange.Minimum);
+            int maximumItemLevel = Math.Min(
+                recipe.MaximumItemLevel,
+                target.ItemLevelRange.Maximum);
+            int maximumSlots = recipe.AugmentOptions.Count == 0
+                ? 0
+                : Math.Min(recipe.MaximumAugmentSlots, target.MaximumAugmentSlots);
             if (minimumItemLevel > maximumItemLevel)
             {
                 failure = "recipe-item-level-range-does-not-overlap-target";
@@ -393,9 +564,11 @@ namespace ShooterMover.Application.Crafting
 
             for (int index = 0; index < recipe.QualityOptions.Count; index++)
             {
-                if (!target.SupportsQuality(recipe.QualityOptions[index].DefinitionStableId))
+                if (!target.SupportsQuality(
+                    recipe.QualityOptions[index].DefinitionStableId))
                 {
-                    failure = "recipe-quality-not-supported:" + recipe.QualityOptions[index].DefinitionStableId;
+                    failure = "recipe-quality-not-supported:"
+                        + recipe.QualityOptions[index].DefinitionStableId;
                     return false;
                 }
             }
@@ -415,19 +588,28 @@ namespace ShooterMover.Application.Crafting
             for (int index = 0; index < recipe.AugmentOptions.Count; index++)
             {
                 CraftingWeightedDefinitionV1 option = recipe.AugmentOptions[index];
-                AugmentDefinition original = equipmentCatalog.FindAugmentDefinition(option.DefinitionStableId);
+                AugmentDefinition original = equipmentCatalog.FindAugmentDefinition(
+                    option.DefinitionStableId);
                 if (original == null)
                 {
                     failure = "recipe-augment-unknown:" + option.DefinitionStableId;
                     return false;
                 }
-                int maximumTier = Math.Min(recipe.MaximumAugmentTier, original.TierRange.Maximum);
-                int maximumLevel = Math.Min(recipe.MaximumAugmentLevel, original.LevelRange.Maximum);
-                if (maximumTier < original.TierRange.Minimum || maximumLevel < original.LevelRange.Minimum)
+
+                int maximumTier = Math.Min(
+                    recipe.MaximumAugmentTier,
+                    original.TierRange.Maximum);
+                int maximumLevel = Math.Min(
+                    recipe.MaximumAugmentLevel,
+                    original.LevelRange.Maximum);
+                if (maximumTier < original.TierRange.Minimum
+                    || maximumLevel < original.LevelRange.Minimum)
                 {
-                    failure = "recipe-augment-cap-below-definition-minimum:" + option.DefinitionStableId;
+                    failure = "recipe-augment-cap-below-definition-minimum:"
+                        + option.DefinitionStableId;
                     return false;
                 }
+
                 AugmentDefinition capped = AugmentDefinition.Create(
                     original.DefinitionId,
                     original.FamilyId,
@@ -439,8 +621,12 @@ namespace ShooterMover.Application.Crafting
                         original.Compatibility.ExcludedTags),
                     original.ExclusionGroupIds,
                     original.DuplicatePolicy,
-                    InclusiveIntRange.Create(original.TierRange.Minimum, maximumTier),
-                    InclusiveIntRange.Create(original.LevelRange.Minimum, maximumLevel));
+                    InclusiveIntRange.Create(
+                        original.TierRange.Minimum,
+                        maximumTier),
+                    InclusiveIntRange.Create(
+                        original.LevelRange.Minimum,
+                        maximumLevel));
                 cappedAugments.Add(capped);
                 augmentCandidates.Add(AugmentGenerationCandidateV1.Create(
                     capped.DefinitionId,
@@ -458,30 +644,37 @@ namespace ShooterMover.Application.Crafting
                 return false;
             }
 
-            var qualities = new List<EquipmentQualityCandidateV1>();
+            var qualityCandidates = new List<EquipmentQualityCandidateV1>();
             for (int index = 0; index < recipe.QualityOptions.Count; index++)
             {
                 CraftingWeightedDefinitionV1 option = recipe.QualityOptions[index];
-                qualities.Add(EquipmentQualityCandidateV1.Create(
+                qualityCandidates.Add(EquipmentQualityCandidateV1.Create(
                     option.DefinitionStableId,
                     0L,
-                    recipe.QualityPolicyKind == CraftingQualityPolicyKindV1.Fixed ? 1UL : option.Weight));
+                    recipe.QualityPolicyKind == CraftingQualityPolicyKindV1.Fixed
+                        ? 1UL
+                        : option.Weight));
             }
-            EquipmentGenerationCandidateV1 equipmentCandidate = EquipmentGenerationCandidateV1.Create(
-                target.DefinitionId,
-                0,
-                int.MaxValue,
-                0,
-                int.MaxValue,
-                Array.Empty<StableId>(),
-                recipe.NaturalDiscoveryLevel,
-                InclusiveIntRange.Create(minimumItemLevel, maximumItemLevel),
-                1.0,
-                1.0);
+
             EquipmentGenerationPolicyV1 policy = EquipmentGenerationPolicyV1.Create(
                 recipe.GeneratorPolicy.PolicyStableId,
-                new[] { equipmentCandidate },
-                qualities,
+                new[]
+                {
+                    EquipmentGenerationCandidateV1.Create(
+                        target.DefinitionId,
+                        0,
+                        int.MaxValue,
+                        0,
+                        int.MaxValue,
+                        Array.Empty<StableId>(),
+                        recipe.NaturalDiscoveryLevel,
+                        InclusiveIntRange.Create(
+                            minimumItemLevel,
+                            maximumItemLevel),
+                        1.0,
+                        1.0),
+                },
+                qualityCandidates,
                 augmentCandidates,
                 recipe.MinimumAugmentSlots,
                 maximumSlots,
@@ -516,7 +709,9 @@ namespace ShooterMover.Application.Crafting
         {
             return new CraftingResultV1(
                 status,
-                recipe == null ? (command == null ? null : command.RecipeStableId) : recipe.RecipeStableId,
+                recipe == null
+                    ? (command == null ? null : command.RecipeStableId)
+                    : recipe.RecipeStableId,
                 unlockLevel,
                 scrapCost,
                 equipment,
@@ -528,21 +723,26 @@ namespace ShooterMover.Application.Crafting
 
         private sealed class CraftingGenerationInput
         {
-            public CraftingGenerationInput(EquipmentCatalog catalog, EquipmentGenerationPolicyV1 policy)
+            public CraftingGenerationInput(
+                EquipmentCatalog catalog,
+                EquipmentGenerationPolicyV1 policy)
             {
                 Catalog = catalog;
                 Policy = policy;
             }
+
             public EquipmentCatalog Catalog { get; }
             public EquipmentGenerationPolicyV1 Policy { get; }
         }
     }
 
-    public sealed class CraftingScrapSpendRewardChildAuthorityV1 : IRewardChildAuthorityV1
+    public sealed class CraftingScrapSpendRewardChildAuthorityV1 :
+        IRewardChildAuthorityV1
     {
         private readonly ScrapWalletServiceV1 wallet;
 
-        public CraftingScrapSpendRewardChildAuthorityV1(ScrapWalletServiceV1 wallet)
+        public CraftingScrapSpendRewardChildAuthorityV1(
+            ScrapWalletServiceV1 wallet)
         {
             this.wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
         }
@@ -554,120 +754,194 @@ namespace ShooterMover.Application.Crafting
             IReadOnlyList<RewardChildGrantCommandV1> commands)
         {
             List<RewardChildGrantCommandV1> ordered = CopyCommands(commands);
-            ScrapSnapshotV1 snapshot = wallet.ExportSnapshot();
-            long simulatedSequence = snapshot.LedgerSnapshot.Sequence;
-            long simulatedBalance = snapshot.Balance;
-            var transactions = new Dictionary<string, LedgerTransactionSnapshot>(StringComparer.Ordinal);
-            for (int index = 0; index < snapshot.LedgerSnapshot.Transactions.Count; index++)
+            var simulated = new ScrapWalletServiceV1(
+                wallet.AuthorityStableId,
+                wallet.CurrencyStableId);
+            ScrapSnapshotImportResultV1 imported = simulated.ImportSnapshot(
+                wallet.ExportSnapshot());
+            if (!imported.Succeeded)
             {
-                LedgerTransactionSnapshot transaction = snapshot.LedgerSnapshot.Transactions[index];
-                transactions[transaction.TransactionId] = transaction;
+                throw new InvalidOperationException(
+                    imported.RejectionCode ?? "crafting-scrap-snapshot-import-failed");
             }
 
             var facts = new List<RewardAuthorityPreflightFactV1>(ordered.Count);
             for (int index = 0; index < ordered.Count; index++)
             {
                 RewardChildGrantCommandV1 child = ordered[index];
-                if (child.GrantKind != RewardGrantKindV1.Scrap)
+                string validationCode;
+                RewardAuthorityAdmissionStatusV1 validationStatus;
+                if (!TryValidateChild(
+                    child,
+                    out validationStatus,
+                    out validationCode))
                 {
-                    facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.InvalidCommand, "crafting-scrap-kind-invalid"));
-                    continue;
-                }
-                if (child.DestinationAuthorityStableId != AuthorityStableId)
-                {
-                    facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.AuthorityMismatch, "crafting-scrap-authority-mismatch"));
-                    continue;
-                }
-                if (child.ContentStableId != wallet.CurrencyStableId)
-                {
-                    facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.InvalidCommand, "crafting-scrap-currency-mismatch"));
+                    facts.Add(new RewardAuthorityPreflightFactV1(
+                        child.TransactionStableId,
+                        validationStatus,
+                        validationCode));
                     continue;
                 }
 
-                ScrapTransactionCommandV1 typed = CreateTyped(child);
-                var mutation = new LedgerMutation<ScrapLedgerVocabulary>(
-                    typed.TransactionStableId,
-                    new LedgerEntry<ScrapLedgerVocabulary>(
-                        ScrapIdentityV1.BalanceEntryType,
-                        typed.CurrencyStableId,
-                        typed.LedgerPayload),
-                    typed.GetAdmissionDelta(),
-                    typed.ExpectedSequence);
-                LedgerTransactionSnapshot existing;
-                if (transactions.TryGetValue(child.TransactionStableId.ToString(), out existing))
-                {
-                    if (!string.Equals(existing.PayloadFingerprint, mutation.PayloadFingerprint, StringComparison.Ordinal))
-                    {
-                        facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.ConflictingDuplicate, "crafting-scrap-transaction-conflict"));
-                    }
-                    else if (existing.OriginalStatus == LedgerMutationStatus.Applied)
-                    {
-                        facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.AlreadyApplied, existing.RejectionCode));
-                    }
-                    else
-                    {
-                        facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.Rejected, existing.RejectionCode ?? "crafting-scrap-originally-rejected"));
-                    }
-                    continue;
-                }
-                if (child.ExpectedSequence.HasValue && child.ExpectedSequence.Value != simulatedSequence)
-                {
-                    facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.ExpectedSequenceConflict, "crafting-scrap-expected-sequence-conflict"));
-                    continue;
-                }
-                if (simulatedBalance < child.Quantity)
-                {
-                    facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.InsufficientFunds, "insufficient-scrap"));
-                    continue;
-                }
-                simulatedBalance = checked(simulatedBalance - child.Quantity);
-                simulatedSequence = checked(simulatedSequence + 1L);
-                facts.Add(Fact(child, RewardAuthorityAdmissionStatusV1.Accepted, null));
+                ScrapTransactionResultV1 result = simulated.Apply(
+                    CreateTyped(simulated, child));
+                facts.Add(MapPreflight(child, result));
             }
+
             return new RewardAuthorityPreflightResultV1(facts);
         }
 
-        public RewardChildApplyResultV1 Apply(RewardChildGrantCommandV1 command)
+        public RewardChildApplyResultV1 Apply(
+            RewardChildGrantCommandV1 command)
         {
+            string validationCode;
+            RewardAuthorityAdmissionStatusV1 ignored;
             if (command == null
-                || command.GrantKind != RewardGrantKindV1.Scrap
-                || command.DestinationAuthorityStableId != AuthorityStableId
-                || command.ContentStableId != wallet.CurrencyStableId)
+                || !TryValidateChild(command, out ignored, out validationCode))
             {
-                return InvalidApply(command, "crafting-scrap-command-invalid");
+                StableId transactionId = command == null
+                    ? StableId.Parse("raptx.invalid")
+                    : command.TransactionStableId;
+                return new RewardChildApplyResultV1(
+                    transactionId,
+                    RewardChildApplyStatusV1.InvalidCommand,
+                    false,
+                    validationCode ?? "crafting-scrap-command-invalid");
             }
 
-            ScrapTransactionResultV1 result = wallet.Apply(CreateTyped(command));
+            ScrapTransactionResultV1 result = wallet.Apply(
+                CreateTyped(wallet, command));
             switch (result.Status)
             {
                 case EconomyTransactionStatusV1.Applied:
-                    return ApplyResult(command, RewardChildApplyStatusV1.Applied, true, result.ChangeFact.RejectionCode);
+                    return ApplyResult(
+                        command,
+                        RewardChildApplyStatusV1.Applied,
+                        true,
+                        result.ChangeFact.RejectionCode);
                 case EconomyTransactionStatusV1.ExactDuplicateNoChange:
                     return ApplyResult(
                         command,
                         RewardChildApplyStatusV1.ExactDuplicateNoChange,
-                        result.ChangeFact.OriginalLedgerStatus == LedgerMutationStatus.Applied,
+                        result.ChangeFact.OriginalLedgerStatus
+                            == LedgerMutationStatus.Applied,
                         result.ChangeFact.RejectionCode);
                 case EconomyTransactionStatusV1.ConflictingDuplicate:
-                    return ApplyResult(command, RewardChildApplyStatusV1.ConflictingDuplicate, false, result.ChangeFact.RejectionCode);
+                    return ApplyResult(
+                        command,
+                        RewardChildApplyStatusV1.ConflictingDuplicate,
+                        false,
+                        result.ChangeFact.RejectionCode);
                 case EconomyTransactionStatusV1.ExpectedSequenceConflict:
-                    return ApplyResult(command, RewardChildApplyStatusV1.ExpectedSequenceConflict, false, result.ChangeFact.RejectionCode);
+                    return ApplyResult(
+                        command,
+                        RewardChildApplyStatusV1.ExpectedSequenceConflict,
+                        false,
+                        result.ChangeFact.RejectionCode);
                 case EconomyTransactionStatusV1.InsufficientValue:
-                    return ApplyResult(command, RewardChildApplyStatusV1.InsufficientFunds, false, result.ChangeFact.RejectionCode);
+                    return ApplyResult(
+                        command,
+                        RewardChildApplyStatusV1.InsufficientFunds,
+                        false,
+                        result.ChangeFact.RejectionCode);
                 case EconomyTransactionStatusV1.InsufficientCapacity:
-                    return ApplyResult(command, RewardChildApplyStatusV1.CapacityRejected, false, result.ChangeFact.RejectionCode);
+                    return ApplyResult(
+                        command,
+                        RewardChildApplyStatusV1.CapacityRejected,
+                        false,
+                        result.ChangeFact.RejectionCode);
                 default:
-                    return ApplyResult(command, RewardChildApplyStatusV1.Rejected, false, result.ChangeFact.RejectionCode);
+                    return ApplyResult(
+                        command,
+                        RewardChildApplyStatusV1.Rejected,
+                        false,
+                        result.ChangeFact.RejectionCode);
             }
         }
 
-        private ScrapTransactionCommandV1 CreateTyped(RewardChildGrantCommandV1 command)
+        private bool TryValidateChild(
+            RewardChildGrantCommandV1 child,
+            out RewardAuthorityAdmissionStatusV1 status,
+            out string code)
+        {
+            if (child == null)
+            {
+                status = RewardAuthorityAdmissionStatusV1.InvalidCommand;
+                code = "crafting-scrap-command-null";
+                return false;
+            }
+            if (child.GrantKind != RewardGrantKindV1.Scrap)
+            {
+                status = RewardAuthorityAdmissionStatusV1.InvalidCommand;
+                code = "crafting-scrap-kind-invalid";
+                return false;
+            }
+            if (child.DestinationAuthorityStableId != AuthorityStableId)
+            {
+                status = RewardAuthorityAdmissionStatusV1.AuthorityMismatch;
+                code = "crafting-scrap-authority-mismatch";
+                return false;
+            }
+            if (child.ContentStableId != wallet.CurrencyStableId)
+            {
+                status = RewardAuthorityAdmissionStatusV1.InvalidCommand;
+                code = "crafting-scrap-currency-mismatch";
+                return false;
+            }
+
+            status = RewardAuthorityAdmissionStatusV1.Accepted;
+            code = null;
+            return true;
+        }
+
+        private static RewardAuthorityPreflightFactV1 MapPreflight(
+            RewardChildGrantCommandV1 child,
+            ScrapTransactionResultV1 result)
+        {
+            RewardAuthorityAdmissionStatusV1 status;
+            switch (result.Status)
+            {
+                case EconomyTransactionStatusV1.Applied:
+                    status = RewardAuthorityAdmissionStatusV1.Accepted;
+                    break;
+                case EconomyTransactionStatusV1.ExactDuplicateNoChange:
+                    status = result.ChangeFact.OriginalLedgerStatus
+                        == LedgerMutationStatus.Applied
+                        ? RewardAuthorityAdmissionStatusV1.AlreadyApplied
+                        : RewardAuthorityAdmissionStatusV1.Rejected;
+                    break;
+                case EconomyTransactionStatusV1.ConflictingDuplicate:
+                    status = RewardAuthorityAdmissionStatusV1.ConflictingDuplicate;
+                    break;
+                case EconomyTransactionStatusV1.ExpectedSequenceConflict:
+                    status = RewardAuthorityAdmissionStatusV1.ExpectedSequenceConflict;
+                    break;
+                case EconomyTransactionStatusV1.InsufficientValue:
+                    status = RewardAuthorityAdmissionStatusV1.InsufficientFunds;
+                    break;
+                case EconomyTransactionStatusV1.InsufficientCapacity:
+                    status = RewardAuthorityAdmissionStatusV1.CapacityRejected;
+                    break;
+                default:
+                    status = RewardAuthorityAdmissionStatusV1.InvalidCommand;
+                    break;
+            }
+
+            return new RewardAuthorityPreflightFactV1(
+                child.TransactionStableId,
+                status,
+                result.ChangeFact.RejectionCode);
+        }
+
+        private static ScrapTransactionCommandV1 CreateTyped(
+            ScrapWalletServiceV1 destination,
+            RewardChildGrantCommandV1 command)
         {
             return new ScrapTransactionCommandV1(
                 command.TransactionStableId,
                 command.OperationStableId,
-                AuthorityStableId,
-                wallet.CurrencyStableId,
+                destination.AuthorityStableId,
+                destination.CurrencyStableId,
                 ScrapMutationKindV1.Spend,
                 command.Quantity,
                 ScrapIdentityV1.CraftingSpendReason,
@@ -681,32 +955,30 @@ namespace ShooterMover.Application.Crafting
         private static List<RewardChildGrantCommandV1> CopyCommands(
             IReadOnlyList<RewardChildGrantCommandV1> commands)
         {
-            if (commands == null) { throw new ArgumentNullException(nameof(commands)); }
+            if (commands == null)
+            {
+                throw new ArgumentNullException(nameof(commands));
+            }
+
             var copy = new List<RewardChildGrantCommandV1>(commands.Count);
             for (int index = 0; index < commands.Count; index++)
             {
-                if (commands[index] == null) { throw new ArgumentException("Commands must not contain null entries.", nameof(commands)); }
+                if (commands[index] == null)
+                {
+                    throw new ArgumentException(
+                        "Commands must not contain null entries.",
+                        nameof(commands));
+                }
                 copy.Add(commands[index]);
             }
-            copy.Sort(delegate(RewardChildGrantCommandV1 left, RewardChildGrantCommandV1 right)
+            copy.Sort(delegate(
+                RewardChildGrantCommandV1 left,
+                RewardChildGrantCommandV1 right)
             {
-                return left.TransactionStableId.CompareTo(right.TransactionStableId);
+                return left.TransactionStableId.CompareTo(
+                    right.TransactionStableId);
             });
             return copy;
-        }
-
-        private static RewardAuthorityPreflightFactV1 Fact(
-            RewardChildGrantCommandV1 command,
-            RewardAuthorityAdmissionStatusV1 status,
-            string code)
-        {
-            return new RewardAuthorityPreflightFactV1(command.TransactionStableId, status, code);
-        }
-
-        private static RewardChildApplyResultV1 InvalidApply(RewardChildGrantCommandV1 command, string code)
-        {
-            StableId id = command == null ? StableId.Parse("raptx.invalid") : command.TransactionStableId;
-            return new RewardChildApplyResultV1(id, RewardChildApplyStatusV1.InvalidCommand, false, code);
         }
 
         private static RewardChildApplyResultV1 ApplyResult(
@@ -715,25 +987,38 @@ namespace ShooterMover.Application.Crafting
             bool originalApplied,
             string code)
         {
-            return new RewardChildApplyResultV1(command.TransactionStableId, status, originalApplied, code);
+            return new RewardChildApplyResultV1(
+                command.TransactionStableId,
+                status,
+                originalApplied,
+                code);
         }
     }
 
-    public sealed class CraftingUnusedMoneyRewardChildAuthorityV1 : IRewardChildAuthorityV1
+    public sealed class CraftingUnusedMoneyRewardChildAuthorityV1 :
+        IRewardChildAuthorityV1
     {
-        public static readonly StableId StableAuthorityId = StableId.Create("craft-money", "unused");
+        public static readonly StableId StableAuthorityId =
+            StableId.Create("craft-money", "unused");
+
         public StableId AuthorityStableId { get { return StableAuthorityId; } }
         public long Sequence { get { return 0L; } }
 
         public RewardAuthorityPreflightResultV1 Preflight(
             IReadOnlyList<RewardChildGrantCommandV1> commands)
         {
-            if (commands == null) { throw new ArgumentNullException(nameof(commands)); }
+            if (commands == null)
+            {
+                throw new ArgumentNullException(nameof(commands));
+            }
+
             var facts = new List<RewardAuthorityPreflightFactV1>();
             for (int index = 0; index < commands.Count; index++)
             {
                 RewardChildGrantCommandV1 command = commands[index]
-                    ?? throw new ArgumentException("Commands must not contain null entries.", nameof(commands));
+                    ?? throw new ArgumentException(
+                        "Commands must not contain null entries.",
+                        nameof(commands));
                 facts.Add(new RewardAuthorityPreflightFactV1(
                     command.TransactionStableId,
                     RewardAuthorityAdmissionStatusV1.InvalidCommand,
@@ -742,9 +1027,12 @@ namespace ShooterMover.Application.Crafting
             return new RewardAuthorityPreflightResultV1(facts);
         }
 
-        public RewardChildApplyResultV1 Apply(RewardChildGrantCommandV1 command)
+        public RewardChildApplyResultV1 Apply(
+            RewardChildGrantCommandV1 command)
         {
-            StableId id = command == null ? StableId.Parse("raptx.invalid") : command.TransactionStableId;
+            StableId id = command == null
+                ? StableId.Parse("raptx.invalid")
+                : command.TransactionStableId;
             return new RewardChildApplyResultV1(
                 id,
                 RewardChildApplyStatusV1.InvalidCommand,
@@ -761,14 +1049,26 @@ namespace ShooterMover.Application.Crafting
             IPlayerHoldingsAuthorityV1 holdings,
             IEquipmentInstanceValidator equipmentValidator)
         {
-            if (scrapWallet == null) { throw new ArgumentNullException(nameof(scrapWallet)); }
-            if (holdings == null) { throw new ArgumentNullException(nameof(holdings)); }
-            if (equipmentValidator == null) { throw new ArgumentNullException(nameof(equipmentValidator)); }
+            if (scrapWallet == null)
+            {
+                throw new ArgumentNullException(nameof(scrapWallet));
+            }
+            if (holdings == null)
+            {
+                throw new ArgumentNullException(nameof(holdings));
+            }
+            if (equipmentValidator == null)
+            {
+                throw new ArgumentNullException(nameof(equipmentValidator));
+            }
+
             return new RewardApplicationServiceV1(
                 rewardApplicationAuthorityStableId,
                 new CraftingUnusedMoneyRewardChildAuthorityV1(),
                 new CraftingScrapSpendRewardChildAuthorityV1(scrapWallet),
-                new PlayerHoldingsRewardChildAuthorityV1(holdings, equipmentValidator));
+                new PlayerHoldingsRewardChildAuthorityV1(
+                    holdings,
+                    equipmentValidator));
         }
     }
 }
