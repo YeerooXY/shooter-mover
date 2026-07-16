@@ -232,7 +232,9 @@ namespace ShooterMover.Domain.Economy.Scrap
 
     public sealed class ScrapLedgerPayloadV1
     {
-        private const string FormatLine = "format=scrap-wallet-v1";
+        private const string FormatField = "format=scrap-wallet-v1";
+        private const char FieldSeparator = '|';
+        private const int FieldCount = 9;
 
         private ScrapLedgerPayloadV1(
             StableId operationStableId,
@@ -274,17 +276,17 @@ namespace ShooterMover.Domain.Economy.Scrap
             StableId reasonStableId,
             ScrapProvenanceV1 provenance)
         {
-            return FormatLine
-                + "\noperation_id=" + CanonicalId(operationStableId)
-                + "\nauthority_id=" + CanonicalId(authorityStableId)
-                + "\nkind=" + ((int)mutationKind).ToString(CultureInfo.InvariantCulture)
-                + "\namount=" + amount.ToString(CultureInfo.InvariantCulture)
-                + "\nreason_id=" + CanonicalId(reasonStableId)
-                + "\nsource_kind_id="
+            return FormatField
+                + "|operation_id=" + CanonicalId(operationStableId)
+                + "|authority_id=" + CanonicalId(authorityStableId)
+                + "|kind=" + ((int)mutationKind).ToString(CultureInfo.InvariantCulture)
+                + "|amount=" + amount.ToString(CultureInfo.InvariantCulture)
+                + "|reason_id=" + CanonicalId(reasonStableId)
+                + "|source_kind_id="
                 + CanonicalId(provenance == null ? null : provenance.SourceKindStableId)
-                + "\nsource_operation_id="
+                + "|source_operation_id="
                 + CanonicalId(provenance == null ? null : provenance.SourceOperationStableId)
-                + "\nsubject_id="
+                + "|subject_id="
                 + CanonicalId(provenance == null ? null : provenance.SubjectStableId);
         }
 
@@ -294,14 +296,17 @@ namespace ShooterMover.Domain.Economy.Scrap
             out string rejectionCode)
         {
             payload = null;
-            if (canonicalText == null)
+            if (!IsPrintableSingleLineAscii(canonicalText))
             {
-                rejectionCode = "payload-null";
+                rejectionCode = canonicalText == null
+                    ? "payload-null"
+                    : "payload-not-printable-single-line-ascii";
                 return false;
             }
 
-            string[] lines = canonicalText.Split('\n');
-            if (lines.Length != 9 || !string.Equals(lines[0], FormatLine, StringComparison.Ordinal))
+            string[] fields = canonicalText.Split(FieldSeparator);
+            if (fields.Length != FieldCount
+                || !string.Equals(fields[0], FormatField, StringComparison.Ordinal))
             {
                 rejectionCode = "payload-format-invalid";
                 return false;
@@ -315,14 +320,14 @@ namespace ShooterMover.Domain.Economy.Scrap
             string sourceKindText;
             string sourceOperationText;
             string subjectText;
-            if (!TryRead(lines[1], "operation_id=", out operationText)
-                || !TryRead(lines[2], "authority_id=", out authorityText)
-                || !TryRead(lines[3], "kind=", out kindText)
-                || !TryRead(lines[4], "amount=", out amountText)
-                || !TryRead(lines[5], "reason_id=", out reasonText)
-                || !TryRead(lines[6], "source_kind_id=", out sourceKindText)
-                || !TryRead(lines[7], "source_operation_id=", out sourceOperationText)
-                || !TryRead(lines[8], "subject_id=", out subjectText))
+            if (!TryRead(fields[1], "operation_id=", out operationText)
+                || !TryRead(fields[2], "authority_id=", out authorityText)
+                || !TryRead(fields[3], "kind=", out kindText)
+                || !TryRead(fields[4], "amount=", out amountText)
+                || !TryRead(fields[5], "reason_id=", out reasonText)
+                || !TryRead(fields[6], "source_kind_id=", out sourceKindText)
+                || !TryRead(fields[7], "source_operation_id=", out sourceOperationText)
+                || !TryRead(fields[8], "subject_id=", out subjectText))
             {
                 rejectionCode = "payload-field-invalid";
                 return false;
@@ -338,8 +343,16 @@ namespace ShooterMover.Domain.Economy.Scrap
             long amount;
             if (!TryParseOptionalId(operationText, out operationStableId)
                 || !TryParseOptionalId(authorityText, out authorityStableId)
-                || !int.TryParse(kindText, NumberStyles.Integer, CultureInfo.InvariantCulture, out kindValue)
-                || !long.TryParse(amountText, NumberStyles.Integer, CultureInfo.InvariantCulture, out amount)
+                || !int.TryParse(
+                    kindText,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out kindValue)
+                || !long.TryParse(
+                    amountText,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out amount)
                 || !TryParseOptionalId(reasonText, out reasonStableId)
                 || !TryParseOptionalId(sourceKindText, out sourceKindStableId)
                 || !TryParseOptionalId(sourceOperationText, out sourceOperationStableId)
@@ -392,15 +405,36 @@ namespace ShooterMover.Domain.Economy.Scrap
                 : -Amount;
         }
 
-        private static bool TryRead(string line, string prefix, out string value)
+        private static bool IsPrintableSingleLineAscii(string value)
         {
-            if (line == null || !line.StartsWith(prefix, StringComparison.Ordinal))
+            if (value == null
+                || value.Length == 0
+                || value.Length > LedgerEntry<ScrapLedgerVocabulary>.MaximumCanonicalPayloadLength)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < value.Length; index++)
+            {
+                char character = value[index];
+                if (character < ' ' || character > '~')
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool TryRead(string field, string prefix, out string value)
+        {
+            if (field == null || !field.StartsWith(prefix, StringComparison.Ordinal))
             {
                 value = null;
                 return false;
             }
 
-            value = line.Substring(prefix.Length);
+            value = field.Substring(prefix.Length);
             return true;
         }
 
