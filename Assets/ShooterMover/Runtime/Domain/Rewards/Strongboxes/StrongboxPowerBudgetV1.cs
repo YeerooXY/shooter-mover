@@ -422,7 +422,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             }
 
             if (expectedAugmentSlotsMilli < 0L
-                || expectedAugmentSlotsMilli > (long)effectiveMaximumAugmentSlots * FixedPointScale
+                || expectedAugmentSlotsMilli > (long)effectiveMaximumAugmentSlots * 1000L
                 || rolledAugmentSlots < 0
                 || rolledAugmentSlots > effectiveMaximumAugmentSlots)
             {
