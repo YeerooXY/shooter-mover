@@ -1,0 +1,23 @@
+{
+  "name": "ShooterMover.Tests.EditMode.Environment.VoidHazards",
+  "rootNamespace": "ShooterMover.Tests.EditMode.Environment.VoidHazards",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.ContentPackages.Environment.VoidHazards"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
