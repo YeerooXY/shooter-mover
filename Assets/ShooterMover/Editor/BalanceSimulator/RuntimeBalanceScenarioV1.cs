@@ -599,6 +599,17 @@ namespace ShooterMover.Editor.BalanceSimulator
             return StableId.Create("balance-simulator", purpose + "-" + seed.ToString("x16") + "-" + ordinal.ToString("D4"));
         }
 
-        private static StableId Id(string value) { return StableId.Parse(value); }
+        private static StableId Id(string value)
+        {
+            int separatorIndex = value.IndexOf('.');
+            if (separatorIndex < 1 || separatorIndex == value.Length - 1)
+            {
+                return StableId.Create("balance-simulator", value.Replace('.', '-'));
+            }
+
+            return StableId.Create(
+                value.Substring(0, separatorIndex),
+                value.Substring(separatorIndex + 1).Replace('.', '-'));
+        }
     }
 }
