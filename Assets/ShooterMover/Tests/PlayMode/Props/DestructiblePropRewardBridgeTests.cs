@@ -96,7 +96,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                 Assert.That(sink.SubmissionCount, Is.EqualTo(1));
                 Assert.That(sink.AcceptedPreview, Is.Not.Null);
                 Assert.That(
-                    sink.AcceptedPreview.OperationRequest.SourceStableId,
+                    sink.AcceptedPreview.OperationRequest.SourceInstanceStableId,
                     Is.EqualTo(propId));
                 Assert.That(
                     Read(Read(bridge, "LastSubmission"), "Status").ToString(),
