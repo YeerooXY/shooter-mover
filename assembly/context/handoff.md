@@ -1,90 +1,58 @@
-# Shooter Mover Reward/Progression Wave 1 Handoff
+# Shooter Mover Reward/Progression Wave 2 Handoff
 
 ## Current boundary
 
-Wave 0 is complete:
+Wave 0 and Wave 1 are complete. Verified `main` is:
 
-- PR #130 merged `AUD-001`.
-- PR #132 merged `ADR-001`.
-- PR #131 merged `DEMO-001`.
+`6d04451883127dcf597c4f6fec199aeaec2a7f9e`
 
-Current verified `main` is:
+Merged Wave 1 foundations:
 
-`0e678a9333956aa29ba2e3598265c8e1a4122e72`
+- `REW-001` through `06012ea116c1b8bd1f087a5f9275079d5fd882bd`
+- `OBJ-001` through `e967daee4a23ca3372de468e2a4a8d122f99eea0`
+- `RNG-001` through `46cccb17c057b07a6d408b9aabe286228a921915`
+- `EQP-001` through `0bac603dc5921ab1da1b89895f725a0b97261fae`
+- `LED-001` through `95a19fbf60fe81c443ad1a366422bf67d17d953e`
+- `PRG-001` through `6d04451883127dcf597c4f6fec199aeaec2a7f9e`
 
-The authoritative roadmap remains:
+The authoritative roadmap remains
+`docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md`.
 
-`docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md`
+## Verified combined state
 
-The repository is now in Wave 1 foundation dispatch.
+- Unity `6000.3.19f1` cold import/compile passed.
+- Full EditMode passed 568/568.
+- OBJ-001 focused PlayMode passed 11/11.
+- Layout, assembly graph, and duplicate-GUID checks passed.
+- Full PlayMode has three unrelated pre-existing failures documented in
+  `assembly/dispatch/wave2/VALIDATION.md`.
 
-## Verified current state
+## Wave 2 execution shape
 
-- `ADR-001` locks reward, equipment, ledger, progression, placed-object,
-  lifecycle, simulator, and single-scene-owner boundaries.
-- `AUD-001` confirms the existing enemy foundation and physical projectile path
-  should be retained, with narrow future turret/prop normalization.
-- `DEMO-001` publishes the robot and complete playable Stage 1 baseline.
-- The local demo passed all eight focused Stage 1 integration tests from the
-  final merged commit.
-- No open PR currently claims a Wave 1 task branch or owned path.
+Eight tasks may start in parallel from exact base `6d04451...`:
 
-## Wave 1 execution shape
+1. `MON-001` - money authority.
+2. `SCR-001` - scrap authority.
+3. `INV-001` - holdings authority.
+4. `GEN-001` - shared deterministic generator.
+5. `SRC-001` - reward definitions/source authoring.
+6. `DOOR-001` - reusable doors.
+7. `VOID-001` - reusable void hazards.
+8. `NORM-001` - Blaster Turret registration normalization.
 
-Six tasks may begin in parallel from exact base
-`0e678a9333956aa29ba2e3598265c8e1a4122e72`:
+Use the exact prompts under `assembly/dispatch/wave2/`.
 
-1. `OBJ-001` — placed identity, explicit/parent scope, variants, capabilities,
-   and instance overrides.
-2. `REW-001` — immutable reward/economy vocabulary.
-3. `EQP-001` — equipment and augment definitions/instances.
-4. `RNG-001` — deterministic PRNG and soft progression curves.
-5. `LED-001` — typed exact-once ledger primitive.
-6. `PRG-001` — explicit progression context and providers.
+## Continuation gates
 
-All six are suitable for isolated GitHub web/coding agents. Agents without a
-Unity executable must leave their PR draft and report the exact unexecuted proof.
-
-## Ownership
-
-- No Wave 1 task may edit the Stage 1 scene/controller/tests.
-- `OBJ-001`, `REW-001`, `EQP-001`, `LED-001`, and `PRG-001` own distinct
-  subtrees named in their packets.
-- `RNG-001` owns only random and `Progression/Curves/**`; `PRG-001` exclusively
-  owns `Progression/Context/**`.
-- Existing gameplay packages are read-only during Wave 1.
-- `INT-001` remains the later sole final Stage 1 serialized owner.
-
-## Dispatch artifacts
-
-Use these prompts without silently broadening their scopes:
-
-- `assembly/dispatch/wave1/OBJ-001_WEB_AGENT.md`
-- `assembly/dispatch/wave1/REW-001_WEB_AGENT.md`
-- `assembly/dispatch/wave1/EQP-001_WEB_AGENT.md`
-- `assembly/dispatch/wave1/RNG-001_WEB_AGENT.md`
-- `assembly/dispatch/wave1/LED-001_WEB_AGENT.md`
-- `assembly/dispatch/wave1/PRG-001_WEB_AGENT.md`
-
-Every task uses a fresh branch and must record its exact base commit in the PR.
-
-## Merge and continuation rule
-
-- All six Wave 1 tasks are independently mergeable and may run concurrently.
-- Each PR must remain within its exact owned paths.
-- Wave 2 tasks use named dependency merges, not bookkeeping state, as their
-  dispatch gate.
-- `MON-001` and `SCR-001` wait for `REW-001` plus `LED-001`.
-- `INV-001` waits for `REW-001`, `EQP-001`, and `LED-001`.
-- `GEN-001` waits for `REW-001`, `EQP-001`, `RNG-001`, and `PRG-001`.
-- `SRC-001` waits for `REW-001` plus `OBJ-001`.
-- `DOOR-001` and `VOID-001` wait for `OBJ-001`.
-- `NORM-001` waits for `OBJ-001`; its audit dependency is already merged.
+- `RAP-001` waits for merged `MON-001`, `SCR-001`, and `INV-001`.
+- First `SIM-001` generator mode waits for merged `GEN-001`.
+- `PROP-001` waits for merged `SRC-001`.
+- `BOX-001`, `CRA-001`, `AUG-001`, and `SHOP-001` remain gated by `RAP-001`
+  and their other named dependencies.
+- `INT-001` remains the sole final Stage 1 serialized owner.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Dispatch the six Wave 1 prompts to six isolated GitHub web/coding agents from
-the exact shared base. Review each PR for owned-path purity and proof. Merge
-proof-complete foundations independently, then dispatch only the Wave 2 tasks
-whose complete dependency sets have merged.
+Dispatch all eight Wave 2 prompts to isolated GitHub web/coding agents. Keep
+every PR draft until owned-path review and required proof are complete.

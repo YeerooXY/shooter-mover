@@ -6,12 +6,13 @@
   "active_role": "dispatch",
   "active_branch": null,
   "active_pr": null,
-  "last_verified_commit": "0e678a9333956aa29ba2e3598265c8e1a4122e72",
+  "last_verified_commit": "6d04451883127dcf597c4f6fec199aeaec2a7f9e",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
     "assembly/context/NEW_CHAT_RESUME.md",
     "assembly/context/handoff.md",
+    "assembly/context/CURRENT_HANDOFF.json",
     "assembly/intake/project_intake.json",
     "assembly/requirements/REQUIREMENTS.md",
     "assembly/generated/project_spec.json",
@@ -55,6 +56,16 @@
     "assembly/dispatch/wave1/RNG-001_WEB_AGENT.md",
     "assembly/dispatch/wave1/LED-001_WEB_AGENT.md",
     "assembly/dispatch/wave1/PRG-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/README.md",
+    "assembly/dispatch/wave2/VALIDATION.md",
+    "assembly/dispatch/wave2/MON-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/SCR-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/INV-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/GEN-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/SRC-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/DOOR-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/VOID-001_WEB_AGENT.md",
+    "assembly/dispatch/wave2/NORM-001_WEB_AGENT.md",
     "ProjectSettings/ProjectVersion.txt",
     "docs/toolchain/UNITY_BASELINE.md",
     "assembly/generated/task_runs/UF-001-run-001.json",
@@ -88,24 +99,25 @@
     "tools/validation/validate_repository_layout.py",
     "docs/architecture/FILE_OWNERSHIP.md"
   ],
-  "current_section": "reward_progression_wave1_dispatch",
-  "last_completed_item": "Wave 0 completed: AUD-001 merged through PR #130, ADR-001 through PR #132, and DEMO-001 through PR #131. Main is verified at 0e678a9333956aa29ba2e3598265c8e1a4122e72.",
-  "current_item": "Wave 1 contains six independent foundation tasks: OBJ-001, REW-001, EQP-001, RNG-001, LED-001, and PRG-001. Exact-base web-agent packets are prepared under assembly/dispatch/wave1/.",
-  "next_action": "Dispatch all six Wave 1 prompts to isolated GitHub web/coding agents from exact base 0e678a9333956aa29ba2e3598265c8e1a4122e72. Keep every PR draft until required proof is complete. Do not dispatch a Wave 2 consumer until all dependencies named by that consumer have merged.",
+  "current_section": "reward_progression_wave2_dispatch",
+  "last_completed_item": "Wave 1 completed through main commit 6d04451883127dcf597c4f6fec199aeaec2a7f9e with OBJ-001, REW-001, EQP-001, RNG-001, LED-001, and PRG-001 merged.",
+  "current_item": "Wave 2 contains eight dependency-ready parallel tasks: MON-001, SCR-001, INV-001, GEN-001, SRC-001, DOOR-001, VOID-001, and NORM-001.",
+  "next_action": "Dispatch all eight Wave 2 prompts from exact base 6d04451883127dcf597c4f6fec199aeaec2a7f9e. Keep each PR draft until owned-path review and proof are complete.",
   "blockers": [
-    "Wave 2 authorities and product packages remain dependency-gated on their named Wave 1 merges.",
-    "INT-001 remains blocked until DEMO-001 plus all selected package, normalization, validation, and balance dependencies merge.",
+    "RAP-001 waits for MON-001, SCR-001, and INV-001.",
+    "Product systems remain gated by RAP-001 and their named dependencies.",
+    "INT-001 remains the sole final Stage 1 serialized owner.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-16T13:57:57+02:00"
+    "last_persisted_at": "2026-07-16T15:35:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-16T13:57:57+02:00"
+  "updated_at": "2026-07-16T15:35:00+02:00"
 }
