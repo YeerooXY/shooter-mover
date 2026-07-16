@@ -1,60 +1,88 @@
-# Shooter Mover Stage 1 Visible-Slice Materialization Handoff
+# Shooter Mover Reward/Progression Wave 0 Handoff
 
 ## Current boundary
 
-Merged PR #104 authorizes the bounded screen-visible Stage 1 prototype and
-stable task identities `VS-001` through `VS-007`.
+PR #110 is merged and its historical visible-slice task materialization is no
+longer the active routing boundary.
 
-Draft generated-only PR #110 materializes those identities as the tenth Stage 1
-batch, expands the canonical backlog from 103 to 110 tasks, and updates bounded
-collaboration/slot state without adding Unity implementation.
+PR #128 is merged at commit
+`56a84838558fdfe67fb97254d832b2dd7cd5c018`. Its authoritative roadmap is:
 
-## Verified planning facts
+`docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md`
 
-- The planning branch started from then-current `main` at EN-007 merge commit
-  `103e6fdc3ba8024662137f660507ce6102e0a76c`.
-- Current `main` subsequently advanced through non-overlapping implementation
-  work and is verified at `d867861454c97674b3f57e360c7427df7f4ec37d`,
-  merged EN-009 / PR #105.
-- No earlier visible-slice amendment, `VS-*` task card, or visible-slice batch
-  exists on current main.
-- WP-010 is merged through PR #102. It exclusively owns its weapon-presentation
-  folder and focused test and remains a required read-only VS-007 dependency.
-- The named local art files are available to a local intake worktree under
-  `C:\Users\Yeeroo\Desktop\sprites`; they remain unaccepted until VS-001
-  inventories, checksums, and imports selected inputs.
-- PRs #106, #107, and #108 are superseded prototype branches. Their reusable
-  ideas are recorded in the amendment, but their submitted diffs are not merge
-  candidates.
+The repository is now in Wave 0 dispatch for the next architecture phase.
 
-## Accepted execution shape
+## Verified current state
 
-1. PR #110 contains one validated `stage1-visible-slice` batch with VS-001
-   through VS-007 and the rebuilt canonical backlog.
-2. VS-001 performs local temporary-art intake.
-3. VS-004, VS-005, and VS-006 may begin from accepted non-VS dependencies;
-   VS-002 and VS-003 begin after VS-001 merges.
-4. None of VS-002 through VS-006 may edit a `.unity` scene.
-5. VS-007 runs last and alone owns
-   `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`.
-6. Generated bookkeeping contains no Unity implementation. VS branches add
-   only exact leaf-folder metadata and never shared ancestor `.meta` files.
+- Current verified `main` is `56a84838558fdfe67fb97254d832b2dd7cd5c018`.
+- PR #110 merged at `0364d9d8f04f6d7f14fc7e17046064e507099bd0`.
+- PR #127 merged the turret tracking and destroyed-wreck collision options.
+- PR #128 merged the reward/progression/level-authoring roadmap.
+- The existing runtime already contains movement, aiming, shooting, visible
+  physical projectiles, boosting, camera support, turret behavior, destructible
+  props, destruction-animation configuration, and restart behavior.
+- The prepared robot integration exists locally at
+  `96d6ce9791f4eee860a385e6c7613f972491a4f6`.
+- That robot commit is based on `37e3b4d`, changes only the robot asset,
+  Stage 1 scene/controller, and focused Stage 1 integration tests, and passed
+  the eight focused Stage 1 PlayMode tests before handoff.
 
-## Capacity
+## Wave 0 execution shape
 
-The proposal authorizes 3.15 focused lead days, consuming 0.60 of S1.2 reserve
-and 2.55 of S1.3 reserve. Seven task estimates total 2.55 days; the remaining
-0.60 day is held explicitly for VS-007 integration defects. S1.2 becomes
-9.70/10.00 and S1.3 becomes 10.00/10.00. The Stage 1 aggregate cap remains 50
-days under that reserve consumption and visible-slice-first resequencing.
+Three tasks may begin in parallel from exact base
+`56a84838558fdfe67fb97254d832b2dd7cd5c018`:
 
-Any scope or estimate growth requires the written cap review described in the
-amendment. The exact unapproved alternative is 53.15 aggregate focused lead
-days and a 12.55-day S1.3 cap plus a revised calendar cap.
+1. `ADR-001` — freeze architecture, lifecycle, scene ownership, identity,
+   reward claim, inventory, ledger, progression-context, and simulator-sharing
+   decisions.
+2. `AUD-001` — perform a read-only evidence-backed audit of existing enemies,
+   props, scene integration, identity, restart, damage, and reward readiness.
+3. `DEMO-001` — publish one immediate playable Stage 1 baseline containing the
+   robot, movement, shooting, boosting, camera, turret, props, collisions,
+   destruction hooks, and restart.
 
-## Next action
+`ADR-001` and `AUD-001` are safe for separate GitHub web agents.
 
-Review and merge PR #110. Then dispatch EN-010, EN-011, VS-001, VS-004,
-VS-005, and VS-006 from the combined prepared context file. Keep WP-011
-deliberately deferred until after VS-007 and do not dispatch VS-002/VS-003 until
-VS-001 merges.
+`DEMO-001` must use a local/path-capable agent because its required robot commit
+is not published on the remote. Do not ask a GitHub-only agent to invent or
+recreate the unavailable local diff blindly.
+
+## Serialized ownership
+
+- `DEMO-001` is the only Wave 0 task allowed to edit the Stage 1 scene,
+  Stage 1 controller, focused integration tests, and robot asset paths.
+- `ADR-001` owns only its exact architecture documents.
+- `AUD-001` owns only its exact audit document and reads implementation paths
+  without modifying them.
+- After `DEMO-001` merges, it releases Stage 1 ownership.
+- The later `INT-001` task becomes the sole final Stage 1 integration owner.
+
+## Dispatch artifacts
+
+Use these prompts without silently broadening their scopes:
+
+- `assembly/dispatch/wave0/ADR-001_WEB_AGENT.md`
+- `assembly/dispatch/wave0/AUD-001_WEB_AGENT.md`
+- `assembly/dispatch/wave0/DEMO-001_LOCAL_AGENT.md`
+
+Every task uses a fresh branch/worktree and must record its exact base commit in
+the PR description.
+
+## Merge and continuation rule
+
+- `ADR-001`, `AUD-001`, and `DEMO-001` are independently mergeable.
+- Wave 1 is blocked until `ADR-001` merges.
+- After `ADR-001` merges, replace every `BASE_AFTER_DEPENDENCIES` placeholder
+  in Wave 1 packets with the exact current `main` SHA.
+- Do not dispatch broad reward/economy implementation directly from the roadmap
+  before that architecture lock.
+- Stage 2 remains locked behind `GATE-010`.
+
+## Exact next action
+
+Dispatch the three Wave 0 prompts to three isolated agents:
+
+- two GitHub web agents for `ADR-001` and `AUD-001`;
+- one local/path-capable agent for `DEMO-001`.
+
+Review and merge `ADR-001` before opening Wave 1.

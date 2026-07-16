@@ -2,11 +2,11 @@
   "schema_version": "0.1.0",
   "project_id": "shooter-mover",
   "repository": "YeerooXY/shooter-mover",
-  "lifecycle_phase": "task_decomposition",
-  "active_role": "task_splitter",
-  "active_branch": "agent/materialize-stage1-visible-slice",
-  "active_pr": 110,
-  "last_verified_commit": "34d79011e0473cd6824cbc1cbf885d739007480b",
+  "lifecycle_phase": "task_execution",
+  "active_role": "dispatch",
+  "active_branch": null,
+  "active_pr": null,
+  "last_verified_commit": "56a84838558fdfe67fb97254d832b2dd7cd5c018",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -39,6 +39,11 @@
     "assembly/generated/task_batches/stage1-accessibility-reliability.json",
     "assembly/generated/task_batches/stage1-gate.json",
     "assembly/generated/task_batches/stage1-visible-slice.json",
+    "docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md",
+    "assembly/dispatch/wave0/README.md",
+    "assembly/dispatch/wave0/ADR-001_WEB_AGENT.md",
+    "assembly/dispatch/wave0/AUD-001_WEB_AGENT.md",
+    "assembly/dispatch/wave0/DEMO-001_LOCAL_AGENT.md",
     "ProjectSettings/ProjectVersion.txt",
     "docs/toolchain/UNITY_BASELINE.md",
     "assembly/generated/task_runs/UF-001-run-001.json",
@@ -72,24 +77,24 @@
     "tools/validation/validate_repository_layout.py",
     "docs/architecture/FILE_OWNERSHIP.md"
   ],
-  "current_section": "stage1_visible_slice_task_materialization_review",
-  "last_completed_item": "Planning PR #104 merged at 34d7901, authorizing VS-001 through VS-007. The schema-valid tenth batch and 110-task canonical backlog were generated and opened in draft PR #110.",
-  "current_item": "Review generated-only PR #110. It contains the visible-slice batch/index/backlog plus bounded collaboration and slot updates and no Unity implementation.",
-  "next_action": "Merge PR #110, then dispatch EN-010, EN-011, VS-001, VS-004, VS-005, and VS-006 from the prepared combined prompt file. Keep WP-011 deliberately deferred until after VS-007.",
+  "current_section": "reward_progression_wave0_dispatch",
+  "last_completed_item": "Roadmap PR #128 merged at 56a8483, establishing the reward, progression, economy, level-authoring, simulator, and single-scene-owner execution plan.",
+  "current_item": "Wave 0 is ready for parallel dispatch: ADR-001 architecture lock, AUD-001 read-only readiness audit, and DEMO-001 immediate complete playable baseline.",
+  "next_action": "Dispatch ADR-001 and AUD-001 to separate GitHub web agents from exact base 56a84838558fdfe67fb97254d832b2dd7cd5c018. Dispatch DEMO-001 to a separate local/path-capable agent from the same base with access to local commit 96d6ce9791f4eee860a385e6c7613f972491a4f6. Merge ADR-001 before dispatching Wave 1.",
   "blockers": [
-    "The generated visible-slice backlog is not accepted until PR #110 merges.",
-    "The named local sprites must be inspected and checksummed by VS-001 from a local worktree with access to C:\\Users\\Yeeroo\\Desktop\\sprites.",
+    "Wave 1 implementation must not begin until ADR-001 merges.",
+    "DEMO-001 cannot be completed blindly by a GitHub-only web agent because robot commit 96d6ce9 and its source context are currently local-only.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-15T20:57:11+02:00"
+    "last_persisted_at": "2026-07-16T13:13:30+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-15T20:57:11+02:00"
+  "updated_at": "2026-07-16T13:13:30+02:00"
 }
