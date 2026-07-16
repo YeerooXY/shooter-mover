@@ -184,9 +184,9 @@ All GEN-001 content, context, result, failure, and trace fingerprints use:
 sha256:<64 lowercase hexadecimal characters>
 ```
 
-- Reward content covers the accepted operation content fingerprint, complete
-  reward profile fingerprint, progression context, seed/version, and explicit
-  scaling values.
+- Reward content covers the accepted operation content fingerprint and complete
+  reward profile fingerprint. Context, root seed, algorithm version, and explicit
+  scaling values remain separate request/trace inputs.
 - Equipment content covers the complete policy canonical text and validated
   catalog canonical text.
 - Context is the exact `ProgressionContext.Fingerprint`.
