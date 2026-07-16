@@ -197,7 +197,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         public void ProductionSourceDelegatesToBoxAndContainsNoDirectAuthorityMutation()
         {
             string sourcePath = Path.Combine(
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 "ShooterMover/UI/StrongboxOpening/StrongboxOpeningController.cs");
             string source = File.ReadAllText(sourcePath);
 
@@ -214,7 +214,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         public void StandaloneSceneContainsOnlyTheStrongboxPresentationController()
         {
             string scenePath = Path.Combine(
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 "ShooterMover/Scenes/StrongboxOpening/StrongboxOpening.unity");
             string scene = File.ReadAllText(scenePath);
 
