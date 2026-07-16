@@ -8,6 +8,7 @@ using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
@@ -277,6 +278,23 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     return false;
                 }
 
+                ProgressionContext generationContext;
+                try
+                {
+                    generationContext = ProgressionContext.Create(
+                        itemLevelRoll.MeanItemLevel,
+                        boxContext.ProgressionContext.RegionLevel,
+                        boxContext.ProgressionContext.DifficultyId,
+                        boxContext.ProgressionContext.DifficultyValue,
+                        boxContext.ProgressionContext.ProgressionTags);
+                }
+                catch (Exception exception)
+                {
+                    rejectionCode = "strongbox-generation-context-exception-"
+                        + exception.GetType().Name.ToLowerInvariant();
+                    return false;
+                }
+
                 EquipmentGenerationPolicyV1 selectionPolicy;
                 if (!TryCreateSelectionPolicy(
                     basePolicy,
@@ -312,7 +330,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                             selectionInstanceId,
                             selectionPolicy,
                             catalog,
-                            boxContext.ProgressionContext,
+                            generationContext,
                             selectionSeedStream.StreamSeed,
                             boxContext.AlgorithmVersion));
                 }
@@ -395,7 +413,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                             equipmentInstanceId,
                             finalPolicy,
                             catalog,
-                            boxContext.ProgressionContext,
+                            generationContext,
                             finalSeedStream.StreamSeed,
                             boxContext.AlgorithmVersion));
                 }
