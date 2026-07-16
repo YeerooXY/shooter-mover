@@ -1,4 +1,4 @@
-# Resume Shooter Mover Stage 1 Visible-Slice Materialization
+# Resume Shooter Mover Reward/Progression Wave 0
 
 Continue from committed state in `YeerooXY/shooter-mover`. Never write to a
 branch whose pull request has merged.
@@ -7,49 +7,38 @@ branch whose pull request has merged.
 
 1. Read `AGENTS.md`, `project_workspace.json`, and
    `assembly/context/CURRENT_HANDOFF.json`.
-2. Verify current `main`, PR #110 status, and exact path ownership before
-   writing.
-3. Read merged `AMENDMENT_STAGE1_VISIBLE_SLICE.md` and the generated
-   `stage1-visible-slice.json` batch before acting as Task Splitter or Dispatch.
-4. Use a fresh branch and separate worktree for every planning, task-split, or
-   implementation change.
+2. Verify current `main` and exact path ownership before writing.
+3. Read
+   `docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md`.
+4. Read the selected prompt under `assembly/dispatch/wave0/` completely.
+5. Use a fresh branch and separate worktree for every task.
 
 ## Durable state
 
-- Merged PR #104 authorizes the bounded visible-slice-first amendment.
-- Draft generated-only PR #110 materializes the tenth Stage 1 batch and expands
-  the canonical backlog from 103 to 110 tasks. It contains no Unity implementation.
-- The accepted visible-slice batch contains VS-001 through VS-007: local art intake,
-  art-dependent room/turret presentation, three immediately parallel UI/camera
-  tasks, and one final serial integration-scene owner.
-- VS-007 alone may own
-  `Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity`.
-- WP-010 is merged through PR #102 and exclusively owns its Stage1Presentation
-  folder and focused test; no VS task may duplicate or edit the four-slot
-  weapon-status strip.
-- The local files `tile_concept_1.jfif`, `level_idea_1.png`,
-  `standing_turret_weak.png`, and candidate props under
-  `C:\Users\Yeeroo\Desktop\sprites` have not been accepted into Git. VS-001
-  must inspect, inventory, checksum, and import selected inputs locally.
-- The proposal authorizes 3.15 focused lead days from existing reserve: 2.55
-  days of task estimates and 0.60 day of explicit VS-007 integration
-  contingency. It does not raise the 50-day aggregate cap.
-- PRs #106, #107, and #108 are superseded prototype branches. Their useful
-  floor replacement, overlay projection, and loadout state-machine ideas are
-  recorded in the amendment, but their submitted branches must not merge.
-- VS branches may add only exact leaf-folder `.meta` files, never shared
-  ancestor metadata.
-- Accepted movement, combat, enemy, encounter, mission, collision, registry, and
-  persistence authorities remain unchanged. Visible-slice state is session-only.
+- PR #110 is merged; instructions to review or merge it are obsolete.
+- PR #127 is merged and provides turret tracking plus configurable destroyed
+  collision.
+- PR #128 is merged at `56a8483` and establishes the current reward,
+  progression, economy, level-authoring, simulator, and integration roadmap.
+- Wave 0 contains `ADR-001`, `AUD-001`, and `DEMO-001`.
+- Wave 1 cannot begin until `ADR-001` merges.
+- `DEMO-001` alone owns Stage 1 serialized integration paths during Wave 0.
+- Local robot integration commit
+  `96d6ce9791f4eee860a385e6c7613f972491a4f6` is not available to GitHub-only
+  web agents.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Review and merge draft PR #110. After it merges, dispatch EN-010, EN-011,
-VS-001, VS-004, VS-005, and VS-006 from the combined prepared context file.
-VS-001 requires local filesystem access; the other five prompts include
-GitHub-connector-only web-agent instructions. WP-011 is dependency-ready but
-deliberately deferred until after VS-007 by the merged amendment.
+Dispatch:
 
-Do not dispatch VS tasks from an unmerged generated backlog. Do not add
-networking, mobile, analytics, storefront, or Stage 2 work.
+- `ADR-001_WEB_AGENT.md` to one GitHub web agent;
+- `AUD-001_WEB_AGENT.md` to a second GitHub web agent;
+- `DEMO-001_LOCAL_AGENT.md` to one local/path-capable agent.
+
+All three start from exact base
+`56a84838558fdfe67fb97254d832b2dd7cd5c018`.
+
+Do not let `ADR-001` or `AUD-001` edit Unity assets or scenes. Do not let a
+GitHub-only agent attempt `DEMO-001`. Do not dispatch Wave 1 before `ADR-001`
+merges.
