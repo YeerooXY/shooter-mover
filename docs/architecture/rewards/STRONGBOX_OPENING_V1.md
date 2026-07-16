@@ -101,6 +101,8 @@ maximumItemLevel = meanItemLevel + 12
 
 The roll uses the named RNG substream `strongbox-rng.item-level-v1` and the equipment-slot ordinal. Adding or changing the scrap roll does not shift equipment-level results.
 
+For GEN eligibility and weighting, BOX derives an immutable effective progression context whose character level is the box-adjusted mean. Region, difficulty, and progression tags remain unchanged. This means a tier bonus can admit appropriately stronger equipment without mutating the player's real progression state.
+
 ## Inverse augment power budget
 
 After GEN has selected the item:
