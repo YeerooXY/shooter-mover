@@ -203,3 +203,7 @@ RAP, SCR, MON, and INV snapshots remain owned by their authorities. A save-game 
 - RAP post-preflight interruption: same child plan is retried.
 - INV consumption interruption: same removal command is retried; rewards are not reapplied.
 - Snapshot validation failure: live BOX state is unchanged.
+
+## Validation status
+
+The implementation includes focused EditMode coverage for the bounded level roll, deterministic replay, inverse slot compensation, selected-definition slot caps, tier-bonus eligibility, and duplicate definitions with unique instances. Unity cold compilation, focused test execution, the complete EditMode suite, repository validators, and a repository-wide GUID audit still require a Unity-capable checkout before this draft is ready.
