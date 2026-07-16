@@ -185,7 +185,6 @@ namespace ShooterMover.ContentPackages.Weapons.Stage1Loadouts
 
             Stage1WeaponLoadoutSlot[] canonical =
                 new Stage1WeaponLoadoutSlot[WeaponMountContractRules.MountCount];
-            HashSet<StableId> weaponIds = new HashSet<StableId>();
 
             int suppliedCount = 0;
             foreach (Stage1WeaponLoadoutSlot slot in source)
@@ -200,13 +199,6 @@ namespace ShooterMover.ContentPackages.Weapons.Stage1Loadouts
                 {
                     throw new ArgumentException(
                         "Loadout slots may resolve only approved Stage 1 weapon IDs.",
-                        nameof(source));
-                }
-
-                if (!weaponIds.Add(slot.WeaponId))
-                {
-                    throw new ArgumentException(
-                        "A comparison fixture cannot repeat a weapon identity.",
                         nameof(source));
                 }
 

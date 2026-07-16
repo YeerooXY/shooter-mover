@@ -1,14 +1,19 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.ContentPackages.Weapons.Stage1Loadouts;
+using ShooterMover.ContentPackages.Weapons.Stage1;
+using ShooterMover.Contracts.Combat;
+using ShooterMover.Domain.Common;
 using ShooterMover.UI.VisibleSliceLoadoutSelector.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ShooterMover.UI.VisibleSliceLoadoutSelector
 {
     /// <summary>
-    /// Temporary pre-room selector. It projects the accepted WP-008 fixed fixtures,
-    /// emits the exact immutable confirmed fixture, and owns no live mount state.
+    /// Temporary pre-room four-slot loadout editor. It edits only approved Stage 1
+    /// weapon identities, emits one immutable confirmed fixture, and owns no live
+    /// mount state.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class VisibleSliceLoadoutSelector : MonoBehaviour
@@ -19,6 +24,9 @@ namespace ShooterMover.UI.VisibleSliceLoadoutSelector
 
         private List<Stage1WeaponLoadoutFixture> approvedFixtures;
         private FixedLoadoutSelectionState state;
+        private IReadOnlyList<StableId> approvedWeaponIds;
+        private StableId[] selectedWeaponIds;
+        private int selectedSlot;
         private bool visible;
 
         public event Action<Stage1WeaponLoadoutFixture> Confirmed;
@@ -66,13 +74,19 @@ namespace ShooterMover.UI.VisibleSliceLoadoutSelector
                 return;
             }
 
-            ApplyCommand(FixedLoadoutInput.ReadCurrent());
+            ApplyEditorInput();
         }
 
         public void ResetForRestart()
         {
             EnsureInitialized();
             state.ResetForRestart();
+            Stage1WeaponLoadoutFixture defaultFixture = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
+            for (int index = 0; index < selectedWeaponIds.Length; index++)
+            {
+                selectedWeaponIds[index] = defaultFixture.GetByHudIndex(index).WeaponId;
+            }
+            selectedSlot = 0;
             ConfirmedFixture = null;
             visible = true;
         }
@@ -104,7 +118,7 @@ namespace ShooterMover.UI.VisibleSliceLoadoutSelector
 
             if (state.Phase == LoadoutSelectorPhase.Confirmed)
             {
-                Stage1WeaponLoadoutFixture fixture = ResolveSelectedApprovedFixture();
+                Stage1WeaponLoadoutFixture fixture = BuildSelectedFixture();
                 ConfirmedFixture = fixture;
                 visible = false;
 
@@ -145,30 +159,24 @@ namespace ShooterMover.UI.VisibleSliceLoadoutSelector
                 height);
 
             GUILayout.BeginArea(area, GUI.skin.window);
-            GUILayout.Label("FIXED LOADOUT SELECTOR");
-            GUILayout.Label("Choose one accepted four-slot WP-008 comparison before room entry.");
+            GUILayout.Label("LOADOUT");
+            GUILayout.Label("Choose a weapon for each mount. Duplicates are allowed; all four fire together.");
             GUILayout.Space(10f);
 
-            FixedLoadoutOption option = State.Current;
-            GUILayout.Label(
-                (State.SelectedIndex + 1)
-                + " / "
-                + State.OptionCount
-                + "   "
-                + option.FixtureId);
-            GUILayout.Space(8f);
-
-            for (int stableIndex = 0; stableIndex < FixedLoadoutOption.RequiredSlotCount; stableIndex++)
+            for (int stableIndex = 0; stableIndex < WeaponMountContractRules.MountCount; stableIndex++)
             {
                 GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label("S" + (stableIndex + 1), GUILayout.Width(40f));
-                GUILayout.Label(option.GetWeaponId(stableIndex));
+                GUILayout.Label(
+                    stableIndex == selectedSlot ? "> S" + (stableIndex + 1) : "  S" + (stableIndex + 1),
+                    GUILayout.Width(55f));
+                GUILayout.Label(GetWeaponLabel(selectedWeaponIds[stableIndex]));
                 GUILayout.EndHorizontal();
             }
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label("Keyboard: arrows browse, Enter/Space confirm, Esc/Backspace cancel");
-            GUILayout.Label("Controller: D-pad/shoulders browse, South confirm, East cancel");
+            GUILayout.Label("Keyboard: Left/Right choose slot, Up/Down change weapon");
+            GUILayout.Label("Enter/Space confirm, Esc/Backspace cancel");
+            GUILayout.Label("Controller: D-pad chooses slot/weapon, South confirm, East cancel");
             GUILayout.EndArea();
         }
 
@@ -181,6 +189,14 @@ namespace ShooterMover.UI.VisibleSliceLoadoutSelector
 
             Stage1WeaponLoadoutCatalog catalog = Stage1WeaponLoadoutCatalog.Approved;
             approvedFixtures = new List<Stage1WeaponLoadoutFixture>(catalog.FixedFixtures);
+            approvedWeaponIds = Stage1WeaponPackageDescriptor.AcceptedWeaponIds;
+            selectedWeaponIds = new StableId[WeaponMountContractRules.MountCount];
+            Stage1WeaponLoadoutFixture defaultFixture = catalog.DefaultFixture;
+            for (int index = 0; index < selectedWeaponIds.Length; index++)
+            {
+                selectedWeaponIds[index] = defaultFixture.GetByHudIndex(index).WeaponId;
+            }
+
             if (approvedFixtures.Count == 0)
             {
                 throw new InvalidOperationException(
@@ -204,28 +220,89 @@ namespace ShooterMover.UI.VisibleSliceLoadoutSelector
                 options,
                 catalog.DefaultFixture.FixtureId.ToString());
             ConfirmedFixture = null;
+            selectedSlot = 0;
             visible = false;
         }
 
-        private Stage1WeaponLoadoutFixture ResolveSelectedApprovedFixture()
+        private void ApplyEditorInput()
         {
-            if (state.SelectedIndex < 0 || state.SelectedIndex >= approvedFixtures.Count)
+            Keyboard keyboard = Keyboard.current;
+            Gamepad gamepad = Gamepad.current;
+            if ((keyboard != null
+                    && (keyboard.escapeKey.wasPressedThisFrame || keyboard.backspaceKey.wasPressedThisFrame))
+                || (gamepad != null && gamepad.buttonEast.wasPressedThisFrame))
             {
-                throw new InvalidOperationException("Selected fixture index is outside the accepted WP-008 catalog.");
+                ApplyCommand(LoadoutSelectorCommand.Cancel);
+                return;
             }
 
-            Stage1WeaponLoadoutFixture fixture = approvedFixtures[state.SelectedIndex];
-            if (state.Confirmed == null
-                || !string.Equals(
-                    fixture.FixtureId.ToString(),
-                    state.Confirmed.FixtureId,
-                    StringComparison.Ordinal))
+            if ((keyboard != null
+                    && (keyboard.enterKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame))
+                || (gamepad != null && gamepad.buttonSouth.wasPressedThisFrame))
             {
-                throw new InvalidOperationException(
-                    "Confirmed selector identity no longer matches the accepted WP-008 fixture.");
+                ApplyCommand(LoadoutSelectorCommand.Confirm);
+                return;
             }
 
-            return fixture;
+            bool previousSlot = keyboard != null && keyboard.leftArrowKey.wasPressedThisFrame;
+            bool nextSlot = keyboard != null && keyboard.rightArrowKey.wasPressedThisFrame;
+            bool previousWeapon = keyboard != null && keyboard.upArrowKey.wasPressedThisFrame;
+            bool nextWeapon = keyboard != null && keyboard.downArrowKey.wasPressedThisFrame;
+            if (gamepad != null)
+            {
+                previousSlot |= gamepad.dpad.left.wasPressedThisFrame;
+                nextSlot |= gamepad.dpad.right.wasPressedThisFrame;
+                previousWeapon |= gamepad.dpad.up.wasPressedThisFrame;
+                nextWeapon |= gamepad.dpad.down.wasPressedThisFrame;
+            }
+
+            if (previousSlot) selectedSlot = (selectedSlot + selectedWeaponIds.Length - 1) % selectedWeaponIds.Length;
+            if (nextSlot) selectedSlot = (selectedSlot + 1) % selectedWeaponIds.Length;
+            if (previousWeapon) SelectWeapon(-1);
+            if (nextWeapon) SelectWeapon(1);
+        }
+
+        private void SelectWeapon(int delta)
+        {
+            if (approvedWeaponIds == null || approvedWeaponIds.Count == 0) return;
+            int currentIndex = 0;
+            for (int index = 0; index < approvedWeaponIds.Count; index++)
+            {
+                if (approvedWeaponIds[index].Equals(selectedWeaponIds[selectedSlot]))
+                {
+                    currentIndex = index;
+                    break;
+                }
+            }
+
+            currentIndex = (currentIndex + delta + approvedWeaponIds.Count) % approvedWeaponIds.Count;
+            selectedWeaponIds[selectedSlot] = approvedWeaponIds[currentIndex];
+        }
+
+        private Stage1WeaponLoadoutFixture BuildSelectedFixture()
+        {
+            return Stage1WeaponLoadoutFixture.Create(
+                StableId.Parse("loadout.stage1-custom"),
+                new[]
+                {
+                    Stage1WeaponLoadoutSlot.Create(WeaponMountSlot.MountOne, selectedWeaponIds[0]),
+                    Stage1WeaponLoadoutSlot.Create(WeaponMountSlot.MountTwo, selectedWeaponIds[1]),
+                    Stage1WeaponLoadoutSlot.Create(WeaponMountSlot.MountThree, selectedWeaponIds[2]),
+                    Stage1WeaponLoadoutSlot.Create(WeaponMountSlot.MountFour, selectedWeaponIds[3]),
+                });
+        }
+
+        private static string GetWeaponLabel(StableId weaponId)
+        {
+            switch (weaponId.ToString())
+            {
+                case "weapon.blaster-machine-gun": return "Blaster Machine Gun";
+                case "weapon.shotgun": return "Shotgun";
+                case "weapon.rocket-launcher": return "Rocket Launcher";
+                case "weapon.arc-gun": return "Arc Gun";
+                case "weapon.ricochet-gun": return "Ricochet Gun";
+                default: return weaponId.ToString();
+            }
         }
     }
 }

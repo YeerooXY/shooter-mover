@@ -40,10 +40,20 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public const int StartingPlayerHealth = 100;
         public const int TurretShotDamage = 10;
         public const int PlayerShotDamage = 6;
+        private const float BlasterFireIntervalSeconds = 0.09f;
+        private const float BlasterProjectileSpeed = 18f;
+        private const float BlasterProjectileLifetimeSeconds = 2f;
+        private const float BlasterProjectileRadius = 0.08f;
+        private const float PlayerVisualScale = 0.9f;
+        private const float PropGridSize = 0.5f;
+        private static readonly Vector2 CrateCollisionSize = new Vector2(2.2f, 1.35f);
+        private static readonly Vector2 ExplosiveCollisionSize = new Vector2(1.2f, 1.2f);
 
         [SerializeField] private Stage1VisibleSliceRoomPresentation roomPresentationPrefab;
         [SerializeField] private GameObject blasterTurretPrefab;
         [SerializeField] private VisibleSliceBlasterTurretPresenter turretPresentationPrefab;
+        [SerializeField] private Sprite blasterShotSprite;
+        [SerializeField] private bool shootingSandbox = true;
         [SerializeField] private bool reducedEffects;
         [SerializeField] private bool grayscale;
 
@@ -62,10 +72,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private MovementThrusterTuningProfile movementTuning;
         private MovementActorThrusterStatusReader thrusterReader;
         private PlayerCombatIntentAdapter combatInput;
+        private CombatHit2DAdapter playerHitAdapter;
+        private BoundedProjectile2D playerProjectileTemplate;
         private InputActionAsset inputActions;
         private Transform playerTransform;
         private Rigidbody2D playerBody;
         private Collider2D playerCollider;
+        private SpriteRenderer playerBodyRenderer;
+        private TrailRenderer playerBoostTrail;
         private Camera sceneCamera;
         private Material lineMaterial;
         private Stage1WeaponLoadoutFixture selectedLoadout;
@@ -79,6 +93,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private bool firingObserved;
         private bool sessionActive;
         private bool initialized;
+        private float nextBlasterShotTime;
 
         public bool ReducedEffectsEnabled => reducedEffects;
         public bool IsInitialized => initialized;
@@ -153,6 +168,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             RefreshHud();
             RefreshTurretPresentation();
+            RefreshBoostPresentation();
             TickShotTraces();
             damageObserved = false;
             firingObserved = false;
@@ -187,6 +203,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         public bool FireAtTurretForTests()
         {
+            if (shootingSandbox)
+            {
+                return FireBlaster();
+            }
+
             if (!sessionActive || turretPackage == null || turretPackage.Authority == null)
             {
                 return false;
@@ -229,15 +250,27 @@ namespace ShooterMover.TestSupport.VisibleSlice
             firingObserved = false;
             observedTurretShotSequence = 0L;
             selectedLoadout = null;
-            sessionActive = false;
+            sessionActive = shootingSandbox;
+            nextBlasterShotTime = 0f;
 
             ClearShotTraces();
             playerBody.position = playerSpawn;
             playerBody.linearVelocity = Vector2.zero;
             playerBody.angularVelocity = 0f;
             movementLifecycle.RestartActor();
-            turretPackage.RestartSession();
-            loadoutSelector.ResetForRestart();
+            if (playerBoostTrail != null)
+            {
+                playerBoostTrail.emitting = false;
+                playerBoostTrail.Clear();
+            }
+            if (turretPackage != null)
+            {
+                turretPackage.RestartSession();
+            }
+            if (loadoutSelector != null)
+            {
+                loadoutSelector.ResetForRestart();
+            }
             combatHud.ResetPresentationForRestart(restartGeneration);
             cameraRig.Restart();
             RefreshHud();
@@ -248,14 +281,23 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             reducedEffects = value;
             roomPresentation.SetReducedEffects(value);
-            weaponStrip.SetReducedEffects(value);
-            turretPresenter.SetReducedEffectsOverride(value);
+            if (weaponStrip != null)
+            {
+                weaponStrip.SetReducedEffects(value);
+            }
+            if (turretPresenter != null)
+            {
+                turretPresenter.SetReducedEffectsOverride(value);
+            }
         }
 
         public void SetGrayscale(bool value)
         {
             grayscale = value;
-            turretPresenter.SetGrayscaleOverride(value);
+            if (turretPresenter != null)
+            {
+                turretPresenter.SetGrayscaleOverride(value);
+            }
             sceneCamera.backgroundColor = value
                 ? new Color(0.075f, 0.075f, 0.075f, 1f)
                 : new Color(0.018f, 0.026f, 0.038f, 1f);
@@ -271,9 +313,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 new VitalState(playerHealth, StartingPlayerHealth, 0d, 0d),
                 thrusterReader == null ? null : thrusterReader.ReadSnapshot(),
                 focused,
-                "BLASTER TURRET",
+                shootingSandbox ? "NO ENEMIES" : "BLASTER TURRET",
                 "FOUNDRY TEST BAY",
-                focused != null && focused.IsDestroyed ? "ROOM CLEAR" : "DESTROY THE TURRET",
+                shootingSandbox
+                    ? "WASD MOVE  /  SHIFT OR SPACE BOOST  /  HOLD LEFT CLICK FIRE"
+                    : focused != null && focused.IsDestroyed ? "ROOM CLEAR" : "DESTROY THE TURRET",
                 "R",
                 "MENU",
                 sessionActive,
@@ -355,11 +399,21 @@ namespace ShooterMover.TestSupport.VisibleSlice
             roomPresentation.SetReducedEffects(reducedEffects);
             sessionObjects.Add(roomPresentation.gameObject);
 
+            BuildPropObstacles();
             BuildWalls();
             BuildPlayer();
+            playerHitAdapter = new CombatHit2DAdapter(StableId.Parse("actor.vs007-player"));
+            playerProjectileTemplate = CreateProjectileTemplate(
+                "PlayerBlasterProjectileTemplate",
+                blasterShotSprite,
+                new Vector3(0.09f, 0.09f, 1f));
             BuildCamera();
-            BuildTurret();
+            if (!shootingSandbox)
+            {
+                BuildTurret();
+            }
             BuildUi();
+            sessionActive = shootingSandbox;
             SetGrayscale(grayscale);
             RefreshHud();
             RefreshTurretPresentation();
@@ -401,14 +455,20 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 player.transform,
                 playerCollider);
 
-            SpriteRenderer body = player.AddComponent<SpriteRenderer>();
-            body.sprite = CreateRuntimeSprite("VS007 Player", new Color(0.14f, 0.82f, 1f, 1f));
-            body.sortingOrder = 10;
-            player.transform.localScale = new Vector3(1.35f, 1.35f, 1f);
+            playerBodyRenderer = player.AddComponent<SpriteRenderer>();
+            playerBodyRenderer.sprite = CreateRuntimeSprite(
+                "VS007 Player",
+                new Color(0.14f, 0.82f, 1f, 1f));
+            playerBodyRenderer.sortingOrder = 10;
+            player.transform.localScale = new Vector3(
+                PlayerVisualScale,
+                PlayerVisualScale,
+                1f);
             CreateGunMount(player.transform, new Vector2(-0.48f, 0.34f));
             CreateGunMount(player.transform, new Vector2(0.48f, 0.34f));
             CreateGunMount(player.transform, new Vector2(-0.48f, -0.34f));
             CreateGunMount(player.transform, new Vector2(0.48f, -0.34f));
+            CreateBoostTrail(player.transform);
         }
 
         private void BuildCamera()
@@ -438,7 +498,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
             turretObject.transform.position = new Vector3(7f, 2.5f, 0f);
             sessionObjects.Add(turretObject);
             turretPackage = turretObject.GetComponent<BlasterTurretPackage>();
-            BoundedProjectile2D projectileTemplate = CreateProjectileTemplate();
+            BoundedProjectile2D projectileTemplate = CreateProjectileTemplate(
+                "TurretProjectileTemplate",
+                blasterShotSprite,
+                new Vector3(0.07f, 0.07f, 1f));
             turretDefinition = BlasterTurretDefinition.CreateRuntime(
                 30d, 0.65d, 1.1d, 28d, 0.7d, 0.07d, 0.5d, 0.02d, 4);
             EnemyTarget2DAdapter playerTarget = playerTransform.GetComponent<EnemyTarget2DAdapter>();
@@ -463,12 +526,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void BuildUi()
         {
-            GameObject loadoutObject = new GameObject("FixedLoadoutSelector");
-            loadoutObject.transform.SetParent(transform, false);
-            sessionObjects.Add(loadoutObject);
-            loadoutSelector = loadoutObject.AddComponent<VisibleSliceLoadoutSelector>();
-            loadoutSelector.Confirmed += OnLoadoutConfirmed;
-            loadoutSelector.Cancelled += OnLoadoutCancelled;
+            if (!shootingSandbox)
+            {
+                GameObject loadoutObject = new GameObject("FixedLoadoutSelector");
+                loadoutObject.transform.SetParent(transform, false);
+                sessionObjects.Add(loadoutObject);
+                loadoutSelector = loadoutObject.AddComponent<VisibleSliceLoadoutSelector>();
+                loadoutSelector.Confirmed += OnLoadoutConfirmed;
+                loadoutSelector.Cancelled += OnLoadoutCancelled;
+            }
 
             GameObject hudObject = new GameObject("GeneralCombatHud");
             hudObject.transform.SetParent(transform, false);
@@ -476,23 +542,35 @@ namespace ShooterMover.TestSupport.VisibleSlice
             combatHud = hudObject.AddComponent<VisibleSliceGeneralCombatHud>();
             combatHud.BindSources(this, null);
 
-            GameObject stripObject = new GameObject("Stage1WeaponStatusStrip");
-            stripObject.transform.SetParent(transform, false);
-            sessionObjects.Add(stripObject);
-            weaponStrip = stripObject.AddComponent<Stage1WeaponStatusStrip>();
-            weaponStrip.SetTemporaryAudioEnabled(false);
-            weaponStrip.SetReducedEffects(reducedEffects);
+            if (!shootingSandbox)
+            {
+                GameObject stripObject = new GameObject("Stage1WeaponStatusStrip");
+                stripObject.transform.SetParent(transform, false);
+                sessionObjects.Add(stripObject);
+                weaponStrip = stripObject.AddComponent<Stage1WeaponStatusStrip>();
+                weaponStrip.SetTemporaryAudioEnabled(false);
+                weaponStrip.SetReducedEffects(reducedEffects);
+            }
         }
 
-        private BoundedProjectile2D CreateProjectileTemplate()
+        private BoundedProjectile2D CreateProjectileTemplate(
+            string objectName,
+            Sprite sprite,
+            Vector3 visualScale)
         {
-            GameObject projectileObject = new GameObject("AcceptedBoundedProjectileTemplate");
+            GameObject projectileObject = new GameObject(objectName);
             projectileObject.transform.SetParent(transform, false);
-            projectileObject.transform.position = new Vector3(0f, 0f, -50f);
+            projectileObject.transform.localPosition = Vector3.zero;
+            projectileObject.transform.localScale = visualScale;
+            SpriteRenderer renderer = projectileObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 40;
             Rigidbody2D body = projectileObject.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
             body.simulated = false;
-            projectileObject.AddComponent<CircleCollider2D>();
+            body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            CircleCollider2D projectileCollider = projectileObject.AddComponent<CircleCollider2D>();
+            projectileCollider.isTrigger = true;
             BoundedProjectile2D projectile = projectileObject.AddComponent<BoundedProjectile2D>();
             projectileObject.SetActive(false);
             sessionObjects.Add(projectileObject);
@@ -509,6 +587,47 @@ namespace ShooterMover.TestSupport.VisibleSlice
             CreateWall("Wall_West", new Vector2(bounds.xMin, bounds.center.y), new Vector2(thickness, bounds.height));
         }
 
+        private void BuildPropObstacles()
+        {
+            if (roomPresentation == null || roomPresentation.PropRoot == null)
+            {
+                return;
+            }
+
+            Transform propRoot = roomPresentation.PropRoot;
+            for (int index = 0; index < propRoot.childCount; index++)
+            {
+                Transform visual = propRoot.GetChild(index);
+                visual.localPosition = SnapToGrid(visual.localPosition, PropGridSize);
+
+                Vector2 collisionSize;
+                if (visual.name.StartsWith("Crate_", StringComparison.Ordinal))
+                {
+                    collisionSize = CrateCollisionSize;
+                }
+                else if (visual.name.StartsWith("Explosive_", StringComparison.Ordinal))
+                {
+                    collisionSize = ExplosiveCollisionSize;
+                }
+                else
+                {
+                    continue;
+                }
+
+                GameObject obstacle = new GameObject(visual.name + "_Collision");
+                obstacle.transform.SetParent(transform, false);
+                obstacle.transform.position = new Vector3(
+                    visual.position.x,
+                    visual.position.y,
+                    0f);
+                obstacle.transform.rotation = visual.rotation;
+                BoxCollider2D collider = obstacle.AddComponent<BoxCollider2D>();
+                collider.size = collisionSize;
+                obstacle.AddComponent<VisibleSliceWallContract>();
+                sessionObjects.Add(obstacle);
+            }
+        }
+
         private void CreateWall(string name, Vector2 position, Vector2 size)
         {
             GameObject wall = new GameObject(name);
@@ -520,12 +639,27 @@ namespace ShooterMover.TestSupport.VisibleSlice
             sessionObjects.Add(wall);
         }
 
+        private static Vector3 SnapToGrid(Vector3 position, float gridSize)
+        {
+            if (gridSize <= 0f)
+            {
+                return position;
+            }
+
+            return new Vector3(
+                Mathf.Round(position.x / gridSize) * gridSize,
+                Mathf.Round(position.y / gridSize) * gridSize,
+                position.z);
+        }
+
         private void ReadCombatInput()
         {
             PlayerIntentFrame intent = combatInput.ReadIntentFrame();
-            if (intent.Fire.WasPressed)
+            if ((intent.Fire.IsHeld || intent.Fire.WasPressed)
+                && Time.unscaledTime >= nextBlasterShotTime)
             {
-                FireAtTurretForTests();
+                FireBlaster();
+                nextBlasterShotTime = Time.unscaledTime + BlasterFireIntervalSeconds;
             }
 
             Vector2 direction = ReadAimWorld() - (Vector2)playerTransform.position;
@@ -554,7 +688,32 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void RefreshTurretPresentation()
         {
-            turretPresenter.RefreshFromSource(Time.unscaledTimeAsDouble);
+            if (turretPresenter != null)
+            {
+                turretPresenter.RefreshFromSource(Time.unscaledTimeAsDouble);
+            }
+        }
+
+        private void RefreshBoostPresentation()
+        {
+            if (playerTransform == null || playerBodyRenderer == null || thrusterReader == null)
+            {
+                return;
+            }
+
+            ThrusterStatusSnapshot status = thrusterReader.ReadSnapshot();
+            bool isBoosting = status != null && status.IsBursting;
+            playerTransform.localScale = new Vector3(
+                PlayerVisualScale,
+                PlayerVisualScale,
+                1f);
+            playerBodyRenderer.color = isBoosting
+                ? new Color(0.72f, 0.96f, 1f, 1f)
+                : Color.white;
+            if (playerBoostTrail != null)
+            {
+                playerBoostTrail.emitting = isBoosting;
+            }
         }
 
         private Vector2 ReadAimWorld()
@@ -562,13 +721,68 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (Mouse.current == null || sceneCamera == null)
             {
                 return turretPackage == null
-                    ? Vector2.zero
+                    ? (Vector2)playerTransform.position + Vector2.up
                     : (Vector2)turretPackage.transform.position;
             }
 
             Vector2 pointer = Mouse.current.position.ReadValue();
             Vector3 world = sceneCamera.ScreenToWorldPoint(new Vector3(pointer.x, pointer.y, 10f));
             return new Vector2(world.x, world.y);
+        }
+
+        private bool FireBlaster()
+        {
+            if (!sessionActive
+                || playerProjectileTemplate == null
+                || playerHitAdapter == null
+                || playerTransform == null)
+            {
+                return false;
+            }
+
+            Vector2 direction = ReadAimWorld() - (Vector2)playerTransform.position;
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                direction = playerTransform.up;
+            }
+            direction.Normalize();
+
+            BoundedProjectile2D projectile = Instantiate(playerProjectileTemplate, transform);
+            projectile.gameObject.name = "PlayerBlasterShot";
+            projectile.transform.position = new Vector3(
+                playerTransform.position.x,
+                playerTransform.position.y,
+                0f);
+            projectile.gameObject.SetActive(true);
+
+            StableId eventId = StableId.Create(
+                "combat-event",
+                "vs007-player-g" + restartGeneration + "-s" + playerShotSequence);
+            playerShotSequence++;
+            Vector2 origin = (Vector2)playerTransform.position + direction * 0.9f;
+            bool initializedProjectile = projectile.TryInitialize(
+                eventId,
+                origin,
+                direction,
+                BlasterProjectileSpeed,
+                BlasterProjectileLifetimeSeconds,
+                BlasterProjectileRadius,
+                CombatChannel.Kinetic,
+                playerHitAdapter,
+                new[] { playerCollider },
+                false,
+                0.12f);
+            if (!initializedProjectile)
+            {
+                Destroy(projectile.gameObject);
+                return false;
+            }
+
+            projectile.transform.rotation = Quaternion.Euler(
+                0f,
+                0f,
+                Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f);
+            return true;
         }
 
         private Vector2 ReadReticleViewport()
@@ -593,6 +807,39 @@ namespace ShooterMover.TestSupport.VisibleSlice
             renderer.sprite = CreateRuntimeSprite("VS007 Mount", new Color(0.82f, 0.9f, 0.96f, 1f));
             renderer.sortingOrder = 11;
             mount.transform.localScale = new Vector3(0.22f, 0.48f, 1f);
+        }
+
+        private void CreateBoostTrail(Transform parent)
+        {
+            GameObject trailObject = new GameObject("BoostTrail");
+            trailObject.transform.SetParent(parent, false);
+            trailObject.transform.localPosition = new Vector3(0f, -0.38f, 0f);
+            playerBoostTrail = trailObject.AddComponent<TrailRenderer>();
+            playerBoostTrail.material = lineMaterial;
+            playerBoostTrail.time = 0.24f;
+            playerBoostTrail.minVertexDistance = 0.04f;
+            playerBoostTrail.widthMultiplier = 0.5f;
+            playerBoostTrail.widthCurve = new AnimationCurve(
+                new Keyframe(0f, 0f),
+                new Keyframe(0.18f, 1f),
+                new Keyframe(1f, 0.08f));
+            playerBoostTrail.colorGradient = new Gradient
+            {
+                colorKeys = new[]
+                {
+                    new GradientColorKey(new Color(0.92f, 1f, 1f), 0f),
+                    new GradientColorKey(new Color(0.12f, 0.82f, 1f), 0.4f),
+                    new GradientColorKey(new Color(0.05f, 0.32f, 1f), 1f),
+                },
+                alphaKeys = new[]
+                {
+                    new GradientAlphaKey(0.95f, 0f),
+                    new GradientAlphaKey(0.65f, 0.45f),
+                    new GradientAlphaKey(0f, 1f),
+                },
+            };
+            playerBoostTrail.sortingOrder = 9;
+            playerBoostTrail.emitting = false;
         }
 
         private Sprite CreateRuntimeSprite(string spriteName, Color color)
@@ -665,7 +912,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
             movement.AddAction("Aim", InputActionType.Value, "<Gamepad>/rightStick", expectedControlLayout: "Vector2");
             InputAction thruster = movement.AddAction("Thruster", InputActionType.Button);
             thruster.AddBinding("<Keyboard>/leftShift");
+            thruster.AddBinding("<Keyboard>/rightShift");
+            thruster.AddBinding("<Keyboard>/space");
             thruster.AddBinding("<Gamepad>/rightShoulder");
+            thruster.AddBinding("<Gamepad>/buttonSouth");
 
             InputActionMap combat = asset.AddActionMap("Combat");
             InputAction aim = combat.AddAction("Aim", InputActionType.Value, expectedControlLayout: "Vector2");
@@ -695,11 +945,13 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private void ValidateSerializedDependencies()
         {
             if (roomPresentationPrefab == null
-                || blasterTurretPrefab == null
-                || turretPresentationPrefab == null)
+                || blasterShotSprite == null
+                || (!shootingSandbox
+                    && (blasterTurretPrefab == null || turretPresentationPrefab == null)))
             {
                 throw new InvalidOperationException(
                     "VS-007 scene prefab bindings: room=" + (roomPresentationPrefab != null)
+                    + " shot=" + (blasterShotSprite != null)
                     + " turret=" + (blasterTurretPrefab != null)
                     + " presentation=" + (turretPresentationPrefab != null));
             }

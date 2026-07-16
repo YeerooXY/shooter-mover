@@ -98,6 +98,8 @@ MonoBehaviour:
   roomPresentationPrefab: {fileID: 11400000, guid: d69cd63fb4924ef1b7a3c13bf92ef776, type: 3}
   blasterTurretPrefab: {fileID: 100000, guid: 9e665ce075ca8068ec015198e7000707, type: 3}
   turretPresentationPrefab: {fileID: 11400000, guid: 05dcb140d7d245f1a4a03675967c9103, type: 3}
+  blasterShotSprite: {fileID: 21300000, guid: 87563c16613a47debd8e73fc9db1ab15, type: 3}
+  shootingSandbox: 1
   reducedEffects: 0
   grayscale: 0
 --- !u!1660057539 &9223372036854775807

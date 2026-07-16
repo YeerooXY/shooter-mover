@@ -25,6 +25,10 @@ Together the matrix exposes all five approved identities. Every fixture contains
 exactly four distinct weapons and all IDs resolve back to the validated descriptor
 roster.
 
+Custom four-mount selections may repeat an approved weapon identity. Each stable
+mount must still appear exactly once, so combinations such as four Blaster Machine
+Guns are valid while duplicate mount slots and unknown weapon IDs remain invalid.
+
 ## Manual selection
 
 A test or evidence harness selects a comparison by stable ID without changing a

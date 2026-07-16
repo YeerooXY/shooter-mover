@@ -87,10 +87,14 @@ namespace ShooterMover.Domain.Movement
 
             double currentSpeedSquared = (currentX * currentX) + (currentY * currentY);
             double currentSpeed = Math.Sqrt(currentSpeedSquared);
-            double alignment = (currentX * targetX) + (currentY * targetY);
+            // Detect reversal per axis: down-right to down-left is orthogonal as a whole,
+            // but the horizontal component is still an explicit counter-steer.
+            bool isCounterSteering =
+                (currentX * targetX) < 0d
+                || (currentY * targetY) < 0d;
             double responseRate;
 
-            if (alignment < 0d)
+            if (isCounterSteering)
             {
                 responseRate = tuning.BaseCounterSteerBraking;
             }
