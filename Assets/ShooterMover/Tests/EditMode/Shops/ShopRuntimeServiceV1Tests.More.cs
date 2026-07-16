@@ -15,6 +15,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Curves;
 using ShooterMover.Domain.Rewards.Generation;
