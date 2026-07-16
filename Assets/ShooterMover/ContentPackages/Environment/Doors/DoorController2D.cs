@@ -132,9 +132,6 @@ namespace ShooterMover.ContentPackages.Environment.Doors
             Array.Empty<Collider2D>();
         [SerializeField] private GameObject closedPresentationRoot;
         [SerializeField] private GameObject openPresentationRoot;
-        [SerializeField] private Animator animator;
-        [SerializeField] private string openAnimatorTrigger = "Open";
-        [SerializeField] private string closeAnimatorTrigger = "Close";
         [SerializeField] private UnityEvent opened = new UnityEvent();
         [SerializeField] private UnityEvent closed = new UnityEvent();
 
@@ -764,17 +761,6 @@ namespace ShooterMover.ContentPackages.Environment.Doors
             if (openPresentationRoot != null)
             {
                 openPresentationRoot.SetActive(!isClosed);
-            }
-
-            if (animator != null)
-            {
-                string trigger = isClosed
-                    ? closeAnimatorTrigger
-                    : openAnimatorTrigger;
-                if (!string.IsNullOrEmpty(trigger))
-                {
-                    animator.SetTrigger(trigger);
-                }
             }
 
             if (!force || previous != nextState)

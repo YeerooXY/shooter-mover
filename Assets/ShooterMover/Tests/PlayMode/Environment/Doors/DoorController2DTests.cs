@@ -13,7 +13,7 @@ using ShooterMover.UnityAdapters.Authoring;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace ShooterMover.Tests.PlayMode.Environment.Doors
+namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
 {
     public sealed class DoorController2DTests
     {

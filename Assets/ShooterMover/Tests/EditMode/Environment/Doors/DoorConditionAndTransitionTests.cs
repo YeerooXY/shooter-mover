@@ -8,7 +8,7 @@ using ShooterMover.Contracts.Rooms;
 using ShooterMover.Domain.Common;
 using UnityEngine;
 
-namespace ShooterMover.Tests.EditMode.Environment.Doors
+namespace ShooterMover.Tests.EditMode.EnvironmentPackages.Doors
 {
     public sealed class DoorConditionAndTransitionTests
     {
@@ -212,7 +212,7 @@ namespace ShooterMover.Tests.EditMode.Environment.Doors
         public void ProductionSources_AvoidGlobalDiscoveryAndForeignAuthorities()
         {
             string root = Path.Combine(
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 "ShooterMover/ContentPackages/Environment/Doors");
             Assert.That(Directory.Exists(root), Is.True);
 

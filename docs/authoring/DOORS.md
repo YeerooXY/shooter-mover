@@ -91,11 +91,12 @@ inverse projection.
 changes expose:
 
 - a C# `StateChanged` event with the placed ID and previous/current state;
-- package-local `opened` and `closed` Unity events; and
-- optional animator triggers.
+- package-local `opened` and `closed` Unity events.
 
-Animation and presentation callbacks do not become door, mission, or transition
-authority.
+Animation components can subscribe through the Unity events or `StateChanged`
+without requiring the reusable package to depend on a specific animation
+module. Animation and presentation callbacks do not become door, mission, or
+transition authority.
 
 ## One-way transitions
 
