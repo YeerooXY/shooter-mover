@@ -1,4 +1,4 @@
-# Resume Shooter Mover Reward/Progression Wave 0
+# Resume Shooter Mover Reward/Progression Wave 1
 
 Continue from committed state in `YeerooXY/shooter-mover`. Never write to a
 branch whose pull request has merged.
@@ -7,38 +7,33 @@ branch whose pull request has merged.
 
 1. Read `AGENTS.md`, `project_workspace.json`, and
    `assembly/context/CURRENT_HANDOFF.json`.
-2. Verify current `main` and exact path ownership before writing.
-3. Read
+2. Verify current `main`, open PR state, and exact path ownership before writing.
+3. Read the merged ADR-001 documents, AUD-001 audit, and
    `docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md`.
-4. Read the selected prompt under `assembly/dispatch/wave0/` completely.
+4. Read the selected prompt under `assembly/dispatch/wave1/` completely.
 5. Use a fresh branch and separate worktree for every task.
 
 ## Durable state
 
-- PR #110 is merged; instructions to review or merge it are obsolete.
-- PR #127 is merged and provides turret tracking plus configurable destroyed
-  collision.
-- PR #128 is merged at `56a8483` and establishes the current reward,
-  progression, economy, level-authoring, simulator, and integration roadmap.
-- Wave 0 contains `ADR-001`, `AUD-001`, and `DEMO-001`.
-- Wave 1 cannot begin until `ADR-001` merges.
-- `DEMO-001` alone owns Stage 1 serialized integration paths during Wave 0.
-- Local robot integration commit
-  `96d6ce9791f4eee860a385e6c7613f972491a4f6` is not available to GitHub-only
-  web agents.
+- Wave 0 is complete: PRs #130, #132, and #131 merged.
+- Current verified `main` is
+  `0e678a9333956aa29ba2e3598265c8e1a4122e72`.
+- The complete playable Stage 1 demo, robot, rotating turret, physical shots,
+  boost, props, collisions, and restart are merged.
+- Wave 1 contains `OBJ-001`, `REW-001`, `EQP-001`, `RNG-001`, `LED-001`, and
+  `PRG-001`.
+- All six Wave 1 tasks may run in parallel on isolated branches.
+- No Wave 1 task may edit Stage 1 or existing gameplay packages.
+- `RNG-001` owns `Progression/Curves/**`; `PRG-001` owns
+  `Progression/Context/**`.
 - Stage 2 remains locked behind `GATE-010`.
 
 ## Exact next action
 
-Dispatch:
+Dispatch all six prompt files under `assembly/dispatch/wave1/` to separate
+GitHub web/coding agents. Every branch starts from exact base
+`0e678a9333956aa29ba2e3598265c8e1a4122e72`.
 
-- `ADR-001_WEB_AGENT.md` to one GitHub web agent;
-- `AUD-001_WEB_AGENT.md` to a second GitHub web agent;
-- `DEMO-001_LOCAL_AGENT.md` to one local/path-capable agent.
-
-All three start from exact base
-`56a84838558fdfe67fb97254d832b2dd7cd5c018`.
-
-Do not let `ADR-001` or `AUD-001` edit Unity assets or scenes. Do not let a
-GitHub-only agent attempt `DEMO-001`. Do not dispatch Wave 1 before `ADR-001`
-merges.
+Keep PRs draft until proof is complete. If Unity is unavailable to an agent,
+the coordinator runs the pending focused tests before merge. Do not dispatch a
+Wave 2 consumer until all dependencies named in the roadmap and handoff merge.

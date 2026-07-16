@@ -1,5 +1,9 @@
 # Wave 0 dispatch index
 
+Status: completed. PR #130 (`AUD-001`), PR #132 (`ADR-001`), and PR #131
+(`DEMO-001`) are merged. This directory is retained as historical dispatch
+evidence. Current prompts are under `assembly/dispatch/wave1/`.
+
 Base commit for all three tasks:
 
 `56a84838558fdfe67fb97254d832b2dd7cd5c018`
@@ -12,14 +16,14 @@ Base commit for all three tasks:
 
 Dispatch all three in parallel on separate branches.
 
-Merge rules:
+Historical merge rules used for Wave 0:
 
 - Each PR targets `main`.
 - `ADR-001` and `AUD-001` must not modify implementation.
 - `DEMO-001` must not add reward/economy architecture.
-- Wave 1 remains blocked until `ADR-001` merges.
-- Replace future `BASE_AFTER_DEPENDENCIES` placeholders with exact merged
-  `main` SHAs at dispatch time.
+- The former Wave 1 blocker was satisfied when `ADR-001` merged through PR #132.
+- The former `BASE_AFTER_DEPENDENCIES` placeholders have been replaced by the
+  exact Wave 1 base in `assembly/dispatch/wave1/`.
 
 Prompt files:
 

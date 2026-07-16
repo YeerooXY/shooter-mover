@@ -6,7 +6,7 @@
   "active_role": "dispatch",
   "active_branch": null,
   "active_pr": null,
-  "last_verified_commit": "56a84838558fdfe67fb97254d832b2dd7cd5c018",
+  "last_verified_commit": "0e678a9333956aa29ba2e3598265c8e1a4122e72",
   "authoritative_artifacts": [
     "AGENTS.md",
     "project_workspace.json",
@@ -40,10 +40,21 @@
     "assembly/generated/task_batches/stage1-gate.json",
     "assembly/generated/task_batches/stage1-visible-slice.json",
     "docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md",
+    "docs/architecture/rewards/REWARD_EQUIPMENT_ARCHITECTURE_V1.md",
+    "docs/architecture/authoring/PLACED_OBJECT_LIFECYCLE_V1.md",
+    "docs/architecture/authoring/STAGE1_INTEGRATION_OWNERSHIP.md",
+    "docs/audits/reward-object-readiness/ENEMY_AND_SCENE_AUDIT.md",
     "assembly/dispatch/wave0/README.md",
     "assembly/dispatch/wave0/ADR-001_WEB_AGENT.md",
     "assembly/dispatch/wave0/AUD-001_WEB_AGENT.md",
     "assembly/dispatch/wave0/DEMO-001_LOCAL_AGENT.md",
+    "assembly/dispatch/wave1/README.md",
+    "assembly/dispatch/wave1/OBJ-001_WEB_AGENT.md",
+    "assembly/dispatch/wave1/REW-001_WEB_AGENT.md",
+    "assembly/dispatch/wave1/EQP-001_WEB_AGENT.md",
+    "assembly/dispatch/wave1/RNG-001_WEB_AGENT.md",
+    "assembly/dispatch/wave1/LED-001_WEB_AGENT.md",
+    "assembly/dispatch/wave1/PRG-001_WEB_AGENT.md",
     "ProjectSettings/ProjectVersion.txt",
     "docs/toolchain/UNITY_BASELINE.md",
     "assembly/generated/task_runs/UF-001-run-001.json",
@@ -77,24 +88,24 @@
     "tools/validation/validate_repository_layout.py",
     "docs/architecture/FILE_OWNERSHIP.md"
   ],
-  "current_section": "reward_progression_wave0_dispatch",
-  "last_completed_item": "Roadmap PR #128 merged at 56a8483, establishing the reward, progression, economy, level-authoring, simulator, and single-scene-owner execution plan.",
-  "current_item": "Wave 0 is ready for parallel dispatch: ADR-001 architecture lock, AUD-001 read-only readiness audit, and DEMO-001 immediate complete playable baseline.",
-  "next_action": "Dispatch ADR-001 and AUD-001 to separate GitHub web agents from exact base 56a84838558fdfe67fb97254d832b2dd7cd5c018. Dispatch DEMO-001 to a separate local/path-capable agent from the same base with access to local commit 96d6ce9791f4eee860a385e6c7613f972491a4f6. Merge ADR-001 before dispatching Wave 1.",
+  "current_section": "reward_progression_wave1_dispatch",
+  "last_completed_item": "Wave 0 completed: AUD-001 merged through PR #130, ADR-001 through PR #132, and DEMO-001 through PR #131. Main is verified at 0e678a9333956aa29ba2e3598265c8e1a4122e72.",
+  "current_item": "Wave 1 contains six independent foundation tasks: OBJ-001, REW-001, EQP-001, RNG-001, LED-001, and PRG-001. Exact-base web-agent packets are prepared under assembly/dispatch/wave1/.",
+  "next_action": "Dispatch all six Wave 1 prompts to isolated GitHub web/coding agents from exact base 0e678a9333956aa29ba2e3598265c8e1a4122e72. Keep every PR draft until required proof is complete. Do not dispatch a Wave 2 consumer until all dependencies named by that consumer have merged.",
   "blockers": [
-    "Wave 1 implementation must not begin until ADR-001 merges.",
-    "DEMO-001 cannot be completed blindly by a GitHub-only web agent because robot commit 96d6ce9 and its source context are currently local-only.",
+    "Wave 2 authorities and product packages remain dependency-gated on their named Wave 1 merges.",
+    "INT-001 remains blocked until DEMO-001 plus all selected package, normalization, validation, and balance dependencies merge.",
     "Stage 2 remains blocked behind GATE-010 and a later evidence-backed amendment."
   ],
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-16T13:13:30+02:00"
+    "last_persisted_at": "2026-07-16T13:57:57+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-16T13:13:30+02:00"
+  "updated_at": "2026-07-16T13:57:57+02:00"
 }
