@@ -157,7 +157,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
                     guaranteed,
                     new IndependentRewardRollAuthoring[0],
                     new ExclusiveRewardGroupAuthoring[0]));
-            RewardProfileV1 profile = RewardProfileCapabilityReader.BuildProfile(asset);
+            RewardProfileV1 profile = asset.BuildProfile();
             RewardOperationRequestV1 operation = RewardOperationRequestV1.Create(
                 StableId.Parse("run." + suffix),
                 StableId.Parse("source." + suffix),
