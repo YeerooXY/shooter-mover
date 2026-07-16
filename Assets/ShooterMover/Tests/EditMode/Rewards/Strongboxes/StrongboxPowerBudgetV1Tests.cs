@@ -180,6 +180,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                 out rejection);
 
             Assert.That(resolved, Is.True, rejection);
+            Assert.That(context.ProgressionContext.CharacterLevel, Is.EqualTo(20));
+            Assert.That(powerBudget.TierLevelBonus, Is.EqualTo(5));
             Assert.That(equipment, Has.Count.EqualTo(2));
             Assert.That(equipment[0].DefinitionId, Is.EqualTo(weaponId));
             Assert.That(equipment[1].DefinitionId, Is.EqualTo(weaponId));
