@@ -6,17 +6,18 @@ using UnityEngine;
 namespace ShooterMover.ContentPackages.Props.DestructibleProps
 {
     /// <summary>
-    /// Unity-facing destructible prop target. The component never interprets raw projectile
-    /// contact as damage; it mutates state only from a confirmed HitMessage.
+    /// Unity-facing destructible target. State mutates only from confirmed combat messages;
+    /// collision and presentation references are supplied explicitly by the authoring boundary.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class DestructibleProp2D : MonoBehaviour
     {
         private Collider2D blockingCollider;
-        private GameObject presentationRoot;
         private Renderer[] presentationRenderers = Array.Empty<Renderer>();
         private bool[] initialRendererEnabled = Array.Empty<bool>();
         private bool initialColliderEnabled;
+        private bool initialColliderIsTrigger;
+        private DestructiblePropDestroyedCollisionPolicy destroyedCollisionPolicy;
         private DestructiblePropAuthority authority;
         private bool configured;
         private bool destructionNotificationPublished;
@@ -25,56 +26,48 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         public event Action<DestructiblePropDestructionResult> Destroyed;
         public event Action Restarted;
 
-        public bool IsConfigured
-        {
-            get { return configured; }
-        }
+        public bool IsConfigured => configured;
+        public StableId PropId => authority == null ? null : authority.PropId;
+        public double MaximumHealth => authority == null ? 0d : authority.MaximumHealth;
+        public double CurrentHealth => authority == null || authority.CurrentState == null
+            ? 0d
+            : authority.CurrentState.CurrentHealth;
+        public DestructiblePropState CurrentState => authority == null
+            ? null
+            : authority.CurrentState;
+        public Collider2D BlockingCollider => blockingCollider;
+        public int DestructionNotificationCount => destructionNotificationCount;
+        public DestructiblePropDestroyedCollisionPolicy DestroyedCollisionPolicy =>
+            destroyedCollisionPolicy;
 
-        public StableId PropId
+        /// <summary>
+        /// Compatibility overload retained for existing package consumers.
+        /// </summary>
+        public void Configure(
+            StableId configuredPropId,
+            double configuredMaximumHealth,
+            Collider2D configuredBlockingCollider,
+            GameObject configuredPresentationRoot)
         {
-            get { return authority == null ? null : authority.PropId; }
-        }
-
-        public double MaximumHealth
-        {
-            get { return authority == null ? 0d : authority.MaximumHealth; }
-        }
-
-        public double CurrentHealth
-        {
-            get
+            if (configuredPresentationRoot == null)
             {
-                return authority == null || authority.CurrentState == null
-                    ? 0d
-                    : authority.CurrentState.CurrentHealth;
+                throw new ArgumentNullException(nameof(configuredPresentationRoot));
             }
-        }
 
-        public DestructiblePropState CurrentState
-        {
-            get { return authority == null ? null : authority.CurrentState; }
-        }
-
-        public Collider2D BlockingCollider
-        {
-            get { return blockingCollider; }
-        }
-
-        public GameObject PresentationRoot
-        {
-            get { return presentationRoot; }
-        }
-
-        public int DestructionNotificationCount
-        {
-            get { return destructionNotificationCount; }
+            Configure(
+                configuredPropId,
+                configuredMaximumHealth,
+                configuredBlockingCollider,
+                configuredPresentationRoot.GetComponentsInChildren<Renderer>(true),
+                DestructiblePropDestroyedCollisionPolicy.Disable);
         }
 
         public void Configure(
             StableId configuredPropId,
             double configuredMaximumHealth,
             Collider2D configuredBlockingCollider,
-            GameObject configuredPresentationRoot)
+            Renderer[] configuredPresentationRenderers,
+            DestructiblePropDestroyedCollisionPolicy configuredDestroyedCollisionPolicy)
         {
             if (configured)
             {
@@ -92,25 +85,45 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 throw new ArgumentNullException(nameof(configuredBlockingCollider));
             }
 
-            if (configuredPresentationRoot == null)
+            if (configuredPresentationRenderers == null
+                || configuredPresentationRenderers.Length == 0)
             {
-                throw new ArgumentNullException(nameof(configuredPresentationRoot));
+                throw new ArgumentException(
+                    "At least one explicit presentation renderer is required.",
+                    nameof(configuredPresentationRenderers));
+            }
+
+            if (!Enum.IsDefined(
+                typeof(DestructiblePropDestroyedCollisionPolicy),
+                configuredDestroyedCollisionPolicy))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(configuredDestroyedCollisionPolicy));
+            }
+
+            presentationRenderers = new Renderer[configuredPresentationRenderers.Length];
+            initialRendererEnabled = new bool[configuredPresentationRenderers.Length];
+            for (int index = 0; index < configuredPresentationRenderers.Length; index++)
+            {
+                Renderer renderer = configuredPresentationRenderers[index];
+                if (renderer == null)
+                {
+                    throw new ArgumentException(
+                        "Presentation renderer references cannot contain null.",
+                        nameof(configuredPresentationRenderers));
+                }
+
+                presentationRenderers[index] = renderer;
+                initialRendererEnabled[index] = renderer.enabled;
             }
 
             authority = new DestructiblePropAuthority(
                 configuredPropId,
                 configuredMaximumHealth);
             blockingCollider = configuredBlockingCollider;
-            presentationRoot = configuredPresentationRoot;
             initialColliderEnabled = blockingCollider.enabled;
-            presentationRenderers = presentationRoot.GetComponentsInChildren<Renderer>(true);
-            initialRendererEnabled = new bool[presentationRenderers.Length];
-            for (int index = 0; index < presentationRenderers.Length; index++)
-            {
-                initialRendererEnabled[index] = presentationRenderers[index] != null
-                    && presentationRenderers[index].enabled;
-            }
-
+            initialColliderIsTrigger = blockingCollider.isTrigger;
+            destroyedCollisionPolicy = configuredDestroyedCollisionPolicy;
             destructionNotificationPublished = false;
             destructionNotificationCount = 0;
             configured = true;
@@ -162,7 +175,20 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         {
             if (blockingCollider != null)
             {
-                blockingCollider.enabled = false;
+                switch (destroyedCollisionPolicy)
+                {
+                    case DestructiblePropDestroyedCollisionPolicy.Disable:
+                        blockingCollider.enabled = false;
+                        break;
+                    case DestructiblePropDestroyedCollisionPolicy.KeepBlocking:
+                        blockingCollider.enabled = true;
+                        blockingCollider.isTrigger = false;
+                        break;
+                    case DestructiblePropDestroyedCollisionPolicy.KeepAsTrigger:
+                        blockingCollider.enabled = true;
+                        blockingCollider.isTrigger = true;
+                        break;
+                }
             }
 
             for (int index = 0; index < presentationRenderers.Length; index++)
@@ -180,6 +206,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             if (blockingCollider != null)
             {
                 blockingCollider.enabled = initialColliderEnabled;
+                blockingCollider.isTrigger = initialColliderIsTrigger;
             }
 
             int count = Math.Min(
@@ -218,7 +245,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 }
                 catch (Exception)
                 {
-                    // Presentation observers are optional and cannot replay destruction.
+                    // Optional observers cannot replay or block authoritative destruction.
                 }
             }
         }
@@ -239,7 +266,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 }
                 catch (Exception)
                 {
-                    // Optional presentation observers cannot block authoritative restart.
+                    // Optional observers cannot block authoritative restart.
                 }
             }
         }

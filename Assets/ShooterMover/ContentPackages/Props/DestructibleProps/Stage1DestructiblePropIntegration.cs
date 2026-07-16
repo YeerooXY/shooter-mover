@@ -1,32 +1,28 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Globalization;
 using ShooterMover.Domain.Common;
+using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Props.DestructibleProps
 {
     /// <summary>
-    /// Runtime-owned set that restores all attached props when the host restart generation changes.
+    /// Runtime-owned set retained as a migration seam for hosts that expose a restart generation.
+    /// New authored props also participate in the generic OBJ-001 restart lifecycle.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class DestructiblePropSet2D : MonoBehaviour
     {
-        private readonly List<DestructibleProp2D> props = new List<DestructibleProp2D>();
+        private readonly List<DestructibleProp2D> props =
+            new List<DestructibleProp2D>();
         private Func<long> restartGenerationSource;
         private long observedRestartGeneration;
         private bool configured;
 
-        public int PropCount
-        {
-            get { return props.Count; }
-        }
-
-        public long ObservedRestartGeneration
-        {
-            get { return observedRestartGeneration; }
-        }
+        public int PropCount => props.Count;
+        public long ObservedRestartGeneration => observedRestartGeneration;
 
         internal void Configure(
             IEnumerable<DestructibleProp2D> configuredProps,
@@ -45,10 +41,10 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
 
             if (configuredRestartGenerationSource == null)
             {
-                throw new ArgumentNullException(nameof(configuredRestartGenerationSource));
+                throw new ArgumentNullException(
+                    nameof(configuredRestartGenerationSource));
             }
 
-            props.Clear();
             foreach (DestructibleProp2D prop in configuredProps)
             {
                 if (prop != null && !props.Contains(prop))
@@ -60,7 +56,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             if (props.Count == 0)
             {
                 throw new ArgumentException(
-                    "At least one destructible prop is required.",
+                    "At least one configured destructible prop is required.",
                     nameof(configuredProps));
             }
 
@@ -111,16 +107,239 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
     }
 
     /// <summary>
-    /// Bounded Stage 1 composition helper. It scans only the supplied presentation and collider
-    /// roots, attaches the generic destructible target/relay components, and registers each
-    /// collider with the already-owned CombatHit2DAdapter.
+    /// Legacy host entry point. Definition-authored props resolve through OBJ-001. A bounded
+    /// marker-and-geometry migration path remains for the existing Stage 1 composition root,
+    /// but neither path reads object names, hierarchy paths, or sibling indices.
     /// </summary>
     public static class Stage1DestructiblePropIntegration
     {
+        // Kept only for source compatibility with the existing host and regression tests.
         public const double CrateMaximumHealth = 24d;
         public const double ExplosiveMaximumHealth = 12d;
 
+        private const float LegacyPositionToleranceSquared = 0.000001f;
+        private const float LegacyRotationToleranceDegrees = 0.01f;
+
         public static DestructiblePropSet2D Attach(
+            GameObject owner,
+            Transform presentationRoot,
+            Transform colliderRoot,
+            CombatHit2DAdapter hitAdapter,
+            double confirmedHitDamage,
+            Func<long> restartGenerationSource)
+        {
+            ValidateArguments(
+                owner,
+                presentationRoot,
+                colliderRoot,
+                hitAdapter,
+                confirmedHitDamage,
+                restartGenerationSource);
+
+            if (owner.GetComponent<DestructiblePropSet2D>() != null)
+            {
+                throw new InvalidOperationException(
+                    "Destructible prop integration is already attached.");
+            }
+
+            DestructiblePropAuthoring2D[] authored =
+                presentationRoot.GetComponentsInChildren<DestructiblePropAuthoring2D>(true);
+            Array.Sort(
+                authored,
+                (left, right) => left.GetInstanceID().CompareTo(right.GetInstanceID()));
+
+            var attached = new List<DestructibleProp2D>(authored.Length);
+            var legacy = new List<DestructiblePropAuthoring2D>();
+            var consumedColliders = new HashSet<Collider2D>();
+            var consumedLegacyIds = new HashSet<StableId>();
+
+            for (int index = 0; index < authored.Length; index++)
+            {
+                DestructiblePropAuthoring2D authoring = authored[index];
+                if (authoring == null)
+                {
+                    continue;
+                }
+
+                authoring.ApplyLegacyConfirmedHitDamage(confirmedHitDamage);
+                DestructiblePropConfigurationResult result =
+                    authoring.TryConfigure(hitAdapter);
+                if (result.IsConfigured && result.RuntimeProp != null)
+                {
+                    attached.Add(result.RuntimeProp);
+                    if (result.RuntimeProp.BlockingCollider != null)
+                    {
+                        consumedColliders.Add(result.RuntimeProp.BlockingCollider);
+                    }
+
+                    continue;
+                }
+
+                // The old Stage 1 host supplies only a co-located authoring marker and
+                // separately built collider. Any object that has entered OBJ-001 authoring
+                // must fail closed instead of silently falling back to this migration path.
+                if (result.Status == DestructiblePropConfigurationStatus.MissingPlacedObject
+                    && authoring.GetComponent<PlacedObjectAuthoring2D>() == null)
+                {
+                    legacy.Add(authoring);
+                    continue;
+                }
+
+                throw new InvalidOperationException(
+                    "Destructible prop authoring failed closed: " + result.Diagnostic);
+            }
+
+            Collider2D[] candidateColliders =
+                colliderRoot.GetComponentsInChildren<Collider2D>(true);
+            for (int index = 0; index < legacy.Count; index++)
+            {
+                DestructiblePropAuthoring2D authoring = legacy[index];
+                Collider2D collider = ResolveLegacyCollider(
+                    authoring,
+                    presentationRoot,
+                    candidateColliders,
+                    consumedColliders);
+                SpriteRenderer renderer = authoring.GetComponent<SpriteRenderer>();
+                if (renderer == null)
+                {
+                    throw new InvalidOperationException(
+                        "Legacy destructible prop marker requires a co-located SpriteRenderer.");
+                }
+
+                StableId propId = CreateLegacyPropId(authoring);
+                if (!consumedLegacyIds.Add(propId))
+                {
+                    throw new InvalidOperationException(
+                        "Legacy destructible prop identity collision for '" + propId
+                        + "'. Give the placements distinct authored positions or migrate them "
+                        + "to explicit PlacedObjectAuthoring2D identities.");
+                }
+
+                DestructibleProp2D prop = AttachLegacyOne(
+                    collider,
+                    renderer,
+                    authoring,
+                    hitAdapter,
+                    propId,
+                    confirmedHitDamage);
+                consumedColliders.Add(collider);
+                attached.Add(prop);
+            }
+
+            DestructiblePropSet2D set = owner.AddComponent<DestructiblePropSet2D>();
+            set.Configure(attached, restartGenerationSource);
+            return set;
+        }
+
+        public static StableId CreateLegacyPropId(DestructiblePropAuthoring2D authoring)
+        {
+            if (authoring == null)
+            {
+                throw new ArgumentNullException(nameof(authoring));
+            }
+
+            Vector3 position = authoring.transform.position;
+            Vector2 size = authoring.ColliderSize;
+            Vector2 offset = authoring.ColliderOffset;
+            string canonical = "position=" + Vector(position)
+                + "|health=" + authoring.MaximumHealth.ToString(
+                    "R",
+                    CultureInfo.InvariantCulture)
+                + "|size=" + Vector(size)
+                + "|offset=" + Vector(offset);
+            return StableId.Create("prop", "legacy-" + Fingerprint64(canonical));
+        }
+
+        private static DestructibleProp2D AttachLegacyOne(
+            Collider2D blockingCollider,
+            SpriteRenderer renderer,
+            DestructiblePropAuthoring2D authoring,
+            CombatHit2DAdapter hitAdapter,
+            StableId propId,
+            double confirmedHitDamage)
+        {
+            DestructibleProp2D prop =
+                blockingCollider.GetComponent<DestructibleProp2D>()
+                ?? blockingCollider.gameObject.AddComponent<DestructibleProp2D>();
+            prop.Configure(
+                propId,
+                authoring.MaximumHealth,
+                blockingCollider,
+                new Renderer[] { renderer },
+                DestructiblePropDestroyedCollisionPolicy.Disable);
+
+            CombatHit2DTargetRegistrationStatus registration =
+                hitAdapter.RegisterTarget(blockingCollider, propId);
+            if (registration != CombatHit2DTargetRegistrationStatus.Registered
+                && registration != CombatHit2DTargetRegistrationStatus.AlreadyRegistered)
+            {
+                throw new InvalidOperationException(
+                    "Could not register legacy destructible prop target "
+                    + propId + ": " + registration + ".");
+            }
+
+            DestructiblePropProjectileRelay2D relay =
+                blockingCollider.GetComponent<DestructiblePropProjectileRelay2D>()
+                ?? blockingCollider.gameObject
+                    .AddComponent<DestructiblePropProjectileRelay2D>();
+            if (!relay.IsConfigured)
+            {
+                relay.Configure(prop, confirmedHitDamage);
+            }
+
+            DestructiblePropDestructionPlayer2D player =
+                blockingCollider.GetComponent<DestructiblePropDestructionPlayer2D>()
+                ?? blockingCollider.gameObject
+                    .AddComponent<DestructiblePropDestructionPlayer2D>();
+            player.Configure(prop, renderer.transform, authoring.DestructionAnimation);
+            return prop;
+        }
+
+        private static Collider2D ResolveLegacyCollider(
+            DestructiblePropAuthoring2D authoring,
+            Transform presentationRoot,
+            Collider2D[] candidates,
+            HashSet<Collider2D> consumed)
+        {
+            Vector3 expectedPosition = authoring.transform.position
+                + (Vector3)authoring.ColliderOffset;
+            Collider2D resolved = null;
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                Collider2D candidate = candidates[index];
+                if (candidate == null
+                    || consumed.Contains(candidate)
+                    || candidate.transform.IsChildOf(presentationRoot)
+                    || (candidate.transform.position - expectedPosition).sqrMagnitude
+                        > LegacyPositionToleranceSquared
+                    || Quaternion.Angle(
+                        candidate.transform.rotation,
+                        authoring.transform.rotation) > LegacyRotationToleranceDegrees)
+                {
+                    continue;
+                }
+
+                if (resolved != null)
+                {
+                    throw new InvalidOperationException(
+                        "Legacy destructible prop marker has multiple colliders at its "
+                        + "authored position. Migrate it to an explicit collider reference.");
+                }
+
+                resolved = candidate;
+            }
+
+            if (resolved == null)
+            {
+                throw new InvalidOperationException(
+                    "Legacy destructible prop marker has no unique collider at its authored "
+                    + "position. Migrate it to explicit definition-driven authoring.");
+            }
+
+            return resolved;
+        }
+
+        private static void ValidateArguments(
             GameObject owner,
             Transform presentationRoot,
             Transform colliderRoot,
@@ -159,165 +378,39 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             {
                 throw new ArgumentNullException(nameof(restartGenerationSource));
             }
-
-            if (owner.GetComponent<DestructiblePropSet2D>() != null)
-            {
-                throw new InvalidOperationException(
-                    "The Stage 1 destructible prop integration is already attached.");
-            }
-
-            List<DestructibleProp2D> attached = new List<DestructibleProp2D>();
-            for (int index = 0; index < presentationRoot.childCount; index++)
-            {
-                Transform visual = presentationRoot.GetChild(index);
-                DestructiblePropAuthoring2D authoring =
-                    visual.GetComponent<DestructiblePropAuthoring2D>();
-                double maximumHealth;
-                if (authoring != null)
-                {
-                    maximumHealth = authoring.MaximumHealth;
-                }
-                else if (visual.name.StartsWith("Crate_", StringComparison.Ordinal))
-                {
-                    maximumHealth = CrateMaximumHealth;
-                }
-                else if (visual.name.StartsWith("Explosive_", StringComparison.Ordinal))
-                {
-                    maximumHealth = ExplosiveMaximumHealth;
-                }
-                else
-                {
-                    continue;
-                }
-
-                Transform colliderTransform =
-                    colliderRoot.Find(visual.name + "_Collision");
-                if (colliderTransform == null)
-                {
-                    throw new InvalidOperationException(
-                        "Missing grid-aligned prop collider for " + visual.name + ".");
-                }
-
-                Collider2D blockingCollider =
-                    colliderTransform.GetComponent<Collider2D>();
-                if (blockingCollider == null)
-                {
-                    throw new InvalidOperationException(
-                        "Grid-aligned prop collider object has no Collider2D: "
-                        + colliderTransform.name + ".");
-                }
-
-                StableId propId = CreatePropId(visual.name, index);
-                attached.Add(AttachOne(
-                    colliderTransform.gameObject,
-                    visual.gameObject,
-                    blockingCollider,
-                    hitAdapter,
-                    propId,
-                    maximumHealth,
-                    confirmedHitDamage,
-                    authoring == null ? null : authoring.DestructionAnimation));
-            }
-
-            DestructiblePropSet2D set =
-                owner.AddComponent<DestructiblePropSet2D>();
-            set.Configure(attached, restartGenerationSource);
-            return set;
         }
 
-        public static StableId CreatePropId(string visualName, int siblingIndex)
+        private static string Vector(Vector2 value)
         {
-            if (visualName == null)
-            {
-                throw new ArgumentNullException(nameof(visualName));
-            }
-
-            if (siblingIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(siblingIndex));
-            }
-
-            string normalized = NormalizeValue(visualName);
-            string value = "stage1-" + siblingIndex + "-" + normalized;
-            if (value.Length > StableId.MaxValueLength)
-            {
-                value = value.Substring(0, StableId.MaxValueLength).TrimEnd('-');
-            }
-
-            return StableId.Create("prop", value);
+            return value.x.ToString("R", CultureInfo.InvariantCulture)
+                + "," + value.y.ToString("R", CultureInfo.InvariantCulture);
         }
 
-        private static DestructibleProp2D AttachOne(
-            GameObject colliderObject,
-            GameObject presentationRoot,
-            Collider2D blockingCollider,
-            CombatHit2DAdapter hitAdapter,
-            StableId propId,
-            double maximumHealth,
-            double confirmedHitDamage,
-            DestructiblePropDestructionAnimation destructionAnimation)
+        private static string Vector(Vector3 value)
         {
-            DestructibleProp2D prop =
-                colliderObject.AddComponent<DestructibleProp2D>();
-            prop.Configure(
-                propId,
-                maximumHealth,
-                blockingCollider,
-                presentationRoot);
-
-            CombatHit2DTargetRegistrationStatus registration =
-                hitAdapter.RegisterTarget(blockingCollider, propId);
-            if (registration != CombatHit2DTargetRegistrationStatus.Registered
-                && registration
-                    != CombatHit2DTargetRegistrationStatus.AlreadyRegistered)
-            {
-                throw new InvalidOperationException(
-                    "Could not register destructible prop target "
-                    + propId
-                    + ": "
-                    + registration);
-            }
-
-            DestructiblePropProjectileRelay2D relay =
-                colliderObject.AddComponent<DestructiblePropProjectileRelay2D>();
-            relay.Configure(prop, confirmedHitDamage);
-
-            DestructiblePropDestructionPlayer2D player =
-                colliderObject.AddComponent<DestructiblePropDestructionPlayer2D>();
-            player.Configure(
-                prop,
-                presentationRoot.transform,
-                destructionAnimation);
-            return prop;
+            return value.x.ToString("R", CultureInfo.InvariantCulture)
+                + "," + value.y.ToString("R", CultureInfo.InvariantCulture)
+                + "," + value.z.ToString("R", CultureInfo.InvariantCulture);
         }
 
-        private static string NormalizeValue(string text)
+        private static string Fingerprint64(string input)
         {
-            StringBuilder builder = new StringBuilder(text.Length);
-            bool previousWasSeparator = false;
-            for (int index = 0; index < text.Length; index++)
+            unchecked
             {
-                char current = char.ToLowerInvariant(text[index]);
-                bool isLetter = current >= 'a' && current <= 'z';
-                bool isDigit = current >= '0' && current <= '9';
-                if (isLetter || isDigit)
+                const ulong offset = 14695981039346656037UL;
+                const ulong prime = 1099511628211UL;
+                ulong hash = offset;
+                for (int index = 0; index < input.Length; index++)
                 {
-                    builder.Append(current);
-                    previousWasSeparator = false;
+                    char value = input[index];
+                    hash ^= (byte)(value & 0xff);
+                    hash *= prime;
+                    hash ^= (byte)(value >> 8);
+                    hash *= prime;
                 }
-                else if (builder.Length > 0 && !previousWasSeparator)
-                {
-                    builder.Append('-');
-                    previousWasSeparator = true;
-                }
-            }
 
-            while (builder.Length > 0 && builder[builder.Length - 1] == '-')
-            {
-                builder.Length--;
+                return hash.ToString("x16", CultureInfo.InvariantCulture);
             }
-
-            return builder.Length == 0 ? "unnamed" : builder.ToString();
         }
     }
 }

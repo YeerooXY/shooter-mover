@@ -1,69 +1,60 @@
 # Destructible Props Runtime
 
-This package provides the session-local runtime foundation for destructible Stage 1 arena props.
+This package provides reusable, definition-driven 2D destructible props.
 
 ## Authority boundary
 
-- `DestructiblePropAuthority` owns immutable prop identity, maximum/current health,
-  active/destroyed state, confirmed-hit replay protection, and deterministic restart.
-- Damage is accepted only through `HitMessage` with `HitResult.Confirmed`.
-- Repeated event IDs are ignored and conflicting event-ID reuse fails closed.
-- A lethal hit creates one `DestructiblePropDestructionResult`.
-- No chain reaction, radial damage, particle, audio, loot, persistence, or save authority
-  is present.
+- `DestructiblePropAuthority` owns stable prop identity, health, confirmed-hit replay
+  protection, terminal destruction, and restart state.
+- Damage is accepted only through a confirmed `HitMessage`.
+- Exact duplicate events do nothing; conflicting event-ID reuse fails closed.
+- A lethal transition produces one destruction result.
+- Reward generation, claims, wallets, holdings, persistence, radial damage, audio, and
+  final pickup presentation remain external authorities.
 
-## Unity bridge
+## Authoring boundary
 
-- `DestructibleProp2D` applies authority results to one blocking `Collider2D` and a
-  bounded presentation root.
-- Destruction disables the blocking collider and cached presentation renderers.
-- `Restart()` restores authored collider/renderer states and clears session event history.
-- `DestructiblePropProjectileRelay2D` observes the existing WP-002 projectile completion
-  result and forwards only the confirmed `HitMessage`; raw contact never mutates health.
-- `DestructiblePropAuthoring2D` exposes maximum health, collider size/offset, and one
-  optional destruction-animation asset for each prop variant.
-- `DestructiblePropDestructionPlayer2D` listens to the existing destruction/restart
-  lifecycle and plays an ordered sprite sequence without owning health or damage.
+- `DestructiblePropFamilyDefinitionAsset` owns family defaults and arbitrary variants.
+- Resolution is instance override, then selected variant, then family default.
+- `PlacedObjectAuthoring2D` supplies the stable placed-instance identity and selected
+  family/variant identity. Hierarchy names and sibling positions are never identifiers.
+- `DestructiblePropAuthoring2D` requires explicit collider and intact-renderer references,
+  resolves a preview, registers combat/restart participation, and composes the runtime.
+- Collider shape, size, offset, intact sprite, destruction animation, destroyed collision
+  policy, and inherited reward profile are definition values.
+- `DestructiblePropRewardBridge2D` submits the first destruction fact through SRC-001 once;
+  it owns no reward value or application truth.
 
-## Configuring destruction animations
+## Runtime behavior
 
-The package includes two ready-to-fill assets:
+`DestructibleProp2D` keeps the existing four-argument `Configure` overload for compatible
+package consumers. New authoring uses the explicit-renderer overload and one of these
+post-destruction collision policies:
 
-- `CrateDestructionAnimation.asset`
-- `ExplosiveDestructionAnimation.asset`
+- disable the collider;
+- keep the collider enabled as a blocker;
+- keep the collider enabled as a trigger.
 
-Select an asset and drag ordered sprites into `Frames`. Then set frame duration, visual
-scale, local offset, and sorting order. Empty frame lists are valid, so prop destruction
-continues to work before final VFX arrives. Restart cancels any animation in progress.
+Restart restores health, the authored renderer-enabled states, collider enabled state,
+and collider trigger state. Missing or empty destruction animation data safely produces no
+animation while destruction and restart continue normally.
 
-For a new prop variant, add or duplicate `DestructiblePropAuthoring2D`, set HP and
-collider dimensions, and assign any destruction-animation asset. No combat-runtime
-change is required.
+## Legacy host seam
 
-## Stage 1 authoring defaults
+`Stage1DestructiblePropIntegration.Attach` remains as a bounded migration entry point for
+the existing Stage 1 composition root. It first attempts normal definition-driven
+configuration. A marker with no `PlacedObjectAuthoring2D` may then use the temporary legacy
+path, which:
 
-- Crate maximum health: `24`
-- Explosive maximum health: `12`
+- discovers only `DestructiblePropAuthoring2D` markers under the supplied presentation root;
+- matches one unique collider by authored world position and rotation under the supplied
+  collider root;
+- derives a deterministic temporary identity from authored geometry and HP; and
+- keeps the existing confirmed-hit, animation, and restart behavior.
 
-The explosive is an ordinary destructible prop. It has no area effect or chain behavior.
+The seam never reads `Crate_*`, `Explosive_*`, any other object-name prefix, hierarchy path,
+or sibling index. Once a prop has a placed-object component, invalid identity, family,
+variant, collider, renderer, reward, or restart configuration fails closed and cannot fall
+back to legacy behavior.
 
-## Visible-slice handoff
-
-After `playerHitAdapter` is created in
-`Stage1VisibleSliceController.BuildSession()`, the shooting sandbox attaches every
-existing grid-aligned crate/explosive collider and binds restart generation with:
-
-```csharp
-Stage1DestructiblePropIntegration.Attach(
-    gameObject,
-    roomPresentation.PropRoot,
-    transform,
-    playerHitAdapter,
-    PlayerShotDamage,
-    () => RestartGeneration);
-```
-
-The helper scans only the explicitly supplied presentation/collider roots, registers
-the matching collider targets with the existing `CombatHit2DAdapter`, attaches the
-destructible target and projectile relay, and restores all props when
-`RestartGeneration` changes.
+See `docs/authoring/DESTRUCTIBLE_PROPS.md` for the designer workflow and validation rules.
