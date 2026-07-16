@@ -127,9 +127,9 @@ Focused tests compile in separate package-local test assemblies:
 - `ShooterMover.Tests.EditMode.Environment.VoidHazards`; and
 - `ShooterMover.Tests.PlayMode.Environment.VoidHazards`.
 
-Those test assemblies explicitly reference the runtime package and their direct
-shared test inputs. They do not require changes to the repository-wide EditMode,
-PlayMode, runtime, or project asmdefs.
+Those test assemblies explicitly reference the runtime package and preserve the
+same shared test dependencies as their repository-wide parent assemblies. They
+do not require changes to any shared asmdef.
 
 ## Focused proof
 
@@ -143,10 +143,10 @@ Authored tests cover:
 - arbitrary nested placement under the nearest compatible scope; and
 - restart cleanup and policy/collider restoration.
 
-Unity execution remains required in the pinned editor before this draft is
-proof-complete. The repository's three unrelated baseline PlayMode failures in
-`assembly/dispatch/wave2/VALIDATION.md` are outside VOID-001 ownership and must
-not be repaired here.
+Cold compilation plus both focused test assemblies must pass in Unity
+`6000.3.19f1` before this draft is proof-complete. The repository's three
+unrelated baseline PlayMode failures in `assembly/dispatch/wave2/VALIDATION.md`
+are outside VOID-001 ownership and must not be repaired here.
 
 ## Rollback
 
