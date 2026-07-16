@@ -8,6 +8,7 @@ using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.Presentation.VisibleSliceBlasterTurret;
+using ShooterMover.UnityAdapters.Authoring;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -97,6 +98,90 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 Is.EqualTo(Mathf.Round(turretComponent.transform.position.y / 0.5f))
                     .Within(0.0001f));
             Assert.That(Read<Vector2>(turret, "AuthoredFacing"), Is.EqualTo(Vector2.left));
+        }
+
+        [UnityTest]
+        public IEnumerator Demo002_ComposesScopeDoorVoidHazardAndCompactHud()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            object scope = Read<object>(controller, "GameplayScope");
+            object door = Read<object>(controller, "ExitDoor");
+            object hazard = Read<object>(controller, "VoidHazard");
+            Behaviour combatHud = Read<Behaviour>(controller, "CombatHud");
+
+            Assert.That(scope, Is.Not.Null);
+            Assert.That(Read<bool>(scope, "IsConfigured"), Is.True);
+            Assert.That(door, Is.Not.Null);
+            Assert.That(Read<bool>(door, "IsInitialized"), Is.True);
+            Assert.That(Read<bool>(door, "IsOpen"), Is.False);
+            Assert.That(hazard, Is.Not.Null);
+            Assert.That(Read<bool>(hazard, "IsReady"), Is.True);
+            Assert.That(Read<bool>(hazard, "AcceptsContacts"), Is.True);
+            Assert.That(combatHud, Is.Not.Null);
+            Assert.That(combatHud.enabled, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator Demo002_TurretDestructionUnlocksExitAndCompletesArena()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            object turret = Read<object>(controller, "TurretPackage");
+            object authority = Read<object>(turret, "Authority");
+            Invoke<object>(
+                authority,
+                "Apply",
+                EnemyActorCommand.Damage(
+                    100L,
+                    StableId.Parse("combat-event.demo002-destroy-turret"),
+                    StableId.Parse("actor.demo002-player"),
+                    (int)CombatChannel.Kinetic,
+                    1000d));
+            yield return new WaitForFixedUpdate();
+            yield return null;
+
+            object door = Read<object>(controller, "ExitDoor");
+            Assert.That(Read<bool>(door, "IsOpen"), Is.True);
+            Assert.That(Read<bool>(controller, "IsArenaComplete"), Is.False);
+
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = new Vector3(13.5f, 0f, 0f);
+            yield return null;
+
+            Assert.That(Read<bool>(controller, "IsArenaComplete"), Is.True);
+            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(100));
+        }
+
+        [UnityTest]
+        public IEnumerator Demo002_VoidHazardDamagesPlayerAndRestartRestoresArenaState()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = new Vector3(-1.5f, 4.2f, 0f);
+            float deadline = Time.time + 1f;
+            while (Time.time < deadline && Read<int>(controller, "VoidDamageCount") == 0)
+            {
+                yield return new WaitForFixedUpdate();
+            }
+
+            Assert.That(Read<int>(controller, "VoidDamageCount"), Is.GreaterThanOrEqualTo(1));
+            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(65));
+
+            Invoke<object>(controller, "QuickRestart");
+            yield return null;
+
+            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(100));
+            Assert.That(Read<int>(controller, "VoidDamageCount"), Is.Zero);
+            Assert.That(Read<bool>(controller, "IsArenaComplete"), Is.False);
+            Assert.That(Read<bool>(Read<object>(controller, "ExitDoor"), "IsOpen"), Is.False);
+            Assert.That(
+                Read<int>(Read<object>(controller, "VoidHazard"), "ActiveTargetCount"),
+                Is.Zero);
         }
 
         [UnityTest]
@@ -241,6 +326,12 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 "ShooterMover.ContentPackages.Enemies.BlasterTurret.BlasterTurretAuthoring2D");
             Component duplicateAuthoring = duplicate.GetComponent(authoringType);
             Assert.That(duplicateAuthoring, Is.Not.Null);
+            Invoke<object>(
+                duplicateAuthoring,
+                "ConfigurePlacementForTests",
+                "placed.demo002-duplicate-turret",
+                Read<GameplaySceneScope2D>(controller, "GameplayScope"),
+                "scope.gameplay");
             Assert.That(Invoke<bool>(duplicateAuthoring, "TryConfigureNow"), Is.True);
 
             Component firstPackage = Read<object>(controller, "TurretPackage") as Component;

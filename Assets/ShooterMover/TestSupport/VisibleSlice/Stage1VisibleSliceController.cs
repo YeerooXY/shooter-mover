@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Content.Definitions.Objects;
+using ShooterMover.ContentPackages.Environment.Doors;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
 using ShooterMover.ContentPackages.Props.DestructibleProps;
 using ShooterMover.ContentPackages.Rooms.Stage1VisibleSlicePresentation;
+using ShooterMover.ContentPackages.Environment.VoidHazards;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.ContentPackages.Weapons.Stage1Loadouts;
 using ShooterMover.ContentPackages.Weapons.Stage1Presentation;
 using ShooterMover.Contracts.Combat;
+using ShooterMover.Contracts.Authoring;
 using ShooterMover.Contracts.Input;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
@@ -18,6 +22,7 @@ using ShooterMover.UI.VisibleSliceLoadoutSelector;
 using ShooterMover.UnityAdapters.Combat;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Input;
+using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Physics;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -33,7 +38,9 @@ namespace ShooterMover.TestSupport.VisibleSlice
         MonoBehaviour,
         IGeneralCombatHudStateSource,
         IVisibleSliceBlasterTurretPresentationSource,
-        IVisibleSliceReducedEffectsSource
+        IVisibleSliceReducedEffectsSource,
+        IDoorTargetConditionReader,
+        IVoidHazardCombatPort
     {
         public const string ScenePath =
             "Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity";
@@ -69,6 +76,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private readonly List<ShotTrace> shotTraces = new List<ShotTrace>();
 
         private Stage1VisibleSliceRoomPresentation roomPresentation;
+        private GameplaySceneScope2D gameplayScope;
+        private DoorController2D exitDoor;
+        private VoidHazardAuthoring2D voidHazard;
+        private VoidHazardTarget2D playerVoidTarget;
+        private ObjectFamilyDefinitionAsset runtimeEnvironmentFamily;
         private VisibleSliceLoadoutSelector loadoutSelector;
         private VisibleSliceGeneralCombatHud combatHud;
         private Stage1WeaponStatusStrip weaponStrip;
@@ -106,6 +118,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private bool firingObserved;
         private bool sessionActive;
         private bool initialized;
+        private bool arenaComplete;
+        private int voidDamageCount;
+        private GUIStyle compactTitleStyle;
+        private GUIStyle compactBodyStyle;
+        private GUIStyle compactObjectiveStyle;
         private float nextBlasterShotTime;
 
         public bool ReducedEffectsEnabled => reducedEffects;
@@ -122,6 +139,43 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public VisibleSliceGeneralCombatHud CombatHud => combatHud;
         public Stage1WeaponStatusStrip WeaponStrip => weaponStrip;
         public VisibleSliceCameraRig CameraRig => cameraRig;
+        public GameplaySceneScope2D GameplayScope => gameplayScope;
+        public DoorController2D ExitDoor => exitDoor;
+        public VoidHazardAuthoring2D VoidHazard => voidHazard;
+        public bool IsArenaComplete => arenaComplete;
+        public int VoidDamageCount => voidDamageCount;
+
+        public bool IsTargetDestroyed(StableId targetId)
+        {
+            return turretPackage != null
+                && turretPackage.Authority != null
+                && turretPackage.Authority.CurrentState != null
+                && turretPackage.Authority.CurrentState.IsDestroyed;
+        }
+
+        public VoidHazardPortResult RequestDamage(VoidHazardDamageRequest request)
+        {
+            if (request == null || playerTransform == null)
+            {
+                return VoidHazardPortResult.Rejected;
+            }
+
+            voidDamageCount++;
+            ApplyTurretProjectileDamageToPlayer(request.Amount);
+            return VoidHazardPortResult.Accepted;
+        }
+
+        public VoidHazardPortResult RequestInstantDeath(VoidHazardInstantDeathRequest request)
+        {
+            if (request == null || playerTransform == null)
+            {
+                return VoidHazardPortResult.Rejected;
+            }
+
+            voidDamageCount++;
+            playerHealth = 0;
+            return VoidHazardPortResult.Accepted;
+        }
         public int SessionObjectCount => sessionObjects.Count;
         public int ActiveProjectileCount
         {
@@ -183,6 +237,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             RefreshHud();
             RefreshTurretPresentation();
+            RefreshArenaFlow();
             RefreshBoostPresentation();
             TickShotTraces();
             damageObserved = false;
@@ -282,6 +337,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
             observedTurretShotSequence = 0L;
             observedTurretHitCount = 0;
             observedPlayerHitCount = 0;
+            arenaComplete = false;
+            voidDamageCount = 0;
             selectedLoadout = null;
             sessionActive = shootingSandbox;
             nextBlasterShotTime = 0f;
@@ -300,6 +357,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
             {
                 turretPackage.RestartSession();
             }
+            if (gameplayScope != null && gameplayScope.IsConfigured)
+            {
+                gameplayScope.RunRestart(restartGeneration);
+            }
             if (playerHitAdapter != null)
             {
                 playerHitAdapter.ResetProcessedEvents();
@@ -312,6 +373,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             cameraRig.Restart();
             RefreshHud();
             RefreshTurretPresentation();
+            RefreshArenaFlow();
         }
 
         public void SetReducedEffects(bool value)
@@ -353,7 +415,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 turretPackage == null ? "NO ENEMIES" : "BLASTER TURRET",
                 "FOUNDRY TEST BAY",
                 focused != null && focused.IsDestroyed
-                    ? "ROOM CLEAR"
+                    ? (exitDoor != null && exitDoor.IsOpen
+                        ? (arenaComplete
+                            ? "ARENA COMPLETE  /  PRESS R TO RESTART"
+                            : "EXIT UNLOCKED  /  REACH THE EAST DOOR")
+                        : "TURRET DOWN  /  OPENING EXIT")
                     : "DESTROY THE TURRET  /  USE COVER OR EVADE ITS FACING",
                 "R",
                 "MENU",
@@ -435,9 +501,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
             roomPresentation.SetReducedEffects(reducedEffects);
             sessionObjects.Add(roomPresentation.gameObject);
 
+            BuildGameplayScope();
             BuildPropObstacles();
             BuildWalls();
             BuildPlayer();
+            BuildVoidHazard();
             playerHitAdapter = new CombatHit2DAdapter(StableId.Parse("actor.vs007-player"));
             destructiblePropSet = Stage1DestructiblePropIntegration.Attach(
                 gameObject,
@@ -446,9 +514,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 playerHitAdapter,
                 PlayerShotDamage,
                 () => RestartGeneration);
-            GameObject turretContextObject = new GameObject("BlasterTurretSceneContext");
-            turretContextObject.transform.SetParent(transform, false);
-            sessionObjects.Add(turretContextObject);
+            GameObject turretContextObject = gameplayScope.gameObject;
             turretSceneContext =
                 turretContextObject.AddComponent<BlasterTurretSceneContext2D>();
             turretSceneContext.Configure(
@@ -463,11 +529,33 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 new Vector3(0.09f, 0.09f, 1f));
             BuildCamera();
             BuildTurret();
+            BuildExitDoor();
             BuildUi();
             sessionActive = shootingSandbox;
             SetGrayscale(grayscale);
             RefreshHud();
             RefreshTurretPresentation();
+            RefreshArenaFlow();
+        }
+
+        private void BuildGameplayScope()
+        {
+            GameObject scopeObject = new GameObject("Demo002GameplayScope");
+            scopeObject.transform.SetParent(transform, false);
+            sessionObjects.Add(scopeObject);
+            gameplayScope = scopeObject.AddComponent<GameplaySceneScope2D>();
+            gameplayScope.ConfigureForTests(
+                "scope.demo002-arena",
+                "scope.gameplay",
+                "projection.demo002-arena",
+                "run.demo002",
+                0L);
+            runtimeEnvironmentFamily = ObjectFamilyDefinitionAsset.CreateRuntime(
+                "family.demo002-environment",
+                "DEMO-002 Environment",
+                "variant.default",
+                null,
+                new ObjectVariantAuthoring("variant.default", 1));
         }
 
         private void BuildPlayer()
@@ -505,6 +593,17 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 StableId.Parse("actor.vs007-player"),
                 player.transform,
                 playerCollider);
+
+            playerVoidTarget = player.AddComponent<VoidHazardTarget2D>();
+            playerVoidTarget.ConfigureForTests(
+                "actor.vs007-player",
+                VoidHazardTargetCategory.Player,
+                false,
+                this,
+                null,
+                null,
+                null,
+                null);
 
             playerBodyRenderer = player.AddComponent<SpriteRenderer>();
             playerBodyRenderer.sprite = playerSprite != null
@@ -571,6 +670,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 4);
             BlasterTurretAuthoring2D authoring =
                 turretObject.GetComponent<BlasterTurretAuthoring2D>();
+            authoring.ConfigurePlacementForTests(
+                "placed.demo002-blaster-turret",
+                gameplayScope,
+                "scope.gameplay");
             authoring.SetRuntimeOverrides(
                 turretDefinition,
                 turretShotSprite == null ? blasterShotSprite : turretShotSprite);
@@ -592,6 +695,121 @@ namespace ShooterMover.TestSupport.VisibleSlice
             sessionObjects.Add(turretPresenter.gameObject);
         }
 
+        private void BuildExitDoor()
+        {
+            GameObject doorObject = new GameObject("Demo002ExitDoor");
+            doorObject.transform.SetParent(transform, false);
+            doorObject.transform.position = new Vector3(14.5f, 0f, 0f);
+            doorObject.SetActive(false);
+            sessionObjects.Add(doorObject);
+
+            BoxCollider2D closedCollider = doorObject.AddComponent<BoxCollider2D>();
+            closedCollider.size = new Vector2(0.8f, 3.4f);
+
+            GameObject closedRoot = new GameObject("ClosedPresentation");
+            closedRoot.transform.SetParent(doorObject.transform, false);
+            CreateRectSprite(
+                closedRoot.transform,
+                "DoorClosed",
+                new Vector2(0.55f, 3.1f),
+                new Color(0.9f, 0.33f, 0.12f, 0.95f),
+                18);
+
+            GameObject openRoot = new GameObject("OpenPresentation");
+            openRoot.transform.SetParent(doorObject.transform, false);
+            CreateRectSprite(
+                openRoot.transform,
+                "DoorOpen",
+                new Vector2(0.14f, 3.1f),
+                new Color(0.15f, 0.95f, 0.8f, 0.9f),
+                18);
+
+            PlacedObjectAuthoring2D placed =
+                doorObject.AddComponent<PlacedObjectAuthoring2D>();
+            placed.ConfigureForTests(
+                "placed.demo002-exit-door",
+                runtimeEnvironmentFamily,
+                "variant.default",
+                gameplayScope,
+                "scope.gameplay",
+                null);
+
+            exitDoor = doorObject.AddComponent<DoorController2D>();
+            exitDoor.ConfigureForTests(
+                placed,
+                DoorInitialState.Closed,
+                DoorConditionComposition.All,
+                new[] { DoorConditionRequirement.InteractionRequested() },
+                new Collider2D[] { closedCollider },
+                closedRoot,
+                openRoot,
+                DoorOneWayPolicy.Bidirectional,
+                null,
+                null,
+                false);
+            exitDoor.SetConditionPortsForTests(null, this, null, null);
+            doorObject.SetActive(true);
+            if (!exitDoor.TryInitialize().IsValid)
+            {
+                throw new InvalidOperationException(
+                    "DEMO-002 exit door failed to initialize.");
+            }
+        }
+
+        private void BuildVoidHazard()
+        {
+            GameObject hazardObject = new GameObject("Demo002VoidHazard");
+            hazardObject.transform.SetParent(transform, false);
+            hazardObject.transform.position = new Vector3(-1.5f, 4.2f, 0f);
+            hazardObject.SetActive(false);
+            sessionObjects.Add(hazardObject);
+
+            BoxCollider2D hazardCollider = hazardObject.AddComponent<BoxCollider2D>();
+            hazardCollider.isTrigger = true;
+            hazardCollider.size = new Vector2(5.5f, 1.7f);
+            CreateRectSprite(
+                hazardObject.transform,
+                "VoidSurface",
+                hazardCollider.size,
+                new Color(0.12f, 0.035f, 0.18f, 0.9f),
+                3);
+            CreateRectSprite(
+                hazardObject.transform,
+                "VoidEdge",
+                new Vector2(5.5f, 0.08f),
+                new Color(0.95f, 0.22f, 0.55f, 0.9f),
+                4);
+
+            PlacedObjectAuthoring2D placed =
+                hazardObject.AddComponent<PlacedObjectAuthoring2D>();
+            placed.ConfigureForTests(
+                "placed.demo002-void-hazard",
+                runtimeEnvironmentFamily,
+                "variant.default",
+                gameplayScope,
+                "scope.gameplay",
+                null);
+            voidHazard = hazardObject.AddComponent<VoidHazardAuthoring2D>();
+            voidHazard.ConfigureForTests(
+                placed,
+                hazardCollider,
+                true,
+                VoidPlayerResponseKind.Damage,
+                35d,
+                "checkpoint.demo002",
+                VoidEnemyResponseKind.Ignore,
+                VoidProjectileResponseKind.RemoveProjectile,
+                VoidPropResponseKind.KeepSupported,
+                null,
+                null);
+            hazardObject.SetActive(true);
+            if (!voidHazard.TryActivate())
+            {
+                throw new InvalidOperationException(
+                    "DEMO-002 void hazard failed to initialize.");
+            }
+        }
+
         private void BuildUi()
         {
             if (!shootingSandbox)
@@ -609,6 +827,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             sessionObjects.Add(hudObject);
             combatHud = hudObject.AddComponent<VisibleSliceGeneralCombatHud>();
             combatHud.BindSources(this, null);
+            combatHud.enabled = false;
 
             if (!shootingSandbox)
             {
@@ -619,6 +838,120 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 weaponStrip.SetTemporaryAudioEnabled(false);
                 weaponStrip.SetReducedEffects(reducedEffects);
             }
+        }
+
+        private void RefreshArenaFlow()
+        {
+            if (exitDoor == null || turretPackage == null || turretPackage.Authority == null)
+            {
+                return;
+            }
+
+            if (turretPackage.Authority.CurrentState != null
+                && turretPackage.Authority.CurrentState.IsDestroyed)
+            {
+                exitDoor.NotifyInteractionRequested();
+            }
+
+            if (exitDoor.IsOpen && playerTransform != null)
+            {
+                arenaComplete = playerTransform.position.x >= 13.2f
+                    && Mathf.Abs(playerTransform.position.y) <= 2.2f;
+            }
+        }
+
+        private void RefreshCompactHud()
+        {
+            if (compactTitleStyle == null)
+            {
+                compactTitleStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 15,
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = new Color(0.82f, 0.95f, 1f) }
+                };
+                compactBodyStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 12,
+                    normal = { textColor = new Color(0.85f, 0.9f, 0.95f) }
+                };
+                compactObjectiveStyle = new GUIStyle(compactTitleStyle)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 14
+                };
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (!initialized)
+            {
+                return;
+            }
+
+            RefreshCompactHud();
+
+            EnemyActorState turretState = turretPackage == null || turretPackage.Authority == null
+                ? null
+                : turretPackage.Authority.CurrentState;
+            bool turretDestroyed = turretState != null && turretState.IsDestroyed;
+            string objective = turretDestroyed
+                ? (arenaComplete ? "ARENA CLEAR" : "EXIT UNLOCKED  /  REACH EAST DOOR")
+                : "DESTROY TURRET  /  EVADE ITS FACING";
+
+            Color previous = GUI.color;
+            GUI.color = new Color(0.015f, 0.025f, 0.04f, 0.86f);
+            GUI.Box(new Rect(18f, 18f, 235f, 76f), GUIContent.none);
+            GUI.Box(new Rect(Screen.width - 253f, 18f, 235f, 76f), GUIContent.none);
+            GUI.Box(new Rect(Screen.width * 0.5f - 230f, 18f, 460f, 42f), GUIContent.none);
+            GUI.color = Color.white;
+
+            GUI.Label(new Rect(30f, 26f, 210f, 22f), "PLAYER", compactTitleStyle);
+            GUI.Label(new Rect(30f, 51f, 210f, 20f),
+                "HP " + playerHealth + "/" + StartingPlayerHealth,
+                compactBodyStyle);
+            GUI.Label(new Rect(30f, 72f, 210f, 18f),
+                "WASD MOVE   SHIFT BOOST",
+                compactBodyStyle);
+
+            GUI.Label(new Rect(Screen.width - 241f, 26f, 210f, 22f),
+                "BLASTER TURRET",
+                compactTitleStyle);
+            GUI.Label(new Rect(Screen.width - 241f, 51f, 210f, 20f),
+                turretState == null
+                    ? "OFFLINE"
+                    : (turretDestroyed
+                        ? "DESTROYED"
+                        : "HP " + Mathf.RoundToInt((float)turretState.Health)
+                            + "/" + Mathf.RoundToInt((float)turretState.MaximumHealth)),
+                compactBodyStyle);
+            GUI.Label(new Rect(Screen.width - 241f, 72f, 210f, 18f),
+                "R RESTART   F2 EFFECTS",
+                compactBodyStyle);
+            GUI.Label(
+                new Rect(Screen.width * 0.5f - 220f, 24f, 440f, 28f),
+                objective,
+                compactObjectiveStyle);
+            GUI.color = previous;
+        }
+
+        private SpriteRenderer CreateRectSprite(
+            Transform parent,
+            string name,
+            Vector2 size,
+            Color color,
+            int sortingOrder)
+        {
+            GameObject visual = new GameObject(name);
+            visual.transform.SetParent(parent, false);
+            SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
+            renderer.sprite = CreateRuntimeSprite(name, color);
+            renderer.drawMode = SpriteDrawMode.Tiled;
+            renderer.size = size;
+            renderer.color = color;
+            renderer.sortingOrder = sortingOrder;
+            return renderer;
         }
 
         private BoundedProjectile2D CreateProjectileTemplate(
@@ -1125,6 +1458,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (turretDefinition != null)
             {
                 DestroyImmediate(turretDefinition);
+            }
+
+            if (runtimeEnvironmentFamily != null)
+            {
+                DestroyImmediate(runtimeEnvironmentFamily);
             }
         }
 
