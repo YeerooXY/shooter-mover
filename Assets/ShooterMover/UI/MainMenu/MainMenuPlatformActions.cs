@@ -55,7 +55,7 @@ namespace ShooterMover.UI.MainMenu
                 grayscale);
 
 #if UNITY_EDITOR
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 EditorSceneManager.LoadSceneAsyncInPlayMode(
                     scenePath,
@@ -76,13 +76,13 @@ namespace ShooterMover.UI.MainMenu
         public void Quit()
         {
 #if UNITY_EDITOR
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 EditorApplication.isPlaying = false;
                 return;
             }
 #endif
-            Application.Quit();
+            UnityEngine.Application.Quit();
         }
     }
 
