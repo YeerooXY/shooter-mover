@@ -427,9 +427,7 @@ namespace ShooterMover.Application.Rewards.Generation
                 "schema=reward-generation-content-v1\noperation_content_fingerprint="
                 + request.Operation.ContentFingerprint
                 + "\nprofile_fingerprint="
-                + request.Profile.Fingerprint
-                + "\nrequest:\n"
-                + request.ToCanonicalString());
+                + request.Profile.Fingerprint);
         }
 
         private static bool TrySumRewardWeights(
