@@ -224,6 +224,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 return false;
             }
 
+            if (definition.TierStableId != boxContext.TierStableId)
+            {
+                rejectionCode = "strongbox-equipment-tier-context-mismatch";
+                return false;
+            }
+
             if (equipmentGrant.Kind != RewardGrantKindV1.EquipmentReference || equipmentGrant.Quantity < 1L)
             {
                 rejectionCode = "strongbox-equipment-grant-invalid";
