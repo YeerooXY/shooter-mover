@@ -309,6 +309,27 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             ulong itemLevelSamplesConsumed,
             string policyFingerprint)
         {
+            if (playerLevel < 0 || tierLevelBonus < 0 || meanItemLevel < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(playerLevel));
+            }
+
+            if (minimumItemLevel < 1
+                || maximumItemLevel < minimumItemLevel
+                || targetItemLevel < minimumItemLevel
+                || targetItemLevel > maximumItemLevel)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetItemLevel));
+            }
+
+            if (differenceFromMean != targetItemLevel - meanItemLevel
+                || Math.Abs(differenceFromMean) > StrongboxPowerBudgetPolicyV1.MaximumLevelDeviationV1)
+            {
+                throw new ArgumentException(
+                    "Strongbox item-level difference must match the target and remain within the V1 bound.",
+                    nameof(differenceFromMean));
+            }
+
             if (!StrongboxCanonicalV1.IsFingerprint(policyFingerprint))
             {
                 throw new ArgumentException(
@@ -393,6 +414,21 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             ItemLevelRoll = itemLevelRoll ?? throw new ArgumentNullException(nameof(itemLevelRoll));
             SelectedEquipmentDefinitionId = selectedEquipmentDefinitionId
                 ?? throw new ArgumentNullException(nameof(selectedEquipmentDefinitionId));
+            if (selectedEquipmentMaximumAugmentSlots < 0
+                || effectiveMaximumAugmentSlots < 0
+                || effectiveMaximumAugmentSlots > selectedEquipmentMaximumAugmentSlots)
+            {
+                throw new ArgumentOutOfRangeException(nameof(effectiveMaximumAugmentSlots));
+            }
+
+            if (expectedAugmentSlotsMilli < 0L
+                || expectedAugmentSlotsMilli > (long)effectiveMaximumAugmentSlots * FixedPointScale
+                || rolledAugmentSlots < 0
+                || rolledAugmentSlots > effectiveMaximumAugmentSlots)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rolledAugmentSlots));
+            }
+
             if (!StrongboxCanonicalV1.IsFingerprint(policyFingerprint))
             {
                 throw new ArgumentException(
