@@ -71,15 +71,16 @@ namespace ShooterMover.Tests.EditMode.Holdings
             long quantity,
             long expectedSequence)
         {
+            StableId parsedTransactionId = StableId.Parse(transactionId);
             return PlayerHoldingsCommandV1.AddStack(
-                StableId.Parse(transactionId),
-                StableId.Parse("operation." + transactionId),
+                parsedTransactionId,
+                StableId.Create("operation", parsedTransactionId.Value),
                 AuthorityId,
                 RewardGrantKindV1.Miscellaneous,
                 StableId.Parse(itemId),
                 quantity,
                 HoldingProvenanceV1.Create(
-                    StableId.Parse("grant." + transactionId),
+                    StableId.Create("grant", parsedTransactionId.Value),
                     StableId.Parse("source.test")),
                 expectedSequence);
         }
