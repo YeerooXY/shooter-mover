@@ -19,6 +19,61 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         Recovery = 3,
     }
 
+    public static class BlasterTurretFacingRules
+    {
+        public static bool IsWithinCone(
+            Vector2 origin,
+            Vector2 facing,
+            Vector2 target,
+            double totalConeDegrees)
+        {
+            if (!IsFinite(origin)
+                || !IsFinite(facing)
+                || !IsFinite(target)
+                || facing.sqrMagnitude <= 0.0000001f
+                || double.IsNaN(totalConeDegrees)
+                || double.IsInfinity(totalConeDegrees)
+                || totalConeDegrees <= 0d
+                || totalConeDegrees > 360d)
+            {
+                return false;
+            }
+
+            Vector2 delta = target - origin;
+            if (delta.sqrMagnitude <= 0.0000001f)
+            {
+                return false;
+            }
+
+            float halfCone = (float)totalConeDegrees * 0.5f;
+            return Vector2.Angle(facing.normalized, delta.normalized) <= halfCone + 0.0001f;
+        }
+
+        public static Vector2 SnapToCardinal(Vector2 direction)
+        {
+            if (!IsFinite(direction) || direction.sqrMagnitude <= 0.0000001f)
+            {
+                return Vector2.right;
+            }
+
+            Vector2 normalized = direction.normalized;
+            if (Mathf.Abs(normalized.x) >= Mathf.Abs(normalized.y))
+            {
+                return normalized.x >= 0f ? Vector2.right : Vector2.left;
+            }
+
+            return normalized.y >= 0f ? Vector2.up : Vector2.down;
+        }
+
+        private static bool IsFinite(Vector2 value)
+        {
+            return !float.IsNaN(value.x)
+                && !float.IsInfinity(value.x)
+                && !float.IsNaN(value.y)
+                && !float.IsInfinity(value.y);
+        }
+    }
+
     public sealed class BlasterTurretCadenceResult
     {
         internal BlasterTurretCadenceResult(
@@ -58,7 +113,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
         public BlasterTurretCadence(double warningSeconds, double recoverySeconds)
         {
-            RequireFinitePositive(warningSeconds, nameof(warningSeconds));
+            RequireFiniteNonNegative(warningSeconds, nameof(warningSeconds));
             RequireFinitePositive(recoverySeconds, nameof(recoverySeconds));
             this.warningSeconds = (decimal)warningSeconds;
             this.recoverySeconds = (decimal)recoverySeconds;
@@ -92,6 +147,11 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             decimal elapsed = (decimal)deltaTimeSeconds;
             if (phase == BlasterTurretCadencePhase.Idle)
             {
+                if (warningSeconds <= TimeEpsilonSeconds)
+                {
+                    return EmitShot();
+                }
+
                 phase = BlasterTurretCadencePhase.Warning;
                 phaseElapsedSeconds = 0m;
                 return Result(true, false, -1L);
@@ -119,12 +179,30 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             phaseElapsedSeconds += elapsed;
             if (phaseElapsedSeconds + TimeEpsilonSeconds >= recoverySeconds)
             {
+                if (warningSeconds <= TimeEpsilonSeconds)
+                {
+                    return EmitShot();
+                }
+
                 phase = BlasterTurretCadencePhase.Warning;
                 phaseElapsedSeconds = 0m;
                 return Result(true, false, -1L);
             }
 
             return Result(false, false, -1L);
+        }
+
+        private BlasterTurretCadenceResult EmitShot()
+        {
+            long emittedSequence = nextShotSequence;
+            if (nextShotSequence < long.MaxValue)
+            {
+                nextShotSequence++;
+            }
+
+            phase = BlasterTurretCadencePhase.Recovery;
+            phaseElapsedSeconds = 0m;
+            return Result(false, true, emittedSequence);
         }
 
         public void CancelPendingShot()
@@ -380,6 +458,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         TargetOutOfRange = 9,
         Obstructed = 10,
         PointBlankTarget = 11,
+        OutsideFacingCone = 12,
     }
 
     public sealed class BlasterTurretStepResult
@@ -458,6 +537,11 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         private long generation;
         private bool configured;
         private bool activeRequested;
+        private Vector2 authoredFacing;
+        private BoundedProjectile2DCompletionReason lastProjectileCompletionReason;
+        private CombatHit2DTranslationStatus? lastProjectileHitStatus;
+        private string lastProjectileCollisionObjectName;
+        private Vector2 lastProjectileCollisionPoint;
 
         public bool IsConfigured
         {
@@ -551,6 +635,36 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             get { return anchorPosition; }
         }
 
+        public Vector2 AuthoredFacing
+        {
+            get { return authoredFacing; }
+        }
+
+        public int ConfirmedHitCount
+        {
+            get { return hitAdapter == null ? 0 : hitAdapter.ProcessedEventCount; }
+        }
+
+        public BoundedProjectile2DCompletionReason LastProjectileCompletionReason
+        {
+            get { return lastProjectileCompletionReason; }
+        }
+
+        public CombatHit2DTranslationStatus? LastProjectileHitStatus
+        {
+            get { return lastProjectileHitStatus; }
+        }
+
+        public string LastProjectileCollisionObjectName
+        {
+            get { return lastProjectileCollisionObjectName ?? string.Empty; }
+        }
+
+        public Vector2 LastProjectileCollisionPoint
+        {
+            get { return lastProjectileCollisionPoint; }
+        }
+
         public void Configure(
             BlasterTurretDefinition packageDefinition,
             IEnemyTarget2DSource targetSource,
@@ -616,7 +730,10 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 definition.WarningSeconds,
                 definition.RecoverySeconds);
             behaviorPipeline = new WeaponBehaviorPipeline(
-                new[] { BlasterMachineGunPackage.CreateBehaviorModule() });
+                new IWeaponBehaviorModule[]
+                {
+                    new BlasterTurretProjectileModule(definition.ProjectileSpeed),
+                });
 
             enemyTargetAdapter.Configure(actorId, transform, enemyCollider, authority);
             contactAdapter.Configure(
@@ -669,9 +786,17 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 new IWeaponFireExecutionOperation2DHandler[] { projectileAdapter });
             presentation.Configure(definition.WarningLineWidth);
 
-            anchorPosition = enemyBody.position;
+            anchorPosition = transform.position;
+            enemyBody.position = anchorPosition;
+            authoredFacing = BlasterTurretFacingRules.SnapToCardinal(transform.right);
+            transform.right = authoredFacing;
+            presentation.SetFacing(authoredFacing, (float)definition.MuzzleOffset);
             fixedStepCount = 0L;
             generation = 0L;
+            lastProjectileCompletionReason = BoundedProjectile2DCompletionReason.None;
+            lastProjectileHitStatus = null;
+            lastProjectileCollisionObjectName = string.Empty;
+            lastProjectileCollisionPoint = Vector2.zero;
             configured = true;
             activeRequested = true;
             RestoreStationaryAnchor();
@@ -754,7 +879,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             EnemyTarget2DObservation target;
             if (!TryReadTarget(out target))
             {
-                CancelAttackState(true);
+                CancelAttackState(false);
                 AdvanceFixedStep();
                 return Result(
                     BlasterTurretStepStatus.TargetUnavailable,
@@ -775,7 +900,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 (float)definition.MuzzleOffset + 0.0001f);
             if (distance <= minimumTargetDistance)
             {
-                CancelAttackState(true);
+                CancelAttackState(false);
                 AdvanceFixedStep();
                 return Result(
                     BlasterTurretStepStatus.PointBlankTarget,
@@ -788,7 +913,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 
             if (distance > definition.MaximumRange)
             {
-                CancelAttackState(true);
+                CancelAttackState(false);
                 AdvanceFixedStep();
                 return Result(
                     BlasterTurretStepStatus.TargetOutOfRange,
@@ -800,35 +925,16 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             }
 
             Vector2 direction = delta / distance;
-            Vector2 muzzle = anchorPosition + (direction * (float)definition.MuzzleOffset);
-            bool clear;
-            try
-            {
-                clear = lineOfFireSource.HasClearLine(
-                    muzzle,
+            if (!BlasterTurretFacingRules.IsWithinCone(
+                    anchorPosition,
+                    authoredFacing,
                     targetPosition,
-                    fireTargetCollider,
-                    enemyCollider);
-            }
-            catch (MissingReferenceException)
+                    definition.FacingConeDegrees))
             {
-                clear = false;
-            }
-            catch (InvalidOperationException)
-            {
-                clear = false;
-            }
-            catch (ArgumentException)
-            {
-                clear = false;
-            }
-
-            if (!clear)
-            {
-                CancelAttackState(true);
+                CancelAttackState(false);
                 AdvanceFixedStep();
                 return Result(
-                    BlasterTurretStepStatus.Obstructed,
+                    BlasterTurretStepStatus.OutsideFacingCone,
                     step,
                     false,
                     -1L,
@@ -836,6 +942,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                     null);
             }
 
+            direction = authoredFacing;
+            Vector2 muzzle = anchorPosition + (direction * (float)definition.MuzzleOffset);
             BlasterTurretCadenceResult cadenceResult = cadence.Step(deltaTimeSeconds, true);
             if (cadenceResult.WarningVisible)
             {
@@ -866,6 +974,13 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 muzzle,
                 direction);
             WeaponMount2DExecutionResult execution = weaponMountAdapter.ExecutePlan(plan);
+            if (execution != null
+                && execution.Succeeded
+                && projectileAdapter.LastSpawnedProjectile != null)
+            {
+                projectileAdapter.LastSpawnedProjectile.Completed +=
+                    HandleTurretProjectileCompleted;
+            }
             AdvanceFixedStep();
             return Result(
                 execution != null && execution.Succeeded
@@ -888,6 +1003,10 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             CancelAttackState(true);
             hitAdapter.ResetProcessedEvents();
             cadence.Reset();
+            lastProjectileCompletionReason = BoundedProjectile2DCompletionReason.None;
+            lastProjectileHitStatus = null;
+            lastProjectileCollisionObjectName = string.Empty;
+            lastProjectileCollisionPoint = Vector2.zero;
             bool reset = actorAdapter.Restart();
             fixedStepCount = 0L;
             generation = generation == long.MaxValue ? long.MaxValue : generation + 1L;
@@ -1176,6 +1295,62 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             if (presentation == null)
             {
                 presentation = gameObject.AddComponent<BlasterTurretPresentation2D>();
+            }
+        }
+
+        private void HandleTurretProjectileCompleted(BoundedProjectile2D projectile)
+        {
+            if (projectile == null)
+            {
+                return;
+            }
+
+            projectile.Completed -= HandleTurretProjectileCompleted;
+            lastProjectileCompletionReason = projectile.CompletionReason;
+            lastProjectileHitStatus = projectile.LastHitTranslation == null
+                ? (CombatHit2DTranslationStatus?)null
+                : projectile.LastHitTranslation.Status;
+            lastProjectileCollisionObjectName = projectile.LastCollisionCollider == null
+                ? string.Empty
+                : projectile.LastCollisionCollider.gameObject.name;
+            lastProjectileCollisionPoint = projectile.LastCollisionPoint;
+        }
+
+        private sealed class BlasterTurretProjectileModule : IWeaponBehaviorModule
+        {
+            private static readonly StableId OperationIdValue =
+                StableId.Parse("operation.blaster-turret-directional-projectile");
+
+            private readonly double projectileSpeed;
+
+            public BlasterTurretProjectileModule(double projectileSpeed)
+            {
+                this.projectileSpeed = projectileSpeed;
+            }
+
+            public StableId ModuleId
+            {
+                get { return BlasterMachineGunPackage.ModuleId; }
+            }
+
+            public WeaponBehaviorModulePlan BuildExecutionPlan(WeaponBehaviorInput input)
+            {
+                if (input == null || input.WeaponId != BlasterMachineGunPackage.WeaponId)
+                {
+                    throw new ArgumentException(
+                        "The Blaster Turret projectile module requires the Blaster weapon input.",
+                        nameof(input));
+                }
+
+                return new WeaponBehaviorModulePlan(
+                    ModuleId,
+                    new BoundedProjectileExecutionOperation(
+                        BlasterMachineGunPackage.OperationKindId,
+                        OperationIdValue,
+                        projectileSpeed,
+                        BlasterMachineGunPackage.NormalProjectileLifetimeSeconds,
+                        BlasterMachineGunPackage.NormalProjectileRadius,
+                        CombatChannel.Kinetic));
             }
         }
     }

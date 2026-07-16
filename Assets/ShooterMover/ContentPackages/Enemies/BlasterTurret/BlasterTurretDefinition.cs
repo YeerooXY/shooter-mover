@@ -24,6 +24,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         public const double HardMaximumRange = 250d;
         public const double HardMaximumMuzzleOffset = 10d;
         public const double HardMaximumWarningLineWidth = 2d;
+        public const double HardMaximumFacingConeDegrees = 360d;
+        public const double HardMaximumProjectileSpeed = 250d;
         public const int HardMaximumMoverColliderCapacity = 64;
 
         [SerializeField] private float maximumHealth = 30f;
@@ -32,6 +34,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         [SerializeField] private float maximumRange = 28f;
         [SerializeField] private float muzzleOffset = 0.7f;
         [SerializeField] private float warningLineWidth = 0.07f;
+        [SerializeField] private float facingConeDegrees = 70f;
+        [SerializeField] private float projectileSpeed = 7.5f;
         [SerializeField] private float contactGraceSeconds = 0.5f;
         [SerializeField] private float simultaneousContactWindowSeconds = 0.02f;
         [SerializeField] private int moverColliderCapacity = 4;
@@ -66,6 +70,16 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             get { return warningLineWidth; }
         }
 
+        public double FacingConeDegrees
+        {
+            get { return facingConeDegrees; }
+        }
+
+        public double ProjectileSpeed
+        {
+            get { return projectileSpeed; }
+        }
+
         public double ContactGraceSeconds
         {
             get { return contactGraceSeconds; }
@@ -92,6 +106,33 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             double simultaneousContactWindowSeconds,
             int moverColliderCapacity)
         {
+            return CreateRuntime(
+                maximumHealth,
+                warningSeconds,
+                recoverySeconds,
+                maximumRange,
+                muzzleOffset,
+                warningLineWidth,
+                70d,
+                7.5d,
+                contactGraceSeconds,
+                simultaneousContactWindowSeconds,
+                moverColliderCapacity);
+        }
+
+        public static BlasterTurretDefinition CreateRuntime(
+            double maximumHealth,
+            double warningSeconds,
+            double recoverySeconds,
+            double maximumRange,
+            double muzzleOffset,
+            double warningLineWidth,
+            double facingConeDegrees,
+            double projectileSpeed,
+            double contactGraceSeconds,
+            double simultaneousContactWindowSeconds,
+            int moverColliderCapacity)
+        {
             ValidateValues(
                 maximumHealth,
                 warningSeconds,
@@ -99,6 +140,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 maximumRange,
                 muzzleOffset,
                 warningLineWidth,
+                facingConeDegrees,
+                projectileSpeed,
                 contactGraceSeconds,
                 simultaneousContactWindowSeconds,
                 moverColliderCapacity);
@@ -110,6 +153,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             definition.maximumRange = (float)maximumRange;
             definition.muzzleOffset = (float)muzzleOffset;
             definition.warningLineWidth = (float)warningLineWidth;
+            definition.facingConeDegrees = (float)facingConeDegrees;
+            definition.projectileSpeed = (float)projectileSpeed;
             definition.contactGraceSeconds = (float)contactGraceSeconds;
             definition.simultaneousContactWindowSeconds =
                 (float)simultaneousContactWindowSeconds;
@@ -127,6 +172,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 MaximumRange,
                 MuzzleOffset,
                 WarningLineWidth,
+                FacingConeDegrees,
+                ProjectileSpeed,
                 ContactGraceSeconds,
                 SimultaneousContactWindowSeconds,
                 MoverColliderCapacity);
@@ -198,7 +245,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         private void OnValidate()
         {
             maximumHealth = Mathf.Clamp(maximumHealth, 0.01f, (float)HardMaximumHealth);
-            warningSeconds = Mathf.Clamp(warningSeconds, 0.01f, (float)HardMaximumWarningSeconds);
+            warningSeconds = Mathf.Clamp(warningSeconds, 0f, (float)HardMaximumWarningSeconds);
             recoverySeconds = Mathf.Clamp(
                 recoverySeconds,
                 0.01f,
@@ -212,6 +259,14 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 warningLineWidth,
                 0.005f,
                 (float)HardMaximumWarningLineWidth);
+            facingConeDegrees = Mathf.Clamp(
+                facingConeDegrees,
+                0.01f,
+                (float)HardMaximumFacingConeDegrees);
+            projectileSpeed = Mathf.Clamp(
+                projectileSpeed,
+                0.01f,
+                (float)HardMaximumProjectileSpeed);
             contactGraceSeconds = Mathf.Clamp(contactGraceSeconds, 0.01f, 60f);
             simultaneousContactWindowSeconds = Mathf.Clamp(
                 simultaneousContactWindowSeconds,
@@ -230,6 +285,8 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
             double maximumRange,
             double muzzleOffset,
             double warningLineWidth,
+            double facingConeDegrees,
+            double projectileSpeed,
             double contactGraceSeconds,
             double simultaneousContactWindowSeconds,
             int moverColliderCapacity)
@@ -240,7 +297,7 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 0d,
                 HardMaximumWarningSeconds,
                 nameof(warningSeconds),
-                false);
+                true);
             RequireFiniteRange(
                 recoverySeconds,
                 0d,
@@ -267,6 +324,18 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 0d,
                 HardMaximumWarningLineWidth,
                 nameof(warningLineWidth),
+                false);
+            RequireFiniteRange(
+                facingConeDegrees,
+                0d,
+                HardMaximumFacingConeDegrees,
+                nameof(facingConeDegrees),
+                false);
+            RequireFiniteRange(
+                projectileSpeed,
+                0d,
+                HardMaximumProjectileSpeed,
+                nameof(projectileSpeed),
                 false);
             RequireFiniteRange(
                 contactGraceSeconds,

@@ -53,6 +53,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         [SerializeField] private GameObject blasterTurretPrefab;
         [SerializeField] private VisibleSliceBlasterTurretPresenter turretPresentationPrefab;
         [SerializeField] private Sprite blasterShotSprite;
+        [SerializeField] private Sprite turretShotSprite;
         [SerializeField] private bool shootingSandbox = true;
         [SerializeField] private bool reducedEffects;
         [SerializeField] private bool grayscale;
@@ -89,6 +90,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private long playerShotSequence;
         private long damageSequence;
         private long observedTurretShotSequence;
+        private int observedTurretHitCount;
+        private int observedPlayerHitCount;
         private bool damageObserved;
         private bool firingObserved;
         private bool sessionActive;
@@ -186,7 +189,22 @@ namespace ShooterMover.TestSupport.VisibleSlice
             {
                 observedTurretShotSequence = emitted;
                 firingObserved = true;
+            }
+
+            int turretHitCount = turretPackage.ConfirmedHitCount;
+            while (observedTurretHitCount < turretHitCount)
+            {
+                observedTurretHitCount++;
                 playerHealth = Mathf.Max(0, playerHealth - TurretShotDamage);
+            }
+
+            int playerHitCount = playerHitAdapter == null
+                ? 0
+                : playerHitAdapter.ProcessedEventCount;
+            while (observedPlayerHitCount < playerHitCount)
+            {
+                observedPlayerHitCount++;
+                ApplyPlayerProjectileDamageToTurret();
             }
         }
 
@@ -205,7 +223,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             if (shootingSandbox)
             {
-                return FireBlaster();
+                return turretPackage != null
+                    && FireBlaster(turretPackage.transform.position);
             }
 
             if (!sessionActive || turretPackage == null || turretPackage.Authority == null)
@@ -249,6 +268,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
             damageObserved = false;
             firingObserved = false;
             observedTurretShotSequence = 0L;
+            observedTurretHitCount = 0;
+            observedPlayerHitCount = 0;
             selectedLoadout = null;
             sessionActive = shootingSandbox;
             nextBlasterShotTime = 0f;
@@ -266,6 +287,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (turretPackage != null)
             {
                 turretPackage.RestartSession();
+            }
+            if (playerHitAdapter != null)
+            {
+                playerHitAdapter.ResetProcessedEvents();
             }
             if (loadoutSelector != null)
             {
@@ -313,11 +338,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 new VitalState(playerHealth, StartingPlayerHealth, 0d, 0d),
                 thrusterReader == null ? null : thrusterReader.ReadSnapshot(),
                 focused,
-                shootingSandbox ? "NO ENEMIES" : "BLASTER TURRET",
+                turretPackage == null ? "NO ENEMIES" : "BLASTER TURRET",
                 "FOUNDRY TEST BAY",
-                shootingSandbox
-                    ? "WASD MOVE  /  SHIFT OR SPACE BOOST  /  HOLD LEFT CLICK FIRE"
-                    : focused != null && focused.IsDestroyed ? "ROOM CLEAR" : "DESTROY THE TURRET",
+                focused != null && focused.IsDestroyed
+                    ? "ROOM CLEAR"
+                    : "DESTROY THE TURRET  /  USE COVER OR EVADE ITS FACING",
                 "R",
                 "MENU",
                 sessionActive,
@@ -408,10 +433,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 blasterShotSprite,
                 new Vector3(0.09f, 0.09f, 1f));
             BuildCamera();
-            if (!shootingSandbox)
-            {
-                BuildTurret();
-            }
+            BuildTurret();
             BuildUi();
             sessionActive = shootingSandbox;
             SetGrayscale(grayscale);
@@ -495,15 +517,28 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             GameObject turretObject = Instantiate(blasterTurretPrefab, transform);
             turretObject.name = "AcceptedBlasterTurret";
-            turretObject.transform.position = new Vector3(7f, 2.5f, 0f);
+            turretObject.transform.position = SnapToGrid(
+                new Vector3(4f, -2f, 0f),
+                PropGridSize);
+            turretObject.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
             sessionObjects.Add(turretObject);
             turretPackage = turretObject.GetComponent<BlasterTurretPackage>();
             BoundedProjectile2D projectileTemplate = CreateProjectileTemplate(
                 "TurretProjectileTemplate",
-                blasterShotSprite,
+                turretShotSprite == null ? blasterShotSprite : turretShotSprite,
                 new Vector3(0.07f, 0.07f, 1f));
             turretDefinition = BlasterTurretDefinition.CreateRuntime(
-                30d, 0.65d, 1.1d, 28d, 0.7d, 0.07d, 0.5d, 0.02d, 4);
+                60d,
+                0d,
+                1d,
+                13d,
+                0.7d,
+                0.07d,
+                70d,
+                7.5d,
+                0.5d,
+                0.02d,
+                4);
             EnemyTarget2DAdapter playerTarget = playerTransform.GetComponent<EnemyTarget2DAdapter>();
             turretPackage.Configure(
                 turretDefinition,
@@ -513,11 +548,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 StableId.Parse("enemy.vs007-blaster-turret"),
                 StableId.Parse("actor.vs007-player"),
                 CombatWeightClass.Standard);
+            playerHitAdapter.RegisterTarget(
+                turretPackage.EnemyCollider,
+                StableId.Parse("enemy.vs007-blaster-turret"));
 
             turretPresenter = Instantiate(turretPresentationPrefab, transform);
             turretPresenter.name = "VisibleSliceTurretPresentation";
             turretPresenter.transform.position = turretObject.transform.position;
-            turretPresenter.transform.localScale = new Vector3(2.4f, 2.4f, 1f);
+            turretPresenter.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
             turretPresenter.BindSource(this);
             turretPresenter.SetReducedEffectsOverride(reducedEffects);
             turretPresenter.SetGrayscaleOverride(grayscale);
@@ -732,6 +770,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private bool FireBlaster()
         {
+            return FireBlaster(ReadAimWorld());
+        }
+
+        private bool FireBlaster(Vector2 aimPoint)
+        {
             if (!sessionActive
                 || playerProjectileTemplate == null
                 || playerHitAdapter == null
@@ -740,7 +783,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 return false;
             }
 
-            Vector2 direction = ReadAimWorld() - (Vector2)playerTransform.position;
+            Vector2 direction = aimPoint - (Vector2)playerTransform.position;
             if (direction.sqrMagnitude <= 0.001f)
             {
                 direction = playerTransform.up;
@@ -783,6 +826,31 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 0f,
                 Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f);
             return true;
+        }
+
+        private void ApplyPlayerProjectileDamageToTurret()
+        {
+            if (turretPackage == null
+                || turretPackage.Authority == null
+                || turretPackage.Authority.CurrentState == null
+                || turretPackage.Authority.CurrentState.IsDestroyed)
+            {
+                return;
+            }
+
+            StableId eventId = StableId.Create(
+                "combat-event",
+                "vs007-player-hit-g" + restartGeneration + "-s" + playerShotSequence);
+            playerShotSequence++;
+            turretPackage.Authority.Apply(
+                EnemyActorCommand.Damage(
+                    playerShotSequence,
+                    eventId,
+                    StableId.Parse("actor.vs007-player"),
+                    (int)CombatChannel.Kinetic,
+                    PlayerShotDamage));
+            damageSequence++;
+            damageObserved = true;
         }
 
         private Vector2 ReadReticleViewport()

@@ -18,6 +18,8 @@ MonoBehaviour:
   maximumRange: 28
   muzzleOffset: 0.7
   warningLineWidth: 0.07
+  facingConeDegrees: 70
+  projectileSpeed: 7.5
   contactGraceSeconds: 0.5
   simultaneousContactWindowSeconds: 0.02
   moverColliderCapacity: 4
