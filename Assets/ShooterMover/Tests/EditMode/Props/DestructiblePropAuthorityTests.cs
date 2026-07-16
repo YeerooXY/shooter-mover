@@ -143,6 +143,15 @@ namespace ShooterMover.Tests.EditMode.Props
                         6d),
                     "Status").ToString(),
                 Is.EqualTo("HitNotConfirmed"));
+            HitMessage systemHit = new HitMessage(
+                StableId.Parse("combat-event.prop-system"),
+                StableId.Parse("actor.test-player"),
+                propId,
+                CombatChannel.System,
+                HitResult.Confirmed);
+            Assert.That(
+                Read(Apply(authority, systemHit, 6d), "Status").ToString(),
+                Is.EqualTo("InvalidInput"));
             Assert.That(
                 Read(
                     Apply(
