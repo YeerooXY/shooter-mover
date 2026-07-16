@@ -58,6 +58,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1bfe54ad71d4f0090fbd0b7d4cf35a4, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+  authoredPlacedInstanceId: placed.blaster-turret-template
+  sceneScopeOverride: {fileID: 0}
+  requiredScopeCompatibilityId: scope.gameplay
   snapToGrid: 1
   gridSize: 1
   facing: 2
@@ -66,7 +69,6 @@ MonoBehaviour:
   projectileVisualScale: {x: 0.07, y: 0.07}
   projectileSortingOrder: 40
   targetOverride: {fileID: 0}
-  sceneContextOverride: {fileID: 0}
   trackPlayer: 1
   trackingDegreesPerSecond: 120
   returnDegreesPerSecond: 90

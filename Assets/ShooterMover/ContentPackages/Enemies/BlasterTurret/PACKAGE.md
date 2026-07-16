@@ -4,7 +4,8 @@
 
 `enemy.blaster-turret` is the fixed-position ranged enemy for Stage 1. The package owns
 its tuning, fixed map-facing attack cone, temporary presentation, deterministic
-fire/recover policy, prefab root, and package-local composition only.
+fire/recover policy, prefab root, authored placement adapter, and package-local combat
+composition only.
 
 ## Accepted contracts consumed
 
@@ -19,6 +20,9 @@ fire/recover policy, prefab root, and package-local composition only.
 - CB-009 `WeaponMount2DAdapter`: validated plan-to-Physics2D execution.
 - WP-002 `ProjectileExecutionPlanAdapter` / `BoundedProjectile2D`: finite projectile
   spawning, owner exclusion, confirmed-hit translation, and session cleanup.
+- OBJ-001 `GameplaySceneScope2D` and placed-participant registration: explicit or
+  nearest-parent scope binding, authored stable identity, isolated registries, and
+  deterministic duplicate rejection.
 
 No weapon implementation, shared adapter, scene, registry output, persistence, reward,
 or other enemy is modified.
@@ -44,19 +48,41 @@ ordinary Physics2D collision.
 non-blocking wreck or enable it when the destroyed turret should remain solid cover.
 Restart restores the authored collider state.
 
-## Drag-and-drop scene authoring
+## Drag-anywhere authoring and stable identity
 
 `BlasterTurret.prefab` includes `BlasterTurretAuthoring2D`. A level author can drag any
 number of copies into a scene, choose Right/Up/Left/Down facing, and move them freely.
 The component snaps each copy to its configured grid size and locks rotation to the
 chosen cardinal direction in edit mode and again when play starts.
 
-The player/bootstrap owns one `BlasterTurretSceneContext2D`. Once that context receives
-the player target and player-shot hit adapter, every placed turret configures itself,
-creates its visible finite projectile template, receives a hierarchy-derived unique
-runtime identity, registers for player shots, and routes confirmed projectile damage.
-Duplicated prefab instances therefore remain independent without per-turret controller
-code.
+Every persistent copy must have a deliberate canonical `Authored Placed Instance Id`.
+The prefab carries the template value `placed.blaster-turret-template`; duplicated
+placements remain invalid until the serialized ID is changed. Runtime code never hashes,
+repairs, or regenerates this value. Renaming, moving, rotating, reparenting, or changing
+sibling order therefore cannot alter turret identity.
+
+A copied duplicate ID fails closed before `BlasterTurretPackage.Configure` runs. The
+OBJ-001 scope registry retains the first owner and reports the existing and attempted
+locations. The rejected copy does not register for player shots or become an active
+combat package.
+
+## Scope and combat-port binding
+
+A turret binds in this exact order:
+
+1. serialized `Scene Scope Override`, when assigned; otherwise
+2. the nearest compatible parent `GameplaySceneScope2D`.
+
+The selected generic scope must have a co-located, configured
+`BlasterTurretSceneContext2D`. That package-specific component exposes only the player
+target, hit translation, and damage-routing ports needed by this enemy. The turret
+self-registers with both the generic scope and the package context.
+
+There is no `FindFirstObjectByType`, `FindObjectsByType`, tag, scene-name, object-name,
+static registry, or controller fallback. Missing, cross-scene, incompatible, conflicting,
+or unconfigured scopes fail closed with `LastBindingDiagnostic`. Separate gameplay
+scopes own isolated registration dictionaries and independently register their own
+distinct authored placements; normal duplication still requires a new deliberate ID.
 
 ## Deterministic cadence
 
@@ -96,33 +122,63 @@ Run with the pinned editor:
 "C:\Program Files\Unity\Hub\Editor\6000.3.19f1\Editor\Unity.exe" -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Enemies.BlasterTurretPackageTests -testResults Artifacts\TestResults\BlasterTurretPackageTests.xml -logFile Artifacts\Logs\BlasterTurretPackageTests.log -quit
 ```
 
-The fixture covers descriptor identity, stationary projection, zero-warning and legacy
-warning cadence, cardinal facing, cone boundaries, bounded projectile execution,
-target loss, death, restart, and point-blank fail-safe behavior.
+The focused fixture covers the retained descriptor, cadence, facing, bounds, and source
+surface plus:
 
-## Manual warning capture
+- two independently registered and restarted turret placements in one scope;
+- distinct authored placements under two independent scopes;
+- duplicate authored-ID rejection before the second package configures;
+- explicit-scope precedence over nearest-parent binding;
+- conflicting compatible scopes at the nearest parent failing closed;
+- rename, transform, sibling-order, reparent, unbind, and rebind identity stability;
+- malformed identity and missing-scope fail-closed behavior; and
+- absence of global scene-discovery APIs in production turret authoring/context code.
 
-Open `BlasterTurret.prefab` in an isolated 2D test scene and configure an explicit target,
-target collider, and the shared `BoundedProjectile2D` prefab. Capture these frames in
-both normal color and grayscale:
+## Manual proof
 
-1. idle/recovery: no line warning;
-2. warning: center rail plus four perpendicular ticks, before any projectile exists;
-3. shot: warning hidden and one Blaster projectile leaving the barrel;
-4. obstruction inserted during warning: line disappears and no shot is released;
-5. compare beside the Mobile Blaster Droid: fixed broad base and zero translation remain
-   visually distinct from the mobile role.
+Create two compatible gameplay roots, each with `GameplaySceneScope2D` and a configured
+`BlasterTurretSceneContext2D`.
+
+1. Place two turrets under one root and assign distinct authored IDs. Confirm both track,
+   warn, fire visible physical projectiles, take player-shot damage independently, obey
+   their wreck-collider settings, and restart independently.
+2. Duplicate one turret without changing its ID. Confirm the duplicate stays inactive
+   and its diagnostic names duplicate identity; then assign a new ID and confirm it binds.
+3. Put a turret below scope A and assign scope B explicitly. Confirm B wins. Clear the
+   override and confirm the nearest compatible parent A wins.
+4. Rename, move, reorder, and reparent a disabled turret, then re-enable it. Confirm its
+   `ActorId` is unchanged and it registers only in the new selected scope.
+5. Remove the reachable scope or its package context, and separately place two compatible
+   scopes on the same nearest parent. Confirm both configurations fail closed without
+   creating private authority or a global fallback.
+
+For retained combat readability, capture normal-color and grayscale frames for idle,
+warning, shot, obstruction cancellation, destroyed-passable/solid variants, and restart.
+
+## INT-001 migration handoff
+
+The current Stage 1 test-support composition creates `BlasterTurretSceneContext2D` and
+the instantiated turret as siblings beneath `Stage1VisibleSliceController`. NORM-001
+intentionally does not edit that serialized/integration-owned path. INT-001 must make a
+configured `GameplaySceneScope2D` plus `BlasterTurretSceneContext2D` the turret's actual
+ancestor, or assign that generic scope through the turret's serialized/runtime explicit
+scope seam before calling `TryConfigureNow`.
+
+INT-001 must also replace the prefab template ID with a deliberate unique Stage 1 placed
+ID. It must not restore global discovery, hierarchy hashing, or controller-owned identity.
 
 ## Limitations
 
 - Temporary generated line geometry is not final art.
 - No tracking beam persists outside the optional warning phase.
 - No homing, target prediction, burst, or area projectile is used.
-- A scene still needs one player-owned `BlasterTurretSceneContext2D`; turrets deliberately
-  do not locate private player combat state through names, tags, or global singletons.
+- The package does not own reward profiles, mission state, the player health authority,
+  final Stage 1 placement, or shared scene-scope configuration.
+- A prefab template cannot safely provide a globally unique persistent placement ID;
+  every scene placement must receive its own deliberate authored ID.
 
 ## Rollback
 
-Remove this package folder and
-`Assets/ShooterMover/Tests/PlayMode/Enemies/BlasterTurretPackageTests.cs` with their
-inseparable Unity metadata. No scene, registry, save, or shared-adapter cleanup is needed.
+Revert the NORM-001 changes to this package's authoring component, scene context, prefab,
+focused test, and this document together. No shared OBJ-001 contract, scene, registry,
+save, reward, weapon, or other-enemy cleanup is required.
