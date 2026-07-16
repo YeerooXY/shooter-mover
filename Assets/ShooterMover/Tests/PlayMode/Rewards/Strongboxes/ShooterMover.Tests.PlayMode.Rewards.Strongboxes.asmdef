@@ -1,0 +1,23 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Rewards.Strongboxes",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Rewards.Strongboxes",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.UI.StrongboxOpening",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
