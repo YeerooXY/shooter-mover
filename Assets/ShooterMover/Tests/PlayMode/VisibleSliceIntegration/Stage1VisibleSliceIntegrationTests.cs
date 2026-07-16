@@ -59,6 +59,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(Read<int>(controller, "HudOwnerCount"), Is.EqualTo(1));
             Assert.That(Read<int>(controller, "CameraOwnerCount"), Is.EqualTo(1));
             Assert.That(Read<bool>(controller, "IsSessionActive"), Is.True);
+            object destructibleSet = Read<object>(controller, "DestructiblePropSet");
+            Assert.That(destructibleSet, Is.Not.Null);
+            Assert.That(Read<int>(destructibleSet, "PropCount"), Is.EqualTo(4));
 
             Component turretComponent = turret as Component;
             Assert.That(turretComponent, Is.Not.Null);

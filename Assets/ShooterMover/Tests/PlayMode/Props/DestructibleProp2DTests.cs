@@ -1,11 +1,13 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Props
 {
@@ -17,6 +19,10 @@ namespace ShooterMover.Tests.PlayMode.Props
     {
         private static readonly Type ComponentType = Find(
             "ShooterMover.ContentPackages.Props.DestructibleProps.DestructibleProp2D");
+        private static readonly Type AnimationType = Find(
+            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestructionAnimation");
+        private static readonly Type AnimationPlayerType = Find(
+            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestructionPlayer2D");
 
         [Test]
         public void LethalDamage_DisablesBlockingColliderAndPresentationExactlyOnce()
@@ -127,6 +133,98 @@ namespace ShooterMover.Tests.PlayMode.Props
                 UnityEngine.Object.DestroyImmediate(obstacle);
                 UnityEngine.Object.DestroyImmediate(visual);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator ConfiguredDestructionAnimation_PlaysAndRestartClearsIt()
+        {
+            GameObject obstacle = new GameObject("AnimatedDestructiblePropObstacle");
+            GameObject visual = new GameObject("AnimatedDestructiblePropVisual");
+            Texture2D firstTexture = null;
+            Texture2D secondTexture = null;
+            try
+            {
+                BoxCollider2D collider = obstacle.AddComponent<BoxCollider2D>();
+                visual.AddComponent<SpriteRenderer>();
+                object component = obstacle.AddComponent(ComponentType);
+                StableId propId = StableId.Parse("prop.playmode-animated");
+                Invoke(component, "Configure", propId, 12d, collider, visual);
+
+                Sprite first = CreateSprite("Explosion Frame 1", Color.yellow, out firstTexture);
+                Sprite second = CreateSprite("Explosion Frame 2", Color.red, out secondTexture);
+                MethodInfo createRuntime = AnimationType.GetMethod(
+                    "CreateRuntime",
+                    BindingFlags.Public | BindingFlags.Static);
+                Assert.That(createRuntime, Is.Not.Null);
+                object animation = createRuntime.Invoke(
+                    null,
+                    new object[]
+                    {
+                        new[] { first, second },
+                        0.05f,
+                        Vector2.zero,
+                        Vector2.one,
+                        55,
+                        false,
+                    });
+
+                object player = obstacle.AddComponent(AnimationPlayerType);
+                Invoke(player, "Configure", component, visual.transform, animation);
+                Invoke(
+                    component,
+                    "TryApplyConfirmedHit",
+                    CreateHit("combat-event.playmode-animation", propId),
+                    12d);
+
+                Assert.That((bool)Read(player, "IsPlaying"), Is.True);
+                SpriteRenderer effectRenderer =
+                    (SpriteRenderer)Read(player, "EffectRenderer");
+                Assert.That(effectRenderer, Is.Not.Null);
+                Assert.That(effectRenderer.sprite, Is.EqualTo(first));
+                Assert.That(effectRenderer.sortingOrder, Is.EqualTo(55));
+
+                yield return new WaitForSeconds(0.06f);
+                effectRenderer = (SpriteRenderer)Read(player, "EffectRenderer");
+                Assert.That(effectRenderer, Is.Not.Null);
+                Assert.That(effectRenderer.sprite, Is.EqualTo(second));
+
+                Invoke(component, "Restart");
+                yield return null;
+                Assert.That((bool)Read(player, "IsPlaying"), Is.False);
+                Assert.That(Read(player, "EffectRenderer"), Is.Null);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(obstacle);
+                UnityEngine.Object.DestroyImmediate(visual);
+                if (firstTexture != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(firstTexture);
+                }
+
+                if (secondTexture != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(secondTexture);
+                }
+            }
+        }
+
+        private static Sprite CreateSprite(
+            string name,
+            Color color,
+            out Texture2D texture)
+        {
+            texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            texture.name = name + " Texture";
+            texture.SetPixel(0, 0, color);
+            texture.Apply(false, false);
+            Sprite sprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, 1f, 1f),
+                new Vector2(0.5f, 0.5f),
+                1f);
+            sprite.name = name;
+            return sprite;
         }
 
         private static HitMessage CreateHit(string eventId, StableId targetId)
