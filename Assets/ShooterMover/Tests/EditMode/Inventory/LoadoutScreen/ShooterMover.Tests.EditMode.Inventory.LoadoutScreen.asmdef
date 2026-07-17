@@ -1,0 +1,23 @@
+{
+  "name": "ShooterMover.Tests.EditMode.Inventory.LoadoutScreen",
+  "rootNamespace": "ShooterMover.Tests.EditMode.Inventory.LoadoutScreen",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
