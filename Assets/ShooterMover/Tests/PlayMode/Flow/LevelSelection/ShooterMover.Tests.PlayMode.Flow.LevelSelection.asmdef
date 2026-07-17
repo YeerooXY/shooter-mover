@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Flow.LevelSelection",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Flow.LevelSelection",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.UI.LevelSelection"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

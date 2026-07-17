@@ -1,0 +1,20 @@
+{
+  "name": "ShooterMover.UI.LevelSelection",
+  "rootNamespace": "ShooterMover.UI.LevelSelection",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.Content.Definitions",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
