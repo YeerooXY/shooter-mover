@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Text;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
@@ -23,25 +25,48 @@ namespace ShooterMover.Editor.BalanceSimulator
 {
     public sealed class LootboxGeneratedItemV1
     {
+        private readonly string canonicalText;
+
         public LootboxGeneratedItemV1(
             ProductionStrongboxTierV1 tier,
             EquipmentInstance equipment,
+            string sourceDefinitionId,
             string definitionDisplayName,
             string familyId,
             int mark)
         {
             Tier = tier ?? throw new ArgumentNullException(nameof(tier));
             Equipment = equipment ?? throw new ArgumentNullException(nameof(equipment));
+            SourceDefinitionId = sourceDefinitionId ?? equipment.DefinitionId.ToString();
             DefinitionDisplayName = definitionDisplayName ?? equipment.DefinitionId.ToString();
             FamilyId = familyId ?? string.Empty;
             Mark = mark;
+            OddsKey = DefinitionDisplayName + " [" + SourceDefinitionId + "]";
+
+            var builder = new StringBuilder();
+            StrongboxCanonicalV1.AppendToken(builder, "tier", Tier.TierStableId.ToString());
+            StrongboxCanonicalV1.AppendToken(builder, "source_definition", SourceDefinitionId);
+            StrongboxCanonicalV1.AppendToken(builder, "display_name", DefinitionDisplayName);
+            StrongboxCanonicalV1.AppendToken(builder, "family", FamilyId);
+            StrongboxCanonicalV1.AppendToken(builder, "mark", Mark.ToString(CultureInfo.InvariantCulture));
+            StrongboxCanonicalV1.AppendToken(builder, "equipment", Equipment.ToCanonicalString());
+            canonicalText = builder.ToString();
+            Fingerprint = StrongboxCanonicalV1.Fingerprint(canonicalText);
         }
 
         public ProductionStrongboxTierV1 Tier { get; }
         public EquipmentInstance Equipment { get; }
+        public string SourceDefinitionId { get; }
         public string DefinitionDisplayName { get; }
         public string FamilyId { get; }
         public int Mark { get; }
+        public string OddsKey { get; }
+        public string Fingerprint { get; }
+
+        public string ToCanonicalString()
+        {
+            return canonicalText;
+        }
     }
 
     public sealed class LootboxOddsEntryV1 : IComparable<LootboxOddsEntryV1>
@@ -49,13 +74,25 @@ namespace ShooterMover.Editor.BalanceSimulator
         public LootboxOddsEntryV1(string key, long count, long total)
         {
             Key = key ?? string.Empty;
+            if (count < 0L) throw new ArgumentOutOfRangeException(nameof(count));
+            if (total < 0L) throw new ArgumentOutOfRangeException(nameof(total));
+            if (count > total) throw new ArgumentOutOfRangeException(nameof(count));
             Count = count;
-            Percentage = total <= 0L ? 0.0 : 100.0 * count / total;
+            Total = total;
+            Percentage = total == 0L ? 0.0 : 100.0 * count / total;
         }
 
         public string Key { get; }
         public long Count { get; }
+        public long Total { get; }
         public double Percentage { get; }
+
+        public string ToCanonicalString()
+        {
+            return "key=" + Key
+                + "\ncount=" + Count.ToString(CultureInfo.InvariantCulture)
+                + "\ntotal=" + Total.ToString(CultureInfo.InvariantCulture);
+        }
 
         public int CompareTo(LootboxOddsEntryV1 other)
         {
@@ -67,32 +104,123 @@ namespace ShooterMover.Editor.BalanceSimulator
 
     public sealed class LootboxOddsReportV1
     {
+        private readonly string canonicalText;
+
         public LootboxOddsReportV1(
+            int tierNumber,
+            int playerLevel,
+            ulong rootSeed,
             int sampleCount,
+            int successfulOpenCount,
             IEnumerable<LootboxOddsEntryV1> itemOdds,
+            IEnumerable<LootboxOddsEntryV1> qualityOdds,
             IEnumerable<LootboxOddsEntryV1> slotOdds,
+            IEnumerable<LootboxOddsEntryV1> augmentTierOdds,
             IEnumerable<LootboxOddsEntryV1> augmentLevelOdds,
             IEnumerable<LootboxOddsEntryV1> itemLevelDeltaOdds,
             int rejectedRolls)
         {
+            if (tierNumber < 1) throw new ArgumentOutOfRangeException(nameof(tierNumber));
+            if (playerLevel < 0) throw new ArgumentOutOfRangeException(nameof(playerLevel));
+            if (sampleCount < 1) throw new ArgumentOutOfRangeException(nameof(sampleCount));
+            if (successfulOpenCount < 0 || successfulOpenCount > sampleCount)
+            {
+                throw new ArgumentOutOfRangeException(nameof(successfulOpenCount));
+            }
+            if (rejectedRolls < 0 || rejectedRolls != sampleCount - successfulOpenCount)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rejectedRolls));
+            }
+
+            TierNumber = tierNumber;
+            PlayerLevel = playerLevel;
+            RootSeed = rootSeed;
             SampleCount = sampleCount;
+            SuccessfulOpenCount = successfulOpenCount;
             ItemOdds = Copy(itemOdds);
+            QualityOdds = Copy(qualityOdds);
             SlotOdds = Copy(slotOdds);
+            AugmentTierOdds = Copy(augmentTierOdds);
             AugmentLevelOdds = Copy(augmentLevelOdds);
             ItemLevelDeltaOdds = Copy(itemLevelDeltaOdds);
             RejectedRolls = rejectedRolls;
+            canonicalText = BuildCanonicalText();
+            Fingerprint = StrongboxCanonicalV1.Fingerprint(canonicalText);
         }
 
+        public int TierNumber { get; }
+        public int PlayerLevel { get; }
+        public ulong RootSeed { get; }
         public int SampleCount { get; }
+        public int SuccessfulOpenCount { get; }
         public IReadOnlyList<LootboxOddsEntryV1> ItemOdds { get; }
+        public IReadOnlyList<LootboxOddsEntryV1> QualityOdds { get; }
         public IReadOnlyList<LootboxOddsEntryV1> SlotOdds { get; }
+        public IReadOnlyList<LootboxOddsEntryV1> AugmentTierOdds { get; }
         public IReadOnlyList<LootboxOddsEntryV1> AugmentLevelOdds { get; }
         public IReadOnlyList<LootboxOddsEntryV1> ItemLevelDeltaOdds { get; }
         public int RejectedRolls { get; }
+        public string Fingerprint { get; }
 
-        private static IReadOnlyList<LootboxOddsEntryV1> Copy(IEnumerable<LootboxOddsEntryV1> values)
+        public string ToCanonicalString()
         {
-            var result = new List<LootboxOddsEntryV1>(values ?? Array.Empty<LootboxOddsEntryV1>());
+            return canonicalText;
+        }
+
+        public LootboxOddsEntryV1 FindItemOdds(string key)
+        {
+            for (int index = 0; index < ItemOdds.Count; index++)
+            {
+                if (string.Equals(ItemOdds[index].Key, key, StringComparison.Ordinal))
+                {
+                    return ItemOdds[index];
+                }
+            }
+            return null;
+        }
+
+        private string BuildCanonicalText()
+        {
+            var builder = new StringBuilder();
+            StrongboxCanonicalV1.AppendToken(builder, "schema", "lootbox-odds-report-v1");
+            StrongboxCanonicalV1.AppendToken(builder, "tier", TierNumber.ToString(CultureInfo.InvariantCulture));
+            StrongboxCanonicalV1.AppendToken(builder, "player_level", PlayerLevel.ToString(CultureInfo.InvariantCulture));
+            StrongboxCanonicalV1.AppendToken(builder, "root_seed", RootSeed.ToString(CultureInfo.InvariantCulture));
+            StrongboxCanonicalV1.AppendToken(builder, "sample_count", SampleCount.ToString(CultureInfo.InvariantCulture));
+            StrongboxCanonicalV1.AppendToken(builder, "successful_open_count", SuccessfulOpenCount.ToString(CultureInfo.InvariantCulture));
+            StrongboxCanonicalV1.AppendToken(builder, "rejected_rolls", RejectedRolls.ToString(CultureInfo.InvariantCulture));
+            Append(builder, "item", ItemOdds);
+            Append(builder, "quality", QualityOdds);
+            Append(builder, "slot", SlotOdds);
+            Append(builder, "augment_tier", AugmentTierOdds);
+            Append(builder, "augment_level", AugmentLevelOdds);
+            Append(builder, "item_level_delta", ItemLevelDeltaOdds);
+            return builder.ToString();
+        }
+
+        private static void Append(
+            StringBuilder builder,
+            string prefix,
+            IReadOnlyList<LootboxOddsEntryV1> values)
+        {
+            StrongboxCanonicalV1.AppendToken(
+                builder,
+                prefix + "_count",
+                values.Count.ToString(CultureInfo.InvariantCulture));
+            for (int index = 0; index < values.Count; index++)
+            {
+                StrongboxCanonicalV1.AppendToken(
+                    builder,
+                    prefix + "_" + index.ToString("D4", CultureInfo.InvariantCulture),
+                    values[index].ToCanonicalString());
+            }
+        }
+
+        private static IReadOnlyList<LootboxOddsEntryV1> Copy(
+            IEnumerable<LootboxOddsEntryV1> values)
+        {
+            var result = new List<LootboxOddsEntryV1>(
+                values ?? Array.Empty<LootboxOddsEntryV1>());
             result.Sort();
             return new ReadOnlyCollection<LootboxOddsEntryV1>(result);
         }
@@ -130,11 +258,13 @@ namespace ShooterMover.Editor.BalanceSimulator
             StrongboxDefinitionCatalogV1 strongboxDefinitions,
             StrongboxEquipmentGenerationResolverV1 resolver)
         {
-            this.weaponCatalog = weaponCatalog;
-            this.equipmentCatalog = equipmentCatalog;
-            this.weaponByEquipmentId = weaponByEquipmentId;
-            this.strongboxDefinitions = strongboxDefinitions;
-            this.resolver = resolver;
+            this.weaponCatalog = weaponCatalog ?? throw new ArgumentNullException(nameof(weaponCatalog));
+            this.equipmentCatalog = equipmentCatalog ?? throw new ArgumentNullException(nameof(equipmentCatalog));
+            this.weaponByEquipmentId = weaponByEquipmentId
+                ?? throw new ArgumentNullException(nameof(weaponByEquipmentId));
+            this.strongboxDefinitions = strongboxDefinitions
+                ?? throw new ArgumentNullException(nameof(strongboxDefinitions));
+            this.resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             holdings = new PlayerHoldingsService(
                 HoldingsAuthority,
                 1000000L,
@@ -174,7 +304,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 for (int index = 0; index < ProductionStrongboxCatalogV1.Tiers.Count; index++)
                 {
                     ProductionStrongboxTierV1 tier = ProductionStrongboxCatalogV1.Tiers[index];
-                    EquipmentGenerationPolicyV1 policy = BuildPolicy(tier, import.Catalog, map);
+                    EquipmentGenerationPolicyV1 policy = BuildPolicy(tier, map);
                     StrongboxDefinitionV1 definition = tier.CreateDefinition(policy.PolicyId);
                     definitions.Add(definition);
                     bindings.Add(new StrongboxEquipmentGenerationDefinitionV1(
@@ -196,7 +326,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             catch (Exception exception)
             {
-                diagnostic = exception.Message;
+                diagnostic = exception.ToString();
                 return false;
             }
         }
@@ -214,7 +344,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             StrongboxDefinitionV1 definition;
             if (!strongboxDefinitions.TryGet(tier.TierStableId, out definition))
             {
-                throw new InvalidOperationException("Missing strongbox definition " + tier.TierStableId + ".");
+                throw new InvalidOperationException(
+                    "Missing strongbox definition " + tier.TierStableId + ".");
             }
 
             int effectiveLevel = tier.ResolveEffectivePlayerLevel(playerLevel);
@@ -258,49 +389,57 @@ namespace ShooterMover.Editor.BalanceSimulator
                 out generated,
                 out rejection))
             {
-                throw new InvalidOperationException("Strongbox generation rejected: " + rejection);
+                throw new InvalidOperationException(
+                    "Strongbox generation rejected: " + rejection);
             }
             if (generated.Count != 1)
             {
-                throw new InvalidOperationException("The opener expects exactly one equipment item per box.");
+                throw new InvalidOperationException(
+                    "The opener expects exactly one equipment item per box.");
             }
 
             EquipmentInstance item = generated[0];
             WeaponDefinitionData source;
             if (!weaponByEquipmentId.TryGetValue(item.DefinitionId, out source))
             {
-                throw new InvalidOperationException("Generated equipment is missing its weapon-catalog projection.");
+                throw new InvalidOperationException(
+                    "Generated equipment is missing its weapon-catalog projection.");
             }
             return new LootboxGeneratedItemV1(
                 tier,
                 item,
+                source.DefinitionId,
                 source.DisplayName,
                 source.FamilyId,
                 source.Mark);
         }
 
-        public PlayerHoldingsMutationStatusV1 Keep(
-            LootboxGeneratedItemV1 generated,
-            int decisionOrdinal)
+        public PlayerHoldingsMutationStatusV1 Keep(LootboxGeneratedItemV1 generated)
         {
             if (generated == null) throw new ArgumentNullException(nameof(generated));
-            if (decisionOrdinal < 0) throw new ArgumentOutOfRangeException(nameof(decisionOrdinal));
             if (decidedItems.Contains(generated.Equipment.InstanceId))
             {
                 return PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange;
             }
 
+            StableId transactionId = StrongboxCanonicalV1.DeriveId(
+                "lootboxkeeptransaction",
+                generated.Equipment.InstanceId.ToString());
+            StableId operationId = StrongboxCanonicalV1.DeriveId(
+                "lootboxkeepoperation",
+                generated.Equipment.InstanceId.ToString());
             HoldingProvenanceV1 provenance = HoldingProvenanceV1.Create(
-                StableId.Create("lootbox-grant", decisionOrdinal.ToString("D6")),
+                StrongboxCanonicalV1.DeriveId(
+                    "lootboxgrant",
+                    generated.Equipment.InstanceId.ToString()),
                 SourceId);
             PlayerHoldingsMutationResultV1 result = holdings.Apply(
                 PlayerHoldingsCommandV1.AddEquipment(
-                    StableId.Create("lootbox-keep-transaction", decisionOrdinal.ToString("D6")),
-                    StableId.Create("lootbox-keep-operation", decisionOrdinal.ToString("D6")),
+                    transactionId,
+                    operationId,
                     HoldingsAuthority,
                     generated.Equipment,
-                    provenance,
-                    holdings.Sequence));
+                    provenance));
             if (result.Status == PlayerHoldingsMutationStatusV1.Applied)
             {
                 acceptedInventory.Add(generated.Equipment);
@@ -329,8 +468,10 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             if (sampleCount < 1) throw new ArgumentOutOfRangeException(nameof(sampleCount));
             var items = new Dictionary<string, long>(StringComparer.Ordinal);
+            var qualities = new Dictionary<string, long>(StringComparer.Ordinal);
             var slots = new Dictionary<string, long>(StringComparer.Ordinal);
-            var levels = new Dictionary<string, long>(StringComparer.Ordinal);
+            var augmentTiers = new Dictionary<string, long>(StringComparer.Ordinal);
+            var augmentLevels = new Dictionary<string, long>(StringComparer.Ordinal);
             var deltas = new Dictionary<string, long>(StringComparer.Ordinal);
             long augmentTotal = 0L;
             int rejected = 0;
@@ -344,15 +485,20 @@ namespace ShooterMover.Editor.BalanceSimulator
                         playerLevel,
                         rootSeed,
                         index);
-                    Add(items, generated.DefinitionDisplayName, 1L);
-                    Add(slots, generated.Equipment.Augments.Count.ToString(), 1L);
+                    Add(items, generated.OddsKey, 1L);
+                    Add(qualities, generated.Equipment.QualityId.ToString(), 1L);
+                    Add(slots, generated.Equipment.Augments.Count.ToString(CultureInfo.InvariantCulture), 1L);
                     Add(
                         deltas,
-                        (generated.Equipment.ItemLevel - playerLevel).ToString("+0;-0;0"),
+                        (generated.Equipment.ItemLevel - playerLevel).ToString("+0;-0;0", CultureInfo.InvariantCulture),
                         1L);
-                    for (int augmentIndex = 0; augmentIndex < generated.Equipment.Augments.Count; augmentIndex++)
+                    for (int augmentIndex = 0;
+                         augmentIndex < generated.Equipment.Augments.Count;
+                         augmentIndex++)
                     {
-                        Add(levels, generated.Equipment.Augments[augmentIndex].Level.ToString(), 1L);
+                        AugmentInstance augment = generated.Equipment.Augments[augmentIndex];
+                        Add(augmentTiers, augment.Tier.ToString(CultureInfo.InvariantCulture), 1L);
+                        Add(augmentLevels, augment.Level.ToString(CultureInfo.InvariantCulture), 1L);
                         augmentTotal++;
                     }
                 }
@@ -360,14 +506,29 @@ namespace ShooterMover.Editor.BalanceSimulator
                 {
                     rejected++;
                 }
+                catch (ArgumentException)
+                {
+                    rejected++;
+                }
+                catch (OverflowException)
+                {
+                    rejected++;
+                }
             }
 
+            int successful = sampleCount - rejected;
             return new LootboxOddsReportV1(
+                tierNumber,
+                playerLevel,
+                rootSeed,
                 sampleCount,
-                Entries(items, sampleCount - rejected),
-                Entries(slots, sampleCount - rejected),
-                Entries(levels, augmentTotal),
-                Entries(deltas, sampleCount - rejected),
+                successful,
+                Entries(items, successful),
+                Entries(qualities, successful),
+                Entries(slots, successful),
+                Entries(augmentTiers, augmentTotal),
+                Entries(augmentLevels, augmentTotal),
+                Entries(deltas, successful),
                 rejected);
         }
 
@@ -376,26 +537,35 @@ namespace ShooterMover.Editor.BalanceSimulator
             out Dictionary<StableId, WeaponDefinitionData> map)
         {
             map = new Dictionary<StableId, WeaponDefinitionData>();
-            EquipmentQualityTier common = EquipmentQualityTier.Create(QualityCommon, "Common", 1);
-            EquipmentQualityTier rare = EquipmentQualityTier.Create(QualityRare, "Rare", 2);
-            EquipmentQualityTier exceptional = EquipmentQualityTier.Create(QualityExceptional, "Exceptional", 3);
+            EquipmentQualityTier common = EquipmentQualityTier.Create(
+                QualityCommon,
+                "Common",
+                1);
+            EquipmentQualityTier rare = EquipmentQualityTier.Create(
+                QualityRare,
+                "Rare",
+                2);
+            EquipmentQualityTier exceptional = EquipmentQualityTier.Create(
+                QualityExceptional,
+                "Exceptional",
+                3);
             var equipment = new List<EquipmentDefinition>();
             IReadOnlyList<WeaponDefinitionData> live =
                 source.GetDefinitions(WeaponCatalogContentFilter.LiveOnly);
             for (int index = 0; index < live.Count; index++)
             {
                 WeaponDefinitionData weapon = live[index];
-                StableId definitionId = StableId.Create(
-                    "weapon-definition",
-                    "catalog-" + index.ToString("D4"));
+                StableId definitionId = StrongboxCanonicalV1.DeriveId(
+                    "weapondefinition",
+                    weapon.DefinitionId);
                 int minimumLevel = Math.Max(1, weapon.FirstAppearance);
-                int maximumLevel = Math.Max(minimumLevel, Math.Max(200, weapon.PowerAnchor + 50));
+                int maximumLevel = MaximumItemLevel(weapon);
                 equipment.Add(EquipmentDefinition.Create(
                     definitionId,
                     EquipmentCategoryIds.Weapon,
-                    StableId.Create("weapon-family", SafeSlug(weapon.FamilyId)),
+                    StrongboxCanonicalV1.DeriveId("weaponfamily", weapon.FamilyId),
                     weapon.DisplayName,
-                    StableId.Create("weapon-runtime", "catalog-" + index.ToString("D4")),
+                    StrongboxCanonicalV1.DeriveId("weaponruntime", weapon.DefinitionId),
                     InclusiveIntRange.Create(minimumLevel, maximumLevel),
                     3,
                     new[] { common, rare, exceptional },
@@ -429,14 +599,15 @@ namespace ShooterMover.Editor.BalanceSimulator
             EquipmentCatalogBuildResult build = EquipmentCatalog.Build(equipment, augments);
             if (!build.IsValid)
             {
-                throw new InvalidOperationException("Weapon-to-equipment catalog projection is invalid.");
+                throw new InvalidOperationException(
+                    "Weapon-to-equipment catalog projection is invalid: "
+                    + (build.Issues.Count == 0 ? "unknown" : build.Issues[0].ToString()));
             }
             return build.Catalog;
         }
 
         private static EquipmentGenerationPolicyV1 BuildPolicy(
             ProductionStrongboxTierV1 tier,
-            WeaponCatalog source,
             Dictionary<StableId, WeaponDefinitionData> map)
         {
             var candidates = new List<EquipmentGenerationCandidateV1>();
@@ -461,9 +632,14 @@ namespace ShooterMover.Editor.BalanceSimulator
                     Math.Max(1, weapon.PeakDropLevel),
                     InclusiveIntRange.Create(
                         Math.Max(1, weapon.FirstAppearance),
-                        Math.Max(200, weapon.PowerAnchor + 50)),
+                        MaximumItemLevel(weapon)),
                     Math.Max(0.000001, weapon.FinalBaseWeight),
                     1.0));
+            }
+            if (candidates.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "Strongbox tier " + tier.DisplayName + " has no eligible live weapon definitions.");
             }
 
             return EquipmentGenerationPolicyV1.Create(
@@ -471,21 +647,49 @@ namespace ShooterMover.Editor.BalanceSimulator
                 candidates,
                 new[]
                 {
-                    EquipmentQualityCandidateV1.Create(QualityCommon, 0L, tier.CommonWeight),
-                    EquipmentQualityCandidateV1.Create(QualityRare, 0L, tier.RareWeight),
-                    EquipmentQualityCandidateV1.Create(QualityExceptional, 0L, tier.ExceptionalWeight),
+                    EquipmentQualityCandidateV1.Create(
+                        QualityCommon,
+                        0L,
+                        tier.CommonWeight),
+                    EquipmentQualityCandidateV1.Create(
+                        QualityRare,
+                        0L,
+                        tier.RareWeight),
+                    EquipmentQualityCandidateV1.Create(
+                        QualityExceptional,
+                        0L,
+                        tier.ExceptionalWeight),
                 },
                 new[]
                 {
-                    AugmentGenerationCandidateV1.Create(StableId.Parse("augment.simulator-1"), 0, 1000, 1UL),
-                    AugmentGenerationCandidateV1.Create(StableId.Parse("augment.simulator-2"), 0, 1000, 1UL),
-                    AugmentGenerationCandidateV1.Create(StableId.Parse("augment.simulator-3"), 0, 1000, 1UL),
+                    AugmentGenerationCandidateV1.Create(
+                        StableId.Parse("augment.simulator-1"),
+                        0,
+                        1000,
+                        1UL),
+                    AugmentGenerationCandidateV1.Create(
+                        StableId.Parse("augment.simulator-2"),
+                        0,
+                        1000,
+                        1UL),
+                    AugmentGenerationCandidateV1.Create(
+                        StableId.Parse("augment.simulator-3"),
+                        0,
+                        1000,
+                        1UL),
                 },
                 0,
                 3,
                 false,
                 new SoftActivationCurveParameters(0.08, 12L, 8L),
                 new ObsolescenceCurveParameters(30L, 20.0, 0.15));
+        }
+
+        private static int MaximumItemLevel(WeaponDefinitionData weapon)
+        {
+            return Math.Max(
+                Math.Max(1, weapon.FirstAppearance),
+                Math.Max(200, checked(weapon.PowerAnchor + 50)));
         }
 
         private static IEnumerable<LootboxOddsEntryV1> Entries(
@@ -500,7 +704,10 @@ namespace ShooterMover.Editor.BalanceSimulator
             return result;
         }
 
-        private static void Add(Dictionary<string, long> values, string key, long quantity)
+        private static void Add(
+            Dictionary<string, long> values,
+            string key,
+            long quantity)
         {
             long current;
             values.TryGetValue(key, out current);
@@ -510,7 +717,9 @@ namespace ShooterMover.Editor.BalanceSimulator
         private static ulong DeriveSeed(ulong rootSeed, int ordinal)
         {
             DeterministicRandom random = DeterministicRandom.Create(rootSeed)
-                .Fork(StableId.Parse("lootbox-simulator.open"), checked((ulong)ordinal));
+                .Fork(
+                    StableId.Parse("lootbox-simulator.open"),
+                    checked((ulong)ordinal));
             ulong value;
             random.NextUInt64(out value);
             return value;
@@ -520,20 +729,11 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             return StableId.Create(
                 "lootbox-simulator",
-                purpose + "-" + seed.ToString("x16") + "-" + ordinal.ToString("D6"));
-        }
-
-        private static string SafeSlug(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return "unknown";
-            var chars = new char[value.Length];
-            int count = 0;
-            for (int index = 0; index < value.Length; index++)
-            {
-                char current = char.ToLowerInvariant(value[index]);
-                chars[count++] = char.IsLetterOrDigit(current) ? current : '-';
-            }
-            return new string(chars, 0, count).Trim('-');
+                purpose
+                + "-"
+                + seed.ToString("x16", CultureInfo.InvariantCulture)
+                + "-"
+                + ordinal.ToString("D6", CultureInfo.InvariantCulture));
         }
 
         private sealed class SimulatorEquipmentValidator : IEquipmentInstanceValidator
