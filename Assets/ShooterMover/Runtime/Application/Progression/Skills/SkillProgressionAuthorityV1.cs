@@ -35,22 +35,77 @@ namespace ShooterMover.Application.Progression.Skills
             lock (syncRoot)
             {
                 if (string.IsNullOrWhiteSpace(operationId) || string.IsNullOrWhiteSpace(skillId))
-                    return Fact(SkillMutationStatusV1.InvalidRequest, skillId, 0, 0, "skill-request-invalid");
+                    return Fact(
+                        SkillMutationStatusV1.InvalidRequest,
+                        skillId,
+                        0,
+                        0,
+                        new SkillRejectionReasonV1("skill-request-invalid"));
+
                 if (appliedOperations.Contains(operationId))
                 {
                     int duplicateRank = ranks.ContainsKey(skillId) ? ranks[skillId] : 0;
                     return Fact(SkillMutationStatusV1.DuplicateNoChange, skillId, duplicateRank, duplicateRank);
                 }
+
                 SkillDefinitionV1 definition;
                 if (!catalog.TryGet(skillId, out definition))
-                    return Fact(SkillMutationStatusV1.UnknownSkill, skillId, 0, 0, "skill-unknown");
+                    return Fact(
+                        SkillMutationStatusV1.UnknownSkill,
+                        skillId,
+                        0,
+                        0,
+                        new SkillRejectionReasonV1("skill-unknown", skillId));
+
                 int previousRank = ranks[definition.Id];
                 if (previousRank >= definition.MaxRank)
-                    return Fact(SkillMutationStatusV1.RankCapped, definition.Id, previousRank, previousRank, "skill-rank-capped");
-                if (definition.PrerequisiteId.Length > 0 && ranks[definition.PrerequisiteId] < definition.PrerequisiteRank)
-                    return Fact(SkillMutationStatusV1.PrerequisiteMissing, definition.Id, previousRank, previousRank, "skill-prerequisite-missing");
-                if (BuildSnapshot().AvailablePoints < 1)
-                    return Fact(SkillMutationStatusV1.InsufficientPoints, definition.Id, previousRank, previousRank, "skill-points-insufficient");
+                    return Fact(
+                        SkillMutationStatusV1.RankCapped,
+                        definition.Id,
+                        previousRank,
+                        previousRank,
+                        new SkillRejectionReasonV1("skill-rank-capped", definition.Id, definition.MaxRank, previousRank));
+
+                foreach (var prerequisite in definition.Prerequisites)
+                {
+                    int actualRank = ranks[prerequisite.SkillId];
+                    if (actualRank < prerequisite.RequiredRank)
+                        return Fact(
+                            SkillMutationStatusV1.PrerequisiteMissing,
+                            definition.Id,
+                            previousRank,
+                            previousRank,
+                            new SkillRejectionReasonV1(
+                                "skill-prerequisite-missing",
+                                prerequisite.SkillId,
+                                prerequisite.RequiredRank,
+                                actualRank));
+                }
+
+                foreach (var requirement in definition.CategoryInvestmentRequirements)
+                {
+                    int actualPoints = GetInvestedPoints(requirement.TreeId, requirement.CategoryId);
+                    if (actualPoints < requirement.RequiredPoints)
+                        return Fact(
+                            SkillMutationStatusV1.CategoryInvestmentMissing,
+                            definition.Id,
+                            previousRank,
+                            previousRank,
+                            new SkillRejectionReasonV1(
+                                "skill-category-investment-missing",
+                                requirement.StableId,
+                                requirement.RequiredPoints,
+                                actualPoints));
+                }
+
+                int availablePoints = Math.Max(0, playerLevel - GetSpentPoints());
+                if (availablePoints < 1)
+                    return Fact(
+                        SkillMutationStatusV1.InsufficientPoints,
+                        definition.Id,
+                        previousRank,
+                        previousRank,
+                        new SkillRejectionReasonV1("skill-points-insufficient", string.Empty, 1, availablePoints));
 
                 ranks[definition.Id] = previousRank + 1;
                 appliedOperations.Add(operationId);
@@ -59,16 +114,66 @@ namespace ShooterMover.Application.Progression.Skills
             }
         }
 
-        public SkillProgressionSnapshotV1 ExportSnapshot() { lock (syncRoot) return BuildSnapshot(); }
+        public SkillProgressionSnapshotV1 ExportSnapshot()
+        {
+            lock (syncRoot) return BuildSnapshot();
+        }
 
-        private SkillMutationFactV1 Fact(SkillMutationStatusV1 status, string skillId, int previousRank, int currentRank, string rejectionCode = "")
-            => new SkillMutationFactV1(status, skillId, previousRank, currentRank, BuildSnapshot(), rejectionCode);
+        private SkillMutationFactV1 Fact(
+            SkillMutationStatusV1 status,
+            string skillId,
+            int previousRank,
+            int currentRank,
+            SkillRejectionReasonV1 rejectionReason = null)
+        {
+            return new SkillMutationFactV1(
+                status,
+                skillId,
+                previousRank,
+                currentRank,
+                BuildSnapshot(),
+                rejectionReason ?? SkillRejectionReasonV1.None);
+        }
 
         private SkillProgressionSnapshotV1 BuildSnapshot()
         {
-            return new SkillProgressionSnapshotV1(playerLevel, sequence,
+            var operationIds = new List<string>(appliedOperations);
+            operationIds.Sort(StringComparer.Ordinal);
+
+            var categoryInvestments = new List<SkillCategoryInvestmentV1>();
+            foreach (var category in catalog.Categories)
+            {
+                categoryInvestments.Add(new SkillCategoryInvestmentV1(
+                    category.TreeId,
+                    category.CategoryId,
+                    GetInvestedPoints(category.TreeId, category.CategoryId)));
+            }
+
+            return new SkillProgressionSnapshotV1(
+                playerLevel,
+                sequence,
                 new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(ranks, StringComparer.Ordinal)),
-                new ReadOnlyCollection<string>(new List<string>(appliedOperations)));
+                new ReadOnlyCollection<string>(operationIds),
+                new ReadOnlyCollection<SkillCategoryInvestmentV1>(categoryInvestments));
+        }
+
+        private int GetSpentPoints()
+        {
+            int spentPoints = 0;
+            foreach (var rank in ranks.Values) spentPoints = checked(spentPoints + rank);
+            return spentPoints;
+        }
+
+        private int GetInvestedPoints(string treeId, string categoryId)
+        {
+            int investedPoints = 0;
+            foreach (var definition in catalog.Definitions)
+            {
+                if (string.Equals(definition.TreeId, treeId, StringComparison.Ordinal) &&
+                    string.Equals(definition.CategoryId, categoryId, StringComparison.Ordinal))
+                    investedPoints = checked(investedPoints + ranks[definition.Id]);
+            }
+            return investedPoints;
         }
     }
 }
