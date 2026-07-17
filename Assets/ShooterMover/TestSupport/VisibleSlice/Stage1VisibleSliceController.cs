@@ -140,6 +140,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public DestructiblePropSet2D DestructiblePropSet => destructiblePropSet;
         public Stage1VisibleSliceRoomPresentation RoomPresentation => roomPresentation;
         public VisibleSliceLoadoutSelector LoadoutSelector => loadoutSelector;
+        public Stage1WeaponLoadoutFixture SelectedLoadout => selectedLoadout;
         public VisibleSliceGeneralCombatHud CombatHud => combatHud;
         public Stage1WeaponStatusStrip WeaponStrip => weaponStrip;
         public VisibleSliceCameraRig CameraRig => cameraRig;
@@ -215,6 +216,13 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             if (!initialized)
             {
+                return;
+            }
+
+            if (Keyboard.current != null
+                && Keyboard.current.lKey.wasPressedThisFrame)
+            {
+                OpenLoadoutSelection();
                 return;
             }
 
@@ -343,7 +351,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             observedPlayerHitCount = 0;
             arenaComplete = false;
             voidDamageCount = 0;
-            selectedLoadout = null;
+            selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
             sessionActive = shootingSandbox;
             nextBlasterShotTime = 0f;
 
@@ -376,6 +384,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (loadoutSelector != null)
             {
                 loadoutSelector.ResetForRestart();
+                loadoutSelector.Hide();
             }
             combatHud.ResetPresentationForRestart(restartGeneration);
             cameraRig.Restart();
@@ -540,6 +549,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             BuildMobileBlasterDroid();
             BuildExitDoor();
             BuildUi();
+            selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
             sessionActive = shootingSandbox;
             SetGrayscale(grayscale);
             RefreshHud();
@@ -958,7 +968,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 "HP " + playerHealth + "/" + StartingPlayerHealth,
                 compactBodyStyle);
             GUI.Label(new Rect(30f, 72f, 210f, 18f),
-                "WASD MOVE   SHIFT BOOST",
+                "WASD MOVE   SHIFT BOOST   L LOADOUT",
                 compactBodyStyle);
 
             GUI.Label(new Rect(Screen.width - 241f, 26f, 210f, 22f),
@@ -1140,7 +1150,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if ((intent.Fire.IsHeld || intent.Fire.WasPressed)
                 && Time.unscaledTime >= nextBlasterShotTime)
             {
-                FireBlaster();
+                FireSelectedLoadout();
                 nextBlasterShotTime = Time.unscaledTime + BlasterFireIntervalSeconds;
             }
 
@@ -1159,6 +1169,23 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void OnLoadoutCancelled()
         {
+            selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
+            sessionActive = shootingSandbox;
+        }
+
+        private void OpenLoadoutSelection()
+        {
+            if (loadoutSelector == null)
+            {
+                GameObject loadoutObject = new GameObject("RuntimeLoadoutSelector");
+                loadoutObject.transform.SetParent(transform, false);
+                sessionObjects.Add(loadoutObject);
+                loadoutSelector = loadoutObject.AddComponent<VisibleSliceLoadoutSelector>();
+                loadoutSelector.Confirmed += OnLoadoutConfirmed;
+                loadoutSelector.Cancelled += OnLoadoutCancelled;
+            }
+
+            loadoutSelector.ResetForRestart();
             selectedLoadout = null;
             sessionActive = false;
         }
@@ -1224,6 +1251,117 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private bool FireBlaster()
         {
             return FireBlaster(ReadAimWorld());
+        }
+
+        private bool FireSelectedLoadout()
+        {
+            Stage1WeaponLoadoutFixture loadout = selectedLoadout
+                ?? Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
+            bool fired = false;
+            for (int index = 0; index < loadout.Slots.Count; index++)
+            {
+                fired |= FireWeapon(loadout.Slots[index].WeaponId, ReadAimWorld());
+            }
+
+            return fired;
+        }
+
+        private bool FireWeapon(StableId weaponId, Vector2 aimPoint)
+        {
+            if (weaponId == Stage1WeaponPackageDescriptor.ShotgunId)
+            {
+                bool fired = false;
+                float[] spread = { -12f, -6f, 0f, 6f, 12f };
+                for (int index = 0; index < spread.Length; index++)
+                {
+                    fired |= FireProjectile(aimPoint, 14f, 1.2f, 0.06f, spread[index]);
+                }
+
+                return fired;
+            }
+
+            if (weaponId == Stage1WeaponPackageDescriptor.RocketLauncherId)
+            {
+                return FireProjectile(aimPoint, 8f, 3f, 0.16f, 0f);
+            }
+
+            if (weaponId == Stage1WeaponPackageDescriptor.ArcGunId)
+            {
+                return FireProjectile(aimPoint, 22f, 1.5f, 0.1f, 0f);
+            }
+
+            if (weaponId == Stage1WeaponPackageDescriptor.RicochetGunId)
+            {
+                return FireProjectile(aimPoint, 16f, 2.5f, 0.09f, 0f);
+            }
+
+            return FireProjectile(
+                aimPoint,
+                BlasterProjectileSpeed,
+                BlasterProjectileLifetimeSeconds,
+                BlasterProjectileRadius,
+                0f);
+        }
+
+        private bool FireProjectile(
+            Vector2 aimPoint,
+            float speed,
+            float lifetime,
+            float radius,
+            float spreadDegrees)
+        {
+            if (!sessionActive
+                || playerProjectileTemplate == null
+                || playerHitAdapter == null
+                || playerTransform == null)
+            {
+                return false;
+            }
+
+            Vector2 direction = aimPoint - (Vector2)playerTransform.position;
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                direction = playerTransform.up;
+            }
+
+            direction = Quaternion.Euler(0f, 0f, spreadDegrees)
+                * direction.normalized;
+            BoundedProjectile2D projectile = Instantiate(playerProjectileTemplate, transform);
+            projectile.gameObject.name = "PlayerWeaponShot";
+            projectile.transform.position = new Vector3(
+                playerTransform.position.x,
+                playerTransform.position.y,
+                0f);
+            projectile.gameObject.SetActive(true);
+
+            StableId eventId = StableId.Create(
+                "combat-event",
+                "vs007-player-g" + restartGeneration + "-s" + playerShotSequence);
+            playerShotSequence++;
+            Vector2 origin = (Vector2)playerTransform.position + direction * 0.9f;
+            bool initializedProjectile = projectile.TryInitialize(
+                eventId,
+                origin,
+                direction,
+                speed,
+                lifetime,
+                radius,
+                CombatChannel.Kinetic,
+                playerHitAdapter,
+                new[] { playerCollider },
+                false,
+                0.12f);
+            if (!initializedProjectile)
+            {
+                Destroy(projectile.gameObject);
+                return false;
+            }
+
+            projectile.transform.rotation = Quaternion.Euler(
+                0f,
+                0f,
+                Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f);
+            return true;
         }
 
         private bool FireBlaster(Vector2 aimPoint)
