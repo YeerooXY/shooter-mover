@@ -1,0 +1,23 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Flow.InventoryLoadout",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Flow.InventoryLoadout",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.UI.InventoryLoadout",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
