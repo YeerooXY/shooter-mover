@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c9d9aa5d21d4eac90471f7f33ca512f, type: 3}
+  m_Name: LevelSelectionCatalogV1
+  m_EditorClassIdentifier: ShooterMover.Content.Definitions::ShooterMover.Content.Definitions.Levels.Selection.LevelSelectionCatalogDefinitionV1
+  levels:
+  - levelStableId: level.stage-1
+    displayName: LEVEL 1
+    description: Enter the accepted playable Stage 1 visible slice.
+    scenePath: Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity
+    availability: 2
+    releaseState: 1
+    routeKind: 1
+    recommendedPlayerLevel: 1
+    recommendedEquipmentLevel: 1
+    recommendedPartySize: 1
+    difficultyLabel: STANDARD
+    sortOrder: 10
+  - levelStableId: level.stage-2
+    displayName: LEVEL 2 — PROTOTYPE
+    description: Safe bounded placeholder. No combat, rewards, XP, or inventory changes.
+    scenePath: Assets/ShooterMover/Scenes/Prototypes/Level2Prototype.unity
+    availability: 2
+    releaseState: 2
+    routeKind: 2
+    recommendedPlayerLevel: 2
+    recommendedEquipmentLevel: 2
+    recommendedPartySize: 1
+    difficultyLabel: PROTOTYPE
+    sortOrder: 20
