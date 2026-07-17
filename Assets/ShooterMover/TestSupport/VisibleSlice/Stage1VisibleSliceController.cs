@@ -48,7 +48,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public const int ExpectedWallCount = 4;
         public const int StartingPlayerHealth = 100;
         public const int TurretShotDamage = 10;
-        public const int PlayerShotDamage = 6;
+        public const int PlayerShotDamage = 1;
         private const float BlasterFireIntervalSeconds = 0.09f;
         private const float BlasterProjectileSpeed = 18f;
         private const float BlasterProjectileLifetimeSeconds = 2f;
