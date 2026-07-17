@@ -393,7 +393,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         public void ProductionRuntimeSources_AvoidGlobalAndNameBasedAuthority()
         {
             string root = Path.Combine(
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 "ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign");
             string source = string.Join(
                 "\n",

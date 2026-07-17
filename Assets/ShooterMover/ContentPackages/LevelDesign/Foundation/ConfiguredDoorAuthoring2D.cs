@@ -148,7 +148,7 @@ namespace ShooterMover.ContentPackages.LevelDesign.Foundation
 
         public void ApplyPreview()
         {
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 return;
             }
