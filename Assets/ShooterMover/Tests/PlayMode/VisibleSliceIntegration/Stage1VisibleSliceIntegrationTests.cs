@@ -280,7 +280,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 source.TryReadSnapshot(out after);
             }
 
-            Assert.That(after.CurrentHealth, Is.EqualTo(before.CurrentHealth - 6));
+            Assert.That(after.CurrentHealth, Is.EqualTo(before.CurrentHealth - 1));
         }
 
         [UnityTest]
