@@ -636,7 +636,7 @@ namespace ShooterMover.UI.MainMenu
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear,
             };
-            if (!ImageConversion.LoadImage(texture, bytes, true))
+            if (!UnityEngine.ImageConversion.LoadImage(texture, bytes, true))
             {
                 DestroyTexture(texture);
                 Debug.LogError(textureName + " could not be decoded as an image.");
