@@ -145,7 +145,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     EquipmentCategoryIds.Weapon,
                     StableId.Parse("weapon-family.playmode"),
                     "PlayMode Weapon",
-                    StableId.Parse("runtime-weapon.playmode"),
+                    StableId.Parse("weapon.runtime-playmode"),
                     InclusiveIntRange.Create(1, 20),
                     0,
                     new[] { quality },

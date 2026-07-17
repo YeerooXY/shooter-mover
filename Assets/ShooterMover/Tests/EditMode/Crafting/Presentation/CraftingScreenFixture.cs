@@ -35,7 +35,7 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
             EquipmentQualityTier quality = EquipmentQualityTier.Create(StableId.Parse("quality.standard"), "Standard", 1);
             EquipmentDefinition weapon = EquipmentDefinition.Create(
                 StableId.Parse("weapon.shared"), EquipmentCategoryIds.Weapon, StableId.Parse("weapon-family.test"),
-                "Shared Weapon", StableId.Parse("runtime-weapon.test"), InclusiveIntRange.Create(1, 20), 0,
+                "Shared Weapon", StableId.Parse("weapon.runtime-test"), InclusiveIntRange.Create(1, 20), 0,
                 new[] { quality }, Array.Empty<StableId>());
             EquipmentCatalogBuildResult equipment = EquipmentCatalog.Build(new[] { weapon }, Array.Empty<AugmentDefinition>());
             Assert.That(equipment.IsValid, Is.True);
