@@ -10,6 +10,8 @@ using ShooterMover.ContentPackages.Environment.VoidHazards;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.ContentPackages.Weapons.Stage1Loadouts;
 using ShooterMover.ContentPackages.Weapons.Stage1Presentation;
+using ShooterMover.ContentPackages.Weapons.Stage1;
+using ShooterMover.ContentPackages.Weapons.Shotgun;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Authoring;
 using ShooterMover.Contracts.Input;
@@ -1270,11 +1272,20 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             if (weaponId == Stage1WeaponPackageDescriptor.ShotgunId)
             {
+                ShotgunTuning tuning = ShotgunPackageDefinition.NormalTuning;
                 bool fired = false;
-                float[] spread = { -12f, -6f, 0f, 6f, 12f };
-                for (int index = 0; index < spread.Length; index++)
+                for (int index = 0; index < tuning.PelletCount; index++)
                 {
-                    fired |= FireProjectile(aimPoint, 14f, 1.2f, 0.06f, spread[index]);
+                    double spread = ShotgunSpreadBehaviorModule.GetOffsetDegrees(
+                        index,
+                        tuning.PelletCount,
+                        tuning.SpreadDegrees);
+                    fired |= FireProjectile(
+                        aimPoint,
+                        (float)tuning.ProjectileSpeed,
+                        (float)tuning.ProjectileLifetimeSeconds,
+                        (float)tuning.ProjectileRadius,
+                        (float)spread);
                 }
 
                 return fired;
