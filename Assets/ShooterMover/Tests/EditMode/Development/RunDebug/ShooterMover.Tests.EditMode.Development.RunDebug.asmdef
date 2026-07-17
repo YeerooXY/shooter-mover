@@ -1,0 +1,23 @@
+{
+  "name": "ShooterMover.Tests.EditMode.Development.RunDebug",
+  "rootNamespace": "ShooterMover.Tests.EditMode.Development.RunDebug",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

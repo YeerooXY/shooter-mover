@@ -1,0 +1,19 @@
+{
+  "name": "ShooterMover.UI.Development.RunDebug",
+  "rootNamespace": "ShooterMover.UI.Development.RunDebug",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.UnityAdapters"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
