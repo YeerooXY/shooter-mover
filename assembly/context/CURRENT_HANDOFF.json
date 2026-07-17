@@ -5,7 +5,7 @@
   "lifecycle_phase": "task_execution",
   "active_role": "dispatch",
   "active_branch": "agent/vertical-slice-v1-dispatch-prompts",
-  "active_pr": null,
+  "active_pr": 172,
   "last_verified_commit": "645cf24f30ee6c8762214a84060e59e35df67a05",
   "authoritative_artifacts": [
     "AGENTS.md",
@@ -44,9 +44,9 @@
     "assembly/dispatch/vertical-slice-v1/DEMO-005_WEB_AGENT.md"
   ],
   "current_section": "playable_vertical_slice_v1_dispatch",
-  "last_completed_item": "Reward/progression foundations, SIM-001, STAT-001, PICK-001, BOXSCENE-001, and XP-001 are merged through main commit 645cf24f30ee6c8762214a84060e59e35df67a05.",
-  "current_item": "Twenty non-overlapping playable vertical-slice task packets are prepared under assembly/dispatch/vertical-slice-v1/.",
-  "next_action": "Review and merge the dispatch coordinator PR. Then dispatch MENU-002, ROOM-001, LEVELDES-001, XP-002, DROP-001, and WEAPON-DATA-001 using their exact packet bases. Respect HUB/RUN/SKILL gates and the launch-base policy.",
+  "last_completed_item": "Prepared 20 non-overlapping playable vertical-slice task packets on draft coordinator PR #172 from verified main commit 645cf24f30ee6c8762214a84060e59e35df67a05.",
+  "current_item": "Draft PR #172 is open for review; no implementation tasks have been opened or merged.",
+  "next_action": "Review and merge PR #172. Then dispatch MENU-002, ROOM-001, LEVELDES-001, XP-002, DROP-001, and WEAPON-DATA-001 using their exact packet bases. Respect HUB/RUN/SKILL gates and the launch-base policy.",
   "blockers": [
     "MENU-001 PR #160 is open/draft and must be repaired by MENU-002 and proven before HUB-001.",
     "RUN-001 is absent from main; DEV-001 and BOXUI-001 cannot dispatch until a separately owned RUN-001 merges.",
@@ -57,12 +57,12 @@
   "persistence": {
     "status": "ready",
     "unsaved_decisions": 0,
-    "last_persisted_at": "2026-07-17T11:45:00+02:00"
+    "last_persisted_at": "2026-07-17T11:50:00+02:00"
   },
   "framework": {
     "repository": "YeerooXY/ai-assembly-line",
     "installed_ref": "main",
     "kit_version": "0.1.0-plus-direct-handoff-upgrade"
   },
-  "updated_at": "2026-07-17T11:45:00+02:00"
+  "updated_at": "2026-07-17T11:50:00+02:00"
 }
