@@ -1,58 +1,48 @@
-# Shooter Mover Reward/Progression Wave 2 Handoff
+# Shooter Mover playable vertical-slice handoff
 
 ## Current boundary
 
-Wave 0 and Wave 1 are complete. Verified `main` is:
+Live inspection verified `main` at `645cf24f30ee6c8762214a84060e59e35df67a05`. Reward/economy/equipment foundations plus SIM-001, STAT-001, PICK-001, BOXSCENE-001, and XP-001 are merged.
 
-`6d04451883127dcf597c4f6fec199aeaec2a7f9e`
+Open work is not merged truth:
 
-Merged Wave 1 foundations:
+- MENU-001 PR #160 is draft/unmerged at `f0430794fca20cc911561478767eddbecb476f1e` and requires MENU-002 plus passing Unity XML proof.
+- SKILL-001 PR #171 is open/unmerged and lacks Unity execution proof.
+- RUN-001 is absent from the launch base and has no active implementation PR.
 
-- `REW-001` through `06012ea116c1b8bd1f087a5f9275079d5fd882bd`
-- `OBJ-001` through `e967daee4a23ca3372de468e2a4a8d122f99eea0`
-- `RNG-001` through `46cccb17c057b07a6d408b9aabe286228a921915`
-- `EQP-001` through `0bac603dc5921ab1da1b89895f725a0b97261fae`
-- `LED-001` through `95a19fbf60fe81c443ad1a366422bf67d17d953e`
-- `PRG-001` through `6d04451883127dcf597c4f6fec199aeaec2a7f9e`
+## Dispatch source
 
-The authoritative roadmap remains
-`docs/architecture/REWARD_PROGRESSION_AND_LEVEL_AUTHORING_PLAN.md`.
+`assembly/dispatch/vertical-slice-v1/README.md` contains 20 independent packets, a zero-overlap ownership matrix, validation record, and deferred launch-base policy.
 
-## Verified combined state
+## Canonical flow
 
-- Unity `6000.3.19f1` cold import/compile passed.
-- Full EditMode passed 568/568.
-- OBJ-001 focused PlayMode passed 11/11.
-- Layout, assembly graph, and duplicate-GUID checks passed.
-- Full PlayMode has three unrelated pre-existing failures documented in
-  `assembly/dispatch/wave2/VALIDATION.md`.
+```text
+Main Menu → Character Select → Inventory/Loadout Hub
+→ Skills / Shop / Crafting / Play → Solo / Multiplayer
+→ Level Select → Level 1 / Level 2 prototype
+→ two-room combat, XP, drops, pickups, map
+→ End Run → Results → Strongbox Opening
+```
 
-## Wave 2 execution shape
+## Critical rules
 
-Eight tasks may start in parallel from exact base `6d04451...`:
+- HUB-001 alone owns the immutable route/profile payload.
+- Concrete equipment-instance identity is preserved; duplicate definitions remain valid separate instances.
+- Results lists pending boxes without opening/consuming them.
+- Opening references one exact box and cannot reroll/award twice.
+- Debug spawning/collection use normal reward/pickup authorities.
+- End Run is idempotent through RUN-001.
+- UI never becomes inventory, wallet, XP, reward, shop, crafting, or skill truth.
+- DEMO-005 alone edits Stage1VisibleSlice scene/controller.
 
-1. `MON-001` - money authority.
-2. `SCR-001` - scrap authority.
-3. `INV-001` - holdings authority.
-4. `GEN-001` - shared deterministic generator.
-5. `SRC-001` - reward definitions/source authoring.
-6. `DOOR-001` - reusable doors.
-7. `VOID-001` - reusable void hazards.
-8. `NORM-001` - Blaster Turret registration normalization.
+## Asset intake
 
-Use the exact prompts under `assembly/dispatch/wave2/`.
+Use exact commit `0b1b654c1fb8cf8208904eb55041fde954cfb560` read-only and copy only the named image into each unique task-owned art subtree. Moving-droid art is not available yet.
 
-## Continuation gates
+## Dispatch now
 
-- `RAP-001` waits for merged `MON-001`, `SCR-001`, and `INV-001`.
-- First `SIM-001` generator mode waits for merged `GEN-001`.
-- `PROP-001` waits for merged `SRC-001`.
-- `BOX-001`, `CRA-001`, `AUG-001`, and `SHOP-001` remain gated by `RAP-001`
-  and their other named dependencies.
-- `INT-001` remains the sole final Stage 1 serialized owner.
-- Stage 2 remains locked behind `GATE-010`.
+After the coordinator PR merges, dispatch MENU-002, ROOM-001, LEVELDES-001, XP-002, DROP-001, and WEAPON-DATA-001. Follow the dependency graph for all others. Do not dispatch blocked DEV-001, BOXUI-001, or SKILLUI-001 early.
 
-## Exact next action
+## Proof boundary
 
-Dispatch all eight Wave 2 prompts to isolated GitHub web/coding agents. Keep
-every PR draft until owned-path review and required proof are complete.
+Dispatch preparation did not run Unity. No compile/test pass is claimed. Implementation pass claims require the named XML files to exist and report zero failed tests.
