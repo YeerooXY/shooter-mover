@@ -549,13 +549,10 @@ namespace ShooterMover.Editor.BalanceSimulator
                 EquipmentInstanceValidationRequest request)
             {
                 EquipmentInstance instance = request == null ? null : request.Instance;
-                bool valid = instance != null
-                    && catalog.FindEquipmentDefinition(instance.DefinitionId) != null;
-                return new EquipmentInstanceValidationResponse(
-                    valid,
-                    catalog.Fingerprint,
-                    instance == null ? null : instance.Fingerprint,
-                    new List<EquipmentModelIssue>());
+                return EquipmentInstanceValidationResponse.From(
+                    catalog,
+                    instance,
+                    catalog.ValidateInstance(instance));
             }
         }
     }
