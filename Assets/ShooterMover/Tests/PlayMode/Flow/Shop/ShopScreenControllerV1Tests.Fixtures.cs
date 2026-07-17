@@ -23,7 +23,7 @@ using ShooterMover.UI.Shop;
 
 namespace ShooterMover.Tests.PlayMode.Flow.Shop
 {
-    public sealed partial class ShopScreenControllerV1 Tests
+    public sealed partial class ShopScreenControllerV1Tests
     {
         [TearDown]
         public void ClearHandoff()
