@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Weapons.Firing;
 using ShooterMover.Content.Definitions.Objects;
 using ShooterMover.ContentPackages.Environment.Doors;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
@@ -10,8 +11,6 @@ using ShooterMover.ContentPackages.Environment.VoidHazards;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.ContentPackages.Weapons.Stage1Loadouts;
 using ShooterMover.ContentPackages.Weapons.Stage1Presentation;
-using ShooterMover.ContentPackages.Weapons.Stage1;
-using ShooterMover.ContentPackages.Weapons.Shotgun;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Authoring;
 using ShooterMover.Contracts.Input;
@@ -51,10 +50,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public const int StartingPlayerHealth = 100;
         public const int TurretShotDamage = 10;
         public const int PlayerShotDamage = 1;
-        private const float BlasterFireIntervalSeconds = 0.09f;
-        private const float BlasterProjectileSpeed = 18f;
-        private const float BlasterProjectileLifetimeSeconds = 2f;
-        private const float BlasterProjectileRadius = 0.08f;
+        private const ulong Stage1RunSessionSeed = 7002001UL;
         private const float PlayerVisualScale = 0.9f;
         private const float PropGridSize = 0.5f;
         private static readonly Vector2 CrateCollisionSize = new Vector2(2.2f, 1.35f);
@@ -111,6 +107,13 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private Camera sceneCamera;
         private Material lineMaterial;
         private Stage1WeaponLoadoutFixture selectedLoadout;
+        private Stage1WeaponLoadoutFixture loadoutBeforeSelection;
+        private bool sessionActiveBeforeSelection;
+        private WeaponDefinitionFiringAdapter weaponFiringAdapter;
+        private WeaponMountFiringSession weaponFiringSession;
+        private int emittedPlayerProjectileCount;
+        private string lastFiredDefinitionId;
+        private WeaponMountSlot lastFiredMountSlot;
         private Vector3 playerSpawn;
         private int playerHealth;
         private long restartGeneration;
@@ -128,7 +131,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private GUIStyle compactTitleStyle;
         private GUIStyle compactBodyStyle;
         private GUIStyle compactObjectiveStyle;
-        private float nextBlasterShotTime;
 
         public bool ReducedEffectsEnabled => reducedEffects;
         public bool IsInitialized => initialized;
@@ -143,6 +145,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public Stage1VisibleSliceRoomPresentation RoomPresentation => roomPresentation;
         public VisibleSliceLoadoutSelector LoadoutSelector => loadoutSelector;
         public Stage1WeaponLoadoutFixture SelectedLoadout => selectedLoadout;
+        public WeaponDefinitionLoadout ActiveWeaponDefinitionLoadout =>
+            weaponFiringSession == null ? null : weaponFiringSession.Loadout;
+        public int EmittedPlayerProjectileCount => emittedPlayerProjectileCount;
+        public string LastFiredDefinitionId => lastFiredDefinitionId;
+        public WeaponMountSlot LastFiredMountSlot => lastFiredMountSlot;
         public VisibleSliceGeneralCombatHud CombatHud => combatHud;
         public Stage1WeaponStatusStrip WeaponStrip => weaponStrip;
         public VisibleSliceCameraRig CameraRig => cameraRig;
@@ -300,12 +307,63 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 ShooterMover.UI.VisibleSliceLoadoutSelector.Core.LoadoutSelectorCommand.Confirm);
         }
 
+        public bool SelectLoadoutForTests(Stage1WeaponLoadoutFixture fixture)
+        {
+            OnLoadoutConfirmed(fixture);
+            return ReferenceEquals(selectedLoadout, fixture);
+        }
+
+        public int FireMountForTests(
+            int hudIndex,
+            double nowSeconds,
+            Vector2 aimPoint)
+        {
+            if (!sessionActive || weaponFiringSession == null)
+            {
+                return 0;
+            }
+
+            WeaponMountSlot slot = WeaponMountContractRules.GetSlotAtHudIndex(hudIndex);
+            WeaponShotPlan plan;
+            if (!weaponFiringSession.TryPlanMount(slot, nowSeconds, out plan))
+            {
+                return 0;
+            }
+
+            int before = emittedPlayerProjectileCount;
+            FireShotPlan(plan, aimPoint);
+            return emittedPlayerProjectileCount - before;
+        }
+
+        public string GetRuntimeDefinitionIdForTests(int hudIndex)
+        {
+            if (weaponFiringSession == null)
+            {
+                return string.Empty;
+            }
+
+            return weaponFiringSession.GetMountByHudIndex(hudIndex).DefinitionId;
+        }
+
+        public double GetMountNextReadyTimeForTests(int hudIndex)
+        {
+            if (weaponFiringSession == null)
+            {
+                return 0d;
+            }
+
+            return weaponFiringSession.GetMountByHudIndex(hudIndex).NextReadyTimeSeconds;
+        }
+
         public bool FireAtTurretForTests()
         {
             if (shootingSandbox)
             {
                 return turretPackage != null
-                    && FireBlaster(turretPackage.transform.position);
+                    && FireMountForTests(
+                        0,
+                        Time.unscaledTimeAsDouble,
+                        turretPackage.transform.position) > 0;
             }
 
             if (!sessionActive || turretPackage == null || turretPackage.Authority == null)
@@ -340,6 +398,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         public void QuickRestart()
         {
+            bool resumeSession = sessionActive || shootingSandbox;
             restartGeneration = restartGeneration == long.MaxValue
                 ? long.MaxValue
                 : restartGeneration + 1L;
@@ -353,9 +412,16 @@ namespace ShooterMover.TestSupport.VisibleSlice
             observedPlayerHitCount = 0;
             arenaComplete = false;
             voidDamageCount = 0;
-            selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
-            sessionActive = shootingSandbox;
-            nextBlasterShotTime = 0f;
+            sessionActive = selectedLoadout != null && resumeSession;
+            emittedPlayerProjectileCount = 0;
+            lastFiredDefinitionId = null;
+            lastFiredMountSlot = default(WeaponMountSlot);
+            loadoutBeforeSelection = null;
+            sessionActiveBeforeSelection = false;
+            if (weaponFiringSession != null)
+            {
+                weaponFiringSession.ResetCooldowns();
+            }
 
             ClearShotTraces();
             playerBody.position = playerSpawn;
@@ -552,11 +618,23 @@ namespace ShooterMover.TestSupport.VisibleSlice
             BuildExitDoor();
             BuildUi();
             selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
+            BuildWeaponRuntime(selectedLoadout);
             sessionActive = shootingSandbox;
             SetGrayscale(grayscale);
             RefreshHud();
             RefreshTurretPresentation();
             RefreshArenaFlow();
+        }
+
+
+        private void BuildWeaponRuntime(Stage1WeaponLoadoutFixture fixture)
+        {
+            var catalog = Stage1WeaponCatalogRuntimeProvider.Load();
+            weaponFiringAdapter = new WeaponDefinitionFiringAdapter(catalog);
+            weaponFiringSession = new WeaponMountFiringSession(
+                weaponFiringAdapter,
+                Stage1WeaponRuntimeLoadoutAdapter.FromFixture(fixture),
+                Stage1RunSessionSeed);
         }
 
         private void BuildGameplayScope()
@@ -1149,14 +1227,13 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private void ReadCombatInput()
         {
             PlayerIntentFrame intent = combatInput.ReadIntentFrame();
-            if ((intent.Fire.IsHeld || intent.Fire.WasPressed)
-                && Time.unscaledTime >= nextBlasterShotTime)
+            Vector2 aimPoint = ReadAimWorld();
+            if (intent.Fire.IsHeld || intent.Fire.WasPressed)
             {
-                FireSelectedLoadout();
-                nextBlasterShotTime = Time.unscaledTime + BlasterFireIntervalSeconds;
+                FireReadyMounts(Time.unscaledTimeAsDouble, aimPoint);
             }
 
-            Vector2 direction = ReadAimWorld() - (Vector2)playerTransform.position;
+            Vector2 direction = aimPoint - (Vector2)playerTransform.position;
             if (direction.sqrMagnitude > 0.001f)
             {
                 playerTransform.up = direction.normalized;
@@ -1165,14 +1242,26 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void OnLoadoutConfirmed(Stage1WeaponLoadoutFixture fixture)
         {
+            if (fixture == null)
+            {
+                throw new ArgumentNullException(nameof(fixture));
+            }
+
+            WeaponDefinitionLoadout runtimeLoadout =
+                Stage1WeaponRuntimeLoadoutAdapter.FromFixture(fixture);
+            weaponFiringSession.ApplyLoadout(runtimeLoadout);
             selectedLoadout = fixture;
+            loadoutBeforeSelection = null;
+            sessionActiveBeforeSelection = false;
             sessionActive = true;
         }
 
         private void OnLoadoutCancelled()
         {
-            selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
-            sessionActive = shootingSandbox;
+            selectedLoadout = loadoutBeforeSelection;
+            sessionActive = sessionActiveBeforeSelection;
+            loadoutBeforeSelection = null;
+            sessionActiveBeforeSelection = false;
         }
 
         private void OpenLoadoutSelection()
@@ -1187,6 +1276,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 loadoutSelector.Cancelled += OnLoadoutCancelled;
             }
 
+            loadoutBeforeSelection = selectedLoadout;
+            sessionActiveBeforeSelection = sessionActive;
             loadoutSelector.ResetForRestart();
             selectedLoadout = null;
             sessionActive = false;
@@ -1250,75 +1341,48 @@ namespace ShooterMover.TestSupport.VisibleSlice
             return new Vector2(world.x, world.y);
         }
 
-        private bool FireBlaster()
+        private bool FireReadyMounts(double nowSeconds, Vector2 aimPoint)
         {
-            return FireBlaster(ReadAimWorld());
-        }
-
-        private bool FireSelectedLoadout()
-        {
-            Stage1WeaponLoadoutFixture loadout = selectedLoadout
-                ?? Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
-            bool fired = false;
-            for (int index = 0; index < loadout.Slots.Count; index++)
+            if (!sessionActive || weaponFiringSession == null)
             {
-                fired |= FireWeapon(loadout.Slots[index].WeaponId, ReadAimWorld());
+                return false;
             }
 
+            IReadOnlyList<WeaponShotPlan> plans =
+                weaponFiringSession.PlanReadyShots(nowSeconds);
+            bool fired = false;
+            for (int index = 0; index < plans.Count; index++)
+            {
+                fired |= FireShotPlan(plans[index], aimPoint);
+            }
             return fired;
         }
 
-        private bool FireWeapon(StableId weaponId, Vector2 aimPoint)
+        private bool FireShotPlan(WeaponShotPlan plan, Vector2 aimPoint)
         {
-            if (weaponId == Stage1WeaponPackageDescriptor.ShotgunId)
+            if (plan == null)
             {
-                ShotgunTuning tuning = ShotgunPackageDefinition.NormalTuning;
-                bool fired = false;
-                for (int index = 0; index < tuning.PelletCount; index++)
-                {
-                    double spread = ShotgunSpreadBehaviorModule.GetOffsetDegrees(
-                        index,
-                        tuning.PelletCount,
-                        tuning.SpreadDegrees);
-                    fired |= FireProjectile(
-                        aimPoint,
-                        (float)tuning.ProjectileSpeed,
-                        (float)tuning.ProjectileLifetimeSeconds,
-                        (float)tuning.ProjectileRadius,
-                        (float)spread);
-                }
-
-                return fired;
+                throw new ArgumentNullException(nameof(plan));
             }
 
-            if (weaponId == Stage1WeaponPackageDescriptor.RocketLauncherId)
+            bool fired = false;
+            for (int projectileIndex = 0;
+                projectileIndex < plan.SpreadOffsetsDegrees.Count;
+                projectileIndex++)
             {
-                return FireProjectile(aimPoint, 8f, 3f, 0.16f, 0f);
+                fired |= FireProjectile(
+                    plan,
+                    projectileIndex,
+                    aimPoint,
+                    (float)plan.SpreadOffsetsDegrees[projectileIndex]);
             }
-
-            if (weaponId == Stage1WeaponPackageDescriptor.ArcGunId)
-            {
-                return FireProjectile(aimPoint, 22f, 1.5f, 0.1f, 0f);
-            }
-
-            if (weaponId == Stage1WeaponPackageDescriptor.RicochetGunId)
-            {
-                return FireProjectile(aimPoint, 16f, 2.5f, 0.09f, 0f);
-            }
-
-            return FireProjectile(
-                aimPoint,
-                BlasterProjectileSpeed,
-                BlasterProjectileLifetimeSeconds,
-                BlasterProjectileRadius,
-                0f);
+            return fired;
         }
 
         private bool FireProjectile(
+            WeaponShotPlan plan,
+            int projectileOrdinal,
             Vector2 aimPoint,
-            float speed,
-            float lifetime,
-            float radius,
             float spreadDegrees)
         {
             if (!sessionActive
@@ -1337,27 +1401,46 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             direction = Quaternion.Euler(0f, 0f, spreadDegrees)
                 * direction.normalized;
+            WeaponDefinitionFiringProfile profile = plan.Profile;
             BoundedProjectile2D projectile = Instantiate(playerProjectileTemplate, transform);
-            projectile.gameObject.name = "PlayerWeaponShot";
+            projectile.gameObject.name = "PlayerWeaponShot_"
+                + profile.DefinitionId
+                + "_M"
+                + ((int)plan.Identity.MountSlot);
             projectile.transform.position = new Vector3(
                 playerTransform.position.x,
                 playerTransform.position.y,
                 0f);
+            float visualSize = Mathf.Clamp(
+                (float)profile.ProjectileRadius * 2f,
+                0.08f,
+                0.48f);
+            projectile.transform.localScale = new Vector3(
+                visualSize,
+                visualSize,
+                1f);
             projectile.gameObject.SetActive(true);
 
             StableId eventId = StableId.Create(
                 "combat-event",
-                "vs007-player-g" + restartGeneration + "-s" + playerShotSequence);
+                "vs007-player-g"
+                + restartGeneration
+                + "-m"
+                + ((int)plan.Identity.MountSlot)
+                + "-q"
+                + plan.Identity.ShotSequence
+                + "-p"
+                + projectileOrdinal);
             playerShotSequence++;
             Vector2 origin = (Vector2)playerTransform.position + direction * 0.9f;
             bool initializedProjectile = projectile.TryInitialize(
                 eventId,
                 origin,
                 direction,
-                speed,
-                lifetime,
-                radius,
-                CombatChannel.Kinetic,
+                (float)profile.ProjectileSpeed,
+                (float)profile.ProjectileLifetimeSeconds,
+                (float)profile.ProjectileRadius,
+                Stage1WeaponCombatChannelProjection.Resolve(profile.DamageType),
                 playerHitAdapter,
                 new[] { playerCollider },
                 false,
@@ -1372,61 +1455,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 0f,
                 0f,
                 Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f);
-            return true;
-        }
-
-        private bool FireBlaster(Vector2 aimPoint)
-        {
-            if (!sessionActive
-                || playerProjectileTemplate == null
-                || playerHitAdapter == null
-                || playerTransform == null)
-            {
-                return false;
-            }
-
-            Vector2 direction = aimPoint - (Vector2)playerTransform.position;
-            if (direction.sqrMagnitude <= 0.001f)
-            {
-                direction = playerTransform.up;
-            }
-            direction.Normalize();
-
-            BoundedProjectile2D projectile = Instantiate(playerProjectileTemplate, transform);
-            projectile.gameObject.name = "PlayerBlasterShot";
-            projectile.transform.position = new Vector3(
-                playerTransform.position.x,
-                playerTransform.position.y,
-                0f);
-            projectile.gameObject.SetActive(true);
-
-            StableId eventId = StableId.Create(
-                "combat-event",
-                "vs007-player-g" + restartGeneration + "-s" + playerShotSequence);
-            playerShotSequence++;
-            Vector2 origin = (Vector2)playerTransform.position + direction * 0.9f;
-            bool initializedProjectile = projectile.TryInitialize(
-                eventId,
-                origin,
-                direction,
-                BlasterProjectileSpeed,
-                BlasterProjectileLifetimeSeconds,
-                BlasterProjectileRadius,
-                CombatChannel.Kinetic,
-                playerHitAdapter,
-                new[] { playerCollider },
-                false,
-                0.12f);
-            if (!initializedProjectile)
-            {
-                Destroy(projectile.gameObject);
-                return false;
-            }
-
-            projectile.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
-                Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f);
+            emittedPlayerProjectileCount++;
+            lastFiredDefinitionId = profile.DefinitionId;
+            lastFiredMountSlot = plan.Identity.MountSlot;
+            firingObserved = true;
             return true;
         }
 
