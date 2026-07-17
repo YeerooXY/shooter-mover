@@ -22,7 +22,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.CharacterSelect
 
             try
             {
-                Assert.That(controller.SelectCharacterByIndex(1), Is.True);
+                // The catalog presents characters in stable ID order; custom-pilot
+                // therefore occupies index zero ahead of frontier-vanguard.
+                Assert.That(controller.SelectCharacterByIndex(0), Is.True);
                 Assert.That(controller.ContinueToClassChoice(), Is.True);
                 Assert.That(
                     controller.SelectClass(CharacterClassKindV1.Defensive),
