@@ -1,0 +1,20 @@
+{
+  "name": "ShooterMover.UI.CharacterSelect",
+  "rootNamespace": "ShooterMover.UI.CharacterSelect",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

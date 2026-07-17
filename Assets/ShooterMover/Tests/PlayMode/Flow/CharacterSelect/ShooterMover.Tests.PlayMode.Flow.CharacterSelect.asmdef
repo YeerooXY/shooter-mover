@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Flow.CharacterSelect",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Flow.CharacterSelect",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.UI.CharacterSelect",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

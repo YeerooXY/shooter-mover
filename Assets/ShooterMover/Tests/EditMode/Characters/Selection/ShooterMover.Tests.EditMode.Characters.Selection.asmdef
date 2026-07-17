@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.EditMode.Characters.Selection",
+  "rootNamespace": "ShooterMover.Tests.EditMode.Characters.Selection",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
