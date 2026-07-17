@@ -7,6 +7,7 @@ using ShooterMover.Contracts.Authoring;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Authoring;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Tests.PlayMode.Rewards.Pickups;
 using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Rewards.GameplayDrops;
