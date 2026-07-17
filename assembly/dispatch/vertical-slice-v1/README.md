@@ -5,13 +5,13 @@ Prepared from live repository state on 2026-07-17.
 ## Verified launch boundary
 
 - Repository: `YeerooXY/shooter-mover`
-- Verified `main`: `645cf24f30ee6c8762214a84060e59e35df67a05`
+- Verified preparation `main`: `645cf24f30ee6c8762214a84060e59e35df67a05`
 - Asset intake: exact commit `0b1b654c1fb8cf8208904eb55041fde954cfb560`
 - Open PRs at preparation:
   - `#160 MENU-001`, draft/unmerged and still requiring Unity compile/test proof.
   - `#171 SKILL-001`, draft/unmerged and explicitly lacking Unity execution proof.
-- Merged foundations present on the launch base include XP-001, PICK-001, BOXSCENE-001, SIM-001, STAT-001, and the existing reward/economy/equipment/shop/crafting/strongbox authorities.
-- `RUN-001` is **not** merged on this launch base. `DEV-001` and `BOXUI-001` remain blocked until a separate proof-complete RUN-001 implementation merges.
+- Merged foundations present on the preparation base include XP-001, PICK-001, BOXSCENE-001, SIM-001, STAT-001, and the existing reward/economy/equipment/shop/crafting/strongbox authorities.
+- `RUN-001` is **not** merged on this base. `DEV-001` and `BOXUI-001` remain blocked until a separate proof-complete RUN-001 implementation merges.
 
 The attached `DEMO_FIRST_FLOW_HANDOFF.md` was read during preparation. Its immutable result/box identity rules are preserved: Results may list pending boxes without consuming them; opening references one exact box instance; different boxes may produce duplicate weapon definitions as distinct equipment instances; End Run and reward application are idempotent.
 
@@ -36,15 +36,16 @@ Main Menu
 ## Dispatch rules
 
 1. Give one packet to one isolated agent/worktree.
-2. Unless the packet says otherwise, branch from exact commit `645cf24f30ee6c8762214a84060e59e35df67a05` and target `main`.
-3. `MENU-002` is the sole exception: branch from MENU-001 head `f0430794fca20cc911561478767eddbecb476f1e` and target `agent/menu-001-main-menu-flow`.
-4. Open a draft implementation PR only after a non-empty owned-path change exists.
-5. Never merge an implementation PR from the task agent.
-6. A dependency is satisfied only when its implementation PR is merged after required proof. Open/draft/unproven PRs are not dependencies.
-7. Do not merge the asset-intake branch wholesale. Copy only the named source file from exact commit `0b1b654c1fb8cf8208904eb55041fde954cfb560` into the task-owned art path.
-8. No task may edit another task's owned paths. See `OWNERSHIP_MATRIX.md`.
-9. No Unity pass claim is valid unless the named XML result exists and reports a passed run with zero failures.
-10. `DEMO-005` is the only final owner of `Stage1VisibleSlice.unity` and `Stage1VisibleSliceController.cs`.
+2. The immediate foundation tasks `ROOM-001`, `LEVELDES-001`, `XP-002`, `DROP-001`, and `WEAPON-DATA-001` branch from exact commit `645cf24f30ee6c8762214a84060e59e35df67a05` and target `main`.
+3. `MENU-002` branches from MENU-001 head `f0430794fca20cc911561478767eddbecb476f1e` and targets `agent/menu-001-main-menu-flow`.
+4. Every deferred task must receive a dispatch-time exact current-main launch override after all named dependencies merge. That override supersedes the preparation-baseline line in the packet. Follow `LAUNCH_BASE_POLICY.md`; never branch a deferred task from stale `645cf24`.
+5. Open a draft implementation PR only after a non-empty owned-path change exists.
+6. Never merge an implementation PR from the task agent.
+7. A dependency is satisfied only when its implementation PR is merged after required proof. Open/draft/unproven PRs are not dependencies.
+8. Do not merge the asset-intake branch wholesale. Copy only the named source file from exact commit `0b1b654c1fb8cf8208904eb55041fde954cfb560` into the task-owned art path.
+9. No task may edit another task's owned paths. See `OWNERSHIP_MATRIX.md`.
+10. No Unity pass claim is valid unless the named XML result exists and reports a passed run with zero failures.
+11. `DEMO-005` is the only final owner of `Stage1VisibleSlice.unity` and `Stage1VisibleSliceController.cs`.
 
 ## Wave shape and honest parallelization
 
@@ -154,4 +155,4 @@ The moving droid asset is not present. Existing placeholder presentation remains
 9. BOXUI-001.
 10. DEMO-005.
 
-Merge independent items within a numbered group in any order after their focused proof passes. Rebase/update only when needed and never absorb another task's unmerged files.
+Merge independent items within a numbered group in any order after their focused proof passes. For every deferred packet, record the dispatch-time exact launch SHA and never absorb unmerged sibling work.
