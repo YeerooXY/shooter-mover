@@ -20,6 +20,6 @@ MonoBehaviour:
   - instanceStableId: spawn.level1-entry-moving-droid
     placementKind: 2
     contentStableId: enemy.mobile-blaster-droid
-    prefab: {fileID: 100100000, guid: 6e006000000000000000000000000006, type: 3}
+    prefab: {fileID: 100000, guid: 6e006000000000000000000000000006, type: 3}
     localPosition: {x: -7, y: -1}
     localRotationDegrees: 0

@@ -147,7 +147,7 @@ MonoBehaviour:
   localGridCoordinate: {x: 0, y: 0}
   snapToRoomGrid: 1
   definitionReference: {fileID: 11400000, guid: 6e006000000000000000000000000005, type: 2}
-  prefabReference: {fileID: 100100000, guid: 6e006000000000000000000000000006, type: 3}
+  prefabReference: {fileID: 100000, guid: 6e006000000000000000000000000006, type: 3}
   presentationRoot: {fileID: 400000}
   collisionPolicy: 1
   authoredCollider: {fileID: 580000}
