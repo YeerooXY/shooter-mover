@@ -33,7 +33,7 @@ namespace ShooterMover.UI.Hub
 
             controller.ConfigureForTests(
                 payload,
-                new UnityHubRouteDestinationAdapterV1());
+                new DeferredUnityHubRouteDestinationAdapterV1(3));
             if (!controller.OpenCharacterSelect()
                 || !controller.ContinueToHub()
                 || controller.Payload.Fingerprint != payload.Fingerprint)
