@@ -96,7 +96,9 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::ShooterMover.TestSupport.VisibleSlice.Stage1VisibleSliceController
   roomPresentationPrefab: {fileID: 11400000, guid: d69cd63fb4924ef1b7a3c13bf92ef776, type: 3}
-  blasterTurretPrefab: {fileID: 100000, guid: 9e665ce075ca8068ec015198e7000707, type: 3}
+  roomContentDefinitions:
+  - {fileID: 11400000, guid: 3e4f84c2a99e42be92932579cacd5244, type: 2}
+  - {fileID: 11400000, guid: 92ba8b1fbd4a401b9346f94bd261c415, type: 2}
   turretPresentationPrefab: {fileID: 11400000, guid: 05dcb140d7d245f1a4a03675967c9103, type: 3}
   blasterShotSprite: {fileID: 21300000, guid: 87563c16613a47debd8e73fc9db1ab15, type: 3}
   turretShotSprite: {fileID: 21300000, guid: e65b0f92e3f94a1489eeb138efc80aa9, type: 3}
