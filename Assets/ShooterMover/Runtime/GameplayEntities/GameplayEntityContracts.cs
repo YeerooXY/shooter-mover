@@ -81,46 +81,36 @@ namespace ShooterMover.GameplayEntities
     }
 
     /// <summary>
-    /// Engine-neutral identity projection shared by actors, props, attacks, and future room logic.
+    /// Stable engine-neutral identity shared by actors, props, attacks, and future room logic.
+    /// Lifecycle generation is intentionally projected separately by concrete state snapshots.
     /// </summary>
     public sealed class GameplayEntityIdentity : IEquatable<GameplayEntityIdentity>
     {
         public GameplayEntityIdentity(
-            StableId actorInstanceId,
+            StableId entityInstanceId,
             GameplayEntityOwnership ownership,
-            StableId factionId,
-            long lifecycleGeneration)
+            StableId factionId)
         {
-            ActorInstanceId = actorInstanceId
-                ?? throw new ArgumentNullException(nameof(actorInstanceId));
+            EntityInstanceId = entityInstanceId
+                ?? throw new ArgumentNullException(nameof(entityInstanceId));
             Ownership = ownership
                 ?? throw new ArgumentNullException(nameof(ownership));
             FactionId = factionId
                 ?? throw new ArgumentNullException(nameof(factionId));
-
-            if (lifecycleGeneration < 0L)
-            {
-                throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
-            }
-
-            LifecycleGeneration = lifecycleGeneration;
         }
 
-        public StableId ActorInstanceId { get; }
+        public StableId EntityInstanceId { get; }
 
         public GameplayEntityOwnership Ownership { get; }
 
         public StableId FactionId { get; }
 
-        public long LifecycleGeneration { get; }
-
         public bool Equals(GameplayEntityIdentity other)
         {
             return !ReferenceEquals(other, null)
-                && ActorInstanceId == other.ActorInstanceId
+                && EntityInstanceId == other.EntityInstanceId
                 && Ownership.Equals(other.Ownership)
-                && FactionId == other.FactionId
-                && LifecycleGeneration == other.LifecycleGeneration;
+                && FactionId == other.FactionId;
         }
 
         public override bool Equals(object obj)
@@ -133,10 +123,9 @@ namespace ShooterMover.GameplayEntities
             unchecked
             {
                 int hash = 17;
-                hash = (hash * 31) + ActorInstanceId.GetHashCode();
+                hash = (hash * 31) + EntityInstanceId.GetHashCode();
                 hash = (hash * 31) + Ownership.GetHashCode();
                 hash = (hash * 31) + FactionId.GetHashCode();
-                hash = (hash * 31) + LifecycleGeneration.GetHashCode();
                 return hash;
             }
         }
