@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Missions.Run;
 using ShooterMover.Contracts.Missions.Rooms;
@@ -36,7 +35,7 @@ namespace ShooterMover.UnityAdapters.Missions.Run
         {
             if (string.IsNullOrWhiteSpace(sceneName))
             {
-                throw new ArgumentException(
+                throw new System.ArgumentException(
                     "A Results scene name is required.",
                     nameof(sceneName));
             }
@@ -53,8 +52,8 @@ namespace ShooterMover.UnityAdapters.Missions.Run
     /// <summary>
     /// Thin production Unity boundary for Stage 1. Concrete runtime objects report
     /// accepted facts here; the adapter delegates all run mutation to the application
-    /// session. It does not calculate room clears, grant XP, produce rewards, or own
-    /// inventory state.
+    /// session and coordinator. It does not calculate room clears, grant XP, produce
+    /// rewards, or own inventory/loadout truth.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class Stage1ProductionRunSceneAdapterV1 :
@@ -66,6 +65,7 @@ namespace ShooterMover.UnityAdapters.Missions.Run
         private readonly Dictionary<StableId, Stage1RunRoomRegistrationV1> rooms =
             new Dictionary<StableId, Stage1RunRoomRegistrationV1>();
         private Stage1ProductionRunSessionV1 session;
+        private Stage1ProductionWeaponSlotSelectionV1 weaponSelection;
         private IStage1ResultsSceneLoaderV1 resultsLoader;
         private StableId playerSourceActorStableId;
         private StableId playerStableId;
@@ -74,9 +74,26 @@ namespace ShooterMover.UnityAdapters.Missions.Run
         public bool IsConfigured { get { return session != null; } }
         public bool ResultsSceneLoaded { get { return resultsSceneLoaded; } }
         public Stage1ProductionRunSessionV1 Session { get { return session; } }
+        public Stage1ProductionWeaponSlotSelectionV1 WeaponSelection
+        {
+            get { return weaponSelection; }
+        }
         public StableId CurrentRoomStableId
         {
             get { return session == null ? null : session.CurrentRoomStableId; }
+        }
+        public int ActiveWeaponSlotIndex
+        {
+            get { return weaponSelection == null ? -1 : weaponSelection.SelectedSlotIndex; }
+        }
+        public StableId ActiveEquipmentInstanceStableId
+        {
+            get
+            {
+                return weaponSelection == null
+                    ? null
+                    : weaponSelection.SelectedEquipmentInstanceStableId;
+            }
         }
 
         public Stage1SceneAdapterStatusV1 Configure(
@@ -101,6 +118,17 @@ namespace ShooterMover.UnityAdapters.Missions.Run
                     : Stage1SceneAdapterStatusV1.SessionRejected;
             }
 
+            Stage1ProductionWeaponSlotSelectionV1 resolvedSelection;
+            try
+            {
+                resolvedSelection = new Stage1ProductionWeaponSlotSelectionV1(
+                    productionSession.Coordinator);
+            }
+            catch (System.ArgumentException)
+            {
+                return Stage1SceneAdapterStatusV1.SessionRejected;
+            }
+
             if (!productionSession.RegisterPlayerSource(
                     sourceActorStableId,
                     selectedPlayerStableId))
@@ -109,11 +137,19 @@ namespace ShooterMover.UnityAdapters.Missions.Run
             }
 
             session = productionSession;
+            weaponSelection = resolvedSelection;
             playerSourceActorStableId = sourceActorStableId;
             playerStableId = selectedPlayerStableId;
             resultsLoader = sceneLoader
                 ?? new UnityStage1ResultsSceneLoaderV1(DefaultResultsSceneName);
             return Stage1SceneAdapterStatusV1.Configured;
+        }
+
+        public Stage1WeaponSlotSelectionStatusV1 SelectWeaponSlot(int slotIndex)
+        {
+            return weaponSelection == null
+                ? Stage1WeaponSlotSelectionStatusV1.InvalidLoadout
+                : weaponSelection.SelectSlot(slotIndex);
         }
 
         public Stage1RunRegistrationStatusV1 RegisterRoom(
