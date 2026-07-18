@@ -53,9 +53,19 @@ namespace ShooterMover.Application.Missions.Run
 
     public static class MissionResultsRouteContextV1
     {
+        private static readonly object Gate = new object();
         private static MissionResultsRoutePayloadV1 current;
 
-        public static bool HasValue { get { return current != null; } }
+        public static bool HasValue
+        {
+            get
+            {
+                lock (Gate)
+                {
+                    return current != null;
+                }
+            }
+        }
 
         public static void Capture(
             MissionResultsSessionV1 session,
@@ -64,23 +74,33 @@ namespace ShooterMover.Application.Missions.Run
             StableId selectedLevelStableId,
             LevelRunSummaryV1 summary)
         {
-            current = new MissionResultsRoutePayloadV1(
+            var payload = new MissionResultsRoutePayloadV1(
                 session,
                 routePayload,
                 selectedModeStableId,
                 selectedLevelStableId,
                 summary);
+            lock (Gate)
+            {
+                current = payload;
+            }
         }
 
         public static bool TryRead(out MissionResultsRoutePayloadV1 payload)
         {
-            payload = current;
-            return payload != null;
+            lock (Gate)
+            {
+                payload = current;
+                return payload != null;
+            }
         }
 
         public static void Clear()
         {
-            current = null;
+            lock (Gate)
+            {
+                current = null;
+            }
         }
     }
 }
