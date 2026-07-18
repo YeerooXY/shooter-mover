@@ -9,6 +9,13 @@ PR #210 was already merged before this branch was created. The branch starts fro
 ## Included in this draft
 
 - Exact equipment-instance loadout resolution through `IPlayerHoldingsAuthorityV1`.
+- Concrete four-slot starter equipment seeded through `StarterRouteProfileFactoryV1` and `PlayerHoldingsService`.
+- A Bootstrap-owned production equipment catalog, holdings service, XP authority, enemy reward service, and mission-result authority.
+- A persistent Bootstrap composition owner that survives scene changes without retaining the Bootstrap camera.
+- A bounded `ProductionSessionAuthorityContextV1` that projects the immutable route payload and prepares the exact Stage 1 authority bundle.
+- Hub startup uses the Bootstrap-seeded route payload instead of placeholder equipment-instance identities.
+- Character and Hub route changes update the bounded production route projection without replacing holdings.
+- Level Selection prepares the same Bootstrap-owned authority objects immediately before loading Stage 1.
 - Runtime weapon reference resolution through the existing immutable equipment catalog.
 - A run-scoped coordinator with a unique-run identity factory and explicit restart boundary.
 - Fail-closed Stage 1 composition for invalid payloads, unsupported levels, unsupported play modes, and missing authorities.
@@ -22,7 +29,7 @@ PR #210 was already merged before this branch was created. The branch starts fro
 - A four-slot production weapon projection retaining exact equipment-instance identities.
 - Active-slot changes delegated to `LevelRunCoordinatorV1`; the Unity projection owns no second loadout state.
 - A production keyboard bridge for weapon slots 1-4, including numpad equivalents.
-- Focused EditMode tests for run, routing, composition, session, and slot-selection contracts.
+- Focused EditMode tests for run, routing, composition, session, authority handoff, and slot-selection contracts.
 
 ## Authority boundaries
 
@@ -42,19 +49,19 @@ It does not own:
 - scene loading;
 - Unity presentation.
 
+`ProductionSessionAuthorityOwnerV1` owns the application-lifetime instances of the existing production authorities. `ProductionSessionAuthorityContextV1` exposes only the immutable route payload and a bounded Stage 1 dependency handoff; it is not a service locator and cannot mutate holdings, XP, results, or equipment.
+
 `Stage1ProductionWeaponSlotSelectionV1` is a read/command projection over the coordinator. When coordinator-backed, it reads the coordinator's active index and submits slot changes through `TrySelectActiveSlot`. It never edits route payloads, holdings, or equipment instances.
 
-Those durable concerns remain behind their existing authorities.
+The current mission-result port rejects physical strongbox collection because the physical pickup authority is not connected yet. It may project an exact empty collection at extraction; it does not grant, store, open, or simulate boxes.
 
 ## Deliberately remaining before LEVELRUN-001B can be accepted
 
-- Replace the production scene's `TestSupport` controller ownership through extraction, rather than duplicating its runtime packages.
-- Consume and validate `LevelSelectionRouteContextV1` in the production Stage 1 scene installer.
-- Introduce the production cross-scene authority provider and concrete starter-equipment seeding.
+- Extract the retained movement, room, enemy, HUD, and weapon presentation packages from `ShooterMover.TestSupport.VisibleSlice.Stage1VisibleSliceController` into production-owned presentation components.
 - Resolve each selected runtime weapon reference into its accepted execution adapter and remove the demo chooser from valid routed runs.
 - Connect moving-droid and turret destruction notifications to the production run binding.
-- Connect physical strongbox collection facts and the physical extraction trigger.
-- Wire the production run adapter and weapon-input bridge into the retained Stage 1 scene.
+- Replace the temporary empty strongbox projection port with the real physical pickup/opening authority bridge.
+- Connect physical extraction to frozen Results routing.
 - Run the required EditMode and PlayMode suites and retain zero-failure XML.
 - Perform the complete Bootstrap -> Results -> same Hub manual acceptance route.
 
