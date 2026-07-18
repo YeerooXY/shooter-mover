@@ -75,6 +75,39 @@ namespace ShooterMover.UI.Hub
         }
     }
 
+    internal sealed class DeferredUnityHubRouteDestinationAdapterV1 :
+        IHubRouteDestinationAdapterV1
+    {
+        private readonly UnityHubRouteDestinationAdapterV1 inner =
+            new UnityHubRouteDestinationAdapterV1();
+        private readonly int suppressedPresentCount;
+        private int presentCount;
+
+        public DeferredUnityHubRouteDestinationAdapterV1(
+            int suppressedPresentCount)
+        {
+            if (suppressedPresentCount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(suppressedPresentCount));
+            }
+
+            this.suppressedPresentCount = suppressedPresentCount;
+        }
+
+        public void Present(
+            HubRouteV1 route,
+            PlayerRouteProfilePayloadV1 payload)
+        {
+            presentCount++;
+            if (presentCount <= suppressedPresentCount)
+            {
+                return;
+            }
+
+            inner.Present(route, payload);
+        }
+    }
+
     internal static class HubProductionRoutingBootstrapV1
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -139,13 +172,23 @@ namespace ShooterMover.UI.Hub
                 return;
             }
 
-            if (HubReturnRouteContextV1.HasValue)
+            HubReturnRouteInstallerV1 returnInstaller =
+                FindFirstObjectByType<HubReturnRouteInstallerV1>();
+            if (returnInstaller != null && returnInstaller.Applied)
             {
                 return;
             }
 
+            PlayerRouteProfilePayloadV1 payload = controller.Payload;
+            PlayerRouteProfilePayloadV1 preservedMainMenuPayload;
+            if (CharacterSelectionEntryRouteContextV1.TryConsume(
+                out preservedMainMenuPayload))
+            {
+                payload = preservedMainMenuPayload;
+            }
+
             controller.ConfigureForTests(
-                controller.Payload,
+                payload,
                 new UnityHubRouteDestinationAdapterV1());
         }
     }
