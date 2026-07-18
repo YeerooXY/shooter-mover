@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Missions.Run;
 using ShooterMover.Contracts.Missions.Rooms;
@@ -10,13 +9,17 @@ namespace ShooterMover.UnityAdapters.Missions.Run
 {
     /// <summary>
     /// Stable command surface consumed by Stage 1 runtime presentation. This keeps the
-    /// accepted enemy, door and extraction packages independent from the concrete scene
-    /// adapter component and makes the remaining TestSupport replacement mechanical.
+    /// accepted enemy, door, extraction and weapon packages independent from the concrete
+    /// scene adapter component.
     /// </summary>
     public interface IStage1ProductionRunBindingV1
     {
         bool IsConfigured { get; }
         StableId CurrentRoomStableId { get; }
+        int ActiveWeaponSlotIndex { get; }
+        StableId ActiveEquipmentInstanceStableId { get; }
+
+        Stage1WeaponSlotSelectionStatusV1 SelectWeaponSlot(int slotIndex);
 
         Stage1RunRegistrationStatusV1 RegisterRoom(
             StableId roomStableId,
