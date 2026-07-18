@@ -29,6 +29,8 @@ PR #210 was already merged before this branch was created. The branch starts fro
 - A four-slot production weapon projection retaining exact equipment-instance identities.
 - Active-slot changes delegated to `LevelRunCoordinatorV1`; the Unity projection owns no second loadout state.
 - A production keyboard bridge for weapon slots 1-4, including numpad equivalents.
+- The retained Stage 1 scene presenter and its original Unity script GUID moved from `Assets/ShooterMover/TestSupport/VisibleSlice` to `Assets/ShooterMover/Production/Stage1`.
+- The presenter remains in the Assembly-CSharp boundary so the accepted content-package dependency graph and serialized scene references are preserved during extraction.
 - Focused EditMode tests for run, routing, composition, session, authority handoff, and slot-selection contracts.
 
 ## Authority boundaries
@@ -53,11 +55,13 @@ It does not own:
 
 `Stage1ProductionWeaponSlotSelectionV1` is a read/command projection over the coordinator. When coordinator-backed, it reads the coordinator's active index and submits slot changes through `TrySelectActiveSlot`. It never edits route payloads, holdings, or equipment instances.
 
+The retained Stage 1 presenter is now a production-owned asset by path and GUID. Its historical CLR namespace is intentionally unchanged in this first move because changing a 2,192-line MonoBehaviour and its test surface without Unity compilation would combine ownership extraction with behavioral refactoring. Namespace and responsibility decomposition remain explicit follow-up work; no new gameplay authority was introduced by the move.
+
 The current mission-result port rejects physical strongbox collection because the physical pickup authority is not connected yet. It may project an exact empty collection at extraction; it does not grant, store, open, or simulate boxes.
 
 ## Deliberately remaining before LEVELRUN-001B can be accepted
 
-- Extract the retained movement, room, enemy, HUD, and weapon presentation packages from `ShooterMover.TestSupport.VisibleSlice.Stage1VisibleSliceController` into production-owned presentation components.
+- Split the production-owned retained presenter into movement/player, rooms/environment, enemies/combat, HUD/camera, and weapon-presentation components, then retire its historical `ShooterMover.TestSupport.VisibleSlice` namespace.
 - Resolve each selected runtime weapon reference into its accepted execution adapter and remove the demo chooser from valid routed runs.
 - Connect moving-droid and turret destruction notifications to the production run binding.
 - Replace the temporary empty strongbox projection port with the real physical pickup/opening authority bridge.
