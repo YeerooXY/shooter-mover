@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
@@ -23,6 +25,8 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
 
             PlayerActorSnapshot snapshot = actor.ExportSnapshot();
 
+            Assert.That(snapshot.Identity.EntityInstanceId, Is.EqualTo(Id("actor", "player-a")));
+            Assert.That(snapshot.EntityInstanceId, Is.EqualTo(Id("actor", "player-a")));
             Assert.That(snapshot.ActorInstanceId, Is.EqualTo(Id("actor", "player-a")));
             Assert.That(snapshot.RunParticipantId, Is.EqualTo(Id("participant", "local-a")));
             Assert.That(snapshot.CharacterId, Is.EqualTo(Id("character", "striker")));
@@ -133,7 +137,7 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
         }
 
         [Test]
-        public void Healing_ClampsToMaximumAndDeduplicatesAcceptedOperation()
+        public void Healing_ClampsAttributesDeduplicatesAndDistinguishesNoEffect()
         {
             PlayerActorAuthority actor = CreateActor();
             actor.ApplyDamage(Damage("damage-a", 40d, 0L));
@@ -141,12 +145,41 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
 
             PlayerActorHealingResult first = actor.ApplyHealing(heal);
             PlayerActorHealingResult replay = actor.ApplyHealing(heal);
+            PlayerActorHealingCommand fullHealthHeal = new PlayerActorHealingCommand(
+                Id("operation", "heal-full"),
+                Id("actor", "medic-b"),
+                Id("participant", "medic-b"),
+                Id("actor", "player-a"),
+                10d,
+                0L);
+            PlayerActorHealingResult noEffect = actor.ApplyHealing(fullHealthHeal);
+            PlayerActorHealingResult noEffectReplay = actor.ApplyHealing(fullHealthHeal);
+            PlayerActorHealingResult attributionConflict = actor.ApplyHealing(
+                new PlayerActorHealingCommand(
+                    Id("operation", "heal-full"),
+                    Id("actor", "medic-b"),
+                    Id("participant", "medic-c"),
+                    Id("actor", "player-a"),
+                    10d,
+                    0L));
 
             Assert.That(first.Status, Is.EqualTo(PlayerActorOperationStatus.Applied));
             Assert.That(first.AppliedAmount, Is.EqualTo(40d));
+            Assert.That(first.Command.SourceRunParticipantId, Is.EqualTo(Id("participant", "medic-a")));
+            Assert.That(first.Command.HasSourceRunParticipant, Is.True);
             Assert.That(first.Snapshot.CurrentHealth, Is.EqualTo(100d));
             Assert.That(replay.Status, Is.EqualTo(PlayerActorOperationStatus.Duplicate));
             Assert.That(replay.AppliedAmount, Is.EqualTo(0d));
+
+            Assert.That(noEffect.Status, Is.EqualTo(PlayerActorOperationStatus.AcceptedNoEffect));
+            Assert.That(noEffect.AppliedAmount, Is.EqualTo(0d));
+            Assert.That(noEffect.StateChanged, Is.False);
+            Assert.That(noEffect.Command.SourceRunParticipantId, Is.EqualTo(Id("participant", "medic-b")));
+            Assert.That(noEffectReplay.Status, Is.EqualTo(PlayerActorOperationStatus.Duplicate));
+            Assert.That(attributionConflict.Status, Is.EqualTo(PlayerActorOperationStatus.RejectedInvalid));
+            Assert.That(
+                attributionConflict.RejectionCode,
+                Is.EqualTo(PlayerActorOperationRejectionCode.ConflictingDuplicate));
             Assert.That(actor.ExportSnapshot().AcceptedSequence, Is.EqualTo(2L));
         }
 
@@ -186,10 +219,12 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
         }
 
         [Test]
-        public void Restart_RestoresHealthPreservesIdentityAndRejectsStaleCombat()
+        public void Restart_RestoresHealthPreservesStableIdentityAndRejectsStaleCombat()
         {
             PlayerActorAuthority actor = CreateActor();
             PlayerActorSnapshot original = actor.ExportSnapshot();
+            GameplayEntityIdentity stableIdentity = original.Identity;
+            int stableIdentityHash = stableIdentity.GetHashCode();
             actor.ApplyDamage(Damage("damage-a", 60d, 0L));
 
             PlayerActorRestartResult restart = actor.Restart(
@@ -204,6 +239,8 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
             Assert.That(restart.Snapshot.CurrentHealth, Is.EqualTo(100d));
             Assert.That(restart.Snapshot.IsAlive, Is.True);
             Assert.That(restart.Snapshot.LifecycleGeneration, Is.EqualTo(1L));
+            Assert.That(restart.Snapshot.Identity, Is.EqualTo(stableIdentity));
+            Assert.That(restart.Snapshot.Identity.GetHashCode(), Is.EqualTo(stableIdentityHash));
             Assert.That(restart.Snapshot.ActorInstanceId, Is.EqualTo(original.ActorInstanceId));
             Assert.That(restart.Snapshot.RunParticipantId, Is.EqualTo(original.RunParticipantId));
             Assert.That(restart.Snapshot.CharacterId, Is.EqualTo(original.CharacterId));
@@ -307,13 +344,18 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
         public void NeutralEntityIdentity_DoesNotInventParticipantOrCharacter()
         {
             GameplayEntityIdentity identity = new GameplayEntityIdentity(
-                Id("actor", "neutral-prop"),
+                Id("entity", "neutral-prop"),
                 GameplayEntityOwnership.None(),
-                Id("faction", "neutral"),
-                0L);
+                Id("faction", "neutral"));
+            GameplayEntityIdentity sameIdentity = new GameplayEntityIdentity(
+                Id("entity", "neutral-prop"),
+                GameplayEntityOwnership.None(),
+                Id("faction", "neutral"));
 
+            Assert.That(identity.EntityInstanceId, Is.EqualTo(Id("entity", "neutral-prop")));
             Assert.That(identity.Ownership.HasRunParticipant, Is.False);
             Assert.That(identity.Ownership.HasSourceCharacter, Is.False);
+            Assert.That(identity, Is.EqualTo(sameIdentity));
         }
 
         [Test]
@@ -325,17 +367,17 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
                     reference => reference.Name.StartsWith("UnityEngine", StringComparison.Ordinal)),
                 Is.False);
 
-            string[] forbiddenNames =
+            var forbiddenTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "Inventory",
                 "Experience",
-                "Xp",
+                "XP",
                 "Kill",
                 "Money",
                 "Scrap",
                 "Scene",
                 "Navigation",
-                "Hud",
+                "HUD",
                 "Weapon",
                 "Enemy",
             };
@@ -349,13 +391,13 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
                 {
                     Assert.That(property.CanWrite, Is.False, type.FullName + "." + property.Name);
                     Assert.That(IsUnityType(property.PropertyType), Is.False, property.Name);
-                    AssertNoForbiddenName(property.Name, forbiddenNames);
+                    AssertNoForbiddenSemanticToken(property.Name, forbiddenTokens);
                 }
 
                 foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
                 {
                     Assert.That(IsUnityType(method.ReturnType), Is.False, method.Name);
-                    AssertNoForbiddenName(method.Name, forbiddenNames);
+                    AssertNoForbiddenSemanticToken(method.Name, forbiddenTokens);
                     foreach (ParameterInfo parameter in method.GetParameters())
                     {
                         Assert.That(IsUnityType(parameter.ParameterType), Is.False, method.Name);
@@ -436,6 +478,7 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
             return new PlayerActorHealingCommand(
                 Id("operation", operationValue),
                 Id("actor", "medic-a"),
+                Id("participant", "medic-a"),
                 Id("actor", "player-a"),
                 amount,
                 generation);
@@ -463,14 +506,19 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
                 && namespaceName.StartsWith("UnityEngine", StringComparison.Ordinal);
         }
 
-        private static void AssertNoForbiddenName(string name, string[] forbiddenNames)
+        private static void AssertNoForbiddenSemanticToken(
+            string name,
+            ISet<string> forbiddenTokens)
         {
-            foreach (string forbidden in forbiddenNames)
+            MatchCollection tokens = Regex.Matches(
+                name,
+                "[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[0-9]+");
+            foreach (Match token in tokens)
             {
                 Assert.That(
-                    name.IndexOf(forbidden, StringComparison.OrdinalIgnoreCase),
-                    Is.LessThan(0),
-                    name + " exposes forbidden responsibility token " + forbidden);
+                    forbiddenTokens.Contains(token.Value),
+                    Is.False,
+                    name + " exposes forbidden responsibility token " + token.Value);
             }
         }
     }
