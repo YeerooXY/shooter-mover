@@ -1,0 +1,402 @@
+{
+  "schemaVersion": "ranked-skills-schema-v1",
+  "contentVersion": "ranked-skills-content-v0.1-draft",
+  "status": "draft",
+  "classes": [
+    { "id": "class.striker", "displayName": "Striker" },
+    { "id": "class.combat_medic", "displayName": "Combat Medic" },
+    { "id": "class.juggernaut", "displayName": "Juggernaut" }
+  ],
+  "categories": [
+    { "id": "category.generic.farming", "displayName": "Farming" },
+    { "id": "category.generic.combat", "displayName": "General Combat" },
+    { "id": "category.striker", "displayName": "Striker" },
+    { "id": "category.combat_medic", "displayName": "Combat Medic" },
+    { "id": "category.juggernaut", "displayName": "Juggernaut" }
+  ],
+  "effects": [
+    { "id": "economy.credit_reward_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "reward.strongbox_drop_weight_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "reward.strongbox_tier_weight_modifier", "allowedKinds": ["Percentage"] },
+    { "id": "reward.legendary_definition_weight_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "resource.premium_ammo_shack_yield_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "resource.scrap_reward_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "resource.dismantle_scrap_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "resource.field_pickup_yield_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "character.armor_percent", "allowedKinds": ["Percentage"] },
+    { "id": "character.movement_speed_percent", "allowedKinds": ["Percentage"] },
+    { "id": "combat.critical_chance_percent", "allowedKinds": ["Percentage"] },
+    { "id": "ability.cooldown_multiplier", "allowedKinds": ["Percentage"] },
+    { "id": "character.room_clear_health_restore_percent", "allowedKinds": ["Percentage"] },
+    { "id": "movement.maximum_charges", "allowedKinds": ["IntegerCapacity"] },
+    { "id": "combat.focused_fire_damage_percent", "allowedKinds": ["Percentage"] },
+    { "id": "combat.kill_streak_damage_percent", "allowedKinds": ["Percentage"] },
+    { "id": "ability.temporary_weapon_slot_capacity", "allowedKinds": ["IntegerCapacity"] },
+    { "id": "healing.output_percent", "allowedKinds": ["Percentage"] },
+    { "id": "healing.duration_percent", "allowedKinds": ["Percentage"] },
+    { "id": "character.maximum_health_percent", "allowedKinds": ["Percentage"] },
+    { "id": "combat.suppression_percent", "allowedKinds": ["Percentage"] }
+  ],
+  "skills": [
+    {
+      "id": "generic.farming.credit_gain",
+      "categoryId": "category.generic.farming",
+      "displayName": "Credit Gain",
+      "shortDescription": "Earn more credits.",
+      "longDescription": "Increases authority-approved credit rewards.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "economy.credit_reward_multiplier", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance",
+      "balanceNotes": "15% maximum relative credit gain."
+    },
+    {
+      "id": "generic.farming.strongbox_finder",
+      "categoryId": "category.generic.farming",
+      "displayName": "Strongbox Finder",
+      "shortDescription": "Find strongboxes more often.",
+      "longDescription": "Relatively increases eligible strongbox reward weight.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "reward.strongbox_drop_weight_multiplier", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance",
+      "balanceNotes": "Relative weight only; never percentage points."
+    },
+    {
+      "id": "generic.farming.strongbox_quality",
+      "categoryId": "category.generic.farming",
+      "displayName": "Strongbox Quality",
+      "shortDescription": "Find better strongbox tiers.",
+      "longDescription": "Improves tier weights after a strongbox has already been awarded.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.008, "step": 0.008, "count": 15 },
+      "perRankEffects": [{ "statId": "reward.strongbox_tier_weight_modifier", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance",
+      "balanceNotes": "Does not create additional boxes."
+    },
+    {
+      "id": "generic.farming.premium_reserves",
+      "categoryId": "category.generic.farming",
+      "displayName": "Premium Reserves",
+      "shortDescription": "Gain more premium ammunition.",
+      "longDescription": "Increases premium ammunition received from premium-ammo shacks.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.015, "step": 0.015, "count": 15 },
+      "perRankEffects": [{ "statId": "resource.premium_ammo_shack_yield_multiplier", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance"
+    },
+    {
+      "id": "generic.farming.salvage_yield",
+      "categoryId": "category.generic.farming",
+      "displayName": "Salvage Yield",
+      "shortDescription": "Recover more scrap.",
+      "longDescription": "Increases supported mission and dismantle scrap rewards.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.012, "step": 0.012, "count": 15 },
+      "perRankEffects": [
+        { "statId": "resource.scrap_reward_multiplier", "kind": "Percentage", "valueSource": "rankValue" },
+        { "statId": "resource.dismantle_scrap_multiplier", "kind": "Percentage", "valueSource": "rankValue" }
+      ],
+      "milestones": [],
+      "designStatus": "draft-balance"
+    },
+    {
+      "id": "generic.farming.field_scavenging",
+      "categoryId": "category.generic.farming",
+      "displayName": "Field Scavenging",
+      "shortDescription": "Improve ordinary mission pickups.",
+      "longDescription": "Improves supported ordinary pickups, excluding strongboxes and premium-ammo shacks.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "resource.field_pickup_yield_multiplier", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance"
+    },
+    {
+      "id": "generic.combat.armor",
+      "categoryId": "category.generic.combat",
+      "displayName": "Armor Training",
+      "shortDescription": "Increase armor.",
+      "longDescription": "Improves armor with class-specific investment limits.",
+      "maximumRank": 6,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.015, "step": 0.015, "count": 6 },
+      "classOverrides": [
+        { "classId": "class.striker", "maximumRank": 6 },
+        { "classId": "class.combat_medic", "maximumRank": 6 },
+        { "classId": "class.juggernaut", "maximumRank": 18, "rankValues": { "start": 0.015, "step": 0.015, "count": 18 } }
+      ],
+      "perRankEffects": [{ "statId": "character.armor_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "generic.combat.movement_speed",
+      "categoryId": "category.generic.combat",
+      "displayName": "Movement Speed",
+      "shortDescription": "Move faster.",
+      "longDescription": "Improves movement speed with class-specific investment limits.",
+      "maximumRank": 18,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 18 },
+      "classOverrides": [
+        { "classId": "class.striker", "maximumRank": 18 },
+        { "classId": "class.combat_medic", "maximumRank": 6, "rankValues": { "start": 0.01, "step": 0.01, "count": 6 } },
+        { "classId": "class.juggernaut", "maximumRank": 9, "rankValues": { "start": 0.01, "step": 0.01, "count": 9 } }
+      ],
+      "perRankEffects": [{ "statId": "character.movement_speed_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "generic.combat.critical_chance",
+      "categoryId": "category.generic.combat",
+      "displayName": "Critical Chance",
+      "shortDescription": "Increase critical chance.",
+      "longDescription": "Improves critical chance with class-specific investment limits.",
+      "maximumRank": 12,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.005, "step": 0.005, "count": 12 },
+      "classOverrides": [
+        { "classId": "class.striker", "maximumRank": 12 },
+        { "classId": "class.combat_medic", "maximumRank": 6, "rankValues": { "start": 0.005, "step": 0.005, "count": 6 } },
+        { "classId": "class.juggernaut", "maximumRank": 12 }
+      ],
+      "perRankEffects": [{ "statId": "combat.critical_chance_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "generic.combat.cooldown_recovery",
+      "categoryId": "category.generic.combat",
+      "displayName": "Cooldown Recovery",
+      "shortDescription": "Recover abilities faster.",
+      "longDescription": "Reduces supported ability cooldowns.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": -0.008, "step": -0.008, "count": 15 },
+      "classOverrides": [
+        { "classId": "class.striker", "maximumRank": 15 },
+        { "classId": "class.combat_medic", "maximumRank": 12, "rankValues": { "start": -0.008, "step": -0.008, "count": 12 } },
+        { "classId": "class.juggernaut", "maximumRank": 12, "rankValues": { "start": -0.008, "step": -0.008, "count": 12 } }
+      ],
+      "perRankEffects": [{ "statId": "ability.cooldown_multiplier", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "generic.combat.room_clear_recovery",
+      "categoryId": "category.generic.combat",
+      "displayName": "Room-Clear Recovery",
+      "shortDescription": "Recover after clearing a room.",
+      "longDescription": "Restores a small percentage of health after an eligible room clear.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": [],
+      "rankValues": { "start": 0.002, "step": 0.002, "count": 15 },
+      "perRankEffects": [{ "statId": "character.room_clear_health_restore_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "striker.killing_spree",
+      "categoryId": "category.striker",
+      "displayName": "Killing Spree",
+      "shortDescription": "Build damage through rapid kills.",
+      "longDescription": "Improves the Striker's temporary kill-streak damage bonus.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.striker"],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "combat.kill_streak_damage_percent", "kind": "Percentage", "valueSource": "rankValue", "conditionId": "condition.kill_streak_active" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "striker.focused_fire",
+      "categoryId": "category.striker",
+      "displayName": "Focused Fire",
+      "shortDescription": "Deal more damage while concentrating fire.",
+      "longDescription": "Improves focused-fire damage against the same target.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.striker"],
+      "rankValues": { "start": 0.008, "step": 0.008, "count": 15 },
+      "perRankEffects": [{ "statId": "combat.focused_fire_damage_percent", "kind": "Percentage", "valueSource": "rankValue", "conditionId": "condition.focused_fire_active" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "striker.thruster_recovery",
+      "categoryId": "category.striker",
+      "displayName": "Thruster Recovery",
+      "shortDescription": "Recover movement charges faster.",
+      "longDescription": "Improves Striker movement-charge recovery.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.striker"],
+      "rankValues": { "start": -0.01, "step": -0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "ability.cooldown_multiplier", "kind": "Percentage", "valueSource": "rankValue", "conditionId": "condition.movement_charge" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "striker.movement_efficiency",
+      "categoryId": "category.striker",
+      "displayName": "Movement Efficiency",
+      "shortDescription": "Improve movement efficiency.",
+      "longDescription": "Improves Striker movement performance and contributes to Triple Reserve.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.striker"],
+      "rankValues": { "start": 0.006, "step": 0.006, "count": 15 },
+      "perRankEffects": [{ "statId": "character.movement_speed_percent", "kind": "Percentage", "valueSource": "rankValue", "conditionId": "condition.after_movement_charge" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "striker.combat_harness",
+      "categoryId": "category.striker",
+      "displayName": "Combat Harness",
+      "shortDescription": "Temporarily access a third weapon.",
+      "longDescription": "Improves the activated Combat Harness that temporarily enables a third weapon slot.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.striker"],
+      "rankValues": { "start": 0.02, "step": 0.02, "count": 15 },
+      "prerequisites": [{ "skillId": "striker.focused_fire", "requiredRank": 5 }],
+      "perRankEffects": [],
+      "milestones": [{ "rank": 1, "effects": [{ "statId": "ability.temporary_weapon_slot_capacity", "kind": "IntegerCapacity", "value": 1, "conditionId": "condition.combat_harness_active" }] }],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "combat_medic.emergency_response",
+      "categoryId": "category.combat_medic",
+      "displayName": "Emergency Response",
+      "shortDescription": "Improve healing output.",
+      "longDescription": "Increases supported Combat Medic healing output.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.combat_medic"],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "healing.output_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance"
+    },
+    {
+      "id": "combat_medic.sustained_treatment",
+      "categoryId": "category.combat_medic",
+      "displayName": "Sustained Treatment",
+      "shortDescription": "Extend healing effects.",
+      "longDescription": "Extends supported healing-over-time effects.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.combat_medic"],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "healing.duration_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance"
+    },
+    {
+      "id": "juggernaut.heavy_plating",
+      "categoryId": "category.juggernaut",
+      "displayName": "Heavy Plating",
+      "shortDescription": "Increase armor further.",
+      "longDescription": "Adds class-specific Juggernaut armor scaling.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.juggernaut"],
+      "rankValues": { "start": 0.012, "step": 0.012, "count": 15 },
+      "perRankEffects": [{ "statId": "character.armor_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "juggernaut.reinforced_frame",
+      "categoryId": "category.juggernaut",
+      "displayName": "Reinforced Frame",
+      "shortDescription": "Increase maximum health.",
+      "longDescription": "Increases Juggernaut maximum health.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.juggernaut"],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "character.maximum_health_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "juggernaut.suppressive_fire",
+      "categoryId": "category.juggernaut",
+      "displayName": "Suppressive Fire",
+      "shortDescription": "Improve suppression.",
+      "longDescription": "Improves supported Juggernaut suppression effects.",
+      "maximumRank": 15,
+      "pointCostPerRank": 1,
+      "eligibleClassIds": ["class.juggernaut"],
+      "rankValues": { "start": 0.01, "step": 0.01, "count": 15 },
+      "perRankEffects": [{ "statId": "combat.suppression_percent", "kind": "Percentage", "valueSource": "rankValue" }],
+      "milestones": [],
+      "designStatus": "draft-balance"
+    }
+  ],
+  "synergies": [
+    {
+      "id": "synergy.striker.triple_reserve",
+      "displayName": "Triple Reserve",
+      "description": "Unlocks a third movement charge.",
+      "eligibleClassIds": ["class.striker"],
+      "requirements": [
+        { "skillId": "striker.thruster_recovery", "minimumRank": 8 },
+        { "skillId": "striker.movement_efficiency", "minimumRank": 8 }
+      ],
+      "combinedRankRequirements": [],
+      "effects": [{ "statId": "movement.maximum_charges", "kind": "IntegerCapacity", "value": 1 }],
+      "designStatus": "approved-concept"
+    },
+    {
+      "id": "synergy.farming.legendary_prospecting",
+      "displayName": "Legendary Prospecting",
+      "description": "Legendary weapons become up to 20% less rare.",
+      "eligibleClassIds": [],
+      "requirements": [
+        { "skillId": "generic.farming.credit_gain", "minimumRank": 4 },
+        { "skillId": "generic.farming.strongbox_finder", "minimumRank": 4 },
+        { "skillId": "generic.farming.strongbox_quality", "minimumRank": 4 }
+      ],
+      "combinedRankRequirements": [
+        {
+          "skillIds": [
+            "generic.farming.credit_gain",
+            "generic.farming.strongbox_finder",
+            "generic.farming.strongbox_quality"
+          ],
+          "minimumCombinedRanks": 16
+        }
+      ],
+      "effects": [{ "statId": "reward.legendary_definition_weight_multiplier", "kind": "Percentage", "value": 0.20 }],
+      "designStatus": "approved-concept",
+      "balanceNotes": "Relative selection-weight increase only; never percentage points and never bypasses weapon eligibility."
+    }
+  ]
+}
