@@ -35,7 +35,6 @@ RenderSettings:
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
-  m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
   m_UseRadianceAmbientProbe: 0
@@ -61,6 +60,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1001}
   - component: {fileID: 1002}
+  - component: {fileID: 1003}
   m_Layer: 0
   m_Name: PlaySelection
   m_TagString: Untagged
@@ -96,6 +96,18 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: ShooterMover.UI.PlaySelection::ShooterMover.UI.PlaySelection.PlaySelectionControllerV1
   playModeCatalog: {fileID: 11400000, guid: 1f7f0c64b5844a3d90bd0679289197ee, type: 2}
+--- !u!114 &1003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb0c80487834e5eaa6894a902019901, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ShooterMover.UI.PlaySelection::ShooterMover.UI.PlaySelection.PlaySelectionProductionInstallerV1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
