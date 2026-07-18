@@ -33,7 +33,7 @@ namespace ShooterMover.UI.Hub
 
             controller.ConfigureForTests(
                 payload,
-                new HubRoutePlaceholderAdapterV1());
+                new UnityHubRouteDestinationAdapterV1());
             if (!controller.OpenCharacterSelect()
                 || !controller.ContinueToHub()
                 || controller.Payload.Fingerprint != payload.Fingerprint)
@@ -44,7 +44,7 @@ namespace ShooterMover.UI.Hub
 
             PlayerRouteProfilePayloadV1 consumed;
             if (!HubReturnRouteContextV1.TryConsume(out consumed)
-                || !ReferenceEquals(consumed, payload))
+                || !object.ReferenceEquals(consumed, payload))
             {
                 RejectionCode = "hub-return-context-consume-failed";
                 return;
