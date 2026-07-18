@@ -14,8 +14,8 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
             {
                 Stage1ProductionPresentationHostV1 host =
                     root.AddComponent<Stage1ProductionPresentationHostV1>();
-                RetainedPresentationProbeV1 retained =
-                    root.AddComponent<RetainedPresentationProbeV1>();
+                Stage1ProductionPresentationHostV1 retained =
+                    root.AddComponent<Stage1ProductionPresentationHostV1>();
 
                 host.ConfigureForTests(retained);
                 host.SetPresentationEnabled(false);
@@ -44,8 +44,8 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
             {
                 Stage1ProductionPresentationHostV1 host =
                     root.AddComponent<Stage1ProductionPresentationHostV1>();
-                RetainedPresentationProbeV1 retained =
-                    root.AddComponent<RetainedPresentationProbeV1>();
+                Stage1ProductionPresentationHostV1 retained =
+                    root.AddComponent<Stage1ProductionPresentationHostV1>();
                 host.ConfigureForTests(retained);
                 retained.enabled = true;
 
@@ -68,10 +68,10 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
             {
                 Stage1ProductionPresentationHostV1 host =
                     root.AddComponent<Stage1ProductionPresentationHostV1>();
-                RetainedPresentationProbeV1 first =
-                    root.AddComponent<RetainedPresentationProbeV1>();
-                RetainedPresentationProbeV1 second =
-                    root.AddComponent<RetainedPresentationProbeV1>();
+                Stage1ProductionPresentationHostV1 first =
+                    root.AddComponent<Stage1ProductionPresentationHostV1>();
+                Stage1ProductionPresentationHostV1 second =
+                    root.AddComponent<Stage1ProductionPresentationHostV1>();
                 host.ConfigureForTests(first);
 
                 Assert.Throws<System.InvalidOperationException>(() =>
@@ -82,10 +82,6 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
             {
                 Object.DestroyImmediate(root);
             }
-        }
-
-        private sealed class RetainedPresentationProbeV1 : MonoBehaviour
-        {
         }
     }
 }
