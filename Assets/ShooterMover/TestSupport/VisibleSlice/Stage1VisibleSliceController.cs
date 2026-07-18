@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Missions.Rooms;
+using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.Content.Definitions.Objects;
 using ShooterMover.ContentPackages.Environment.Doors;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
@@ -26,6 +28,7 @@ using ShooterMover.UnityAdapters.Combat;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Input;
 using ShooterMover.UnityAdapters.Authoring;
+using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using ShooterMover.UnityAdapters.Physics;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -61,7 +64,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private static readonly Vector2 ExplosiveCollisionSize = new Vector2(1.2f, 1.2f);
 
         [SerializeField] private Stage1VisibleSliceRoomPresentation roomPresentationPrefab;
-        [SerializeField] private GameObject blasterTurretPrefab;
+        [SerializeField] private RoomContentDefinition2D[] roomContentDefinitions;
         [SerializeField] private VisibleSliceBlasterTurretPresenter turretPresentationPrefab;
         [SerializeField] private Sprite blasterShotSprite;
         [SerializeField] private Sprite turretShotSprite;
@@ -77,10 +80,16 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private readonly List<GameObject> sessionObjects = new List<GameObject>();
         private readonly List<ShotTrace> shotTraces = new List<ShotTrace>();
+        private readonly Dictionary<StableId, DemoRoomProjection> roomProjections =
+            new Dictionary<StableId, DemoRoomProjection>();
 
         private Stage1VisibleSliceRoomPresentation roomPresentation;
         private GameplaySceneScope2D gameplayScope;
         private DoorController2D exitDoor;
+        private DoorController2D entryExitDoor;
+        private DoorController2D terminalExitDoor;
+        private RoomMissionLayoutV1 roomMissionLayout;
+        private RoomContentDefinition2D currentRoomContent;
         private VoidHazardAuthoring2D voidHazard;
         private VoidHazardTarget2D playerVoidTarget;
         private ObjectFamilyDefinitionAsset runtimeEnvironmentFamily;
@@ -117,6 +126,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private long playerShotSequence;
         private long damageSequence;
         private long observedTurretShotSequence;
+        private long droidDamageOrder;
         private int observedTurretHitCount;
         private int observedPlayerHitCount;
         private bool damageObserved;
@@ -148,6 +158,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public VisibleSliceCameraRig CameraRig => cameraRig;
         public GameplaySceneScope2D GameplayScope => gameplayScope;
         public DoorController2D ExitDoor => exitDoor;
+        public DoorController2D EntryExitDoor => entryExitDoor;
+        public DoorController2D TerminalExitDoor => terminalExitDoor;
+        public RoomMissionLayoutV1 RoomMissionLayout => roomMissionLayout;
+        public StableId CurrentRoomStableId => roomMissionLayout == null
+            ? null
+            : roomMissionLayout.CurrentRoomState.RoomStableId;
+        public string CurrentRoomDisplayName => currentRoomContent == null
+            ? string.Empty
+            : currentRoomContent.DisplayName;
         public VoidHazardAuthoring2D VoidHazard => voidHazard;
         public bool IsArenaComplete => arenaComplete;
         public int VoidDamageCount => voidDamageCount;
@@ -338,6 +357,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
             return turretPackage.Authority.CurrentState.Health < before.Health;
         }
 
+        public bool FireAtMobileDroidForTests()
+        {
+            return mobileBlasterDroid != null
+                && mobileBlasterDroid.CurrentState != null
+                && !mobileBlasterDroid.CurrentState.IsDestroyed
+                && FireBlaster(mobileBlasterDroid.transform.position);
+        }
+
         public void QuickRestart()
         {
             restartGeneration = restartGeneration == long.MaxValue
@@ -351,11 +378,16 @@ namespace ShooterMover.TestSupport.VisibleSlice
             observedTurretShotSequence = 0L;
             observedTurretHitCount = 0;
             observedPlayerHitCount = 0;
+            droidDamageOrder = 0L;
             arenaComplete = false;
             voidDamageCount = 0;
             selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
             sessionActive = shootingSandbox;
             nextBlasterShotTime = 0f;
+            if (roomMissionLayout != null)
+            {
+                roomMissionLayout.Restart();
+            }
 
             ClearShotTraces();
             playerBody.position = playerSpawn;
@@ -378,6 +410,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (gameplayScope != null && gameplayScope.IsConfigured)
             {
                 gameplayScope.RunRestart(restartGeneration);
+            }
+            if (roomMissionLayout != null)
+            {
+                RoomContentDefinition2D entry = FindRoomContent(
+                    Level1RoomGraphDefinitionV1.EntryRoomStableId);
+                SwitchRoom(
+                    entry.RoomStableId,
+                    entry.ForwardEntryPosition,
+                    true);
             }
             if (playerHitAdapter != null)
             {
@@ -423,23 +464,35 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         public bool TryRead(out GeneralCombatHudSnapshot snapshot)
         {
-            EnemyActorState focused = turretPackage == null || turretPackage.Authority == null
-                ? null
-                : turretPackage.Authority.CurrentState;
+            bool entryRoom = CurrentRoomStableId
+                == Level1RoomGraphDefinitionV1.EntryRoomStableId;
+            EnemyActorState focused = entryRoom
+                ? mobileBlasterDroid == null
+                    ? null
+                    : mobileBlasterDroid.CurrentState
+                : turretPackage == null || turretPackage.Authority == null
+                    ? null
+                    : turretPackage.Authority.CurrentState;
+            string enemyName = entryRoom
+                ? "MOVING DROID"
+                : "BLASTER TURRET";
             Vector2 reticle = ReadReticleViewport();
             snapshot = new GeneralCombatHudSnapshot(
                 new VitalState(playerHealth, StartingPlayerHealth, 0d, 0d),
                 thrusterReader == null ? null : thrusterReader.ReadSnapshot(),
                 focused,
-                turretPackage == null ? "NO ENEMIES" : "BLASTER TURRET",
-                "FOUNDRY TEST BAY",
+                focused == null ? "NO ENEMIES" : enemyName,
+                string.IsNullOrEmpty(CurrentRoomDisplayName)
+                    ? "LEVEL 1"
+                    : CurrentRoomDisplayName,
                 focused != null && focused.IsDestroyed
                     ? (exitDoor != null && exitDoor.IsOpen
                         ? (arenaComplete
-                            ? "ARENA COMPLETE  /  PRESS R TO RESTART"
-                            : "EXIT UNLOCKED  /  REACH THE EAST DOOR")
-                        : "TURRET DOWN  /  OPENING EXIT")
-                    : "DESTROY THE TURRET  /  USE COVER OR EVADE ITS FACING",
+                            ? "LEVEL COMPLETE  /  PRESS R TO RESTART"
+                            : "ROOM CLEAR  /  REACH THE EAST DOOR")
+                        : enemyName + " DOWN  /  OPENING EXIT")
+                    : "DESTROY THE " + enemyName
+                        + "  /  USE COVER OR KEEP MOVING",
                 "R",
                 "MENU",
                 sessionActive,
@@ -511,7 +564,12 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private void BuildSession()
         {
             playerHealth = StartingPlayerHealth;
-            playerSpawn = new Vector3(-8f, -2f, 0f);
+            roomMissionLayout = new RoomMissionLayoutV1(
+                Level1RoomGraphDefinitionV1.Create());
+            ValidateRoomContentDefinitions();
+            currentRoomContent = FindRoomContent(
+                Level1RoomGraphDefinitionV1.EntryRoomStableId);
+            playerSpawn = currentRoomContent.ForwardEntryPosition;
             lineMaterial = new Material(Shader.Find("Sprites/Default"));
             lineMaterial.name = "VS007 Session Line Material";
 
@@ -547,9 +605,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 blasterShotSprite,
                 new Vector3(0.09f, 0.09f, 1f));
             BuildCamera();
-            BuildTurret();
-            BuildMobileBlasterDroid();
-            BuildExitDoor();
+            BuildAuthoredRooms();
             BuildUi();
             selectedLoadout = Stage1WeaponLoadoutCatalog.Approved.DefaultFixture;
             sessionActive = shootingSandbox;
@@ -668,14 +724,79 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 VisibleSliceCameraConfiguration.CreateDefault(roomPresentation.RoomBounds));
         }
 
-        private void BuildTurret()
+        private void BuildAuthoredRooms()
         {
-            GameObject turretObject = Instantiate(blasterTurretPrefab, transform);
+            for (int index = 0; index < roomContentDefinitions.Length; index++)
+            {
+                RoomContentDefinition2D definition = roomContentDefinitions[index];
+                GameObject root = new GameObject(
+                    "RoomContent_" + definition.RoomStableIdText);
+                root.transform.SetParent(transform, false);
+                sessionObjects.Add(root);
+
+                var projection = new DemoRoomProjection(definition, root);
+                roomProjections.Add(definition.RoomStableId, projection);
+
+                RoomContentPlacement2D[] placements = definition.Placements;
+                for (int placementIndex = 0;
+                    placementIndex < placements.Length;
+                    placementIndex++)
+                {
+                    RoomContentPlacement2D placement = placements[placementIndex];
+                    if (placement.PlacementKind != LevelPlacementKind.EnemySpawn)
+                    {
+                        continue;
+                    }
+
+                    if (placement.ContentStableId
+                        == StableId.Parse("enemy.mobile-blaster-droid"))
+                    {
+                        BuildMobileBlasterDroid(root.transform, placement);
+                    }
+                    else if (placement.ContentStableId
+                        == StableId.Parse("enemy.blaster-turret"))
+                    {
+                        BuildTurret(root.transform, placement);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "The visible slice does not have an enemy projector for "
+                            + placement.ContentStableIdText + ".");
+                    }
+                }
+
+                projection.ExitDoor = BuildExitDoor(
+                    root.transform,
+                    definition.RoomStableId
+                        == Level1RoomGraphDefinitionV1.EntryRoomStableId
+                            ? "placed.level1-entry-exit"
+                            : "placed.level1-terminal-exit");
+            }
+
+            entryExitDoor = roomProjections[
+                Level1RoomGraphDefinitionV1.EntryRoomStableId].ExitDoor;
+            terminalExitDoor = roomProjections[
+                Level1RoomGraphDefinitionV1.TerminalRoomStableId].ExitDoor;
+            SwitchRoom(
+                Level1RoomGraphDefinitionV1.EntryRoomStableId,
+                currentRoomContent.ForwardEntryPosition,
+                false);
+        }
+
+        private void BuildTurret(
+            Transform roomRoot,
+            RoomContentPlacement2D placement)
+        {
+            GameObject turretObject = Instantiate(placement.Prefab, roomRoot);
             turretObject.name = "AcceptedBlasterTurret";
             turretObject.transform.position = SnapToGrid(
-                new Vector3(4f, -2f, 0f),
+                placement.LocalPosition,
                 PropGridSize);
-            turretObject.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
+            turretObject.transform.rotation = Quaternion.Euler(
+                0f,
+                0f,
+                placement.LocalRotationDegrees);
             sessionObjects.Add(turretObject);
             turretDefinition = BlasterTurretDefinition.CreateRuntime(
                 60d,
@@ -692,7 +813,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             BlasterTurretAuthoring2D authoring =
                 turretObject.GetComponent<BlasterTurretAuthoring2D>();
             authoring.ConfigurePlacementForTests(
-                "placed.demo002-blaster-turret",
+                placement.InstanceStableIdText.Replace("spawn.", "placed."),
                 gameplayScope,
                 "scope.gameplay");
             authoring.SetRuntimeOverrides(
@@ -706,7 +827,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             turretPackage = authoring.Package;
 
-            turretPresenter = Instantiate(turretPresentationPrefab, transform);
+            turretPresenter = Instantiate(turretPresentationPrefab, roomRoot);
             turretPresenter.name = "VisibleSliceTurretPresentation";
             turretPresenter.transform.position = turretObject.transform.position;
             turretPresenter.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
@@ -716,21 +837,26 @@ namespace ShooterMover.TestSupport.VisibleSlice
             sessionObjects.Add(turretPresenter.gameObject);
         }
 
-        private void BuildMobileBlasterDroid()
+        private void BuildMobileBlasterDroid(
+            Transform roomRoot,
+            RoomContentPlacement2D placement)
         {
-            GameObject droidObject = new GameObject("MobileBlasterDroid_01");
-            droidObject.transform.SetParent(transform, false);
-            droidObject.transform.position = new Vector3(0f, 5.5f, 0f);
+            GameObject droidObject = Instantiate(placement.Prefab, roomRoot);
+            droidObject.name = "moving_droid";
+            droidObject.transform.localPosition = placement.LocalPosition;
+            droidObject.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                placement.LocalRotationDegrees);
             sessionObjects.Add(droidObject);
 
-            SpriteRenderer bodyRenderer = droidObject.AddComponent<SpriteRenderer>();
-            bodyRenderer.sprite = CreateRuntimeSprite(
-                "DEMO-002 Mobile Blaster Droid",
-                new Color(0.88f, 0.42f, 0.16f, 0.9f));
-            bodyRenderer.transform.localScale = new Vector3(0.72f, 0.72f, 1f);
-            bodyRenderer.sortingOrder = 6;
-
-            mobileBlasterDroid = droidObject.AddComponent<MobileBlasterDroidRuntime2D>();
+            mobileBlasterDroid =
+                droidObject.GetComponent<MobileBlasterDroidRuntime2D>();
+            if (mobileBlasterDroid == null)
+            {
+                throw new InvalidOperationException(
+                    "The moving droid room prefab is missing MobileBlasterDroidRuntime2D.");
+            }
             mobileBlasterDroidDefinition = MobileBlasterDroidDefinition.CreateRuntime(
                 16d,
                 2.5d,
@@ -745,18 +871,59 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 0.2d);
             mobileBlasterDroid.ConfigureSession(
                 mobileBlasterDroidDefinition,
-                StableId.Parse("actor.demo002-mobile-blaster-droid"),
+                StableId.Create(
+                    "actor",
+                    placement.InstanceStableId.Value),
                 playerTargetAdapter,
                 new Collider2D[] { playerCollider },
                 StableId.Parse("actor.vs007-player"),
                 CombatWeightClass.Standard,
                 playerProjectileTemplate);
+
+            CombatHit2DTargetRegistrationStatus registration =
+                mobileBlasterDroid.EnemyTarget.RegisterForCombatHits(playerHitAdapter);
+            if (registration != CombatHit2DTargetRegistrationStatus.Registered
+                && registration
+                    != CombatHit2DTargetRegistrationStatus.AlreadyRegistered)
+            {
+                throw new InvalidOperationException(
+                    "The moving droid could not register for player projectile hits: "
+                    + registration);
+            }
+
+            playerHitAdapter.HitTranslated += HandlePlayerShotHit;
         }
 
-        private void BuildExitDoor()
+        private void HandlePlayerShotHit(CombatHit2DTranslationResult translation)
         {
-            GameObject doorObject = new GameObject("Demo002ExitDoor");
-            doorObject.transform.SetParent(transform, false);
+            if (translation == null
+                || translation.Status != CombatHit2DTranslationStatus.Confirmed
+                || translation.Message == null
+                || mobileBlasterDroid == null
+                || mobileBlasterDroid.EnemyTarget == null
+                || translation.Message.TargetId
+                    != mobileBlasterDroid.EnemyTarget.TargetId)
+            {
+                return;
+            }
+
+            mobileBlasterDroid.EnemyTarget.ApplyHit(
+                translation.Message,
+                PlayerShotDamage,
+                droidDamageOrder);
+            if (droidDamageOrder < long.MaxValue)
+            {
+                droidDamageOrder++;
+            }
+        }
+
+        private DoorController2D BuildExitDoor(
+            Transform roomRoot,
+            string placedStableId)
+        {
+            GameObject doorObject = new GameObject(
+                "RoomExitDoor_" + placedStableId);
+            doorObject.transform.SetParent(roomRoot, false);
             doorObject.transform.position = new Vector3(14.5f, 0f, 0f);
             doorObject.SetActive(false);
             sessionObjects.Add(doorObject);
@@ -785,15 +952,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
             PlacedObjectAuthoring2D placed =
                 doorObject.AddComponent<PlacedObjectAuthoring2D>();
             placed.ConfigureForTests(
-                "placed.demo002-exit-door",
+                placedStableId,
                 runtimeEnvironmentFamily,
                 "variant.default",
                 gameplayScope,
                 "scope.gameplay",
                 null);
 
-            exitDoor = doorObject.AddComponent<DoorController2D>();
-            exitDoor.ConfigureForTests(
+            DoorController2D door = doorObject.AddComponent<DoorController2D>();
+            door.ConfigureForTests(
                 placed,
                 DoorInitialState.Closed,
                 DoorConditionComposition.All,
@@ -805,13 +972,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 null,
                 null,
                 false);
-            exitDoor.SetConditionPortsForTests(null, this, null, null);
+            door.SetConditionPortsForTests(null, null, null, null);
             doorObject.SetActive(true);
-            if (!exitDoor.TryInitialize().IsValid)
+            if (!door.TryInitialize().IsValid)
             {
                 throw new InvalidOperationException(
-                    "DEMO-002 exit door failed to initialize.");
+                    placedStableId + " failed to initialize.");
             }
+
+            return door;
         }
 
         private void BuildVoidHazard()
@@ -900,21 +1069,163 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void RefreshArenaFlow()
         {
-            if (exitDoor == null || turretPackage == null || turretPackage.Authority == null)
+            if (roomMissionLayout == null || playerTransform == null)
             {
                 return;
             }
 
-            if (turretPackage.Authority.CurrentState != null
-                && turretPackage.Authority.CurrentState.IsDestroyed)
+            StableId currentRoom = roomMissionLayout.CurrentRoomState.RoomStableId;
+            bool inDoorLane = Mathf.Abs(playerTransform.position.y) <= 2.2f;
+            if (currentRoom == Level1RoomGraphDefinitionV1.EntryRoomStableId)
             {
-                exitDoor.NotifyInteractionRequested();
+                bool droidDestroyed = mobileBlasterDroid != null
+                    && mobileBlasterDroid.CurrentState != null
+                    && mobileBlasterDroid.CurrentState.IsDestroyed;
+                if (droidDestroyed)
+                {
+                    roomMissionLayout.CompleteCurrentRoom();
+                    entryExitDoor.NotifyInteractionRequested();
+                }
+
+                if (entryExitDoor.IsOpen
+                    && inDoorLane
+                    && playerTransform.position.x >= 13.2f)
+                {
+                    if (roomMissionLayout.Traverse(
+                        Level1RoomGraphDefinitionV1.ForwardExitStableId).Changed)
+                    {
+                        RoomContentDefinition2D destination = FindRoomContent(
+                            Level1RoomGraphDefinitionV1.TerminalRoomStableId);
+                        SwitchRoom(
+                            destination.RoomStableId,
+                            destination.ForwardEntryPosition,
+                            true);
+                    }
+                }
+
+                return;
             }
 
-            if (exitDoor.IsOpen && playerTransform != null)
+            if (currentRoom == Level1RoomGraphDefinitionV1.TerminalRoomStableId)
             {
-                arenaComplete = playerTransform.position.x >= 13.2f
-                    && Mathf.Abs(playerTransform.position.y) <= 2.2f;
+                bool turretDestroyed = turretPackage != null
+                    && turretPackage.Authority != null
+                    && turretPackage.Authority.CurrentState != null
+                    && turretPackage.Authority.CurrentState.IsDestroyed;
+                if (turretDestroyed)
+                {
+                    roomMissionLayout.CompleteCurrentRoom();
+                    terminalExitDoor.NotifyInteractionRequested();
+                }
+
+                if (inDoorLane && playerTransform.position.x <= -13.2f)
+                {
+                    if (roomMissionLayout.Traverse(
+                        Level1RoomGraphDefinitionV1.ReturnExitStableId).Changed)
+                    {
+                        RoomContentDefinition2D destination = FindRoomContent(
+                            Level1RoomGraphDefinitionV1.EntryRoomStableId);
+                        SwitchRoom(
+                            destination.RoomStableId,
+                            destination.ReturnEntryPosition,
+                            true);
+                    }
+
+                    return;
+                }
+
+                if (terminalExitDoor.IsOpen
+                    && inDoorLane
+                    && playerTransform.position.x >= 13.2f)
+                {
+                    arenaComplete = true;
+                }
+            }
+        }
+
+        private void SwitchRoom(
+            StableId roomStableId,
+            Vector2 entryPosition,
+            bool movePlayer)
+        {
+            if (!roomProjections.TryGetValue(
+                roomStableId,
+                out DemoRoomProjection destination))
+            {
+                throw new InvalidOperationException(
+                    "No room projection is authored for " + roomStableId + ".");
+            }
+
+            foreach (DemoRoomProjection projection in roomProjections.Values)
+            {
+                projection.Root.SetActive(false);
+            }
+
+            destination.Root.SetActive(true);
+            currentRoomContent = destination.Definition;
+            exitDoor = destination.ExitDoor;
+            if (movePlayer && playerBody != null)
+            {
+                playerBody.position = entryPosition;
+                playerBody.linearVelocity = Vector2.zero;
+                playerBody.angularVelocity = 0f;
+            }
+        }
+
+        private RoomContentDefinition2D FindRoomContent(StableId roomStableId)
+        {
+            for (int index = 0; index < roomContentDefinitions.Length; index++)
+            {
+                RoomContentDefinition2D definition = roomContentDefinitions[index];
+                if (definition != null && definition.RoomStableId == roomStableId)
+                {
+                    return definition;
+                }
+            }
+
+            throw new InvalidOperationException(
+                "Missing room content definition for " + roomStableId + ".");
+        }
+
+        private void ValidateRoomContentDefinitions()
+        {
+            if (roomContentDefinitions == null || roomContentDefinitions.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "The visible slice requires authored room content definitions.");
+            }
+
+            var seenRooms = new HashSet<StableId>();
+            for (int index = 0; index < roomContentDefinitions.Length; index++)
+            {
+                RoomContentDefinition2D definition = roomContentDefinitions[index];
+                if (definition == null)
+                {
+                    throw new InvalidOperationException(
+                        "Room content definition " + index + " is missing.");
+                }
+
+                definition.ValidateOrThrow();
+                if (!seenRooms.Add(definition.RoomStableId))
+                {
+                    throw new InvalidOperationException(
+                        "Duplicate room content definition: "
+                        + definition.RoomStableIdText);
+                }
+            }
+
+            for (int index = 0;
+                index < roomMissionLayout.Definition.Rooms.Count;
+                index++)
+            {
+                StableId requiredRoom =
+                    roomMissionLayout.Definition.Rooms[index].RoomStableId;
+                if (!seenRooms.Contains(requiredRoom))
+                {
+                    throw new InvalidOperationException(
+                        "The room graph has no authored content for "
+                        + requiredRoom + ".");
+                }
             }
         }
 
@@ -953,10 +1264,23 @@ namespace ShooterMover.TestSupport.VisibleSlice
             EnemyActorState turretState = turretPackage == null || turretPackage.Authority == null
                 ? null
                 : turretPackage.Authority.CurrentState;
+            EnemyActorState droidState = mobileBlasterDroid == null
+                ? null
+                : mobileBlasterDroid.CurrentState;
+            bool entryRoom = CurrentRoomStableId
+                == Level1RoomGraphDefinitionV1.EntryRoomStableId;
             bool turretDestroyed = turretState != null && turretState.IsDestroyed;
-            string objective = turretDestroyed
-                ? (arenaComplete ? "ARENA CLEAR" : "EXIT UNLOCKED  /  REACH EAST DOOR")
-                : "DESTROY TURRET  /  EVADE ITS FACING";
+            bool droidDestroyed = droidState != null && droidState.IsDestroyed;
+            bool currentEnemyDestroyed = entryRoom ? droidDestroyed : turretDestroyed;
+            string objective = currentEnemyDestroyed
+                ? (arenaComplete
+                    ? "LEVEL CLEAR"
+                    : entryRoom
+                        ? "ROOM CLEAR  /  ENTER EAST DOOR"
+                        : "EXIT UNLOCKED  /  ENTER EAST DOOR")
+                : entryRoom
+                    ? "DESTROY MOVING DROID"
+                    : "DESTROY TURRET  /  EVADE ITS FACING";
 
             Color previous = GUI.color;
             GUI.color = new Color(0.015f, 0.025f, 0.04f, 0.86f);
@@ -974,24 +1298,33 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 compactBodyStyle);
 
             GUI.Label(new Rect(Screen.width - 241f, 26f, 210f, 22f),
-                "ENEMIES 2",
+                string.IsNullOrEmpty(CurrentRoomDisplayName)
+                    ? "CURRENT ROOM"
+                    : CurrentRoomDisplayName,
                 compactTitleStyle);
             GUI.Label(new Rect(Screen.width - 241f, 51f, 210f, 20f),
-                turretState == null
-                    ? "TURRET OFFLINE"
-                    : (turretDestroyed
-                        ? "TURRET DESTROYED"
-                        : "TURRET HP " + Mathf.RoundToInt((float)turretState.Health)
-                            + "/" + Mathf.RoundToInt((float)turretState.MaximumHealth)),
+                entryRoom
+                    ? droidState == null
+                        ? "DROID OFFLINE"
+                        : droidDestroyed
+                            ? "DROID DESTROYED"
+                            : "DROID HP "
+                                + Mathf.RoundToInt((float)droidState.Health)
+                                + "/"
+                                + Mathf.RoundToInt((float)droidState.MaximumHealth)
+                    : turretState == null
+                        ? "TURRET OFFLINE"
+                        : turretDestroyed
+                            ? "TURRET DESTROYED"
+                            : "TURRET HP "
+                                + Mathf.RoundToInt((float)turretState.Health)
+                                + "/"
+                                + Mathf.RoundToInt((float)turretState.MaximumHealth),
                 compactBodyStyle);
             GUI.Label(new Rect(Screen.width - 241f, 72f, 210f, 18f),
-                mobileBlasterDroid == null || mobileBlasterDroid.CurrentState == null
-                    ? "DROID OFFLINE"
-                    : "DROID HP "
-                        + Mathf.RoundToInt((float)mobileBlasterDroid.CurrentState.Health)
-                        + "/"
-                        + Mathf.RoundToInt(
-                            (float)mobileBlasterDroid.CurrentState.MaximumHealth),
+                entryRoom
+                    ? "CLEAR TO UNLOCK ROOM 2"
+                    : "WEST: RETURN   EAST: FINISH",
                 compactBodyStyle);
             GUI.Label(
                 new Rect(Screen.width * 0.5f - 220f, 24f, 440f, 28f),
@@ -1621,19 +1954,28 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             if (roomPresentationPrefab == null
                 || blasterShotSprite == null
-                || (!shootingSandbox
-                    && (blasterTurretPrefab == null || turretPresentationPrefab == null)))
+                || turretPresentationPrefab == null
+                || roomContentDefinitions == null
+                || roomContentDefinitions.Length == 0)
             {
                 throw new InvalidOperationException(
                     "VS-007 scene prefab bindings: room=" + (roomPresentationPrefab != null)
                     + " shot=" + (blasterShotSprite != null)
-                    + " turret=" + (blasterTurretPrefab != null)
-                    + " presentation=" + (turretPresentationPrefab != null));
+                    + " presentation=" + (turretPresentationPrefab != null)
+                    + " room-content="
+                    + (roomContentDefinitions == null
+                        ? 0
+                        : roomContentDefinitions.Length));
             }
         }
 
         private void OnDestroy()
         {
+            if (playerHitAdapter != null)
+            {
+                playerHitAdapter.HitTranslated -= HandlePlayerShotHit;
+            }
+
             if (loadoutSelector != null)
             {
                 loadoutSelector.Confirmed -= OnLoadoutConfirmed;
@@ -1682,6 +2024,24 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             public GameObject Root { get; }
             public float RemainingSeconds { get; set; }
+        }
+
+        private sealed class DemoRoomProjection
+        {
+            public DemoRoomProjection(
+                RoomContentDefinition2D definition,
+                GameObject root)
+            {
+                Definition = definition
+                    ?? throw new ArgumentNullException(nameof(definition));
+                Root = root ?? throw new ArgumentNullException(nameof(root));
+            }
+
+            public RoomContentDefinition2D Definition { get; }
+
+            public GameObject Root { get; }
+
+            public DoorController2D ExitDoor { get; set; }
         }
     }
 

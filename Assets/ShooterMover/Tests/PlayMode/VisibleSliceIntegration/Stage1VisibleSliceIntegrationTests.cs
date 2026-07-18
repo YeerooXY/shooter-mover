@@ -136,7 +136,12 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(Read<object>(droid, "CurrentState"), Is.Not.Null);
             Assert.That(
                 ((Component)droid).transform.position,
-                Is.EqualTo(new Vector3(0f, 5.5f, 0f)));
+                Is.EqualTo(new Vector3(-7f, -1f, 0f)));
+            SpriteRenderer droidRenderer =
+                ((Component)droid).GetComponent<SpriteRenderer>();
+            Assert.That(droidRenderer, Is.Not.Null);
+            Assert.That(droidRenderer.sprite, Is.Not.Null);
+            Assert.That(droidRenderer.sprite.name, Is.EqualTo("moving_droid"));
 
             float deadline = Time.time + 1.5f;
             while (Time.time < deadline && Read<long>(droid, "SuccessfulShotCount") == 0L)
@@ -148,10 +153,37 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         }
 
         [UnityTest]
-        public IEnumerator Demo002_TurretDestructionUnlocksExitAndCompletesArena()
+        public IEnumerator Demo002_PlayerShotDamagesAndCanDestroyMovingDroid()
         {
             MonoBehaviour controller = null;
             yield return LoadController(value => controller = value);
+
+            object droid = Read<object>(controller, "MobileBlasterDroid");
+            EnemyActorState before = Read<EnemyActorState>(droid, "CurrentState");
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = ((Component)droid).transform.position + Vector3.left * 1.5f;
+            yield return new WaitForFixedUpdate();
+
+            Assert.That(Invoke<bool>(controller, "FireAtMobileDroidForTests"), Is.True);
+            float deadline = Time.time + 1f;
+            while (Time.time < deadline
+                && Read<EnemyActorState>(droid, "CurrentState").Health == before.Health)
+            {
+                yield return null;
+            }
+
+            EnemyActorState after = Read<EnemyActorState>(droid, "CurrentState");
+            Assert.That(after.Health, Is.EqualTo(before.Health - 1d));
+            Assert.That(Read<int>(controller, "ActiveProjectileCount"), Is.Zero);
+        }
+
+        [UnityTest]
+        public IEnumerator Demo002_TwoRoomsPreserveClearedStateAndTerminalExitCompletesLevel()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            yield return ClearEntryAndEnterTerminal(controller);
 
             object turret = Read<object>(controller, "TurretPackage");
             object authority = Read<object>(turret, "Authority");
@@ -167,11 +199,28 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             yield return new WaitForFixedUpdate();
             yield return null;
 
-            object door = Read<object>(controller, "ExitDoor");
+            object door = Read<object>(controller, "TerminalExitDoor");
             Assert.That(Read<bool>(door, "IsOpen"), Is.True);
             Assert.That(Read<bool>(controller, "IsArenaComplete"), Is.False);
 
             Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = new Vector3(-13.5f, 0f, 0f);
+            yield return null;
+            Assert.That(
+                Read<StableId>(controller, "CurrentRoomStableId"),
+                Is.EqualTo(StableId.Parse("room.level1-entry")));
+            Assert.That(
+                Read<EnemyActorState>(
+                    Read<object>(controller, "MobileBlasterDroid"),
+                    "CurrentState").IsDestroyed,
+                Is.True,
+                "Returning must reuse the retained room instance instead of respawning it.");
+
+            player.position = new Vector3(13.5f, 0f, 0f);
+            yield return null;
+            Assert.That(
+                Read<StableId>(controller, "CurrentRoomStableId"),
+                Is.EqualTo(StableId.Parse("room.level1-terminal")));
             player.position = new Vector3(13.5f, 0f, 0f);
             yield return null;
 
@@ -213,6 +262,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         {
             MonoBehaviour controller = null;
             yield return LoadController(value => controller = value);
+            yield return ClearEntryAndEnterTerminal(controller);
 
             Assert.That(Read<bool>(controller, "IsSessionActive"), Is.True);
             Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(100));
@@ -259,6 +309,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         {
             MonoBehaviour controller = null;
             yield return LoadController(value => controller = value);
+            yield return ClearEntryAndEnterTerminal(controller);
 
             IVisibleSliceBlasterTurretPresentationSource source =
                 controller as IVisibleSliceBlasterTurretPresentationSource;
@@ -288,6 +339,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         {
             MonoBehaviour controller = null;
             yield return LoadController(value => controller = value);
+            yield return ClearEntryAndEnterTerminal(controller);
 
             object turret = Read<object>(controller, "TurretPackage");
             Component turretComponent = turret as Component;
@@ -431,6 +483,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             string source = File.ReadAllText(
                 "Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs");
             string scene = File.ReadAllText(ScenePath);
+            string terminalRoom = File.ReadAllText(
+                "Assets/ShooterMover/Content/Definitions/Missions/Rooms/"
+                + "Level1TerminalRoomContent.asset");
             Assert.That(source, Does.Not.Contain("MissionRunState"));
             Assert.That(source, Does.Not.Contain("PlayerPrefs"));
             Assert.That(source, Does.Not.Contain("Save" + "Game"));
@@ -438,7 +493,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(source, Does.Not.Contain("SceneManager.LoadScene"));
             Assert.That(scene, Does.Contain("Stage1VisibleSliceController"));
             Assert.That(scene, Does.Contain("d69cd63fb4924ef1b7a3c13bf92ef776"));
-            Assert.That(scene, Does.Contain("9e665ce075ca8068ec015198e7000707"));
+            Assert.That(scene, Does.Contain("3e4f84c2a99e42be92932579cacd5244"));
+            Assert.That(scene, Does.Contain("92ba8b1fbd4a401b9346f94bd261c415"));
+            Assert.That(terminalRoom, Does.Contain("9e665ce075ca8068ec015198e7000707"));
             Assert.That(scene, Does.Contain("05dcb140d7d245f1a4a03675967c9103"));
         }
 
@@ -457,6 +514,31 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             MonoBehaviour controller = UnityEngine.Object.FindFirstObjectByType(type) as MonoBehaviour;
             Assert.That(controller, Is.Not.Null);
             assign(controller);
+        }
+
+        private static IEnumerator ClearEntryAndEnterTerminal(MonoBehaviour controller)
+        {
+            object droid = Read<object>(controller, "MobileBlasterDroid");
+            Invoke<object>(
+                droid,
+                "Apply",
+                EnemyActorCommand.Damage(
+                    10L,
+                    StableId.Parse("combat-event.test-clear-entry-room"),
+                    StableId.Parse("actor.test-player"),
+                    (int)CombatChannel.Kinetic,
+                    1000d));
+            yield return new WaitForFixedUpdate();
+            yield return null;
+
+            Assert.That(Read<bool>(Read<object>(controller, "EntryExitDoor"), "IsOpen"),
+                Is.True);
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = new Vector3(13.5f, 0f, 0f);
+            yield return null;
+            Assert.That(
+                Read<StableId>(controller, "CurrentRoomStableId"),
+                Is.EqualTo(StableId.Parse("room.level1-terminal")));
         }
 
         private static T Read<T>(object target, string propertyName)
