@@ -6,7 +6,8 @@
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
     "ShooterMover.Content.Definitions",
-    "ShooterMover.UnityAdapters"
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.UI.LevelSelection"
   ],
   "includePlatforms": [
     "Editor"
