@@ -45,7 +45,7 @@ namespace ShooterMover.Bootstrap
             equipmentCatalog = BuildStarterCatalog();
             holdings = new PlayerHoldingsService(
                 StableId.Parse("authority.production-player-holdings"),
-                0L,
+                999L,
                 new CatalogEquipmentValidatorV1(equipmentCatalog));
 
             StarterRouteProfileResultV1 starter =
@@ -99,7 +99,7 @@ namespace ShooterMover.Bootstrap
 
             missionPort = new ProductionMissionRunAuthorityPortV1(holdings);
             missionResults = new MissionRunResultAuthorityV1(missionPort);
-            PlayerHoldingsSnapshotV1 holdingsSnapshot = holdings.ExportSnapshot();
+            var holdingsSnapshot = holdings.ExportSnapshot();
             stage1Bundle = new Stage1ProductionAuthorityBundleV1(
                 new UniqueLevelRunStableIdFactoryV1(),
                 new HoldingsLevelRunLoadoutResolverV1(
@@ -289,7 +289,7 @@ namespace ShooterMover.Bootstrap
                         "production-strongbox-projection-invalid");
                 }
 
-                PlayerHoldingsSnapshotV1 snapshot = holdings.ExportSnapshot();
+                var snapshot = holdings.ExportSnapshot();
                 return MissionRunStrongboxProjectionV1.Accept(
                     Array.Empty<MissionRunStrongboxResultV1>(),
                     holdings.Sequence,
