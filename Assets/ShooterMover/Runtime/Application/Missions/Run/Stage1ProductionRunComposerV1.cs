@@ -1,4 +1,3 @@
-using System;
 using ShooterMover.Application.Missions.Results;
 using ShooterMover.Application.Progression.Experience.EnemyRewards;
 using ShooterMover.Content.Definitions.Missions.Rooms;
@@ -78,6 +77,9 @@ namespace ShooterMover.Application.Missions.Run
     /// </summary>
     public sealed class Stage1ProductionRunComposerV1
     {
+        public static readonly StableId SupportedSoloModeStableId =
+            StableId.Parse("play-mode.solo");
+
         public Stage1RunCompositionResultV1 Compose(
             Stage1RunCompositionRequestV1 request)
         {
@@ -143,6 +145,11 @@ namespace ShooterMover.Application.Missions.Run
             if (request.SelectedModeStableId == null)
             {
                 return "stage1-selected-mode-missing";
+            }
+
+            if (request.SelectedModeStableId != SupportedSoloModeStableId)
+            {
+                return "stage1-selected-mode-unsupported";
             }
 
             if (request.SelectedLevelStableId == null)
