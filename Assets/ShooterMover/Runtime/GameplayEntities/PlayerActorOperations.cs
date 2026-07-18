@@ -9,6 +9,7 @@ namespace ShooterMover.GameplayEntities
         Duplicate = 2,
         RejectedInvalid = 3,
         RejectedByLifecycle = 4,
+        AcceptedNoEffect = 5,
     }
 
     public enum PlayerActorOperationRejectionCode
@@ -25,21 +26,27 @@ namespace ShooterMover.GameplayEntities
         FutureGeneration = 9,
         ActorDead = 10,
         ConflictingDuplicate = 11,
-        RetiringGenerationMismatch = 12,
-        ReplacementGenerationDidNotAdvance = 13,
+        ReplacementGenerationDidNotAdvance = 12,
     }
 
+    /// <summary>
+    /// Immutable healing request. Source participant attribution is optional because environmental
+    /// and system-owned healing may have no participant. Trusted multiplayer attribution must be
+    /// supplied by an authoritative combat pipeline rather than accepted directly from a client.
+    /// </summary>
     public sealed class PlayerActorHealingCommand : IEquatable<PlayerActorHealingCommand>
     {
         public PlayerActorHealingCommand(
             StableId operationId,
             StableId sourceActorId,
+            StableId sourceRunParticipantId,
             StableId targetActorId,
             double amount,
             long lifecycleGeneration)
         {
             OperationId = operationId;
             SourceActorId = sourceActorId;
+            SourceRunParticipantId = sourceRunParticipantId;
             TargetActorId = targetActorId;
             Amount = amount;
             LifecycleGeneration = lifecycleGeneration;
@@ -49,17 +56,31 @@ namespace ShooterMover.GameplayEntities
 
         public StableId SourceActorId { get; }
 
+        public StableId SourceRunParticipantId { get; }
+
+        public bool HasSourceRunParticipant
+        {
+            get { return SourceRunParticipantId != null; }
+        }
+
         public StableId TargetActorId { get; }
 
         public double Amount { get; }
 
         public long LifecycleGeneration { get; }
 
+        public bool TryGetSourceRunParticipantId(out StableId sourceRunParticipantId)
+        {
+            sourceRunParticipantId = SourceRunParticipantId;
+            return sourceRunParticipantId != null;
+        }
+
         public bool Equals(PlayerActorHealingCommand other)
         {
             return !ReferenceEquals(other, null)
                 && OperationId == other.OperationId
                 && SourceActorId == other.SourceActorId
+                && SourceRunParticipantId == other.SourceRunParticipantId
                 && TargetActorId == other.TargetActorId
                 && Amount == other.Amount
                 && LifecycleGeneration == other.LifecycleGeneration;
@@ -77,6 +98,7 @@ namespace ShooterMover.GameplayEntities
                 int hash = 17;
                 hash = (hash * 31) + (OperationId == null ? 0 : OperationId.GetHashCode());
                 hash = (hash * 31) + (SourceActorId == null ? 0 : SourceActorId.GetHashCode());
+                hash = (hash * 31) + (SourceRunParticipantId == null ? 0 : SourceRunParticipantId.GetHashCode());
                 hash = (hash * 31) + (TargetActorId == null ? 0 : TargetActorId.GetHashCode());
                 hash = (hash * 31) + Amount.GetHashCode();
                 hash = (hash * 31) + LifecycleGeneration.GetHashCode();
