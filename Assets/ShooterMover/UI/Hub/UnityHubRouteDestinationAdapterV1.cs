@@ -29,6 +29,8 @@ namespace ShooterMover.UI.Hub
                     nameof(payload));
             }
 
+            ProductionSessionAuthorityContextV1.TryUpdateRoutePayload(payload);
+
             switch (route)
             {
                 case HubRouteV1.MainMenu:
@@ -176,10 +178,19 @@ namespace ShooterMover.UI.Hub
                 FindFirstObjectByType<HubReturnRouteInstallerV1>();
             if (returnInstaller != null && returnInstaller.Applied)
             {
+                ProductionSessionAuthorityContextV1.TryUpdateRoutePayload(
+                    controller.Payload);
                 return;
             }
 
             PlayerRouteProfilePayloadV1 payload = controller.Payload;
+            PlayerRouteProfilePayloadV1 productionPayload;
+            if (ProductionSessionAuthorityContextV1.TryReadRoutePayload(
+                    out productionPayload))
+            {
+                payload = productionPayload;
+            }
+
             PlayerRouteProfilePayloadV1 preservedMainMenuPayload;
             if (CharacterSelectionEntryRouteContextV1.TryConsume(
                 out preservedMainMenuPayload))
@@ -187,6 +198,7 @@ namespace ShooterMover.UI.Hub
                 payload = preservedMainMenuPayload;
             }
 
+            ProductionSessionAuthorityContextV1.TryUpdateRoutePayload(payload);
             controller.ConfigureForTests(
                 payload,
                 new UnityHubRouteDestinationAdapterV1());
