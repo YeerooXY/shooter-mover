@@ -19,6 +19,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
 
             Assert.That(result.Success, Is.True, FormatDiagnostics(result));
             Assert.That(result.Catalog.Skills.Count, Is.EqualTo(20));
+            Assert.That(result.Catalog.Synergies.Count, Is.EqualTo(2));
             Assert.That(result.ImportedSynergies.Count, Is.EqualTo(2));
             Assert.That(result.Summary.TotalPurchasableRanks, Is.EqualTo(306));
             Assert.That(result.Summary.MaximumRanksByClass["class.striker"], Is.GreaterThan(100));
@@ -47,7 +48,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
         public void TripleReserveRequiresEightRanksInBothSkills()
         {
             RankedSkillJsonImportResultV1 result = ImportProductionDraft();
-            ImportedSkillSynergyV1 synergy = result.ImportedSynergies.Single(x => x.Definition.Id == "synergy.striker.triple_reserve");
+            SkillSynergyDefinitionV2 synergy = result.Catalog.Synergies.Single(x => x.Id == "synergy.striker.triple_reserve");
 
             var sevenEight = new RankedSkillAllocationSnapshotV2(
                 "profile.demo", "class.striker", 1, result.Catalog.SchemaVersion, result.Catalog.ContentVersion,
@@ -69,27 +70,28 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
         }
 
         [Test]
-        public void LegendaryProspectingRequiresIndividualAndCombinedRanks()
+        public void LegendaryProspectingRequiresIndividualAndCombinedRanksInDomainModel()
         {
             RankedSkillJsonImportResultV1 result = ImportProductionDraft();
-            ImportedSkillSynergyV1 synergy = result.ImportedSynergies.Single(x => x.Definition.Id == "synergy.farming.legendary_prospecting");
+            SkillSynergyDefinitionV2 synergy = result.Catalog.Synergies.Single(x => x.Id == "synergy.farming.legendary_prospecting");
 
             var twelve = Allocation(result, 4, 4, 4);
             var sixteen = Allocation(result, 8, 4, 4);
 
-            Assert.That(synergy.HasCombinedRequirements, Is.True);
+            Assert.That(synergy.CombinedRankRequirements.Count, Is.EqualTo(1));
+            Assert.That(synergy.CombinedRankRequirements[0].MinimumCombinedRank, Is.EqualTo(16));
             Assert.That(synergy.IsSatisfied(twelve), Is.False);
             Assert.That(synergy.IsSatisfied(sixteen), Is.True);
-            Assert.That(synergy.Definition.Effects.Single().Value, Is.EqualTo(0.20m));
+            Assert.That(synergy.Effects.Single().Value, Is.EqualTo(0.20m));
         }
 
         [Test]
-        public void CombinedSynergyProjectionAddsLegendaryRelativeWeightOnlyWhenActive()
+        public void StandardProjectorAddsLegendaryRelativeWeightOnlyWhenActive()
         {
             RankedSkillJsonImportResultV1 result = ImportProductionDraft();
 
-            SkillEffectSnapshotV2 inactive = RankedSkillJsonImporterV1.ProjectEffects(result, Allocation(result, 4, 4, 4));
-            SkillEffectSnapshotV2 active = RankedSkillJsonImporterV1.ProjectEffects(result, Allocation(result, 8, 4, 4));
+            SkillEffectSnapshotV2 inactive = new SkillEffectProjectorV2().Project(result.Catalog, Allocation(result, 4, 4, 4));
+            SkillEffectSnapshotV2 active = new SkillEffectProjectorV2().Project(result.Catalog, Allocation(result, 8, 4, 4));
 
             Assert.That(inactive.Apply("reward.legendary_definition_weight_multiplier", 1m), Is.EqualTo(1m));
             Assert.That(active.Apply("reward.legendary_definition_weight_multiplier", 1m), Is.EqualTo(1.20m));
@@ -99,8 +101,8 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
         public void FormattingOnlyDifferencesDoNotChangeNormalizedFingerprint()
         {
             string json = ReadProductionDraft();
-            RankedSkillJsonImportResultV1 compact = RankedSkillJsonImporterV1.Import(json.Replace("\r", string.Empty).Replace("\n", string.Empty).Replace("  ", string.Empty));
-            RankedSkillJsonImportResultV1 normal = RankedSkillJsonImporterV1.Import(json);
+            RankedSkillJsonImportResultV1 compact = RankedSkillJsonCanonicalV2.Import(json.Replace("\r", string.Empty).Replace("\n", string.Empty).Replace("  ", string.Empty));
+            RankedSkillJsonImportResultV1 normal = RankedSkillJsonCanonicalV2.Import(json);
 
             Assert.That(compact.Success, Is.True, FormatDiagnostics(compact));
             Assert.That(compact.NormalizedFingerprint, Is.EqualTo(normal.NormalizedFingerprint));
@@ -113,7 +115,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
                 "\"statId\": \"reward.legendary_definition_weight_multiplier\", \"kind\": \"Percentage\", \"value\": 0.20",
                 "\"statId\": \"reward.legendary_definition_weight_multiplier\", \"kind\": \"Percentage\", \"value\": 0.21");
 
-            RankedSkillJsonImportResultV1 result = RankedSkillJsonImporterV1.Import(json);
+            RankedSkillJsonImportResultV1 result = RankedSkillJsonCanonicalV2.Import(json);
 
             Assert.That(result.Success, Is.False);
             Assert.That(result.Diagnostics.Any(x => x.ErrorCode == "skill-legendary-relative-bonus-invalid"), Is.True);
@@ -126,10 +128,29 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
                 "economy.credit_reward_multiplier\", \"kind\": \"Percentage\", \"valueSource\": \"rankValue",
                 "economy.unknown_reward_multiplier\", \"kind\": \"Percentage\", \"valueSource\": \"rankValue");
 
-            RankedSkillJsonImportResultV1 result = RankedSkillJsonImporterV1.Import(json);
+            RankedSkillJsonImportResultV1 result = RankedSkillJsonCanonicalV2.Import(json);
 
             Assert.That(result.Success, Is.False);
             Assert.That(result.Diagnostics.Any(x => x.ErrorCode == "skill-effect-id-unknown"), Is.True);
+        }
+
+        [Test]
+        public void UnsatisfiableCombinedRankRequirementIsRejectedByDomainCatalog()
+        {
+            RankedSkillJsonImportResultV1 result = ImportProductionDraft();
+            SkillSynergyDefinitionV2 legendary = result.Catalog.Synergies.Single(x => x.Id == "synergy.farming.legendary_prospecting");
+
+            var impossible = new SkillSynergyDefinitionV2(
+                "synergy.test.impossible",
+                legendary.Requirements,
+                legendary.Effects,
+                new[] { new SkillCombinedRankRequirementV2(legendary.CombinedRankRequirements[0].SkillIds, 999) });
+
+            Assert.Throws<ArgumentException>(() => new RankedSkillCatalogV2(
+                result.Catalog.SchemaVersion,
+                result.Catalog.ContentVersion,
+                result.Catalog.Skills,
+                result.Catalog.Synergies.Concat(new[] { impossible })));
         }
 
         [Test]
@@ -158,7 +179,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
                 });
         }
 
-        private static RankedSkillJsonImportResultV1 ImportProductionDraft() => RankedSkillJsonImporterV1.Import(ReadProductionDraft());
+        private static RankedSkillJsonImportResultV1 ImportProductionDraft() => RankedSkillJsonCanonicalV2.Import(ReadProductionDraft());
 
         private static string ReadProductionDraft()
         {
