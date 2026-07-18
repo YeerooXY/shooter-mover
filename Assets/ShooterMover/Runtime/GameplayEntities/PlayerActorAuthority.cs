@@ -219,7 +219,7 @@ namespace ShooterMover.GameplayEntities
             {
                 bool exact = existing.Kind == AcceptedOperationKind.Healing
                     && existing.Healing.Equals(command);
-n                return HealingResult(
+                return HealingResult(
                     exact ? PlayerActorOperationStatus.Duplicate : PlayerActorOperationStatus.RejectedInvalid,
                     exact
                         ? PlayerActorOperationRejectionCode.None
