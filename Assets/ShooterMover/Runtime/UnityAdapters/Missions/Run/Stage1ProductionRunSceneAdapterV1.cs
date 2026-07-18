@@ -19,6 +19,8 @@ namespace ShooterMover.UnityAdapters.Missions.Run
         NotConfigured = 5,
         ResultsRouted = 6,
         NotReady = 7,
+        Traversed = 8,
+        TraversalRejected = 9,
     }
 
     public interface IStage1ResultsSceneLoaderV1
@@ -150,15 +152,25 @@ namespace ShooterMover.UnityAdapters.Missions.Run
                 acceptedDestruction);
         }
 
-        public RoomGraphOperationResultV1 Traverse(StableId exitStableId)
+        public Stage1SceneAdapterStatusV1 TryTraverse(
+            StableId exitStableId,
+            out RoomGraphOperationResultV1 traversal)
         {
+            traversal = null;
             if (session == null)
             {
-                return RoomGraphOperationResultV1.Rejected(
-                    "stage1-scene-adapter-not-configured");
+                return Stage1SceneAdapterStatusV1.NotConfigured;
             }
 
-            return session.Traverse(exitStableId);
+            if (exitStableId == null)
+            {
+                return Stage1SceneAdapterStatusV1.InvalidRequest;
+            }
+
+            traversal = session.Traverse(exitStableId);
+            return traversal != null && traversal.Changed
+                ? Stage1SceneAdapterStatusV1.Traversed
+                : Stage1SceneAdapterStatusV1.TraversalRejected;
         }
 
         public Stage1SceneAdapterStatusV1 CompleteAndRouteResults(
