@@ -6,6 +6,7 @@
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.UnityAdapters",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
