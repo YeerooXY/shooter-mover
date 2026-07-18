@@ -7,6 +7,7 @@
     "ShooterMover.Application",
     "ShooterMover.UnityAdapters",
     "ShooterMover.Presentation",
+    "ShooterMover.GameplayEntities",
     "ShooterMover.Content.Definitions",
     "ShooterMover.Bootstrap"
   ],
