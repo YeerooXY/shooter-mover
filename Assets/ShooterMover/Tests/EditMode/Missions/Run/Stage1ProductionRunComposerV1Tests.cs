@@ -47,6 +47,42 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
         }
 
         [Test]
+        public void Stage1ComposerRejectsUnsupportedModeBeforeCreatingRun()
+        {
+            Fixture fixture = Fixture.Create("stage1-compose-wrong-mode");
+            var composer = new Stage1ProductionRunComposerV1();
+            var request = new Stage1RunCompositionRequestV1(
+                fixture.Route,
+                StableId.Parse("play-mode.multiplayer"),
+                LevelRunCoordinatorV1.Level1StableId,
+                new FixedRunIdFactory(
+                    StableId.Parse("run.stage1-compose-wrong-mode")),
+                new HoldingsLevelRunLoadoutResolverV1(
+                    fixture.Holdings,
+                    fixture.Catalog),
+                fixture.Rewards,
+                fixture.MissionResults,
+                new MissionRunAuthorityCheckpointV1(
+                    fixture.Holdings.Sequence,
+                    fixture.Holdings.ExportSnapshot().Fingerprint,
+                    fixture.ExistingPort.OpeningSequence,
+                    fixture.ExistingPort.OpeningFingerprint));
+
+            Stage1RunCompositionResultV1 result = composer.Compose(request);
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(
+                result.Status,
+                Is.EqualTo(Stage1RunCompositionStatusV1.InvalidRequest));
+            Assert.That(
+                result.RejectionCode,
+                Is.EqualTo("stage1-selected-mode-unsupported"));
+            Assert.That(result.Session, Is.Null);
+            Assert.That(fixture.MissionResults.Sequence, Is.Zero);
+            Assert.That(fixture.ExistingPort.ProjectCalls, Is.Zero);
+        }
+
+        [Test]
         public void Stage1ComposerRejectsUnsupportedLevelBeforeCreatingRun()
         {
             Fixture fixture = Fixture.Create("stage1-compose-wrong-level");
