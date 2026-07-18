@@ -4,6 +4,14 @@
 
 `ranked_skills_v01.json` is the editable draft content catalog consumed by the SKILL-FOUNDATION-003 ranked-skill runtime. It owns definitions and balance inputs only. XP, allocation, respec payment, save composition, UI, strongbox generation, and weapon generation remain separate authorities.
 
+The canonical import entry point is:
+
+```text
+RankedSkillJsonCanonicalV2.Import(json)
+```
+
+The lower-level `RankedSkillJsonImporterV1` remains a compatibility parser for the original authoring representation.
+
 ## Versions
 
 - Schema: `ranked-skills-schema-v1`
@@ -51,11 +59,38 @@ The synergy requires rank 4 in Credit Gain, Strongbox Finder, and Strongbox Qual
 
 ## Combined-rank gates
 
-SKILL-FOUNDATION-003's original `SkillSynergyDefinitionV2` supports individual skill minimums only. The content importer therefore retains combined-rank requirements in `ImportedSkillSynergyV1` and exposes `RankedSkillJsonImporterV1.ProjectEffects` as the complete projector for imported content.
+Combined investment gates are first-class engine-independent domain requirements through `SkillCombinedRankRequirementV2`.
 
-Combined-gate synergies are deliberately omitted from the legacy catalog projector list so they cannot activate early. Presentation and gameplay adapters consuming this JSON catalog must use the imported synergy projection path.
+`SkillSynergyDefinitionV2` now stores both:
 
-A future foundation revision may move combined requirements into the engine-independent domain type; that migration must preserve IDs, semantics, and fingerprints.
+- individual minimum-rank requirements;
+- combined-rank requirements over explicitly listed skills.
+
+Its `IsSatisfied` method evaluates both sets. `RankedSkillCatalogV2` rejects missing or impossible combined requirements, includes them in canonical fingerprints, and the standard `SkillEffectProjectorV2` applies a synergy only when all requirements pass.
+
+The JSON importer converts authoring entries such as:
+
+```json
+{
+  "requirements": [
+    { "skillId": "generic.farming.credit_gain", "minimumRank": 4 },
+    { "skillId": "generic.farming.strongbox_finder", "minimumRank": 4 },
+    { "skillId": "generic.farming.strongbox_quality", "minimumRank": 4 }
+  ],
+  "combinedRankRequirements": [
+    {
+      "skillIds": [
+        "generic.farming.credit_gain",
+        "generic.farming.strongbox_finder",
+        "generic.farming.strongbox_quality"
+      ],
+      "minimumCombinedRanks": 16
+    }
+  ]
+}
+```
+
+into that single canonical domain definition. No second synergy projector or skill-ID special case is required.
 
 ## Validation diagnostics
 
@@ -67,7 +102,7 @@ Diagnostics expose:
 - readable message;
 - severity.
 
-The importer validates schema version, duplicate IDs, class/category/effect references, rank counts, class overrides, prerequisites, category gates, milestones, synergy feasibility, and the legendary relative-weight ceiling.
+The importer validates schema version, duplicate IDs, class/category/effect references, rank counts, class overrides, prerequisites, category gates, milestones, synergy feasibility, combined-rank feasibility, and the legendary relative-weight ceiling.
 
 ## Draft summary
 
