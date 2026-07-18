@@ -70,8 +70,7 @@ namespace ShooterMover.GameplayEntities
                 return new GameplayEntityIdentity(
                     actorInstanceId,
                     GameplayEntityOwnership.Create(runParticipantId, characterId),
-                    factionId,
-                    lifecycleGeneration);
+                    factionId);
             }
         }
 
@@ -96,6 +95,7 @@ namespace ShooterMover.GameplayEntities
         {
             return new PlayerActorSnapshot(
                 Identity,
+                lifecycleGeneration,
                 maximumHealth,
                 currentHealth,
                 lifecycleState,
@@ -239,12 +239,21 @@ namespace ShooterMover.GameplayEntities
 
             double available = maximumHealth - currentHealth;
             double applied = Math.Min(available, command.Amount);
-            currentHealth += applied;
-            acceptedSequence++;
             acceptedOperations.Add(
                 command.OperationId,
                 new AcceptedOperation(AcceptedOperationKind.Healing, null, command));
 
+            if (applied == 0d)
+            {
+                return HealingResult(
+                    PlayerActorOperationStatus.AcceptedNoEffect,
+                    PlayerActorOperationRejectionCode.None,
+                    command,
+                    0d);
+            }
+
+            currentHealth += applied;
+            acceptedSequence++;
             return HealingResult(
                 PlayerActorOperationStatus.Applied,
                 PlayerActorOperationRejectionCode.None,
@@ -280,7 +289,6 @@ namespace ShooterMover.GameplayEntities
                 return RestartResult(
                     invalid == PlayerActorOperationRejectionCode.StaleGeneration
                         || invalid == PlayerActorOperationRejectionCode.FutureGeneration
-                        || invalid == PlayerActorOperationRejectionCode.RetiringGenerationMismatch
                         ? PlayerActorOperationStatus.RejectedByLifecycle
                         : PlayerActorOperationStatus.RejectedInvalid,
                     invalid,
@@ -480,11 +488,6 @@ namespace ShooterMover.GameplayEntities
             if (command.RetiringLifecycleGeneration > lifecycleGeneration)
             {
                 return PlayerActorOperationRejectionCode.FutureGeneration;
-            }
-
-            if (command.RetiringLifecycleGeneration != lifecycleGeneration)
-            {
-                return PlayerActorOperationRejectionCode.RetiringGenerationMismatch;
             }
 
             if (command.ReplacementLifecycleGeneration <= lifecycleGeneration)
