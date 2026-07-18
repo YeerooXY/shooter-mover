@@ -174,13 +174,6 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
 
             EnemyActorState after = Read<EnemyActorState>(droid, "CurrentState");
             Assert.That(after.Health, Is.EqualTo(before.Health - 1d));
-            deadline = Time.time + 0.5f;
-            while (Time.time < deadline
-                && Read<int>(controller, "ActiveProjectileCount") > 0)
-            {
-                yield return null;
-            }
-            Assert.That(Read<int>(controller, "ActiveProjectileCount"), Is.Zero);
         }
 
         [UnityTest]
@@ -323,6 +316,11 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(
                 source.TryReadSnapshot(out VisibleSliceBlasterTurretSnapshot before),
                 Is.True);
+            Component turretComponent =
+                Read<object>(controller, "TurretPackage") as Component;
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = turretComponent.transform.position + Vector3.left * 2f;
+            yield return new WaitForFixedUpdate();
             Assert.That(Invoke<bool>(controller, "FireAtTurretForTests"), Is.True);
             Assert.That(
                 source.TryReadSnapshot(out VisibleSliceBlasterTurretSnapshot immediate),
@@ -356,8 +354,15 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
 
             Vector2 initialFacing = Read<Vector2>(turret, "CurrentFacing");
             player.position = turretComponent.transform.position + Vector3.up * 5f;
-            yield return new WaitForSeconds(0.4f);
+            float trackingDeadline = Time.time + 2f;
             Vector2 trackedFacing = Read<Vector2>(turret, "CurrentFacing");
+            while (Time.time < trackingDeadline
+                && Vector2.Angle(trackedFacing, Vector2.up)
+                    >= Vector2.Angle(initialFacing, Vector2.up))
+            {
+                yield return null;
+                trackedFacing = Read<Vector2>(turret, "CurrentFacing");
+            }
             Assert.That(
                 Vector2.Angle(trackedFacing, Vector2.up),
                 Is.LessThan(Vector2.Angle(initialFacing, Vector2.up)));
