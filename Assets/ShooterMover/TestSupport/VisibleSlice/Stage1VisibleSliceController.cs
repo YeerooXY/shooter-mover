@@ -60,6 +60,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private const float BlasterProjectileRadius = 0.08f;
         private const float PlayerVisualScale = 0.9f;
         private const float PropGridSize = 0.5f;
+        private const float InactiveRoomStagingY = 1000f;
         private static readonly Vector2 CrateCollisionSize = new Vector2(2.2f, 1.35f);
         private static readonly Vector2 ExplosiveCollisionSize = new Vector2(1.2f, 1.2f);
 
@@ -734,7 +735,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 root.transform.SetParent(transform, false);
                 sessionObjects.Add(root);
 
-                var projection = new DemoRoomProjection(definition, root);
+                var projection = new DemoRoomProjection(definition, root, index);
                 roomProjections.Add(definition.RoomStableId, projection);
 
                 RoomContentPlacement2D[] placements = definition.Placements;
@@ -1158,10 +1159,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             foreach (DemoRoomProjection projection in roomProjections.Values)
             {
-                projection.Root.SetActive(false);
+                projection.Root.transform.localPosition =
+                    projection == destination
+                        ? Vector3.zero
+                        : new Vector3(
+                            0f,
+                            InactiveRoomStagingY + projection.Index * 100f,
+                            0f);
             }
 
-            destination.Root.SetActive(true);
             currentRoomContent = destination.Definition;
             exitDoor = destination.ExitDoor;
             if (movePlayer && playerBody != null)
@@ -2030,16 +2036,20 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             public DemoRoomProjection(
                 RoomContentDefinition2D definition,
-                GameObject root)
+                GameObject root,
+                int index)
             {
                 Definition = definition
                     ?? throw new ArgumentNullException(nameof(definition));
                 Root = root ?? throw new ArgumentNullException(nameof(root));
+                Index = index;
             }
 
             public RoomContentDefinition2D Definition { get; }
 
             public GameObject Root { get; }
+
+            public int Index { get; }
 
             public DoorController2D ExitDoor { get; set; }
         }
