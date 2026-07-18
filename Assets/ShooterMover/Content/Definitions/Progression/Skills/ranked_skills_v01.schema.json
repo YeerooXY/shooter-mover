@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shooter-mover/ranked-skills-schema-v1",
+  "title": "Shooter Mover ranked skill catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "contentVersion", "status", "classes", "categories", "effects", "skills", "synergies"],
+  "properties": {
+    "schemaVersion": { "const": "ranked-skills-schema-v1" },
+    "contentVersion": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "preview", "live"] },
+    "classes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/namedId" } },
+    "categories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/namedId" } },
+    "effects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/effectRegistry" } },
+    "skills": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/skill" } },
+    "synergies": { "type": "array", "items": { "$ref": "#/$defs/synergy" } }
+  },
+  "$defs": {
+    "stableId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$" },
+    "designStatus": { "enum": ["approved-concept", "draft-balance", "placeholder", "experimental"] },
+    "modifierKind": { "enum": ["Flat", "Percentage", "Multiplicative", "IntegerCapacity"] },
+    "namedId": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName"],
+      "properties": { "id": { "$ref": "#/$defs/stableId" }, "displayName": { "type": "string", "minLength": 1 } }
+    },
+    "effectRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "allowedKinds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "allowedKinds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/modifierKind" } }
+      }
+    },
+    "curve": {
+      "oneOf": [
+        { "type": "array", "minItems": 1, "maxItems": 99, "items": { "type": "number" } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "step", "count"],
+          "properties": {
+            "start": { "type": "number" },
+            "step": { "type": "number" },
+            "count": { "type": "integer", "minimum": 1, "maximum": 99 }
+          }
+        }
+      ]
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statId", "kind"],
+      "properties": {
+        "statId": { "$ref": "#/$defs/stableId" },
+        "kind": { "$ref": "#/$defs/modifierKind" },
+        "value": { "type": "number" },
+        "valueSource": { "enum": ["rankValue"] },
+        "conditionId": { "type": "string" }
+      },
+      "oneOf": [ { "required": ["value"] }, { "required": ["valueSource"] } ]
+    },
+    "classOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classId", "maximumRank"],
+      "properties": {
+        "classId": { "$ref": "#/$defs/stableId" },
+        "maximumRank": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "rankValues": { "$ref": "#/$defs/curve" }
+      }
+    },
+    "prerequisite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skillId", "requiredRank"],
+      "properties": {
+        "skillId": { "$ref": "#/$defs/stableId" },
+        "requiredRank": { "type": "integer", "minimum": 1, "maximum": 99 }
+      }
+    },
+    "categoryGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["treeId", "categoryId", "requiredPoints"],
+      "properties": {
+        "treeId": { "type": "string", "minLength": 1 },
+        "categoryId": { "$ref": "#/$defs/stableId" },
+        "requiredPoints": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "milestone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "effects"],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "effects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/effect" } }
+      }
+    },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "categoryId", "displayName", "shortDescription", "longDescription", "maximumRank", "pointCostPerRank", "eligibleClassIds", "rankValues", "perRankEffects", "milestones", "designStatus"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "categoryId": { "$ref": "#/$defs/stableId" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "shortDescription": { "type": "string" },
+        "longDescription": { "type": "string" },
+        "maximumRank": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "pointCostPerRank": { "const": 1 },
+        "eligibleClassIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/stableId" } },
+        "rankValues": { "$ref": "#/$defs/curve" },
+        "classOverrides": { "type": "array", "items": { "$ref": "#/$defs/classOverride" } },
+        "prerequisites": { "type": "array", "items": { "$ref": "#/$defs/prerequisite" } },
+        "categoryGates": { "type": "array", "items": { "$ref": "#/$defs/categoryGate" } },
+        "perRankEffects": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
+        "milestones": { "type": "array", "items": { "$ref": "#/$defs/milestone" } },
+        "designStatus": { "$ref": "#/$defs/designStatus" },
+        "balanceNotes": { "type": "string" }
+      }
+    },
+    "synergyRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skillId", "minimumRank"],
+      "properties": {
+        "skillId": { "$ref": "#/$defs/stableId" },
+        "minimumRank": { "type": "integer", "minimum": 1, "maximum": 99 }
+      }
+    },
+    "combinedRankRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skillIds", "minimumCombinedRanks"],
+      "properties": {
+        "skillIds": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/stableId" } },
+        "minimumCombinedRanks": { "type": "integer", "minimum": 2 }
+      }
+    },
+    "synergy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "description", "eligibleClassIds", "requirements", "combinedRankRequirements", "effects", "designStatus"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "eligibleClassIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/stableId" } },
+        "requirements": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/synergyRequirement" } },
+        "combinedRankRequirements": { "type": "array", "items": { "$ref": "#/$defs/combinedRankRequirement" } },
+        "effects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/effect" } },
+        "designStatus": { "$ref": "#/$defs/designStatus" },
+        "balanceNotes": { "type": "string" }
+      }
+    }
+  }
+}
