@@ -15,6 +15,7 @@ namespace ShooterMover.UI.LevelSelection
         MissingAuthorityContext = 5,
         CompositionRejected = 6,
         SceneAdapterRejected = 7,
+        MissingPresentationHost = 8,
     }
 
     /// <summary>
@@ -31,7 +32,7 @@ namespace ShooterMover.UI.LevelSelection
             StableId.Parse("actor.stage1-player-source");
 
         [SerializeField]
-        private MonoBehaviour gameplayPresentationRoot;
+        private Stage1ProductionPresentationHostV1 gameplayPresentationRoot;
 
         private Stage1ProductionRunSceneAdapterV1 sceneAdapter;
         private Stage1ProductionWeaponInputV1 weaponInput;
@@ -46,6 +47,10 @@ namespace ShooterMover.UI.LevelSelection
         }
         public Stage1ProductionRunSessionV1 Session { get { return session; } }
         public Stage1ProductionRunSceneAdapterV1 SceneAdapter { get { return sceneAdapter; } }
+        public Stage1ProductionPresentationHostV1 PresentationHost
+        {
+            get { return gameplayPresentationRoot; }
+        }
 
         private void Awake()
         {
@@ -81,6 +86,14 @@ namespace ShooterMover.UI.LevelSelection
                 return Reject(
                     Stage1ProductionStartupStatusV1.UnsupportedRoute,
                     "stage1-level-selection-context-unsupported");
+            }
+
+            if (gameplayPresentationRoot == null
+                || !gameplayPresentationRoot.HasRetainedPresentation)
+            {
+                return Reject(
+                    Stage1ProductionStartupStatusV1.MissingPresentationHost,
+                    "stage1-production-presentation-host-missing");
             }
 
             Stage1ProductionAuthorityBundleV1 authorities;
@@ -138,6 +151,7 @@ namespace ShooterMover.UI.LevelSelection
             }
             weaponInput.Configure(sceneAdapter);
 
+            gameplayPresentationRoot.SetPresentationEnabled(true);
             session = composition.Session;
             Status = Stage1ProductionStartupStatusV1.Started;
             RejectionCode = string.Empty;
@@ -150,9 +164,10 @@ namespace ShooterMover.UI.LevelSelection
         {
             Status = status;
             RejectionCode = rejectionCode ?? string.Empty;
-            if (gameplayPresentationRoot != null)
+            if (gameplayPresentationRoot != null
+                && gameplayPresentationRoot.HasRetainedPresentation)
             {
-                gameplayPresentationRoot.enabled = false;
+                gameplayPresentationRoot.SetPresentationEnabled(false);
             }
             return Status;
         }
