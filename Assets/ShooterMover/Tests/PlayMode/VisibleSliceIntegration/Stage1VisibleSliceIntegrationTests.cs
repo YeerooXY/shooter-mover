@@ -392,6 +392,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
 
             Invoke<object>(controller, "QuickRestart");
             yield return null;
+            Assert.That(turretCollider.enabled, Is.False,
+                "Restart returns to room 1, so room 2 collision stays projected out.");
+            yield return ClearEntryAndEnterTerminal(controller);
             Assert.That(turretCollider.enabled, Is.True);
             Assert.That(Read<Vector2>(turret, "CurrentFacing"), Is.EqualTo(Vector2.left));
         }
