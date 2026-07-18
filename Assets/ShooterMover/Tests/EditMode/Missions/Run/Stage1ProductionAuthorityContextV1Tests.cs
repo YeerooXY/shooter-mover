@@ -1,7 +1,7 @@
 using NUnit.Framework;
+using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Missions.Run;
 using ShooterMover.Domain.Common;
-using ShooterMover.UI.LevelSelection;
 
 namespace ShooterMover.Tests.EditMode.Missions.Run
 {
@@ -10,13 +10,13 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
         [SetUp]
         public void ClearStage1ProductionAuthorityContext()
         {
-            Stage1ProductionAuthorityContextV1.ClearForTests();
+            ProductionSessionAuthorityContextV1.ClearForTests();
         }
 
         [TearDown]
         public void RestoreStage1ProductionAuthorityContext()
         {
-            Stage1ProductionAuthorityContextV1.ClearForTests();
+            ProductionSessionAuthorityContextV1.ClearForTests();
         }
 
         [Test]
@@ -62,6 +62,56 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
                 Stage1ProductionAuthorityContextV1.TryConsume(out consumed),
                 Is.True);
             Assert.That(consumed, Is.SameAs(first));
+        }
+
+        [Test]
+        public void ProductionSessionContext_PreparesSameBootstrapBundleForStage1()
+        {
+            Fixture fixture = Fixture.Create("production-session-context");
+            Stage1ProductionAuthorityBundleV1 bundle = CreateBundle(
+                fixture,
+                "production-session-context");
+            var token = new object();
+            ProductionSessionAuthorityContextV1.CaptureOwner(
+                token,
+                fixture.Route,
+                bundle);
+
+            string rejectionCode;
+            Assert.That(
+                ProductionSessionAuthorityContextV1.TryPrepareStage1(
+                    fixture.Route,
+                    out rejectionCode),
+                Is.True,
+                rejectionCode);
+
+            Stage1ProductionAuthorityBundleV1 consumed;
+            Assert.That(
+                Stage1ProductionAuthorityContextV1.TryConsume(out consumed),
+                Is.True);
+            Assert.That(consumed, Is.SameAs(bundle));
+            ProductionSessionAuthorityContextV1.ReleaseOwner(token);
+        }
+
+        [Test]
+        public void ProductionSessionContext_RejectsDifferentAuthorityOwner()
+        {
+            Fixture fixture = Fixture.Create("production-session-owner-conflict");
+            Stage1ProductionAuthorityBundleV1 bundle = CreateBundle(
+                fixture,
+                "production-session-owner-conflict");
+            var first = new object();
+            var second = new object();
+            ProductionSessionAuthorityContextV1.CaptureOwner(
+                first,
+                fixture.Route,
+                bundle);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                ProductionSessionAuthorityContextV1.CaptureOwner(
+                    second,
+                    fixture.Route,
+                    bundle));
         }
 
         private static Stage1ProductionAuthorityBundleV1 CreateBundle(
