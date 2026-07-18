@@ -2,7 +2,7 @@
 
 ## Status
 
-This draft introduces the engine-independent run foundation for LEVELRUN-001. It is intentionally **not** presented as the completed production flow yet.
+This draft introduces the engine-independent run foundation and production routing seams for LEVELRUN-001B. It is intentionally **not** presented as the completed production flow yet.
 
 PR #210 was already merged before this branch was created. The branch starts from main at merge commit `923a2bcdb3b8c9a2c80d8154a9d65291d71a514c`, which contains PR #210 head `2fcfabf8cdfbf6f3c0caad84e65a7b266e4b0bb5`.
 
@@ -11,13 +11,18 @@ PR #210 was already merged before this branch was created. The branch starts fro
 - Exact equipment-instance loadout resolution through `IPlayerHoldingsAuthorityV1`.
 - Runtime weapon reference resolution through the existing immutable equipment catalog.
 - A run-scoped coordinator with a unique-run identity factory and explicit restart boundary.
+- Fail-closed Stage 1 composition for invalid payloads, unsupported levels, unsupported play modes, and missing authorities.
 - Generic room enemy registration with idempotent room completion.
 - SourceId-based per-player kill attribution.
 - Stable ordered contribution summaries.
 - Existing XP reward service integration, with no second XP authority.
 - Exactly-once extraction through `MissionRunResultAuthorityV1`.
 - Frozen Results route handoff that does not recalculate, open, consume, or grant rewards.
-- Focused EditMode tests for the above contracts.
+- Production Character Select, Hub, Play Selection, Level Selection, Results, and Results-to-Hub route seams.
+- A four-slot production weapon projection retaining exact equipment-instance identities.
+- Active-slot changes delegated to `LevelRunCoordinatorV1`; the Unity projection owns no second loadout state.
+- A production keyboard bridge for weapon slots 1-4, including numpad equivalents.
+- Focused EditMode tests for run, routing, composition, session, and slot-selection contracts.
 
 ## Authority boundaries
 
@@ -37,20 +42,20 @@ It does not own:
 - scene loading;
 - Unity presentation.
 
-Those remain behind their existing authorities.
+`Stage1ProductionWeaponSlotSelectionV1` is a read/command projection over the coordinator. When coordinator-backed, it reads the coordinator's active index and submits slot changes through `TrySelectActiveSlot`. It never edits route payloads, holdings, or equipment instances.
 
-## Deliberately remaining before LEVELRUN-001 can be accepted
+Those durable concerns remain behind their existing authorities.
 
-- Replace the production scene's `TestSupport` controller ownership through extraction, not duplication.
-- Wire `LevelSelectionRouteContextV1` validation into Stage 1 startup.
+## Deliberately remaining before LEVELRUN-001B can be accepted
+
+- Replace the production scene's `TestSupport` controller ownership through extraction, rather than duplicating its runtime packages.
+- Consume and validate `LevelSelectionRouteContextV1` in the production Stage 1 scene installer.
 - Introduce the production cross-scene authority provider and concrete starter-equipment seeding.
-- Connect real weapon execution adapters and 1-4 slot switching in the gameplay HUD.
-- Connect moving-droid and turret destruction notifications to the coordinator.
-- Add the physical extraction adapter.
-- Create and wire `Scenes/Flow/Results/Results.unity`.
-- Reuse `ResultsBackground.png.bytes` through a shared artwork decoder.
-- Return the exact route payload to Hub and clear handoff state after capture.
-- Update production build settings.
-- Add and run the required PlayMode route/results tests and manual acceptance flow.
+- Resolve each selected runtime weapon reference into its accepted execution adapter and remove the demo chooser from valid routed runs.
+- Connect moving-droid and turret destruction notifications to the production run binding.
+- Connect physical strongbox collection facts and the physical extraction trigger.
+- Wire the production run adapter and weapon-input bridge into the retained Stage 1 scene.
+- Run the required EditMode and PlayMode suites and retain zero-failure XML.
+- Perform the complete Bootstrap -> Results -> same Hub manual acceptance route.
 
-No Unity XML proof is claimed by this draft.
+No Unity XML or manual-runtime proof is claimed by this draft.
