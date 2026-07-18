@@ -61,9 +61,8 @@ namespace ShooterMover.Application.Flow.Hub
                 }
             }
 
-            equipmentDefinitionStableIds = new ReadOnlyCollection<StableId>(definitions);
             this.equipmentDefinitionStableIds =
-                (ReadOnlyCollection<StableId>)equipmentDefinitionStableIds;
+                new ReadOnlyCollection<StableId>(definitions);
             EquipmentLevel = equipmentLevel;
         }
 
@@ -126,6 +125,20 @@ namespace ShooterMover.Application.Flow.Hub
                     "starter-route-request-invalid");
             }
 
+            for (int index = 0;
+                index < request.EquipmentDefinitionStableIds.Count;
+                index++)
+            {
+                if (!ContainsDefinition(
+                    catalog,
+                    request.EquipmentDefinitionStableIds[index]))
+                {
+                    return Reject(
+                        StarterRouteProfileStatusV1.MissingEquipmentDefinition,
+                        "starter-route-equipment-definition-missing");
+                }
+            }
+
             var instances = new List<EquipmentInstance>(
                 PlayerRouteProfilePayloadV1.WeaponSlotCount);
             var instanceIds = new List<StableId>(
@@ -137,13 +150,6 @@ namespace ShooterMover.Application.Flow.Hub
                 index++)
             {
                 StableId definitionId = request.EquipmentDefinitionStableIds[index];
-                if (!ContainsDefinition(catalog, definitionId))
-                {
-                    return Reject(
-                        StarterRouteProfileStatusV1.MissingEquipmentDefinition,
-                        "starter-route-equipment-definition-missing");
-                }
-
                 string identitySuffix = request.LoadoutProfileStableId.Value
                     + "-slot-"
                     + (index + 1);
@@ -156,15 +162,14 @@ namespace ShooterMover.Application.Flow.Hub
                     request.EquipmentLevel,
                     request.QualityStableId,
                     Array.Empty<AugmentInstance>());
-                StableId operationId = StableId.Create(
-                    "operation",
-                    identitySuffix + "-starter-grant");
                 PlayerHoldingsMutationResultV1 mutation = holdings.Apply(
                     PlayerHoldingsCommandV1.AddEquipment(
                         StableId.Create(
                             "transaction",
                             identitySuffix + "-starter-grant"),
-                        operationId,
+                        StableId.Create(
+                            "operation",
+                            identitySuffix + "-starter-grant"),
                         holdings.AuthorityStableId,
                         instance,
                         HoldingProvenanceV1.Create(
