@@ -72,5 +72,46 @@ namespace ShooterMover.Tests.EditMode.Missions.Run
                 Object.DestroyImmediate(root);
             }
         }
+
+        [Test]
+        public void Construct_RejectsMissingTrailMaterialBeforeCreatingPlayer()
+        {
+            GameObject root = new GameObject("stage1-player-construction-material");
+            try
+            {
+                Stage1PlayerPresentationV1 presentation =
+                    root.AddComponent<Stage1PlayerPresentationV1>();
+
+                Assert.Throws<System.ArgumentNullException>(() =>
+                    presentation.Construct(Vector3.zero, null, null, null));
+                Assert.That(
+                    root.transform.Find(Stage1PlayerPresentationV1.RetainedPlayerObjectName),
+                    Is.Null);
+                Assert.That(presentation.IsCaptured, Is.False);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void Construct_RejectsRepeatedAttemptDeterministically()
+        {
+            GameObject root = new GameObject("stage1-player-construction-repeat");
+            try
+            {
+                Stage1PlayerPresentationV1 presentation =
+                    root.AddComponent<Stage1PlayerPresentationV1>();
+                presentation.TryCaptureRetainedPlayer();
+
+                Assert.Throws<System.InvalidOperationException>(() =>
+                    presentation.Construct(Vector3.zero, null, null, null));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
     }
 }
