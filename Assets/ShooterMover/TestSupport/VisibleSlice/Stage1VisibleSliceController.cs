@@ -39,6 +39,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
     /// VS-007's scene-local composition root. It wires accepted packages together and
     /// owns only disposable prototype presentation plus one session-only player vital.
     /// </summary>
+    [DefaultExecutionOrder(10000)]
     [DisallowMultipleComponent]
     public sealed class Stage1VisibleSliceController :
         MonoBehaviour,
@@ -60,7 +61,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private const float BlasterProjectileRadius = 0.08f;
         private const float PlayerVisualScale = 0.9f;
         private const float PropGridSize = 0.5f;
-        private const float InactiveRoomStagingY = 1000f;
         private static readonly Vector2 CrateCollisionSize = new Vector2(2.2f, 1.35f);
         private static readonly Vector2 ExplosiveCollisionSize = new Vector2(1.2f, 1.2f);
 
@@ -735,7 +735,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 root.transform.SetParent(transform, false);
                 sessionObjects.Add(root);
 
-                var projection = new DemoRoomProjection(definition, root, index);
+                var projection = new DemoRoomProjection(definition, root);
                 roomProjections.Add(definition.RoomStableId, projection);
 
                 RoomContentPlacement2D[] placements = definition.Placements;
@@ -915,6 +915,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (droidDamageOrder < long.MaxValue)
             {
                 droidDamageOrder++;
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (initialized)
+            {
+                EnforceCurrentRoomProjection();
             }
         }
 
@@ -1157,16 +1165,16 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     "No room projection is authored for " + roomStableId + ".");
             }
 
-            foreach (DemoRoomProjection projection in roomProjections.Values)
-            {
-                projection.Root.transform.localPosition =
-                    projection == destination
-                        ? Vector3.zero
-                        : new Vector3(
-                            0f,
-                            InactiveRoomStagingY + projection.Index * 100f,
-                            0f);
-            }
+            bool entryRoom = roomStableId
+                == Level1RoomGraphDefinitionV1.EntryRoomStableId;
+            SetMobileDroidProjectionActive(entryRoom);
+            SetTurretProjectionActive(!entryRoom);
+            entryExitDoor.transform.localPosition = entryRoom
+                ? new Vector3(14.5f, 0f, 0f)
+                : new Vector3(14.5f, 1000f, 0f);
+            terminalExitDoor.transform.localPosition = entryRoom
+                ? new Vector3(14.5f, 1000f, 0f)
+                : new Vector3(14.5f, 0f, 0f);
 
             currentRoomContent = destination.Definition;
             exitDoor = destination.ExitDoor;
@@ -1176,6 +1184,100 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 playerTransform.position = entryPosition;
                 playerBody.linearVelocity = Vector2.zero;
                 playerBody.angularVelocity = 0f;
+            }
+
+            EnforceCurrentRoomProjection();
+        }
+
+        private void EnforceCurrentRoomProjection()
+        {
+            bool entryRoom = CurrentRoomStableId
+                == Level1RoomGraphDefinitionV1.EntryRoomStableId;
+            if (mobileBlasterDroid != null)
+            {
+                bool droidDestroyed = mobileBlasterDroid.CurrentState != null
+                    && mobileBlasterDroid.CurrentState.IsDestroyed;
+                mobileBlasterDroid.EnemyCollider.enabled =
+                    entryRoom && !droidDestroyed;
+                SetRendererProjectionActive(
+                    mobileBlasterDroid.gameObject,
+                    entryRoom);
+            }
+
+            if (turretPackage != null)
+            {
+                EnemyActorState turretState = turretPackage.Authority == null
+                    ? null
+                    : turretPackage.Authority.CurrentState;
+                turretPackage.EnemyCollider.enabled = !entryRoom
+                    && turretState != null
+                    && !turretState.IsDestroyed;
+                SetRendererProjectionActive(
+                    turretPackage.gameObject,
+                    !entryRoom);
+            }
+        }
+
+        private void SetMobileDroidProjectionActive(bool active)
+        {
+            if (mobileBlasterDroid == null)
+            {
+                return;
+            }
+
+            if (active)
+            {
+                mobileBlasterDroid.ActivateSession();
+            }
+            else
+            {
+                mobileBlasterDroid.DeactivateSession();
+            }
+
+            bool destroyed = mobileBlasterDroid.CurrentState != null
+                && mobileBlasterDroid.CurrentState.IsDestroyed;
+            mobileBlasterDroid.EnemyCollider.enabled = active && !destroyed;
+            SetRendererProjectionActive(mobileBlasterDroid.gameObject, active);
+        }
+
+        private void SetTurretProjectionActive(bool active)
+        {
+            if (turretPackage == null)
+            {
+                return;
+            }
+
+            if (active)
+            {
+                turretPackage.Activate();
+            }
+            else
+            {
+                turretPackage.Deactivate();
+            }
+
+            EnemyActorState state = turretPackage.Authority == null
+                ? null
+                : turretPackage.Authority.CurrentState;
+            turretPackage.EnemyCollider.enabled = active
+                && state != null
+                && !state.IsDestroyed;
+            SetRendererProjectionActive(turretPackage.gameObject, active);
+            if (turretPresenter != null)
+            {
+                turretPresenter.gameObject.SetActive(active);
+            }
+        }
+
+        private static void SetRendererProjectionActive(
+            GameObject root,
+            bool active)
+        {
+            SpriteRenderer[] renderers =
+                root.GetComponentsInChildren<SpriteRenderer>(true);
+            for (int index = 0; index < renderers.Length; index++)
+            {
+                renderers[index].enabled = active;
             }
         }
 
@@ -2037,20 +2139,16 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             public DemoRoomProjection(
                 RoomContentDefinition2D definition,
-                GameObject root,
-                int index)
+                GameObject root)
             {
                 Definition = definition
                     ?? throw new ArgumentNullException(nameof(definition));
                 Root = root ?? throw new ArgumentNullException(nameof(root));
-                Index = index;
             }
 
             public RoomContentDefinition2D Definition { get; }
 
             public GameObject Root { get; }
-
-            public int Index { get; }
 
             public DoorController2D ExitDoor { get; set; }
         }
