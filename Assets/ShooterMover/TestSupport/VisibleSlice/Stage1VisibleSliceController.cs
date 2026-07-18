@@ -753,11 +753,22 @@ namespace ShooterMover.TestSupport.VisibleSlice
                         == StableId.Parse("enemy.mobile-blaster-droid"))
                     {
                         BuildMobileBlasterDroid(root.transform, placement);
+                        MobileBlasterDroidRuntime2D roomDroid = mobileBlasterDroid;
+                        projection.RegisterEnemyDestroyedReader(
+                            () => roomDroid != null
+                                && roomDroid.CurrentState != null
+                                && roomDroid.CurrentState.IsDestroyed);
                     }
                     else if (placement.ContentStableId
                         == StableId.Parse("enemy.blaster-turret"))
                     {
                         BuildTurret(root.transform, placement);
+                        BlasterTurretPackage roomTurret = turretPackage;
+                        projection.RegisterEnemyDestroyedReader(
+                            () => roomTurret != null
+                                && roomTurret.Authority != null
+                                && roomTurret.Authority.CurrentState != null
+                                && roomTurret.Authority.CurrentState.IsDestroyed);
                     }
                     else
                     {
@@ -1085,17 +1096,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             StableId currentRoom = roomMissionLayout.CurrentRoomState.RoomStableId;
             bool inDoorLane = Mathf.Abs(playerTransform.position.y) <= 2.2f;
+            DemoRoomProjection currentProjection = roomProjections[currentRoom];
+            if (currentProjection.AreAllEnemiesDestroyed)
+            {
+                roomMissionLayout.CompleteCurrentRoom();
+                currentProjection.ExitDoor.NotifyInteractionRequested();
+            }
+
             if (currentRoom == Level1RoomGraphDefinitionV1.EntryRoomStableId)
             {
-                bool droidDestroyed = mobileBlasterDroid != null
-                    && mobileBlasterDroid.CurrentState != null
-                    && mobileBlasterDroid.CurrentState.IsDestroyed;
-                if (droidDestroyed)
-                {
-                    roomMissionLayout.CompleteCurrentRoom();
-                    entryExitDoor.NotifyInteractionRequested();
-                }
-
                 if (entryExitDoor.IsOpen
                     && inDoorLane
                     && playerTransform.position.x >= 13.2f)
@@ -1117,17 +1126,9 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             if (currentRoom == Level1RoomGraphDefinitionV1.TerminalRoomStableId)
             {
-                bool turretDestroyed = turretPackage != null
-                    && turretPackage.Authority != null
-                    && turretPackage.Authority.CurrentState != null
-                    && turretPackage.Authority.CurrentState.IsDestroyed;
-                if (turretDestroyed)
-                {
-                    roomMissionLayout.CompleteCurrentRoom();
-                    terminalExitDoor.NotifyInteractionRequested();
-                }
-
-                if (inDoorLane && playerTransform.position.x <= -13.2f)
+                if (terminalExitDoor.IsOpen
+                    && inDoorLane
+                    && playerTransform.position.x <= -13.2f)
                 {
                     if (roomMissionLayout.Traverse(
                         Level1RoomGraphDefinitionV1.ReturnExitStableId).Changed)
@@ -2137,6 +2138,9 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private sealed class DemoRoomProjection
         {
+            private readonly List<Func<bool>> enemyDestroyedReaders =
+                new List<Func<bool>>();
+
             public DemoRoomProjection(
                 RoomContentDefinition2D definition,
                 GameObject root)
@@ -2151,6 +2155,28 @@ namespace ShooterMover.TestSupport.VisibleSlice
             public GameObject Root { get; }
 
             public DoorController2D ExitDoor { get; set; }
+
+            public bool AreAllEnemiesDestroyed
+            {
+                get
+                {
+                    for (int index = 0; index < enemyDestroyedReaders.Count; index++)
+                    {
+                        if (!enemyDestroyedReaders[index]())
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+            }
+
+            public void RegisterEnemyDestroyedReader(Func<bool> reader)
+            {
+                enemyDestroyedReaders.Add(
+                    reader ?? throw new ArgumentNullException(nameof(reader)));
+            }
         }
     }
 

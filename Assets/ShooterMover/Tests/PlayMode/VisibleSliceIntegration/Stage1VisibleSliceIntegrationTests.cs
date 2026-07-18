@@ -228,6 +228,33 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         }
 
         [UnityTest]
+        public IEnumerator Demo002_CannotLeaveTerminalRoomWhileAnyEnemyIsAlive()
+        {
+            MonoBehaviour controller = null;
+            yield return LoadController(value => controller = value);
+
+            yield return ClearEntryAndEnterTerminal(controller);
+
+            object turret = Read<object>(controller, "TurretPackage");
+            EnemyActorState turretState = Read<EnemyActorState>(
+                Read<object>(turret, "Authority"),
+                "CurrentState");
+            Assert.That(turretState.IsDestroyed, Is.False);
+            Assert.That(
+                Read<bool>(Read<object>(controller, "TerminalExitDoor"), "IsOpen"),
+                Is.False);
+
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = new Vector3(-13.5f, 0f, 0f);
+            yield return null;
+
+            Assert.That(
+                Read<StableId>(controller, "CurrentRoomStableId"),
+                Is.EqualTo(StableId.Parse("room.level1-terminal")),
+                "No room exit may traverse while an authored enemy is still alive.");
+        }
+
+        [UnityTest]
         public IEnumerator Demo002_VoidHazardDamagesPlayerAndRestartRestoresArenaState()
         {
             MonoBehaviour controller = null;
