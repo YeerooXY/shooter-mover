@@ -22,8 +22,8 @@ The dependency head used for this implementation is
 - lifecycle rejection statuses are reachable and covered by public-behavior tests;
 - ENTITY-001 focused tests do not use source-substring architecture assertions.
 
-If PR #215 changes these contracts, this branch must be rebased and its focused tests rerun before
-the PR can be marked ready.
+PR #215 has since merged. ENEMY-001 was rebased onto the resulting `main` commit
+`d763605c13379ae4946c8fe8a2a7e1ed7fb1a1b3` before final verification.
 
 ## Runtime flow
 
@@ -52,7 +52,7 @@ not. No package or hierarchy name is involved.
 | Ram Droid | `RamDroidDefinition` | `RamDroidRuntime2D` over `EnemyActorState` | Warning then committed movement | Disposable-impact/charge capability | Configured player target | Required enemy (expected projection) | External terminal-fact consumers | Runtime2D and temporary presentation | Split selection, wind-up, commitment, impact, recovery and use frozen commitment |
 | Four Blaster Elite | Static package descriptors/constants | `FourBlasterEliteSession` over `EnemyActorState` | Stationary boss cadence | Four ordered blaster execution plans | Coordinates supplied to `Advance` | Required enemy/boss (expected projection) | External terminal-fact consumers; no direct award | Engine-neutral session plus package presentation consumers | Replace weapon-shaped request boundary with four attack intents and add placed adapter |
 
-The role entries marked “expected projection” describe the capability each current Stage 1 enemy
+The role entries marked "expected projection" describe the capability each current Stage 1 enemy
 should author during later package migration; this PR does not edit scenes, prefabs, or all five
 packages to serialize that role.
 
@@ -72,7 +72,11 @@ packages to serialize that role.
   -testPlatform EditMode `
   -testFilter "ShooterMover.Tests.EditMode.Enemies" `
   -testResults "artifacts/test-results/ENEMY-001-EditMode.xml" `
-  -logFile "artifacts/logs/ENEMY-001-EditMode.log" -quit
+  -logFile "artifacts/logs/ENEMY-001-EditMode.log"
 ```
 
-Unity is not installed in the implementation environment, so no passing XML is claimed here.
+Verified locally with Unity `6000.3.19f1` after rebasing onto merged `main`: full project script
+compilation passed and the focused enemy filter passed 46 of 46 EditMode tests, with no failed,
+skipped, or inconclusive tests. `-quit` is intentionally omitted because `-runTests` exits after
+completion and Unity 6.3 may process `-quit` before the Test Framework starts. Temporary XML/log
+artifacts were removed after recording the result; the shared Unity Library cache was retained.
