@@ -20,7 +20,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills.Content
             Assert.That(result.Success, Is.True, FormatDiagnostics(result));
             Assert.That(result.Catalog.Skills.Count, Is.EqualTo(20));
             Assert.That(result.ImportedSynergies.Count, Is.EqualTo(2));
-            Assert.That(result.Summary.TotalPurchasableRanks, Is.EqualTo(279));
+            Assert.That(result.Summary.TotalPurchasableRanks, Is.EqualTo(306));
             Assert.That(result.Summary.MaximumRanksByClass["class.striker"], Is.GreaterThan(100));
             Assert.That(result.NormalizedFingerprint, Has.Length.EqualTo(64));
         }
