@@ -1,5 +1,4 @@
 using System;
-using ShooterMover.Domain.Movement;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Input;
 using ShooterMover.UnityAdapters.Physics;
@@ -12,21 +11,19 @@ namespace ShooterMover.Production.Stage1
     ///
     /// During the staged extraction the legacy presenter still creates the player object.
     /// This component captures that exact object and exposes one validated player subsystem
-    /// for movement, combat targeting, boost presentation, restart and later delegation.
-    /// It never creates a second movement actor or player authority.
+    /// for movement, combat targeting, restart and later delegation. It never creates a
+    /// second movement actor or player authority.
     /// </summary>
     [DefaultExecutionOrder(10001)]
     [DisallowMultipleComponent]
     public sealed class Stage1PlayerPresentationV1 : MonoBehaviour
     {
         public const string RetainedPlayerObjectName = "PlayerMover";
-        public const float PlayerVisualScale = 0.9f;
 
         private Transform playerTransform;
         private Rigidbody2D playerBody;
         private Collider2D playerCollider;
         private MovementActorLifecycle movementLifecycle;
-        private MovementActorThrusterStatusReader thrusterReader;
         private PlayerCombatIntentAdapter combatInput;
         private EnemyTarget2DAdapter targetAdapter;
         private SpriteRenderer bodyRenderer;
@@ -40,7 +37,6 @@ namespace ShooterMover.Production.Stage1
         public Rigidbody2D PlayerBody => playerBody;
         public Collider2D PlayerCollider => playerCollider;
         public MovementActorLifecycle MovementLifecycle => movementLifecycle;
-        public MovementActorThrusterStatusReader ThrusterReader => thrusterReader;
         public PlayerCombatIntentAdapter CombatInput => combatInput;
         public EnemyTarget2DAdapter TargetAdapter => targetAdapter;
         public SpriteRenderer BodyRenderer => bodyRenderer;
@@ -50,16 +46,6 @@ namespace ShooterMover.Production.Stage1
         private void Start()
         {
             TryCaptureRetainedPlayer();
-        }
-
-        private void LateUpdate()
-        {
-            if (!IsCaptured)
-            {
-                return;
-            }
-
-            RefreshBoostPresentation();
         }
 
         public bool TryCaptureRetainedPlayer()
@@ -130,9 +116,6 @@ namespace ShooterMover.Production.Stage1
             bodyRenderer = renderer;
             boostTrail = trail;
             spawnPosition = candidate.position;
-            thrusterReader = new MovementActorThrusterStatusReader(
-                movementLifecycle.Actor,
-                movementLifecycle.Tuning);
             IsCaptured = true;
             RejectionCode = string.Empty;
             return true;
@@ -150,24 +133,6 @@ namespace ShooterMover.Production.Stage1
             {
                 boostTrail.emitting = false;
                 boostTrail.Clear();
-            }
-        }
-
-        public void RefreshBoostPresentation()
-        {
-            EnsureCaptured();
-            ThrusterStatusSnapshot status = thrusterReader.ReadSnapshot();
-            bool isBoosting = status != null && status.IsBursting;
-            playerTransform.localScale = new Vector3(
-                PlayerVisualScale,
-                PlayerVisualScale,
-                1f);
-            bodyRenderer.color = isBoosting
-                ? new Color(0.72f, 0.96f, 1f, 1f)
-                : Color.white;
-            if (boostTrail != null)
-            {
-                boostTrail.emitting = isBoosting;
             }
         }
 
