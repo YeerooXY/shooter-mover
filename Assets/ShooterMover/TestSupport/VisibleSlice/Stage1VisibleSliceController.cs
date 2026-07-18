@@ -1173,6 +1173,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             if (movePlayer && playerBody != null)
             {
                 playerBody.position = entryPosition;
+                playerTransform.position = entryPosition;
                 playerBody.linearVelocity = Vector2.zero;
                 playerBody.angularVelocity = 0f;
             }

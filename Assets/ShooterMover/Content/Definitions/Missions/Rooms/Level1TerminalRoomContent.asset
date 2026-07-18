@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   roomStableId: room.level1-terminal
   displayName: REACTOR ACCESS
-  forwardEntryPosition: {x: -11, y: 0}
+  forwardEntryPosition: {x: -8, y: -2}
   returnEntryPosition: {x: 11, y: 0}
   placements:
   - instanceStableId: spawn.level1-terminal-blaster-turret

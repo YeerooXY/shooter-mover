@@ -174,6 +174,12 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
 
             EnemyActorState after = Read<EnemyActorState>(droid, "CurrentState");
             Assert.That(after.Health, Is.EqualTo(before.Health - 1d));
+            deadline = Time.time + 0.5f;
+            while (Time.time < deadline
+                && Read<int>(controller, "ActiveProjectileCount") > 0)
+            {
+                yield return null;
+            }
             Assert.That(Read<int>(controller, "ActiveProjectileCount"), Is.Zero);
         }
 
