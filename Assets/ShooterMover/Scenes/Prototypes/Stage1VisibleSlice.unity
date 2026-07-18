@@ -30,8 +30,6 @@ RenderSettings:
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
-  m_HaloTexture: {fileID: 0}
-  m_SpotCookie: {fileID: 10001, guid: 0000000000000000f000000000000000, type: 0}
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
@@ -61,6 +59,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7001}
   - component: {fileID: 7002}
+  - component: {fileID: 7003}
   m_Layer: 0
   m_Name: Stage1VisibleSlice
   m_TagString: Untagged
@@ -108,6 +107,19 @@ MonoBehaviour:
   shootingSandbox: 1
   reducedEffects: 0
   grayscale: 0
+--- !u!114 &7003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f3a2d17c2bb4bfbb3cb6b6488c6c1a7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ShooterMover.UI.LevelSelection::ShooterMover.UI.LevelSelection.Stage1ProductionCompositionRootV1
+  gameplayPresentationRoot: {fileID: 7002}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
