@@ -57,7 +57,9 @@ namespace ShooterMover.UnityAdapters.Missions.Run
     /// inventory state.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class Stage1ProductionRunSceneAdapterV1 : MonoBehaviour
+    public sealed class Stage1ProductionRunSceneAdapterV1 :
+        MonoBehaviour,
+        IStage1ProductionRunBindingV1
     {
         public const string DefaultResultsSceneName = "Results";
 
