@@ -99,7 +99,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             {
                 string path = EditorUtility.OpenFilePanel(
                     "Select weapon catalog JSON",
-                    Application.dataPath,
+                    UnityEngine.Application.dataPath,
                     "json");
                 if (!string.IsNullOrEmpty(path))
                 {
