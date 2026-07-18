@@ -6,6 +6,7 @@
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.UI.LevelSelection",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
