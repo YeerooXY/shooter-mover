@@ -147,9 +147,12 @@ namespace ShooterMover.Bootstrap
 
         private void RegisterServices()
         {
-            // Intentionally empty for UF-006.
-            // Later owned tasks construct concrete services here and call Register
-            // in dependency order. This remains direct composition, not a container.
+            var productionSession = new ProductionSessionAuthorityOwnerV1();
+            Register(
+                "Production session authorities",
+                productionSession.Start,
+                productionSession.Stop,
+                productionSession.Dispose);
         }
 
         private void Register(
