@@ -1,5 +1,7 @@
 using System;
+using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.LevelSelection;
+using ShooterMover.Application.Missions.Run;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using UnityEngine.SceneManagement;
@@ -153,6 +155,19 @@ namespace ShooterMover.UI.LevelSelection
                 throw new ArgumentException(
                     "Only an accepted route can be presented.",
                     nameof(result));
+            }
+
+            if (result.SelectedLevelStableId == LevelRunCoordinatorV1.Level1StableId)
+            {
+                string rejectionCode;
+                if (!ProductionSessionAuthorityContextV1.TryPrepareStage1(
+                        result.Payload,
+                        out rejectionCode))
+                {
+                    throw new InvalidOperationException(
+                        "Stage 1 production authority preparation failed: "
+                        + rejectionCode);
+                }
             }
 
             LevelSelectionRouteContextV1.Capture(result);
