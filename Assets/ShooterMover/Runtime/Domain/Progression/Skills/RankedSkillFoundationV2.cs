@@ -37,7 +37,8 @@ namespace ShooterMover.Domain.Progression.Skills
         private static IReadOnlyList<SkillEffectDescriptorV2> Freeze(IEnumerable<SkillEffectDescriptorV2> source, string name)
         {
             if (source == null) throw new ArgumentNullException(name);
-            var list = source.ToList(); if (list.Any(x => x == null)) throw new ArgumentException("Effects must be non-null.", name);
+            var list = source.ToList();
+            if (list.Any(x => x == null)) throw new ArgumentException("Effects must be non-null.", name);
             return new ReadOnlyCollection<SkillEffectDescriptorV2>(list);
         }
     }
@@ -111,23 +112,53 @@ namespace ShooterMover.Domain.Progression.Skills
     public sealed class SkillSynergyRequirementV2
     {
         public SkillSynergyRequirementV2(string skillId, int minimumRank)
-        { if (string.IsNullOrWhiteSpace(skillId)) throw new ArgumentException("Skill id is required.", nameof(skillId)); if (minimumRank < 1) throw new ArgumentOutOfRangeException(nameof(minimumRank)); SkillId = skillId.Trim(); MinimumRank = minimumRank; }
+        {
+            if (string.IsNullOrWhiteSpace(skillId)) throw new ArgumentException("Skill id is required.", nameof(skillId));
+            if (minimumRank < 1) throw new ArgumentOutOfRangeException(nameof(minimumRank));
+            SkillId = skillId.Trim(); MinimumRank = minimumRank;
+        }
         public string SkillId { get; }
         public int MinimumRank { get; }
     }
 
+    public sealed class SkillCombinedRankRequirementV2
+    {
+        public SkillCombinedRankRequirementV2(IEnumerable<string> skillIds, int minimumCombinedRank)
+        {
+            var ids = (skillIds ?? throw new ArgumentNullException(nameof(skillIds))).Select(x => (x ?? string.Empty).Trim()).ToList();
+            if (ids.Count < 2 || ids.Any(string.IsNullOrWhiteSpace) || ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)
+                throw new ArgumentException("Combined-rank requirements need at least two unique skill ids.", nameof(skillIds));
+            if (minimumCombinedRank < 1) throw new ArgumentOutOfRangeException(nameof(minimumCombinedRank));
+            SkillIds = new ReadOnlyCollection<string>(ids);
+            MinimumCombinedRank = minimumCombinedRank;
+        }
+        public IReadOnlyList<string> SkillIds { get; }
+        public int MinimumCombinedRank { get; }
+        public int CurrentCombinedRank(RankedSkillAllocationSnapshotV2 allocation) => SkillIds.Sum(allocation.RankOf);
+        public bool IsSatisfied(RankedSkillAllocationSnapshotV2 allocation) => CurrentCombinedRank(allocation) >= MinimumCombinedRank;
+        public string Canonical => string.Join(",", SkillIds.OrderBy(x => x, StringComparer.Ordinal)) + ">=" + MinimumCombinedRank;
+    }
+
     public sealed class SkillSynergyDefinitionV2
     {
-        public SkillSynergyDefinitionV2(string id, IEnumerable<SkillSynergyRequirementV2> requirements, IEnumerable<SkillEffectDescriptorV2> effects)
+        public SkillSynergyDefinitionV2(string id, IEnumerable<SkillSynergyRequirementV2> requirements, IEnumerable<SkillEffectDescriptorV2> effects,
+            IEnumerable<SkillCombinedRankRequirementV2> combinedRankRequirements = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Synergy id is required.", nameof(id));
-            Id = id.Trim(); Requirements = new ReadOnlyCollection<SkillSynergyRequirementV2>((requirements ?? throw new ArgumentNullException(nameof(requirements))).ToList());
+            Id = id.Trim();
+            Requirements = new ReadOnlyCollection<SkillSynergyRequirementV2>((requirements ?? throw new ArgumentNullException(nameof(requirements))).ToList());
+            CombinedRankRequirements = new ReadOnlyCollection<SkillCombinedRankRequirementV2>((combinedRankRequirements ?? Array.Empty<SkillCombinedRankRequirementV2>()).ToList());
             Effects = new ReadOnlyCollection<SkillEffectDescriptorV2>((effects ?? throw new ArgumentNullException(nameof(effects))).ToList());
-            if (Requirements.Count < 2 || Effects.Count < 1) throw new ArgumentException("A synergy requires at least two skills and one effect.");
+            if (Requirements.Count + CombinedRankRequirements.Count < 1 || Effects.Count < 1) throw new ArgumentException("A synergy requires at least one requirement and one effect.");
+            if (Requirements.Any(x => x == null) || CombinedRankRequirements.Any(x => x == null) || Effects.Any(x => x == null)) throw new ArgumentException("Synergy entries must be non-null.");
         }
         public string Id { get; }
         public IReadOnlyList<SkillSynergyRequirementV2> Requirements { get; }
+        public IReadOnlyList<SkillCombinedRankRequirementV2> CombinedRankRequirements { get; }
         public IReadOnlyList<SkillEffectDescriptorV2> Effects { get; }
+        public bool IsSatisfied(RankedSkillAllocationSnapshotV2 allocation) =>
+            Requirements.All(r => allocation.RankOf(r.SkillId) >= r.MinimumRank) && CombinedRankRequirements.All(r => r.IsSatisfied(allocation));
+        public string Canonical => Id + "|" + string.Join(";", Requirements.OrderBy(x => x.SkillId, StringComparer.Ordinal).Select(x => x.SkillId + ">=" + x.MinimumRank)) + "|" + string.Join(";", CombinedRankRequirements.Select(x => x.Canonical));
     }
 
     public sealed class RankedSkillCatalogV2
@@ -151,24 +182,43 @@ namespace ShooterMover.Domain.Progression.Skills
         public IReadOnlyList<SkillSynergyDefinitionV2> Synergies { get; }
         public string Fingerprint { get; }
         public bool TryGet(string id, out RankedSkillDefinitionV2 skill) => byId.TryGetValue(id ?? string.Empty, out skill);
-        public string ToCanonicalString() => SchemaVersion + "|" + ContentVersion + "|" + string.Join(";", Skills.Select(x => x.Id + ":" + x.MaximumRank)) + "|" + string.Join(";", Synergies.Select(x => x.Id));
+        public string ToCanonicalString() => SchemaVersion + "|" + ContentVersion + "|" + string.Join(";", Skills.Select(x => x.Id + ":" + x.MaximumRank)) + "|" + string.Join(";", Synergies.Select(x => x.Canonical));
         private static void Validate(IReadOnlyList<RankedSkillDefinitionV2> skills, IReadOnlyList<SkillSynergyDefinitionV2> synergies)
         {
             if (skills.Count == 0 || skills.Any(x => x == null)) throw new ArgumentException("At least one non-null skill is required.");
             if (skills.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != skills.Count) throw new ArgumentException("Duplicate skill ids.");
             var map = skills.ToDictionary(x => x.Id, StringComparer.Ordinal);
+            Func<RankedSkillDefinitionV2, int> maxRank = s => Math.Max(s.MaximumRank, s.ClassOverrides.Count == 0 ? s.MaximumRank : s.ClassOverrides.Max(x => x.MaximumRank));
             foreach (var s in skills)
             {
                 if (s.ClassOverrides.Select(x => x.ClassId).Distinct(StringComparer.Ordinal).Count() != s.ClassOverrides.Count) throw new ArgumentException("Duplicate class override.");
-                if (s.Milestones.Any(x => x.Rank > Math.Max(s.MaximumRank, s.ClassOverrides.Count == 0 ? s.MaximumRank : s.ClassOverrides.Max(y => y.MaximumRank)))) throw new ArgumentException("Milestone exceeds effective maximum.");
+                if (s.Milestones.Any(x => x.Rank > maxRank(s))) throw new ArgumentException("Milestone exceeds effective maximum.");
                 foreach (var p in s.Prerequisites) if (!map.ContainsKey(p.SkillId)) throw new ArgumentException("Missing prerequisite: " + p.SkillId);
             }
             var visiting = new HashSet<string>(StringComparer.Ordinal); var visited = new HashSet<string>(StringComparer.Ordinal);
-            Func<string, bool> cycle = null; cycle = id => { if (visiting.Contains(id)) return true; if (visited.Contains(id)) return false; visiting.Add(id); foreach (var p in map[id].Prerequisites) if (cycle(p.SkillId)) return true; visiting.Remove(id); visited.Add(id); return false; };
+            Func<string, bool> cycle = null;
+            cycle = id => { if (visiting.Contains(id)) return true; if (visited.Contains(id)) return false; visiting.Add(id); foreach (var p in map[id].Prerequisites) if (cycle(p.SkillId)) return true; visiting.Remove(id); visited.Add(id); return false; };
             foreach (var id in map.Keys) if (cycle(id)) throw new ArgumentException("Circular prerequisites.");
             if (synergies.Any(x => x == null) || synergies.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != synergies.Count) throw new ArgumentException("Invalid synergy ids.");
-            foreach (var synergy in synergies) foreach (var requirement in synergy.Requirements)
-            { RankedSkillDefinitionV2 s; if (!map.TryGetValue(requirement.SkillId, out s) || requirement.MinimumRank > Math.Max(s.MaximumRank, s.ClassOverrides.Count == 0 ? s.MaximumRank : s.ClassOverrides.Max(x => x.MaximumRank))) throw new ArgumentException("Unsatisfiable synergy requirement."); }
+            foreach (var synergy in synergies)
+            {
+                foreach (var requirement in synergy.Requirements)
+                {
+                    RankedSkillDefinitionV2 skill;
+                    if (!map.TryGetValue(requirement.SkillId, out skill) || requirement.MinimumRank > maxRank(skill)) throw new ArgumentException("Unsatisfiable synergy requirement.");
+                }
+                foreach (var combined in synergy.CombinedRankRequirements)
+                {
+                    int possible = 0;
+                    foreach (string skillId in combined.SkillIds)
+                    {
+                        RankedSkillDefinitionV2 skill;
+                        if (!map.TryGetValue(skillId, out skill)) throw new ArgumentException("Missing combined-rank skill: " + skillId);
+                        possible = checked(possible + maxRank(skill));
+                    }
+                    if (combined.MinimumCombinedRank > possible) throw new ArgumentException("Unsatisfiable combined-rank synergy requirement.");
+                }
+            }
         }
     }
 
@@ -244,7 +294,7 @@ namespace ShooterMover.Domain.Progression.Skills
                     output.Add(new SkillEffectContributionV2(skill.Id + "#" + rank, new SkillEffectDescriptorV2(effect.StatId, effect.Kind, effect.Value * skill.RankValue(allocation.ClassId, rank), effect.ConditionId)));
                 foreach (var milestone in skill.Milestones.Where(x => x.Rank <= pair.Value)) foreach (var effect in milestone.Effects) output.Add(new SkillEffectContributionV2(skill.Id + "@" + milestone.Rank, effect));
             }
-            foreach (var synergy in catalog.Synergies.Where(x => x.Requirements.All(r => allocation.RankOf(r.SkillId) >= r.MinimumRank))) foreach (var effect in synergy.Effects) output.Add(new SkillEffectContributionV2(synergy.Id, effect));
+            foreach (var synergy in catalog.Synergies.Where(x => x.IsSatisfied(allocation))) foreach (var effect in synergy.Effects) output.Add(new SkillEffectContributionV2(synergy.Id, effect));
             return new SkillEffectSnapshotV2(allocation, output);
         }
     }
