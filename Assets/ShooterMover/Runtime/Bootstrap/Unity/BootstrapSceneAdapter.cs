@@ -4,8 +4,9 @@ using UnityEngine;
 namespace ShooterMover.Bootstrap.Unity
 {
     /// <summary>
-    /// Owns exactly one BootstrapCompositionRoot for the active Bootstrap scene.
-    /// Duplicate scene adapters disable and destroy their complete scene root.
+    /// Owns exactly one BootstrapCompositionRoot for the running application. The owner
+    /// survives scene changes while scene-local Bootstrap presentation remains behind.
+    /// Duplicate adapters disable and destroy their complete scene root.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class BootstrapSceneAdapter : MonoBehaviour
@@ -27,8 +28,6 @@ namespace ShooterMover.Bootstrap.Unity
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticOwner()
         {
-            // Unity invokes SubsystemRegistration on every Play Mode entry, including
-            // when domain reload is disabled. Never carry an owner from a prior session.
             activeOwner = null;
         }
 
@@ -42,8 +41,8 @@ namespace ShooterMover.Bootstrap.Unity
 
             try
             {
-                // Defensively dispose any previous instance before creating the root
-                // for this enable cycle.
+                DetachSceneLocalPresentation();
+                DontDestroyOnLoad(gameObject);
                 ShutdownCompositionRoot();
 
                 compositionRoot = new BootstrapCompositionRoot();
@@ -73,6 +72,19 @@ namespace ShooterMover.Bootstrap.Unity
         {
             ShutdownCompositionRoot();
             ReleaseOwnership();
+        }
+
+        private void DetachSceneLocalPresentation()
+        {
+            Camera[] cameras = GetComponentsInChildren<Camera>(true);
+            for (int index = 0; index < cameras.Length; index++)
+            {
+                Camera camera = cameras[index];
+                if (camera != null && camera.gameObject != gameObject)
+                {
+                    camera.transform.SetParent(null, true);
+                }
+            }
         }
 
         private bool TryClaimOwnership()
