@@ -41,9 +41,9 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         private static readonly StableId PlayerFactionIdValue =
             StableId.Parse("faction.player");
         private static readonly StableId WindUpPhaseIdValue =
-            StableId.Parse("enemy-phase.mobile-blaster-droid.wind-up");
+            StableId.Parse("enemy-phase.mobile-blaster-droid-wind-up");
         private static readonly StableId RecoveryPhaseIdValue =
-            StableId.Parse("enemy-phase.mobile-blaster-droid.recovery");
+            StableId.Parse("enemy-phase.mobile-blaster-droid-recovery");
 
         [SerializeField] private MobileBlasterDroidDefinition definition;
         [SerializeField] private BoundedProjectile2D acceptedProjectilePrefab;
@@ -112,14 +112,15 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         public long DecisionSequence { get { return decisionSequence; } }
         public long Generation { get { return generation; } }
         public EnemyDecisionEvaluation LastDecisionEvaluation { get { return lastDecisionEvaluation; } }
-        public EnemyDebugSnapshot LiveDebugSnapshot
-        {
-            get { return lastDecisionEvaluation == null ? null : lastDecisionEvaluation.Debug; }
-        }
         public EnemyPerceptionSnapshot LastPerceptionSnapshot { get { return lastPerceptionSnapshot; } }
         public EnemyAttackIntent LastAcceptedAttackIntent { get { return lastAcceptedAttackIntent; } }
         public EnemyDestroyedNotification LastDestroyedNotification { get { return lastDestroyedNotification; } }
         public int PendingAttackIntentCount { get { return acceptedAttackIntents.Count; } }
+
+        public EnemyDebugSnapshot LiveDebugSnapshot
+        {
+            get { return lastDecisionEvaluation == null ? null : lastDecisionEvaluation.Debug; }
+        }
 
         public StableId CurrentBehaviorPhaseId
         {
@@ -649,13 +650,20 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
             else
             {
+                bool recoveryWasActive =
+                    firePhase == MobileBlasterDroidFirePhase.Recovery;
+                if (recoveryWasActive)
+                {
+                    AdvanceRecovery(deltaTimeSeconds);
+                }
+
                 EnemyDecisionEvaluation evaluation = EvaluateLiveDecision(state, target);
                 if (firePhase == MobileBlasterDroidFirePhase.WindUp
                     && evaluation.Decision.SelectedTargetId == null)
                 {
                     CancelPendingFire();
                 }
-                else
+                else if (!recoveryWasActive)
                 {
                     AdvanceFireState(evaluation, deltaTimeSeconds);
                 }
@@ -707,13 +715,19 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
         private bool HasLineOfSightToTarget(EnemyTarget2DObservation target)
         {
-            Vector2 origin = muzzle == null ? (Vector2)transform.position : (Vector2)muzzle.position;
-            Vector2 targetPoint = new Vector2((float)target.PositionX, (float)target.PositionY);
+            Vector2 origin = muzzle == null
+                ? (Vector2)transform.position
+                : (Vector2)muzzle.position;
+            Vector2 targetPoint = new Vector2(
+                (float)target.PositionX,
+                (float)target.PositionY);
             var hits = Physics2D.LinecastAll(origin, targetPoint);
             for (int index = 0; index < hits.Length; index++)
             {
                 Collider2D hitCollider = hits[index].collider;
-                if (hitCollider == null || IsOwnCollider(hitCollider))
+                if (hitCollider == null
+                    || IsOwnCollider(hitCollider)
+                    || IsProjectileCollider(hitCollider))
                 {
                     continue;
                 }
@@ -729,6 +743,11 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             return candidate == enemyCollider
                 || candidate.transform == transform
                 || candidate.transform.IsChildOf(transform);
+        }
+
+        private static bool IsProjectileCollider(Collider2D candidate)
+        {
+            return candidate.GetComponent<BoundedProjectile2D>() != null;
         }
 
         private bool IsPlayerCollider(Collider2D candidate)
@@ -820,17 +839,22 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                     return;
 
                 case MobileBlasterDroidFirePhase.Recovery:
-                    firePhaseElapsedSeconds += deltaTimeSeconds;
-                    if (firePhaseElapsedSeconds >= definition.RecoverySeconds)
-                    {
-                        firePhase = MobileBlasterDroidFirePhase.Ready;
-                        firePhaseElapsedSeconds = 0d;
-                    }
+                    AdvanceRecovery(deltaTimeSeconds);
                     return;
 
                 default:
                     CancelPendingFire();
                     return;
+            }
+        }
+
+        private void AdvanceRecovery(double deltaTimeSeconds)
+        {
+            firePhaseElapsedSeconds += deltaTimeSeconds;
+            if (firePhaseElapsedSeconds >= definition.RecoverySeconds)
+            {
+                firePhase = MobileBlasterDroidFirePhase.Ready;
+                firePhaseElapsedSeconds = 0d;
             }
         }
 
