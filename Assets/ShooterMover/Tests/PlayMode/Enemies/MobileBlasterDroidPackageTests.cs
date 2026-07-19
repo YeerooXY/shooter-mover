@@ -11,6 +11,8 @@ using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
+using ShooterMover.GameplayEntities;
+using ShooterMover.GameplayEntities.Enemies;
 using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 
@@ -100,6 +102,38 @@ namespace ShooterMover.Tests.PlayMode.Enemies
 
             TestContext.WriteLine(
                 "movement approach=2.5 retreat=-2.5 preferred-distance=5 tolerance=0.5 strafing=false predictive=false");
+        }
+
+        [Test]
+        public void SharedEnemyProjection_UsesCanonicalPackageAndActorOwnership()
+        {
+            DroidFixture fixture = CreateFixture(new Vector2(10f, 0f));
+            EnemyActorState state = GetProperty<EnemyActorState>(fixture.Package, "CurrentState");
+            GameplayEntityIdentity identity = new GameplayEntityIdentity(
+                state.ActorId,
+                GameplayEntityOwnership.None(),
+                StableId.Parse("faction.enemy"));
+
+            EnemyRuntimeProjection projection = (EnemyRuntimeProjection)InvokeInstance(
+                fixture.Definition,
+                "CreateRuntimeProjection",
+                identity,
+                state,
+                2L,
+                PlayerId,
+                StableId.Parse("enemy-phase.ready"));
+
+            Assert.That(projection.ActorState, Is.SameAs(state));
+            Assert.That(projection.Identity, Is.SameAs(identity));
+            Assert.That(projection.Definition.DefinitionId, Is.EqualTo(ExpectedEnemyPackageId));
+            Assert.That(
+                projection.Definition.MovementProfileId,
+                Is.EqualTo(StableId.Parse("module.enemy-mobile-positioning")));
+            Assert.That(projection.Definition.AttackIds, Is.EqualTo(new[] { ExpectedWeaponId }));
+            Assert.That(projection.Definition.RoomClearRole, Is.EqualTo(EnemyRoomClearRole.RequiredEnemy));
+            Assert.That(projection.CurrentTargetId, Is.EqualTo(PlayerId));
+            Assert.That(projection.LifecycleGeneration, Is.EqualTo(2L));
+            Assert.That(projection.BlocksRoomClear, Is.True);
         }
 
         [Test]
