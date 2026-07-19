@@ -13,6 +13,8 @@ namespace ShooterMover.Application.Weapons.Execution
             StableId.Parse("weapon-behavior.projectile"));
         public static readonly WeaponBehaviorId Explosive = new WeaponBehaviorId(
             StableId.Parse("weapon-behavior.explosive"));
+        public static readonly WeaponBehaviorId DamageOverTime = new WeaponBehaviorId(
+            StableId.Parse("weapon-behavior.damage-over-time"));
         public static readonly WeaponBehaviorId Chain = new WeaponBehaviorId(
             StableId.Parse("weapon-behavior.chain"));
     }
@@ -75,6 +77,8 @@ namespace ShooterMover.Application.Weapons.Execution
 
     public sealed class DefaultWeaponBehaviorSelector : IWeaponBehaviorSelector
     {
+        private const double Epsilon = 0.000000001d;
+
         public bool TrySelect(
             WeaponDefinitionData definition,
             out WeaponBehaviorId behaviorId)
@@ -91,9 +95,20 @@ namespace ShooterMover.Application.Weapons.Execution
                 return true;
             }
 
-            if (definition.AreaDamagePerTrigger > 0d || definition.ExplosionRadius > 0d)
+            if (definition.AreaDamagePerTrigger > Epsilon
+                || definition.ExplosionRadius > Epsilon)
             {
                 behaviorId = BuiltInWeaponBehaviorIds.Explosive;
+                return true;
+            }
+
+            if (definition.DotShare > Epsilon
+                || definition.DotDps > Epsilon
+                || definition.DotDuration > Epsilon
+                || definition.PoolRadius > Epsilon
+                || definition.PoolDuration > Epsilon)
+            {
+                behaviorId = BuiltInWeaponBehaviorIds.DamageOverTime;
                 return true;
             }
 
@@ -125,253 +140,5 @@ namespace ShooterMover.Application.Weapons.Execution
             id = new WeaponDefinitionId(definition.RuntimeWeaponReferenceId.ToString());
             return true;
         }
-    }
-
-    public sealed class WeaponCatalogRuntimeProfileResolver
-    {
-        private const double Epsilon = 0.000000001d;
-
-        private readonly EquipmentCatalog equipmentCatalog;
-        private readonly WeaponCatalog weaponCatalog;
-        private readonly HashSet<string> liveDefinitionIds;
-        private readonly IWeaponBehaviorSelector behaviorSelector;
-        private readonly IEquipmentWeaponDefinitionIdResolver definitionIdResolver;
-        private readonly int simulationTicksPerSecond;
-
-        public WeaponCatalogRuntimeProfileResolver(
-            EquipmentCatalog equipment,
-            WeaponCatalog weapons,
-            IWeaponBehaviorSelector selector,
-            int ticks)
-            : this(
-                equipment,
-                weapons,
-                selector,
-                new RuntimeReferenceWeaponDefinitionIdResolver(),
-                ticks)
-        {
-        }
-
-        public WeaponCatalogRuntimeProfileResolver(
-            EquipmentCatalog equipment,
-            WeaponCatalog weapons,
-            IWeaponBehaviorSelector selector,
-            IEquipmentWeaponDefinitionIdResolver idResolver,
-            int ticksPerSecond)
-        {
-            if (ticksPerSecond < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(ticksPerSecond));
-            }
-
-            equipmentCatalog = equipment ?? throw new ArgumentNullException(nameof(equipment));
-            weaponCatalog = weapons ?? throw new ArgumentNullException(nameof(weapons));
-            behaviorSelector = selector ?? throw new ArgumentNullException(nameof(selector));
-            definitionIdResolver = idResolver ?? throw new ArgumentNullException(nameof(idResolver));
-            simulationTicksPerSecond = ticksPerSecond;
-
-            liveDefinitionIds = new HashSet<string>(StringComparer.Ordinal);
-            IReadOnlyList<WeaponDefinitionData> liveDefinitions =
-                weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.LiveOnly);
-            for (int index = 0; index < liveDefinitions.Count; index++)
-            {
-                liveDefinitionIds.Add(liveDefinitions[index].DefinitionId);
-            }
-        }
-
-        public WeaponProfileResolution Resolve(
-            EquipmentInstanceId requested,
-            EquipmentInstance instance)
-        {
-            if (requested == null
-                || instance == null
-                || instance.InstanceId == null
-                || requested.Value != instance.InstanceId)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-instance-mismatch");
-            }
-
-            EquipmentValidationResult validation = equipmentCatalog.ValidateInstance(instance);
-            if (validation == null || !validation.IsValid)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-instance-invalid");
-            }
-
-            EquipmentDefinition equipment =
-                equipmentCatalog.FindEquipmentDefinition(instance.DefinitionId);
-            if (equipment == null
-                || equipment.CategoryId != EquipmentCategoryIds.Weapon
-                || equipment.RuntimeWeaponReferenceId == null)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-definition-invalid");
-            }
-
-            WeaponDefinitionId definitionId;
-            if (!definitionIdResolver.TryResolveWeaponDefinitionId(equipment, out definitionId)
-                || definitionId == null)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-definition-runtime-link-missing");
-            }
-
-            WeaponDefinitionData definition;
-            if (!weaponCatalog.TryGetDefinition(definitionId.Value, out definition)
-                || definition == null)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.UnknownWeaponDefinition,
-                    "weapon-definition-unknown:" + definitionId.Value);
-            }
-
-            if (!liveDefinitionIds.Contains(definitionId.Value))
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.PreviewOnlyWeaponDefinition,
-                    "weapon-definition-preview-only:" + definitionId.Value);
-            }
-
-            string invalidCode;
-            if (!Validate(definition, out invalidCode))
-            {
-                WeaponProfileResolutionStatus status = invalidCode.StartsWith(
-                    "weapon-effect-unsupported",
-                    StringComparison.Ordinal)
-                    ? WeaponProfileResolutionStatus.UnsupportedEffects
-                    : WeaponProfileResolutionStatus.InvalidTuning;
-                return Reject(status, invalidCode);
-            }
-
-            WeaponBehaviorId behaviorId;
-            if (!behaviorSelector.TrySelect(definition, out behaviorId) || behaviorId == null)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.UnknownBehavior,
-                    "weapon-behavior-unresolved:" + definitionId.Value);
-            }
-
-            int cooldownTicks = Math.Max(
-                1,
-                (int)Math.Ceiling(simulationTicksPerSecond / definition.FireRate));
-            return WeaponProfileResolution.Resolve(
-                new WeaponRuntimeFiringProfile(
-                    new WeaponDefinitionId(definition.DefinitionId),
-                    behaviorId,
-                    cooldownTicks,
-                    definition.ProjectilesPerTrigger,
-                    definition.SpreadDegrees,
-                    definition.ProjectileSpeed,
-                    definition.Range,
-                    definition.DamagePerProjectile,
-                    definition.Pierce,
-                    definition.AreaDamagePerTrigger,
-                    definition.ExplosionRadius,
-                    definition.ChainTargets,
-                    definition.ChainRange,
-                    definition.Knockback,
-                    definition.DamageType));
-        }
-
-        private static WeaponProfileResolution Reject(
-            WeaponProfileResolutionStatus status,
-            string code)
-        {
-            return WeaponProfileResolution.Reject(status, code);
-        }
-
-        private static bool Validate(WeaponDefinitionData definition, out string code)
-        {
-            if (definition.BurstCount != 1
-                || definition.DotShare > Epsilon
-                || definition.DotDps > Epsilon
-                || definition.DotDuration > Epsilon
-                || definition.PoolRadius > Epsilon
-                || definition.PoolDuration > Epsilon
-                || definition.HealingPerSecond > Epsilon)
-            {
-                code = "weapon-effect-unsupported:" + definition.DefinitionId;
-                return false;
-            }
-
-            if (!IsPositive(definition.FireRate)
-                || definition.ProjectilesPerTrigger < 1
-                || definition.ProjectilesPerTrigger > WeaponRuntimeFiringProfile.MaximumEffectsPerFire
-                || !IsInRange(definition.SpreadDegrees, 0d, 360d)
-                || !IsPositive(definition.ProjectileSpeed)
-                || !IsPositive(definition.Range)
-                || !IsNonNegative(definition.DamagePerProjectile)
-                || definition.Pierce < 0
-                || !IsNonNegative(definition.AreaDamagePerTrigger)
-                || !IsNonNegative(definition.ExplosionRadius)
-                || definition.ChainTargets < 0
-                || !IsNonNegative(definition.ChainRange)
-                || !IsNonNegative(definition.Knockback)
-                || string.IsNullOrWhiteSpace(definition.DamageType))
-            {
-                code = "weapon-tuning-invalid:" + definition.DefinitionId;
-                return false;
-            }
-
-            bool explosive = definition.AreaDamagePerTrigger > Epsilon
-                || definition.ExplosionRadius > Epsilon;
-            bool chain = definition.ChainTargets > 0 || definition.ChainRange > Epsilon;
-
-            if (explosive && chain)
-            {
-                code = "weapon-effect-unsupported-combination:" + definition.DefinitionId;
-                return false;
-            }
-
-            if (explosive
-                && (!IsPositive(definition.AreaDamagePerTrigger)
-                    || !IsPositive(definition.ExplosionRadius)))
-            {
-                code = "weapon-tuning-invalid-explosion:" + definition.DefinitionId;
-                return false;
-            }
-
-            if (chain
-                && (definition.ChainTargets < 1
-                    || !IsPositive(definition.ChainRange)
-                    || definition.ProjectilesPerTrigger != 1
-                    || !IsPositive(definition.DamagePerProjectile)))
-            {
-                code = "weapon-tuning-invalid-chain:" + definition.DefinitionId;
-                return false;
-            }
-
-            if (!explosive && !chain && !IsPositive(definition.DamagePerProjectile))
-            {
-                code = "weapon-tuning-invalid-direct:" + definition.DefinitionId;
-                return false;
-            }
-
-            code = string.Empty;
-            return true;
-        }
-
-        private static bool IsPositive(double value)
-        {
-            return !double.IsNaN(value) && !double.IsInfinity(value) && value > 0d;
-        }
-
-        private static bool IsNonNegative(double value)
-        {
-            return !double.IsNaN(value) && !double.IsInfinity(value) && value >= 0d;
-        }
-
-        private static bool IsInRange(double value, double minimum, double maximum)
-        {
-            return !double.IsNaN(value)
-                && !double.IsInfinity(value)
-                && value >= minimum
-                && value <= maximum;
-        }
-    }
+}
 }

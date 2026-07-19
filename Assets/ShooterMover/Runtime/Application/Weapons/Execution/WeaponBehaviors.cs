@@ -77,14 +77,7 @@ namespace ShooterMover.Application.Weapons.Execution
                 new List<IWeaponEffectDescription>(context.Profile.ProjectileCount);
             for (int index = 0; index < context.Profile.ProjectileCount; index++)
             {
-                WeaponVector2 direction = WeaponDeterministicSpread.DirectionFor(
-                    context.Command.AimDirection,
-                    context.Profile.SpreadDegrees,
-                    context.Command.DeterministicSeed,
-                    context.Command.FireOperationId,
-                    context.Command.EquipmentInstanceId,
-                    context.ShotSequence,
-                    new ProjectileOrdinal(index));
+                WeaponVector2 direction = Direction(context, index);
                 effects.Add(
                     new DirectProjectileEffect(
                         context.IdentityFor(index),
@@ -99,6 +92,18 @@ namespace ShooterMover.Application.Weapons.Execution
             }
 
             return WeaponBehaviorBuildResult.Accept(new WeaponEffectBatch(effects));
+        }
+
+        private static WeaponVector2 Direction(WeaponBehaviorContext context, int index)
+        {
+            return WeaponDeterministicSpread.DirectionFor(
+                context.Command.AimDirection,
+                context.Profile.SpreadDegrees,
+                context.Command.DeterministicSeed,
+                context.Command.FireOperationId,
+                context.Command.EquipmentInstanceId,
+                context.ShotSequence,
+                new ProjectileOrdinal(index));
         }
     }
 
@@ -138,6 +143,53 @@ namespace ShooterMover.Application.Weapons.Execution
                         context.Profile.DirectDamage,
                         context.Profile.AreaDamage,
                         context.Profile.ExplosionRadius,
+                        context.Profile.Knockback,
+                        context.Profile.DamageType));
+            }
+
+            return WeaponBehaviorBuildResult.Accept(new WeaponEffectBatch(effects));
+        }
+    }
+
+    public sealed class DamageOverTimeWeaponBehavior : IWeaponBehavior
+    {
+        public WeaponBehaviorId BehaviorId
+        {
+            get { return BuiltInWeaponBehaviorIds.DamageOverTime; }
+        }
+
+        public WeaponBehaviorBuildResult Build(WeaponBehaviorContext context)
+        {
+            if (context == null)
+            {
+                return WeaponBehaviorBuildResult.Reject("weapon-context-missing");
+            }
+
+            List<IWeaponEffectDescription> effects =
+                new List<IWeaponEffectDescription>(context.Profile.ProjectileCount);
+            for (int index = 0; index < context.Profile.ProjectileCount; index++)
+            {
+                WeaponVector2 direction = WeaponDeterministicSpread.DirectionFor(
+                    context.Command.AimDirection,
+                    context.Profile.SpreadDegrees,
+                    context.Command.DeterministicSeed,
+                    context.Command.FireOperationId,
+                    context.Command.EquipmentInstanceId,
+                    context.ShotSequence,
+                    new ProjectileOrdinal(index));
+                effects.Add(
+                    new DamageOverTimeProjectileEffect(
+                        context.IdentityFor(index),
+                        context.Command.Origin,
+                        direction,
+                        context.Profile.ProjectileSpeed,
+                        context.Profile.ProjectileRange,
+                        context.Profile.DirectDamage,
+                        context.Profile.Pierce,
+                        context.Profile.DotDps,
+                        context.Profile.DotDuration,
+                        context.Profile.PoolRadius,
+                        context.Profile.PoolDuration,
                         context.Profile.Knockback,
                         context.Profile.DamageType));
             }

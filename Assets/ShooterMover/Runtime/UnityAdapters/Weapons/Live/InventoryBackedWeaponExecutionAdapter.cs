@@ -3,22 +3,24 @@ using System.Collections.Generic;
 using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
+    /// <summary>
+    /// Converts one immutable inventory-backed fire intent into WPN-CORE-002 execution.
+    /// Equipment is already locked into the request and is never re-resolved from the
+    /// currently selected slot during a retry.
+    /// </summary>
     public sealed class InventoryBackedWeaponExecutionAdapter : IEquippedWeaponInstanceResolver
     {
-        private readonly IPlayerHoldingsAuthorityV1 holdingsAuthority;
-        private readonly IActiveWeaponEquipmentInstanceSource activeEquipmentSource;
-        private readonly CatalogProjectingEffectSink effectSink;
+        private readonly IPlayerEquipmentInstanceLookup equipmentLookup;
+        private readonly RecordingEffectSink effectSink;
         private readonly WeaponExecutionCore executionCore;
 
         public InventoryBackedWeaponExecutionAdapter(
-            IPlayerHoldingsAuthorityV1 holdings,
-            IActiveWeaponEquipmentInstanceSource activeEquipment,
+            IPlayerEquipmentInstanceLookup lookup,
             EquipmentCatalog equipmentCatalog,
             WeaponCatalog weaponCatalog,
             IWeaponActorOwnershipResolver ownershipResolver,
@@ -32,23 +34,18 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 throw new ArgumentOutOfRangeException(nameof(simulationTicksPerSecond));
             }
 
-            holdingsAuthority = holdings ?? throw new ArgumentNullException(nameof(holdings));
-            activeEquipmentSource = activeEquipment
-                ?? throw new ArgumentNullException(nameof(activeEquipment));
-            WeaponCatalog originalCatalog = weaponCatalog
-                ?? throw new ArgumentNullException(nameof(weaponCatalog));
-            effectSink = new CatalogProjectingEffectSink(
-                originalCatalog,
+            equipmentLookup = lookup ?? throw new ArgumentNullException(nameof(lookup));
+            WeaponCatalog catalog = weaponCatalog ?? throw new ArgumentNullException(nameof(weaponCatalog));
+            effectSink = new RecordingEffectSink(
+                catalog,
                 downstreamEffectSink ?? throw new ArgumentNullException(nameof(downstreamEffectSink)),
                 simulationTicksPerSecond);
 
-            WeaponCatalogRuntimeProfileResolver profileResolver =
-                new WeaponCatalogRuntimeProfileResolver(
-                    equipmentCatalog ?? throw new ArgumentNullException(nameof(equipmentCatalog)),
-                    WeaponCatalogExecutionProjection.Create(originalCatalog),
-                    behaviorSelector ?? new DefaultWeaponBehaviorSelector(),
-                    simulationTicksPerSecond);
-
+            var profileResolver = new WeaponCatalogRuntimeProfileResolver(
+                equipmentCatalog ?? throw new ArgumentNullException(nameof(equipmentCatalog)),
+                catalog,
+                behaviorSelector ?? new DefaultWeaponBehaviorSelector(),
+                simulationTicksPerSecond);
             executionCore = new WeaponExecutionCore(
                 ownershipResolver ?? throw new ArgumentNullException(nameof(ownershipResolver)),
                 this,
@@ -57,35 +54,45 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 effectSink);
         }
 
+        public InventoryBackedWeaponExecutionAdapter(
+            IPlayerHoldingsAuthorityV1 holdings,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            IWeaponActorOwnershipResolver ownershipResolver,
+            IInventoryWeaponEffectBatchSink downstreamEffectSink,
+            int simulationTicksPerSecond,
+            IWeaponBehaviorSelector behaviorSelector = null,
+            WeaponBehaviorRegistry behaviorRegistry = null)
+            : this(
+                new PlayerHoldingsEquipmentInstanceLookup(
+                    holdings ?? throw new ArgumentNullException(nameof(holdings))),
+                equipmentCatalog,
+                weaponCatalog,
+                ownershipResolver,
+                downstreamEffectSink,
+                simulationTicksPerSecond,
+                behaviorSelector,
+                behaviorRegistry)
+        {
+        }
+
         public InventoryWeaponExecutionResult TryExecute(InventoryWeaponFireRequest request)
         {
             if (request == null
                 || request.ActorId == null
+                || request.EquipmentInstanceId == null
                 || request.FireOperationId == null
                 || request.LifecycleGeneration == null)
             {
                 return Reject(
-                    null,
+                    request == null ? null : request.EquipmentInstanceId,
                     WeaponExecutionStatus.InvalidCommand,
                     "weapon-live-request-invalid");
             }
 
-            EquipmentInstanceId activeEquipmentId;
-            if (!activeEquipmentSource.TryResolveActiveEquipmentInstance(
-                    request.ActorId,
-                    request.LifecycleGeneration,
-                    out activeEquipmentId)
-                || activeEquipmentId == null)
-            {
-                return Reject(
-                    null,
-                    WeaponExecutionStatus.MissingEquippedEquipment,
-                    "weapon-live-active-equipment-unresolved");
-            }
-
-            WeaponFireCommand command = new WeaponFireCommand(
+            var command = new WeaponFireCommand(
                 request.ActorId,
-                activeEquipmentId,
+                request.EquipmentInstanceId,
                 request.FireOperationId,
                 request.LifecycleGeneration,
                 request.SimulationTick,
@@ -101,7 +108,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 effectSink.TryGetAccepted(command, out batch);
             }
 
-            return new InventoryWeaponExecutionResult(activeEquipmentId, execution, batch);
+            return new InventoryWeaponExecutionResult(
+                request.EquipmentInstanceId,
+                execution,
+                batch);
         }
 
         public bool TryResolveEquippedWeapon(
@@ -110,43 +120,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             out EquipmentInstance equipmentInstance)
         {
             equipmentInstance = null;
-            if (actorId == null || requestedEquipmentInstanceId == null)
-            {
-                return false;
-            }
-
-            PlayerHoldingsSnapshotV1 snapshot;
-            try
-            {
-                snapshot = holdingsAuthority.ExportSnapshot();
-            }
-            catch
-            {
-                return false;
-            }
-
-            if (snapshot == null)
-            {
-                return false;
-            }
-
-            for (int index = 0; index < snapshot.UniqueHoldings.Count; index++)
-            {
-                var holding = snapshot.UniqueHoldings[index];
-                if (holding == null
-                    || holding.RewardKind != RewardGrantKindV1.EquipmentReference
-                    || holding.InstanceStableId != requestedEquipmentInstanceId.Value
-                    || holding.EquipmentInstance == null
-                    || holding.EquipmentInstance.InstanceId != requestedEquipmentInstanceId.Value)
-                {
-                    continue;
-                }
-
-                equipmentInstance = holding.EquipmentInstance;
-                return true;
-            }
-
-            return false;
+            return actorId != null
+                && requestedEquipmentInstanceId != null
+                && equipmentLookup.TryResolve(
+                    requestedEquipmentInstanceId,
+                    out equipmentInstance)
+                && equipmentInstance != null
+                && equipmentInstance.InstanceId == requestedEquipmentInstanceId.Value;
         }
 
         private static InventoryWeaponExecutionResult Reject(
@@ -160,7 +140,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 null);
         }
 
-        private sealed class CatalogProjectingEffectSink : IWeaponEffectBatchSink
+        private sealed class RecordingEffectSink : IWeaponEffectBatchSink
         {
             private readonly object gate = new object();
             private readonly WeaponCatalog weaponCatalog;
@@ -169,7 +149,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             private readonly Dictionary<string, InventoryWeaponEffectBatch> acceptedBatches =
                 new Dictionary<string, InventoryWeaponEffectBatch>(StringComparer.Ordinal);
 
-            public CatalogProjectingEffectSink(
+            public RecordingEffectSink(
                 WeaponCatalog catalog,
                 IInventoryWeaponEffectBatchSink downstreamSink,
                 int simulationTicksPerSecond)
@@ -188,13 +168,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
                 WeaponDefinitionData definition;
                 string definitionId = coreBatch.Identity.WeaponDefinitionId.Value;
-                if (!weaponCatalog.TryGetDefinition(definitionId, out definition) || definition == null)
+                if (!weaponCatalog.TryGetDefinition(definitionId, out definition)
+                    || definition == null)
                 {
                     return WeaponEffectBatchSinkResult.Reject(
                         "weapon-live-definition-unresolved:" + definitionId);
                 }
 
-                InventoryWeaponEffectBatch projected = new InventoryWeaponEffectBatch(
+                var projected = new InventoryWeaponEffectBatch(
                     coreBatch,
                     InventoryWeaponEffectProfile.From(definition, ticksPerSecond));
                 WeaponEffectBatchSinkResult result = downstream.TryAccept(projected);
@@ -228,17 +209,15 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             private static string Key(WeaponEffectIdentity identity)
             {
                 return identity.ActorId + "|"
-                    + identity.EquipmentInstanceId + "|"
-                    + identity.FireOperationId + "|"
-                    + identity.LifecycleGeneration;
+                    + identity.LifecycleGeneration + "|"
+                    + identity.FireOperationId;
             }
 
             private static string Key(WeaponFireCommand command)
             {
                 return command.ActorId + "|"
-                    + command.EquipmentInstanceId + "|"
-                    + command.FireOperationId + "|"
-                    + command.LifecycleGeneration;
+                    + command.LifecycleGeneration + "|"
+                    + command.FireOperationId;
             }
         }
     }

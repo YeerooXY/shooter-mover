@@ -6,99 +6,109 @@
 - Branch: `agent/wpn-live-001-inventory-execution`
 - Target: `main`
 
-## Runtime flow
+## Corrected runtime flow
 
-The adapter composes existing authorities rather than introducing another weapon runtime:
-
-`active concrete equipment-instance ID`
-→ `IPlayerHoldingsAuthorityV1` exact immutable equipment payload
-→ existing equipment definition and runtime weapon reference
+`PlayerRouteProfilePayloadV1` exact four-slot loadout
+→ selected concrete equipment-instance identity
+→ immutable `InventoryWeaponFireRequest` locking that identity
+→ sequence-cached exact equipment lookup over `IPlayerHoldingsAuthorityV1`
+→ equipment definition/runtime weapon reference
 → JSON-derived `WeaponCatalog` definition
 → `WeaponExecutionCore.TryExecute`
-→ atomic inventory/live effect sink
-→ immutable execution result and effect batch.
+→ canonical atomic `WeaponEffectBatch`
+→ transactional Unity effect emission.
 
-`InventoryBackedWeaponExecutionAdapter` is a reusable Unity-facing adapter and implements
-the existing `IEquippedWeaponInstanceResolver` port. It accepts only the concrete active
-instance ID and finds the exact matching equipment payload in the holdings authority
-snapshot. Missing, non-equipment, mismatched, or unknown instances fail closed.
+No fire retry asks “which weapon is active now?” The concrete equipment identity is captured when the
+fire intent is created and remains part of the command fingerprint.
 
-## WPN-CORE ownership
+## Operation and cooldown ownership
 
-WPN-CORE-002 remains the sole firing authority for:
+WPN-CORE-002 now keeps two deliberately different scopes:
 
-- actor and lifecycle ownership;
-- exact equipment-instance identity;
-- catalog profile resolution;
-- behavior selection;
-- deterministic spread;
-- projectile count;
-- cooldown state;
-- accepted operation replay;
-- conflicting duplicate detection;
-- atomic sink acceptance;
-- shot sequence.
+- accepted fire-operation admission is keyed by actor, lifecycle generation, and operation identity;
+- cooldown and shot sequence remain keyed by actor, concrete equipment instance, and lifecycle generation.
 
-The adapter does not contain a weapon-name switch, runtime-ID switch, default weapon, or
-fallback behavior. Blaster, Shotgun, Rocket Launcher, Flamethrower, and future definitions
-follow the same catalog-driven path.
+Consequences:
 
-## Damage-over-time handoff
+- an exact retry of the original locked request returns `ReplayAccepted` and emits nothing twice;
+- reusing the operation identity with another equipment instance returns `ConflictingDuplicate`;
+- two legitimate equipment instances still have independent cooldowns;
+- a new lifecycle generation receives a fresh operation and cooldown scope.
 
-WPN-CORE-002 currently models direct, explosive, and chain effect descriptions. The live
-adapter therefore creates an immutable core-compatible catalog projection for WPN-CORE and
-keeps the original JSON-derived definition attached to the atomic live effect batch. This
-preserves damage-over-time and pool fields without changing WPN-CORE cooldown, replay,
-spread, or acceptance authority.
+## Canonical DoT and pool effects
 
-The projection is derived once from the supplied immutable catalog. It owns no mutable
-state, registration, balance, lookup identity, or fallback and is not a second catalog or
-weapon authority. The downstream live sink receives:
+Damage-over-time support no longer uses a zeroed catalog projection or side metadata. WPN-CORE owns a
+first-class `DamageOverTimeProjectileEffect` containing:
 
-- the accepted immutable WPN-CORE effect batch;
-- exact definition identity;
-- damage and area damage;
-- fire rate and core-equivalent cooldown ticks;
-- spread and projectile count;
-- projectile speed and range;
-- pierce;
-- damage-over-time DPS and duration;
-- pool radius and duration;
-- chain, knockback, and damage-type metadata.
+- origin and locked direction;
+- speed and range;
+- direct damage and pierce;
+- DoT DPS and duration;
+- persistent pool radius and duration;
+- knockback and damage type;
+- full actor, participant, equipment, definition, operation, lifecycle, shot, and ordinal identity.
 
-The downstream sink is called inside WPN-CORE's atomic sink boundary. Rejection does not
-commit cooldown, replay, or shot-sequence state.
+Those fields are included in `ToCanonicalString()`, core validation, and the immutable batch fingerprint.
+Definitions with incomplete DoT/pool pairs fail closed. The built-in DoT behavior is selected from catalog
+facts without weapon-name or weapon-ID branching.
 
-## Replay behavior
+## Holdings hot-path lookup
 
-Accepted live batches are retained only as an immutable presentation projection keyed by
-actor, equipment instance, operation, and lifecycle generation. WPN-CORE still decides
-whether a request is an exact accepted replay or a conflicting duplicate.
+`PlayerHoldingsEquipmentInstanceLookup` checks the authority sequence on each lookup and exports/canonicalizes
+a holdings snapshot only when that sequence changes. Repeated high-rate fire against unchanged holdings is a
+dictionary lookup rather than a full holdings, stack, transaction, ledger, and fingerprint rebuild.
 
-- Exact replay returns the original immutable live batch and does not call the downstream
-  sink again.
-- A changed command under an accepted operation ID is rejected as
-  `ConflictingDuplicate`.
-- Different concrete equipment instances retain independent cooldown state.
+## Production composition
 
-## Stage 1 controller boundary
+The production-compatible composition is outside `Stage1VisibleSliceController.cs`:
 
-`Assets/ShooterMover/Production/Stage1/Stage1VisibleSliceController.cs` is intentionally not
-modified. Final scene/controller composition can inject the active-equipment source and
-Unity effect sink without moving weapon selection or firing logic back into that controller.
+- `RouteProfileActiveWeaponSource` consumes the real immutable route/loadout payload and owns only active-slot selection;
+- `PlayerRuntimeWeaponStateAdapter` projects actor, participant, and lifecycle facts from the real `PlayerRuntimeComposition`;
+- `PlayerInventoryWeaponRuntimeCompositionRoot` creates the lookup, adapter, intent factory, active-slot source, and runtime;
+- `InventoryWeaponEffectEmitter2D` stages the complete core batch under an inactive Unity root, configures every effect, and activates the root only after all effects succeed;
+- canonical DoT projectiles create physical `InventoryWeaponPersistentDamageArea2D` pool objects from the core effect description.
 
-## Focused verification command
+The emitter is idempotent by actor/lifecycle/operation and rejects a conflicting batch fingerprint. It does
+not create health, inventory, loadout, cooldown, replay, or weapon-definition authority.
+
+## Focused verification commands
+
+Cold Unity script compilation:
 
 ```bash
-Unity -batchmode -projectPath <project> -runTests -testPlatform EditMode \
-  -testFilter ShooterMover.Tests.EditMode.Weapons.Live.InventoryBackedWeaponExecutionAdapterTests \
+"<UNITY_EDITOR>" -batchmode -nographics -projectPath <project> \
+  -quit -logFile artifacts/test-results/WPN-LIVE-001-Compile.log
+```
+
+Focused EditMode:
+
+```bash
+"<UNITY_EDITOR>" -batchmode -nographics -projectPath <project> \
+  -runTests -testPlatform EditMode \
+  -testFilter ShooterMover.Tests.EditMode.Weapons \
   -testResults artifacts/test-results/WPN-LIVE-001-EditMode.xml \
   -logFile artifacts/test-results/WPN-LIVE-001-EditMode.log
 ```
 
-Full compilation command:
+Focused PlayMode:
 
 ```bash
-Unity -batchmode -projectPath <project> -quit \
-  -logFile artifacts/test-results/WPN-LIVE-001-Compile.log
+"<UNITY_EDITOR>" -batchmode -nographics -projectPath <project> \
+  -runTests -testPlatform PlayMode \
+  -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponRuntimePlayModeTests \
+  -testResults artifacts/test-results/WPN-LIVE-001-PlayMode.xml \
+  -logFile artifacts/test-results/WPN-LIVE-001-PlayMode.log
 ```
+
+Unity 6.3 test commands intentionally omit `-quit` because `-runTests` exits automatically and `-quit` may
+terminate before the Test Framework begins.
+
+## Proof status
+
+The connector authoring environment has no Unity editor or repository checkout, so it cannot generate valid
+Unity compilation logs or XML. The PR must remain draft and non-merge-ready until a Unity-capable runner
+executes the exact reviewed head and attaches zero-failure XML/log evidence.
+
+## Prohibited controller statement
+
+`Assets/ShooterMover/Production/Stage1/Stage1VisibleSliceController.cs` is not modified.
