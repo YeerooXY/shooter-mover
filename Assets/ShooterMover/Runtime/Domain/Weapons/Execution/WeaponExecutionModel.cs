@@ -1,7 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Domain.Common;
 
@@ -29,6 +28,34 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
     }
 
+    public static class WeaponExecutionFingerprint
+    {
+        public const string Prefix = "sha256:";
+
+        public static string Compute(string canonicalText)
+        {
+            if (canonicalText == null)
+            {
+                throw new ArgumentNullException(nameof(canonicalText));
+            }
+
+            byte[] bytes = Encoding.UTF8.GetBytes(canonicalText);
+            byte[] hash;
+            using (SHA256 algorithm = SHA256.Create())
+            {
+                hash = algorithm.ComputeHash(bytes);
+            }
+
+            StringBuilder builder = new StringBuilder(Prefix, Prefix.Length + (hash.Length * 2));
+            for (int index = 0; index < hash.Length; index++)
+            {
+                builder.Append(hash[index].ToString("x2", CultureInfo.InvariantCulture));
+            }
+
+            return builder.ToString();
+        }
+    }
+
     public sealed class WeaponActorInstanceId : IEquatable<WeaponActorInstanceId>
     {
         public WeaponActorInstanceId(StableId value)
@@ -37,10 +64,26 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public StableId Value { get; }
-        public bool Equals(WeaponActorInstanceId other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as WeaponActorInstanceId); }
-        public override int GetHashCode() { return Value.GetHashCode(); }
-        public override string ToString() { return Value.ToString(); }
+
+        public bool Equals(WeaponActorInstanceId other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as WeaponActorInstanceId);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
     public sealed class RunParticipantId : IEquatable<RunParticipantId>
@@ -51,10 +94,26 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public StableId Value { get; }
-        public bool Equals(RunParticipantId other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as RunParticipantId); }
-        public override int GetHashCode() { return Value.GetHashCode(); }
-        public override string ToString() { return Value.ToString(); }
+
+        public bool Equals(RunParticipantId other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as RunParticipantId);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
     public sealed class EquipmentInstanceId : IEquatable<EquipmentInstanceId>
@@ -65,10 +124,26 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public StableId Value { get; }
-        public bool Equals(EquipmentInstanceId other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as EquipmentInstanceId); }
-        public override int GetHashCode() { return Value.GetHashCode(); }
-        public override string ToString() { return Value.ToString(); }
+
+        public bool Equals(EquipmentInstanceId other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as EquipmentInstanceId);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
     public sealed class WeaponDefinitionId : IEquatable<WeaponDefinitionId>
@@ -84,14 +159,27 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public string Value { get; }
+
         public bool Equals(WeaponDefinitionId other)
         {
             return !ReferenceEquals(other, null)
                 && string.Equals(Value, other.Value, StringComparison.Ordinal);
         }
-        public override bool Equals(object obj) { return Equals(obj as WeaponDefinitionId); }
-        public override int GetHashCode() { return WeaponExecutionHash.Of(Value); }
-        public override string ToString() { return Value; }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as WeaponDefinitionId);
+        }
+
+        public override int GetHashCode()
+        {
+            return WeaponExecutionHash.Of(Value);
+        }
+
+        public override string ToString()
+        {
+            return Value;
+        }
     }
 
     public sealed class WeaponBehaviorId : IEquatable<WeaponBehaviorId>
@@ -102,10 +190,26 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public StableId Value { get; }
-        public bool Equals(WeaponBehaviorId other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as WeaponBehaviorId); }
-        public override int GetHashCode() { return Value.GetHashCode(); }
-        public override string ToString() { return Value.ToString(); }
+
+        public bool Equals(WeaponBehaviorId other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as WeaponBehaviorId);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
     public sealed class FireOperationId : IEquatable<FireOperationId>
@@ -116,40 +220,96 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public StableId Value { get; }
-        public bool Equals(FireOperationId other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as FireOperationId); }
-        public override int GetHashCode() { return Value.GetHashCode(); }
-        public override string ToString() { return Value.ToString(); }
+
+        public bool Equals(FireOperationId other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as FireOperationId);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
     public sealed class LifecycleGeneration : IEquatable<LifecycleGeneration>
     {
         public LifecycleGeneration(long value)
         {
-            if (value < 0L) throw new ArgumentOutOfRangeException(nameof(value));
+            if (value < 0L)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
             Value = value;
         }
 
         public long Value { get; }
-        public bool Equals(LifecycleGeneration other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as LifecycleGeneration); }
-        public override int GetHashCode() { return Value.GetHashCode(); }
-        public override string ToString() { return Value.ToString(CultureInfo.InvariantCulture); }
+
+        public bool Equals(LifecycleGeneration other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as LifecycleGeneration);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString(CultureInfo.InvariantCulture);
+        }
     }
 
     public sealed class ProjectileOrdinal : IEquatable<ProjectileOrdinal>
     {
         public ProjectileOrdinal(int value)
         {
-            if (value < 0) throw new ArgumentOutOfRangeException(nameof(value));
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
             Value = value;
         }
 
         public int Value { get; }
-        public bool Equals(ProjectileOrdinal other) { return !ReferenceEquals(other, null) && Value == other.Value; }
-        public override bool Equals(object obj) { return Equals(obj as ProjectileOrdinal); }
-        public override int GetHashCode() { return Value; }
-        public override string ToString() { return Value.ToString(CultureInfo.InvariantCulture); }
+
+        public bool Equals(ProjectileOrdinal other)
+        {
+            return !ReferenceEquals(other, null) && Value == other.Value;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as ProjectileOrdinal);
+        }
+
+        public override int GetHashCode()
+        {
+            return Value;
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString(CultureInfo.InvariantCulture);
+        }
     }
 
     public sealed class WeaponVector2 : IEquatable<WeaponVector2>
@@ -162,21 +322,32 @@ namespace ShooterMover.Domain.Weapons.Execution
 
         public double X { get; }
         public double Y { get; }
+
         public bool IsFinite
         {
             get
             {
-                return !double.IsNaN(X) && !double.IsInfinity(X)
-                    && !double.IsNaN(Y) && !double.IsInfinity(Y);
+                return !double.IsNaN(X)
+                    && !double.IsInfinity(X)
+                    && !double.IsNaN(Y)
+                    && !double.IsInfinity(Y);
             }
         }
-        public double LengthSquared { get { return (X * X) + (Y * Y); } }
+
+        public double LengthSquared
+        {
+            get { return (X * X) + (Y * Y); }
+        }
 
         public WeaponVector2 Normalized
         {
             get
             {
-                if (!IsFinite || LengthSquared <= 0d) return new WeaponVector2(0d, 0d);
+                if (!IsFinite || LengthSquared <= 0d)
+                {
+                    return new WeaponVector2(0d, 0d);
+                }
+
                 double length = Math.Sqrt(LengthSquared);
                 return new WeaponVector2(X / length, Y / length);
             }
@@ -187,21 +358,28 @@ namespace ShooterMover.Domain.Weapons.Execution
             double radians = degrees * Math.PI / 180d;
             double cosine = Math.Cos(radians);
             double sine = Math.Sin(radians);
-            return new WeaponVector2((X * cosine) - (Y * sine), (X * sine) + (Y * cosine));
+            return new WeaponVector2(
+                (X * cosine) - (Y * sine),
+                (X * sine) + (Y * cosine));
         }
 
         public bool Equals(WeaponVector2 other)
         {
-            return !ReferenceEquals(other, null) && X.Equals(other.X) && Y.Equals(other.Y);
+            return !ReferenceEquals(other, null)
+                && X.Equals(other.X)
+                && Y.Equals(other.Y);
         }
-        public override bool Equals(object obj) { return Equals(obj as WeaponVector2); }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as WeaponVector2);
+        }
+
         public override int GetHashCode()
         {
-            return WeaponExecutionHash.Of(
-                X.ToString("R", CultureInfo.InvariantCulture)
-                + "|"
-                + Y.ToString("R", CultureInfo.InvariantCulture));
+            return WeaponExecutionHash.Of(ToString());
         }
+
         public override string ToString()
         {
             return X.ToString("R", CultureInfo.InvariantCulture)
