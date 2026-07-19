@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
-using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
@@ -41,13 +40,14 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             }
 
             createdObjects.Clear();
-            BoundedProjectile2D[] projectiles =
-                Resources.FindObjectsOfTypeAll<BoundedProjectile2D>();
+            UnityEngine.Object[] projectiles =
+                Resources.FindObjectsOfTypeAll(RuntimeTypes.BoundedProjectile);
             for (int index = 0; index < projectiles.Length; index++)
             {
-                if (projectiles[index] != null && projectiles[index].gameObject != null)
+                Component component = projectiles[index] as Component;
+                if (component != null && component.gameObject != null)
                 {
-                    UnityEngine.Object.DestroyImmediate(projectiles[index].gameObject);
+                    UnityEngine.Object.DestroyImmediate(component.gameObject);
                 }
             }
         }
@@ -87,7 +87,7 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(debug.SelectedTargetId, Is.Null);
             Assert.That(debug.SelectedTargetWithinDetectionRange, Is.False);
             Assert.That(debug.RequestedAttack, Is.Null);
-            Assert.That(GetProperty<object>(fixture.Package, "FirePhase").ToString(), Is.EqualTo("Ready"));
+            Assert.That(GetPhase(fixture), Is.EqualTo("Ready"));
             Assert.That(fixture.EnemyBody.linearVelocity, Is.EqualTo(Vector2.zero));
         }
 
@@ -121,13 +121,17 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(accepted, Is.Not.Null);
             Assert.That(accepted.AttackerEntityId, Is.EqualTo(EnemyId));
             Assert.That(accepted.TargetEntityId, Is.EqualTo(PlayerId));
-            Assert.That(GetProperty<object>(fixture.Package, "FirePhase").ToString(), Is.EqualTo("WindUp"));
+            Assert.That(GetPhase(fixture), Is.EqualTo("WindUp"));
 
             object[] arguments = { null };
-            Assert.That(InvokeWithArguments(fixture.Package, "TryDequeueAttackIntent", arguments), Is.EqualTo(true));
+            Assert.That(
+                InvokeWithArguments(fixture.Package, "TryDequeueAttackIntent", arguments),
+                Is.EqualTo(true));
             Assert.That(arguments[0], Is.SameAs(accepted));
             object[] emptyArguments = { null };
-            Assert.That(InvokeWithArguments(fixture.Package, "TryDequeueAttackIntent", emptyArguments), Is.EqualTo(false));
+            Assert.That(
+                InvokeWithArguments(fixture.Package, "TryDequeueAttackIntent", emptyArguments),
+                Is.EqualTo(false));
         }
 
         [Test]
@@ -147,7 +151,9 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 "LiveDebugSnapshot");
             Assert.That(debug.SelectedTargetHasLineOfSight, Is.False);
             Assert.That(debug.RequestedAttack, Is.Null);
-            Assert.That(GetProperty<EnemyAttackIntent>(fixture.Package, "LastAcceptedAttackIntent"), Is.Null);
+            Assert.That(
+                GetProperty<EnemyAttackIntent>(fixture.Package, "LastAcceptedAttackIntent"),
+                Is.Null);
         }
 
         [Test]
@@ -167,8 +173,37 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             Assert.That(debug.RequestedAttack, Is.Null);
             Assert.That(debug.BehaviorPhaseId.ToString(), Does.Contain("wind-up"));
             Assert.That(debug.DecisionReasonCode.ToString(), Does.Contain("cadence-not-ready"));
-            Assert.That(GetProperty<EnemyAttackIntent>(fixture.Package, "LastAcceptedAttackIntent"), Is.SameAs(accepted));
+            Assert.That(
+                GetProperty<EnemyAttackIntent>(fixture.Package, "LastAcceptedAttackIntent"),
+                Is.SameAs(accepted));
             Assert.That(GetProperty<int>(fixture.Package, "PendingAttackIntentCount"), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecoveryCompletion_EvaluatesReadyBeforeTheFollowingWindUp()
+        {
+            DroidFixture fixture = CreateFixture(new Vector2(5f, 0f));
+            Execute(fixture, 0.01d);
+            Execute(fixture, 0.31d);
+            Assert.That(GetPhase(fixture), Is.EqualTo("Recovery"));
+
+            Execute(fixture, 0.79d);
+            Assert.That(GetPhase(fixture), Is.EqualTo("Recovery"));
+            Execute(fixture, 0.02d);
+
+            EnemyDebugSnapshot readyDebug = GetProperty<EnemyDebugSnapshot>(
+                fixture.Package,
+                "LiveDebugSnapshot");
+            Assert.That(GetPhase(fixture), Is.EqualTo("Ready"));
+            Assert.That(
+                readyDebug.BehaviorPhaseId,
+                Is.EqualTo(GetProperty<object>(fixture.Definition, "ReadyPhaseId")));
+            Assert.That(
+                readyDebug.DecisionReasonCode.ToString(),
+                Does.Not.Contain("cadence-not-ready"));
+
+            Execute(fixture, 0.01d);
+            Assert.That(GetPhase(fixture), Is.EqualTo("WindUp"));
         }
 
         [Test]
@@ -183,20 +218,28 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 4d,
                 0L);
             Assert.That(damage.Status, Is.EqualTo(EnemyTarget2DHitStatus.Applied));
-            Assert.That(GetProperty<EnemyActorState>(fixture.Package, "CurrentState").Health, Is.EqualTo(12d));
+            Assert.That(
+                GetProperty<EnemyActorState>(fixture.Package, "CurrentState").Health,
+                Is.EqualTo(12d));
 
             EnemyTarget2DHitApplication lethal = fixture.EnemyTarget.ApplyHit(
                 Hit("live-lethal"),
                 1000d,
                 1L);
             Assert.That(lethal.Status, Is.EqualTo(EnemyTarget2DHitStatus.Applied));
-            Assert.That(GetProperty<EnemyActorState>(fixture.Package, "CurrentState").IsDestroyed, Is.True);
-            Assert.That(GetProperty<EnemyDestroyedNotification>(fixture.Package, "LastDestroyedNotification"), Is.Not.Null);
+            Assert.That(
+                GetProperty<EnemyActorState>(fixture.Package, "CurrentState").IsDestroyed,
+                Is.True);
+            Assert.That(
+                GetProperty<EnemyDestroyedNotification>(fixture.Package, "LastDestroyedNotification"),
+                Is.Not.Null);
 
             EnemyActor2DFixedStepResult stopped = Execute(fixture, 0.5d);
             Assert.That(stopped.Status, Is.EqualTo(EnemyActor2DFixedStepStatus.ActorInactive));
             Assert.That(fixture.EnemyBody.linearVelocity, Is.EqualTo(Vector2.zero));
-            Assert.That(GetProperty<long>(fixture.Package, "FireAttemptCount"), Is.EqualTo(attemptsBeforeDeath));
+            Assert.That(
+                GetProperty<long>(fixture.Package, "FireAttemptCount"),
+                Is.EqualTo(attemptsBeforeDeath));
             Assert.That(GetProperty<int>(fixture.Package, "ActiveProjectileCount"), Is.Zero);
         }
 
@@ -209,16 +252,23 @@ namespace ShooterMover.Tests.PlayMode.Enemies
 
             Assert.That((bool)InvokeInstance(fixture.Package, "RestartSession"), Is.True);
 
-            EnemyActorState restarted = GetProperty<EnemyActorState>(fixture.Package, "CurrentState");
+            EnemyActorState restarted =
+                GetProperty<EnemyActorState>(fixture.Package, "CurrentState");
             Assert.That(restarted.IsActive, Is.True);
             Assert.That(restarted.Health, Is.EqualTo(16d));
-            Assert.That(GetProperty<long>(fixture.Package, "Generation"), Is.EqualTo(generation + 1L));
-            Assert.That(GetProperty<object>(fixture.Package, "FirePhase").ToString(), Is.EqualTo("Ready"));
-            Assert.That(GetProperty<EnemyDestroyedNotification>(fixture.Package, "LastDestroyedNotification"), Is.Null);
+            Assert.That(
+                GetProperty<long>(fixture.Package, "Generation"),
+                Is.EqualTo(generation + 1L));
+            Assert.That(GetPhase(fixture), Is.EqualTo("Ready"));
+            Assert.That(
+                GetProperty<EnemyDestroyedNotification>(fixture.Package, "LastDestroyedNotification"),
+                Is.Null);
             Assert.That(GetProperty<bool>(fixture.Package, "BlocksRoomClear"), Is.True);
 
             Execute(fixture, 0.01d);
-            Assert.That(GetProperty<EnemyAttackIntent>(fixture.Package, "LastAcceptedAttackIntent"), Is.Not.Null);
+            Assert.That(
+                GetProperty<EnemyAttackIntent>(fixture.Package, "LastAcceptedAttackIntent"),
+                Is.Not.Null);
         }
 
         [Test]
@@ -232,7 +282,9 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             EnemyRuntimeProjection projection = GetProperty<EnemyRuntimeProjection>(
                 fixture.Package,
                 "CurrentRuntimeProjection");
-            Assert.That(projection.Definition.RoomClearRole, Is.EqualTo(EnemyRoomClearRole.RequiredEnemy));
+            Assert.That(
+                projection.Definition.RoomClearRole,
+                Is.EqualTo(EnemyRoomClearRole.RequiredEnemy));
             Assert.That(projection.BlocksRoomClear, Is.False);
             Assert.That(GetProperty<bool>(fixture.Package, "BlocksRoomClear"), Is.False);
         }
@@ -316,6 +368,7 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             return new DroidFixture(
                 player,
                 package,
+                definition,
                 enemy.GetComponent<Rigidbody2D>(),
                 enemy.GetComponent<EnemyTarget2DAdapter>());
         }
@@ -328,6 +381,11 @@ namespace ShooterMover.Tests.PlayMode.Enemies
                 fixture.Package,
                 "ExecuteFixedStep",
                 deltaTimeSeconds);
+        }
+
+        private static string GetPhase(DroidFixture fixture)
+        {
+            return GetProperty<object>(fixture.Package, "FirePhase").ToString();
         }
 
         private static HitMessage Hit(string suffix)
@@ -364,7 +422,10 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             return Invoke(method, null, arguments);
         }
 
-        private static object InvokeInstance(object instance, string methodName, params object[] arguments)
+        private static object InvokeInstance(
+            object instance,
+            string methodName,
+            params object[] arguments)
         {
             MethodInfo method = instance.GetType()
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -413,17 +474,20 @@ namespace ShooterMover.Tests.PlayMode.Enemies
             public DroidFixture(
                 GameObject player,
                 Component package,
+                ScriptableObject definition,
                 Rigidbody2D enemyBody,
                 EnemyTarget2DAdapter enemyTarget)
             {
                 Player = player;
                 Package = package;
+                Definition = definition;
                 EnemyBody = enemyBody;
                 EnemyTarget = enemyTarget;
             }
 
             public GameObject Player { get; }
             public Component Package { get; }
+            public ScriptableObject Definition { get; }
             public Rigidbody2D EnemyBody { get; }
             public EnemyTarget2DAdapter EnemyTarget { get; }
         }
