@@ -1,0 +1,25 @@
+{
+  "name": "ShooterMover.Tests.EditMode.PlayerRuntime",
+  "rootNamespace": "ShooterMover.Tests.EditMode.PlayerRuntime",
+  "references": [
+    "ShooterMover.PlayerRuntime",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

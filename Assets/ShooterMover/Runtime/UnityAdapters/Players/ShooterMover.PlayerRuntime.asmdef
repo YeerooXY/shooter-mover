@@ -1,0 +1,19 @@
+{
+  "name": "ShooterMover.PlayerRuntime",
+  "rootNamespace": "ShooterMover.UnityAdapters.Players",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.UnityAdapters"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
