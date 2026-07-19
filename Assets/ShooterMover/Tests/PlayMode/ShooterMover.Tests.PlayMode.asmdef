@@ -9,6 +9,7 @@
     "ShooterMover.Presentation",
     "ShooterMover.Content.Definitions",
     "ShooterMover.Bootstrap",
+    "ShooterMover.GameplayEntities",
     "Unity.InputSystem",
     "Unity.InputSystem.TestFramework"
   ],
