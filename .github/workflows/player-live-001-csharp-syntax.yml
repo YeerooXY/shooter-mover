@@ -1,0 +1,77 @@
+name: PLAYER-LIVE-001 CSharp syntax
+
+on:
+  push:
+    branches:
+      - agent/player-live-001-authority
+
+permissions:
+  contents: write
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/player-live-001-authority
+          fetch-depth: 0
+
+      - name: Validate diff and C# syntax
+        run: |
+          git diff --check origin/main...HEAD
+          mkdir -p /tmp/player-live-syntax
+          cd /tmp/player-live-syntax
+          dotnet new console --framework net8.0 --force >/dev/null
+          dotnet add package Microsoft.CodeAnalysis.CSharp --version 4.11.0 >/dev/null
+          cat > Program.cs <<'CS'
+          using System;
+          using System.IO;
+          using System.Linq;
+          using Microsoft.CodeAnalysis;
+          using Microsoft.CodeAnalysis.CSharp;
+
+          var repo = Environment.GetEnvironmentVariable("GITHUB_WORKSPACE")
+              ?? throw new InvalidOperationException("Missing workspace.");
+          var files = Directory.EnumerateFiles(
+                  Path.Combine(repo, "Assets"),
+                  "*.cs",
+                  SearchOption.AllDirectories)
+              .Concat(Directory.EnumerateFiles(
+                  Path.Combine(repo, "Packages"),
+                  "*.cs",
+                  SearchOption.AllDirectories))
+              .ToArray();
+          var failed = false;
+          foreach (var file in files)
+          {
+              var text = File.ReadAllText(file);
+              var tree = CSharpSyntaxTree.ParseText(
+                  text,
+                  new CSharpParseOptions(LanguageVersion.Latest),
+                  file);
+              foreach (var diagnostic in tree.GetDiagnostics()
+                  .Where(d => d.Severity == DiagnosticSeverity.Error))
+              {
+                  Console.Error.WriteLine(diagnostic);
+                  failed = true;
+              }
+          }
+          Console.WriteLine($"Parsed {files.Length} C# files.");
+          return failed ? 1 : 0;
+          CS
+          dotnet run --no-restore
+
+      - name: Remove one-shot syntax workflow
+        if: success()
+        run: rm "$GITHUB_WORKSPACE/.github/workflows/player-live-001-csharp-syntax.yml"
+
+      - name: Record successful syntax validation
+        if: success()
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: record PLAYER-LIVE-001 syntax validation"
+          git push origin HEAD:agent/player-live-001-authority
