@@ -2,20 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Missions.Rooms;
 
 namespace ShooterMover.Contracts.Missions.Rooms
 {
+    /// <summary>
+    /// Immutable authorable room graph. Placement and gate data remain engine-neutral;
+    /// the existing RoomGraphDefinitionV1 remains topology truth for traversal state.
+    /// Current ROOM-001 requires distinct start and terminal rooms, which is documented
+    /// as an inherited foundation limitation rather than inferred from room ordering.
+    /// </summary>
     public sealed class AuthorableRoomGraphDefinitionV1
     {
-        public const int CurrentSchemaVersion = 1;
-
         private readonly ReadOnlyCollection<AuthorableRoomDefinitionV1> rooms;
         private readonly Dictionary<StableId, AuthorableRoomDefinitionV1> roomsById;
         private readonly Dictionary<StableId, AuthorableRoomDefinitionV1> exitOwners;
+
+        public const int CurrentSchemaVersion = 2;
 
         public AuthorableRoomGraphDefinitionV1(
             StableId layoutStableId,
@@ -29,29 +34,24 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 ?? throw new ArgumentNullException(nameof(startRoomStableId));
             TerminalRoomStableId = terminalRoomStableId
                 ?? throw new ArgumentNullException(nameof(terminalRoomStableId));
-            if (StartRoomStableId == TerminalRoomStableId)
-            {
-                throw new ArgumentException(
-                    "Start and terminal room identities must differ.");
-            }
-
             if (rooms == null) throw new ArgumentNullException(nameof(rooms));
-            var orderedRooms = new List<AuthorableRoomDefinitionV1>(rooms);
-            if (orderedRooms.Count < 2)
-            {
-                throw new ArgumentException(
-                    "The live room graph requires at least two rooms.",
-                    nameof(rooms));
-            }
 
+            var orderedRooms = new List<AuthorableRoomDefinitionV1>(rooms);
             for (int index = 0; index < orderedRooms.Count; index++)
             {
                 if (orderedRooms[index] == null)
                 {
                     throw new ArgumentException(
-                        "Room graph cannot contain null rooms.",
+                        "Authorable room graphs cannot contain null rooms.",
                         nameof(rooms));
                 }
+            }
+
+            if (orderedRooms.Count == 0)
+            {
+                throw new ArgumentException(
+                    "Authorable room graphs require at least one room.",
+                    nameof(rooms));
             }
 
             orderedRooms.Sort(CompareRooms);
@@ -61,9 +61,10 @@ namespace ShooterMover.Contracts.Missions.Rooms
             var roomOrders = new HashSet<int>();
             var placementIds = new HashSet<StableId>();
             var doorIds = new HashSet<StableId>();
-            for (int roomIndex = 0; roomIndex < orderedRooms.Count; roomIndex++)
+
+            for (int roomIndex = 0; roomIndex < this.rooms.Count; roomIndex++)
             {
-                AuthorableRoomDefinitionV1 room = orderedRooms[roomIndex];
+                AuthorableRoomDefinitionV1 room = this.rooms[roomIndex];
                 if (roomsById.ContainsKey(room.RoomStableId))
                 {
                     throw new ArgumentException(
@@ -81,11 +82,11 @@ namespace ShooterMover.Contracts.Missions.Rooms
                     placementIndex < room.Placements.Count;
                     placementIndex++)
                 {
-                    StableId instanceId = room.Placements[placementIndex].InstanceStableId;
-                    if (!placementIds.Add(instanceId))
+                    StableId placementId = room.Placements[placementIndex].InstanceStableId;
+                    if (!placementIds.Add(placementId))
                     {
                         throw new ArgumentException(
-                            "room-live-placement-instance-global-duplicate:" + instanceId);
+                            "room-live-placement-instance-global-duplicate:" + placementId);
                     }
                 }
 
@@ -192,7 +193,6 @@ namespace ShooterMover.Contracts.Missions.Rooms
 
         private void ValidateLinks()
         {
-            bool finalExitFound = false;
             for (int roomIndex = 0; roomIndex < rooms.Count; roomIndex++)
             {
                 AuthorableRoomDefinitionV1 room = rooms[roomIndex];
@@ -201,13 +201,6 @@ namespace ShooterMover.Contracts.Missions.Rooms
                     RoomExitLinkDefinitionV1 exit = room.Exits[exitIndex];
                     if (exit.LinkKind == RoomLiveLinkKindV1.FinalExit)
                     {
-                        finalExitFound = true;
-                        if (room.RoomStableId != TerminalRoomStableId)
-                        {
-                            throw new ArgumentException(
-                                "room-live-final-exit-not-terminal:" + exit.ExitStableId);
-                        }
-
                         continue;
                     }
 
@@ -226,11 +219,6 @@ namespace ShooterMover.Contracts.Missions.Rooms
                             + exit.TargetSpawnPointStableId);
                     }
                 }
-            }
-
-            if (!finalExitFound)
-            {
-                throw new ArgumentException("room-live-final-exit-missing");
             }
         }
 
@@ -302,18 +290,14 @@ namespace ShooterMover.Contracts.Missions.Rooms
                         "connection",
                         "live",
                         liveExit.ExitStableId);
-                    RoomExitTypeV1 exitType = room.Order
-                        < roomsById[liveExit.TargetRoomStableId].Order
-                            ? RoomExitTypeV1.Progression
-                            : RoomExitTypeV1.Return;
                     var graphExit = new RoomExitDefinitionV1(
                         liveExit.ExitStableId,
                         room.RoomStableId,
                         liveExit.TargetSpawnPointStableId,
                         exitIndex,
-                        exitType,
-                        true,
-                        room.RoomStableId);
+                        liveExit.ExitType,
+                        false,
+                        null);
                     doorLinks.Add(new RoomDoorLinkDefinitionV1(doorLinkId));
                     connections.Add(new RoomConnectionDefinitionV1(
                         connectionId,
@@ -380,86 +364,6 @@ namespace ShooterMover.Contracts.Missions.Rooms
             return order != 0
                 ? order
                 : left.RoomStableId.CompareTo(right.RoomStableId);
-        }
-    }
-
-    internal static class RoomLiveJsonV1
-    {
-        public static void AppendNullableStableId(
-            StringBuilder builder,
-            StableId value)
-        {
-            if (value == null)
-            {
-                builder.Append("null");
-                return;
-            }
-
-            AppendString(builder, value.ToString());
-        }
-
-        public static void AppendString(StringBuilder builder, string value)
-        {
-            builder.Append('"');
-            string source = value ?? string.Empty;
-            for (int index = 0; index < source.Length; index++)
-            {
-                char character = source[index];
-                switch (character)
-                {
-                    case '"':
-                        builder.Append("\\\"");
-                        break;
-                    case '\\':
-                        builder.Append("\\\\");
-                        break;
-                    case '\b':
-                        builder.Append("\\b");
-                        break;
-                    case '\f':
-                        builder.Append("\\f");
-                        break;
-                    case '\n':
-                        builder.Append("\\n");
-                        break;
-                    case '\r':
-                        builder.Append("\\r");
-                        break;
-                    case '\t':
-                        builder.Append("\\t");
-                        break;
-                    default:
-                        if (character < 32)
-                        {
-                            builder.Append("\\u")
-                                .Append(((int)character).ToString("x4", CultureInfo.InvariantCulture));
-                        }
-                        else
-                        {
-                            builder.Append(character);
-                        }
-
-                        break;
-                }
-            }
-
-            builder.Append('"');
-        }
-
-        public static string ComputeSha256(string value)
-        {
-            using (SHA256 sha = SHA256.Create())
-            {
-                byte[] hash = sha.ComputeHash(
-                    Encoding.UTF8.GetBytes(value ?? string.Empty));
-                var builder = new StringBuilder(hash.Length * 2);
-                for (int index = 0; index < hash.Length; index++)
-                {
-                    builder.Append(hash[index].ToString("x2", CultureInfo.InvariantCulture));
-                }
-
-                return builder.ToString();
-            }
         }
     }
 }

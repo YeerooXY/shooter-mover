@@ -1,140 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Text;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Application.Missions.Rooms
 {
-    public sealed partial class RoomLiveRuntimeAuthorityV1
+    internal enum RoomOperationInspectionV1
     {
-        private void RegisterAuthoredOccupants(AuthorableRoomDefinitionV1 room)
-        {
-            var occupants = new List<RoomOccupantRegistrationV1>();
-            for (int index = 0; index < room.Placements.Count; index++)
-            {
-                RoomPlacedEntityDefinitionV1 placement = room.Placements[index];
-                occupants.Add(new RoomOccupantRegistrationV1(
-                    placement.InstanceStableId,
-                    placement.DefinitionStableId,
-                    placement.ClearRole));
-            }
+        New = 1,
+        Duplicate = 2,
+        Conflict = 3,
+    }
 
-            RoomRuntimeOperationResultV1 result = occupancyAuthority.RegisterOccupants(
-                new RegisterRoomOccupantsCommandV1(
-                    RuntimeInstanceStableId,
-                    CreateInternalOperationStableId(
-                        "register|" + room.RoomStableId),
-                    occupancyAuthority.CurrentProjection.LifecycleGeneration,
-                    room.RoomStableId,
-                    occupants));
-            if (result.Status != RoomRuntimeOperationStatusV1.Applied)
-            {
-                throw new InvalidOperationException(
-                    "Authored room occupancy registration failed: "
-                    + result.RejectionCode);
-            }
-        }
+    internal sealed class RoomOperationJournalV1
+    {
+        private readonly Dictionary<StableId, string> payloads =
+            new Dictionary<StableId, string>();
 
-        private void SynchronizeCompletionAndDoors(StableId roomStableId)
-        {
-            RoomOccupancyProjectionV1 occupancy =
-                occupancyAuthority.GetRoomProjection(roomStableId);
-            if (!occupancy.IsCleared)
-            {
-                return;
-            }
-
-            RoomRuntimeStateV1 layoutState = missionLayout.GetRoomState(roomStableId);
-            if (occupancy.IsActive
-                && layoutState.IsCurrent
-                && !layoutState.IsCompleted)
-            {
-                missionLayout.CompleteCurrentRoom();
-                layoutState = missionLayout.GetRoomState(roomStableId);
-            }
-
-            if (!layoutState.IsVisited)
-            {
-                return;
-            }
-
-            AuthorableRoomDefinitionV1 room = Definition.GetRoom(roomStableId);
-            for (int index = 0; index < room.Doors.Count; index++)
-            {
-                openedDoorsByRoom[roomStableId].Add(
-                    room.Doors[index].DoorInstanceStableId);
-            }
-        }
-
-        private void RefreshProjection()
-        {
-            var roomProjections = new List<RoomLiveRoomProjectionV1>();
-            for (int roomIndex = 0; roomIndex < Definition.Rooms.Count; roomIndex++)
-            {
-                AuthorableRoomDefinitionV1 room = Definition.Rooms[roomIndex];
-                RoomOccupancyProjectionV1 occupancy =
-                    occupancyAuthority.GetRoomProjection(room.RoomStableId);
-                var active = new List<RoomOccupantProjectionV1>();
-                var defeated = new List<RoomOccupantProjectionV1>();
-                for (int occupantIndex = 0;
-                    occupantIndex < occupancy.Occupants.Count;
-                    occupantIndex++)
-                {
-                    RoomOccupantProjectionV1 occupant = occupancy.Occupants[occupantIndex];
-                    if (occupant.IsTerminal)
-                    {
-                        defeated.Add(occupant);
-                    }
-                    else
-                    {
-                        active.Add(occupant);
-                    }
-                }
-
-                roomProjections.Add(new RoomLiveRoomProjectionV1(
-                    room.RoomStableId,
-                    room.DisplayName,
-                    occupancy.IsActive,
-                    occupancy.IsCleared,
-                    active,
-                    defeated,
-                    collectedDropsByRoom[room.RoomStableId],
-                    openedDoorsByRoom[room.RoomStableId]));
-            }
-
-            currentProjection = new RoomLiveRuntimeProjectionV1(
-                RuntimeInstanceStableId,
-                Definition.Fingerprint,
-                occupancyAuthority.CurrentProjection.LifecycleGeneration,
-                sequence,
-                missionLayout.CurrentRoomState.RoomStableId,
-                currentSpawnPointStableId,
-                finalExitReached,
-                roomProjections);
-        }
-
-        private RoomLiveOperationResultV1 Result(
-            RoomLiveOperationStatusV1 status,
-            string rejectionCode,
-            RoomLiveRuntimeProjectionV1 previous,
-            StableId traversedExitStableId = null,
-            StableId targetRoomStableId = null,
-            StableId targetSpawnPointStableId = null)
-        {
-            return new RoomLiveOperationResultV1(
-                status,
-                rejectionCode,
-                previous,
-                currentProjection,
-                traversedExitStableId,
-                targetRoomStableId,
-                targetSpawnPointStableId);
-        }
-
-        private OperationInspection InspectOperation(
+        public RoomOperationInspectionV1 Inspect(
             StableId operationStableId,
             string payload)
         {
@@ -144,72 +28,329 @@ namespace ShooterMover.Application.Missions.Rooms
             }
 
             string existing;
-            if (!operationPayloads.TryGetValue(operationStableId, out existing))
+            if (!payloads.TryGetValue(operationStableId, out existing))
             {
-                return OperationInspection.New;
+                return RoomOperationInspectionV1.New;
             }
 
             return string.Equals(existing, payload, StringComparison.Ordinal)
-                ? OperationInspection.Duplicate
-                : OperationInspection.Conflict;
+                ? RoomOperationInspectionV1.Duplicate
+                : RoomOperationInspectionV1.Conflict;
         }
 
-        private void RecordOperation(StableId operationStableId, string payload)
+        public void Record(StableId operationStableId, string payload)
         {
-            if (!operationPayloads.ContainsKey(operationStableId))
+            if (operationStableId == null)
             {
-                operationPayloads.Add(operationStableId, payload);
+                throw new ArgumentNullException(nameof(operationStableId));
+            }
+
+            if (!payloads.ContainsKey(operationStableId))
+            {
+                payloads.Add(operationStableId, payload ?? string.Empty);
+            }
+        }
+    }
+
+    internal sealed class RoomRetainedFactStoreV1
+    {
+        private readonly Dictionary<StableId, HashSet<StableId>> collectedDropsByRoom =
+            new Dictionary<StableId, HashSet<StableId>>();
+        private readonly Dictionary<StableId, HashSet<StableId>> openedDoorsByRoom =
+            new Dictionary<StableId, HashSet<StableId>>();
+
+        public RoomRetainedFactStoreV1(AuthorableRoomGraphDefinitionV1 definition)
+        {
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
+            for (int index = 0; index < definition.Rooms.Count; index++)
+            {
+                StableId roomId = definition.Rooms[index].RoomStableId;
+                collectedDropsByRoom.Add(roomId, new HashSet<StableId>());
+                openedDoorsByRoom.Add(roomId, new HashSet<StableId>());
             }
         }
 
-        private static StableId InternalOperation(
-            StableId externalOperationStableId,
-            string suffix)
+        public bool AddCollectedDrop(StableId roomStableId, StableId dropStableId)
         {
-            return CreateInternalOperationStableId(
-                externalOperationStableId + "|" + suffix);
+            if (dropStableId == null)
+            {
+                throw new ArgumentNullException(nameof(dropStableId));
+            }
+
+            return Get(collectedDropsByRoom, roomStableId).Add(dropStableId);
         }
 
-        private static StableId CreateInternalOperationStableId(string payload)
+        public bool OpenDoor(StableId roomStableId, StableId doorStableId)
         {
-            using (System.Security.Cryptography.SHA256 sha =
-                System.Security.Cryptography.SHA256.Create())
+            if (doorStableId == null)
             {
-                byte[] bytes = Encoding.UTF8.GetBytes(payload ?? string.Empty);
-                byte[] hash = sha.ComputeHash(bytes);
-                var token = new StringBuilder(32);
-                for (int index = 0; index < 16; index++)
+                throw new ArgumentNullException(nameof(doorStableId));
+            }
+
+            return Get(openedDoorsByRoom, roomStableId).Add(doorStableId);
+        }
+
+        public bool IsDoorOpen(StableId roomStableId, StableId doorStableId)
+        {
+            return doorStableId != null
+                && Get(openedDoorsByRoom, roomStableId).Contains(doorStableId);
+        }
+
+        public IReadOnlyCollection<StableId> GetCollectedDrops(StableId roomStableId)
+        {
+            return new ReadOnlyCollection<StableId>(
+                Sorted(Get(collectedDropsByRoom, roomStableId)));
+        }
+
+        public IReadOnlyCollection<StableId> GetOpenedDoors(StableId roomStableId)
+        {
+            return new ReadOnlyCollection<StableId>(
+                Sorted(Get(openedDoorsByRoom, roomStableId)));
+        }
+
+        public void Clear()
+        {
+            foreach (HashSet<StableId> values in collectedDropsByRoom.Values)
+            {
+                values.Clear();
+            }
+
+            foreach (HashSet<StableId> values in openedDoorsByRoom.Values)
+            {
+                values.Clear();
+            }
+        }
+
+        private static HashSet<StableId> Get(
+            Dictionary<StableId, HashSet<StableId>> values,
+            StableId roomStableId)
+        {
+            if (roomStableId == null)
+            {
+                throw new ArgumentNullException(nameof(roomStableId));
+            }
+
+            HashSet<StableId> result;
+            if (!values.TryGetValue(roomStableId, out result))
+            {
+                throw new KeyNotFoundException(
+                    "Unknown retained room identity: " + roomStableId);
+            }
+
+            return result;
+        }
+
+        private static List<StableId> Sorted(IEnumerable<StableId> values)
+        {
+            var result = new List<StableId>(values);
+            result.Sort();
+            return result;
+        }
+    }
+
+    internal sealed class RoomCompletionEvaluationV1
+    {
+        private readonly ReadOnlyCollection<StableId> satisfiedConditionStableIds;
+
+        public RoomCompletionEvaluationV1(
+            IEnumerable<StableId> satisfiedConditionStableIds,
+            bool isRoomCompletionSatisfied)
+        {
+            var copy = new List<StableId>(
+                satisfiedConditionStableIds ?? Array.Empty<StableId>());
+            copy.Sort();
+            this.satisfiedConditionStableIds =
+                new ReadOnlyCollection<StableId>(copy);
+            IsRoomCompletionSatisfied = isRoomCompletionSatisfied;
+        }
+
+        public IReadOnlyList<StableId> SatisfiedConditionStableIds
+        {
+            get { return satisfiedConditionStableIds; }
+        }
+
+        public bool IsRoomCompletionSatisfied { get; }
+
+        public bool IsSatisfied(StableId conditionStableId)
+        {
+            if (conditionStableId == null) return false;
+            for (int index = 0; index < satisfiedConditionStableIds.Count; index++)
+            {
+                if (satisfiedConditionStableIds[index] == conditionStableId)
                 {
-                    token.Append(hash[index].ToString(
-                        "x2",
-                        CultureInfo.InvariantCulture));
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    internal sealed class RoomCompletionEvaluatorV1
+    {
+        public RoomCompletionEvaluationV1 Evaluate(
+            AuthorableRoomDefinitionV1 room,
+            RoomOccupancyProjectionV1 occupancy,
+            IReadOnlyCollection<StableId> collectedDrops)
+        {
+            if (room == null) throw new ArgumentNullException(nameof(room));
+            if (occupancy == null) throw new ArgumentNullException(nameof(occupancy));
+            if (collectedDrops == null)
+            {
+                throw new ArgumentNullException(nameof(collectedDrops));
+            }
+
+            var satisfied = new List<StableId>();
+            bool roomCompletionSatisfied = true;
+            for (int index = 0; index < room.CompletionConditions.Count; index++)
+            {
+                RoomCompletionConditionDefinitionV1 condition =
+                    room.CompletionConditions[index];
+                bool isSatisfied = EvaluateCondition(
+                    condition,
+                    occupancy,
+                    collectedDrops);
+                if (isSatisfied)
+                {
+                    satisfied.Add(condition.ConditionStableId);
+                }
+                else if (condition.IsRequiredForRoomCompletion)
+                {
+                    roomCompletionSatisfied = false;
+                }
+            }
+
+            return new RoomCompletionEvaluationV1(
+                satisfied,
+                roomCompletionSatisfied);
+        }
+
+        private static bool EvaluateCondition(
+            RoomCompletionConditionDefinitionV1 condition,
+            RoomOccupancyProjectionV1 occupancy,
+            IReadOnlyCollection<StableId> collectedDrops)
+        {
+            switch (condition.Kind)
+            {
+                case RoomCompletionConditionKindV1.AlwaysSatisfied:
+                    return true;
+                case RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal:
+                    return occupancy.IsCleared;
+                case RoomCompletionConditionKindV1.CollectedDrop:
+                    foreach (StableId drop in collectedDrops)
+                    {
+                        if (drop == condition.SubjectStableId) return true;
+                    }
+
+                    return false;
+                default:
+                    throw new InvalidOperationException(
+                        "room-live-completion-kind-unsupported:" + condition.Kind);
+            }
+        }
+    }
+
+    internal sealed class RoomDoorGatePolicyV1
+    {
+        public IReadOnlyList<StableId> EvaluateOpenDoors(
+            AuthorableRoomDefinitionV1 room,
+            RoomCompletionEvaluationV1 completion,
+            bool isVisited)
+        {
+            if (room == null) throw new ArgumentNullException(nameof(room));
+            if (completion == null)
+            {
+                throw new ArgumentNullException(nameof(completion));
+            }
+
+            var result = new List<StableId>();
+            if (!isVisited) return new ReadOnlyCollection<StableId>(result);
+
+            for (int doorIndex = 0; doorIndex < room.Doors.Count; doorIndex++)
+            {
+                RoomDoorDefinitionV1 door = room.Doors[doorIndex];
+                bool allSatisfied = true;
+                for (int conditionIndex = 0;
+                    conditionIndex < door.RequiredConditionStableIds.Count;
+                    conditionIndex++)
+                {
+                    if (!completion.IsSatisfied(
+                        door.RequiredConditionStableIds[conditionIndex]))
+                    {
+                        allSatisfied = false;
+                        break;
+                    }
                 }
 
-                return StableId.Create(
-                    "operation",
-                    "room-live-" + token.ToString());
-            }
-        }
-
-        private static StableId ResolveInitialSpawnPoint(
-            AuthorableRoomDefinitionV1 room)
-        {
-            for (int index = 0; index < room.SpawnPoints.Count; index++)
-            {
-                if (room.SpawnPoints[index].Kind == RoomSpawnPointKindV1.ForwardEntry)
+                if (allSatisfied)
                 {
-                    return room.SpawnPoints[index].SpawnPointStableId;
+                    result.Add(door.DoorInstanceStableId);
                 }
             }
 
-            return room.SpawnPoints[0].SpawnPointStableId;
+            result.Sort();
+            return new ReadOnlyCollection<StableId>(result);
         }
+    }
 
-        private enum OperationInspection
+    internal sealed class RoomLiveProjectionBuilderV1
+    {
+        public RoomLiveRuntimeProjectionV1 Build(
+            StableId runtimeInstanceStableId,
+            AuthorableRoomGraphDefinitionV1 definition,
+            RoomRuntimeAuthorityV1 occupancyAuthority,
+            RoomMissionLayoutV1 missionLayout,
+            RoomRetainedFactStoreV1 retainedFacts,
+            IReadOnlyDictionary<StableId, RoomCompletionEvaluationV1> evaluations,
+            long sequence,
+            StableId currentSpawnPointStableId,
+            bool finalExitReached)
         {
-            New = 1,
-            Duplicate = 2,
-            Conflict = 3,
+            var rooms = new List<RoomLiveRoomProjectionV1>();
+            for (int roomIndex = 0; roomIndex < definition.Rooms.Count; roomIndex++)
+            {
+                AuthorableRoomDefinitionV1 room = definition.Rooms[roomIndex];
+                RoomOccupancyProjectionV1 occupancy =
+                    occupancyAuthority.GetRoomProjection(room.RoomStableId);
+                RoomRuntimeStateV1 layout = missionLayout.GetRoomState(
+                    room.RoomStableId);
+                var active = new List<RoomOccupantProjectionV1>();
+                var defeated = new List<RoomOccupantProjectionV1>();
+                for (int occupantIndex = 0;
+                    occupantIndex < occupancy.Occupants.Count;
+                    occupantIndex++)
+                {
+                    RoomOccupantProjectionV1 occupant = occupancy.Occupants[occupantIndex];
+                    if (occupant.IsTerminal) defeated.Add(occupant);
+                    else active.Add(occupant);
+                }
+
+                RoomCompletionEvaluationV1 evaluation =
+                    evaluations[room.RoomStableId];
+                rooms.Add(new RoomLiveRoomProjectionV1(
+                    room.RoomStableId,
+                    room.DisplayName,
+                    occupancy.IsActive,
+                    layout.IsCurrent,
+                    layout.IsVisited,
+                    occupancy.IsCleared,
+                    layout.IsCompleted,
+                    active,
+                    defeated,
+                    evaluation.SatisfiedConditionStableIds,
+                    retainedFacts.GetCollectedDrops(room.RoomStableId),
+                    retainedFacts.GetOpenedDoors(room.RoomStableId)));
+            }
+
+            return new RoomLiveRuntimeProjectionV1(
+                runtimeInstanceStableId,
+                definition.Fingerprint,
+                occupancyAuthority.CurrentProjection.LifecycleGeneration,
+                sequence,
+                missionLayout.CurrentRoomState.RoomStableId,
+                currentSpawnPointStableId,
+                finalExitReached,
+                rooms);
         }
     }
 }

@@ -1,87 +1,42 @@
 {
+  "schema": "room-live-001-static-audit-v2",
+  "generated_utc": "2026-07-19",
+  "unity_xml": "not-run-unity-unavailable",
   "files": {
-    "RoomAuthoringPrimitivesV1.cs": {
-      "syntax_errors": [],
-      "lines": 365,
-      "bytes": 13128
-    },
-    "AuthorableRoomDefinitionV1.cs": {
-      "syntax_errors": [],
-      "lines": 337,
-      "bytes": 11888
-    },
-    "AuthorableRoomGraphDefinitionV1.cs": {
-      "syntax_errors": [],
-      "lines": 465,
-      "bytes": 17301
-    },
-    "RoomLiveRuntimeProjectionsV1.cs": {
-      "syntax_errors": [],
-      "lines": 328,
-      "bytes": 11878
-    },
-    "RoomLiveRuntimeAuthorityCoreV1.cs": {
-      "syntax_errors": [],
-      "lines": 199,
-      "bytes": 7853
-    },
-    "RoomLiveRuntimeTraversalV1.cs": {
-      "syntax_errors": [],
-      "lines": 195,
-      "bytes": 7448
-    },
-    "RoomLiveRuntimeHelpersV1.cs": {
-      "syntax_errors": [],
-      "lines": 215,
-      "bytes": 7816
-    },
-    "AuthorableRoomGraphDefinition2D.cs": {
-      "syntax_errors": [],
-      "lines": 263,
-      "bytes": 10632
-    },
-    "RoomPresentationCatalog2D.cs": {
-      "syntax_errors": [],
-      "lines": 125,
-      "bytes": 4341
-    },
-    "RoomRuntimeComposition2D.cs": {
-      "syntax_errors": [],
-      "lines": 609,
-      "bytes": 20927
-    },
-    "Level1AuthorableRoomDefinitionV1.cs": {
-      "syntax_errors": [],
-      "lines": 186,
-      "bytes": 7946
-    },
-    "RoomLiveRuntimeAuthorityTests.cs": {
-      "syntax_errors": [],
-      "lines": 322,
-      "bytes": 14874
-    },
-    "RoomRuntimeComposition2DTests.cs": {
-      "syntax_errors": [],
-      "lines": 241,
-      "bytes": 10302
-    }
+    "RoomAuthoringPrimitivesV1.cs": {"syntax_errors": [], "lines": 546, "bytes": 19599},
+    "AuthorableRoomDefinitionV1.cs": {"syntax_errors": [], "lines": 380, "bytes": 13578},
+    "AuthorableRoomGraphDefinitionV1.cs": {"syntax_errors": [], "lines": 369, "bytes": 14144},
+    "Level1AuthorableRoomDefinitionV1.cs": {"syntax_errors": [], "lines": 209, "bytes": 9145},
+    "RoomLiveRuntimeAuthorityCoreV1.cs": {"syntax_errors": [], "lines": 502, "bytes": 19753},
+    "RoomLiveRuntimeHelpersV1.cs": {"syntax_errors": [], "lines": 356, "bytes": 12720},
+    "RoomLiveRuntimeTraversalV1.cs": {"syntax_errors": [], "lines": 144, "bytes": 5252},
+    "RoomLiveRuntimeProjectionsV1.cs": {"syntax_errors": [], "lines": 373, "bytes": 13361},
+    "AuthorableRoomGraphDefinition2D.cs": {"syntax_errors": [], "lines": 279, "bytes": 11374},
+    "RoomPresentationCatalog2D.cs": {"syntax_errors": [], "lines": 125, "bytes": 4341},
+    "RoomRuntimePresentationInstances2D.cs": {"syntax_errors": [], "lines": 419, "bytes": 14294},
+    "RoomPresentationScene2D.cs": {"syntax_errors": [], "lines": 242, "bytes": 9097},
+    "RoomRuntimeComposition2D.cs": {"syntax_errors": [], "lines": 286, "bytes": 9290},
+    "RoomLiveRuntimeAuthorityTests.cs": {"syntax_errors": [], "lines": 442, "bytes": 20439},
+    "RoomRuntimeComposition2DTests.cs": {"syntax_errors": [], "lines": 499, "bytes": 20219}
   },
   "invalid_literal_stable_ids": [],
   "generic_runtime_forbidden_hits": {
-    "RoomAuthoringPrimitivesV1.cs": [],
-    "AuthorableRoomDefinitionV1.cs": [],
-    "AuthorableRoomGraphDefinitionV1.cs": [],
-    "RoomLiveRuntimeProjectionsV1.cs": [],
     "RoomLiveRuntimeAuthorityCoreV1.cs": [],
-    "RoomLiveRuntimeTraversalV1.cs": [],
     "RoomLiveRuntimeHelpersV1.cs": [],
-    "RoomRuntimeComposition2D.cs": []
+    "RoomLiveRuntimeTraversalV1.cs": [],
+    "RoomLiveRuntimeProjectionsV1.cs": [],
+    "RoomRuntimeComposition2D.cs": [],
+    "RoomPresentationScene2D.cs": [],
+    "RoomRuntimePresentationInstances2D.cs": []
   },
-  "remote_blob_byte_verification": "passed for all 13 C# source blobs used by the published tree",
-  "controller_blob_sha_verification": {
-    "path": "Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs",
-    "main": "38118169061b0ca7782c369fbe3468f410f4a9db",
-    "feature_branch": "38118169061b0ca7782c369fbe3468f410f4a9db",
-    "unchanged": true
-  }
+  "ownership_surface": {
+    "public_occupancy_authority_property": false,
+    "public_mission_layout_property": false,
+    "public_concrete_composition_authority_property": false,
+    "read_only_query_property": true,
+    "composition_lines": 286,
+    "presentation_scene_lines": 242
+  },
+  "remote_blob_byte_verification": "pending-publish",
+  "controller_blob_sha_verification": "pending-final-diff"
 }

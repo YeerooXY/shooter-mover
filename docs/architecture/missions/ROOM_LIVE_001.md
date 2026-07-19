@@ -1,100 +1,152 @@
-# ROOM-LIVE-001 — Authorable Room Runtime
+# ROOM-LIVE-001 — Authorable Room Runtime Foundation
 
-## Purpose
+## Scope and live-flow boundary
 
-`ROOM-LIVE-001` adds a reusable Unity composition boundary over the merged
-`RoomRuntimeAuthorityV1` from `ROOM-RUNTIME-001`.
+`ROOM-LIVE-001` adds the reusable authoring, authority-coordination, Unity
+presentation, and real-enemy terminal-relay foundation required to migrate a live room
+flow onto `ROOM-RUNTIME-001`.
 
-The live layer creates room presentation from authored definitions and retains room state
-without putting room-specific branches into `Stage1VisibleSliceController`.
+The retained `Stage1VisibleSliceController.cs` and Stage 1 scene are intentionally not
+modified because the task explicitly forbids controller edits. Consequently this pull
+request must not be described as having replaced the existing Stage 1 production path.
+It provides a complete reusable composition path, a real package-backed PlayMode proof,
+and the handoff boundary for a later controller/scene migration.
 
-## Ownership
+## Authority ownership
 
-`RoomRuntimeAuthorityV1` remains the only occupancy and room-clear authority. It owns:
+`RoomRuntimeAuthorityV1` remains the only authority for:
 
 - authored occupant registration;
-- concrete occupant identity;
-- active/inactive room occupancy;
-- terminal facts;
-- clear transitions;
+- concrete occupant identities;
+- active and terminal occupant state;
+- room-clear state;
 - lifecycle generation and restart reconstruction.
 
-`RoomLiveRuntimeAuthorityV1` composes that authority with the existing
-`RoomMissionLayoutV1` and owns only live coordination state:
+`RoomMissionLayoutV1` remains the room-graph traversal/completion state owner.
 
-- collected drop instance IDs;
-- opened door instance IDs;
-- current authored spawn point;
-- accepted traversal;
-- final-exit state;
-- immutable live-room projections.
+`RoomLiveRuntimeAuthorityV1` is the only public mutation boundary coordinating those two
+systems. It does not publicly expose either mutable authority. Consumers receive
+`IRoomLiveRuntimeQueryV1` and immutable projections only.
 
-It never infers occupancy from Unity hierarchy state, prefab names, enemy types, or object
-counts.
+The coordinator delegates focused responsibilities to sealed collaborators:
+
+- `RoomOperationJournalV1` — replay and operation-ID conflict handling;
+- `RoomRetainedFactStoreV1` — collected-drop and opened-door facts;
+- `RoomCompletionEvaluatorV1` — configured condition evaluation;
+- `RoomDoorGatePolicyV1` — per-door gate decisions;
+- `RoomTraversalCoordinatorV1` — atomic layout traversal and occupancy activation;
+- `RoomLiveProjectionBuilderV1` — immutable live snapshots.
 
 ## Authorable definitions
 
-`AuthorableRoomGraphDefinitionV1` is deterministic and engine-independent. Each
-`AuthorableRoomDefinitionV1` contains:
+`AuthorableRoomGraphDefinitionV1` is deterministic and engine-independent. Each room
+contains:
 
-- stable room ID and display name;
+- stable ID and display name;
 - bounds;
-- spawn points;
-- enemy and prop placements;
-- concrete placement instance IDs;
-- presentation references;
-- doors and exit links;
+- authored spawn points;
+- enemy and prop placements with concrete instance identities;
+- doors;
+- exits and next-room/final-exit links;
+- explicit exit meaning (`Progression`, `Return`, `Optional`, or `Secret`);
 - completion conditions;
-- room targets or a final-exit link.
+- per-door references to one or more condition IDs.
 
-The Unity `AuthorableRoomGraphDefinition2D` asset converts inspector data into the durable
-contract. `RoomPresentationCatalog2D` separately resolves stable presentation IDs to Unity
-prefabs, so prefab references are not persisted as durable room-state data.
+`RoomPresentationCatalog2D` separately resolves durable presentation IDs to Unity
+prefabs. Unity object references are therefore not persisted as room-state identity.
 
-## Runtime composition
+## Completion, clear, and door semantics
 
-`RoomRuntimeComposition2D`:
+The following facts are intentionally distinct in `RoomLiveRoomProjectionV1`:
 
-1. builds the durable definition;
-2. validates every presentation reference;
-3. constructs `RoomLiveRuntimeAuthorityV1`;
-4. instantiates the current room from placement and door definitions;
-5. attaches generic concrete-instance relays;
-6. renders door state from immutable projections;
-7. rebuilds presentation after accepted traversal or restart.
+- `IsCleared` — ROOM-RUNTIME-001 reports every blocking occupant terminal;
+- `IsCompleted` — ROOM-001 accepted completion for the current visited room;
+- `IsVisited` — the mission layout has entered the room;
+- `IsCurrent` — the mission layout currently selects the room;
+- `IsActive` — ROOM-RUNTIME-001 currently activates the room occupancy.
 
-There is no moving-droid, turret, prop-family, room-number, or Stage 1 branch in the
-composition code. Enemy/prop packages forward accepted terminal facts through
-`RoomPlacedInstance2D.ReportTerminal(...)` using their concrete instance and operation IDs.
-Downstream drop presentation may use `RoomDropInstance2D` and the retained collected-drop
-projection.
+Completion conditions are executable data, not decorative metadata. Supported V1 kinds
+are:
+
+- `AlwaysSatisfied`;
+- `AllBlockingOccupantsTerminal`;
+- `CollectedDrop` for one exact drop-instance identity.
+
+Each door references exact condition IDs. A door opens only when its room has been
+visited and all of that door's referenced conditions are satisfied. Different doors in
+the same room may therefore have different gates.
+
+## Unity composition and real terminal facts
+
+`RoomRuntimeComposition2D` is a thin command/presentation adapter. It exposes only the
+read-only `IRoomLiveRuntimeQueryV1`, forwards commands through the coordinated authority,
+and delegates object lifecycle to `RoomPresentationScene2D`.
+
+For authored enemy placements, the renderer attaches:
+
+- `EnemyActorTerminalFactSource2D`, which binds generically to a real
+  `IEnemyActor2DAuthority` component or a component exposing one through a public
+  `Authority` property;
+- `RoomOccupantTerminalRelay2D`, which reads the accepted EN-002 destroyed state,
+  verifies that actor identity equals the authored placed-instance identity, and forwards
+  one deterministic terminal operation.
+
+No enemy package names, room numbers, hierarchy names, or missing-GameObject inference
+are used. The same relay works with the existing moving-droid runtime and Blaster Turret
+package.
+
+`ReportDropCollected(...)` accepts a retained fact only after the existing external
+drop/pickup authority has accepted collection. The room runtime does not generate drops,
+rewards, inventory, or pickup truth.
 
 ## Example Level 1 definition
 
 `Level1AuthorableRoomDefinitionV1` demonstrates:
 
-- Room 1: one required moving droid and one non-participating cover prop;
-- a completion-gated forward door to Room 2;
-- Room 2: one required blaster turret;
-- a completion-gated return door to Room 1;
-- a completion-gated final exit;
-- concrete identities for every enemy, prop, door, spawn, and exit.
+- Room 1 with one required moving droid and one non-participating prop;
+- a forward door gated by the Room 1 clear condition;
+- Room 2 with one required Blaster Turret;
+- a return door gated by an independent entered-room condition and open immediately on
+  accepted Room 2 entry;
+- a final door gated independently by the Room 2 clear condition;
+- return from Room 2 to Room 1;
+- a final exit after Room 2 completion;
+- concrete identities for every room, spawn, enemy, prop, condition, door, and exit.
 
-Returning to Room 1 renders its retained projection, so its defeated droid does not respawn.
-Restart increments the occupancy lifecycle generation and rebuilds the authored initial state.
+Returning renders retained immutable state, so defeated enemy instances do not respawn.
+Restart increments the ROOM-RUNTIME-001 lifecycle generation and rebuilds the authored
+initial presentation.
+
+## Graph extensibility and inherited limitation
+
+Exit semantics are authored and are no longer inferred from numeric room order. The live
+contract no longer requires a final exit to exist or restricts final exits to one terminal
+room.
+
+The underlying merged `RoomGraphDefinitionV1` currently still requires distinct start
+and terminal rooms. That is an inherited ROOM-001 limitation, explicitly documented here
+rather than hidden inside live-room ordering rules. Supporting a true one-room mission
+requires changing ROOM-001 itself and is outside this controller-edit-free task.
 
 ## Failure behavior
 
-- unknown exits reject without mutation;
-- malformed target-room or target-spawn links reject during definition construction;
+- unknown exits and links fail closed without mutation;
+- malformed target-room, target-spawn, condition, and door references fail during
+  definition construction;
+- actor/placed-instance identity mismatch fails closed in the terminal relay;
 - closed doors reject traversal;
 - missing presentation IDs reject before room construction;
 - exact operation replay is a duplicate no-op;
-- conflicting reuse of an operation ID rejects;
-- restart does not reuse terminal, drop, or door state from the previous generation.
+- conflicting operation-ID reuse rejects;
+- restart clears retained terminal, drop, opened-door, completion, and final-exit state.
 
-## Controller boundary
+## Verification boundary
 
-`Stage1VisibleSliceController.cs` is intentionally unchanged. This task supplies the reusable
-composition root and contracts required for a later scene migration without adding another
-room-occupancy model or moving room logic into the retained controller.
+Focused EditMode and PlayMode test source is included. The PlayMode suite instantiates and
+configures the real `MobileBlasterDroidRuntime2D` and `BlasterTurretPackage`, applies real
+lethal combat hits, and verifies that the generic relay drives configured gates and
+retained room state.
+
+Unity is unavailable in the implementation environment, so passing Unity XML is not
+claimed. The pull request must remain draft until the documented focused Unity commands
+produce and attach passing EditMode and PlayMode XML.

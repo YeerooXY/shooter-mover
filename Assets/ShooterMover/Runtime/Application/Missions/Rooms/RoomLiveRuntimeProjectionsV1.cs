@@ -17,10 +17,22 @@ namespace ShooterMover.Application.Missions.Rooms
         FinalExitReached = 5,
     }
 
+    public interface IRoomLiveRuntimeQueryV1
+    {
+        StableId RuntimeInstanceStableId { get; }
+
+        AuthorableRoomGraphDefinitionV1 Definition { get; }
+
+        RoomLiveRuntimeProjectionV1 CurrentProjection { get; }
+
+        RoomLiveRoomProjectionV1 GetRoomProjection(StableId roomStableId);
+    }
+
     public sealed class RoomLiveRoomProjectionV1
     {
         private readonly ReadOnlyCollection<RoomOccupantProjectionV1> activeOccupants;
         private readonly ReadOnlyCollection<RoomOccupantProjectionV1> defeatedOccupants;
+        private readonly ReadOnlyCollection<StableId> satisfiedConditionStableIds;
         private readonly ReadOnlyCollection<StableId> collectedDropInstanceStableIds;
         private readonly ReadOnlyCollection<StableId> openedDoorInstanceStableIds;
 
@@ -28,9 +40,13 @@ namespace ShooterMover.Application.Missions.Rooms
             StableId roomStableId,
             string displayName,
             bool isActive,
+            bool isCurrent,
+            bool isVisited,
+            bool isCleared,
             bool isCompleted,
             IEnumerable<RoomOccupantProjectionV1> activeOccupants,
             IEnumerable<RoomOccupantProjectionV1> defeatedOccupants,
+            IEnumerable<StableId> satisfiedConditionStableIds,
             IEnumerable<StableId> collectedDropInstanceStableIds,
             IEnumerable<StableId> openedDoorInstanceStableIds)
         {
@@ -38,9 +54,14 @@ namespace ShooterMover.Application.Missions.Rooms
                 ?? throw new ArgumentNullException(nameof(roomStableId));
             DisplayName = displayName ?? string.Empty;
             IsActive = isActive;
+            IsCurrent = isCurrent;
+            IsVisited = isVisited;
+            IsCleared = isCleared;
             IsCompleted = isCompleted;
             this.activeOccupants = CopyOccupants(activeOccupants);
             this.defeatedOccupants = CopyOccupants(defeatedOccupants);
+            this.satisfiedConditionStableIds = CopyIds(
+                satisfiedConditionStableIds);
             this.collectedDropInstanceStableIds = CopyIds(
                 collectedDropInstanceStableIds);
             this.openedDoorInstanceStableIds = CopyIds(
@@ -52,6 +73,12 @@ namespace ShooterMover.Application.Missions.Rooms
         public string DisplayName { get; }
 
         public bool IsActive { get; }
+
+        public bool IsCurrent { get; }
+
+        public bool IsVisited { get; }
+
+        public bool IsCleared { get; }
 
         public bool IsCompleted { get; }
 
@@ -65,6 +92,11 @@ namespace ShooterMover.Application.Missions.Rooms
             get { return defeatedOccupants; }
         }
 
+        public IReadOnlyList<StableId> SatisfiedConditionStableIds
+        {
+            get { return satisfiedConditionStableIds; }
+        }
+
         public IReadOnlyList<StableId> CollectedDropInstanceStableIds
         {
             get { return collectedDropInstanceStableIds; }
@@ -75,29 +107,29 @@ namespace ShooterMover.Application.Missions.Rooms
             get { return openedDoorInstanceStableIds; }
         }
 
+        public bool IsConditionSatisfied(StableId conditionStableId)
+        {
+            return Contains(satisfiedConditionStableIds, conditionStableId);
+        }
+
         public bool IsDoorOpen(StableId doorInstanceStableId)
         {
-            if (doorInstanceStableId == null) return false;
-            for (int index = 0; index < openedDoorInstanceStableIds.Count; index++)
-            {
-                if (openedDoorInstanceStableIds[index] == doorInstanceStableId)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return Contains(openedDoorInstanceStableIds, doorInstanceStableId);
         }
 
         public bool IsDropCollected(StableId dropInstanceStableId)
         {
-            if (dropInstanceStableId == null) return false;
-            for (int index = 0; index < collectedDropInstanceStableIds.Count; index++)
+            return Contains(collectedDropInstanceStableIds, dropInstanceStableId);
+        }
+
+        private static bool Contains(
+            IReadOnlyList<StableId> values,
+            StableId stableId)
+        {
+            if (stableId == null) return false;
+            for (int index = 0; index < values.Count; index++)
             {
-                if (collectedDropInstanceStableIds[index] == dropInstanceStableId)
-                {
-                    return true;
-                }
+                if (values[index] == stableId) return true;
             }
 
             return false;
@@ -223,37 +255,49 @@ namespace ShooterMover.Application.Missions.Rooms
                     .Append(':')
                     .Append(room.IsActive ? '1' : '0')
                     .Append(':')
+                    .Append(room.IsCurrent ? '1' : '0')
+                    .Append(':')
+                    .Append(room.IsVisited ? '1' : '0')
+                    .Append(':')
+                    .Append(room.IsCleared ? '1' : '0')
+                    .Append(':')
                     .Append(room.IsCompleted ? '1' : '0');
-                for (int index = 0; index < room.ActiveOccupants.Count; index++)
-                {
-                    builder.Append("|active:")
-                        .Append(room.ActiveOccupants[index].EntityStableId);
-                }
-
-                for (int index = 0; index < room.DefeatedOccupants.Count; index++)
-                {
-                    builder.Append("|defeated:")
-                        .Append(room.DefeatedOccupants[index].EntityStableId);
-                }
-
-                for (int index = 0;
-                    index < room.CollectedDropInstanceStableIds.Count;
-                    index++)
-                {
-                    builder.Append("|drop:")
-                        .Append(room.CollectedDropInstanceStableIds[index]);
-                }
-
-                for (int index = 0;
-                    index < room.OpenedDoorInstanceStableIds.Count;
-                    index++)
-                {
-                    builder.Append("|door:")
-                        .Append(room.OpenedDoorInstanceStableIds[index]);
-                }
+                AppendOccupants(builder, "active", room.ActiveOccupants);
+                AppendOccupants(builder, "defeated", room.DefeatedOccupants);
+                AppendIds(builder, "condition", room.SatisfiedConditionStableIds);
+                AppendIds(builder, "drop", room.CollectedDropInstanceStableIds);
+                AppendIds(builder, "door", room.OpenedDoorInstanceStableIds);
             }
 
             return ComputeSha256(builder.ToString());
+        }
+
+        private static void AppendOccupants(
+            StringBuilder builder,
+            string prefix,
+            IReadOnlyList<RoomOccupantProjectionV1> occupants)
+        {
+            for (int index = 0; index < occupants.Count; index++)
+            {
+                builder.Append('|')
+                    .Append(prefix)
+                    .Append(':')
+                    .Append(occupants[index].EntityStableId);
+            }
+        }
+
+        private static void AppendIds(
+            StringBuilder builder,
+            string prefix,
+            IReadOnlyList<StableId> ids)
+        {
+            for (int index = 0; index < ids.Count; index++)
+            {
+                builder.Append('|')
+                    .Append(prefix)
+                    .Append(':')
+                    .Append(ids[index]);
+            }
         }
 
         private static string ComputeSha256(string value)
@@ -266,7 +310,9 @@ namespace ShooterMover.Application.Missions.Rooms
                 var builder = new StringBuilder(hash.Length * 2);
                 for (int index = 0; index < hash.Length; index++)
                 {
-                    builder.Append(hash[index].ToString("x2", CultureInfo.InvariantCulture));
+                    builder.Append(hash[index].ToString(
+                        "x2",
+                        CultureInfo.InvariantCulture));
                 }
 
                 return builder.ToString();
@@ -324,5 +370,4 @@ namespace ShooterMover.Application.Missions.Rooms
             }
         }
     }
-
 }

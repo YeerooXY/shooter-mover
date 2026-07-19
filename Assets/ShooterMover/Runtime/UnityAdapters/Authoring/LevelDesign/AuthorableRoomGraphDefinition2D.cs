@@ -1,6 +1,7 @@
 using System;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Missions.Rooms;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
@@ -57,15 +58,26 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private string presentationStableId =
             "presentation.environment-room-door";
         [SerializeField] private string exitStableId = "exit.unassigned";
+        [SerializeField] private string[] requiredConditionStableIds =
+            Array.Empty<string>();
         [SerializeField] private Vector2 localPosition;
         [SerializeField] private float localRotationDegrees;
 
         public RoomDoorDefinitionV1 Build()
         {
+            string[] authoredConditions = requiredConditionStableIds
+                ?? Array.Empty<string>();
+            var conditionIds = new StableId[authoredConditions.Length];
+            for (int index = 0; index < authoredConditions.Length; index++)
+            {
+                conditionIds[index] = StableId.Parse(authoredConditions[index]);
+            }
+
             return new RoomDoorDefinitionV1(
                 StableId.Parse(doorInstanceStableId),
                 StableId.Parse(presentationStableId),
                 StableId.Parse(exitStableId),
+                conditionIds,
                 new RoomVector2V1(localPosition.x, localPosition.y),
                 localRotationDegrees);
         }
@@ -77,6 +89,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private string exitStableId = "exit.unassigned";
         [SerializeField] private string doorInstanceStableId = "door-instance.unassigned";
         [SerializeField] private RoomLiveLinkKindV1 linkKind = RoomLiveLinkKindV1.Room;
+        [SerializeField] private RoomExitTypeV1 exitType = RoomExitTypeV1.Progression;
         [SerializeField] private string targetRoomStableId = "room.unassigned";
         [SerializeField] private string targetSpawnPointStableId = "entry.unassigned";
 
@@ -86,6 +99,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 StableId.Parse(exitStableId),
                 StableId.Parse(doorInstanceStableId),
                 linkKind,
+                exitType,
                 linkKind == RoomLiveLinkKindV1.Room
                     ? StableId.Parse(targetRoomStableId)
                     : null,
@@ -101,12 +115,19 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private string stableId = "completion.unassigned";
         [SerializeField] private RoomCompletionConditionKindV1 kind =
             RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal;
+        [SerializeField] private string subjectStableId = string.Empty;
+        [SerializeField] private bool requiredForRoomCompletion = true;
 
         public RoomCompletionConditionDefinitionV1 Build()
         {
+            StableId subject = string.IsNullOrWhiteSpace(subjectStableId)
+                ? null
+                : StableId.Parse(subjectStableId);
             return new RoomCompletionConditionDefinitionV1(
                 StableId.Parse(stableId),
-                kind);
+                kind,
+                subject,
+                requiredForRoomCompletion);
         }
     }
 
@@ -203,11 +224,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         }
     }
 
-    /// <summary>
-    /// Inspector-authorable whole-level room graph. Unity references are intentionally
-    /// excluded from the durable definition; presentationStableId values resolve through
-    /// RoomPresentationCatalog2D at the composition boundary.
-    /// </summary>
     [CreateAssetMenu(
         fileName = "AuthorableRoomGraphDefinition2D",
         menuName = "Shooter Mover/Level Design/Authorable Room Graph 2D")]

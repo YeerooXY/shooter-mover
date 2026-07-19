@@ -25,7 +25,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
 
     public enum RoomCompletionConditionKindV1
     {
-        AllBlockingOccupantsTerminal = 1,
+        AlwaysSatisfied = 1,
+        AllBlockingOccupantsTerminal = 2,
+        CollectedDrop = 3,
     }
 
     public enum RoomLiveLinkKindV1
@@ -175,12 +177,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
 
             LocalPosition = localPosition
                 ?? throw new ArgumentNullException(nameof(localPosition));
-            if (double.IsNaN(localRotationDegrees)
-                || double.IsInfinity(localRotationDegrees))
-            {
-                throw new ArgumentOutOfRangeException(nameof(localRotationDegrees));
-            }
-
+            RequireFinite(localRotationDegrees, nameof(localRotationDegrees));
             PlacementKind = placementKind;
             ClearRole = clearRole;
             LocalRotationDegrees = localRotationDegrees;
@@ -218,14 +215,25 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 .Append(LocalRotationDegrees.ToString("R", CultureInfo.InvariantCulture))
                 .Append('}');
         }
+
+        private static void RequireFinite(double value, string parameterName)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
+            }
+        }
     }
 
     public sealed class RoomDoorDefinitionV1
     {
+        private readonly ReadOnlyCollection<StableId> requiredConditionStableIds;
+
         public RoomDoorDefinitionV1(
             StableId doorInstanceStableId,
             StableId presentationStableId,
             StableId exitStableId,
+            IEnumerable<StableId> requiredConditionStableIds,
             RoomVector2V1 localPosition,
             double localRotationDegrees)
         {
@@ -237,10 +245,15 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 ?? throw new ArgumentNullException(nameof(exitStableId));
             LocalPosition = localPosition
                 ?? throw new ArgumentNullException(nameof(localPosition));
-            if (double.IsNaN(localRotationDegrees)
-                || double.IsInfinity(localRotationDegrees))
+            RequireFinite(localRotationDegrees, nameof(localRotationDegrees));
+            this.requiredConditionStableIds = CopyUniqueIds(
+                requiredConditionStableIds,
+                nameof(requiredConditionStableIds));
+            if (this.requiredConditionStableIds.Count == 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(localRotationDegrees));
+                throw new ArgumentException(
+                    "Every room door must reference at least one authored gate condition.",
+                    nameof(requiredConditionStableIds));
             }
 
             LocalRotationDegrees = localRotationDegrees;
@@ -251,6 +264,11 @@ namespace ShooterMover.Contracts.Missions.Rooms
         public StableId PresentationStableId { get; }
 
         public StableId ExitStableId { get; }
+
+        public IReadOnlyList<StableId> RequiredConditionStableIds
+        {
+            get { return requiredConditionStableIds; }
+        }
 
         public RoomVector2V1 LocalPosition { get; }
 
@@ -264,11 +282,57 @@ namespace ShooterMover.Contracts.Missions.Rooms
             RoomLiveJsonV1.AppendString(builder, PresentationStableId.ToString());
             builder.Append(",\"exit_id\":");
             RoomLiveJsonV1.AppendString(builder, ExitStableId.ToString());
-            builder.Append(",\"position\":");
+            builder.Append(",\"required_condition_ids\":[");
+            for (int index = 0; index < requiredConditionStableIds.Count; index++)
+            {
+                if (index != 0) builder.Append(',');
+                RoomLiveJsonV1.AppendString(
+                    builder,
+                    requiredConditionStableIds[index].ToString());
+            }
+
+            builder.Append("],\"position\":");
             LocalPosition.AppendCanonicalJson(builder);
             builder.Append(",\"rotation\":")
                 .Append(LocalRotationDegrees.ToString("R", CultureInfo.InvariantCulture))
                 .Append('}');
+        }
+
+        private static ReadOnlyCollection<StableId> CopyUniqueIds(
+            IEnumerable<StableId> source,
+            string parameterName)
+        {
+            var copy = new List<StableId>();
+            var seen = new HashSet<StableId>();
+            foreach (StableId value in source ?? throw new ArgumentNullException(parameterName))
+            {
+                if (value == null)
+                {
+                    throw new ArgumentException(
+                        "Door condition identities cannot contain null values.",
+                        parameterName);
+                }
+
+                if (!seen.Add(value))
+                {
+                    throw new ArgumentException(
+                        "room-live-door-condition-duplicate:" + value,
+                        parameterName);
+                }
+
+                copy.Add(value);
+            }
+
+            copy.Sort();
+            return new ReadOnlyCollection<StableId>(copy);
+        }
+
+        private static void RequireFinite(double value, string parameterName)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
+            }
         }
     }
 
@@ -278,6 +342,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
             StableId exitStableId,
             StableId doorInstanceStableId,
             RoomLiveLinkKindV1 linkKind,
+            RoomExitTypeV1 exitType,
             StableId targetRoomStableId,
             StableId targetSpawnPointStableId)
         {
@@ -288,6 +353,11 @@ namespace ShooterMover.Contracts.Missions.Rooms
             if (!Enum.IsDefined(typeof(RoomLiveLinkKindV1), linkKind))
             {
                 throw new ArgumentOutOfRangeException(nameof(linkKind));
+            }
+
+            if (!Enum.IsDefined(typeof(RoomExitTypeV1), exitType))
+            {
+                throw new ArgumentOutOfRangeException(nameof(exitType));
             }
 
             if (linkKind == RoomLiveLinkKindV1.Room)
@@ -304,6 +374,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
             }
 
             LinkKind = linkKind;
+            ExitType = exitType;
         }
 
         public StableId ExitStableId { get; }
@@ -311,6 +382,8 @@ namespace ShooterMover.Contracts.Missions.Rooms
         public StableId DoorInstanceStableId { get; }
 
         public RoomLiveLinkKindV1 LinkKind { get; }
+
+        public RoomExitTypeV1 ExitType { get; }
 
         public StableId TargetRoomStableId { get; }
 
@@ -324,6 +397,8 @@ namespace ShooterMover.Contracts.Missions.Rooms
             RoomLiveJsonV1.AppendString(builder, DoorInstanceStableId.ToString());
             builder.Append(",\"link_kind\":")
                 .Append(((int)LinkKind).ToString(CultureInfo.InvariantCulture))
+                .Append(",\"exit_type\":")
+                .Append(((int)ExitType).ToString(CultureInfo.InvariantCulture))
                 .Append(",\"target_room_id\":");
             RoomLiveJsonV1.AppendNullableStableId(builder, TargetRoomStableId);
             builder.Append(",\"target_spawn_point_id\":");
@@ -336,7 +411,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
     {
         public RoomCompletionConditionDefinitionV1(
             StableId conditionStableId,
-            RoomCompletionConditionKindV1 kind)
+            RoomCompletionConditionKindV1 kind,
+            StableId subjectStableId,
+            bool isRequiredForRoomCompletion)
         {
             ConditionStableId = conditionStableId
                 ?? throw new ArgumentNullException(nameof(conditionStableId));
@@ -345,12 +422,29 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 throw new ArgumentOutOfRangeException(nameof(kind));
             }
 
+            if (kind == RoomCompletionConditionKindV1.CollectedDrop)
+            {
+                SubjectStableId = subjectStableId
+                    ?? throw new ArgumentNullException(nameof(subjectStableId));
+            }
+            else if (subjectStableId != null)
+            {
+                throw new ArgumentException(
+                    "Only subject-based conditions may carry a subject identity.",
+                    nameof(subjectStableId));
+            }
+
             Kind = kind;
+            IsRequiredForRoomCompletion = isRequiredForRoomCompletion;
         }
 
         public StableId ConditionStableId { get; }
 
         public RoomCompletionConditionKindV1 Kind { get; }
+
+        public StableId SubjectStableId { get; }
+
+        public bool IsRequiredForRoomCompletion { get; }
 
         internal void AppendCanonicalJson(StringBuilder builder)
         {
@@ -358,8 +452,95 @@ namespace ShooterMover.Contracts.Missions.Rooms
             RoomLiveJsonV1.AppendString(builder, ConditionStableId.ToString());
             builder.Append(",\"kind\":")
                 .Append(((int)Kind).ToString(CultureInfo.InvariantCulture))
+                .Append(",\"subject_id\":");
+            RoomLiveJsonV1.AppendNullableStableId(builder, SubjectStableId);
+            builder.Append(",\"required_for_room_completion\":")
+                .Append(IsRequiredForRoomCompletion ? "true" : "false")
                 .Append('}');
         }
     }
 
+    internal static class RoomLiveJsonV1
+    {
+        public static void AppendNullableStableId(
+            StringBuilder builder,
+            StableId value)
+        {
+            if (value == null)
+            {
+                builder.Append("null");
+                return;
+            }
+
+            AppendString(builder, value.ToString());
+        }
+
+        public static void AppendString(StringBuilder builder, string value)
+        {
+            builder.Append('"');
+            string source = value ?? string.Empty;
+            for (int index = 0; index < source.Length; index++)
+            {
+                char character = source[index];
+                switch (character)
+                {
+                    case '"':
+                        builder.Append("\\\"");
+                        break;
+                    case '\\':
+                        builder.Append("\\\\");
+                        break;
+                    case '\b':
+                        builder.Append("\\b");
+                        break;
+                    case '\f':
+                        builder.Append("\\f");
+                        break;
+                    case '\n':
+                        builder.Append("\\n");
+                        break;
+                    case '\r':
+                        builder.Append("\\r");
+                        break;
+                    case '\t':
+                        builder.Append("\\t");
+                        break;
+                    default:
+                        if (character < 32)
+                        {
+                            builder.Append("\\u")
+                                .Append(((int)character).ToString(
+                                    "x4",
+                                    CultureInfo.InvariantCulture));
+                        }
+                        else
+                        {
+                            builder.Append(character);
+                        }
+
+                        break;
+                }
+            }
+
+            builder.Append('"');
+        }
+
+        public static string ComputeSha256(string value)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                byte[] hash = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(value ?? string.Empty));
+                var builder = new StringBuilder(hash.Length * 2);
+                for (int index = 0; index < hash.Length; index++)
+                {
+                    builder.Append(hash[index].ToString(
+                        "x2",
+                        CultureInfo.InvariantCulture));
+                }
+
+                return builder.ToString();
+            }
+        }
+    }
 }

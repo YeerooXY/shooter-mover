@@ -2,10 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Missions.Rooms;
 
 namespace ShooterMover.Contracts.Missions.Rooms
 {
@@ -21,6 +19,8 @@ namespace ShooterMover.Contracts.Missions.Rooms
         private readonly Dictionary<StableId, RoomPlacedEntityDefinitionV1> placementsById;
         private readonly Dictionary<StableId, RoomDoorDefinitionV1> doorsById;
         private readonly Dictionary<StableId, RoomExitLinkDefinitionV1> exitsById;
+        private readonly Dictionary<StableId, RoomCompletionConditionDefinitionV1>
+            completionConditionsById;
 
         public AuthorableRoomDefinitionV1(
             StableId roomStableId,
@@ -46,7 +46,6 @@ namespace ShooterMover.Contracts.Missions.Rooms
             Order = order;
             DisplayName = displayName.Trim();
             Bounds = bounds ?? throw new ArgumentNullException(nameof(bounds));
-
             this.spawnPoints = CopyAndSort(
                 spawnPoints,
                 CompareSpawnPoints,
@@ -69,13 +68,6 @@ namespace ShooterMover.Contracts.Missions.Rooms
                     nameof(spawnPoints));
             }
 
-            if (this.completionConditions.Count == 0)
-            {
-                throw new ArgumentException(
-                    "Every authorable room requires at least one completion condition.",
-                    nameof(completionConditions));
-            }
-
             spawnPointsById = IndexUnique(
                 this.spawnPoints,
                 item => item.SpawnPointStableId,
@@ -92,33 +84,13 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 this.exits,
                 item => item.ExitStableId,
                 "room-live-exit-duplicate");
+            completionConditionsById = IndexUnique(
+                this.completionConditions,
+                item => item.ConditionStableId,
+                "room-live-completion-condition-duplicate");
 
-            for (int index = 0; index < this.doors.Count; index++)
-            {
-                RoomDoorDefinitionV1 door = this.doors[index];
-                if (!exitsById.ContainsKey(door.ExitStableId))
-                {
-                    throw new ArgumentException(
-                        "room-live-door-exit-unknown:" + door.ExitStableId);
-                }
-            }
-
-            for (int index = 0; index < this.exits.Count; index++)
-            {
-                RoomExitLinkDefinitionV1 exit = this.exits[index];
-                RoomDoorDefinitionV1 door;
-                if (!doorsById.TryGetValue(exit.DoorInstanceStableId, out door))
-                {
-                    throw new ArgumentException(
-                        "room-live-exit-door-unknown:" + exit.DoorInstanceStableId);
-                }
-
-                if (door.ExitStableId != exit.ExitStableId)
-                {
-                    throw new ArgumentException(
-                        "room-live-exit-door-mismatch:" + exit.ExitStableId);
-                }
-            }
+            ValidateDoorAndExitLinks();
+            ValidateDoorConditionReferences();
         }
 
         public StableId RoomStableId { get; }
@@ -152,6 +124,25 @@ namespace ShooterMover.Contracts.Missions.Rooms
         public IReadOnlyList<RoomCompletionConditionDefinitionV1> CompletionConditions
         {
             get { return completionConditions; }
+        }
+
+        public bool HasSpawnPoint(StableId spawnPointStableId)
+        {
+            return spawnPointStableId != null
+                && spawnPointsById.ContainsKey(spawnPointStableId);
+        }
+
+        public bool TryGetSpawnPoint(
+            StableId spawnPointStableId,
+            out RoomSpawnPointDefinitionV1 spawnPoint)
+        {
+            if (spawnPointStableId == null)
+            {
+                spawnPoint = null;
+                return false;
+            }
+
+            return spawnPointsById.TryGetValue(spawnPointStableId, out spawnPoint);
         }
 
         public bool TryGetPlacement(
@@ -193,23 +184,19 @@ namespace ShooterMover.Contracts.Missions.Rooms
             return exitsById.TryGetValue(exitStableId, out exit);
         }
 
-        public bool TryGetSpawnPoint(
-            StableId spawnPointStableId,
-            out RoomSpawnPointDefinitionV1 spawnPoint)
+        public bool TryGetCompletionCondition(
+            StableId conditionStableId,
+            out RoomCompletionConditionDefinitionV1 condition)
         {
-            if (spawnPointStableId == null)
+            if (conditionStableId == null)
             {
-                spawnPoint = null;
+                condition = null;
                 return false;
             }
 
-            return spawnPointsById.TryGetValue(spawnPointStableId, out spawnPoint);
-        }
-
-        public bool HasSpawnPoint(StableId spawnPointStableId)
-        {
-            RoomSpawnPointDefinitionV1 ignored;
-            return TryGetSpawnPoint(spawnPointStableId, out ignored);
+            return completionConditionsById.TryGetValue(
+                conditionStableId,
+                out condition);
         }
 
         internal void AppendCanonicalJson(StringBuilder builder)
@@ -222,38 +209,79 @@ namespace ShooterMover.Contracts.Missions.Rooms
             RoomLiveJsonV1.AppendString(builder, DisplayName);
             builder.Append(",\"bounds\":");
             Bounds.AppendCanonicalJson(builder);
-            AppendArray(builder, "spawn_points", spawnPoints, (item, output) =>
-                item.AppendCanonicalJson(output));
-            AppendArray(builder, "placements", placements, (item, output) =>
-                item.AppendCanonicalJson(output));
-            AppendArray(builder, "doors", doors, (item, output) =>
-                item.AppendCanonicalJson(output));
-            AppendArray(builder, "exits", exits, (item, output) =>
-                item.AppendCanonicalJson(output));
+            AppendArray(builder, "spawn_points", spawnPoints, (value, target) =>
+                value.AppendCanonicalJson(target));
+            AppendArray(builder, "placements", placements, (value, target) =>
+                value.AppendCanonicalJson(target));
+            AppendArray(builder, "doors", doors, (value, target) =>
+                value.AppendCanonicalJson(target));
+            AppendArray(builder, "exits", exits, (value, target) =>
+                value.AppendCanonicalJson(target));
             AppendArray(
                 builder,
                 "completion_conditions",
                 completionConditions,
-                (item, output) => item.AppendCanonicalJson(output));
+                (value, target) => value.AppendCanonicalJson(target));
             builder.Append('}');
         }
 
-        private static void AppendArray<T>(
-            StringBuilder builder,
-            string propertyName,
-            IReadOnlyList<T> values,
-            Action<T, StringBuilder> append)
+        private void ValidateDoorAndExitLinks()
         {
-            builder.Append(',');
-            RoomLiveJsonV1.AppendString(builder, propertyName);
-            builder.Append(":[");
-            for (int index = 0; index < values.Count; index++)
+            for (int index = 0; index < doors.Count; index++)
             {
-                if (index != 0) builder.Append(',');
-                append(values[index], builder);
+                RoomDoorDefinitionV1 door = doors[index];
+                RoomExitLinkDefinitionV1 exit;
+                if (!exitsById.TryGetValue(door.ExitStableId, out exit))
+                {
+                    throw new ArgumentException(
+                        "room-live-door-exit-unknown:" + door.ExitStableId);
+                }
+
+                if (exit.DoorInstanceStableId != door.DoorInstanceStableId)
+                {
+                    throw new ArgumentException(
+                        "room-live-door-exit-mismatch:" + door.DoorInstanceStableId);
+                }
             }
 
-            builder.Append(']');
+            for (int index = 0; index < exits.Count; index++)
+            {
+                RoomExitLinkDefinitionV1 exit = exits[index];
+                RoomDoorDefinitionV1 door;
+                if (!doorsById.TryGetValue(exit.DoorInstanceStableId, out door))
+                {
+                    throw new ArgumentException(
+                        "room-live-exit-door-unknown:" + exit.DoorInstanceStableId);
+                }
+
+                if (door.ExitStableId != exit.ExitStableId)
+                {
+                    throw new ArgumentException(
+                        "room-live-exit-door-mismatch:" + exit.ExitStableId);
+                }
+            }
+        }
+
+        private void ValidateDoorConditionReferences()
+        {
+            for (int doorIndex = 0; doorIndex < doors.Count; doorIndex++)
+            {
+                RoomDoorDefinitionV1 door = doors[doorIndex];
+                for (int conditionIndex = 0;
+                    conditionIndex < door.RequiredConditionStableIds.Count;
+                    conditionIndex++)
+                {
+                    StableId conditionId = door.RequiredConditionStableIds[conditionIndex];
+                    if (!completionConditionsById.ContainsKey(conditionId))
+                    {
+                        throw new ArgumentException(
+                            "room-live-door-condition-unknown:"
+                            + door.DoorInstanceStableId
+                            + ":"
+                            + conditionId);
+                    }
+                }
+            }
         }
 
         private static ReadOnlyCollection<T> CopyAndSort<T>(
@@ -269,7 +297,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 if (copy[index] == null)
                 {
                     throw new ArgumentException(
-                        "Room definitions cannot contain null elements.",
+                        "Authorable room collections cannot contain null entries.",
                         parameterName);
                 }
             }
@@ -284,18 +312,34 @@ namespace ShooterMover.Contracts.Missions.Rooms
             string rejectionCode)
         {
             var result = new Dictionary<StableId, T>();
-            foreach (T item in source)
+            foreach (T value in source)
             {
-                StableId id = selectId(item);
+                StableId id = selectId(value);
                 if (result.ContainsKey(id))
                 {
                     throw new ArgumentException(rejectionCode + ":" + id);
                 }
 
-                result.Add(id, item);
+                result.Add(id, value);
             }
 
             return result;
+        }
+
+        private static void AppendArray<T>(
+            StringBuilder builder,
+            string name,
+            IReadOnlyList<T> values,
+            Action<T, StringBuilder> append)
+        {
+            builder.Append(",\"").Append(name).Append("\":[");
+            for (int index = 0; index < values.Count; index++)
+            {
+                if (index != 0) builder.Append(',');
+                append(values[index], builder);
+            }
+
+            builder.Append(']');
         }
 
         private static int CompareSpawnPoints(
@@ -333,5 +377,4 @@ namespace ShooterMover.Contracts.Missions.Rooms
             return left.ConditionStableId.CompareTo(right.ConditionStableId);
         }
     }
-
 }

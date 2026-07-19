@@ -1,119 +1,101 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Text;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Application.Missions.Rooms
 {
-    public sealed partial class RoomLiveRuntimeAuthorityV1
+    internal sealed class RoomTraversalResultV1
     {
-        public RoomLiveOperationResultV1 Traverse(
-            StableId operationStableId,
-            StableId exitStableId)
+        public RoomTraversalResultV1(
+            bool applied,
+            string rejectionCode,
+            StableId targetRoomStableId,
+            StableId targetSpawnPointStableId)
         {
-            RoomLiveRuntimeProjectionV1 previous = currentProjection;
-            string payload = "traverse|" + exitStableId;
-            OperationInspection inspection = InspectOperation(operationStableId, payload);
-            if (inspection == OperationInspection.Duplicate)
+            Applied = applied;
+            RejectionCode = rejectionCode ?? string.Empty;
+            TargetRoomStableId = targetRoomStableId;
+            TargetSpawnPointStableId = targetSpawnPointStableId;
+        }
+
+        public bool Applied { get; }
+
+        public string RejectionCode { get; }
+
+        public StableId TargetRoomStableId { get; }
+
+        public StableId TargetSpawnPointStableId { get; }
+    }
+
+    /// <summary>
+    /// Small coordinated mutation boundary for ROOM-001 traversal and ROOM-RUNTIME-001
+    /// activation/restart. The contained mutable authorities are intentionally internal.
+    /// </summary>
+    internal sealed class RoomTraversalCoordinatorV1
+    {
+        private readonly StableId runtimeInstanceStableId;
+        private readonly RoomRuntimeAuthorityV1 occupancyAuthority;
+        private readonly RoomMissionLayoutV1 missionLayout;
+
+        public RoomTraversalCoordinatorV1(
+            StableId runtimeInstanceStableId,
+            AuthorableRoomGraphDefinitionV1 definition)
+        {
+            this.runtimeInstanceStableId = runtimeInstanceStableId
+                ?? throw new ArgumentNullException(nameof(runtimeInstanceStableId));
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
+            occupancyAuthority = new RoomRuntimeAuthorityV1(
+                runtimeInstanceStableId,
+                definition.RoomGraphDefinition);
+            missionLayout = new RoomMissionLayoutV1(definition.RoomGraphDefinition);
+        }
+
+        internal RoomRuntimeAuthorityV1 OccupancyAuthority
+        {
+            get { return occupancyAuthority; }
+        }
+
+        internal RoomMissionLayoutV1 MissionLayout
+        {
+            get { return missionLayout; }
+        }
+
+        public RoomTraversalResultV1 Traverse(
+            RoomExitLinkDefinitionV1 exit,
+            StableId occupancyOperationStableId)
+        {
+            if (exit == null) throw new ArgumentNullException(nameof(exit));
+            if (exit.LinkKind != RoomLiveLinkKindV1.Room)
             {
-                return Result(
-                    RoomLiveOperationStatusV1.DuplicateNoChange,
-                    string.Empty,
-                    previous,
-                    exitStableId);
+                throw new ArgumentException(
+                    "Room traversal coordinator accepts only room links.",
+                    nameof(exit));
             }
 
-            if (inspection == OperationInspection.Conflict)
+            if (!missionLayout.GetExitState(exit.ExitStableId).IsAvailable)
             {
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
-                    "room-live-operation-id-conflict",
-                    previous,
-                    exitStableId);
-            }
-
-            AuthorableRoomDefinitionV1 owner;
-            RoomExitLinkDefinitionV1 exit;
-            if (!Definition.TryGetExitOwner(exitStableId, out owner)
-                || !owner.TryGetExit(exitStableId, out exit))
-            {
-                RecordOperation(operationStableId, payload);
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
-                    "room-live-exit-unknown",
-                    previous,
-                    exitStableId);
-            }
-
-            if (owner.RoomStableId != currentProjection.CurrentRoomStableId)
-            {
-                RecordOperation(operationStableId, payload);
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
-                    "room-live-exit-not-from-current-room",
-                    previous,
-                    exitStableId);
-            }
-
-            if (!openedDoorsByRoom[owner.RoomStableId].Contains(
-                exit.DoorInstanceStableId))
-            {
-                RecordOperation(operationStableId, payload);
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
-                    "room-live-door-closed",
-                    previous,
-                    exitStableId);
-            }
-
-            RecordOperation(operationStableId, payload);
-            if (exit.LinkKind == RoomLiveLinkKindV1.FinalExit)
-            {
-                if (finalExitReached)
-                {
-                    return Result(
-                        RoomLiveOperationStatusV1.NoChange,
-                        string.Empty,
-                        previous,
-                        exitStableId);
-                }
-
-                finalExitReached = true;
-                sequence = checked(sequence + 1L);
-                RefreshProjection();
-                return Result(
-                    RoomLiveOperationStatusV1.FinalExitReached,
-                    string.Empty,
-                    previous,
-                    exitStableId);
-            }
-
-            if (!missionLayout.GetExitState(exitStableId).IsAvailable)
-            {
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
+                return new RoomTraversalResultV1(
+                    false,
                     "room-live-exit-locked",
-                    previous,
-                    exitStableId);
+                    null,
+                    null);
             }
 
-            RoomGraphOperationResultV1 traversal = missionLayout.Traverse(exitStableId);
+            RoomGraphOperationResultV1 traversal = missionLayout.Traverse(
+                exit.ExitStableId);
             if (traversal.Status != RoomGraphOperationStatusV1.Applied)
             {
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
+                return new RoomTraversalResultV1(
+                    false,
                     traversal.RejectionCode,
-                    previous,
-                    exitStableId);
+                    null,
+                    null);
             }
 
             RoomRuntimeOperationResultV1 activation = occupancyAuthority.ActivateRoom(
                 new ActivateRoomCommandV1(
-                    RuntimeInstanceStableId,
-                    InternalOperation(operationStableId, "occupancy-activate"),
+                    runtimeInstanceStableId,
+                    occupancyOperationStableId,
                     occupancyAuthority.CurrentProjection.LifecycleGeneration,
                     exit.TargetRoomStableId));
             if (activation.Status != RoomRuntimeOperationStatusV1.Applied
@@ -124,72 +106,39 @@ namespace ShooterMover.Application.Missions.Rooms
                     + activation.RejectionCode);
             }
 
-            currentSpawnPointStableId = exit.TargetSpawnPointStableId;
-            SynchronizeCompletionAndDoors(exit.TargetRoomStableId);
-            sequence = checked(sequence + 1L);
-            RefreshProjection();
-            return Result(
-                RoomLiveOperationStatusV1.Applied,
+            return new RoomTraversalResultV1(
+                true,
                 string.Empty,
-                previous,
-                exitStableId,
                 exit.TargetRoomStableId,
                 exit.TargetSpawnPointStableId);
         }
 
-        public RoomLiveOperationResultV1 Restart(StableId operationStableId)
+        public RoomRuntimeOperationResultV1 Restart(
+            StableId occupancyOperationStableId)
         {
-            RoomLiveRuntimeProjectionV1 previous = currentProjection;
-            string payload = "restart|" + currentProjection.LifecycleGeneration;
-            OperationInspection inspection = InspectOperation(operationStableId, payload);
-            if (inspection == OperationInspection.Duplicate)
-            {
-                return Result(
-                    RoomLiveOperationStatusV1.DuplicateNoChange,
-                    string.Empty,
-                    previous);
-            }
-
-            if (inspection == OperationInspection.Conflict)
-            {
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
-                    "room-live-operation-id-conflict",
-                    previous);
-            }
-
             RoomRuntimeOperationResultV1 occupancy = occupancyAuthority.Restart(
                 new RestartRoomRuntimeCommandV1(
-                    RuntimeInstanceStableId,
-                    InternalOperation(operationStableId, "occupancy-restart"),
+                    runtimeInstanceStableId,
+                    occupancyOperationStableId,
                     occupancyAuthority.CurrentProjection.LifecycleGeneration));
-            RecordOperation(operationStableId, payload);
-            if (occupancy.Status == RoomRuntimeOperationStatusV1.Rejected)
+            if (occupancy.Status != RoomRuntimeOperationStatusV1.Rejected)
             {
-                return Result(
-                    RoomLiveOperationStatusV1.Rejected,
-                    occupancy.RejectionCode,
-                    previous);
+                missionLayout.Restart();
             }
 
-            missionLayout.Restart();
-            foreach (HashSet<StableId> drops in collectedDropsByRoom.Values)
+            return occupancy;
+        }
+
+        public bool CompleteCurrentRoom(StableId roomStableId)
+        {
+            RoomRuntimeStateV1 state = missionLayout.GetRoomState(roomStableId);
+            if (!state.IsCurrent || state.IsCompleted)
             {
-                drops.Clear();
+                return false;
             }
 
-            foreach (HashSet<StableId> doors in openedDoorsByRoom.Values)
-            {
-                doors.Clear();
-            }
-
-            finalExitReached = false;
-            currentSpawnPointStableId = ResolveInitialSpawnPoint(
-                Definition.GetRoom(Definition.StartRoomStableId));
-            SynchronizeCompletionAndDoors(Definition.StartRoomStableId);
-            sequence = checked(sequence + 1L);
-            RefreshProjection();
-            return Result(RoomLiveOperationStatusV1.Applied, string.Empty, previous);
+            RoomGraphOperationResultV1 result = missionLayout.CompleteCurrentRoom();
+            return result.Status == RoomGraphOperationStatusV1.Applied;
         }
     }
 }

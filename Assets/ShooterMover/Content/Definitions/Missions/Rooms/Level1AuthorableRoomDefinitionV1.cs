@@ -1,12 +1,13 @@
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Missions.Rooms;
 
 namespace ShooterMover.Content.Definitions.Missions.Rooms
 {
     /// <summary>
-    /// Example Level 1 live definition: a moving droid in Room 1, a turret in Room 2,
-    /// a retained return link, and a final exit that becomes usable after Room 2 clears.
-    /// Presentation IDs are resolved by the Unity room presentation catalog.
+    /// Example Level 1 live definition: Room 1 has a moving droid, Room 2 has a turret,
+    /// the Room 2 return door is available on entry, and the final exit is independently
+    /// gated by the Room 2 clear condition.
     /// </summary>
     public static class Level1AuthorableRoomDefinitionV1
     {
@@ -42,6 +43,13 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
             StableId.Parse("door-instance.level1-terminal-return");
         public static readonly StableId FinalDoorStableId =
             StableId.Parse("door-instance.level1-terminal-final");
+
+        public static readonly StableId EntryClearConditionStableId =
+            StableId.Parse("completion.level1-entry-clear");
+        public static readonly StableId TerminalEnteredConditionStableId =
+            StableId.Parse("completion.level1-terminal-entered");
+        public static readonly StableId TerminalClearConditionStableId =
+            StableId.Parse("completion.level1-terminal-clear");
 
         public static readonly StableId MovingDroidPresentationStableId =
             StableId.Parse("presentation.enemy-mobile-blaster-droid");
@@ -94,6 +102,7 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
                         ForwardDoorStableId,
                         DoorPresentationStableId,
                         ForwardExitStableId,
+                        new[] { EntryClearConditionStableId },
                         new RoomVector2V1(11d, 0d),
                         0d),
                 },
@@ -103,10 +112,18 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
                         ForwardExitStableId,
                         ForwardDoorStableId,
                         RoomLiveLinkKindV1.Room,
+                        RoomExitTypeV1.Progression,
                         TerminalRoomStableId,
                         TerminalSpawnStableId),
                 },
-                Completion("completion.level1-entry-clear"));
+                new[]
+                {
+                    new RoomCompletionConditionDefinitionV1(
+                        EntryClearConditionStableId,
+                        RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal,
+                        null,
+                        true),
+                });
 
             var terminalRoom = new AuthorableRoomDefinitionV1(
                 TerminalRoomStableId,
@@ -140,12 +157,14 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
                         ReturnDoorStableId,
                         DoorPresentationStableId,
                         ReturnExitStableId,
+                        new[] { TerminalEnteredConditionStableId },
                         new RoomVector2V1(-11d, -3d),
                         180d),
                     new RoomDoorDefinitionV1(
                         FinalDoorStableId,
                         DoorPresentationStableId,
                         FinalExitStableId,
+                        new[] { TerminalClearConditionStableId },
                         new RoomVector2V1(11d, 3d),
                         0d),
                 },
@@ -155,32 +174,36 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
                         ReturnExitStableId,
                         ReturnDoorStableId,
                         RoomLiveLinkKindV1.Room,
+                        RoomExitTypeV1.Return,
                         EntryRoomStableId,
                         EntrySpawnStableId),
                     new RoomExitLinkDefinitionV1(
                         FinalExitStableId,
                         FinalDoorStableId,
                         RoomLiveLinkKindV1.FinalExit,
+                        RoomExitTypeV1.Progression,
                         null,
                         null),
                 },
-                Completion("completion.level1-terminal-clear"));
+                new[]
+                {
+                    new RoomCompletionConditionDefinitionV1(
+                        TerminalEnteredConditionStableId,
+                        RoomCompletionConditionKindV1.AlwaysSatisfied,
+                        null,
+                        false),
+                    new RoomCompletionConditionDefinitionV1(
+                        TerminalClearConditionStableId,
+                        RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal,
+                        null,
+                        true),
+                });
 
             return new AuthorableRoomGraphDefinitionV1(
                 LayoutStableId,
                 EntryRoomStableId,
                 TerminalRoomStableId,
                 new[] { entryRoom, terminalRoom });
-        }
-
-        private static RoomCompletionConditionDefinitionV1[] Completion(string id)
-        {
-            return new[]
-            {
-                new RoomCompletionConditionDefinitionV1(
-                    StableId.Parse(id),
-                    RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal),
-            };
         }
     }
 }
