@@ -10,6 +10,9 @@
     "ShooterMover.Content.Definitions",
     "ShooterMover.Bootstrap",
     "ShooterMover.GameplayEntities",
+    "ShooterMover.PlayerRuntime",
+    "ShooterMover.ContentPackages.Environment.VoidHazards",
+    "ShooterMover.UI.VisibleSliceGeneralCombatHud",
     "Unity.InputSystem",
     "Unity.InputSystem.TestFramework"
   ],
