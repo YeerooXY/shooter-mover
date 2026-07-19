@@ -22,14 +22,14 @@ namespace ShooterMover.Tests.EditMode.Weapons.Execution
         private static WeaponCatalog Catalog(WeaponDefinitionData d)
         {
             WeaponCatalogRules rules=new WeaponCatalogRules(true,false,"20-25",new[]{75,105,135},new[]{"Kinetic","Thermal","Energized"},10,true,true,true);
-            WeaponCatalogInputs inputs=new WeaponCatalogInputs(12d,.05d,.055d,.06d,new Dictionary<string,WeaponRarityInput>(StringComparer.Ordinal){{"Common",new WeaponRarityInput("Common",1000d,0,4d,13d)}});
+            WeaponCatalogInputs inputs=new WeaponCatalogInputs(12d,0.05d,0.055d,0.06d,new Dictionary<string,WeaponRarityInput>(StringComparer.Ordinal){{"Common",new WeaponRarityInput("Common",1000d,0,4d,13d)}});
             WeaponArchetypeDefinition archetype=new WeaponArchetypeDefinition("Test","Test",1d,Math.Max(1d,d.FireRate),Math.Max(1,d.ProjectilesPerTrigger),1,Math.Max(0d,d.SpreadDegrees),30d,30d,1d,0d,0d,0d,0d,0d,0d,0,0,0d,0d,1d);
             WeaponFamilyDefinition family=new WeaponFamilyDefinition("test-family","Test Family","Test",d.DamageType,"Universal",1,20,20,3,"Common","Common","Common",1d,"Standard","Test","Test",WeaponCatalogAvailability.Live,new string[0]);
             return new WeaponCatalog("0.1","test",rules,inputs,new Dictionary<string,WeaponArchetypeDefinition>(StringComparer.Ordinal){{"Test",archetype}},new[]{family},new[]{d});
         }
         private static WeaponDefinitionData Definition(string id,int projectileCount,double spread,double fireRate,double areaDamage=0d,double explosionRadius=0d,int chainTargets=0,double chainRange=0d,WeaponCatalogAvailability availability=WeaponCatalogAvailability.Live,double dotDps=0d,int burstCount=1)
         {
-            return new WeaponDefinitionData(id,id,"test-family",1,"Kinetic","Test","Universal",1,1,1,"Common",1000d,1d,1000d,4d,13d,"Standard",false,"Standard",1d,100d,10d,areaDamage>0d?.5d:1d,areaDamage>0d?.5d:0d,dotDps>0d?1d:0d,fireRate,projectileCount,burstCount,5d,spread,30d,30d,0,explosionRadius,areaDamage,dotDps,dotDps>0d?2d:0d,0d,0d,chainTargets,chainRange,.5d,1d,0d,"Test","Test",availability,new string[0]);
+            return new WeaponDefinitionData(id,id,"test-family",1,"Kinetic","Test","Universal",1,1,1,"Common",1000d,1d,1000d,4d,13d,"Standard",false,"Standard",1d,100d,10d,areaDamage>0d?0.5d:1d,areaDamage>0d?0.5d:0d,dotDps>0d?1d:0d,fireRate,projectileCount,burstCount,5d,spread,30d,30d,0,explosionRadius,areaDamage,dotDps,dotDps>0d?2d:0d,0d,0d,chainTargets,chainRange,0.5d,1d,0d,"Test","Test",availability,new string[0]);
         }
         private static EquipmentInstance Equipment(string id){return EquipmentInstance.Create(StableId.Parse(id),EquipmentDefinitionStableId,1,QualityStableId,new AugmentInstance[0]);}
         private static WeaponFireCommand Command(EquipmentInstance equipment,string operation,long tick,long generation=0L,ulong seed=123UL,WeaponVector2 aim=null){return new WeaponFireCommand(new WeaponActorInstanceId(ActorStableId),new EquipmentInstanceId(equipment.InstanceId),new FireOperationId(StableId.Parse(operation)),new LifecycleGeneration(generation),tick,seed,new WeaponVector2(2d,3d),aim??new WeaponVector2(1d,0d));}
