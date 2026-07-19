@@ -43,6 +43,8 @@ Every effect in one `WeaponEffectBatch` belongs to exactly one fire operation an
 
 The sink returns `Accepted`, `AlreadyAccepted`, or `Rejected`. Rejection means no effect was committed. The core does not mutate cooldown, shot sequence, or replay state until acceptance, so a rejected operation can be retried with the same deterministic batch.
 
+Each accepted operation stores its immutable command fingerprint, batch fingerprint, and accepted shot sequence. An operation ID is reported as `ReplayAccepted` only when the incoming command and deterministically rebuilt batch both match the accepted fingerprints. Reusing the same operation ID with changed timing, deterministic seed, origin, aim, tuning, or behavior output is rejected as `ConflictingDuplicate` without calling the sink or mutating state.
+
 ## Supported descriptions
 
 - direct projectile;
@@ -75,7 +77,7 @@ A later Unity adapter should:
    - reject before any spawn or damage when any effect/value/binding is unsupported;
    - commit all staged effects together and persist the composite batch identity;
    - return `AlreadyAccepted` for an exact replay without repeating effects.
-6. Translate the result to HUD/debug output.
+6. Translate the result to HUD/debug output, including conflicting-duplicate diagnostics.
 7. Remove the retained Stage 1 weapon-ID branch and blaster fallback only in WPN-LIVE-001.
 
 The adapter must not become a second inventory, equipment, damage, projectile, explosion, chain, participant-ownership, or lifecycle authority.
@@ -84,7 +86,7 @@ The adapter must not become a second inventory, equipment, damage, projectile, e
 
 Fixture: `ShooterMover.Tests.EditMode.Weapons.Execution.WeaponExecutionCoreTests`
 
-Coverage includes exact equipment identity, authority-derived participant identity, unknown and preview definitions, missing equipment, invalid aim/tuning, unsupported effects, deterministic spread, shotgun count and sequence, atomic rejection/retry, accepted replay, independent equipment cooldowns, lifecycle restart, explosive/chain descriptions, and fifth-behavior registration.
+Coverage includes exact equipment identity, authority-derived participant identity, unknown and preview definitions, missing equipment, invalid aim/tuning, unsupported effects, deterministic spread, shotgun count and sequence, atomic rejection/retry, exact accepted replay, conflicting duplicate timing/seed/origin/aim, independent equipment cooldowns, lifecycle restart, explosive/chain descriptions, and fifth-behavior registration.
 
 Suggested Unity command for Unity `6000.3.19f1`:
 
