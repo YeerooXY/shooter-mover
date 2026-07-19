@@ -1,0 +1,19 @@
+{
+  "name": "ShooterMover.EnemyCombatRuntime",
+  "rootNamespace": "ShooterMover.EnemyCombatRuntime",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.Application"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}
