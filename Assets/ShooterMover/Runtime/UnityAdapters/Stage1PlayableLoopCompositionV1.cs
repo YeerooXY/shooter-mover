@@ -156,15 +156,27 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
             projectedRoomEnemies.Clear();
             activeComposition = null;
             pendingResults = null;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallForActiveScene()
+        private static void InstallSceneHook()
         {
-            Scene scene = SceneManager.GetActiveScene();
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+            InstallForScene(SceneManager.GetActiveScene());
+        }
+
+        private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            InstallForScene(scene);
+        }
+
+        private static void InstallForScene(Scene scene)
+        {
             if (string.Equals(
                     scene.path,
                     Stage1VisibleSliceController.ScenePath,
