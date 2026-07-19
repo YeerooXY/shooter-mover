@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.Content.Definitions.Objects;
@@ -20,6 +21,7 @@ using ShooterMover.Contracts.Input;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.Domain.Movement;
+using ShooterMover.GameplayEntities;
 using ShooterMover.Presentation.VisibleSliceBlasterTurret;
 using ShooterMover.Presentation.VisibleSliceCameraReadability;
 using ShooterMover.UI.VisibleSliceGeneralCombatHud;
@@ -30,6 +32,7 @@ using ShooterMover.UnityAdapters.Input;
 using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using ShooterMover.UnityAdapters.Physics;
+using ShooterMover.UnityAdapters.Players;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -37,7 +40,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 {
     /// <summary>
     /// VS-007's scene-local composition root. It wires accepted packages together and
-    /// owns only disposable prototype presentation plus one session-only player vital.
+    /// projects accepted player-authority lifecycle changes into disposable scene state.
     /// </summary>
     [DefaultExecutionOrder(10000)]
     [DisallowMultipleComponent]
@@ -78,6 +81,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
         [SerializeField] private bool shootingSandbox = true;
         [SerializeField] private bool reducedEffects;
         [SerializeField] private bool grayscale;
+        [Header("Live player identity")]
+        [SerializeField] private string playerRunParticipantIdText =
+            "participant.stage1-player";
+        [SerializeField] private string playerCharacterIdText = "character.striker";
+        [SerializeField] private string playerFactionIdText = "faction.player";
 
         private readonly List<GameObject> sessionObjects = new List<GameObject>();
         private readonly List<ShotTrace> shotTraces = new List<ShotTrace>();
@@ -122,7 +130,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private Material lineMaterial;
         private Stage1WeaponLoadoutFixture selectedLoadout;
         private Vector3 playerSpawn;
-        private int playerHealth;
+        private Stage1PlayerLiveAuthorityAdapterV1 playerLiveAuthority;
         private long restartGeneration;
         private long playerShotSequence;
         private long damageSequence;
@@ -144,9 +152,46 @@ namespace ShooterMover.TestSupport.VisibleSlice
         public bool ReducedEffectsEnabled => reducedEffects;
         public bool IsInitialized => initialized;
         public bool IsSessionActive => sessionActive;
-        public int PlayerHealth => playerHealth;
-        public long RestartGeneration => restartGeneration;
+        public bool IsPlayerGameplayActive => sessionActive
+            && movementLifecycle != null
+            && movementLifecycle.IsRunning
+            && playerCollider != null
+            && playerCollider.enabled;
+        public bool IsPlayerDead => playerLiveAuthority != null
+            && playerLiveAuthority.IsInitialized
+            && playerLiveAuthority.ExportHudHealth().IsDead;
+        public int PlayerHealth
+        {
+            get
+            {
+                PlayerHudHealthSnapshot health = playerLiveAuthority != null
+                    && playerLiveAuthority.IsInitialized
+                        ? playerLiveAuthority.ExportHudHealth()
+                        : null;
+                return health == null
+                    ? StartingPlayerHealth
+                    : Mathf.RoundToInt((float)health.CurrentHealth);
+            }
+        }
+        public long RestartGeneration => playerLiveAuthority != null
+            && playerLiveAuthority.IsInitialized
+                ? playerLiveAuthority.ExportSnapshot().Player.LifecycleGeneration
+                : restartGeneration;
+        public StableId PlayerRunParticipantId =>
+            StableId.Parse(playerRunParticipantIdText);
+        public StableId PlayerCharacterId => StableId.Parse(playerCharacterIdText);
+        public StableId PlayerFactionId => StableId.Parse(playerFactionIdText);
+        public Stage1PlayerLiveAuthorityAdapterV1 PlayerLiveAuthority =>
+            playerLiveAuthority;
         public Transform PlayerTransform => playerTransform;
+        public Rigidbody2D PlayerBody => playerBody;
+        public Collider2D PlayerCollider => playerCollider;
+        public EnemyTarget2DAdapter PlayerTargetAdapter => playerTargetAdapter;
+        public VoidHazardTarget2D PlayerVoidTarget => playerVoidTarget;
+        public MovementActorLifecycle PlayerMovementLifecycle => movementLifecycle;
+        public MovementThrusterTuningProfile PlayerMovementTuning => movementTuning;
+        public InputActionAsset PlayerInputActions => inputActions;
+        public TrailRenderer PlayerBoostTrail => playerBoostTrail;
         public SpriteRenderer PlayerBodyRenderer => playerBodyRenderer;
         public BlasterTurretPackage TurretPackage => turretPackage;
         public MobileBlasterDroidRuntime2D MobileBlasterDroid => mobileBlasterDroid;
@@ -182,26 +227,16 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         public VoidHazardPortResult RequestDamage(VoidHazardDamageRequest request)
         {
-            if (request == null || playerTransform == null)
-            {
-                return VoidHazardPortResult.Rejected;
-            }
-
-            voidDamageCount++;
-            ApplyTurretProjectileDamageToPlayer(request.Amount);
-            return VoidHazardPortResult.Accepted;
+            return playerLiveAuthority == null || !playerLiveAuthority.IsInitialized
+                ? VoidHazardPortResult.Rejected
+                : playerLiveAuthority.RequestDamage(request);
         }
 
         public VoidHazardPortResult RequestInstantDeath(VoidHazardInstantDeathRequest request)
         {
-            if (request == null || playerTransform == null)
-            {
-                return VoidHazardPortResult.Rejected;
-            }
-
-            voidDamageCount++;
-            playerHealth = 0;
-            return VoidHazardPortResult.Accepted;
+            return playerLiveAuthority == null || !playerLiveAuthority.IsInitialized
+                ? VoidHazardPortResult.Rejected
+                : playerLiveAuthority.RequestInstantDeath(request);
         }
         public int SessionObjectCount => sessionObjects.Count;
         public int ActiveProjectileCount
@@ -232,6 +267,17 @@ namespace ShooterMover.TestSupport.VisibleSlice
             ValidateSerializedDependencies();
             BuildSession();
             initialized = true;
+            playerLiveAuthority = GetComponent<Stage1PlayerLiveAuthorityAdapterV1>();
+            if (playerLiveAuthority == null)
+            {
+                playerLiveAuthority =
+                    gameObject.AddComponent<Stage1PlayerLiveAuthorityAdapterV1>();
+            }
+            if (playerLiveAuthority == null || !playerLiveAuthority.IsInitialized)
+            {
+                throw new InvalidOperationException(
+                    "Stage 1 failed to compose the live player authority.");
+            }
         }
 
         private void Update()
@@ -242,7 +288,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
             }
 
             if (Keyboard.current != null
-                && Keyboard.current.lKey.wasPressedThisFrame)
+                && Keyboard.current.lKey.wasPressedThisFrame
+                && !IsPlayerDead)
             {
                 OpenLoadoutSelection();
                 return;
@@ -366,12 +413,30 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 && FireBlaster(mobileBlasterDroid.transform.position);
         }
 
-        public void QuickRestart()
+        public PlayerRuntimeRestartResult QuickRestart()
         {
-            restartGeneration = restartGeneration == long.MaxValue
-                ? long.MaxValue
-                : restartGeneration + 1L;
-            playerHealth = StartingPlayerHealth;
+            if (playerLiveAuthority == null || !playerLiveAuthority.IsInitialized)
+            {
+                return null;
+            }
+
+            return playerLiveAuthority.RequestRestart();
+        }
+
+        public bool ApplyAcceptedPlayerRestart(PlayerRuntimeRestartResult result)
+        {
+            if (result == null
+                || result.Status != PlayerRuntimeRestartStatus.Applied
+                || result.Snapshot == null
+                || result.Snapshot.Player == null
+                || result.Snapshot.Movement == null
+                || result.Snapshot.Player.LifecycleGeneration
+                    != result.Snapshot.Movement.Generation)
+            {
+                return false;
+            }
+
+            restartGeneration = result.Snapshot.Player.LifecycleGeneration;
             playerShotSequence = 0L;
             damageSequence = 0L;
             damageObserved = false;
@@ -391,10 +456,19 @@ namespace ShooterMover.TestSupport.VisibleSlice
             }
 
             ClearShotTraces();
+            CancelPlayerProjectiles();
             playerBody.position = playerSpawn;
             playerBody.linearVelocity = Vector2.zero;
             playerBody.angularVelocity = 0f;
-            movementLifecycle.RestartActor();
+            SetPlayerInputEnabled(true);
+            if (playerCollider != null)
+            {
+                playerCollider.enabled = true;
+            }
+            if (movementLifecycle != null && !movementLifecycle.IsRunning)
+            {
+                movementLifecycle.StartActor();
+            }
             if (playerBoostTrail != null)
             {
                 playerBoostTrail.emitting = false;
@@ -435,6 +509,65 @@ namespace ShooterMover.TestSupport.VisibleSlice
             RefreshHud();
             RefreshTurretPresentation();
             RefreshArenaFlow();
+            return true;
+        }
+
+        public void ApplyPlayerDeathProjection(GameplayEntityDeathFact deathFact)
+        {
+            if (deathFact == null
+                || playerTargetAdapter == null
+                || deathFact.TargetActorId != playerTargetAdapter.TargetId)
+            {
+                return;
+            }
+
+            sessionActive = false;
+            nextBlasterShotTime = float.PositiveInfinity;
+            SetPlayerInputEnabled(false);
+            if (movementLifecycle != null)
+            {
+                movementLifecycle.StopActor();
+            }
+            if (playerCollider != null)
+            {
+                playerCollider.enabled = false;
+            }
+            if (playerBody != null)
+            {
+                playerBody.linearVelocity = Vector2.zero;
+                playerBody.angularVelocity = 0f;
+            }
+            if (playerBoostTrail != null)
+            {
+                playerBoostTrail.emitting = false;
+                playerBoostTrail.Clear();
+            }
+            CancelPlayerProjectiles();
+        }
+
+        public void SetPlayerInputEnabled(bool enabled)
+        {
+            if (inputActions == null)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                inputActions.Enable();
+            }
+            else
+            {
+                inputActions.Disable();
+            }
+        }
+
+        public void ObserveAcceptedVoidDamage()
+        {
+            if (voidDamageCount < int.MaxValue)
+            {
+                voidDamageCount++;
+            }
         }
 
         public void SetReducedEffects(bool value)
@@ -478,9 +611,17 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 ? "MOVING DROID"
                 : "BLASTER TURRET";
             Vector2 reticle = ReadReticleViewport();
+            PlayerRuntimeSnapshot live = playerLiveAuthority != null
+                && playerLiveAuthority.IsInitialized
+                    ? playerLiveAuthority.ExportSnapshot()
+                    : null;
             snapshot = new GeneralCombatHudSnapshot(
-                new VitalState(playerHealth, StartingPlayerHealth, 0d, 0d),
-                thrusterReader == null ? null : thrusterReader.ReadSnapshot(),
+                live == null
+                    ? new VitalState(StartingPlayerHealth, StartingPlayerHealth, 0d, 0d)
+                    : live.Player.VitalState,
+                live == null
+                    ? (thrusterReader == null ? null : thrusterReader.ReadSnapshot())
+                    : live.Movement.ThrusterStatus,
                 focused,
                 focused == null ? "NO ENEMIES" : enemyName,
                 string.IsNullOrEmpty(CurrentRoomDisplayName)
@@ -500,7 +641,9 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 reticle.x,
                 reticle.y,
                 reducedEffects,
-                restartGeneration);
+                live == null
+                    ? restartGeneration
+                    : live.Player.LifecycleGeneration);
             return true;
         }
 
@@ -564,7 +707,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void BuildSession()
         {
-            playerHealth = StartingPlayerHealth;
             roomMissionLayout = new RoomMissionLayoutV1(
                 Level1RoomGraphDefinitionV1.Create());
             ValidateRoomContentDefinitions();
@@ -600,7 +742,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 playerHitAdapter,
                 PlayerShotDamage,
                 TurretShotDamage,
-                ApplyTurretProjectileDamageToPlayer);
+                null);
             playerProjectileTemplate = CreateProjectileTemplate(
                 "PlayerBlasterProjectileTemplate",
                 blasterShotSprite,
@@ -1089,7 +1231,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void RefreshArenaFlow()
         {
-            if (roomMissionLayout == null || playerTransform == null)
+            if (IsPlayerDead || roomMissionLayout == null || playerTransform == null)
             {
                 return;
             }
@@ -1400,8 +1542,19 @@ namespace ShooterMover.TestSupport.VisibleSlice
             GUI.color = Color.white;
 
             GUI.Label(new Rect(30f, 26f, 210f, 22f), "PLAYER", compactTitleStyle);
+            PlayerHudHealthSnapshot playerHud = playerLiveAuthority != null
+                && playerLiveAuthority.IsInitialized
+                    ? playerLiveAuthority.ExportHudHealth()
+                    : null;
+            double displayedHealth = playerHud == null
+                ? StartingPlayerHealth
+                : playerHud.CurrentHealth;
+            double displayedMaximum = playerHud == null
+                ? StartingPlayerHealth
+                : playerHud.MaximumHealth;
             GUI.Label(new Rect(30f, 51f, 210f, 20f),
-                "HP " + playerHealth + "/" + StartingPlayerHealth,
+                "HP " + FormatHealth(displayedHealth)
+                    + "/" + FormatHealth(displayedMaximum),
                 compactBodyStyle);
             GUI.Label(new Rect(30f, 72f, 210f, 18f),
                 "WASD MOVE   SHIFT BOOST   L LOADOUT",
@@ -1898,9 +2051,32 @@ namespace ShooterMover.TestSupport.VisibleSlice
             damageObserved = true;
         }
 
-        private void ApplyTurretProjectileDamageToPlayer(double damage)
+        private static string FormatHealth(double value)
         {
-            playerHealth = Mathf.Max(0, playerHealth - Mathf.RoundToInt((float)damage));
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private void CancelPlayerProjectiles()
+        {
+            BoundedProjectile2D[] projectiles =
+                FindObjectsByType<BoundedProjectile2D>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            for (int index = 0; index < projectiles.Length; index++)
+            {
+                BoundedProjectile2D projectile = projectiles[index];
+                if (projectile == null
+                    || !projectile.IsInitialized
+                    || projectile.IsComplete
+                    || (!string.Equals(projectile.name, "PlayerWeaponShot",
+                            StringComparison.Ordinal)
+                        && !string.Equals(projectile.name, "PlayerBlasterShot",
+                            StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+                projectile.Cancel();
+            }
         }
 
         private Vector2 ReadReticleViewport()
@@ -2062,11 +2238,17 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void ValidateSerializedDependencies()
         {
+            StableId parsedIdentity;
+            bool validPlayerIdentity =
+                StableId.TryParse(playerRunParticipantIdText, out parsedIdentity)
+                && StableId.TryParse(playerCharacterIdText, out parsedIdentity)
+                && StableId.TryParse(playerFactionIdText, out parsedIdentity);
             if (roomPresentationPrefab == null
                 || blasterShotSprite == null
                 || turretPresentationPrefab == null
                 || roomContentDefinitions == null
-                || roomContentDefinitions.Length == 0)
+                || roomContentDefinitions.Length == 0
+                || !validPlayerIdentity)
             {
                 throw new InvalidOperationException(
                     "VS-007 scene prefab bindings: room=" + (roomPresentationPrefab != null)
@@ -2075,7 +2257,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     + " room-content="
                     + (roomContentDefinitions == null
                         ? 0
-                        : roomContentDefinitions.Length));
+                        : roomContentDefinitions.Length)
+                    + " player-identity=" + validPlayerIdentity);
             }
         }
 

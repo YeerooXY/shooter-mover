@@ -69,6 +69,16 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
             return port != null;
         }
 
+        public bool BindCombatPort(MonoBehaviour configuredCombatPort)
+        {
+            if (!(configuredCombatPort is IVoidHazardCombatPort))
+            {
+                return false;
+            }
+            combatPort = configuredCombatPort;
+            return true;
+        }
+
         public bool TryGetRespawnPort(out IVoidHazardRespawnPort port)
         {
             port = respawnPort as IVoidHazardRespawnPort;
