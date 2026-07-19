@@ -6,7 +6,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 {
     /// <summary>
     /// Builds the immutable subset consumed by WPN-CORE-002. Effect payloads that the
-    /// live sink applies after core acceptance remain on the original catalog definition.
+    /// live sink applies at the core atomic sink boundary remain on the original definition.
     /// This is a read-only projection, not a second catalog or weapon authority.
     /// </summary>
     internal static class WeaponCatalogExecutionProjection
