@@ -27,7 +27,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             Assert.That(result.Runtime.ExportSnapshot().Player.ActorInstanceId,
                 Is.EqualTo(Id("actor", "player-a")));
             Assert.That(fixture.Input.AcquireCount, Is.EqualTo(1));
-            Assert.That(fixture.Movement.ExportCount, Is.EqualTo(1));
+            Assert.That(fixture.Movement.ExportCount, Is.EqualTo(2));
         }
 
         [Test]
