@@ -27,6 +27,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Curves;
+using ShooterMover.Domain.Progression.Experience;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
@@ -456,7 +457,5 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     + controller.RestartGeneration.ToString(CultureInfo.InvariantCulture));
             missionResults = new MissionRunResultAuthorityV1(missionPort);
         }
-
-
     }
 }
