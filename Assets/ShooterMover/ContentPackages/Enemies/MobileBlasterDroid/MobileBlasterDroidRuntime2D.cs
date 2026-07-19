@@ -27,6 +27,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
     /// perception/decision policy owns live intent selection, CB-009 remains plan execution
     /// authority, and WP-002/WP-003 remain projectile and Blaster authority.
     /// </summary>
+    [DefaultExecutionOrder(100)]
     [DisallowMultipleComponent]
     public sealed class MobileBlasterDroidRuntime2D :
         MonoBehaviour,
