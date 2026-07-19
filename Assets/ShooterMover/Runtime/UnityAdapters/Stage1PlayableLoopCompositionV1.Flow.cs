@@ -47,9 +47,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// scene-authored Unity presentation only; this component connects the accepted
     /// player, weapon, enemy, room, mission-result and flow authorities into one loop.
     /// </summary>
-    [DefaultExecutionOrder(20000)]
-    [DisallowMultipleComponent]
-    public sealed partial class Stage1PlayableLoopCompositionV1 : MonoBehaviour
+    public sealed partial class Stage1PlayableLoopCompositionV1
     {
         private void ProjectCurrentRoom(bool movePlayer)
         {
@@ -371,7 +369,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 token.Replace('-', ' '));
         }
 
-
         private static string HashToken(string value)
         {
             using (SHA256 sha = SHA256.Create())
@@ -412,7 +409,5 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             runtimeAssets.Add(sprite);
             return sprite;
         }
-
-
     }
 }
