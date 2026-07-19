@@ -230,6 +230,16 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
             StableId hazardId,
             StableId targetId,
             double amount)
+            : this(eventId, hazardId, targetId, amount, 0L)
+        {
+        }
+
+        public VoidHazardDamageRequest(
+            StableId eventId,
+            StableId hazardId,
+            StableId targetId,
+            double amount,
+            long attemptGeneration)
         {
             EventId = eventId ?? throw new ArgumentNullException(nameof(eventId));
             HazardId = hazardId ?? throw new ArgumentNullException(nameof(hazardId));
@@ -239,8 +249,13 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
             {
                 throw new ArgumentOutOfRangeException(nameof(amount));
             }
+            if (attemptGeneration < 0L)
+            {
+                throw new ArgumentOutOfRangeException(nameof(attemptGeneration));
+            }
 
             Amount = amount;
+            AttemptGeneration = attemptGeneration;
         }
 
         public StableId EventId { get; }
@@ -250,6 +265,8 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
         public StableId TargetId { get; }
 
         public double Amount { get; }
+
+        public long AttemptGeneration { get; }
 
         public CombatChannel Channel
         {
@@ -263,10 +280,24 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
             StableId eventId,
             StableId hazardId,
             StableId targetId)
+            : this(eventId, hazardId, targetId, 0L)
+        {
+        }
+
+        public VoidHazardInstantDeathRequest(
+            StableId eventId,
+            StableId hazardId,
+            StableId targetId,
+            long attemptGeneration)
         {
             EventId = eventId ?? throw new ArgumentNullException(nameof(eventId));
             HazardId = hazardId ?? throw new ArgumentNullException(nameof(hazardId));
             TargetId = targetId ?? throw new ArgumentNullException(nameof(targetId));
+            if (attemptGeneration < 0L)
+            {
+                throw new ArgumentOutOfRangeException(nameof(attemptGeneration));
+            }
+            AttemptGeneration = attemptGeneration;
         }
 
         public StableId EventId { get; }
@@ -274,6 +305,8 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
         public StableId HazardId { get; }
 
         public StableId TargetId { get; }
+
+        public long AttemptGeneration { get; }
 
         public CombatChannel Channel
         {

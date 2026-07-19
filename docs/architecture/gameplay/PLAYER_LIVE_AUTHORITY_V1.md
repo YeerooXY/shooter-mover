@@ -119,3 +119,10 @@ The initial polling bridge was replaced by a synchronous typed composition bound
 `Stage1VisibleSliceController.cs` now contains only the minimal typed delegation
 and downstream projection seams required to make the authority genuinely lead the
 scene. The Stage 1 scene asset remains unchanged.
+
+
+Void hazard event IDs remain deterministic hashes. The damage and instant-death
+request contracts now carry the originating gameplay attempt generation explicitly;
+the compatibility constructors remain generation zero for existing fixtures. Live
+routing always supplies the bound scope generation, so delayed pre-restart requests
+are rejected by `PlayerActorAuthority` without trying to reverse a hash.

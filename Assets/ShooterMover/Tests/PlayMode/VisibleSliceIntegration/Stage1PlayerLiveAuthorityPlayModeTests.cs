@@ -264,7 +264,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                     StableId.Parse("void-event.stale-g0-c1"),
                     StableId.Parse("placed.demo002-void-hazard"),
                     after.Player.ActorInstanceId,
-                    35d));
+                    35d,
+                    before.Player.LifecycleGeneration));
             Assert.That(staleVoid, Is.EqualTo(VoidHazardPortResult.Rejected));
             Assert.That(Read<int>(controller, "VoidDamageCount"), Is.Zero);
         }

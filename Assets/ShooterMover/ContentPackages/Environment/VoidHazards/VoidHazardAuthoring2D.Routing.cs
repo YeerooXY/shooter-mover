@@ -138,7 +138,8 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
                             eventId,
                             _restartParticipantId,
                             targetId,
-                            _resolvedPolicy.PlayerDamageAmount)));
+                            _resolvedPolicy.PlayerDamageAmount,
+                            placedObject.BoundScope.AttemptGeneration)));
                 case VoidPlayerResponseKind.InstantDeath:
                     IVoidHazardCombatPort deathPort;
                     if (!target.TryGetCombatPort(out deathPort))
@@ -155,7 +156,8 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
                         deathPort.RequestInstantDeath(new VoidHazardInstantDeathRequest(
                             eventId,
                             _restartParticipantId,
-                            targetId)));
+                            targetId,
+                            placedObject.BoundScope.AttemptGeneration)));
                 case VoidPlayerResponseKind.Respawn:
                     return RouteRespawn(target, targetId, eventId);
                 default:

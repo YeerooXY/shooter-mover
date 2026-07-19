@@ -165,12 +165,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 return VoidHazardPortResult.Rejected;
             }
 
-            long generation;
-            if (!TryResolveLifecycleGeneration(request.EventId, out generation))
-            {
-                return VoidHazardPortResult.Rejected;
-            }
-
             DamageReceiverResult result = runtime.ApplyDamage(
                 new PlayerDamageRequest(
                     request.EventId,
@@ -179,7 +173,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     request.TargetId,
                     request.Amount,
                     request.Channel,
-                    generation));
+                    request.AttemptGeneration));
             if (result.Status == DamageReceiverStatus.Applied)
             {
                 controller.ObserveAcceptedVoidDamage();
@@ -195,12 +189,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 return VoidHazardPortResult.Rejected;
             }
 
-            long generation;
-            if (!TryResolveLifecycleGeneration(request.EventId, out generation))
-            {
-                return VoidHazardPortResult.Rejected;
-            }
-
             PlayerActorSnapshot player = runtime.ExportSnapshot().Player;
             DamageReceiverResult result = runtime.ApplyDamage(
                 new PlayerDamageRequest(
@@ -210,7 +198,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     request.TargetId,
                     player.MaximumHealth,
                     request.Channel,
-                    generation));
+                    request.AttemptGeneration));
             if (result.Status == DamageReceiverStatus.Applied)
             {
                 controller.ObserveAcceptedVoidDamage();
