@@ -8,4 +8,37 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity
     guid: ed10f679f6d44f8c84c4d80602752551
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Menu/MainMenu.unity
+    guid: b52429ae256c4c76882378213af269a7
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/CharacterSelect/CharacterSelect.unity
+    guid: 01d78abe221246d0ad8d5da5c3092d66
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/Hub/HubFlow.unity
+    guid: faac4ab8183045e3975c78abfb1e1dc3
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/PlaySelection/PlaySelection.unity
+    guid: c51093b778ae4080a48377eb0b372ca2
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity
+    guid: 7435c727a9ca40ab8f0fb9b2931700d6
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/InventoryLoadout/InventoryLoadout.unity
+    guid: 1a7fd6714630474c9fbca9a7bda055bf
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/Skills/Skills.unity
+    guid: 3c3ed3569d7d417585bae548f55ca8e5
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/Shop/Shop.unity
+    guid: bbebf774b1fd4ebc87a6b1d8fbe6c34e
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/Crafting/Crafting.unity
+    guid: d94f1160161f4611a560549859871c87
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Flow/Results/Results.unity
+    guid: 737fa00af1b44467ac656a6960b7305f
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/StrongboxOpening/StrongboxOpening.unity
+    guid: bd0328b97fbc4c92a5c4c352ffc6700e
   m_configObjects: {}

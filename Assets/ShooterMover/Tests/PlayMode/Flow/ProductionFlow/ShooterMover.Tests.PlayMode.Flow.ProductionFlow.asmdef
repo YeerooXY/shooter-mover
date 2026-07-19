@@ -1,0 +1,29 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.Flow.ProductionFlow",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.Flow.ProductionFlow",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.UI.ProductionFlow",
+    "ShooterMover.UI.Hub",
+    "Unity.InputSystem",
+    "ShooterMover.UI.StrongboxOpening",
+    "ShooterMover.UI.Skills",
+    "ShooterMover.UI.Shop",
+    "ShooterMover.UI.Crafting"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

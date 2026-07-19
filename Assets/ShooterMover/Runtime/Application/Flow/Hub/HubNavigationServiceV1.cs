@@ -21,11 +21,7 @@ namespace ShooterMover.Application.Flow.Hub
             HubRouteV1 currentRoute,
             string payloadFingerprint)
         {
-            if (sequence <= 0L)
-            {
-                throw new ArgumentOutOfRangeException(nameof(sequence));
-            }
-
+            if (sequence <= 0L) throw new ArgumentOutOfRangeException(nameof(sequence));
             Sequence = sequence;
             PreviousRoute = previousRoute;
             CurrentRoute = currentRoute;
@@ -34,11 +30,8 @@ namespace ShooterMover.Application.Flow.Hub
         }
 
         public long Sequence { get; }
-
         public HubRouteV1 PreviousRoute { get; }
-
         public HubRouteV1 CurrentRoute { get; }
-
         public string PayloadFingerprint { get; }
     }
 
@@ -59,13 +52,8 @@ namespace ShooterMover.Application.Flow.Hub
         }
 
         public HubRouteV1 CurrentRoute { get; }
-
         public PlayerRouteProfilePayloadV1 Payload { get; }
-
-        public IReadOnlyList<HubRouteRecordV1> RouteHistory
-        {
-            get { return routeHistory; }
-        }
+        public IReadOnlyList<HubRouteRecordV1> RouteHistory { get { return routeHistory; } }
     }
 
     public sealed class HubNavigationResultV1
@@ -83,31 +71,36 @@ namespace ShooterMover.Application.Flow.Hub
         }
 
         public HubNavigationStatusV1 Status { get; }
-
         public string RejectionCode { get; }
-
         public HubRouteV1 PreviousRoute { get; }
-
         public HubNavigationSnapshotV1 Snapshot { get; }
-
-        public bool Changed
-        {
-            get { return Status == HubNavigationStatusV1.Navigated; }
-        }
+        public bool Changed { get { return Status == HubNavigationStatusV1.Navigated; } }
     }
 
-    /// <summary>
-    /// Presentation boundary for destination screens. Implementations receive the
-    /// exact immutable payload owned by this route session and must not replace it.
-    /// </summary>
     public interface IHubRouteDestinationAdapterV1
     {
         void Present(HubRouteV1 route, PlayerRouteProfilePayloadV1 payload);
     }
 
     /// <summary>
-    /// Engine-independent route/history owner. It changes only navigation state and
-    /// always retains the exact same immutable PlayerRouteProfilePayloadV1 instance.
+    /// Unity routing uses this transactional port so an accepted route change and its
+    /// scene request cannot drift apart. The implementation must delegate route state
+    /// to the exposed HubNavigationServiceV1.
+    /// </summary>
+    public interface IHubRouteTransactionPortV1
+    {
+        HubNavigationServiceV1 Navigation { get; }
+
+        bool IsTransitionPending { get; }
+
+        bool TryNavigateTo(HubRouteV1 route);
+
+        bool TryNavigateBack();
+    }
+
+    /// <summary>
+    /// Sole engine-independent route/history owner for Main Menu, Character Selection,
+    /// Hub and Hub destinations. It always retains the exact immutable route payload.
     /// </summary>
     public sealed class HubNavigationServiceV1
     {
@@ -115,7 +108,6 @@ namespace ShooterMover.Application.Flow.Hub
         private readonly List<HubRouteV1> backStack = new List<HubRouteV1>();
         private readonly List<HubRouteRecordV1> routeHistory =
             new List<HubRouteRecordV1>();
-
         private long sequence;
 
         public HubNavigationServiceV1(PlayerRouteProfilePayloadV1 payload)
@@ -132,18 +124,36 @@ namespace ShooterMover.Application.Flow.Hub
         }
 
         public HubRouteV1 CurrentRoute { get; private set; }
-
-        public PlayerRouteProfilePayloadV1 Payload
-        {
-            get { return payload; }
-        }
+        public PlayerRouteProfilePayloadV1 Payload { get { return payload; } }
 
         public HubNavigationSnapshotV1 ExportSnapshot()
         {
-            return new HubNavigationSnapshotV1(
-                CurrentRoute,
-                payload,
-                routeHistory);
+            return new HubNavigationSnapshotV1(CurrentRoute, payload, routeHistory);
+        }
+
+        public bool CanNavigateTo(HubRouteV1 targetRoute)
+        {
+            return Enum.IsDefined(typeof(HubRouteV1), targetRoute)
+                && targetRoute != CurrentRoute
+                && IsForwardTransitionAllowed(CurrentRoute, targetRoute);
+        }
+
+        public bool TryPeekBackRoute(out HubRouteV1 targetRoute)
+        {
+            if (backStack.Count > 0)
+            {
+                targetRoute = backStack[backStack.Count - 1];
+                return true;
+            }
+
+            if (CurrentRoute != HubRouteV1.MainMenu)
+            {
+                targetRoute = HubRouteV1.MainMenu;
+                return true;
+            }
+
+            targetRoute = HubRouteV1.MainMenu;
+            return false;
         }
 
         public HubNavigationResultV1 TryNavigateTo(HubRouteV1 targetRoute)
@@ -173,20 +183,11 @@ namespace ShooterMover.Application.Flow.Hub
                     previous);
             }
 
-            if (targetRoute == HubRouteV1.MainMenu)
-            {
-                backStack.Clear();
-            }
-            else
-            {
-                backStack.Add(CurrentRoute);
-            }
+            if (targetRoute == HubRouteV1.MainMenu) backStack.Clear();
+            else backStack.Add(CurrentRoute);
 
             ApplyTransition(previous, targetRoute);
-            return Result(
-                HubNavigationStatusV1.Navigated,
-                string.Empty,
-                previous);
+            return Result(HubNavigationStatusV1.Navigated, string.Empty, previous);
         }
 
         public HubNavigationResultV1 NavigateBack()
@@ -203,20 +204,14 @@ namespace ShooterMover.Application.Flow.Hub
                 }
 
                 ApplyTransition(previous, HubRouteV1.MainMenu);
-                return Result(
-                    HubNavigationStatusV1.Navigated,
-                    string.Empty,
-                    previous);
+                return Result(HubNavigationStatusV1.Navigated, string.Empty, previous);
             }
 
             int lastIndex = backStack.Count - 1;
             HubRouteV1 target = backStack[lastIndex];
             backStack.RemoveAt(lastIndex);
             ApplyTransition(previous, target);
-            return Result(
-                HubNavigationStatusV1.Navigated,
-                string.Empty,
-                previous);
+            return Result(HubNavigationStatusV1.Navigated, string.Empty, previous);
         }
 
         public static bool IsHubDestination(HubRouteV1 route)
