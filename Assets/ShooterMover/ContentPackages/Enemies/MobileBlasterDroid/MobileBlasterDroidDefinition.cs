@@ -27,12 +27,21 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         public const double HardMaximumPhaseSeconds = 30d;
         public const double HardMaximumMuzzleOffset = 10d;
         public const double HardMaximumTelegraphLength = 50d;
+        public const double HardMaximumDetectionRadius = 1000d;
         public const int HardMaximumContactCapacity = 64;
+
+        private static readonly StableId ReadyPhaseIdValue =
+            StableId.Parse("enemy-phase.mobile-blaster-droid-ready");
 
         [SerializeField] private float maximumHealth = 16f;
         [SerializeField] private float movementSpeed = 2.5f;
         [SerializeField] private float preferredDistance = 5f;
         [SerializeField] private float positioningTolerance = 0.5f;
+        [SerializeField] private float detectionRadius = 20f;
+        [SerializeField] private float visionArcDegrees = 360f;
+        [SerializeField] private float attackArcDegrees = 360f;
+        [SerializeField] private float minimumAttackRange = 0f;
+        [SerializeField] private float maximumAttackRange = 12f;
         [SerializeField] private float windUpSeconds = 0.3f;
         [SerializeField] private float recoverySeconds = 0.8f;
         [SerializeField] private float muzzleOffset = 0.65f;
@@ -41,60 +50,23 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         [SerializeField] private float telegraphLength = 4f;
         [SerializeField] private float warningPulseSeconds = 0.2f;
 
-        public double MaximumHealth
-        {
-            get { return maximumHealth; }
-        }
-
-        public double MovementSpeed
-        {
-            get { return movementSpeed; }
-        }
-
-        public double PreferredDistance
-        {
-            get { return preferredDistance; }
-        }
-
-        public double PositioningTolerance
-        {
-            get { return positioningTolerance; }
-        }
-
-        public double WindUpSeconds
-        {
-            get { return windUpSeconds; }
-        }
-
-        public double RecoverySeconds
-        {
-            get { return recoverySeconds; }
-        }
-
-        public double MuzzleOffset
-        {
-            get { return muzzleOffset; }
-        }
-
-        public int ContactCapacity
-        {
-            get { return contactCapacity; }
-        }
-
-        public double ColliderRadius
-        {
-            get { return colliderRadius; }
-        }
-
-        public double TelegraphLength
-        {
-            get { return telegraphLength; }
-        }
-
-        public double WarningPulseSeconds
-        {
-            get { return warningPulseSeconds; }
-        }
+        public double MaximumHealth { get { return maximumHealth; } }
+        public double MovementSpeed { get { return movementSpeed; } }
+        public double PreferredDistance { get { return preferredDistance; } }
+        public double PositioningTolerance { get { return positioningTolerance; } }
+        public double DetectionRadius { get { return detectionRadius; } }
+        public double VisionArcDegrees { get { return visionArcDegrees; } }
+        public double AttackArcDegrees { get { return attackArcDegrees; } }
+        public double MinimumAttackRange { get { return minimumAttackRange; } }
+        public double MaximumAttackRange { get { return maximumAttackRange; } }
+        public double WindUpSeconds { get { return windUpSeconds; } }
+        public double RecoverySeconds { get { return recoverySeconds; } }
+        public double MuzzleOffset { get { return muzzleOffset; } }
+        public int ContactCapacity { get { return contactCapacity; } }
+        public double ColliderRadius { get { return colliderRadius; } }
+        public double TelegraphLength { get { return telegraphLength; } }
+        public double WarningPulseSeconds { get { return warningPulseSeconds; } }
+        public StableId ReadyPhaseId { get { return ReadyPhaseIdValue; } }
 
         public static MobileBlasterDroidDefinition CreateRuntime(
             double maximumHealth,
@@ -109,11 +81,53 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             double telegraphLength,
             double warningPulseSeconds)
         {
+            return CreateRuntime(
+                maximumHealth,
+                movementSpeed,
+                preferredDistance,
+                positioningTolerance,
+                20d,
+                360d,
+                360d,
+                0d,
+                12d,
+                windUpSeconds,
+                recoverySeconds,
+                muzzleOffset,
+                contactCapacity,
+                colliderRadius,
+                telegraphLength,
+                warningPulseSeconds);
+        }
+
+        public static MobileBlasterDroidDefinition CreateRuntime(
+            double maximumHealth,
+            double movementSpeed,
+            double preferredDistance,
+            double positioningTolerance,
+            double detectionRadius,
+            double visionArcDegrees,
+            double attackArcDegrees,
+            double minimumAttackRange,
+            double maximumAttackRange,
+            double windUpSeconds,
+            double recoverySeconds,
+            double muzzleOffset,
+            int contactCapacity,
+            double colliderRadius,
+            double telegraphLength,
+            double warningPulseSeconds)
+        {
             ValidateValues(
                 maximumHealth,
                 movementSpeed,
                 preferredDistance,
                 positioningTolerance,
+                detectionRadius,
+                visionArcDegrees,
+                attackArcDegrees,
+                minimumAttackRange,
+                maximumAttackRange,
                 windUpSeconds,
                 recoverySeconds,
                 muzzleOffset,
@@ -128,6 +142,11 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             definition.movementSpeed = (float)movementSpeed;
             definition.preferredDistance = (float)preferredDistance;
             definition.positioningTolerance = (float)positioningTolerance;
+            definition.detectionRadius = (float)detectionRadius;
+            definition.visionArcDegrees = (float)visionArcDegrees;
+            definition.attackArcDegrees = (float)attackArcDegrees;
+            definition.minimumAttackRange = (float)minimumAttackRange;
+            definition.maximumAttackRange = (float)maximumAttackRange;
             definition.windUpSeconds = (float)windUpSeconds;
             definition.recoverySeconds = (float)recoverySeconds;
             definition.muzzleOffset = (float)muzzleOffset;
@@ -146,6 +165,11 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 MovementSpeed,
                 PreferredDistance,
                 PositioningTolerance,
+                DetectionRadius,
+                VisionArcDegrees,
+                AttackArcDegrees,
+                MinimumAttackRange,
+                MaximumAttackRange,
                 WindUpSeconds,
                 RecoverySeconds,
                 MuzzleOffset,
@@ -153,6 +177,21 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 ColliderRadius,
                 TelegraphLength,
                 WarningPulseSeconds);
+        }
+
+        public EnemyDecisionProfile CreateDecisionProfile()
+        {
+            ValidateOrThrow();
+            return new EnemyDecisionProfile(
+                DetectionRadius,
+                MinimumAttackRange,
+                PreferredDistance,
+                MaximumAttackRange,
+                AttackArcDegrees,
+                BlasterMachineGunPackage.WeaponId,
+                ReadyPhaseId,
+                PreferredDistance,
+                PositioningTolerance);
         }
 
         public Stage1EnemyPackageDescriptor CreatePackageDescriptor()
@@ -262,6 +301,16 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 positioningTolerance,
                 0f,
                 preferredDistance);
+            detectionRadius = Mathf.Clamp(
+                detectionRadius,
+                0.01f,
+                (float)HardMaximumDetectionRadius);
+            visionArcDegrees = Mathf.Clamp(visionArcDegrees, 0.01f, 360f);
+            attackArcDegrees = Mathf.Clamp(attackArcDegrees, 0.01f, 360f);
+            minimumAttackRange = Mathf.Clamp(minimumAttackRange, 0f, detectionRadius);
+            maximumAttackRange = Mathf.Clamp(maximumAttackRange, minimumAttackRange, detectionRadius);
+            preferredDistance = Mathf.Clamp(preferredDistance, minimumAttackRange, maximumAttackRange);
+            positioningTolerance = Mathf.Clamp(positioningTolerance, 0f, preferredDistance);
             windUpSeconds = Mathf.Clamp(
                 windUpSeconds,
                 0.01f,
@@ -288,6 +337,11 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             double movementSpeed,
             double preferredDistance,
             double positioningTolerance,
+            double detectionRadius,
+            double visionArcDegrees,
+            double attackArcDegrees,
+            double minimumAttackRange,
+            double maximumAttackRange,
             double windUpSeconds,
             double recoverySeconds,
             double muzzleOffset,
@@ -320,6 +374,43 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 preferredDistance,
                 nameof(positioningTolerance),
                 true);
+            RequireFiniteRange(
+                detectionRadius,
+                0d,
+                HardMaximumDetectionRadius,
+                nameof(detectionRadius),
+                false);
+            RequireFiniteRange(
+                visionArcDegrees,
+                0d,
+                360d,
+                nameof(visionArcDegrees),
+                false);
+            RequireFiniteRange(
+                attackArcDegrees,
+                0d,
+                360d,
+                nameof(attackArcDegrees),
+                false);
+            RequireFiniteRange(
+                minimumAttackRange,
+                0d,
+                detectionRadius,
+                nameof(minimumAttackRange),
+                true);
+            RequireFiniteRange(
+                maximumAttackRange,
+                minimumAttackRange,
+                detectionRadius,
+                nameof(maximumAttackRange),
+                true);
+            if (preferredDistance < minimumAttackRange || preferredDistance > maximumAttackRange)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(preferredDistance),
+                    preferredDistance,
+                    "Preferred distance must remain inside the authored attack range.");
+            }
             RequireFiniteRange(
                 windUpSeconds,
                 0d,
