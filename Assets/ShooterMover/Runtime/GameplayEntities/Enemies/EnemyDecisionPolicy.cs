@@ -85,7 +85,7 @@ namespace ShooterMover.GameplayEntities.Enemies
             EnemyDecisionProfile profile,
             EnemyDecisionSnapshot decision,
             EnemyVector2 currentFacing,
-            bool selectedTargetHasLineOfSight,
+            EnemyPerceivedTarget selectedTarget,
             EnemyVector2 commitmentDirection,
             EnemyVector2 commitmentPoint)
         {
@@ -102,7 +102,12 @@ namespace ShooterMover.GameplayEntities.Enemies
             AttackArcDegrees = profile.AttackArcDegrees;
             CurrentFacing = currentFacing;
             SelectedTargetId = decision.SelectedTargetId;
-            SelectedTargetHasLineOfSight = selectedTargetHasLineOfSight;
+            SelectedTargetDistance = selectedTarget == null ? 0d : selectedTarget.Distance;
+            SelectedTargetHasLineOfSight = selectedTarget != null && selectedTarget.HasLineOfSight;
+            SelectedTargetWithinDetectionRange =
+                selectedTarget != null && selectedTarget.IsWithinDetectionRange;
+            SelectedTargetWithinVisionArc =
+                selectedTarget != null && selectedTarget.IsWithinVisionArc;
             DesiredMovement = decision.DesiredMovement;
             DesiredFacing = decision.DesiredFacing;
             RequestedAttack = decision.RequestedAttack;
@@ -125,7 +130,10 @@ namespace ShooterMover.GameplayEntities.Enemies
         public double MaximumAttackRange { get; }
         public double AttackArcDegrees { get; }
         public EnemyVector2 CurrentFacing { get; }
+        public double SelectedTargetDistance { get; }
         public bool SelectedTargetHasLineOfSight { get; }
+        public bool SelectedTargetWithinDetectionRange { get; }
+        public bool SelectedTargetWithinVisionArc { get; }
         public EnemyVector2 DesiredMovement { get; }
         public EnemyVector2 DesiredFacing { get; }
         public EnemyAttackIntent RequestedAttack { get; }
@@ -201,7 +209,7 @@ namespace ShooterMover.GameplayEntities.Enemies
             EnemyVector2 commitPoint = decision.RequestedAttack == null ? new EnemyVector2() : decision.RequestedAttack.CommittedTargetPoint;
             EnemyDebugSnapshot debug = new EnemyDebugSnapshot(runtime, profile, decision,
                 perception.ObserverFacing,
-                selected != null && selected.HasLineOfSight, commitDirection, commitPoint);
+                selected, commitDirection, commitPoint);
             return new EnemyDecisionEvaluation(decision, debug);
         }
 
