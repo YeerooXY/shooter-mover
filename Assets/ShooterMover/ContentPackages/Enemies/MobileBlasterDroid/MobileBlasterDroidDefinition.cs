@@ -31,7 +31,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         public const int HardMaximumContactCapacity = 64;
 
         private static readonly StableId ReadyPhaseIdValue =
-            StableId.Parse("enemy-phase.mobile-blaster-droid.ready");
+            StableId.Parse("enemy-phase.mobile-blaster-droid-ready");
 
         [SerializeField] private float maximumHealth = 16f;
         [SerializeField] private float movementSpeed = 2.5f;
