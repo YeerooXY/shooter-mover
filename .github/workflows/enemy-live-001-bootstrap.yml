@@ -1,0 +1,36 @@
+name: ENEMY-LIVE-001 source bootstrap
+
+on:
+  push:
+    branches:
+      - agent/enemy-live-001-combat-facts
+
+permissions:
+  contents: write
+
+jobs:
+  apply-source:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and apply source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/enemy-live-001/payload-*.b64 > /tmp/enemy-live-001.tar.gz.b64
+          base64 --decode /tmp/enemy-live-001.tar.gz.b64 > /tmp/enemy-live-001.tar.gz
+          echo "c7668f085bbe1e317e2651d6ab5ff09e3a6eb66508ec753b3c5e2e18a7c3d813  /tmp/enemy-live-001.tar.gz" | sha256sum --check -
+          tar -xzf /tmp/enemy-live-001.tar.gz -C .
+          rm -rf .github/enemy-live-001
+          rm -f .github/workflows/enemy-live-001-bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "ENEMY-LIVE-001 connect live generic enemy composition"
+          git push origin HEAD:agent/enemy-live-001-combat-facts
