@@ -186,6 +186,52 @@ namespace ShooterMover.Tests.EditMode.Enemies
         }
 
         [Test]
+        public void VisibleTargetOutsideAttackArc_CannotFire()
+        {
+            EnemyRuntimeProjection runtime = Runtime(
+                "attack-arc-observer",
+                EnemyRoomClearRole.RequiredEnemy,
+                0L);
+            EnemyPerceivedTarget visibleBehind = new EnemyPerceivedTarget(
+                Id("entity", "visible-behind"),
+                Id("faction", "player"),
+                EnemyTargetRelationship.Hostile,
+                new EnemyVector2(-3d, 0d),
+                new EnemyVector2(0d, 0d),
+                3d,
+                new EnemyVector2(-1d, 0d),
+                true,
+                true,
+                true);
+
+            EnemyDecisionEvaluation result = EnemyDecisionPolicy.Evaluate(
+                runtime,
+                new EnemyDecisionProfile(8d, 1d, 3d, 4d, 90d,
+                    Id("attack", "melee"), Id("enemy-phase", "ready")),
+                new EnemyPerceptionSnapshot(
+                    new EnemyVector2(0d, 0d),
+                    new EnemyVector2(1d, 0d),
+                    new[] { visibleBehind },
+                    43L));
+
+            Assert.That(result.Decision.SelectedTargetId, Is.EqualTo(visibleBehind.EntityId));
+            Assert.That(result.Decision.RequestedAttack, Is.Null);
+            Assert.That(result.Decision.MovementKind, Is.EqualTo(EnemyMovementIntentKind.Approach));
+            Assert.That(result.Debug.SelectedTargetWithinVisionArc, Is.True);
+            Assert.That(result.Debug.SelectedTargetWithinAttackArc, Is.False);
+        }
+
+        [Test]
+        public void VisibleTargetInsideAttackArc_CanFire()
+        {
+            EnemyDecisionEvaluation result = Evaluate(
+                new[] { Target("front", 3d, true, true, true) });
+
+            Assert.That(result.Decision.RequestedAttack, Is.Not.Null);
+            Assert.That(result.Debug.SelectedTargetWithinAttackArc, Is.True);
+        }
+
+        [Test]
         public void NoValidTarget_ProducesNoAttackAndTruthfulDebugSnapshot()
         {
             EnemyDecisionEvaluation result = Evaluate(
