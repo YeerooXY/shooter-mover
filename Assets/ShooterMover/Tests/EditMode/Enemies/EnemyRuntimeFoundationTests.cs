@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
@@ -77,6 +78,81 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Is.EqualTo(forward.Decision.RequestedAttack.DecisionId));
         }
 
+        [Test]
+        public void PerceptionBuilder_ComputesDistanceDirectionAndDetectionFromPositions()
+        {
+            EnemyPerceptionSnapshot snapshot = EnemyPerceptionBuilder.Build(
+                new EnemyVector2(2d, 3d),
+                new EnemyVector2(1d, 0d),
+                new[]
+                {
+                    Candidate("boundary", new EnemyVector2(5d, 7d), true),
+                    Candidate("outside", new EnemyVector2(5.01d, 7d), false),
+                },
+                5d,
+                360d,
+                9L);
+
+            Assert.That(snapshot.Targets[0].Distance, Is.EqualTo(5d));
+            Assert.That(snapshot.Targets[0].Direction.X, Is.EqualTo(0.6d).Within(0.000000001d));
+            Assert.That(snapshot.Targets[0].Direction.Y, Is.EqualTo(0.8d).Within(0.000000001d));
+            Assert.That(snapshot.Targets[0].IsWithinDetectionRange, Is.True);
+            Assert.That(snapshot.Targets[0].HasLineOfSight, Is.True);
+            Assert.That(snapshot.Targets[1].Distance, Is.GreaterThan(5d));
+            Assert.That(snapshot.Targets[1].IsWithinDetectionRange, Is.False);
+            Assert.That(snapshot.Targets[1].HasLineOfSight, Is.False);
+        }
+
+        [Test]
+        public void PerceptionBuilder_ComputesVisionArcIncludingExactBoundary()
+        {
+            double boundaryRadians = Math.PI / 4d;
+            double outsideRadians = boundaryRadians + 0.001d;
+            EnemyPerceptionSnapshot snapshot = EnemyPerceptionBuilder.Build(
+                new EnemyVector2(0d, 0d),
+                new EnemyVector2(1d, 0d),
+                new[]
+                {
+                    Candidate("boundary", new EnemyVector2(
+                        Math.Cos(boundaryRadians), Math.Sin(boundaryRadians)), true),
+                    Candidate("outside", new EnemyVector2(
+                        Math.Cos(outsideRadians), Math.Sin(outsideRadians)), true),
+                },
+                2d,
+                90d,
+                10L);
+
+            Assert.That(snapshot.Targets[0].IsWithinVisionArc, Is.True);
+            Assert.That(snapshot.Targets[1].IsWithinVisionArc, Is.False);
+        }
+
+        [Test]
+        public void DecisionEvaluation_IsReadOnlyOverCanonicalEnemyActor()
+        {
+            EnemyRuntimeProjection runtime = Runtime(
+                "read-only-decision",
+                EnemyRoomClearRole.RequiredEnemy,
+                0L);
+            EnemyActorState before = runtime.ActorState;
+
+            EnemyDecisionEvaluation result = EnemyDecisionPolicy.Evaluate(
+                runtime,
+                new EnemyDecisionProfile(8d, 1d, 3d, 4d, 90d,
+                    Id("attack", "melee"), Id("enemy-phase", "ready")),
+                EnemyPerceptionBuilder.Build(
+                    new EnemyVector2(0d, 0d),
+                    new EnemyVector2(1d, 0d),
+                    new[] { Candidate("target", new EnemyVector2(3d, 0d), true) },
+                    8d,
+                    90d,
+                    11L));
+
+            Assert.That(result.Decision.RequestedAttack, Is.Not.Null);
+            Assert.That(runtime.ActorState, Is.SameAs(before));
+            Assert.That(runtime.ActorState.Health, Is.EqualTo(100d));
+            Assert.That(runtime.ActorState.ProcessedEventIds, Is.Empty);
+        }
+
         [TestCase(0.99d, EnemyMovementIntentKind.Retreat, false)]
         [TestCase(1d, EnemyMovementIntentKind.Hold, true)]
         [TestCase(4d, EnemyMovementIntentKind.Hold, true)]
@@ -103,6 +179,10 @@ namespace ShooterMover.Tests.EditMode.Enemies
 
             Assert.That(result.Decision.RequestedAttack, Is.Null);
             Assert.That(result.Decision.MovementKind, Is.EqualTo(EnemyMovementIntentKind.Approach));
+            Assert.That(result.Debug.SelectedTargetDistance, Is.EqualTo(3d));
+            Assert.That(result.Debug.SelectedTargetHasLineOfSight, Is.EqualTo(lineOfSight));
+            Assert.That(result.Debug.SelectedTargetWithinDetectionRange, Is.True);
+            Assert.That(result.Debug.SelectedTargetWithinVisionArc, Is.EqualTo(withinArc));
         }
 
         [Test]
@@ -160,6 +240,20 @@ namespace ShooterMover.Tests.EditMode.Enemies
             return new EnemyPerceivedTarget(Id("entity", id), Id("faction", "player"), relationship,
                 new EnemyVector2(distance, 0d), new EnemyVector2(0d, 0d), distance,
                 new EnemyVector2(1d, 0d), lineOfSight, detected, withinArc);
+        }
+
+        private static EnemyPerceptionCandidate Candidate(
+            string id,
+            EnemyVector2 position,
+            bool lineOfSight)
+        {
+            return new EnemyPerceptionCandidate(
+                Id("entity", id),
+                Id("faction", "player"),
+                EnemyTargetRelationship.Hostile,
+                position,
+                new EnemyVector2(0d, 0d),
+                lineOfSight);
         }
 
         private static EnemyRuntimeProjection Runtime(
