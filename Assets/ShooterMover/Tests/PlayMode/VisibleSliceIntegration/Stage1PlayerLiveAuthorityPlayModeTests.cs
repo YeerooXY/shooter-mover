@@ -61,6 +61,14 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
 
             PlayerRuntimeRestartResult first =
                 Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
+            PlayerRuntimeRestartResult replay = Invoke<PlayerRuntimeRestartResult>(
+                adapter,
+                "ApplyRestartCommand",
+                first.Command);
+            Assert.That(replay.Status, Is.EqualTo(PlayerRuntimeRestartStatus.Duplicate));
+            Assert.That(Read<long>(controller, "RestartGeneration"),
+                Is.EqualTo(before.Player.LifecycleGeneration + 1L),
+                "An exact restart replay must not project a second scene reset.");
             PlayerRuntimeRestartResult second =
                 Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
 
@@ -91,29 +99,33 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
             StableId eventId = StableId.Parse("combat-event.player-live-duplicate");
             StableId source = StableId.Parse("actor.player-live-source");
-            PlayerDamageRequest damage = new PlayerDamageRequest(
+            DamageReceiverResult applied = Invoke<DamageReceiverResult>(
+                adapter,
+                "ApplyProjectileDamage",
                 eventId,
                 source,
-                StableId.Parse("participant.untrusted"),
                 initial.Player.ActorInstanceId,
                 12.5d,
                 CombatChannel.Kinetic,
                 initial.Player.LifecycleGeneration);
-            DamageReceiverResult applied =
-                Invoke<DamageReceiverResult>(adapter, "ApplyDamage", damage);
-            DamageReceiverResult duplicate =
-                Invoke<DamageReceiverResult>(adapter, "ApplyDamage", damage);
+            DamageReceiverResult duplicate = Invoke<DamageReceiverResult>(
+                adapter,
+                "ApplyProjectileDamage",
+                eventId,
+                source,
+                initial.Player.ActorInstanceId,
+                12.5d,
+                CombatChannel.Kinetic,
+                initial.Player.LifecycleGeneration);
             DamageReceiverResult conflict = Invoke<DamageReceiverResult>(
                 adapter,
-                "ApplyDamage",
-                new PlayerDamageRequest(
-                    eventId,
-                    source,
-                    null,
-                    initial.Player.ActorInstanceId,
-                    8d,
-                    CombatChannel.Kinetic,
-                    initial.Player.LifecycleGeneration));
+                "ApplyProjectileDamage",
+                eventId,
+                source,
+                initial.Player.ActorInstanceId,
+                8d,
+                CombatChannel.Kinetic,
+                initial.Player.LifecycleGeneration);
 
             Assert.That(applied.Status, Is.EqualTo(DamageReceiverStatus.Applied));
             Assert.That(duplicate.Status, Is.EqualTo(DamageReceiverStatus.Duplicate));
@@ -184,6 +196,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(fact.SourceRunParticipantId,
                 Is.EqualTo(StableId.Parse("participant.stage1-mobile-droid")));
             Assert.That(Read<bool>(controller, "IsSessionActive"), Is.False);
+            Assert.That(Read<bool>(controller, "IsPlayerDead"), Is.True);
             Assert.That(Read<bool>(controller, "IsPlayerGameplayActive"), Is.False);
             Assert.That(Read<Collider2D>(controller, "PlayerCollider").enabled, Is.False);
             Assert.That(

@@ -126,3 +126,12 @@ request contracts now carry the originating gameplay attempt generation explicit
 the compatibility constructors remain generation zero for existing fixtures. Live
 routing always supplies the bound scope generation, so delayed pre-restart requests
 are rejected by `PlayerActorAuthority` without trying to reverse a hash.
+
+
+Projectile execution now publishes a package-neutral immutable emission fact that
+pairs the original combat event with the physical hit event and projectile instance.
+The Stage 1 bridge records the source lifecycle generation at emission, consumes it
+on collision, and removes the entry when the projectile completes or the accepted
+player restart clears the scene. Weapon-plan and hit-event hashes are never decoded.
+Exact live restart command replay returns `Duplicate` and does not repeat scene reset.
+Dead players are also excluded from loadout and room-transition interaction.

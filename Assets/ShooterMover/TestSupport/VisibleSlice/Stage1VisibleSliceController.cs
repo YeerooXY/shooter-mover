@@ -157,6 +157,9 @@ namespace ShooterMover.TestSupport.VisibleSlice
             && movementLifecycle.IsRunning
             && playerCollider != null
             && playerCollider.enabled;
+        public bool IsPlayerDead => playerLiveAuthority != null
+            && playerLiveAuthority.IsInitialized
+            && playerLiveAuthority.ExportHudHealth().IsDead;
         public int PlayerHealth
         {
             get
@@ -285,7 +288,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
             }
 
             if (Keyboard.current != null
-                && Keyboard.current.lKey.wasPressedThisFrame)
+                && Keyboard.current.lKey.wasPressedThisFrame
+                && !IsPlayerDead)
             {
                 OpenLoadoutSelection();
                 return;
@@ -1227,7 +1231,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void RefreshArenaFlow()
         {
-            if (roomMissionLayout == null || playerTransform == null)
+            if (IsPlayerDead || roomMissionLayout == null || playerTransform == null)
             {
                 return;
             }

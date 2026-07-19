@@ -57,6 +57,32 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
     }
 
     /// <summary>
+    /// Immutable package-neutral emission fact. The original combat event retains
+    /// lifecycle/operation context while HitEventId identifies the physical collision.
+    /// </summary>
+    public sealed class ProjectileExecutionEmission2D
+    {
+        public ProjectileExecutionEmission2D(
+            BoundedProjectile2D projectile,
+            StableId combatEventId,
+            StableId hitEventId)
+        {
+            Projectile = projectile
+                ?? throw new ArgumentNullException(nameof(projectile));
+            CombatEventId = combatEventId
+                ?? throw new ArgumentNullException(nameof(combatEventId));
+            HitEventId = hitEventId
+                ?? throw new ArgumentNullException(nameof(hitEventId));
+        }
+
+        public BoundedProjectile2D Projectile { get; }
+
+        public StableId CombatEventId { get; }
+
+        public StableId HitEventId { get; }
+    }
+
+    /// <summary>
     /// Explicit handler registered behind WeaponMount2DAdapter for one package-owned
     /// operation kind. The mount adapter is the only producer of its execution context,
     /// so projectile spawning cannot bypass a validated WeaponFireExecutionPlan.
@@ -78,6 +104,8 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
 
         private bool isDisposed;
         private BoundedProjectile2D lastSpawnedProjectile;
+
+        public event Action<ProjectileExecutionEmission2D> ProjectileSpawned;
 
         public ProjectileExecutionPlanAdapter(
             StableId operationKindId,
@@ -237,6 +265,11 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
 
                 activeProjectiles.Add(instance);
                 lastSpawnedProjectile = instance;
+                PublishProjectileSpawned(
+                    new ProjectileExecutionEmission2D(
+                        instance,
+                        context.CombatEventId,
+                        hitEventId));
                 return true;
             }
             catch (Exception)
@@ -278,7 +311,26 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
             }
 
             ResetSession();
+            ProjectileSpawned = null;
             isDisposed = true;
+        }
+
+        private void PublishProjectileSpawned(
+            ProjectileExecutionEmission2D emission)
+        {
+            Action<ProjectileExecutionEmission2D> handler = ProjectileSpawned;
+            if (handler == null)
+            {
+                return;
+            }
+            try
+            {
+                handler(emission);
+            }
+            catch (Exception)
+            {
+                // Emission observers are optional and cannot invalidate execution.
+            }
         }
 
         private bool TryValidateEnvelope(

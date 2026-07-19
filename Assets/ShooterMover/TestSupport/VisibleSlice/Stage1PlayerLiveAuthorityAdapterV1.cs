@@ -5,6 +5,7 @@ using ShooterMover.ContentPackages.Enemies.BlasterTurret;
 using ShooterMover.ContentPackages.Enemies.MobileBlasterDroid;
 using ShooterMover.ContentPackages.Environment.VoidHazards;
 using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
+using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.GameplayEntities;
@@ -42,8 +43,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
         private Stage1PlayerInputRuntimeV1 input;
         private Stage1PlayerAttributionResolverV1 attribution;
         private Stage1PlayerRunCoordinatorV1 runCoordinator;
+        private readonly Dictionary<StableId, long> projectileGenerations =
+            new Dictionary<StableId, long>();
+        private readonly Dictionary<BoundedProjectile2D, StableId> trackedProjectiles =
+            new Dictionary<BoundedProjectile2D, StableId>();
         private CombatHit2DAdapter turretHitAdapter;
         private CombatHit2DAdapter droidHitAdapter;
+        private ProjectileExecutionPlanAdapter turretProjectileAdapter;
+        private ProjectileExecutionPlanAdapter droidProjectileAdapter;
         private VoidHazardTarget2D voidTarget;
         private bool initialized;
         private bool disposed;
@@ -131,20 +138,30 @@ namespace ShooterMover.TestSupport.VisibleSlice
             long replacement = retiring == long.MaxValue
                 ? long.MaxValue
                 : retiring + 1L;
-            PlayerRuntimeRestartCommand command = new PlayerRuntimeRestartCommand(
-                StableId.Create(
-                    "operation",
-                    "stage1-player-restart-g"
-                        + replacement.ToString(CultureInfo.InvariantCulture)),
-                before.Player.ActorInstanceId,
-                retiring,
-                replacement);
+            return ApplyRestartCommand(
+                new PlayerRuntimeRestartCommand(
+                    StableId.Create(
+                        "operation",
+                        "stage1-player-restart-g"
+                            + replacement.ToString(CultureInfo.InvariantCulture)),
+                    before.Player.ActorInstanceId,
+                    retiring,
+                    replacement));
+        }
+
+        public PlayerRuntimeRestartResult ApplyRestartCommand(
+            PlayerRuntimeRestartCommand command)
+        {
+            EnsureInitialized();
             PlayerRuntimeRestartResult result = runtime.Restart(command);
-            if (result.Status == PlayerRuntimeRestartStatus.Applied
-                && !controller.ApplyAcceptedPlayerRestart(result))
+            if (result.Status == PlayerRuntimeRestartStatus.Applied)
             {
-                throw new InvalidOperationException(
-                    "The scene rejected an accepted player-authority restart projection.");
+                if (!controller.ApplyAcceptedPlayerRestart(result))
+                {
+                    throw new InvalidOperationException(
+                        "The scene rejected an accepted player-authority restart projection.");
+                }
+                ClearProjectileLedger();
             }
             return result;
         }
@@ -364,8 +381,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
         {
             if (controller.TurretPackage == null
                 || controller.TurretPackage.HitAdapter == null
+                || controller.TurretPackage.ProjectileAdapter == null
                 || controller.MobileBlasterDroid == null
-                || controller.MobileBlasterDroid.HitAdapter == null)
+                || controller.MobileBlasterDroid.HitAdapter == null
+                || controller.MobileBlasterDroid.ProjectileAdapter == null)
             {
                 throw new InvalidOperationException(
                     "PLAYER-LIVE-001 could not bind enemy projectile facts.");
@@ -373,8 +392,12 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             turretHitAdapter = controller.TurretPackage.HitAdapter;
             droidHitAdapter = controller.MobileBlasterDroid.HitAdapter;
+            turretProjectileAdapter = controller.TurretPackage.ProjectileAdapter;
+            droidProjectileAdapter = controller.MobileBlasterDroid.ProjectileAdapter;
             turretHitAdapter.HitTranslated += HandleTurretHit;
             droidHitAdapter.HitTranslated += HandleDroidHit;
+            turretProjectileAdapter.ProjectileSpawned += HandleProjectileSpawned;
+            droidProjectileAdapter.ProjectileSpawned += HandleProjectileSpawned;
 
             voidTarget = controller.PlayerVoidTarget;
             if (voidTarget == null || !voidTarget.BindCombatPort(this))
@@ -419,13 +442,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
             }
 
             long generation;
-            if (!TryResolveLifecycleGeneration(
-                    translation.Message.EventId,
-                    out generation))
+            HitMessage hit = translation.Message;
+            if (!projectileGenerations.TryGetValue(hit.EventId, out generation))
             {
                 return;
             }
-            HitMessage hit = translation.Message;
             ApplyProjectileDamage(
                 hit.EventId,
                 hit.SourceId,
@@ -433,6 +454,76 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 amount,
                 hit.Channel,
                 generation);
+        }
+
+        private void HandleProjectileSpawned(
+            ProjectileExecutionEmission2D emission)
+        {
+            if (!IsInitialized
+                || emission == null
+                || emission.Projectile == null
+                || emission.HitEventId == null)
+            {
+                return;
+            }
+
+            long generation;
+            if (!TryResolveLifecycleGeneration(emission.CombatEventId, out generation))
+            {
+                return;
+            }
+
+            long existingGeneration;
+            if (projectileGenerations.TryGetValue(
+                    emission.HitEventId,
+                    out existingGeneration)
+                && existingGeneration != generation)
+            {
+                throw new InvalidOperationException(
+                    "A physical hit event cannot change lifecycle generation.");
+            }
+
+            projectileGenerations[emission.HitEventId] = generation;
+            StableId previousHitEvent;
+            if (trackedProjectiles.TryGetValue(
+                    emission.Projectile,
+                    out previousHitEvent)
+                && previousHitEvent != emission.HitEventId)
+            {
+                projectileGenerations.Remove(previousHitEvent);
+            }
+            trackedProjectiles[emission.Projectile] = emission.HitEventId;
+            emission.Projectile.Completed -= HandleTrackedProjectileCompleted;
+            emission.Projectile.Completed += HandleTrackedProjectileCompleted;
+        }
+
+        private void HandleTrackedProjectileCompleted(BoundedProjectile2D projectile)
+        {
+            if (projectile == null)
+            {
+                return;
+            }
+            projectile.Completed -= HandleTrackedProjectileCompleted;
+            StableId hitEventId;
+            if (trackedProjectiles.TryGetValue(projectile, out hitEventId))
+            {
+                trackedProjectiles.Remove(projectile);
+                projectileGenerations.Remove(hitEventId);
+            }
+        }
+
+        private void ClearProjectileLedger()
+        {
+            foreach (KeyValuePair<BoundedProjectile2D, StableId> pair
+                in trackedProjectiles)
+            {
+                if (pair.Key != null)
+                {
+                    pair.Key.Completed -= HandleTrackedProjectileCompleted;
+                }
+            }
+            trackedProjectiles.Clear();
+            projectileGenerations.Clear();
         }
 
         private static VoidHazardPortResult MapVoidResult(
@@ -477,6 +568,15 @@ namespace ShooterMover.TestSupport.VisibleSlice
             {
                 droidHitAdapter.HitTranslated -= HandleDroidHit;
             }
+            if (turretProjectileAdapter != null)
+            {
+                turretProjectileAdapter.ProjectileSpawned -= HandleProjectileSpawned;
+            }
+            if (droidProjectileAdapter != null)
+            {
+                droidProjectileAdapter.ProjectileSpawned -= HandleProjectileSpawned;
+            }
+            ClearProjectileLedger();
             if (voidTarget != null && controller != null)
             {
                 voidTarget.BindCombatPort(controller);

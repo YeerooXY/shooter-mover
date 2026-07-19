@@ -189,6 +189,10 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         public EnemyContact2DAdapter ContactAdapter { get { return contactAdapter; } }
         public WeaponMount2DAdapter WeaponMount { get { return weaponMount; } }
         public CombatHit2DAdapter HitAdapter { get { return hitAdapter; } }
+        public ProjectileExecutionPlanAdapter ProjectileAdapter
+        {
+            get { return projectileExecutor; }
+        }
         public Rigidbody2D EnemyBody { get { return enemyBody; } }
         public Collider2D EnemyCollider { get { return enemyCollider; } }
 
