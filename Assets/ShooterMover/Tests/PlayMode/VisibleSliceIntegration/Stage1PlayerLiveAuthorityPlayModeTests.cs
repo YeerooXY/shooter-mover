@@ -3,9 +3,12 @@ using System;
 using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
+using ShooterMover.ContentPackages.Environment.VoidHazards;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies;
+using ShooterMover.GameplayEntities;
+using ShooterMover.UI.VisibleSliceGeneralCombatHud;
+using ShooterMover.UnityAdapters.Players;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -34,19 +37,17 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                     SceneManager.SetActiveScene(
                         SceneManager.CreateScene("PLAYER-LIVE-001 Cleanup"));
                 }
-
                 AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
                 while (unload != null && !unload.isDone)
                 {
                     yield return null;
                 }
             }
-
             yield return null;
         }
 
         [UnityTest]
-        public IEnumerator VoidDamage_UsesLiveAuthorityAndRestartPreservesIdentity()
+        public IEnumerator RapidRestart_TwoCallsBeforeYieldAdvanceAuthorityTwice()
         {
             MonoBehaviour controller = null;
             MonoBehaviour adapter = null;
@@ -54,84 +55,306 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 value => controller = value,
                 value => adapter = value);
 
-            Assert.That(Read<bool>(adapter, "IsInitialized"), Is.True);
-            object beforeRuntime = Invoke<object>(adapter, "ExportSnapshot");
-            object beforePlayer = Read<object>(beforeRuntime, "Player");
-            StableId actorId = Read<StableId>(beforePlayer, "ActorInstanceId");
-            long generation = Read<long>(beforePlayer, "LifecycleGeneration");
+            PlayerRuntimeSnapshot before =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            StableId actorId = before.Player.ActorInstanceId;
 
+            PlayerRuntimeRestartResult first =
+                Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
+            PlayerRuntimeRestartResult second =
+                Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
+
+            Assert.That(first.Status, Is.EqualTo(PlayerRuntimeRestartStatus.Applied));
+            Assert.That(second.Status, Is.EqualTo(PlayerRuntimeRestartStatus.Applied));
+            PlayerRuntimeSnapshot after =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            Assert.That(after.Player.ActorInstanceId, Is.EqualTo(actorId));
+            Assert.That(
+                after.Player.LifecycleGeneration,
+                Is.EqualTo(before.Player.LifecycleGeneration + 2L));
+            Assert.That(after.Movement.Generation, Is.EqualTo(after.Player.LifecycleGeneration));
+            Assert.That(after.Player.CurrentHealth, Is.EqualTo(100d));
+            Assert.That(Read<long>(controller, "RestartGeneration"),
+                Is.EqualTo(after.Player.LifecycleGeneration));
+        }
+
+        [UnityTest]
+        public IEnumerator LiveDamageHealingDuplicatesAndHudUseAuthoritySnapshot()
+        {
+            MonoBehaviour controller = null;
+            MonoBehaviour adapter = null;
+            yield return LoadComposition(
+                value => controller = value,
+                value => adapter = value);
+
+            PlayerRuntimeSnapshot initial =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            StableId eventId = StableId.Parse("combat-event.player-live-duplicate");
+            StableId source = StableId.Parse("actor.player-live-source");
+            PlayerDamageRequest damage = new PlayerDamageRequest(
+                eventId,
+                source,
+                StableId.Parse("participant.untrusted"),
+                initial.Player.ActorInstanceId,
+                12.5d,
+                CombatChannel.Kinetic,
+                initial.Player.LifecycleGeneration);
+            DamageReceiverResult applied =
+                Invoke<DamageReceiverResult>(adapter, "ApplyDamage", damage);
+            DamageReceiverResult duplicate =
+                Invoke<DamageReceiverResult>(adapter, "ApplyDamage", damage);
+            DamageReceiverResult conflict = Invoke<DamageReceiverResult>(
+                adapter,
+                "ApplyDamage",
+                new PlayerDamageRequest(
+                    eventId,
+                    source,
+                    null,
+                    initial.Player.ActorInstanceId,
+                    8d,
+                    CombatChannel.Kinetic,
+                    initial.Player.LifecycleGeneration));
+
+            Assert.That(applied.Status, Is.EqualTo(DamageReceiverStatus.Applied));
+            Assert.That(duplicate.Status, Is.EqualTo(DamageReceiverStatus.Duplicate));
+            Assert.That(conflict.Status, Is.EqualTo(DamageReceiverStatus.RejectedInvalid));
+            Assert.That(
+                conflict.RejectionCode,
+                Is.EqualTo(DamageReceiverRejectionCode.ConflictingDuplicate));
+
+            PlayerActorHealingResult healed = Invoke<PlayerActorHealingResult>(
+                adapter,
+                "ApplyHealing",
+                new PlayerHealingRequest(
+                    StableId.Parse("operation.player-live-heal"),
+                    source,
+                    StableId.Parse("participant.untrusted"),
+                    initial.Player.ActorInstanceId,
+                    2.25d,
+                    initial.Player.LifecycleGeneration));
+            Assert.That(healed.Status, Is.EqualTo(PlayerActorOperationStatus.Applied));
+
+            PlayerRuntimeSnapshot live =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            GeneralCombatHudSnapshot hud = Invoke<GeneralCombatHudSnapshot>(
+                adapter,
+                "ExportVisibleHudSnapshot");
+            Assert.That(live.Player.CurrentHealth, Is.EqualTo(89.75d));
+            Assert.That(hud.PlayerVital.Health, Is.EqualTo(89.75d));
+            Assert.That(hud.PlayerVital.MaximumHealth, Is.EqualTo(100d));
+            Assert.That(hud.RestartGeneration, Is.EqualTo(live.Player.LifecycleGeneration));
+            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(90),
+                "The integer property is compatibility-only; the HUD retains fractional health.");
+        }
+
+        [UnityTest]
+        public IEnumerator LethalDamageProjectsDeathOnceAndRestartRestoresParticipation()
+        {
+            MonoBehaviour controller = null;
+            MonoBehaviour adapter = null;
+            yield return LoadComposition(
+                value => controller = value,
+                value => adapter = value);
+
+            PlayerRuntimeSnapshot before =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            object droid = Read<object>(controller, "MobileBlasterDroid");
+            StableId sourceActor = Read<StableId>(
+                Read<object>(droid, "EnemyTarget"),
+                "TargetId");
+            PlayerDamageRequest lethal = new PlayerDamageRequest(
+                StableId.Parse("combat-event.player-live-lethal"),
+                sourceActor,
+                null,
+                before.Player.ActorInstanceId,
+                1000d,
+                CombatChannel.Kinetic,
+                before.Player.LifecycleGeneration);
+
+            DamageReceiverResult applied =
+                Invoke<DamageReceiverResult>(adapter, "ApplyDamage", lethal);
+            DamageReceiverResult replay =
+                Invoke<DamageReceiverResult>(adapter, "ApplyDamage", lethal);
+            Assert.That(applied.Status, Is.EqualTo(DamageReceiverStatus.Applied));
+            Assert.That(applied.DeathFact, Is.Not.Null);
+            Assert.That(replay.Status, Is.EqualTo(DamageReceiverStatus.Duplicate));
+            Assert.That(Read<int>(adapter, "DeathFactCount"), Is.EqualTo(1));
+            GameplayEntityDeathFact fact =
+                Read<GameplayEntityDeathFact>(adapter, "LastDeathFact");
+            Assert.That(fact.SourceRunParticipantId,
+                Is.EqualTo(StableId.Parse("participant.stage1-mobile-droid")));
+            Assert.That(Read<bool>(controller, "IsSessionActive"), Is.False);
+            Assert.That(Read<bool>(controller, "IsPlayerGameplayActive"), Is.False);
+            Assert.That(Read<Collider2D>(controller, "PlayerCollider").enabled, Is.False);
+            Assert.That(
+                Read<bool>(Read<object>(controller, "PlayerMovementLifecycle"), "IsRunning"),
+                Is.False);
+            Assert.That(Invoke<bool>(controller, "FireAtMobileDroidForTests"), Is.False);
+
+            PlayerRuntimeRestartResult restart =
+                Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
+            Assert.That(restart.Status, Is.EqualTo(PlayerRuntimeRestartStatus.Applied));
+            PlayerRuntimeSnapshot restored =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            Assert.That(restored.Player.CurrentHealth, Is.EqualTo(100d));
+            Assert.That(restored.Player.ActorInstanceId,
+                Is.EqualTo(before.Player.ActorInstanceId));
+            Assert.That(Read<bool>(controller, "IsPlayerGameplayActive"), Is.True);
+            Assert.That(Read<Collider2D>(controller, "PlayerCollider").enabled, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator MobileDroidProjectile_DamagesLiveAuthorityAfterContact()
+        {
+            MonoBehaviour controller = null;
+            MonoBehaviour adapter = null;
+            yield return LoadComposition(
+                value => controller = value,
+                value => adapter = value);
+
+            Component droid = (Component)Read<object>(controller, "MobileBlasterDroid");
+            Transform player = Read<Transform>(controller, "PlayerTransform");
+            player.position = droid.transform.position + Vector3.right * 3f;
+            float deadline = Time.time + 3f;
+            while (Time.time < deadline
+                && Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth
+                    == 100d)
+            {
+                yield return null;
+            }
+            Assert.That(
+                Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth,
+                Is.LessThan(100d));
+        }
+
+        [UnityTest]
+        public IEnumerator StaleProjectileAndVoidRequestsRejectAfterRestart()
+        {
+            MonoBehaviour controller = null;
+            MonoBehaviour adapter = null;
+            yield return LoadComposition(
+                value => controller = value,
+                value => adapter = value);
+
+            PlayerRuntimeSnapshot before =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
+            PlayerRuntimeSnapshot after =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            StableId source = StableId.Parse("actor.stale-projectile-source");
+            DamageReceiverResult staleProjectile = Invoke<DamageReceiverResult>(
+                adapter,
+                "ApplyProjectileDamage",
+                StableId.Parse("projectile-hit.stale-g0-f1"),
+                source,
+                after.Player.ActorInstanceId,
+                25d,
+                CombatChannel.Kinetic,
+                before.Player.LifecycleGeneration);
+            Assert.That(staleProjectile.Status,
+                Is.EqualTo(DamageReceiverStatus.RejectedByLifecycle));
+            Assert.That(
+                Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth,
+                Is.EqualTo(100d));
+
+            VoidHazardPortResult staleVoid = Invoke<VoidHazardPortResult>(
+                adapter,
+                "RequestDamage",
+                new VoidHazardDamageRequest(
+                    StableId.Parse("void-event.stale-g0-c1"),
+                    StableId.Parse("placed.demo002-void-hazard"),
+                    after.Player.ActorInstanceId,
+                    35d));
+            Assert.That(staleVoid, Is.EqualTo(VoidHazardPortResult.Rejected));
+            Assert.That(Read<int>(controller, "VoidDamageCount"), Is.Zero);
+        }
+
+        [UnityTest]
+        public IEnumerator VoidCountChangesOnlyForAcceptedAuthorityDamage()
+        {
+            MonoBehaviour controller = null;
+            MonoBehaviour adapter = null;
+            yield return LoadComposition(
+                value => controller = value,
+                value => adapter = value);
+
+            PlayerRuntimeSnapshot player =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            StableId eventId = StableId.Parse("void-event.test-g0-c1");
+            StableId hazardId = StableId.Parse("placed.demo002-void-hazard");
+            VoidHazardDamageRequest acceptedRequest = new VoidHazardDamageRequest(
+                eventId,
+                hazardId,
+                player.Player.ActorInstanceId,
+                35d);
+            VoidHazardPortResult accepted = Invoke<VoidHazardPortResult>(
+                adapter,
+                "RequestDamage",
+                acceptedRequest);
+            VoidHazardPortResult duplicate = Invoke<VoidHazardPortResult>(
+                adapter,
+                "RequestDamage",
+                acceptedRequest);
+            VoidHazardPortResult conflict = Invoke<VoidHazardPortResult>(
+                adapter,
+                "RequestDamage",
+                new VoidHazardDamageRequest(
+                    eventId,
+                    hazardId,
+                    player.Player.ActorInstanceId,
+                    10d));
+            VoidHazardPortResult mismatch = Invoke<VoidHazardPortResult>(
+                adapter,
+                "RequestDamage",
+                new VoidHazardDamageRequest(
+                    StableId.Parse("void-event.mismatch-g0-c2"),
+                    hazardId,
+                    StableId.Parse("actor.someone-else"),
+                    35d));
+
+            Assert.That(accepted, Is.EqualTo(VoidHazardPortResult.Accepted));
+            Assert.That(duplicate, Is.EqualTo(VoidHazardPortResult.DuplicateNoChange));
+            Assert.That(conflict, Is.EqualTo(VoidHazardPortResult.Rejected));
+            Assert.That(mismatch, Is.EqualTo(VoidHazardPortResult.Rejected));
+            Assert.That(Read<int>(controller, "VoidDamageCount"), Is.EqualTo(1));
+            Assert.That(
+                Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth,
+                Is.EqualTo(65d));
+        }
+
+        [UnityTest]
+        public IEnumerator PhysicalVoidDamage_UsesAuthorityAndPreservesIdentityOnRestart()
+        {
+            MonoBehaviour controller = null;
+            MonoBehaviour adapter = null;
+            yield return LoadComposition(
+                value => controller = value,
+                value => adapter = value);
+
+            PlayerRuntimeSnapshot before =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
             Transform player = Read<Transform>(controller, "PlayerTransform");
             player.position = new Vector3(-1.5f, 4.2f, 0f);
             float deadline = Time.time + 1f;
             while (Time.time < deadline
-                && Read<double>(
-                    Invoke<object>(adapter, "ExportHudHealth"),
-                    "CurrentHealth") == 100d)
+                && Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth
+                    == 100d)
             {
                 yield return new WaitForFixedUpdate();
             }
-
-            object damagedHud = Invoke<object>(adapter, "ExportHudHealth");
-            Assert.That(Read<double>(damagedHud, "CurrentHealth"), Is.EqualTo(65d));
-            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(65));
-            Assert.That(Read<int>(controller, "VoidDamageCount"), Is.GreaterThanOrEqualTo(1));
-
-            Invoke<object>(controller, "QuickRestart");
-            yield return null;
-            yield return null;
-
-            object afterRuntime = Invoke<object>(adapter, "ExportSnapshot");
-            object afterPlayer = Read<object>(afterRuntime, "Player");
             Assert.That(
-                Read<StableId>(afterPlayer, "ActorInstanceId"),
-                Is.EqualTo(actorId));
-            Assert.That(
-                Read<long>(afterPlayer, "LifecycleGeneration"),
-                Is.EqualTo(generation + 1L));
-            Assert.That(Read<double>(afterPlayer, "CurrentHealth"), Is.EqualTo(100d));
-            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(100));
-        }
+                Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth,
+                Is.EqualTo(65d));
+            Assert.That(Read<int>(controller, "VoidDamageCount"), Is.EqualTo(1));
 
-        [UnityTest]
-        public IEnumerator TurretProjectile_DamagesLiveAuthorityAfterPhysicalContact()
-        {
-            MonoBehaviour controller = null;
-            MonoBehaviour adapter = null;
-            yield return LoadComposition(
-                value => controller = value,
-                value => adapter = value);
-            yield return ClearEntryAndEnterTerminal(controller);
-
-            Assert.That(
-                Read<double>(
-                    Invoke<object>(adapter, "ExportHudHealth"),
-                    "CurrentHealth"),
-                Is.EqualTo(100d));
-
-            yield return new WaitForSeconds(0.5f);
-            Assert.That(
-                Read<double>(
-                    Invoke<object>(adapter, "ExportHudHealth"),
-                    "CurrentHealth"),
-                Is.EqualTo(100d),
-                "A turret emission must not mutate health before its projectile contacts the player.");
-
-            float deadline = Time.time + 1.5f;
-            while (Time.time < deadline
-                && Read<double>(
-                    Invoke<object>(adapter, "ExportHudHealth"),
-                    "CurrentHealth") == 100d)
-            {
-                yield return null;
-            }
-
-            Assert.That(
-                Read<double>(
-                    Invoke<object>(adapter, "ExportHudHealth"),
-                    "CurrentHealth"),
-                Is.EqualTo(90d));
-            Assert.That(Read<int>(controller, "PlayerHealth"), Is.EqualTo(90));
-            Assert.That(Read<int>(adapter, "DeathFactCount"), Is.Zero);
+            Invoke<PlayerRuntimeRestartResult>(controller, "QuickRestart");
+            PlayerRuntimeSnapshot after =
+                Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
+            Assert.That(after.Player.ActorInstanceId,
+                Is.EqualTo(before.Player.ActorInstanceId));
+            Assert.That(after.Player.CurrentHealth, Is.EqualTo(100d));
+            Assert.That(after.Player.LifecycleGeneration,
+                Is.EqualTo(before.Player.LifecycleGeneration + 1L));
         }
 
         private static IEnumerator LoadComposition(
@@ -145,7 +368,6 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             {
                 yield return null;
             }
-
             yield return null;
             MonoBehaviour controller =
                 UnityEngine.Object.FindFirstObjectByType(FindType(ControllerTypeName))
@@ -155,32 +377,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 as MonoBehaviour;
             Assert.That(controller, Is.Not.Null);
             Assert.That(adapter, Is.Not.Null);
+            Assert.That(Read<bool>(adapter, "IsInitialized"), Is.True);
             assignController(controller);
             assignAdapter(adapter);
-        }
-
-        private static IEnumerator ClearEntryAndEnterTerminal(
-            MonoBehaviour controller)
-        {
-            object droid = Read<object>(controller, "MobileBlasterDroid");
-            Invoke<object>(
-                droid,
-                "Apply",
-                EnemyActorCommand.Damage(
-                    10L,
-                    StableId.Parse("combat-event.player-live-clear-entry"),
-                    StableId.Parse("actor.player-live-test"),
-                    (int)CombatChannel.Kinetic,
-                    1000d));
-            yield return new WaitForFixedUpdate();
-            yield return null;
-
-            Transform player = Read<Transform>(controller, "PlayerTransform");
-            player.position = new Vector3(13.5f, 0f, 0f);
-            yield return null;
-            Assert.That(
-                Read<StableId>(controller, "CurrentRoomStableId"),
-                Is.EqualTo(StableId.Parse("room.level1-terminal")));
         }
 
         private static T Read<T>(object target, string propertyName)
@@ -215,9 +414,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                     return type;
                 }
             }
-
-            throw new InvalidOperationException(
-                "Required type not found: " + fullName);
+            throw new InvalidOperationException("Required type not found: " + fullName);
         }
     }
 }

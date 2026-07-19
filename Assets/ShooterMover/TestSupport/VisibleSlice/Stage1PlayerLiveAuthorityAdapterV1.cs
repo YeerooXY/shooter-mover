@@ -1,28 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Globalization;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
 using ShooterMover.ContentPackages.Enemies.MobileBlasterDroid;
 using ShooterMover.ContentPackages.Environment.VoidHazards;
 using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Movement;
 using ShooterMover.GameplayEntities;
 using ShooterMover.UI.VisibleSliceGeneralCombatHud;
 using ShooterMover.UnityAdapters.Combat;
-using ShooterMover.UnityAdapters.Enemies;
-using ShooterMover.UnityAdapters.Physics;
 using ShooterMover.UnityAdapters.Players;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace ShooterMover.TestSupport.VisibleSlice
 {
     /// <summary>
-    /// Scene-local migration adapter for PLAYER-LIVE-001. It keeps Unity movement and
-    /// presentation attached to the retained Stage 1 player while PlayerRuntimeComposition
-    /// and PlayerActorAuthority own every health and lifecycle decision.
+    /// Typed Stage 1 composition boundary. PlayerRuntimeComposition owns player health,
+    /// healing, death and generation; this component only translates accepted Unity facts
+    /// and projects accepted lifecycle changes back into the retained scene.
     /// </summary>
     [DefaultExecutionOrder(10100)]
     [DisallowMultipleComponent]
@@ -31,37 +27,35 @@ namespace ShooterMover.TestSupport.VisibleSlice
         IGeneralCombatHudStateSource,
         IVoidHazardCombatPort
     {
-        private const string PlayerRunParticipantIdText = "participant.stage1-player";
-        private const string PlayerCharacterIdText = "character.striker";
-        private const string PlayerFactionIdText = "faction.player";
-
-        private static readonly BindingFlags PrivateInstance =
-            BindingFlags.Instance | BindingFlags.NonPublic;
+        private static readonly StableId DroidParticipantId =
+            StableId.Parse("participant.stage1-mobile-droid");
+        private static readonly StableId TurretParticipantId =
+            StableId.Parse("participant.stage1-blaster-turret");
+        private static readonly StableId EnvironmentParticipantId =
+            StableId.Parse("participant.stage1-environment");
 
         private Stage1VisibleSliceController controller;
         private PlayerRuntimeCompositionRoot compositionRoot;
         private PlayerRuntimeComposition runtime;
-        private Stage1PlayerMovementRuntimeV1 movement;
+        private MovementActorPlayerRuntimeAdapter movement;
         private Stage1PlayerPresentationRuntimeV1 presentation;
         private Stage1PlayerInputRuntimeV1 input;
+        private Stage1PlayerAttributionResolverV1 attribution;
         private Stage1PlayerRunCoordinatorV1 runCoordinator;
         private CombatHit2DAdapter turretHitAdapter;
         private CombatHit2DAdapter droidHitAdapter;
-        private BlasterTurretSceneContext2D turretContext;
         private VoidHazardTarget2D voidTarget;
-        private Action<double> retainedTurretFallback;
-        private MonoBehaviour retainedVoidCombatPort;
-        private FieldInfo controllerHealthField;
-        private FieldInfo controllerVoidDamageCountField;
-        private FieldInfo turretFallbackField;
-        private FieldInfo voidCombatPortField;
-        private long observedControllerGeneration;
         private bool initialized;
         private bool disposed;
 
         public bool IsInitialized
         {
             get { return initialized && !disposed && runtime != null; }
+        }
+
+        public bool IsPlayerGameplayActive
+        {
+            get { return controller != null && controller.IsPlayerGameplayActive; }
         }
 
         public int DeathFactCount
@@ -86,48 +80,82 @@ namespace ShooterMover.TestSupport.VisibleSlice
             return runtime.ExportHudHealth();
         }
 
+        public GeneralCombatHudSnapshot ExportVisibleHudSnapshot()
+        {
+            GeneralCombatHudSnapshot snapshot;
+            if (!TryRead(out snapshot) || snapshot == null)
+            {
+                throw new InvalidOperationException(
+                    "The Stage 1 immutable HUD snapshot is unavailable.");
+            }
+            return snapshot;
+        }
+
         public DamageReceiverResult ApplyDamage(PlayerDamageRequest request)
         {
             EnsureInitialized();
-            DamageReceiverResult result = runtime.ApplyDamage(request);
-            SynchronizeLegacyReadMirror();
-            return result;
+            return runtime.ApplyDamage(request);
         }
 
         public PlayerActorHealingResult ApplyHealing(PlayerHealingRequest request)
         {
             EnsureInitialized();
-            PlayerActorHealingResult result = runtime.ApplyHealing(request);
-            SynchronizeLegacyReadMirror();
+            return runtime.ApplyHealing(request);
+        }
+
+        public DamageReceiverResult ApplyProjectileDamage(
+            StableId eventId,
+            StableId sourceActorId,
+            StableId targetActorId,
+            double amount,
+            CombatChannel channel,
+            long emissionGeneration)
+        {
+            EnsureInitialized();
+            return runtime.ApplyDamage(
+                new PlayerDamageRequest(
+                    eventId,
+                    sourceActorId,
+                    null,
+                    targetActorId,
+                    amount,
+                    channel,
+                    emissionGeneration));
+        }
+
+        public PlayerRuntimeRestartResult RequestRestart()
+        {
+            EnsureInitialized();
+            PlayerRuntimeSnapshot before = runtime.ExportSnapshot();
+            long retiring = before.Player.LifecycleGeneration;
+            long replacement = retiring == long.MaxValue
+                ? long.MaxValue
+                : retiring + 1L;
+            PlayerRuntimeRestartCommand command = new PlayerRuntimeRestartCommand(
+                StableId.Create(
+                    "operation",
+                    "stage1-player-restart-g"
+                        + replacement.ToString(CultureInfo.InvariantCulture)),
+                before.Player.ActorInstanceId,
+                retiring,
+                replacement);
+            PlayerRuntimeRestartResult result = runtime.Restart(command);
+            if (result.Status == PlayerRuntimeRestartStatus.Applied
+                && !controller.ApplyAcceptedPlayerRestart(result))
+            {
+                throw new InvalidOperationException(
+                    "The scene rejected an accepted player-authority restart projection.");
+            }
             return result;
         }
 
         public bool TryRead(out GeneralCombatHudSnapshot snapshot)
         {
             snapshot = null;
-            if (!IsInitialized
-                || controller == null
-                || !controller.TryRead(out GeneralCombatHudSnapshot retained))
-            {
-                return false;
-            }
-
-            PlayerRuntimeSnapshot live = runtime.ExportSnapshot();
-            snapshot = new GeneralCombatHudSnapshot(
-                live.Player.VitalState,
-                live.Movement.ThrusterStatus,
-                retained.FocusedEnemy,
-                retained.FocusedEnemyLabel,
-                retained.RoomName,
-                retained.ObjectiveText,
-                retained.RestartKeyboardHint,
-                retained.RestartControllerHint,
-                retained.ReticleVisible,
-                retained.ReticleNormalizedX,
-                retained.ReticleNormalizedY,
-                retained.ReducedEffects,
-                live.Player.LifecycleGeneration);
-            return true;
+            return IsInitialized
+                && controller != null
+                && controller.TryRead(out snapshot)
+                && snapshot != null;
         }
 
         public VoidHazardPortResult RequestDamage(VoidHazardDamageRequest request)
@@ -137,8 +165,12 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 return VoidHazardPortResult.Rejected;
             }
 
-            IncrementVoidDamagePresentationCount();
-            PlayerActorSnapshot player = runtime.ExportSnapshot().Player;
+            long generation;
+            if (!TryResolveLifecycleGeneration(request.EventId, out generation))
+            {
+                return VoidHazardPortResult.Rejected;
+            }
+
             DamageReceiverResult result = runtime.ApplyDamage(
                 new PlayerDamageRequest(
                     request.EventId,
@@ -147,8 +179,11 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     request.TargetId,
                     request.Amount,
                     request.Channel,
-                    player.LifecycleGeneration));
-            SynchronizeLegacyReadMirror();
+                    generation));
+            if (result.Status == DamageReceiverStatus.Applied)
+            {
+                controller.ObserveAcceptedVoidDamage();
+            }
             return MapVoidResult(result);
         }
 
@@ -160,7 +195,12 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 return VoidHazardPortResult.Rejected;
             }
 
-            IncrementVoidDamagePresentationCount();
+            long generation;
+            if (!TryResolveLifecycleGeneration(request.EventId, out generation))
+            {
+                return VoidHazardPortResult.Rejected;
+            }
+
             PlayerActorSnapshot player = runtime.ExportSnapshot().Player;
             DamageReceiverResult result = runtime.ApplyDamage(
                 new PlayerDamageRequest(
@@ -170,9 +210,62 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     request.TargetId,
                     player.MaximumHealth,
                     request.Channel,
-                    player.LifecycleGeneration));
-            SynchronizeLegacyReadMirror();
+                    generation));
+            if (result.Status == DamageReceiverStatus.Applied)
+            {
+                controller.ObserveAcceptedVoidDamage();
+            }
             return MapVoidResult(result);
+        }
+
+        public static bool TryResolveLifecycleGeneration(
+            StableId eventId,
+            out long generation)
+        {
+            generation = -1L;
+            if (eventId == null || string.IsNullOrEmpty(eventId.Value))
+            {
+                return false;
+            }
+
+            string value = eventId.Value;
+            string[] tokens =
+            {
+                "generation-",
+                "attempt-",
+                "-g",
+                ".g",
+                "_g",
+            };
+            for (int index = 0; index < tokens.Length; index++)
+            {
+                int start = value.IndexOf(tokens[index], StringComparison.Ordinal);
+                while (start >= 0)
+                {
+                    int digitStart = start + tokens[index].Length;
+                    int digitEnd = digitStart;
+                    while (digitEnd < value.Length && char.IsDigit(value[digitEnd]))
+                    {
+                        digitEnd++;
+                    }
+                    if (digitEnd > digitStart
+                        && long.TryParse(
+                            value.Substring(digitStart, digitEnd - digitStart),
+                            NumberStyles.None,
+                            CultureInfo.InvariantCulture,
+                            out generation)
+                        && generation >= 0L)
+                    {
+                        return true;
+                    }
+                    start = value.IndexOf(
+                        tokens[index],
+                        start + 1,
+                        StringComparison.Ordinal);
+                }
+            }
+            generation = -1L;
+            return false;
         }
 
         private void Awake()
@@ -182,14 +275,10 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
         private void Update()
         {
-            if (!IsInitialized)
+            if (IsInitialized)
             {
-                return;
+                runtime.RefreshContinuousPresentation();
             }
-
-            SynchronizeControllerRestart();
-            runtime.RefreshContinuousPresentation();
-            SynchronizeLegacyReadMirror();
         }
 
         private void Initialize()
@@ -205,65 +294,42 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 throw new InvalidOperationException(
                     "PLAYER-LIVE-001 requires the initialized Stage 1 composition root.");
             }
-
-            Transform playerTransform = controller.PlayerTransform;
-            if (playerTransform == null)
+            if (controller.PlayerMovementLifecycle == null
+                || controller.PlayerMovementTuning == null
+                || controller.PlayerTargetAdapter == null
+                || !controller.PlayerTargetAdapter.IsConfigured)
             {
                 throw new InvalidOperationException(
-                    "PLAYER-LIVE-001 could not resolve the retained Unity player.");
+                    "PLAYER-LIVE-001 requires configured movement and target adapters.");
             }
 
-            MovementActorLifecycle lifecycle =
-                playerTransform.GetComponent<MovementActorLifecycle>();
-            EnemyTarget2DAdapter playerTarget =
-                playerTransform.GetComponent<EnemyTarget2DAdapter>();
-            if (lifecycle == null
-                || !lifecycle.IsConstructed
-                || lifecycle.Actor == null
-                || playerTarget == null
-                || !playerTarget.IsConfigured)
-            {
-                throw new InvalidOperationException(
-                    "PLAYER-LIVE-001 requires configured movement and player-target adapters.");
-            }
+            movement = new MovementActorPlayerRuntimeAdapter(
+                controller.PlayerMovementLifecycle,
+                controller.PlayerMovementTuning);
+            presentation = new Stage1PlayerPresentationRuntimeV1(
+                controller.PlayerBoostTrail);
+            input = new Stage1PlayerInputRuntimeV1(controller);
+            attribution = new Stage1PlayerAttributionResolverV1();
+            runCoordinator = new Stage1PlayerRunCoordinatorV1(controller);
 
-            MovementThrusterTuningProfile tuning =
-                ReadRequiredPrivateField<MovementThrusterTuningProfile>(
-                    lifecycle,
-                    "tuning");
-            movement = new Stage1PlayerMovementRuntimeV1(lifecycle, tuning);
             PlayerMovementSnapshot initialMovement = movement.ExportSnapshot();
-            if (initialMovement.Generation != controller.RestartGeneration)
-            {
-                throw new InvalidOperationException(
-                    "Stage 1 player movement and retained restart generation disagree at composition.");
-            }
-
-            TrailRenderer boostTrail =
-                playerTransform.GetComponentInChildren<TrailRenderer>(true);
-            presentation = new Stage1PlayerPresentationRuntimeV1(boostTrail);
-            input = new Stage1PlayerInputRuntimeV1();
-            runCoordinator = new Stage1PlayerRunCoordinatorV1();
-
             PlayerActorDefinition definition = new PlayerActorDefinition(
-                playerTarget.TargetId,
-                StableId.Parse(PlayerRunParticipantIdText),
-                StableId.Parse(PlayerCharacterIdText),
-                StableId.Parse(PlayerFactionIdText),
+                controller.PlayerTargetAdapter.TargetId,
+                controller.PlayerRunParticipantId,
+                controller.PlayerCharacterId,
+                controller.PlayerFactionId,
                 Stage1VisibleSliceController.StartingPlayerHealth,
                 initialMovement.Generation);
-            PlayerRuntimeAttachments attachments = new PlayerRuntimeAttachments(
-                movement,
-                presentation,
-                input,
-                Stage1PlayerAttributionResolverV1.Instance,
-                runCoordinator);
-
             compositionRoot = new PlayerRuntimeCompositionRoot();
             PlayerRuntimeConstructionResult construction =
                 compositionRoot.TryConstruct(
                     new PlayerRuntimeConfiguration(definition),
-                    attachments);
+                    new PlayerRuntimeAttachments(
+                        movement,
+                        presentation,
+                        input,
+                        attribution,
+                        runCoordinator));
             if (!construction.IsConstructed)
             {
                 throw new InvalidOperationException(
@@ -275,93 +341,65 @@ namespace ShooterMover.TestSupport.VisibleSlice
                     + construction.ActorRejectionCode
                     + ".");
             }
-
             runtime = construction.Runtime;
-            observedControllerGeneration = initialMovement.Generation;
-            BindProjectileDamage();
-            BindVoidHazard();
-            BindHud();
-
-            controllerHealthField = RequiredField(
-                typeof(Stage1VisibleSliceController),
-                "playerHealth");
-            controllerVoidDamageCountField = RequiredField(
-                typeof(Stage1VisibleSliceController),
-                "voidDamageCount");
-
+            BindTrustedAttribution();
+            BindDamageRoutes();
             initialized = true;
-            SynchronizeLegacyReadMirror();
         }
 
-        private void BindProjectileDamage()
+        private void BindTrustedAttribution()
         {
-            BlasterTurretPackage turret = controller.TurretPackage;
-            turretContext = controller.GameplayScope == null
-                ? null
-                : controller.GameplayScope.GetComponent<BlasterTurretSceneContext2D>();
-            if (turret == null
-                || turret.HitAdapter == null
-                || turretContext == null)
+            if (controller.MobileBlasterDroid != null
+                && controller.MobileBlasterDroid.EnemyTarget != null)
+            {
+                attribution.Register(
+                    controller.MobileBlasterDroid.EnemyTarget.TargetId,
+                    DroidParticipantId);
+            }
+            if (controller.TurretPackage != null
+                && controller.TurretPackage.TargetAdapter != null)
+            {
+                attribution.Register(
+                    controller.TurretPackage.TargetAdapter.TargetId,
+                    TurretParticipantId);
+            }
+            if (controller.VoidHazard != null
+                && controller.VoidHazard.RestartParticipantId != null)
+            {
+                attribution.Register(
+                    controller.VoidHazard.RestartParticipantId,
+                    EnvironmentParticipantId);
+            }
+        }
+
+        private void BindDamageRoutes()
+        {
+            if (controller.TurretPackage == null
+                || controller.TurretPackage.HitAdapter == null
+                || controller.MobileBlasterDroid == null
+                || controller.MobileBlasterDroid.HitAdapter == null)
             {
                 throw new InvalidOperationException(
-                    "PLAYER-LIVE-001 could not bind the Stage 1 turret damage route.");
+                    "PLAYER-LIVE-001 could not bind enemy projectile facts.");
             }
 
-            turretFallbackField = RequiredField(
-                typeof(BlasterTurretSceneContext2D),
-                "fallbackPlayerDamage");
-            retainedTurretFallback =
-                (Action<double>)turretFallbackField.GetValue(turretContext);
-            turretFallbackField.SetValue(turretContext, null);
-
-            turretHitAdapter = turret.HitAdapter;
+            turretHitAdapter = controller.TurretPackage.HitAdapter;
+            droidHitAdapter = controller.MobileBlasterDroid.HitAdapter;
             turretHitAdapter.HitTranslated += HandleTurretHit;
-
-            MobileBlasterDroidRuntime2D droid = controller.MobileBlasterDroid;
-            if (droid == null || droid.EnemyTarget == null)
-            {
-                throw new InvalidOperationException(
-                    "PLAYER-LIVE-001 could not resolve the Stage 1 mobile enemy.");
-            }
-
-            droidHitAdapter = ReadRequiredPrivateField<CombatHit2DAdapter>(
-                droid,
-                "hitAdapter");
             droidHitAdapter.HitTranslated += HandleDroidHit;
-        }
 
-        private void BindVoidHazard()
-        {
-            voidTarget = controller.PlayerTransform.GetComponent<VoidHazardTarget2D>();
-            if (voidTarget == null)
+            voidTarget = controller.PlayerVoidTarget;
+            if (voidTarget == null || !voidTarget.BindCombatPort(this))
             {
                 throw new InvalidOperationException(
-                    "PLAYER-LIVE-001 could not resolve the player void-hazard target.");
+                    "PLAYER-LIVE-001 could not bind the typed void combat port.");
             }
 
-            voidCombatPortField = RequiredField(
-                typeof(VoidHazardTarget2D),
-                "combatPort");
-            retainedVoidCombatPort =
-                (MonoBehaviour)voidCombatPortField.GetValue(voidTarget);
-            voidCombatPortField.SetValue(voidTarget, this);
-
-            if (!voidTarget.TryGetCombatPort(out IVoidHazardCombatPort rebound)
-                || !ReferenceEquals(rebound, this))
-            {
-                throw new InvalidOperationException(
-                    "PLAYER-LIVE-001 failed to replace the legacy void damage port.");
-            }
-        }
-
-        private void BindHud()
-        {
             if (controller.CombatHud == null)
             {
                 throw new InvalidOperationException(
                     "PLAYER-LIVE-001 could not resolve the Stage 1 HUD.");
             }
-
             controller.CombatHud.UnbindSources();
             controller.CombatHud.BindSources(this, null);
         }
@@ -392,88 +430,21 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 return;
             }
 
-            PlayerActorSnapshot player = runtime.ExportSnapshot().Player;
+            long generation;
+            if (!TryResolveLifecycleGeneration(
+                    translation.Message.EventId,
+                    out generation))
+            {
+                return;
+            }
             HitMessage hit = translation.Message;
-            runtime.ApplyDamage(
-                new PlayerDamageRequest(
-                    hit.EventId,
-                    hit.SourceId,
-                    null,
-                    hit.TargetId,
-                    amount,
-                    hit.Channel,
-                    player.LifecycleGeneration));
-            SynchronizeLegacyReadMirror();
-        }
-
-        private void SynchronizeControllerRestart()
-        {
-            long requestedGeneration = controller.RestartGeneration;
-            while (observedControllerGeneration < requestedGeneration)
-            {
-                if (observedControllerGeneration == long.MaxValue)
-                {
-                    throw new InvalidOperationException(
-                        "Stage 1 player lifecycle generation cannot advance past Int64.MaxValue.");
-                }
-
-                long replacement = observedControllerGeneration + 1L;
-                PlayerRuntimeRestartResult result = runtime.Restart(
-                    new PlayerRuntimeRestartCommand(
-                        StableId.Create(
-                            "operation",
-                            "stage1-player-restart-g" + replacement),
-                        runtime.ExportSnapshot().Player.ActorInstanceId,
-                        observedControllerGeneration,
-                        replacement));
-                if (result.Status != PlayerRuntimeRestartStatus.Applied
-                    && result.Status != PlayerRuntimeRestartStatus.Duplicate)
-                {
-                    throw new InvalidOperationException(
-                        "PLAYER-LIVE-001 rejected the retained Stage 1 restart: "
-                        + result.Status
-                        + "/"
-                        + result.RejectionCode
-                        + ".");
-                }
-
-                observedControllerGeneration = replacement;
-            }
-
-            if (observedControllerGeneration > requestedGeneration)
-            {
-                throw new InvalidOperationException(
-                    "The retained Stage 1 controller reported a stale restart generation.");
-            }
-        }
-
-        private void SynchronizeLegacyReadMirror()
-        {
-            if (controller == null
-                || controllerHealthField == null
-                || runtime == null)
-            {
-                return;
-            }
-
-            double health = runtime.ExportSnapshot().Player.CurrentHealth;
-            controllerHealthField.SetValue(
-                controller,
-                Mathf.RoundToInt((float)health));
-        }
-
-        private void IncrementVoidDamagePresentationCount()
-        {
-            if (controller == null || controllerVoidDamageCountField == null)
-            {
-                return;
-            }
-
-            int current = (int)controllerVoidDamageCountField.GetValue(controller);
-            if (current < int.MaxValue)
-            {
-                controllerVoidDamageCountField.SetValue(controller, current + 1);
-            }
+            ApplyProjectileDamage(
+                hit.EventId,
+                hit.SourceId,
+                hit.TargetId,
+                amount,
+                hit.Channel,
+                generation);
         }
 
         private static VoidHazardPortResult MapVoidResult(
@@ -483,7 +454,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
             {
                 return VoidHazardPortResult.Rejected;
             }
-
             switch (result.Status)
             {
                 case DamageReceiverStatus.Applied:
@@ -493,43 +463,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 default:
                     return VoidHazardPortResult.Rejected;
             }
-        }
-
-        private static T ReadRequiredPrivateField<T>(
-            object target,
-            string fieldName)
-            where T : class
-        {
-            if (target == null)
-            {
-                throw new ArgumentNullException(nameof(target));
-            }
-
-            FieldInfo field = RequiredField(target.GetType(), fieldName);
-            T value = field.GetValue(target) as T;
-            if (value == null)
-            {
-                throw new InvalidOperationException(
-                    target.GetType().Name
-                    + "."
-                    + fieldName
-                    + " did not contain the required "
-                    + typeof(T).Name
-                    + ".");
-            }
-
-            return value;
-        }
-
-        private static FieldInfo RequiredField(Type type, string fieldName)
-        {
-            FieldInfo field = type.GetField(fieldName, PrivateInstance);
-            if (field == null)
-            {
-                throw new MissingFieldException(type.FullName, fieldName);
-            }
-
-            return field;
         }
 
         private void EnsureInitialized()
@@ -547,131 +480,30 @@ namespace ShooterMover.TestSupport.VisibleSlice
             {
                 return;
             }
-
             disposed = true;
             if (turretHitAdapter != null)
             {
                 turretHitAdapter.HitTranslated -= HandleTurretHit;
             }
-
             if (droidHitAdapter != null)
             {
                 droidHitAdapter.HitTranslated -= HandleDroidHit;
             }
-
-            if (turretContext != null && turretFallbackField != null)
+            if (voidTarget != null && controller != null)
             {
-                turretFallbackField.SetValue(
-                    turretContext,
-                    retainedTurretFallback);
+                voidTarget.BindCombatPort(controller);
             }
-
-            if (voidTarget != null && voidCombatPortField != null)
-            {
-                voidCombatPortField.SetValue(
-                    voidTarget,
-                    retainedVoidCombatPort);
-            }
-
             if (controller != null && controller.CombatHud != null)
             {
                 controller.CombatHud.UnbindSources();
                 controller.CombatHud.BindSources(controller, null);
             }
-
             if (compositionRoot != null)
             {
                 compositionRoot.Dispose();
             }
-
             runtime = null;
             initialized = false;
-        }
-
-        private sealed class Stage1PlayerMovementRuntimeV1 :
-            IPlayerMovementRuntime
-        {
-            private readonly MovementActorLifecycle lifecycle;
-            private readonly MovementThrusterTuningProfile tuning;
-            private long generation;
-            private bool disposed;
-
-            public Stage1PlayerMovementRuntimeV1(
-                MovementActorLifecycle lifecycle,
-                MovementThrusterTuningProfile tuning)
-            {
-                this.lifecycle = lifecycle
-                    ?? throw new ArgumentNullException(nameof(lifecycle));
-                this.tuning = tuning
-                    ?? throw new ArgumentNullException(nameof(tuning));
-                if (!lifecycle.IsConstructed || lifecycle.Actor == null)
-                {
-                    throw new ArgumentException(
-                        "A constructed movement lifecycle is required.",
-                        nameof(lifecycle));
-                }
-
-                MovementThrusterTuningProfileValidator.Validate(tuning);
-                generation = lifecycle.Actor.Generation;
-            }
-
-            public bool IsDisposed
-            {
-                get { return disposed || lifecycle == null || lifecycle.IsDisposed; }
-            }
-
-            public PlayerMovementSnapshot ExportSnapshot()
-            {
-                if (IsDisposed)
-                {
-                    throw new ObjectDisposedException(GetType().Name);
-                }
-
-                MovementActor2D actor = lifecycle.Actor;
-                ThrusterStatusSnapshot thruster =
-                    ThrusterStatusProjector.Project(actor, tuning);
-                Vector3 position = lifecycle.transform.position;
-                return new PlayerMovementSnapshot(
-                    generation,
-                    position.x,
-                    position.y,
-                    thruster.VelocityX,
-                    thruster.VelocityY,
-                    thruster);
-            }
-
-            public bool TryRestart(
-                long retiringGeneration,
-                long replacementGeneration)
-            {
-                if (IsDisposed
-                    || retiringGeneration != generation
-                    || retiringGeneration == long.MaxValue
-                    || replacementGeneration != retiringGeneration + 1L)
-                {
-                    return false;
-                }
-
-                long liveGeneration = lifecycle.Actor.Generation;
-                if (liveGeneration == retiringGeneration)
-                {
-                    lifecycle.RestartActor();
-                    liveGeneration = lifecycle.Actor.Generation;
-                }
-
-                if (liveGeneration != replacementGeneration)
-                {
-                    return false;
-                }
-
-                generation = replacementGeneration;
-                return true;
-            }
-
-            public void Dispose()
-            {
-                disposed = true;
-            }
         }
 
         private sealed class Stage1PlayerPresentationRuntimeV1 :
@@ -680,8 +512,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             private readonly TrailRenderer boostTrail;
             private bool disposed;
 
-            public Stage1PlayerPresentationRuntimeV1(
-                TrailRenderer boostTrail)
+            public Stage1PlayerPresentationRuntimeV1(TrailRenderer boostTrail)
             {
                 this.boostTrail = boostTrail;
             }
@@ -693,7 +524,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 {
                     return;
                 }
-
                 boostTrail.emitting = movementSnapshot.IsBoosting;
             }
 
@@ -703,7 +533,6 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 {
                     return;
                 }
-
                 boostTrail.emitting = false;
                 boostTrail.Clear();
             }
@@ -714,11 +543,18 @@ namespace ShooterMover.TestSupport.VisibleSlice
             }
         }
 
-        private sealed class Stage1PlayerInputRuntimeV1 :
-            IPlayerInputRuntime
+        private sealed class Stage1PlayerInputRuntimeV1 : IPlayerInputRuntime
         {
+            private readonly Stage1VisibleSliceController controller;
             private PlayerInputOwnership ownership;
             private bool disposed;
+
+            public Stage1PlayerInputRuntimeV1(
+                Stage1VisibleSliceController controller)
+            {
+                this.controller = controller
+                    ?? throw new ArgumentNullException(nameof(controller));
+            }
 
             public bool TryAcquire(PlayerInputOwnership requested)
             {
@@ -726,13 +562,12 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 {
                     return false;
                 }
-
                 if (ownership == null)
                 {
                     ownership = requested;
+                    controller.SetPlayerInputEnabled(true);
                     return true;
                 }
-
                 return ownership.Equals(requested);
             }
 
@@ -745,39 +580,71 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 {
                     return false;
                 }
-
                 ownership = null;
+                controller.SetPlayerInputEnabled(false);
                 return true;
             }
 
             public void Dispose()
             {
+                if (disposed)
+                {
+                    return;
+                }
                 disposed = true;
                 ownership = null;
+                controller.SetPlayerInputEnabled(false);
             }
         }
 
         private sealed class Stage1PlayerAttributionResolverV1 :
             ITrustedPlayerAttributionResolver
         {
-            public static readonly Stage1PlayerAttributionResolverV1 Instance =
-                new Stage1PlayerAttributionResolverV1();
+            private readonly Dictionary<StableId, StableId> participants =
+                new Dictionary<StableId, StableId>();
 
-            private Stage1PlayerAttributionResolverV1()
+            public void Register(StableId actorId, StableId runParticipantId)
             {
+                if (actorId == null || runParticipantId == null)
+                {
+                    throw new ArgumentNullException(
+                        actorId == null ? nameof(actorId) : nameof(runParticipantId));
+                }
+                StableId existing;
+                if (participants.TryGetValue(actorId, out existing)
+                    && existing != runParticipantId)
+                {
+                    throw new InvalidOperationException(
+                        "A live source actor cannot change trusted participant identity.");
+                }
+                participants[actorId] = runParticipantId;
             }
 
             public StableId ResolveSourceRunParticipant(StableId sourceActorId)
             {
-                return null;
+                if (sourceActorId == null)
+                {
+                    return null;
+                }
+                StableId participant;
+                return participants.TryGetValue(sourceActorId, out participant)
+                    ? participant
+                    : null;
             }
         }
 
-        private sealed class Stage1PlayerRunCoordinatorV1 :
-            IPlayerRunCoordinator
+        private sealed class Stage1PlayerRunCoordinatorV1 : IPlayerRunCoordinator
         {
+            private readonly Stage1VisibleSliceController controller;
             private readonly List<GameplayEntityDeathFact> deathFacts =
                 new List<GameplayEntityDeathFact>();
+
+            public Stage1PlayerRunCoordinatorV1(
+                Stage1VisibleSliceController controller)
+            {
+                this.controller = controller
+                    ?? throw new ArgumentNullException(nameof(controller));
+            }
 
             public IReadOnlyList<GameplayEntityDeathFact> DeathFacts
             {
@@ -796,67 +663,12 @@ namespace ShooterMover.TestSupport.VisibleSlice
 
             public void ObservePlayerDeath(GameplayEntityDeathFact deathFact)
             {
-                if (deathFact != null)
+                if (deathFact == null)
                 {
-                    deathFacts.Add(deathFact);
+                    return;
                 }
-            }
-        }
-    }
-
-    internal static class Stage1PlayerLiveAuthorityInstallerV1
-    {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void Register()
-        {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-        }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallCurrentScene()
-        {
-            TryInstall(SceneManager.GetActiveScene());
-        }
-
-        private static void HandleSceneLoaded(
-            Scene scene,
-            LoadSceneMode mode)
-        {
-            TryInstall(scene);
-        }
-
-        private static void TryInstall(Scene scene)
-        {
-            if (!scene.IsValid()
-                || !scene.isLoaded
-                || !string.Equals(
-                    scene.path,
-                    Stage1VisibleSliceController.ScenePath,
-                    StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int index = 0; index < roots.Length; index++)
-            {
-                Stage1VisibleSliceController controller =
-                    roots[index].GetComponentInChildren<Stage1VisibleSliceController>(
-                        true);
-                if (controller == null)
-                {
-                    continue;
-                }
-
-                if (controller.GetComponent<Stage1PlayerLiveAuthorityAdapterV1>()
-                    == null)
-                {
-                    controller.gameObject.AddComponent<
-                        Stage1PlayerLiveAuthorityAdapterV1>();
-                }
-
-                return;
+                deathFacts.Add(deathFact);
+                controller.ApplyPlayerDeathProjection(deathFact);
             }
         }
     }

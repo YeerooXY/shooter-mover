@@ -95,3 +95,27 @@ No changes are made to:
 - `Stage1VisibleSlice.unity`;
 - any other scene;
 - reward, XP, kill, inventory, or equipment authorities.
+
+
+## Review repair
+
+The initial polling bridge was replaced by a synchronous typed composition boundary:
+
+- `QuickRestart` delegates to `PlayerRuntimeComposition.Restart` first. Only an
+  accepted restart projects room, projectile, enemy, HUD and camera reset state.
+- rapid same-frame restart calls therefore advance `0 -> 1 -> 2` without an
+  Update-based catch-up race;
+- the active compact HUD reads an immutable authority snapshot and preserves
+  fractional health; the integer `PlayerHealth` property is compatibility-only;
+- accepted death facts synchronously disable movement, real input, combat,
+  targetability and outstanding player projectiles;
+- turret, droid and void bindings use public typed ports rather than private-field
+  reflection;
+- projectile and void damage use the lifecycle generation encoded at emission,
+  so stale callbacks cannot be relabelled with the current generation;
+- void presentation counts increment only after accepted authority damage;
+- trusted live source actor identities resolve to source run-participant identities.
+
+`Stage1VisibleSliceController.cs` now contains only the minimal typed delegation
+and downstream projection seams required to make the authority genuinely lead the
+scene. The Stage 1 scene asset remains unchanged.
