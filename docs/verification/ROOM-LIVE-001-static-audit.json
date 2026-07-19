@@ -1,0 +1,63 @@
+{
+  "schema": "room-live-001-static-audit-v4",
+  "generated_utc": "2026-07-19",
+  "review_fix_source_commit": "831cb2584b61a3a15c157af0791a47451d277d23",
+  "note": "The commit above is the reviewed source tree. Later branch commits update this audit document only and do not change runtime or test source.",
+  "unity_xml": "not-run-unity-unavailable",
+  "compilation_units": {
+    "RoomAuthoringPrimitivesV1.cs": {"syntax_errors": [], "lines": 546, "bytes": 19599, "git_blob_sha": "42edecff3622d992a97143d17a94ba295030e352"},
+    "AuthorableRoomDefinitionV1.cs": {"syntax_errors": [], "lines": 380, "bytes": 13578, "git_blob_sha": "ff59b2c6eb74294bf1fdef53f6fd2cd404a30c8b"},
+    "AuthorableRoomGraphDefinitionV1.cs": {"syntax_errors": [], "lines": 369, "bytes": 14144, "git_blob_sha": "1474172ce1f6a6255c8d0dd38a338affff45207e"},
+    "Level1AuthorableRoomDefinitionV1.cs": {"syntax_errors": [], "lines": 209, "bytes": 9145, "git_blob_sha": "eacc9e9f643bceb32a06663217d267d1fa8cdbcb"},
+    "RoomLiveRuntimeAuthorityCoreV1.cs": {"syntax_errors": [], "lines": 502, "bytes": 19753, "git_blob_sha": "c0ae9f6055f64cc4ec1f57fa958e4a39c0b9dd3a"},
+    "RoomLiveRuntimeHelpersV1.cs": {"syntax_errors": [], "lines": 356, "bytes": 12720, "git_blob_sha": "b5ffd3ce24f5e1b1f9d8e5463a81cf75e3abc2c6"},
+    "RoomLiveRuntimeTraversalV1.cs": {"syntax_errors": [], "lines": 144, "bytes": 5252, "git_blob_sha": "f6b3d967fb23d141c32fe5ee20f177bcf545ced4"},
+    "RoomLiveRuntimeProjectionsV1.cs": {"syntax_errors": [], "lines": 373, "bytes": 13361, "git_blob_sha": "d5d86586ec7aafb84d4d33e78298747f2700e24a"},
+    "AuthorableRoomGraphDefinition2D.cs": {"syntax_errors": [], "lines": 279, "bytes": 11374, "git_blob_sha": "767fbd047792bf8883b3668e98244608dd2dbcfb"},
+    "RoomPresentationCatalog2D.cs": {"syntax_errors": [], "lines": 125, "bytes": 4341, "git_blob_sha": "957fe5f644002b78ffcbe95b2f436910d3bfe097"},
+    "RoomRuntimePresentationInstances2D.cs": {"syntax_errors": [], "lines": 419, "bytes": 14294, "git_blob_sha": "7c379e1559390dade535dd2f76e807139be52d94"},
+    "RoomPresentationScene2D.cs": {"syntax_errors": [], "lines": 242, "bytes": 9097, "git_blob_sha": "e4b969a2032a0a841a7006a9d21bd8d9415d7fdd"},
+    "RoomRuntimeComposition2D.cs": {"syntax_errors": [], "lines": 286, "bytes": 9290, "git_blob_sha": "6f4561cea0733332bd24768313057e8d0b292887"},
+    "RoomLiveRuntimeAuthorityTests.cs": {"syntax_errors": [], "lines": 149, "bytes": 6881, "git_blob_sha": "33f8cd454f7884b6562d1e1c40096788120104ad"},
+    "RoomLiveRuntimeAuthorityTests.Part02.cs": {"syntax_errors": [], "lines": 142, "bytes": 6614, "git_blob_sha": "dd35600f8fdd516d3f737e350cb684fa7afa7a92"},
+    "RoomLiveRuntimeAuthorityTests.Part03.cs": {"syntax_errors": [], "lines": 183, "bytes": 7830, "git_blob_sha": "7ac92eda5310fce8d11b650ddea7f38710685201"},
+    "RoomRuntimeComposition2DTests.cs": {"syntax_errors": [], "lines": 57, "bytes": 1930, "git_blob_sha": "c064fe0241133551ea99c6540db3cdc68671e6f6"},
+    "RoomRuntimeComposition2DTests.Part02.cs": {"syntax_errors": [], "lines": 189, "bytes": 8557, "git_blob_sha": "b0c7251e4ec781b90f7c32fd43f1937a0020fbb2"},
+    "RoomRuntimeComposition2DTests.Part03.cs": {"syntax_errors": [], "lines": 239, "bytes": 8865, "git_blob_sha": "d620411bd1e21e0129fc48d12a87cfbbee826c50"},
+    "RoomRuntimeComposition2DTests.Part04.cs": {"syntax_errors": [], "lines": 90, "bytes": 2773, "git_blob_sha": "ea8614146546437f60bbd2478ea2a8e78ca0e131"}
+  },
+  "invalid_literal_stable_ids": [],
+  "generic_runtime_forbidden_hits": {
+    "RoomLiveRuntimeAuthorityCoreV1.cs": [],
+    "RoomLiveRuntimeHelpersV1.cs": [],
+    "RoomLiveRuntimeTraversalV1.cs": [],
+    "RoomLiveRuntimeProjectionsV1.cs": [],
+    "RoomRuntimeComposition2D.cs": [],
+    "RoomPresentationScene2D.cs": [],
+    "RoomRuntimePresentationInstances2D.cs": []
+  },
+  "ownership_surface": {
+    "public_occupancy_authority_property": false,
+    "public_mission_layout_property": false,
+    "public_concrete_composition_authority_property": false,
+    "read_only_query_property": true,
+    "composition_lines": 286,
+    "presentation_scene_lines": 242
+  },
+  "review_fix_source_diff": {
+    "base_sha": "f00482a2a86232275517e8b992a9f290be07a152",
+    "source_commit": "831cb2584b61a3a15c157af0791a47451d277d23",
+    "commits_from_base": 2,
+    "changed_files": 46,
+    "additions": 5619,
+    "deletions": 0,
+    "modified_existing_main_files": 0,
+    "controller_or_scene_files_changed": false
+  },
+  "remote_source_blob_byte_verification": "passed-20-of-20",
+  "controller_blob_sha_verification": {
+    "status": "passed",
+    "main_sha": "38118169061b0ca7782c369fbe3468f410f4a9db",
+    "branch_sha": "38118169061b0ca7782c369fbe3468f410f4a9db"
+  }
+}
