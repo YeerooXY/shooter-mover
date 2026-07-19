@@ -47,9 +47,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// scene-authored Unity presentation only; this component connects the accepted
     /// player, weapon, enemy, room, mission-result and flow authorities into one loop.
     /// </summary>
-    [DefaultExecutionOrder(20000)]
-    [DisallowMultipleComponent]
-    public sealed partial class Stage1PlayableLoopCompositionV1 : MonoBehaviour
+    public sealed partial class Stage1PlayableLoopCompositionV1
     {
         private void Update()
         {
@@ -498,7 +496,5 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             binding = null;
             return false;
         }
-
-
     }
 }
