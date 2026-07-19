@@ -38,6 +38,12 @@ inclusive vision-arc membership. Only line-of-sight remains an externally suppli
 result. The selected target's derived distance and detection/arc/line-of-sight results are copied
 into the debug snapshot used by later visualization.
 
+Vision and attack arcs remain distinct. Perception records whether a candidate is visible within
+the adapter-supplied vision arc. At decision time, the policy independently evaluates the same
+observer facing and target direction against `EnemyDecisionProfile.AttackArcDegrees`. An attack is
+requested only when range, line-of-sight, vision arc, and attack arc all accept the target. Debug
+data exposes both arc results so a wide-sensing, narrow-firing enemy remains truthful.
+
 `EnemyAttackIntent` identifies an attack definition/capability rather than a weapon type. The same
 contract can therefore request a projectile, melee strike, pounce, disposable impact, beam, area,
 summon, or support executor. ENEMY-001 provides no executor registry or Unity debug renderer.
