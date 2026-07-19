@@ -78,9 +78,15 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
 
             Assert.That(second.ToCanonicalJson(), Is.EqualTo(first.ToCanonicalJson()));
             Assert.That(second.Fingerprint, Is.EqualTo(first.Fingerprint));
+            RoomExitLinkDefinitionV1 returnExit;
             Assert.That(
                 first.GetRoom(Level1AuthorableRoomDefinitionV1.TerminalRoomStableId)
-                    .Exits[0].ExitType,
+                    .TryGetExit(
+                        Level1AuthorableRoomDefinitionV1.ReturnExitStableId,
+                        out returnExit),
+                Is.True);
+            Assert.That(
+                returnExit.ExitType,
                 Is.EqualTo(RoomExitTypeV1.Return));
             Assert.That(
                 first.ToCanonicalJson(),

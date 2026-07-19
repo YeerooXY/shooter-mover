@@ -214,7 +214,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         {
             if (instance == null) return;
             instance.SetActive(false);
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 UnityEngine.Object.Destroy(instance);
             }
