@@ -708,7 +708,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         {
             Vector2 origin = muzzle == null ? (Vector2)transform.position : (Vector2)muzzle.position;
             Vector2 targetPoint = new Vector2((float)target.PositionX, (float)target.PositionY);
-            RaycastHit2D[] hits = Physics2D.LinecastAll(origin, targetPoint);
+            var hits = Physics2D.LinecastAll(origin, targetPoint);
             for (int index = 0; index < hits.Length; index++)
             {
                 Collider2D hitCollider = hits[index].collider;
