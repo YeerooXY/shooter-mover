@@ -39,6 +39,37 @@ namespace ShooterMover.GameplayEntities.Enemies
     public enum EnemyTargetRelationship { Friendly = 1, Neutral = 2, Hostile = 3 }
     public enum EnemyMovementIntentKind { Hold = 1, Approach = 2, Retreat = 3, Strafe = 4, Committed = 5 }
 
+    public sealed class EnemyPerceptionCandidate
+    {
+        public EnemyPerceptionCandidate(
+            StableId entityId,
+            StableId factionId,
+            EnemyTargetRelationship relationship,
+            EnemyVector2 position,
+            EnemyVector2 velocity,
+            bool hasLineOfSight)
+        {
+            if (!Enum.IsDefined(typeof(EnemyTargetRelationship), relationship))
+            {
+                throw new ArgumentOutOfRangeException(nameof(relationship));
+            }
+
+            EntityId = entityId ?? throw new ArgumentNullException(nameof(entityId));
+            FactionId = factionId ?? throw new ArgumentNullException(nameof(factionId));
+            Relationship = relationship;
+            Position = position;
+            Velocity = velocity;
+            HasLineOfSight = hasLineOfSight;
+        }
+
+        public StableId EntityId { get; }
+        public StableId FactionId { get; }
+        public EnemyTargetRelationship Relationship { get; }
+        public EnemyVector2 Position { get; }
+        public EnemyVector2 Velocity { get; }
+        public bool HasLineOfSight { get; }
+    }
+
     public sealed class EnemyPerceivedTarget
     {
         public EnemyPerceivedTarget(

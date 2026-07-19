@@ -5,6 +5,8 @@ using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
+using ShooterMover.GameplayEntities;
+using ShooterMover.GameplayEntities.Enemies;
 using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
@@ -183,6 +185,36 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 Stage1EnemyCapability.MobilePositioning
                     | Stage1EnemyCapability.BlasterProjectile
                     | Stage1EnemyCapability.SafeRecoveryWindow);
+        }
+
+        /// <summary>
+        /// Projects this package and its canonical actor state into the shared enemy boundary.
+        /// The projection owns no health, lifecycle transition, targeting query, or reward action.
+        /// </summary>
+        public EnemyRuntimeProjection CreateRuntimeProjection(
+            GameplayEntityIdentity identity,
+            EnemyActorState actorState,
+            long lifecycleGeneration,
+            StableId currentTargetId,
+            StableId behaviorPhaseId)
+        {
+            if (identity == null) throw new ArgumentNullException(nameof(identity));
+            if (actorState == null) throw new ArgumentNullException(nameof(actorState));
+            ValidateOrThrow();
+
+            EnemyDefinitionProjection definition = new EnemyDefinitionProjection(
+                Stage1EnemyPackageDescriptor.MobileBlasterDroidId,
+                StableId.Parse("module.enemy-mobile-positioning"),
+                new[] { BlasterMachineGunPackage.WeaponId },
+                new StableId[0],
+                EnemyRoomClearRole.RequiredEnemy);
+            return new EnemyRuntimeProjection(
+                identity,
+                definition,
+                actorState,
+                lifecycleGeneration,
+                currentTargetId,
+                behaviorPhaseId);
         }
 
         internal EnemyActorState CreateInitialState(StableId actorId)
