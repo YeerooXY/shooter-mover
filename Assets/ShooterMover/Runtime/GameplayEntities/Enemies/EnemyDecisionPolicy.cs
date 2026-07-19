@@ -86,6 +86,7 @@ namespace ShooterMover.GameplayEntities.Enemies
             EnemyDecisionSnapshot decision,
             EnemyVector2 currentFacing,
             EnemyPerceivedTarget selectedTarget,
+            bool selectedTargetWithinAttackArc,
             EnemyVector2 commitmentDirection,
             EnemyVector2 commitmentPoint)
         {
@@ -108,6 +109,7 @@ namespace ShooterMover.GameplayEntities.Enemies
                 selectedTarget != null && selectedTarget.IsWithinDetectionRange;
             SelectedTargetWithinVisionArc =
                 selectedTarget != null && selectedTarget.IsWithinVisionArc;
+            SelectedTargetWithinAttackArc = selectedTargetWithinAttackArc;
             DesiredMovement = decision.DesiredMovement;
             DesiredFacing = decision.DesiredFacing;
             RequestedAttack = decision.RequestedAttack;
@@ -134,6 +136,7 @@ namespace ShooterMover.GameplayEntities.Enemies
         public bool SelectedTargetHasLineOfSight { get; }
         public bool SelectedTargetWithinDetectionRange { get; }
         public bool SelectedTargetWithinVisionArc { get; }
+        public bool SelectedTargetWithinAttackArc { get; }
         public EnemyVector2 DesiredMovement { get; }
         public EnemyVector2 DesiredFacing { get; }
         public EnemyAttackIntent RequestedAttack { get; }
@@ -171,6 +174,11 @@ namespace ShooterMover.GameplayEntities.Enemies
             if (perception == null) throw new ArgumentNullException(nameof(perception));
 
             EnemyPerceivedTarget selected = SelectTarget(perception, profile.DetectionRadius);
+            bool selectedTargetWithinAttackArc = selected != null
+                && EnemyPerceptionBuilder.IsWithinArc(
+                    perception.ObserverFacing,
+                    selected.Direction,
+                    profile.AttackArcDegrees);
             EnemyDecisionSnapshot decision;
             if (!runtime.ActorState.IsActive || selected == null)
             {
@@ -183,7 +191,10 @@ namespace ShooterMover.GameplayEntities.Enemies
                     new EnemyVector2(-selected.Direction.X, -selected.Direction.Y), selected.Direction,
                     EnemyMovementIntentKind.Retreat, null, profile.ReadyPhaseId, RetreatReason);
             }
-            else if (selected.Distance > profile.MaximumAttackRange || !selected.HasLineOfSight || !selected.IsWithinVisionArc)
+            else if (selected.Distance > profile.MaximumAttackRange
+                || !selected.HasLineOfSight
+                || !selected.IsWithinVisionArc
+                || !selectedTargetWithinAttackArc)
             {
                 decision = new EnemyDecisionSnapshot(selected.EntityId, selected.Direction, selected.Direction,
                     EnemyMovementIntentKind.Approach, null, profile.ReadyPhaseId, ApproachReason);
@@ -209,7 +220,10 @@ namespace ShooterMover.GameplayEntities.Enemies
             EnemyVector2 commitPoint = decision.RequestedAttack == null ? new EnemyVector2() : decision.RequestedAttack.CommittedTargetPoint;
             EnemyDebugSnapshot debug = new EnemyDebugSnapshot(runtime, profile, decision,
                 perception.ObserverFacing,
-                selected, commitDirection, commitPoint);
+                selected,
+                selectedTargetWithinAttackArc,
+                commitDirection,
+                commitPoint);
             return new EnemyDecisionEvaluation(decision, debug);
         }
 
