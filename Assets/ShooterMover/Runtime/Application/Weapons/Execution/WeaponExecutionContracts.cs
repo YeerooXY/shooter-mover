@@ -252,6 +252,7 @@ namespace ShooterMover.Application.Weapons.Execution
             WeaponBehaviorRegistry registry = new WeaponBehaviorRegistry();
             registry.Register(new ProjectileWeaponBehavior());
             registry.Register(new ExplosiveWeaponBehavior());
+            registry.Register(new DamageOverTimeWeaponBehavior());
             registry.Register(new ChainWeaponBehavior());
             return registry;
         }

@@ -5,6 +5,7 @@
     "ShooterMover.Domain",
     "ShooterMover.Contracts",
     "ShooterMover.GameplayEntities",
+    "ShooterMover.Application",
     "ShooterMover.UnityAdapters"
   ],
   "includePlatforms": [],

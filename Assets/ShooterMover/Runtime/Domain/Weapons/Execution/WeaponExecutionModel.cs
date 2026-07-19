@@ -408,6 +408,49 @@ namespace ShooterMover.Domain.Weapons.Execution
             double chainRange,
             double knockback,
             string damageType)
+            : this(
+                definitionId,
+                behaviorId,
+                cooldownTicks,
+                projectileCount,
+                spreadDegrees,
+                projectileSpeed,
+                projectileRange,
+                directDamage,
+                pierce,
+                areaDamage,
+                explosionRadius,
+                0d,
+                0d,
+                0d,
+                0d,
+                chainTargets,
+                chainRange,
+                knockback,
+                damageType)
+        {
+        }
+
+        public WeaponRuntimeFiringProfile(
+            WeaponDefinitionId definitionId,
+            WeaponBehaviorId behaviorId,
+            int cooldownTicks,
+            int projectileCount,
+            double spreadDegrees,
+            double projectileSpeed,
+            double projectileRange,
+            double directDamage,
+            int pierce,
+            double areaDamage,
+            double explosionRadius,
+            double dotDps,
+            double dotDuration,
+            double poolRadius,
+            double poolDuration,
+            int chainTargets,
+            double chainRange,
+            double knockback,
+            string damageType)
         {
             DefinitionId = definitionId ?? throw new ArgumentNullException(nameof(definitionId));
             BehaviorId = behaviorId ?? throw new ArgumentNullException(nameof(behaviorId));
@@ -420,6 +463,10 @@ namespace ShooterMover.Domain.Weapons.Execution
             Pierce = pierce;
             AreaDamage = areaDamage;
             ExplosionRadius = explosionRadius;
+            DotDps = dotDps;
+            DotDuration = dotDuration;
+            PoolRadius = poolRadius;
+            PoolDuration = poolDuration;
             ChainTargets = chainTargets;
             ChainRange = chainRange;
             Knockback = knockback;
@@ -437,6 +484,10 @@ namespace ShooterMover.Domain.Weapons.Execution
         public int Pierce { get; }
         public double AreaDamage { get; }
         public double ExplosionRadius { get; }
+        public double DotDps { get; }
+        public double DotDuration { get; }
+        public double PoolRadius { get; }
+        public double PoolDuration { get; }
         public int ChainTargets { get; }
         public double ChainRange { get; }
         public double Knockback { get; }
