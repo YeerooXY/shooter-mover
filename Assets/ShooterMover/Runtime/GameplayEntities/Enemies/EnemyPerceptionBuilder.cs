@@ -21,13 +21,7 @@ namespace ShooterMover.GameplayEntities.Enemies
         {
             if (candidates == null) throw new ArgumentNullException(nameof(candidates));
             RequireFiniteNonNegative(detectionRadius, nameof(detectionRadius));
-            if (double.IsNaN(visionArcDegrees)
-                || double.IsInfinity(visionArcDegrees)
-                || visionArcDegrees <= 0d
-                || visionArcDegrees > 360d)
-            {
-                throw new ArgumentOutOfRangeException(nameof(visionArcDegrees));
-            }
+            RequireArc(visionArcDegrees, nameof(visionArcDegrees));
 
             EnemyVector2 facing = observerFacing.Normalized;
             List<EnemyPerceivedTarget> perceived = new List<EnemyPerceivedTarget>();
@@ -44,7 +38,7 @@ namespace ShooterMover.GameplayEntities.Enemies
                 double distance = offset.Length;
                 EnemyVector2 direction = offset.Normalized;
                 bool detected = distance <= detectionRadius;
-                bool withinArc = IsWithinArc(facing, direction, distance, visionArcDegrees);
+                bool withinArc = IsWithinArc(facing, direction, visionArcDegrees);
                 perceived.Add(
                     new EnemyPerceivedTarget(
                         candidate.EntityId,
@@ -66,26 +60,40 @@ namespace ShooterMover.GameplayEntities.Enemies
                 simulationTick);
         }
 
-        private static bool IsWithinArc(
+        public static bool IsWithinArc(
             EnemyVector2 facing,
             EnemyVector2 direction,
-            double distance,
-            double visionArcDegrees)
+            double arcDegrees)
         {
-            if (distance == 0d || visionArcDegrees == 360d)
+            RequireArc(arcDegrees, nameof(arcDegrees));
+            EnemyVector2 normalizedFacing = facing.Normalized;
+            EnemyVector2 normalizedDirection = direction.Normalized;
+            if (normalizedDirection.Length == 0d || arcDegrees == 360d)
             {
                 return true;
             }
 
-            if (facing.Length == 0d)
+            if (normalizedFacing.Length == 0d)
             {
                 return false;
             }
 
-            double halfArcRadians = visionArcDegrees * Math.PI / 360d;
+            double halfArcRadians = arcDegrees * Math.PI / 360d;
             double threshold = Math.Cos(halfArcRadians);
-            double dot = (facing.X * direction.X) + (facing.Y * direction.Y);
+            double dot = (normalizedFacing.X * normalizedDirection.X)
+                + (normalizedFacing.Y * normalizedDirection.Y);
             return dot + ArcBoundaryTolerance >= threshold;
+        }
+
+        private static void RequireArc(double value, string parameterName)
+        {
+            if (double.IsNaN(value)
+                || double.IsInfinity(value)
+                || value <= 0d
+                || value > 360d)
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
+            }
         }
 
         private static void RequireFiniteNonNegative(double value, string parameterName)
