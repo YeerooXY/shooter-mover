@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
+using ShooterMover.GameplayEntities;
+using ShooterMover.GameplayEntities.Enemies;
 using ShooterMover.UnityAdapters.Combat;
 using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
@@ -20,8 +23,9 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
     /// <summary>
     /// Package-owned composition for one moving ranged enemy. EN-002 remains health and
-    /// lifecycle truth, EN-003 remains movement/contact projection, CB-009 remains plan
-    /// execution authority, and WP-002/WP-003 remain projectile and Blaster authority.
+    /// lifecycle truth, EN-003 remains movement/contact projection, the shared enemy
+    /// perception/decision policy owns live intent selection, CB-009 remains plan execution
+    /// authority, and WP-002/WP-003 remain projectile and Blaster authority.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class MobileBlasterDroidRuntime2D :
@@ -29,9 +33,16 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         IEnemyActor2DAuthority,
         IEnemyActor2DDecisionSource
     {
-        private const double DirectionEpsilonSquared = 0.000000000001d;
         private static readonly StableId MountIdValue =
             StableId.Parse("weapon-mount.mobile-blaster-droid");
+        private static readonly StableId EnemyFactionIdValue =
+            StableId.Parse("faction.enemy");
+        private static readonly StableId PlayerFactionIdValue =
+            StableId.Parse("faction.player");
+        private static readonly StableId WindUpPhaseIdValue =
+            StableId.Parse("enemy-phase.mobile-blaster-droid.wind-up");
+        private static readonly StableId RecoveryPhaseIdValue =
+            StableId.Parse("enemy-phase.mobile-blaster-droid.recovery");
 
         [SerializeField] private MobileBlasterDroidDefinition definition;
         [SerializeField] private BoundedProjectile2D acceptedProjectilePrefab;
@@ -39,16 +50,22 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         [SerializeField] private CircleCollider2D enemyCollider;
         [SerializeField] private MobileBlasterDroidTemporaryPresentation temporaryPresentation;
 
+        private readonly Queue<EnemyAttackIntent> acceptedAttackIntents =
+            new Queue<EnemyAttackIntent>();
         private EnemyTarget2DAdapter enemyTarget;
         private EnemyContact2DAdapter contactAdapter;
         private EnemyActor2DAdapter actorAdapter;
         private WeaponMount2DAdapter weaponMount;
         private Transform muzzle;
         private EnemyTarget2DAdapter playerTarget;
+        private Collider2D[] playerColliders = new Collider2D[0];
         private CombatHit2DAdapter hitAdapter;
         private ProjectileExecutionPlanAdapter projectileExecutor;
         private WeaponBehaviorPipeline blasterPipeline;
         private StableId actorId;
+        private StableId playerId;
+        private GameplayEntityIdentity identity;
+        private EnemyDecisionProfile decisionProfile;
         private EnemyActorState currentState;
         private MobileBlasterDroidFirePhase firePhase = MobileBlasterDroidFirePhase.Ready;
         private double firePhaseElapsedSeconds;
@@ -65,6 +82,11 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         private bool activeRequested;
         private WeaponFireExecutionPlan lastExecutionPlan;
         private WeaponMount2DExecutionResult lastExecutionResult;
+        private EnemyDecisionEvaluation lastDecisionEvaluation;
+        private EnemyPerceptionSnapshot lastPerceptionSnapshot;
+        private EnemyAttackIntent pendingAttackIntent;
+        private EnemyAttackIntent lastAcceptedAttackIntent;
+        private EnemyDestroyedNotification lastDestroyedNotification;
 
         public bool IsConfigured { get { return configured; } }
 
@@ -81,20 +103,65 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         }
 
         public MobileBlasterDroidDefinition Definition { get { return definition; } }
-
         public EnemyActorState CurrentState { get { return currentState; } }
-
         public MobileBlasterDroidFirePhase FirePhase { get { return firePhase; } }
-
         public double FirePhaseElapsedSeconds { get { return firePhaseElapsedSeconds; } }
-
         public long FireAttemptCount { get { return fireAttemptCount; } }
-
         public long SuccessfulShotCount { get { return successfulShotCount; } }
-
         public long DecisionSequence { get { return decisionSequence; } }
-
         public long Generation { get { return generation; } }
+        public EnemyDecisionEvaluation LastDecisionEvaluation { get { return lastDecisionEvaluation; } }
+        public EnemyDebugSnapshot LiveDebugSnapshot
+        {
+            get { return lastDecisionEvaluation == null ? null : lastDecisionEvaluation.Debug; }
+        }
+        public EnemyPerceptionSnapshot LastPerceptionSnapshot { get { return lastPerceptionSnapshot; } }
+        public EnemyAttackIntent LastAcceptedAttackIntent { get { return lastAcceptedAttackIntent; } }
+        public EnemyDestroyedNotification LastDestroyedNotification { get { return lastDestroyedNotification; } }
+        public int PendingAttackIntentCount { get { return acceptedAttackIntents.Count; } }
+
+        public StableId CurrentBehaviorPhaseId
+        {
+            get
+            {
+                switch (firePhase)
+                {
+                    case MobileBlasterDroidFirePhase.WindUp:
+                        return WindUpPhaseIdValue;
+                    case MobileBlasterDroidFirePhase.Recovery:
+                        return RecoveryPhaseIdValue;
+                    default:
+                        return definition == null ? null : definition.ReadyPhaseId;
+                }
+            }
+        }
+
+        public EnemyRuntimeProjection CurrentRuntimeProjection
+        {
+            get
+            {
+                if (!configured || definition == null || identity == null || currentState == null)
+                {
+                    return null;
+                }
+
+                return definition.CreateRuntimeProjection(
+                    identity,
+                    currentState,
+                    generation,
+                    playerId,
+                    CurrentBehaviorPhaseId);
+            }
+        }
+
+        public bool BlocksRoomClear
+        {
+            get
+            {
+                EnemyRuntimeProjection projection = CurrentRuntimeProjection;
+                return projection != null && projection.BlocksRoomClear;
+            }
+        }
 
         public Vector2 LockedDirection
         {
@@ -114,19 +181,12 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         }
 
         public WeaponFireExecutionPlan LastExecutionPlan { get { return lastExecutionPlan; } }
-
         public WeaponMount2DExecutionResult LastExecutionResult { get { return lastExecutionResult; } }
-
         public EnemyActor2DAdapter ActorAdapter { get { return actorAdapter; } }
-
         public EnemyTarget2DAdapter EnemyTarget { get { return enemyTarget; } }
-
         public EnemyContact2DAdapter ContactAdapter { get { return contactAdapter; } }
-
         public WeaponMount2DAdapter WeaponMount { get { return weaponMount; } }
-
         public Rigidbody2D EnemyBody { get { return enemyBody; } }
-
         public Collider2D EnemyCollider { get { return enemyCollider; } }
 
         public MobileBlasterDroidTemporaryPresentation Presentation
@@ -138,10 +198,31 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             MobileBlasterDroidDefinition packageDefinition,
             StableId stableActorId,
             EnemyTarget2DAdapter observedPlayerTarget,
-            Collider2D[] playerColliders,
-            StableId playerId,
+            Collider2D[] observedPlayerColliders,
+            StableId stablePlayerId,
             CombatWeightClass playerWeight,
             BoundedProjectile2D projectilePrefab)
+        {
+            ConfigureSession(
+                packageDefinition,
+                stableActorId,
+                observedPlayerTarget,
+                observedPlayerColliders,
+                stablePlayerId,
+                playerWeight,
+                projectilePrefab,
+                GameplayEntityOwnership.None());
+        }
+
+        public void ConfigureSession(
+            MobileBlasterDroidDefinition packageDefinition,
+            StableId stableActorId,
+            EnemyTarget2DAdapter observedPlayerTarget,
+            Collider2D[] observedPlayerColliders,
+            StableId stablePlayerId,
+            CombatWeightClass playerWeight,
+            BoundedProjectile2D projectilePrefab,
+            GameplayEntityOwnership ownership)
         {
             if (configured)
             {
@@ -149,16 +230,9 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                     "Mobile Blaster Droid session composition may only be configured once.");
             }
 
-            if (packageDefinition == null)
-            {
-                throw new ArgumentNullException(nameof(packageDefinition));
-            }
-
-            if (stableActorId == null)
-            {
-                throw new ArgumentNullException(nameof(stableActorId));
-            }
-
+            if (packageDefinition == null) throw new ArgumentNullException(nameof(packageDefinition));
+            if (stableActorId == null) throw new ArgumentNullException(nameof(stableActorId));
+            if (ownership == null) throw new ArgumentNullException(nameof(ownership));
             if (observedPlayerTarget == null || !observedPlayerTarget.IsConfigured)
             {
                 throw new ArgumentException(
@@ -166,41 +240,35 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                     nameof(observedPlayerTarget));
             }
 
-            if (playerColliders == null || playerColliders.Length == 0)
+            if (observedPlayerColliders == null || observedPlayerColliders.Length == 0)
             {
                 throw new ArgumentException(
                     "At least one explicit player Collider2D is required.",
-                    nameof(playerColliders));
+                    nameof(observedPlayerColliders));
             }
 
-            if (playerId == null)
-            {
-                throw new ArgumentNullException(nameof(playerId));
-            }
-
+            if (stablePlayerId == null) throw new ArgumentNullException(nameof(stablePlayerId));
             if (!Enum.IsDefined(typeof(CombatWeightClass), playerWeight))
-            {
                 throw new ArgumentOutOfRangeException(nameof(playerWeight));
-            }
-
-            if (projectilePrefab == null)
-            {
-                throw new ArgumentNullException(nameof(projectilePrefab));
-            }
+            if (projectilePrefab == null) throw new ArgumentNullException(nameof(projectilePrefab));
 
             EnsurePackageComponents();
             packageDefinition.ValidateOrThrow();
-            if (playerColliders.Length > packageDefinition.ContactCapacity)
+            if (observedPlayerColliders.Length > packageDefinition.ContactCapacity)
             {
                 throw new ArgumentException(
                     "Player collider count exceeds the package contact capacity.",
-                    nameof(playerColliders));
+                    nameof(observedPlayerColliders));
             }
 
             definition = packageDefinition;
             acceptedProjectilePrefab = projectilePrefab;
             actorId = stableActorId;
+            playerId = stablePlayerId;
             playerTarget = observedPlayerTarget;
+            playerColliders = CopyPlayerColliders(observedPlayerColliders);
+            identity = new GameplayEntityIdentity(actorId, ownership, EnemyFactionIdValue);
+            decisionProfile = definition.CreateDecisionProfile();
             currentState = definition.CreateInitialState(actorId);
             ResetSessionState(false);
 
@@ -272,7 +340,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
         /// <summary>
         /// Deterministic test/lifecycle boundary. In normal play EN-003 drives movement
-        /// from its own FixedUpdate while this package's FixedUpdate advances only fire.
+        /// from its own FixedUpdate while this package's FixedUpdate advances fire cadence.
         /// </summary>
         public EnemyActor2DFixedStepResult ExecuteFixedStep(double deltaTimeSeconds)
         {
@@ -289,12 +357,27 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             return movementResult;
         }
 
-        public bool ActivateSession()
+        public bool TryDequeueAttackIntent(out EnemyAttackIntent intent)
         {
-            if (!configured)
+            if (acceptedAttackIntents.Count == 0)
             {
+                intent = null;
                 return false;
             }
+
+            intent = acceptedAttackIntents.Dequeue();
+            return true;
+        }
+
+        public bool TryReadRuntimeProjection(out EnemyRuntimeProjection projection)
+        {
+            projection = CurrentRuntimeProjection;
+            return projection != null;
+        }
+
+        public bool ActivateSession()
+        {
+            if (!configured) return false;
 
             bool changed = !activeRequested;
             activeRequested = true;
@@ -312,6 +395,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             bool changed = activeRequested;
             activeRequested = false;
             CancelPendingFire();
+            acceptedAttackIntents.Clear();
             if (projectileExecutor != null)
             {
                 projectileExecutor.ResetSession();
@@ -328,10 +412,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
         public bool RestartSession()
         {
-            if (!configured || actorAdapter == null)
-            {
-                return false;
-            }
+            if (!configured || actorAdapter == null) return false;
 
             bool restarted = actorAdapter.Restart();
             if (!restarted)
@@ -374,19 +455,27 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                     "Mobile Blaster Droid authority is unavailable before session configuration.");
             }
 
-            if (command == null)
-            {
-                throw new ArgumentNullException(nameof(command));
-            }
+            if (command == null) throw new ArgumentNullException(nameof(command));
 
             bool wasActive = currentState.IsActive;
             EnemyActorStepResult result = EnemyActorStepper.Step(
                 currentState,
                 new[] { command });
             currentState = result.State;
+            for (int index = 0; index < result.Notifications.Count; index++)
+            {
+                EnemyDestroyedNotification destroyed =
+                    result.Notifications[index] as EnemyDestroyedNotification;
+                if (destroyed != null)
+                {
+                    lastDestroyedNotification = destroyed;
+                }
+            }
+
             if (wasActive && !currentState.IsActive)
             {
                 CancelPendingFire();
+                acceptedAttackIntents.Clear();
                 if (projectileExecutor != null)
                 {
                     projectileExecutor.ResetSession();
@@ -416,36 +505,14 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 return false;
             }
 
-            double offsetX = target.PositionX - transform.position.x;
-            double offsetY = target.PositionY - transform.position.y;
-            double distanceSquared = (offsetX * offsetX) + (offsetY * offsetY);
-            double velocityX = 0d;
-            double velocityY = 0d;
-            if (distanceSquared > DirectionEpsilonSquared)
-            {
-                double distance = Math.Sqrt(distanceSquared);
-                double innerDistance = Math.Max(
-                    0d,
-                    definition.PreferredDistance - definition.PositioningTolerance);
-                double outerDistance = definition.PreferredDistance
-                    + definition.PositioningTolerance;
-                double directionSign = distance > outerDistance
-                    ? 1d
-                    : distance < innerDistance ? -1d : 0d;
-                if (directionSign != 0d)
-                {
-                    double scale = directionSign * definition.MovementSpeed / distance;
-                    velocityX = offsetX * scale;
-                    velocityY = offsetY * scale;
-                }
-            }
-
+            EnemyDecisionEvaluation evaluation = EvaluateLiveDecision(state, target);
+            EnemyVector2 desiredMovement = evaluation.Decision.DesiredMovement;
             decision = new EnemyActor2DDecision(
                 decisionSequence,
                 state.ActorId,
                 target.TargetId,
-                velocityX,
-                velocityY);
+                desiredMovement.X * definition.MovementSpeed,
+                desiredMovement.Y * definition.MovementSpeed);
             if (decisionSequence < long.MaxValue)
             {
                 decisionSequence++;
@@ -470,6 +537,8 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         {
             decisionSequence = 0L;
             CancelPendingFire();
+            lastDecisionEvaluation = null;
+            lastPerceptionSnapshot = null;
         }
 
         private void Awake()
@@ -496,10 +565,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
         private void Update()
         {
-            if (!configured)
-            {
-                return;
-            }
+            if (!configured) return;
 
             presentationElapsedSeconds += Time.deltaTime;
             UpdatePresentation();
@@ -513,6 +579,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
 
             CancelPendingFire();
+            acceptedAttackIntents.Clear();
             if (projectileExecutor != null)
             {
                 projectileExecutor.ResetSession();
@@ -542,9 +609,18 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             activeRequested = false;
             currentState = null;
             playerTarget = null;
+            playerColliders = new Collider2D[0];
             hitAdapter = null;
             projectileExecutor = null;
             blasterPipeline = null;
+            identity = null;
+            decisionProfile = null;
+            lastDecisionEvaluation = null;
+            lastPerceptionSnapshot = null;
+            pendingAttackIntent = null;
+            lastAcceptedAttackIntent = null;
+            lastDestroyedNotification = null;
+            acceptedAttackIntents.Clear();
         }
 
         private void ExecuteFireFixedStep(double deltaTimeSeconds)
@@ -572,7 +648,16 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
             else
             {
-                AdvanceFireState(target, deltaTimeSeconds);
+                EnemyDecisionEvaluation evaluation = EvaluateLiveDecision(state, target);
+                if (firePhase == MobileBlasterDroidFirePhase.WindUp
+                    && evaluation.Decision.SelectedTargetId == null)
+                {
+                    CancelPendingFire();
+                }
+                else
+                {
+                    AdvanceFireState(evaluation, deltaTimeSeconds);
+                }
             }
 
             if (simulationStep < long.MaxValue)
@@ -581,6 +666,81 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
 
             UpdatePresentation();
+        }
+
+        private EnemyDecisionEvaluation EvaluateLiveDecision(
+            EnemyActorState state,
+            EnemyTarget2DObservation target)
+        {
+            Vector3 observerPosition = transform.position;
+            Vector3 facing = transform.right;
+            bool hasLineOfSight = HasLineOfSightToTarget(target);
+            EnemyPerceptionCandidate candidate = new EnemyPerceptionCandidate(
+                target.TargetId,
+                PlayerFactionIdValue,
+                EnemyTargetRelationship.Hostile,
+                new EnemyVector2(target.PositionX, target.PositionY),
+                new EnemyVector2(),
+                hasLineOfSight);
+            lastPerceptionSnapshot = EnemyPerceptionBuilder.Build(
+                new EnemyVector2(observerPosition.x, observerPosition.y),
+                new EnemyVector2(facing.x, facing.y),
+                new[] { candidate },
+                definition.DetectionRadius,
+                definition.VisionArcDegrees,
+                simulationStep);
+            EnemyRuntimeProjection runtime = definition.CreateRuntimeProjection(
+                identity,
+                state,
+                generation,
+                target.TargetId,
+                CurrentBehaviorPhaseId);
+            Vector3 attackOrigin = muzzle.position;
+            lastDecisionEvaluation = EnemyDecisionPolicy.Evaluate(
+                runtime,
+                decisionProfile,
+                lastPerceptionSnapshot,
+                new EnemyVector2(attackOrigin.x, attackOrigin.y));
+            return lastDecisionEvaluation;
+        }
+
+        private bool HasLineOfSightToTarget(EnemyTarget2DObservation target)
+        {
+            Vector2 origin = muzzle == null ? (Vector2)transform.position : (Vector2)muzzle.position;
+            Vector2 targetPoint = new Vector2((float)target.PositionX, (float)target.PositionY);
+            RaycastHit2D[] hits = Physics2D.LinecastAll(origin, targetPoint);
+            for (int index = 0; index < hits.Length; index++)
+            {
+                Collider2D hitCollider = hits[index].collider;
+                if (hitCollider == null || IsOwnCollider(hitCollider))
+                {
+                    continue;
+                }
+
+                return IsPlayerCollider(hitCollider);
+            }
+
+            return true;
+        }
+
+        private bool IsOwnCollider(Collider2D candidate)
+        {
+            return candidate == enemyCollider
+                || candidate.transform == transform
+                || candidate.transform.IsChildOf(transform);
+        }
+
+        private bool IsPlayerCollider(Collider2D candidate)
+        {
+            for (int index = 0; index < playerColliders.Length; index++)
+            {
+                if (playerColliders[index] == candidate)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ValidateDeltaTime(double deltaTimeSeconds)
@@ -593,25 +753,35 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
         }
 
-        private void RegisterPlayerColliders(
-            Collider2D[] playerColliders,
-            StableId playerId,
-            CombatWeightClass playerWeight)
+        private static Collider2D[] CopyPlayerColliders(Collider2D[] colliders)
         {
-            for (int index = 0; index < playerColliders.Length; index++)
+            Collider2D[] copy = new Collider2D[colliders.Length];
+            for (int index = 0; index < colliders.Length; index++)
             {
-                Collider2D playerCollider = playerColliders[index];
-                if (playerCollider == null)
+                if (colliders[index] == null)
                 {
                     throw new ArgumentException(
                         "Player collider collection cannot contain null.",
-                        nameof(playerColliders));
+                        nameof(colliders));
                 }
 
+                copy[index] = colliders[index];
+            }
+
+            return copy;
+        }
+
+        private void RegisterPlayerColliders(
+            Collider2D[] colliders,
+            StableId stablePlayerId,
+            CombatWeightClass playerWeight)
+        {
+            for (int index = 0; index < colliders.Length; index++)
+            {
                 EnemyContact2DRegistrationStatus registration =
                     contactAdapter.RegisterMoverCollider(
-                        playerCollider,
-                        playerId,
+                        colliders[index],
+                        stablePlayerId,
                         playerWeight);
                 if (registration != EnemyContact2DRegistrationStatus.Registered
                     && registration != EnemyContact2DRegistrationStatus.AlreadyRegistered)
@@ -624,20 +794,24 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         }
 
         private void AdvanceFireState(
-            EnemyTarget2DObservation target,
+            EnemyDecisionEvaluation evaluation,
             double deltaTimeSeconds)
         {
             switch (firePhase)
             {
                 case MobileBlasterDroidFirePhase.Ready:
-                    BeginWindUp(target);
+                    if (evaluation.Decision.RequestedAttack != null)
+                    {
+                        AcceptAttackIntent(evaluation.Decision.RequestedAttack);
+                    }
                     return;
 
                 case MobileBlasterDroidFirePhase.WindUp:
                     firePhaseElapsedSeconds += deltaTimeSeconds;
                     if (firePhaseElapsedSeconds >= definition.WindUpSeconds)
                     {
-                        FireAcceptedBlaster();
+                        FireAcceptedBlaster(pendingAttackIntent);
+                        pendingAttackIntent = null;
                         firePhase = MobileBlasterDroidFirePhase.Recovery;
                         firePhaseElapsedSeconds = 0d;
                         hasLockedDirection = false;
@@ -659,34 +833,31 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             }
         }
 
-        private void BeginWindUp(EnemyTarget2DObservation target)
+        private void AcceptAttackIntent(EnemyAttackIntent intent)
         {
-            Vector3 origin = muzzle.position;
-            double offsetX = target.PositionX - origin.x;
-            double offsetY = target.PositionY - origin.y;
-            double magnitudeSquared = (offsetX * offsetX) + (offsetY * offsetY);
-            if (magnitudeSquared <= DirectionEpsilonSquared)
+            if (intent == null
+                || intent.AttackerEntityId != actorId
+                || intent.TargetEntityId != playerId
+                || intent.AttackId != BlasterMachineGunPackage.WeaponId)
             {
-                lockedDirectionX = 1d;
-                lockedDirectionY = 0d;
-            }
-            else
-            {
-                double inverseMagnitude = 1d / Math.Sqrt(magnitudeSquared);
-                lockedDirectionX = offsetX * inverseMagnitude;
-                lockedDirectionY = offsetY * inverseMagnitude;
+                return;
             }
 
+            pendingAttackIntent = intent;
+            lastAcceptedAttackIntent = intent;
+            acceptedAttackIntents.Enqueue(intent);
+            lockedDirectionX = intent.CommittedDirection.X;
+            lockedDirectionY = intent.CommittedDirection.Y;
             hasLockedDirection = true;
             firePhase = MobileBlasterDroidFirePhase.WindUp;
             firePhaseElapsedSeconds = 0d;
         }
 
-        private bool FireAcceptedBlaster()
+        private bool FireAcceptedBlaster(EnemyAttackIntent intent)
         {
-            if (blasterPipeline == null
+            if (intent == null
+                || blasterPipeline == null
                 || weaponMount == null
-                || muzzle == null
                 || !hasLockedDirection)
             {
                 return false;
@@ -702,7 +873,6 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 StableId eventId = StableId.Create(
                     "event",
                     "en006-g" + generation + "-f" + fireAttemptCount);
-                Vector3 origin = muzzle.position;
                 WeaponBehaviorInput input = new WeaponBehaviorInput(
                     eventId,
                     BlasterMachineGunPackage.WeaponId,
@@ -710,10 +880,10 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                     simulationStep,
                     BlasterMachineGunPackage.GetNormalRuntimeProfile(),
                     false,
-                    origin.x,
-                    origin.y,
-                    lockedDirectionX,
-                    lockedDirectionY,
+                    intent.CommittedOrigin.X,
+                    intent.CommittedOrigin.Y,
+                    intent.CommittedDirection.X,
+                    intent.CommittedDirection.Y,
                     1d);
                 lastExecutionPlan = blasterPipeline.BuildExecutionPlan(input);
                 lastExecutionResult = weaponMount.ExecutePlan(lastExecutionPlan);
@@ -746,6 +916,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             firePhase = MobileBlasterDroidFirePhase.Ready;
             firePhaseElapsedSeconds = 0d;
             hasLockedDirection = false;
+            pendingAttackIntent = null;
         }
 
         private void ResetSessionState(bool resetProjectiles)
@@ -757,6 +928,12 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             presentationElapsedSeconds = 0d;
             lastExecutionPlan = null;
             lastExecutionResult = null;
+            lastDecisionEvaluation = null;
+            lastPerceptionSnapshot = null;
+            pendingAttackIntent = null;
+            lastAcceptedAttackIntent = null;
+            lastDestroyedNotification = null;
+            acceptedAttackIntents.Clear();
             lockedDirectionX = 1d;
             lockedDirectionY = 0d;
             CancelPendingFire();
@@ -768,10 +945,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
         private void UpdatePresentation()
         {
-            if (temporaryPresentation == null)
-            {
-                return;
-            }
+            if (temporaryPresentation == null) return;
 
             bool destroyed = currentState != null && currentState.IsDestroyed;
             temporaryPresentation.UpdateState(
