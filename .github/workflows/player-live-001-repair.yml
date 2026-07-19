@@ -1,0 +1,47 @@
+name: PLAYER-LIVE-001 branch repair
+
+on:
+  push:
+    branches:
+      - agent/player-live-001-authority
+
+permissions:
+  contents: write
+
+jobs:
+  apply-repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/player-live-001-authority
+          fetch-depth: 0
+
+      - name: Apply typed live-player repair
+        run: python3 tools/player_live_001_repair.py
+
+      - name: Validate patch shape
+        run: |
+          git diff --check
+          if grep -q "System.Reflection" Assets/ShooterMover/TestSupport/VisibleSlice/Stage1PlayerLiveAuthorityAdapterV1.cs; then
+            echo "Reflection remains in live adapter" >&2
+            exit 1
+          fi
+          if grep -q "playerHealth" Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs; then
+            echo "Legacy mutable player health remains" >&2
+            exit 1
+          fi
+
+      - name: Remove one-shot repair machinery
+        run: |
+          rm tools/player_live_001_repair.py
+          rm .github/workflows/player-live-001-repair.yml
+
+      - name: Commit repaired branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: make Stage 1 player authority lead live runtime"
+          git push origin HEAD:agent/player-live-001-authority
