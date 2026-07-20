@@ -65,8 +65,30 @@ namespace ShooterMover.Application.Persistence.Components
     {
         Restored = 1,
         ValidationRejected = 2,
+
+        /// <summary>
+        /// The failing component was compensated and every earlier successful
+        /// component was confirmed restored to its exact pre-restore codec bytes.
+        /// </summary>
         CommitFailedRolledBack = 3,
-        CommitFailedRollbackIncomplete = 4,
+
+        /// <summary>
+        /// Earlier components were restored, but the component whose apply failed
+        /// could not be confirmed at its previous snapshot.
+        /// </summary>
+        CommitFailedCompensationIncomplete = 4,
+
+        /// <summary>
+        /// The failing component was compensated, but one or more earlier successful
+        /// components could not be confirmed restored.
+        /// </summary>
+        CommitFailedEarlierRollbackIncomplete = 5,
+
+        /// <summary>
+        /// Both failing-component compensation and earlier-component rollback were
+        /// incomplete.
+        /// </summary>
+        CommitFailedCompensationAndRollbackIncomplete = 6,
     }
 
     public sealed class RetainedUnknownSaveComponentV1
@@ -90,10 +112,12 @@ namespace ShooterMover.Application.Persistence.Components
         public PlayerAccountRestoreResultV1(
             PlayerAccountRestoreStatusV1 status,
             string rejectionCode,
-            IEnumerable<RetainedUnknownSaveComponentV1> retainedUnknownComponents)
+            IEnumerable<RetainedUnknownSaveComponentV1> retainedUnknownComponents,
+            StableId failedComponentStableId = null)
         {
             Status = status;
             RejectionCode = rejectionCode ?? string.Empty;
+            FailedComponentStableId = failedComponentStableId;
             RetainedUnknownComponents = new ReadOnlyCollection<
                 RetainedUnknownSaveComponentV1>(
                 new List<RetainedUnknownSaveComponentV1>(
@@ -105,6 +129,8 @@ namespace ShooterMover.Application.Persistence.Components
 
         public string RejectionCode { get; }
 
+        public StableId FailedComponentStableId { get; }
+
         public IReadOnlyList<RetainedUnknownSaveComponentV1>
             RetainedUnknownComponents { get; }
 
@@ -115,10 +141,12 @@ namespace ShooterMover.Application.Persistence.Components
     }
 
     /// <summary>
-    /// Stages account and character component restores without mutation, then commits
-    /// them only after every required component and every semantic validator succeeds.
-    /// Unknown future components remain attached to the immutable account snapshot and
-    /// are returned as opaque retained facts rather than interpreted.
+    /// Stages every account and character component without mutation, then commits
+    /// only after all required components and aggregate semantic validators succeed.
+    /// Unknown future component IDs remain opaque immutable facts. Commit failure is
+    /// compensating: the failing component restores its captured previous snapshot,
+    /// followed by reverse rollback of all earlier successful components. A rolled-
+    /// back status is returned only when every previous fingerprint is confirmed.
     /// </summary>
     public sealed class PlayerAccountRestoreCoordinatorV1
     {
@@ -134,7 +162,7 @@ namespace ShooterMover.Application.Persistence.Components
         {
             this.accountAdapters = FreezeAccountAdapters(accountAdapters);
             this.validateAggregate = validateAggregate
-                ?? (snapshot => CanonicalSnapshotIntegrityV1.Validate(snapshot));
+                ?? PlayerAccountAggregateCodecV1.Validate;
         }
 
         public PlayerAccountRestoreResultV1 Restore(
@@ -142,7 +170,7 @@ namespace ShooterMover.Application.Persistence.Components
             IEnumerable<CharacterSaveRestoreBindingV1> characterBindings)
         {
             SaveComponentValidationResultV1 accountIntegrity =
-                CanonicalSnapshotIntegrityV1.Validate(account);
+                PlayerAccountAggregateCodecV1.Validate(account);
             if (!accountIntegrity.Succeeded)
             {
                 return Rejected(accountIntegrity.RejectionCode);
@@ -235,27 +263,53 @@ namespace ShooterMover.Application.Persistence.Components
 
                 prepared.Sort(PreparedEntry.Compare);
                 var committed = new List<PreparedEntry>();
-                try
+                for (int index = 0; index < prepared.Count; index++)
                 {
-                    for (int index = 0; index < prepared.Count; index++)
+                    PreparedEntry entry = prepared[index];
+                    SaveComponentCommitResultV1 result;
+                    try
                     {
-                        prepared[index].Restore.Commit();
-                        committed.Add(prepared[index]);
+                        result = entry.Restore.Commit();
                     }
-                }
-                catch (Exception exception)
-                {
-                    bool rollbackComplete = Rollback(committed);
+                    catch (Exception exception)
+                    {
+                        // A compliant prepared restore does not throw, but treat an
+                        // unexpected implementation as uncompensated rather than
+                        // incorrectly claiming atomic restoration.
+                        result = new SaveComponentCommitResultV1(
+                            SaveComponentCommitStatusV1
+                                .FailedCompensationIncomplete,
+                            "prepared-restore-commit-threw:"
+                                + exception.GetType().Name,
+                            false);
+                    }
+
+                    if (result != null && result.Succeeded)
+                    {
+                        committed.Add(entry);
+                        continue;
+                    }
+
+                    bool failingRestored = result != null
+                        && result.PreviousSnapshotConfirmed;
+                    RollbackSummary rollback = Rollback(committed);
+                    PlayerAccountRestoreStatusV1 status = ClassifyFailure(
+                        failingRestored,
+                        rollback.Complete);
+                    string details = result == null
+                        ? "save-component-commit-result-null"
+                        : result.RejectionCode;
+                    if (!rollback.Complete)
+                    {
+                        details += ";earlier_rollback="
+                            + rollback.RejectionCode;
+                    }
                     DisposeAll(prepared);
                     return new PlayerAccountRestoreResultV1(
-                        rollbackComplete
-                            ? PlayerAccountRestoreStatusV1
-                                .CommitFailedRolledBack
-                            : PlayerAccountRestoreStatusV1
-                                .CommitFailedRollbackIncomplete,
-                        "restore-commit-failed:"
-                            + exception.GetType().Name,
-                        unknown);
+                        status,
+                        details,
+                        unknown,
+                        entry.Restore.ComponentStableId);
                 }
 
                 DisposeAll(prepared);
@@ -300,6 +354,28 @@ namespace ShooterMover.Application.Persistence.Components
                 ordered.Values.ToList());
         }
 
+        private static PlayerAccountRestoreStatusV1 ClassifyFailure(
+            bool failingRestored,
+            bool earlierRestored)
+        {
+            if (failingRestored && earlierRestored)
+            {
+                return PlayerAccountRestoreStatusV1.CommitFailedRolledBack;
+            }
+            if (!failingRestored && earlierRestored)
+            {
+                return PlayerAccountRestoreStatusV1
+                    .CommitFailedCompensationIncomplete;
+            }
+            if (failingRestored)
+            {
+                return PlayerAccountRestoreStatusV1
+                    .CommitFailedEarlierRollbackIncomplete;
+            }
+            return PlayerAccountRestoreStatusV1
+                .CommitFailedCompensationAndRollbackIncomplete;
+        }
+
         private static bool TryPrepareComponentSet(
             int? slotIndex,
             IReadOnlyDictionary<StableId, SaveComponentSnapshotV1> components,
@@ -338,6 +414,7 @@ namespace ShooterMover.Application.Persistence.Components
                 }
                 prepared.Add(new PreparedEntry(
                     slotIndex,
+                    adapter.Definition.RestoreOrder,
                     result.PreparedRestore));
             }
 
@@ -406,21 +483,39 @@ namespace ShooterMover.Application.Persistence.Components
                 output);
         }
 
-        private static bool Rollback(IReadOnlyList<PreparedEntry> committed)
+        private static RollbackSummary Rollback(
+            IReadOnlyList<PreparedEntry> committed)
         {
             bool complete = true;
+            var errors = new List<string>();
             for (int index = committed.Count - 1; index >= 0; index--)
             {
+                SaveComponentRollbackResultV1 result;
                 try
                 {
-                    committed[index].Restore.Rollback();
+                    result = committed[index].Restore.Rollback();
                 }
-                catch
+                catch (Exception exception)
+                {
+                    result = new SaveComponentRollbackResultV1(
+                        false,
+                        "rollback-threw:"
+                            + exception.GetType().Name);
+                }
+                if (result == null || !result.Restored)
                 {
                     complete = false;
+                    errors.Add(
+                        committed[index].Restore.ComponentStableId
+                        + "="
+                        + (result == null
+                            ? "rollback-result-null"
+                            : result.RejectionCode));
                 }
             }
-            return complete;
+            return new RollbackSummary(
+                complete,
+                string.Join("|", errors));
         }
 
         private static void DisposeAll(IEnumerable<PreparedEntry> prepared)
@@ -441,17 +536,34 @@ namespace ShooterMover.Application.Persistence.Components
                 unknown);
         }
 
+        private sealed class RollbackSummary
+        {
+            public RollbackSummary(bool complete, string rejectionCode)
+            {
+                Complete = complete;
+                RejectionCode = rejectionCode ?? string.Empty;
+            }
+
+            public bool Complete { get; }
+
+            public string RejectionCode { get; }
+        }
+
         private sealed class PreparedEntry
         {
             public PreparedEntry(
                 int? slotIndex,
+                int restoreOrder,
                 IPreparedSaveComponentRestoreV1 restore)
             {
                 SlotIndex = slotIndex;
+                RestoreOrder = restoreOrder;
                 Restore = restore;
             }
 
             public int? SlotIndex { get; }
+
+            public int RestoreOrder { get; }
 
             public IPreparedSaveComponentRestoreV1 Restore { get; }
 
@@ -464,8 +576,10 @@ namespace ShooterMover.Application.Persistence.Components
                     ? right.SlotIndex.Value
                     : -1;
                 int slot = leftSlot.CompareTo(rightSlot);
-                return slot != 0
-                    ? slot
+                if (slot != 0) return slot;
+                int order = left.RestoreOrder.CompareTo(right.RestoreOrder);
+                return order != 0
+                    ? order
                     : string.CompareOrdinal(
                         left.Restore.ComponentStableId.ToString(),
                         right.Restore.ComponentStableId.ToString());
