@@ -270,29 +270,48 @@ namespace ShooterMover.Tests.EditMode.Characters.Stats
         }
 
         [Test]
-        public void SkillAuthorityProjection_IsConsumedWithoutRecomputingClassRules()
+        public void SkillAuthorityProjection_PreservesClassSpecificRankCurve()
         {
+            var armorSkill = new RankedSkillDefinitionV2(
+                "skill.armor",
+                "defense",
+                1,
+                new[] { "juggernaut" },
+                null,
+                null,
+                new[]
+                {
+                    new SkillClassOverrideV2(
+                        "juggernaut",
+                        2,
+                        new[] { 5m, 9m }),
+                },
+                new[] { 2m },
+                new[]
+                {
+                    new SkillEffectDescriptorV2(
+                        DerivedStatTargetIdsV1.Armor,
+                        SkillModifierKindV2.Flat,
+                        1m),
+                },
+                null);
+            var catalog = new RankedSkillCatalogV2(
+                "skills.schema.v2",
+                "content.fixture",
+                new[] { armorSkill },
+                null);
             var allocation = new RankedSkillAllocationSnapshotV2(
                 "profile.juggernaut-one",
                 "juggernaut",
                 4L,
-                "skills.schema.v2",
-                "content.fixture",
+                catalog.SchemaVersion,
+                catalog.ContentVersion,
                 new Dictionary<string, int>
                 {
-                    { "skill.armor", 2 },
+                    { armorSkill.Id, 2 },
                 });
-            var effects = new SkillEffectSnapshotV2(
-                allocation,
-                new[]
-                {
-                    new SkillEffectContributionV2(
-                        "skill.armor#2",
-                        new SkillEffectDescriptorV2(
-                            DerivedStatTargetIdsV1.Armor,
-                            SkillModifierKindV2.Flat,
-                            18m)),
-                });
+            SkillEffectSnapshotV2 effects = new SkillEffectProjectorV2()
+                .Project(catalog, allocation);
             RuntimeModifierSnapshotV1 projected =
                 SkillEffectModifierAdapterV1.Adapt(effects);
             var source = new DerivedStatModifierSourceV1(
@@ -304,7 +323,8 @@ namespace ShooterMover.Tests.EditMode.Characters.Stats
             DerivedCharacterStatsSnapshotV1 result = composer.DeriveCharacter(
                 Input(BaseValues(100m, 5m), new[] { source }));
 
-            Assert.That(result.Armor, Is.EqualTo(18m));
+            Assert.That(armorSkill.EffectiveMaximumRank("juggernaut"), Is.EqualTo(2));
+            Assert.That(result.Armor, Is.EqualTo(14m));
             Assert.That(result.SourceFingerprints, Has.Count.EqualTo(1));
         }
 
