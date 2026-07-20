@@ -1,889 +1,299 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Linq;
-using System.Reflection;
 using System.Text;
-using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Application.Persistence.Components
 {
-    /// <summary>
-    /// Deterministic, engine-neutral object-graph codec for immutable snapshot DTOs.
-    /// The expected CLR type is supplied by the typed adapter; payloads never name or
-    /// activate arbitrary types. Public snapshot properties are ordered ordinally.
-    /// </summary>
-    public static class CanonicalSnapshotCodecV1
+    public static class SavePersistenceLimitsV1
     {
-        public static string Serialize<T>(T value)
+        public const int MaximumAccountFileBytes = 16 * 1024 * 1024;
+        public const int MaximumAccountPayloadBytes = 12 * 1024 * 1024;
+        public const int MaximumComponentPayloadBytes = 2 * 1024 * 1024;
+        public const int MaximumNodeDepth = 48;
+        public const int MaximumCollectionCount = 8192;
+        public const int MaximumPropertyCount = 128;
+        public const int MaximumScalarLength = 1024 * 1024;
+    }
+
+    public sealed class CanonicalPayloadExceptionV1 : Exception
+    {
+        public CanonicalPayloadExceptionV1(string rejectionCode)
+            : base(rejectionCode)
         {
-            return SerializeValue(value, typeof(T));
+            RejectionCode = rejectionCode ?? "canonical-payload-invalid";
         }
 
-        public static bool TryDeserialize<T>(
-            string payload,
-            out T value,
-            out string rejectionCode)
-            where T : class
+        public string RejectionCode { get; }
+    }
+
+    public enum CanonicalNodeKindV1
+    {
+        Null = 1,
+        Scalar = 2,
+        List = 3,
+        Object = 4,
+    }
+
+    public sealed class CanonicalFieldV1
+    {
+        public CanonicalFieldV1(string name, CanonicalNodeV1 value)
         {
-            value = null;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("A persisted field name is required.", nameof(name));
+            }
+            Name = name.Trim();
+            Value = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        public string Name { get; }
+
+        public CanonicalNodeV1 Value { get; }
+    }
+
+    public sealed class CanonicalNodeV1
+    {
+        private readonly ReadOnlyCollection<CanonicalNodeV1> items;
+        private readonly ReadOnlyCollection<CanonicalFieldV1> fields;
+
+        private CanonicalNodeV1(
+            CanonicalNodeKindV1 kind,
+            string scalar,
+            IEnumerable<CanonicalNodeV1> items,
+            IEnumerable<CanonicalFieldV1> fields)
+        {
+            Kind = kind;
+            Scalar = scalar;
+            this.items = new ReadOnlyCollection<CanonicalNodeV1>(
+                new List<CanonicalNodeV1>(items ?? Array.Empty<CanonicalNodeV1>()));
+            this.fields = new ReadOnlyCollection<CanonicalFieldV1>(
+                new List<CanonicalFieldV1>(fields ?? Array.Empty<CanonicalFieldV1>()));
+        }
+
+        public CanonicalNodeKindV1 Kind { get; }
+
+        public string Scalar { get; }
+
+        public IReadOnlyList<CanonicalNodeV1> Items { get { return items; } }
+
+        public IReadOnlyList<CanonicalFieldV1> Fields { get { return fields; } }
+
+        public static CanonicalNodeV1 Null()
+        {
+            return new CanonicalNodeV1(
+                CanonicalNodeKindV1.Null,
+                null,
+                null,
+                null);
+        }
+
+        public static CanonicalNodeV1 ScalarValue(string value)
+        {
+            string safe = value ?? string.Empty;
+            if (safe.Length > SavePersistenceLimitsV1.MaximumScalarLength)
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-scalar-length-exceeded");
+            }
+            return new CanonicalNodeV1(
+                CanonicalNodeKindV1.Scalar,
+                safe,
+                null,
+                null);
+        }
+
+        public static CanonicalNodeV1 List(IEnumerable<CanonicalNodeV1> values)
+        {
+            var copy = new List<CanonicalNodeV1>(
+                values ?? throw new ArgumentNullException(nameof(values)));
+            if (copy.Count > SavePersistenceLimitsV1.MaximumCollectionCount)
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-collection-count-exceeded");
+            }
+            for (int index = 0; index < copy.Count; index++)
+            {
+                if (copy[index] == null)
+                {
+                    throw new ArgumentException(
+                        "Canonical lists must not contain null node references.",
+                        nameof(values));
+                }
+            }
+            return new CanonicalNodeV1(
+                CanonicalNodeKindV1.List,
+                null,
+                copy,
+                null);
+        }
+
+        public static CanonicalNodeV1 Object(params CanonicalFieldV1[] values)
+        {
+            var copy = new List<CanonicalFieldV1>(
+                values ?? throw new ArgumentNullException(nameof(values)));
+            if (copy.Count > SavePersistenceLimitsV1.MaximumPropertyCount)
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-property-count-exceeded");
+            }
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            for (int index = 0; index < copy.Count; index++)
+            {
+                CanonicalFieldV1 field = copy[index];
+                if (field == null || !names.Add(field.Name))
+                {
+                    throw new ArgumentException(
+                        "Canonical object fields must be non-null and unique.",
+                        nameof(values));
+                }
+            }
+            return new CanonicalNodeV1(
+                CanonicalNodeKindV1.Object,
+                null,
+                null,
+                copy);
+        }
+    }
+
+    public static class CanonicalNodeCodecV1
+    {
+        public static string Encode(CanonicalNodeV1 node)
+        {
+            if (node == null)
+            {
+                throw new ArgumentNullException(nameof(node));
+            }
+            var builder = new StringBuilder();
+            Append(builder, node, 0);
+            return builder.ToString();
+        }
+
+        public static bool TryDecode(
+            string payload,
+            int maximumPayloadBytes,
+            out CanonicalNodeV1 node,
+            out string rejectionCode)
+        {
+            node = null;
             if (payload == null)
             {
                 rejectionCode = "canonical-payload-null";
+                return false;
+            }
+            if (Encoding.UTF8.GetByteCount(payload) > maximumPayloadBytes)
+            {
+                rejectionCode = maximumPayloadBytes
+                    == SavePersistenceLimitsV1.MaximumComponentPayloadBytes
+                        ? "component-payload-too-large"
+                        : "account-payload-too-large";
                 return false;
             }
 
             try
             {
                 var parser = new Parser(payload);
-                Node node = parser.ParseNode();
+                node = parser.ParseNode(0);
                 if (!parser.AtEnd)
                 {
+                    node = null;
                     rejectionCode = "canonical-payload-trailing-data";
                     return false;
                 }
-
-                object materialized = Materialize(node, typeof(T));
-                value = materialized as T;
-                if (value == null)
-                {
-                    rejectionCode = "canonical-payload-type-mismatch";
-                    return false;
-                }
-
-                string rebuilt = Serialize(value);
-                if (!string.Equals(rebuilt, payload, StringComparison.Ordinal))
-                {
-                    value = null;
-                    rejectionCode = "canonical-payload-roundtrip-mismatch";
-                    return false;
-                }
-
                 rejectionCode = string.Empty;
                 return true;
             }
-            catch (Exception exception)
+            catch (CanonicalPayloadExceptionV1 exception)
             {
-                value = null;
-                rejectionCode = "canonical-payload-invalid:"
-                    + exception.GetType().Name;
+                node = null;
+                rejectionCode = exception.RejectionCode;
+                return false;
+            }
+            catch (FormatException)
+            {
+                node = null;
+                rejectionCode = "canonical-payload-format-invalid";
+                return false;
+            }
+            catch (OverflowException)
+            {
+                node = null;
+                rejectionCode = "canonical-payload-number-overflow";
                 return false;
             }
         }
 
-        internal static bool TryBuildFactoryArguments(
-            object source,
-            ParameterInfo[] parameters,
-            out object[] arguments)
+        private static void Append(
+            StringBuilder builder,
+            CanonicalNodeV1 node,
+            int depth)
         {
-            arguments = new object[parameters.Length];
-            Dictionary<string, PropertyInfo> properties = GetPropertyMap(
-                source.GetType());
-            for (int index = 0; index < parameters.Length; index++)
+            if (depth > SavePersistenceLimitsV1.MaximumNodeDepth)
             {
-                ParameterInfo parameter = parameters[index];
-                PropertyInfo property = FindProperty(properties, parameter.Name);
-                if (property == null)
-                {
-                    if (parameter.HasDefaultValue)
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-node-depth-exceeded");
+            }
+
+            switch (node.Kind)
+            {
+                case CanonicalNodeKindV1.Null:
+                    builder.Append("N;");
+                    return;
+                case CanonicalNodeKindV1.Scalar:
+                    AppendScalar(builder, node.Scalar);
+                    return;
+                case CanonicalNodeKindV1.List:
+                    if (node.Items.Count
+                        > SavePersistenceLimitsV1.MaximumCollectionCount)
                     {
-                        arguments[index] = parameter.DefaultValue;
-                        continue;
+                        throw new CanonicalPayloadExceptionV1(
+                            "canonical-collection-count-exceeded");
                     }
-                    arguments = null;
-                    return false;
-                }
-
-                object propertyValue = property.GetValue(source, null);
-                try
-                {
-                    arguments[index] = ConvertRuntimeValue(
-                        propertyValue,
-                        parameter.ParameterType);
-                }
-                catch
-                {
-                    arguments = null;
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static string SerializeValue(object value, Type declaredType)
-        {
-            if (value == null)
-            {
-                return "N;";
-            }
-
-            Type runtimeType = value.GetType();
-            if (IsScalar(runtimeType))
-            {
-                return Scalar(ToScalarText(value, runtimeType));
-            }
-
-            Type keyType;
-            Type valueType;
-            if (TryGetDictionaryTypes(runtimeType, out keyType, out valueType))
-            {
-                var entries = new List<KeyValuePair<string, string>>();
-                foreach (object entry in (IEnumerable)value)
-                {
-                    Type entryType = entry.GetType();
-                    object key = entryType.GetProperty("Key").GetValue(entry, null);
-                    object item = entryType.GetProperty("Value").GetValue(entry, null);
-                    string keyPayload = SerializeValue(key, keyType);
-                    string valuePayload = SerializeValue(item, valueType);
-                    entries.Add(new KeyValuePair<string, string>(
-                        keyPayload,
-                        valuePayload));
-                }
-                entries.Sort((left, right) =>
-                    string.CompareOrdinal(left.Key, right.Key));
-                var builder = new StringBuilder();
-                builder.Append('M');
-                builder.Append(entries.Count.ToString(CultureInfo.InvariantCulture));
-                builder.Append(':');
-                for (int index = 0; index < entries.Count; index++)
-                {
-                    builder.Append(entries[index].Key);
-                    builder.Append(entries[index].Value);
-                }
-                return builder.ToString();
-            }
-
-            Type elementType;
-            if (TryGetEnumerableElementType(runtimeType, out elementType))
-            {
-                var items = new List<string>();
-                foreach (object item in (IEnumerable)value)
-                {
-                    items.Add(SerializeValue(item, elementType));
-                }
-                return "L"
-                    + items.Count.ToString(CultureInfo.InvariantCulture)
-                    + ":"
-                    + string.Concat(items);
-            }
-
-            PropertyInfo[] properties = GetSerializableProperties(runtimeType);
-            var objectBuilder = new StringBuilder();
-            objectBuilder.Append('O');
-            objectBuilder.Append(properties.Length.ToString(
-                CultureInfo.InvariantCulture));
-            objectBuilder.Append(':');
-            for (int index = 0; index < properties.Length; index++)
-            {
-                PropertyInfo property = properties[index];
-                objectBuilder.Append(Scalar(property.Name));
-                objectBuilder.Append(SerializeValue(
-                    property.GetValue(value, null),
-                    property.PropertyType));
-            }
-            return objectBuilder.ToString();
-        }
-
-        private static object Materialize(Node node, Type expectedType)
-        {
-            Type nullable = Nullable.GetUnderlyingType(expectedType);
-            if (nullable != null)
-            {
-                if (node.Kind == NodeKind.Null)
-                {
-                    return null;
-                }
-                return Materialize(node, nullable);
-            }
-
-            if (node.Kind == NodeKind.Null)
-            {
-                if (expectedType.IsValueType)
-                {
-                    throw new InvalidOperationException(
-                        "Null cannot materialize a non-nullable value type.");
-                }
-                return null;
-            }
-
-            if (IsScalar(expectedType))
-            {
-                if (node.Kind != NodeKind.Value)
-                {
-                    throw new InvalidOperationException(
-                        "Scalar node expected.");
-                }
-                return ParseScalar(node.Value, expectedType);
-            }
-
-            Type keyType;
-            Type valueType;
-            if (TryGetDictionaryTypes(expectedType, out keyType, out valueType))
-            {
-                if (node.Kind != NodeKind.Map)
-                {
-                    throw new InvalidOperationException(
-                        "Dictionary node expected.");
-                }
-                return MaterializeDictionary(
-                    node,
-                    expectedType,
-                    keyType,
-                    valueType);
-            }
-
-            Type elementType;
-            if (TryGetEnumerableElementType(expectedType, out elementType))
-            {
-                if (node.Kind == NodeKind.Map
-                    && !IsKeyValuePair(elementType))
-                {
-                    return MaterializeEnumerableFromMapValues(
-                        node,
-                        expectedType,
-                        elementType);
-                }
-                if (node.Kind != NodeKind.List)
-                {
-                    throw new InvalidOperationException(
-                        "Collection node expected.");
-                }
-                return MaterializeEnumerable(node, expectedType, elementType);
-            }
-
-            if (node.Kind != NodeKind.Object)
-            {
-                throw new InvalidOperationException("Object node expected.");
-            }
-            if (expectedType == typeof(object)
-                || expectedType.IsInterface
-                || expectedType.IsAbstract)
-            {
-                throw new InvalidOperationException(
-                    "Polymorphic snapshot nodes are not supported.");
-            }
-
-            ConstructorInfo[] constructors = expectedType.GetConstructors(
-                BindingFlags.Instance
-                | BindingFlags.Public
-                | BindingFlags.NonPublic);
-            Array.Sort(constructors, CompareConstructors);
-            Exception last = null;
-            for (int constructorIndex = 0;
-                constructorIndex < constructors.Length;
-                constructorIndex++)
-            {
-                ConstructorInfo constructor = constructors[constructorIndex];
-                ParameterInfo[] parameters = constructor.GetParameters();
-                object[] arguments = new object[parameters.Length];
-                bool usable = true;
-                for (int parameterIndex = 0;
-                    parameterIndex < parameters.Length;
-                    parameterIndex++)
-                {
-                    ParameterInfo parameter = parameters[parameterIndex];
-                    Node parameterNode;
-                    if (!TryFindNode(
-                        node.Properties,
-                        parameter.Name,
-                        out parameterNode))
+                    builder.Append('L')
+                        .Append(node.Items.Count.ToString(
+                            CultureInfo.InvariantCulture))
+                        .Append(':');
+                    for (int index = 0; index < node.Items.Count; index++)
                     {
-                        if (parameter.HasDefaultValue)
-                        {
-                            arguments[parameterIndex] = parameter.DefaultValue;
-                            continue;
-                        }
-                        usable = false;
-                        break;
+                        Append(builder, node.Items[index], depth + 1);
                     }
-                    try
+                    return;
+                case CanonicalNodeKindV1.Object:
+                    if (node.Fields.Count
+                        > SavePersistenceLimitsV1.MaximumPropertyCount)
                     {
-                        arguments[parameterIndex] = Materialize(
-                            parameterNode,
-                            parameter.ParameterType);
+                        throw new CanonicalPayloadExceptionV1(
+                            "canonical-property-count-exceeded");
                     }
-                    catch (Exception exception)
+                    builder.Append('O')
+                        .Append(node.Fields.Count.ToString(
+                            CultureInfo.InvariantCulture))
+                        .Append(':');
+                    for (int index = 0; index < node.Fields.Count; index++)
                     {
-                        last = exception;
-                        usable = false;
-                        break;
+                        AppendScalar(builder, node.Fields[index].Name);
+                        Append(builder, node.Fields[index].Value, depth + 1);
                     }
-                }
-
-                if (!usable)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    return constructor.Invoke(arguments);
-                }
-                catch (TargetInvocationException exception)
-                {
-                    last = exception.InnerException ?? exception;
-                }
-                catch (Exception exception)
-                {
-                    last = exception;
-                }
+                    return;
+                default:
+                    throw new CanonicalPayloadExceptionV1(
+                        "canonical-node-kind-invalid");
             }
-
-            MethodInfo[] factories = expectedType.GetMethods(
-                BindingFlags.Static | BindingFlags.Public);
-            Array.Sort(factories, CompareFactories);
-            for (int factoryIndex = 0;
-                factoryIndex < factories.Length;
-                factoryIndex++)
-            {
-                MethodInfo factory = factories[factoryIndex];
-                if ((!string.Equals(factory.Name, "Create", StringComparison.Ordinal)
-                    && !string.Equals(factory.Name, "CreateCanonical", StringComparison.Ordinal))
-                    || !expectedType.IsAssignableFrom(factory.ReturnType))
-                {
-                    continue;
-                }
-                ParameterInfo[] parameters = factory.GetParameters();
-                if (parameters.Any(parameter => parameter.ParameterType.IsByRef))
-                {
-                    continue;
-                }
-                object[] arguments = new object[parameters.Length];
-                bool usable = true;
-                for (int parameterIndex = 0;
-                    parameterIndex < parameters.Length;
-                    parameterIndex++)
-                {
-                    ParameterInfo parameter = parameters[parameterIndex];
-                    Node parameterNode;
-                    if (!TryFindNode(
-                        node.Properties,
-                        parameter.Name,
-                        out parameterNode))
-                    {
-                        if (parameter.HasDefaultValue)
-                        {
-                            arguments[parameterIndex] = parameter.DefaultValue;
-                            continue;
-                        }
-                        usable = false;
-                        break;
-                    }
-                    try
-                    {
-                        arguments[parameterIndex] = Materialize(
-                            parameterNode,
-                            parameter.ParameterType);
-                    }
-                    catch (Exception exception)
-                    {
-                        last = exception;
-                        usable = false;
-                        break;
-                    }
-                }
-                if (!usable)
-                {
-                    continue;
-                }
-                try
-                {
-                    return factory.Invoke(null, arguments);
-                }
-                catch (TargetInvocationException exception)
-                {
-                    last = exception.InnerException ?? exception;
-                }
-                catch (Exception exception)
-                {
-                    last = exception;
-                }
-            }
-
-            throw new InvalidOperationException(
-                "No immutable snapshot constructor or factory could be used for "
-                + expectedType.FullName,
-                last);
         }
 
-        private static object MaterializeEnumerable(
-            Node node,
-            Type expectedType,
-            Type elementType)
-        {
-            Type listType = typeof(List<>).MakeGenericType(elementType);
-            IList list = (IList)Activator.CreateInstance(listType);
-            for (int index = 0; index < node.Items.Count; index++)
-            {
-                list.Add(Materialize(node.Items[index], elementType));
-            }
-            return AdaptCollection(list, expectedType, elementType);
-        }
-
-        private static object MaterializeEnumerableFromMapValues(
-            Node node,
-            Type expectedType,
-            Type elementType)
-        {
-            Type listType = typeof(List<>).MakeGenericType(elementType);
-            IList list = (IList)Activator.CreateInstance(listType);
-            for (int index = 0; index < node.MapEntries.Count; index++)
-            {
-                list.Add(Materialize(
-                    node.MapEntries[index].Value,
-                    elementType));
-            }
-            return AdaptCollection(list, expectedType, elementType);
-        }
-
-        private static object AdaptCollection(
-            IList list,
-            Type expectedType,
-            Type elementType)
-        {
-            if (expectedType.IsArray)
-            {
-                Array array = Array.CreateInstance(elementType, list.Count);
-                list.CopyTo(array, 0);
-                return array;
-            }
-            if (expectedType.IsAssignableFrom(list.GetType()))
-            {
-                return list;
-            }
-
-            Type enumerableType = typeof(IEnumerable<>).MakeGenericType(elementType);
-            ConstructorInfo constructor = expectedType.GetConstructor(
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new[] { enumerableType },
-                null);
-            if (constructor != null)
-            {
-                return constructor.Invoke(new object[] { list });
-            }
-
-            throw new InvalidOperationException(
-                "Collection type cannot be materialized: "
-                + expectedType.FullName);
-        }
-
-        private static object MaterializeDictionary(
-            Node node,
-            Type expectedType,
-            Type keyType,
-            Type valueType)
-        {
-            Type dictionaryType = typeof(Dictionary<,>).MakeGenericType(
-                keyType,
-                valueType);
-            IDictionary dictionary = (IDictionary)Activator.CreateInstance(
-                dictionaryType);
-            for (int index = 0; index < node.MapEntries.Count; index++)
-            {
-                object key = Materialize(node.MapEntries[index].Key, keyType);
-                object value = Materialize(
-                    node.MapEntries[index].Value,
-                    valueType);
-                dictionary.Add(key, value);
-            }
-            if (expectedType.IsAssignableFrom(dictionaryType))
-            {
-                return dictionary;
-            }
-
-            Type genericDictionary = typeof(IDictionary<,>).MakeGenericType(
-                keyType,
-                valueType);
-            ConstructorInfo constructor = expectedType.GetConstructor(
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new[] { genericDictionary },
-                null);
-            if (constructor != null)
-            {
-                return constructor.Invoke(new object[] { dictionary });
-            }
-
-            throw new InvalidOperationException(
-                "Dictionary type cannot be materialized: "
-                + expectedType.FullName);
-        }
-
-        private static object ConvertRuntimeValue(object value, Type targetType)
-        {
-            if (value == null)
-            {
-                return null;
-            }
-            if (targetType.IsInstanceOfType(value))
-            {
-                return value;
-            }
-            if (targetType == typeof(StableId) && value is string)
-            {
-                return StableId.Parse((string)value);
-            }
-
-            string payload = SerializeValue(value, value.GetType());
-            var parser = new Parser(payload);
-            Node node = parser.ParseNode();
-            return Materialize(node, targetType);
-        }
-
-        private static bool IsScalar(Type type)
-        {
-            Type actual = Nullable.GetUnderlyingType(type) ?? type;
-            return actual.IsEnum
-                || actual == typeof(string)
-                || actual == typeof(char)
-                || actual == typeof(bool)
-                || actual == typeof(byte)
-                || actual == typeof(sbyte)
-                || actual == typeof(short)
-                || actual == typeof(ushort)
-                || actual == typeof(int)
-                || actual == typeof(uint)
-                || actual == typeof(long)
-                || actual == typeof(ulong)
-                || actual == typeof(float)
-                || actual == typeof(double)
-                || actual == typeof(decimal)
-                || actual == typeof(Guid)
-                || actual == typeof(DateTime)
-                || actual == typeof(DateTimeOffset)
-                || actual == typeof(TimeSpan)
-                || actual == typeof(StableId);
-        }
-
-        private static string ToScalarText(object value, Type type)
-        {
-            if (type == typeof(string))
-            {
-                return (string)value;
-            }
-            if (type == typeof(char))
-            {
-                return ((char)value).ToString();
-            }
-            if (type == typeof(bool))
-            {
-                return (bool)value ? "1" : "0";
-            }
-            if (type == typeof(StableId))
-            {
-                return value.ToString();
-            }
-            if (type.IsEnum)
-            {
-                return Convert.ToInt64(value, CultureInfo.InvariantCulture)
-                    .ToString(CultureInfo.InvariantCulture);
-            }
-            if (type == typeof(float))
-            {
-                return ((float)value).ToString("R", CultureInfo.InvariantCulture);
-            }
-            if (type == typeof(double))
-            {
-                return ((double)value).ToString("R", CultureInfo.InvariantCulture);
-            }
-            if (type == typeof(decimal))
-            {
-                return ((decimal)value).ToString(CultureInfo.InvariantCulture);
-            }
-            if (type == typeof(Guid))
-            {
-                return ((Guid)value).ToString("D");
-            }
-            if (type == typeof(DateTime))
-            {
-                return ((DateTime)value).ToString("O", CultureInfo.InvariantCulture);
-            }
-            if (type == typeof(DateTimeOffset))
-            {
-                return ((DateTimeOffset)value).ToString(
-                    "O",
-                    CultureInfo.InvariantCulture);
-            }
-            if (type == typeof(TimeSpan))
-            {
-                return ((TimeSpan)value).Ticks.ToString(
-                    CultureInfo.InvariantCulture);
-            }
-            return Convert.ToString(value, CultureInfo.InvariantCulture);
-        }
-
-        private static object ParseScalar(string text, Type type)
-        {
-            if (type == typeof(string)) return text;
-            if (type == typeof(char))
-            {
-                if (text.Length != 1) throw new FormatException("Invalid char.");
-                return text[0];
-            }
-            if (type == typeof(bool))
-            {
-                if (text == "1") return true;
-                if (text == "0") return false;
-                throw new FormatException("Invalid bool.");
-            }
-            if (type == typeof(StableId)) return StableId.Parse(text);
-            if (type.IsEnum)
-            {
-                long numeric = long.Parse(text, CultureInfo.InvariantCulture);
-                return Enum.ToObject(type, numeric);
-            }
-            if (type == typeof(byte)) return byte.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(sbyte)) return sbyte.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(short)) return short.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(ushort)) return ushort.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(int)) return int.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(uint)) return uint.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(long)) return long.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(ulong)) return ulong.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(float)) return float.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(double)) return double.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(decimal)) return decimal.Parse(text, CultureInfo.InvariantCulture);
-            if (type == typeof(Guid)) return Guid.ParseExact(text, "D");
-            if (type == typeof(DateTime)) return DateTime.ParseExact(
-                text,
-                "O",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.RoundtripKind);
-            if (type == typeof(DateTimeOffset)) return DateTimeOffset.ParseExact(
-                text,
-                "O",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None);
-            if (type == typeof(TimeSpan)) return TimeSpan.FromTicks(
-                long.Parse(text, CultureInfo.InvariantCulture));
-            throw new NotSupportedException("Unsupported scalar type: " + type.FullName);
-        }
-
-        private static string Scalar(string value)
+        private static void AppendScalar(StringBuilder builder, string value)
         {
             string safe = value ?? string.Empty;
-            return "V"
-                + safe.Length.ToString(CultureInfo.InvariantCulture)
-                + ":"
-                + safe;
-        }
-
-        private static PropertyInfo[] GetSerializableProperties(Type type)
-        {
-            return type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .Where(property => property.CanRead
-                    && property.GetIndexParameters().Length == 0)
-                .OrderBy(property => property.Name, StringComparer.Ordinal)
-                .ToArray();
-        }
-
-        private static Dictionary<string, PropertyInfo> GetPropertyMap(Type type)
-        {
-            var map = new Dictionary<string, PropertyInfo>(StringComparer.Ordinal);
-            PropertyInfo[] properties = GetSerializableProperties(type);
-            for (int index = 0; index < properties.Length; index++)
+            if (safe.Length > SavePersistenceLimitsV1.MaximumScalarLength)
             {
-                map[Normalize(properties[index].Name)] = properties[index];
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-scalar-length-exceeded");
             }
-            return map;
-        }
-
-        private static PropertyInfo FindProperty(
-            IDictionary<string, PropertyInfo> properties,
-            string parameterName)
-        {
-            string normalized = Normalize(parameterName);
-            PropertyInfo property;
-            if (properties.TryGetValue(normalized, out property))
-            {
-                return property;
-            }
-            string alias = StripKnownPrefix(normalized);
-            if (!string.Equals(alias, normalized, StringComparison.Ordinal)
-                && properties.TryGetValue(alias, out property))
-            {
-                return property;
-            }
-            return null;
-        }
-
-        private static bool TryFindNode(
-            IDictionary<string, Node> properties,
-            string parameterName,
-            out Node node)
-        {
-            string normalized = Normalize(parameterName);
-            foreach (KeyValuePair<string, Node> pair in properties)
-            {
-                if (Normalize(pair.Key) == normalized)
-                {
-                    node = pair.Value;
-                    return true;
-                }
-            }
-            string alias = StripKnownPrefix(normalized);
-            if (!string.Equals(alias, normalized, StringComparison.Ordinal))
-            {
-                foreach (KeyValuePair<string, Node> pair in properties)
-                {
-                    if (Normalize(pair.Key) == alias)
-                    {
-                        node = pair.Value;
-                        return true;
-                    }
-                }
-            }
-            node = null;
-            return false;
-        }
-
-        private static string StripKnownPrefix(string normalized)
-        {
-            string[] prefixes = { "ordered", "canonical" };
-            for (int index = 0; index < prefixes.Length; index++)
-            {
-                if (normalized.StartsWith(prefixes[index], StringComparison.Ordinal)
-                    && normalized.Length > prefixes[index].Length)
-                {
-                    return normalized.Substring(prefixes[index].Length);
-                }
-            }
-            return normalized;
-        }
-
-        private static int CompareFactories(MethodInfo left, MethodInfo right)
-        {
-            int name = string.CompareOrdinal(left.Name, right.Name);
-            return name != 0
-                ? name
-                : right.GetParameters().Length.CompareTo(
-                    left.GetParameters().Length);
-        }
-
-        private static string Normalize(string value)
-        {
-            var builder = new StringBuilder();
-            string source = value ?? string.Empty;
-            for (int index = 0; index < source.Length; index++)
-            {
-                char character = source[index];
-                if (char.IsLetterOrDigit(character))
-                {
-                    builder.Append(char.ToLowerInvariant(character));
-                }
-            }
-            return builder.ToString();
-        }
-
-        private static int CompareConstructors(
-            ConstructorInfo left,
-            ConstructorInfo right)
-        {
-            int visibility = right.IsPublic.CompareTo(left.IsPublic);
-            if (visibility != 0) return visibility;
-            return right.GetParameters().Length.CompareTo(
-                left.GetParameters().Length);
-        }
-
-        private static bool TryGetDictionaryTypes(
-            Type type,
-            out Type keyType,
-            out Type valueType)
-        {
-            Type match = FindGenericInterface(type, typeof(IDictionary<,>))
-                ?? FindGenericInterface(type, typeof(IReadOnlyDictionary<,>));
-            if (match == null)
-            {
-                keyType = null;
-                valueType = null;
-                return false;
-            }
-            Type[] arguments = match.GetGenericArguments();
-            keyType = arguments[0];
-            valueType = arguments[1];
-            return true;
-        }
-
-        private static bool TryGetEnumerableElementType(
-            Type type,
-            out Type elementType)
-        {
-            if (type == typeof(string))
-            {
-                elementType = null;
-                return false;
-            }
-            if (type.IsArray)
-            {
-                elementType = type.GetElementType();
-                return true;
-            }
-            Type match = FindGenericInterface(type, typeof(IEnumerable<>));
-            if (match == null)
-            {
-                elementType = null;
-                return false;
-            }
-            elementType = match.GetGenericArguments()[0];
-            return true;
-        }
-
-        private static Type FindGenericInterface(Type type, Type definition)
-        {
-            if (type.IsGenericType
-                && type.GetGenericTypeDefinition() == definition)
-            {
-                return type;
-            }
-            Type[] interfaces = type.GetInterfaces();
-            for (int index = 0; index < interfaces.Length; index++)
-            {
-                Type candidate = interfaces[index];
-                if (candidate.IsGenericType
-                    && candidate.GetGenericTypeDefinition() == definition)
-                {
-                    return candidate;
-                }
-            }
-            return null;
-        }
-
-        private static bool IsKeyValuePair(Type type)
-        {
-            return type.IsGenericType
-                && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>);
-        }
-
-        private enum NodeKind
-        {
-            Null,
-            Value,
-            List,
-            Map,
-            Object,
-        }
-
-        private sealed class Node
-        {
-            public Node(NodeKind kind)
-            {
-                Kind = kind;
-                Items = new List<Node>();
-                MapEntries = new List<KeyValuePair<Node, Node>>();
-                Properties = new Dictionary<string, Node>(StringComparer.Ordinal);
-            }
-
-            public NodeKind Kind { get; }
-
-            public string Value { get; set; }
-
-            public List<Node> Items { get; }
-
-            public List<KeyValuePair<Node, Node>> MapEntries { get; }
-
-            public Dictionary<string, Node> Properties { get; }
+            builder.Append('V')
+                .Append(safe.Length.ToString(CultureInfo.InvariantCulture))
+                .Append(':')
+                .Append(safe);
         }
 
         private sealed class Parser
@@ -896,71 +306,76 @@ namespace ShooterMover.Application.Persistence.Components
                 this.text = text;
             }
 
-            public bool AtEnd
-            {
-                get { return index == text.Length; }
-            }
+            public bool AtEnd { get { return index == text.Length; } }
 
-            public Node ParseNode()
+            public CanonicalNodeV1 ParseNode(int depth)
             {
+                if (depth > SavePersistenceLimitsV1.MaximumNodeDepth)
+                {
+                    throw new CanonicalPayloadExceptionV1(
+                        "canonical-node-depth-exceeded");
+                }
                 char tag = ReadCharacter();
-                if (tag == 'N')
+                switch (tag)
                 {
-                    Require(';');
-                    return new Node(NodeKind.Null);
-                }
-                if (tag == 'V')
-                {
-                    int length = ReadCount();
-                    var value = new Node(NodeKind.Value);
-                    value.Value = ReadText(length);
-                    return value;
-                }
-                if (tag == 'L')
-                {
-                    int count = ReadCount();
-                    var list = new Node(NodeKind.List);
-                    for (int itemIndex = 0; itemIndex < count; itemIndex++)
+                    case 'N':
+                        Require(';');
+                        return CanonicalNodeV1.Null();
+                    case 'V':
+                        return CanonicalNodeV1.ScalarValue(
+                            ReadText(ReadBoundedCount(
+                                SavePersistenceLimitsV1.MaximumScalarLength,
+                                "canonical-scalar-length-exceeded")));
+                    case 'L':
                     {
-                        list.Items.Add(ParseNode());
-                    }
-                    return list;
-                }
-                if (tag == 'M')
-                {
-                    int count = ReadCount();
-                    var map = new Node(NodeKind.Map);
-                    for (int entryIndex = 0; entryIndex < count; entryIndex++)
-                    {
-                        map.MapEntries.Add(new KeyValuePair<Node, Node>(
-                            ParseNode(),
-                            ParseNode()));
-                    }
-                    return map;
-                }
-                if (tag == 'O')
-                {
-                    int count = ReadCount();
-                    var item = new Node(NodeKind.Object);
-                    for (int propertyIndex = 0;
-                        propertyIndex < count;
-                        propertyIndex++)
-                    {
-                        Node name = ParseNode();
-                        if (name.Kind != NodeKind.Value
-                            || item.Properties.ContainsKey(name.Value))
+                        int count = ReadBoundedCount(
+                            SavePersistenceLimitsV1.MaximumCollectionCount,
+                            "canonical-collection-count-exceeded");
+                        var values = new List<CanonicalNodeV1>(count);
+                        for (int itemIndex = 0;
+                            itemIndex < count;
+                            itemIndex++)
                         {
-                            throw new FormatException(
-                                "Invalid object property name.");
+                            values.Add(ParseNode(depth + 1));
                         }
-                        item.Properties.Add(name.Value, ParseNode());
+                        return CanonicalNodeV1.List(values);
                     }
-                    return item;
+                    case 'O':
+                    {
+                        int count = ReadBoundedCount(
+                            SavePersistenceLimitsV1.MaximumPropertyCount,
+                            "canonical-property-count-exceeded");
+                        var fields = new CanonicalFieldV1[count];
+                        var names = new HashSet<string>(StringComparer.Ordinal);
+                        for (int fieldIndex = 0;
+                            fieldIndex < count;
+                            fieldIndex++)
+                        {
+                            if (ReadCharacter() != 'V')
+                            {
+                                throw new FormatException();
+                            }
+                            string name = ReadText(ReadBoundedCount(
+                                SavePersistenceLimitsV1.MaximumScalarLength,
+                                "canonical-scalar-length-exceeded"));
+                            if (string.IsNullOrWhiteSpace(name)
+                                || !names.Add(name))
+                            {
+                                throw new CanonicalPayloadExceptionV1(
+                                    "canonical-object-field-invalid");
+                            }
+                            fields[fieldIndex] = new CanonicalFieldV1(
+                                name,
+                                ParseNode(depth + 1));
+                        }
+                        return CanonicalNodeV1.Object(fields);
+                    }
+                    default:
+                        throw new FormatException();
                 }
-                throw new FormatException("Unknown canonical node tag.");
             }
 
-            private int ReadCount()
+            private int ReadBoundedCount(int maximum, string rejectionCode)
             {
                 int start = index;
                 while (index < text.Length
@@ -971,31 +386,36 @@ namespace ShooterMover.Application.Persistence.Components
                 }
                 if (start == index || index >= text.Length || text[index] != ':')
                 {
-                    throw new FormatException("Invalid canonical count.");
+                    throw new FormatException();
                 }
-                int value = int.Parse(
+                int count = int.Parse(
                     text.Substring(start, index - start),
+                    NumberStyles.None,
                     CultureInfo.InvariantCulture);
                 index++;
-                return value;
+                if (count < 0 || count > maximum)
+                {
+                    throw new CanonicalPayloadExceptionV1(rejectionCode);
+                }
+                return count;
             }
 
             private string ReadText(int length)
             {
-                if (length < 0 || index + length > text.Length)
+                if (length < 0 || length > text.Length - index)
                 {
-                    throw new FormatException("Invalid canonical text length.");
+                    throw new FormatException();
                 }
-                string value = text.Substring(index, length);
+                string output = text.Substring(index, length);
                 index += length;
-                return value;
+                return output;
             }
 
             private char ReadCharacter()
             {
                 if (index >= text.Length)
                 {
-                    throw new FormatException("Unexpected end of canonical payload.");
+                    throw new FormatException();
                 }
                 return text[index++];
             }
@@ -1004,151 +424,207 @@ namespace ShooterMover.Application.Persistence.Components
             {
                 if (ReadCharacter() != expected)
                 {
-                    throw new FormatException("Canonical delimiter mismatch.");
+                    throw new FormatException();
                 }
             }
         }
     }
 
-    public static class CanonicalSnapshotIntegrityV1
+    public sealed class CanonicalObjectReaderV1
     {
-        public static SaveComponentValidationResultV1 Validate<TSnapshot>(
-            TSnapshot snapshot)
-            where TSnapshot : class
+        private readonly CanonicalNodeV1 node;
+        private int index;
+
+        public CanonicalObjectReaderV1(
+            CanonicalNodeV1 node,
+            params string[] exactFieldOrder)
         {
-            if (snapshot == null)
+            this.node = node ?? throw new ArgumentNullException(nameof(node));
+            if (node.Kind != CanonicalNodeKindV1.Object)
             {
-                return SaveComponentValidationResultV1.Reject(
-                    "snapshot-null");
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-object-expected");
             }
-
-            Type type = snapshot.GetType();
-            PropertyInfo schemaProperty = type.GetProperty(
-                "SchemaVersion",
-                BindingFlags.Instance | BindingFlags.Public);
-            FieldInfo currentSchema = type.GetField(
-                "CurrentSchemaVersion",
-                BindingFlags.Static | BindingFlags.Public);
-            if (schemaProperty != null
-                && schemaProperty.PropertyType == typeof(int)
-                && currentSchema != null
-                && currentSchema.FieldType == typeof(int))
+            if (exactFieldOrder == null
+                || node.Fields.Count != exactFieldOrder.Length)
             {
-                int actual = (int)schemaProperty.GetValue(snapshot, null);
-                int expected = (int)currentSchema.GetValue(null);
-                if (actual != expected)
-                {
-                    return SaveComponentValidationResultV1.Reject(
-                        "snapshot-schema-unsupported");
-                }
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-object-shape-mismatch");
             }
-
-            PropertyInfo fingerprintProperty = type.GetProperty(
-                "Fingerprint",
-                BindingFlags.Instance | BindingFlags.Public);
-            if (fingerprintProperty == null
-                || fingerprintProperty.PropertyType != typeof(string))
+            for (int fieldIndex = 0;
+                fieldIndex < exactFieldOrder.Length;
+                fieldIndex++)
             {
-                return SaveComponentValidationResultV1.Accept();
-            }
-            string fingerprint = (string)fingerprintProperty.GetValue(
-                snapshot,
-                null);
-            if (string.IsNullOrWhiteSpace(fingerprint))
-            {
-                return SaveComponentValidationResultV1.Reject(
-                    "snapshot-fingerprint-missing");
-            }
-
-            MethodInfo hasValid = type.GetMethod(
-                "HasValidFingerprint",
-                BindingFlags.Instance | BindingFlags.Public,
-                null,
-                Type.EmptyTypes,
-                null);
-            if (hasValid != null && hasValid.ReturnType == typeof(bool))
-            {
-                bool valid = (bool)hasValid.Invoke(snapshot, null);
-                return valid
-                    ? SaveComponentValidationResultV1.Accept()
-                    : SaveComponentValidationResultV1.Reject(
-                        "snapshot-fingerprint-mismatch");
-            }
-
-            MethodInfo[] methods = type.GetMethods(
-                BindingFlags.Static | BindingFlags.Public);
-            for (int index = 0; index < methods.Length; index++)
-            {
-                MethodInfo method = methods[index];
                 if (!string.Equals(
-                    method.Name,
-                    "ComputeFingerprint",
-                    StringComparison.Ordinal)
-                    || method.ReturnType != typeof(string))
+                    node.Fields[fieldIndex].Name,
+                    exactFieldOrder[fieldIndex],
+                    StringComparison.Ordinal))
                 {
-                    continue;
+                    throw new CanonicalPayloadExceptionV1(
+                        "canonical-object-field-order-mismatch");
                 }
-
-                object[] arguments;
-                ParameterInfo[] parameters = method.GetParameters();
-                if (parameters.Length == 1
-                    && parameters[0].ParameterType.IsInstanceOfType(snapshot))
-                {
-                    arguments = new object[] { snapshot };
-                }
-                else if (!CanonicalSnapshotCodecV1.TryBuildFactoryArguments(
-                    snapshot,
-                    parameters,
-                    out arguments))
-                {
-                    continue;
-                }
-
-                string computed = (string)method.Invoke(null, arguments);
-                return string.Equals(
-                    computed,
-                    fingerprint,
-                    StringComparison.Ordinal)
-                    ? SaveComponentValidationResultV1.Accept()
-                    : SaveComponentValidationResultV1.Reject(
-                        "snapshot-fingerprint-mismatch");
             }
+        }
 
-            for (int index = 0; index < methods.Length; index++)
+        public CanonicalNodeV1 Next(string expectedName)
+        {
+            if (index >= node.Fields.Count
+                || !string.Equals(
+                    node.Fields[index].Name,
+                    expectedName,
+                    StringComparison.Ordinal))
             {
-                MethodInfo method = methods[index];
-                if (!string.Equals(
-                    method.Name,
-                    "CreateCanonical",
-                    StringComparison.Ordinal)
-                    || !type.IsAssignableFrom(method.ReturnType))
-                {
-                    continue;
-                }
-                object[] arguments;
-                if (!CanonicalSnapshotCodecV1.TryBuildFactoryArguments(
-                    snapshot,
-                    method.GetParameters(),
-                    out arguments))
-                {
-                    continue;
-                }
-                object canonical = method.Invoke(null, arguments);
-                string canonicalFingerprint = (string)fingerprintProperty.GetValue(
-                    canonical,
-                    null);
-                return string.Equals(
-                    canonicalFingerprint,
-                    fingerprint,
-                    StringComparison.Ordinal)
-                    ? SaveComponentValidationResultV1.Accept()
-                    : SaveComponentValidationResultV1.Reject(
-                        "snapshot-fingerprint-mismatch");
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-object-field-order-mismatch");
             }
+            return node.Fields[index++].Value;
+        }
+    }
 
-            // Immutable snapshot constructors that compute their own fingerprint are
-            // protected by the codec's byte-identical reserialization check.
-            return SaveComponentValidationResultV1.Accept();
+    public static class CanonicalValueV1
+    {
+        public static CanonicalFieldV1 Field(
+            string name,
+            CanonicalNodeV1 value)
+        {
+            return new CanonicalFieldV1(name, value);
+        }
+
+        public static CanonicalNodeV1 String(string value)
+        {
+            return value == null
+                ? CanonicalNodeV1.Null()
+                : CanonicalNodeV1.ScalarValue(value);
+        }
+
+        public static CanonicalNodeV1 RequiredString(string value)
+        {
+            return CanonicalNodeV1.ScalarValue(
+                value ?? throw new ArgumentNullException(nameof(value)));
+        }
+
+        public static CanonicalNodeV1 Int32(int value)
+        {
+            return CanonicalNodeV1.ScalarValue(
+                value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        public static CanonicalNodeV1 Int64(long value)
+        {
+            return CanonicalNodeV1.ScalarValue(
+                value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        public static CanonicalNodeV1 UInt64(ulong value)
+        {
+            return CanonicalNodeV1.ScalarValue(
+                value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        public static CanonicalNodeV1 Boolean(bool value)
+        {
+            return CanonicalNodeV1.ScalarValue(value ? "1" : "0");
+        }
+
+        public static CanonicalNodeV1 OptionalInt64(long? value)
+        {
+            return value.HasValue ? Int64(value.Value) : CanonicalNodeV1.Null();
+        }
+
+        public static string ReadRequiredString(CanonicalNodeV1 node)
+        {
+            if (node == null || node.Kind != CanonicalNodeKindV1.Scalar)
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-scalar-expected");
+            }
+            return node.Scalar;
+        }
+
+        public static string ReadOptionalString(CanonicalNodeV1 node)
+        {
+            if (node == null)
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-node-null-reference");
+            }
+            if (node.Kind == CanonicalNodeKindV1.Null)
+            {
+                return null;
+            }
+            return ReadRequiredString(node);
+        }
+
+        public static int ReadInt32(CanonicalNodeV1 node)
+        {
+            int value;
+            if (!int.TryParse(
+                ReadRequiredString(node),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out value))
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-int32-invalid");
+            }
+            return value;
+        }
+
+        public static long ReadInt64(CanonicalNodeV1 node)
+        {
+            long value;
+            if (!long.TryParse(
+                ReadRequiredString(node),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out value))
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-int64-invalid");
+            }
+            return value;
+        }
+
+        public static ulong ReadUInt64(CanonicalNodeV1 node)
+        {
+            ulong value;
+            if (!ulong.TryParse(
+                ReadRequiredString(node),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out value))
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-uint64-invalid");
+            }
+            return value;
+        }
+
+        public static long? ReadOptionalInt64(CanonicalNodeV1 node)
+        {
+            return node.Kind == CanonicalNodeKindV1.Null
+                ? (long?)null
+                : ReadInt64(node);
+        }
+
+        public static bool ReadBoolean(CanonicalNodeV1 node)
+        {
+            string value = ReadRequiredString(node);
+            if (value == "1") return true;
+            if (value == "0") return false;
+            throw new CanonicalPayloadExceptionV1(
+                "canonical-boolean-invalid");
+        }
+
+        public static IReadOnlyList<CanonicalNodeV1> ReadList(
+            CanonicalNodeV1 node)
+        {
+            if (node == null || node.Kind != CanonicalNodeKindV1.List)
+            {
+                throw new CanonicalPayloadExceptionV1(
+                    "canonical-list-expected");
+            }
+            return node.Items;
         }
     }
 }
