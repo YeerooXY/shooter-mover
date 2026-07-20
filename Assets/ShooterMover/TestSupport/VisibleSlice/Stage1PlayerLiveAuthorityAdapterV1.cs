@@ -10,6 +10,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
     [AddComponentMenu("")]
+    [DefaultExecutionOrder(10100)]
     [DisallowMultipleComponent]
     public sealed class Stage1PlayerLiveAuthorityAdapterV1 :
         Level1PlayerRuntimeAdapterV1
