@@ -20,6 +20,27 @@ namespace ShooterMover.Application.Weapons.Execution
             long shotSequence,
             ProjectileOrdinal ordinal)
         {
+            return DirectionFor(
+                baseDirection,
+                spreadDegrees,
+                seed,
+                operationId,
+                equipmentId,
+                shotSequence,
+                1,
+                ordinal);
+        }
+
+        public static WeaponVector2 DirectionFor(
+            WeaponVector2 baseDirection,
+            double spreadDegrees,
+            ulong seed,
+            FireOperationId operationId,
+            EquipmentInstanceId equipmentId,
+            long shotSequence,
+            int projectileCount,
+            ProjectileOrdinal ordinal)
+        {
             if (baseDirection == null)
             {
                 throw new ArgumentNullException(nameof(baseDirection));
@@ -40,10 +61,28 @@ namespace ShooterMover.Application.Weapons.Execution
                 throw new ArgumentNullException(nameof(ordinal));
             }
 
+            if (projectileCount < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(projectileCount));
+            }
+
+            if (ordinal.Value >= projectileCount)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            }
+
+            if (double.IsNaN(spreadDegrees)
+                || double.IsInfinity(spreadDegrees)
+                || spreadDegrees < 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(spreadDegrees));
+            }
+
             string facts = seed.ToString(CultureInfo.InvariantCulture)
                 + "|" + operationId
                 + "|" + equipmentId
                 + "|" + shotSequence.ToString(CultureInfo.InvariantCulture)
+                + "|" + projectileCount.ToString(CultureInfo.InvariantCulture)
                 + "|" + ordinal;
 
             ulong hash = Offset;
@@ -53,9 +92,66 @@ namespace ShooterMover.Application.Weapons.Execution
                 hash *= Prime;
             }
 
+            // FNV changes from adjacent decimal ordinals are concentrated in its low
+            // bits. The floating-point conversion discards eleven low bits, which made
+            // shotgun ordinals 0..6 collapse onto one angle. Avalanche before sampling
+            // so every immutable pellet identity influences the retained high bits.
+            hash = Avalanche(hash);
             double unit = (hash >> 11) * Unit53;
-            double offsetDegrees = (unit - 0.5d) * spreadDegrees;
-            return baseDirection.Normalized.RotateDegrees(offsetDegrees).Normalized;
+            double offsetDegrees = OffsetDegrees(
+                spreadDegrees,
+                projectileCount,
+                ordinal.Value,
+                unit);
+            return baseDirection.Normalized
+                .RotateDegrees(offsetDegrees)
+                .Normalized;
+        }
+
+        private static double OffsetDegrees(
+            double spreadDegrees,
+            int projectileCount,
+            int ordinal,
+            double unit)
+        {
+            if (spreadDegrees <= 0d)
+            {
+                return 0d;
+            }
+
+            if (projectileCount == 1)
+            {
+                return (unit - 0.5d) * spreadDegrees;
+            }
+
+            // Multi-projectile weapons use a deterministic stratified fan. Each
+            // projectile owns one ordered lane across the configured spread, with a
+            // small deterministic jitter inside that lane. This keeps spread organic
+            // while guaranteeing readable, non-overlapping centre-lines.
+            double halfSpread = spreadDegrees * 0.5d;
+            double step = spreadDegrees / (projectileCount - 1);
+            double laneCenter = -halfSpread + (ordinal * step);
+            double jitter = (unit - 0.5d) * step * 0.2d;
+            double result = laneCenter + jitter;
+            if (result < -halfSpread)
+            {
+                return -halfSpread;
+            }
+            if (result > halfSpread)
+            {
+                return halfSpread;
+            }
+            return result;
+        }
+
+        private static ulong Avalanche(ulong value)
+        {
+            value ^= value >> 30;
+            value *= 0xbf58476d1ce4e5b9UL;
+            value ^= value >> 27;
+            value *= 0x94d049bb133111ebUL;
+            value ^= value >> 31;
+            return value;
         }
     }
 
@@ -94,7 +190,9 @@ namespace ShooterMover.Application.Weapons.Execution
             return WeaponBehaviorBuildResult.Accept(new WeaponEffectBatch(effects));
         }
 
-        private static WeaponVector2 Direction(WeaponBehaviorContext context, int index)
+        private static WeaponVector2 Direction(
+            WeaponBehaviorContext context,
+            int index)
         {
             return WeaponDeterministicSpread.DirectionFor(
                 context.Command.AimDirection,
@@ -103,6 +201,7 @@ namespace ShooterMover.Application.Weapons.Execution
                 context.Command.FireOperationId,
                 context.Command.EquipmentInstanceId,
                 context.ShotSequence,
+                context.Profile.ProjectileCount,
                 new ProjectileOrdinal(index));
         }
     }
@@ -132,6 +231,7 @@ namespace ShooterMover.Application.Weapons.Execution
                     context.Command.FireOperationId,
                     context.Command.EquipmentInstanceId,
                     context.ShotSequence,
+                    context.Profile.ProjectileCount,
                     new ProjectileOrdinal(index));
                 effects.Add(
                     new ExplosiveProjectileEffect(
@@ -176,6 +276,7 @@ namespace ShooterMover.Application.Weapons.Execution
                     context.Command.FireOperationId,
                     context.Command.EquipmentInstanceId,
                     context.ShotSequence,
+                    context.Profile.ProjectileCount,
                     new ProjectileOrdinal(index));
                 effects.Add(
                     new DamageOverTimeProjectileEffect(
