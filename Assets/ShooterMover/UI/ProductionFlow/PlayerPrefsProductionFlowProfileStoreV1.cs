@@ -96,8 +96,11 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 throw new ArgumentNullException(nameof(record));
             }
+            PlayerRouteProfilePayloadV1 normalizedPayload =
+                ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
+                    record.Payload);
             PlayerRouteProfileEnvelopeV1 envelope =
-                record.Payload.ToEnvelope();
+                normalizedPayload.ToEnvelope();
 
             PlayerPrefs.SetString(
                 DisplayNameKeyFor(slotIndex),
