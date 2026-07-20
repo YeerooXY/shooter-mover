@@ -47,8 +47,9 @@ namespace ShooterMover.Contracts.Flow.Session
     }
 
     /// <summary>
-    /// Raw persistence/navigation envelope. It deliberately stores strings so invalid
-    /// external data can be rejected before any StableId or live route state is created.
+    /// Raw persistence/navigation envelope. A null equipment identity means the physical
+    /// position is intentionally unbound for the selected character layout. Empty text is
+    /// still malformed external data and is rejected.
     /// </summary>
     public sealed class PlayerRouteWeaponSlotEnvelopeV1
     {
@@ -67,7 +68,8 @@ namespace ShooterMover.Contracts.Flow.Session
 
     public sealed class PlayerRouteProfileEnvelopeV1
     {
-        private readonly ReadOnlyCollection<PlayerRouteWeaponSlotEnvelopeV1> weaponSlots;
+        private readonly ReadOnlyCollection<PlayerRouteWeaponSlotEnvelopeV1>
+            weaponSlots;
 
         public PlayerRouteProfileEnvelopeV1(
             int schemaVersion,
@@ -104,7 +106,13 @@ namespace ShooterMover.Contracts.Flow.Session
         public string Fingerprint { get; }
     }
 
-    public sealed class PlayerRouteWeaponSlotV1 : IEquatable<PlayerRouteWeaponSlotV1>
+    /// <summary>
+    /// Compatibility storage position. The production mount policy maps this stable
+    /// position to a physical mount identity. The binding itself owns only the exact
+    /// equipment-instance identity, or null when that position is unavailable.
+    /// </summary>
+    public sealed class PlayerRouteWeaponSlotV1 :
+        IEquatable<PlayerRouteWeaponSlotV1>
     {
         internal PlayerRouteWeaponSlotV1(
             StableId weaponSlotStableId,
@@ -112,19 +120,24 @@ namespace ShooterMover.Contracts.Flow.Session
         {
             WeaponSlotStableId = weaponSlotStableId
                 ?? throw new ArgumentNullException(nameof(weaponSlotStableId));
-            EquipmentInstanceStableId = equipmentInstanceStableId
-                ?? throw new ArgumentNullException(nameof(equipmentInstanceStableId));
+            EquipmentInstanceStableId = equipmentInstanceStableId;
         }
 
         public StableId WeaponSlotStableId { get; }
 
         public StableId EquipmentInstanceStableId { get; }
 
+        public bool IsBound
+        {
+            get { return EquipmentInstanceStableId != null; }
+        }
+
         public bool Equals(PlayerRouteWeaponSlotV1 other)
         {
             return !ReferenceEquals(other, null)
                 && WeaponSlotStableId == other.WeaponSlotStableId
-                && EquipmentInstanceStableId == other.EquipmentInstanceStableId;
+                && EquipmentInstanceStableId
+                    == other.EquipmentInstanceStableId;
         }
 
         public override bool Equals(object obj)
@@ -134,12 +147,17 @@ namespace ShooterMover.Contracts.Flow.Session
 
         public override int GetHashCode()
         {
-            return PlayerRouteProfilePayloadV1.OrdinalHash(ToCanonicalString());
+            return PlayerRouteProfilePayloadV1.OrdinalHash(
+                ToCanonicalString());
         }
 
         public string ToCanonicalString()
         {
-            return WeaponSlotStableId + "|" + EquipmentInstanceStableId;
+            return WeaponSlotStableId
+                + "|"
+                + (EquipmentInstanceStableId == null
+                    ? "unbound"
+                    : EquipmentInstanceStableId.ToString());
         }
     }
 
@@ -187,26 +205,30 @@ namespace ShooterMover.Contracts.Flow.Session
     }
 
     /// <summary>
-    /// Immutable V1 route payload shared by every menu/hub destination. Ordered slot
-    /// bindings preserve concrete equipment-instance identities, not definitions.
+    /// Immutable route payload shared by Hub destinations. It retains four stable
+    /// compatibility positions, while character policy decides which positions are
+    /// configurable and currently enabled. Unavailable positions remain unbound.
     /// </summary>
     public sealed class PlayerRouteProfilePayloadV1 :
         IEquatable<PlayerRouteProfilePayloadV1>
     {
         public const int CurrentSchemaVersion = 1;
         public const int WeaponSlotCount = 4;
-        public const string CurrentContractStableIdText = "route-profile.player-v1";
+        public const string CurrentContractStableIdText =
+            "route-profile.player-v1";
 
-        private static readonly ReadOnlyCollection<StableId> expectedWeaponSlotIds =
-            new ReadOnlyCollection<StableId>(new List<StableId>
-            {
-                StableId.Parse("weapon-slot.slot-1"),
-                StableId.Parse("weapon-slot.slot-2"),
-                StableId.Parse("weapon-slot.slot-3"),
-                StableId.Parse("weapon-slot.slot-4"),
-            });
+        private static readonly ReadOnlyCollection<StableId>
+            expectedWeaponSlotIds =
+                new ReadOnlyCollection<StableId>(new List<StableId>
+                {
+                    StableId.Parse("weapon-slot.slot-1"),
+                    StableId.Parse("weapon-slot.slot-2"),
+                    StableId.Parse("weapon-slot.slot-3"),
+                    StableId.Parse("weapon-slot.slot-4"),
+                });
 
-        private readonly ReadOnlyCollection<PlayerRouteWeaponSlotV1> weaponSlots;
+        private readonly ReadOnlyCollection<PlayerRouteWeaponSlotV1>
+            weaponSlots;
         private readonly string canonicalText;
 
         private PlayerRouteProfilePayloadV1(
@@ -217,12 +239,17 @@ namespace ShooterMover.Contracts.Flow.Session
             SchemaVersion = CurrentSchemaVersion;
             ContractStableId = StableId.Parse(CurrentContractStableIdText);
             SelectedCharacterStableId = selectedCharacterStableId
-                ?? throw new ArgumentNullException(nameof(selectedCharacterStableId));
+                ?? throw new ArgumentNullException(
+                    nameof(selectedCharacterStableId));
             LoadoutProfileStableId = loadoutProfileStableId
-                ?? throw new ArgumentNullException(nameof(loadoutProfileStableId));
-            this.weaponSlots = new ReadOnlyCollection<PlayerRouteWeaponSlotV1>(
-                new List<PlayerRouteWeaponSlotV1>(
-                    weaponSlots ?? throw new ArgumentNullException(nameof(weaponSlots))));
+                ?? throw new ArgumentNullException(
+                    nameof(loadoutProfileStableId));
+            this.weaponSlots =
+                new ReadOnlyCollection<PlayerRouteWeaponSlotV1>(
+                    new List<PlayerRouteWeaponSlotV1>(
+                        weaponSlots
+                        ?? throw new ArgumentNullException(
+                            nameof(weaponSlots))));
             canonicalText = BuildCanonicalText(
                 SchemaVersion,
                 ContractStableId,
@@ -259,49 +286,56 @@ namespace ShooterMover.Contracts.Flow.Session
         {
             if (selectedCharacterStableId == null)
             {
-                throw new ArgumentNullException(nameof(selectedCharacterStableId));
+                throw new ArgumentNullException(
+                    nameof(selectedCharacterStableId));
             }
-
             if (loadoutProfileStableId == null)
             {
-                throw new ArgumentNullException(nameof(loadoutProfileStableId));
+                throw new ArgumentNullException(
+                    nameof(loadoutProfileStableId));
             }
-
             if (orderedEquipmentInstanceStableIds == null)
             {
-                throw new ArgumentNullException(nameof(orderedEquipmentInstanceStableIds));
+                throw new ArgumentNullException(
+                    nameof(orderedEquipmentInstanceStableIds));
             }
 
-            var instances = new List<StableId>(orderedEquipmentInstanceStableIds);
+            var instances = new List<StableId>(
+                orderedEquipmentInstanceStableIds);
             if (instances.Count != WeaponSlotCount)
             {
                 throw new ArgumentException(
-                    "Exactly four ordered weapon equipment-instance identities are required.",
+                    "Exactly four ordered weapon-position bindings are required.",
                     nameof(orderedEquipmentInstanceStableIds));
             }
 
             var seenInstances = new HashSet<StableId>();
             var slots = new List<PlayerRouteWeaponSlotV1>(WeaponSlotCount);
+            int boundCount = 0;
             for (int index = 0; index < WeaponSlotCount; index++)
             {
                 StableId instanceStableId = instances[index];
-                if (instanceStableId == null)
+                if (instanceStableId != null)
                 {
-                    throw new ArgumentException(
-                        "Equipment-instance identities cannot contain null.",
-                        nameof(orderedEquipmentInstanceStableIds));
-                }
-
-                if (!seenInstances.Add(instanceStableId))
-                {
-                    throw new ArgumentException(
-                        "Equipment-instance identities must be unique across weapon slots.",
-                        nameof(orderedEquipmentInstanceStableIds));
+                    if (!seenInstances.Add(instanceStableId))
+                    {
+                        throw new ArgumentException(
+                            "Bound equipment-instance identities must be unique.",
+                            nameof(orderedEquipmentInstanceStableIds));
+                    }
+                    boundCount++;
                 }
 
                 slots.Add(new PlayerRouteWeaponSlotV1(
                     expectedWeaponSlotIds[index],
                     instanceStableId));
+            }
+
+            if (boundCount == 0)
+            {
+                throw new ArgumentException(
+                    "At least one weapon position must be bound.",
+                    nameof(orderedEquipmentInstanceStableIds));
             }
 
             return new PlayerRouteProfilePayloadV1(
@@ -319,44 +353,51 @@ namespace ShooterMover.Contracts.Flow.Session
                     PlayerRouteProfileValidationStatusV1.NullEnvelope,
                     "route-profile-envelope-null");
             }
-
             if (envelope.SchemaVersion != CurrentSchemaVersion)
             {
                 return Reject(
-                    PlayerRouteProfileValidationStatusV1.UnsupportedSchemaVersion,
+                    PlayerRouteProfileValidationStatusV1
+                        .UnsupportedSchemaVersion,
                     "route-profile-schema-unsupported");
             }
-
             if (string.IsNullOrWhiteSpace(envelope.ContractStableId))
             {
                 return Reject(
-                    PlayerRouteProfileValidationStatusV1.MissingContractIdentity,
+                    PlayerRouteProfileValidationStatusV1
+                        .MissingContractIdentity,
                     "route-profile-contract-missing");
             }
 
             StableId contractStableId;
-            if (!StableId.TryParse(envelope.ContractStableId, out contractStableId))
+            if (!StableId.TryParse(
+                envelope.ContractStableId,
+                out contractStableId))
             {
                 return Reject(
-                    PlayerRouteProfileValidationStatusV1.MalformedContractIdentity,
+                    PlayerRouteProfileValidationStatusV1
+                        .MalformedContractIdentity,
                     "route-profile-contract-malformed");
             }
-
-            if (contractStableId != StableId.Parse(CurrentContractStableIdText))
+            if (contractStableId
+                != StableId.Parse(CurrentContractStableIdText))
             {
                 return Reject(
-                    PlayerRouteProfileValidationStatusV1.ContractIdentityMismatch,
+                    PlayerRouteProfileValidationStatusV1
+                        .ContractIdentityMismatch,
                     "route-profile-contract-mismatch");
             }
 
             StableId selectedCharacterStableId;
-            PlayerRouteProfileValidationResultV1 identityFailure = TryParseRequiredIdentity(
-                envelope.SelectedCharacterStableId,
-                PlayerRouteProfileValidationStatusV1.MissingCharacterIdentity,
-                PlayerRouteProfileValidationStatusV1.MalformedCharacterIdentity,
-                "route-profile-character-missing",
-                "route-profile-character-malformed",
-                out selectedCharacterStableId);
+            PlayerRouteProfileValidationResultV1 identityFailure =
+                TryParseRequiredIdentity(
+                    envelope.SelectedCharacterStableId,
+                    PlayerRouteProfileValidationStatusV1
+                        .MissingCharacterIdentity,
+                    PlayerRouteProfileValidationStatusV1
+                        .MalformedCharacterIdentity,
+                    "route-profile-character-missing",
+                    "route-profile-character-malformed",
+                    out selectedCharacterStableId);
             if (identityFailure != null)
             {
                 return identityFailure;
@@ -365,8 +406,10 @@ namespace ShooterMover.Contracts.Flow.Session
             StableId loadoutProfileStableId;
             identityFailure = TryParseRequiredIdentity(
                 envelope.LoadoutProfileStableId,
-                PlayerRouteProfileValidationStatusV1.MissingLoadoutProfileIdentity,
-                PlayerRouteProfileValidationStatusV1.MalformedLoadoutProfileIdentity,
+                PlayerRouteProfileValidationStatusV1
+                    .MissingLoadoutProfileIdentity,
+                PlayerRouteProfileValidationStatusV1
+                    .MalformedLoadoutProfileIdentity,
                 "route-profile-loadout-missing",
                 "route-profile-loadout-malformed",
                 out loadoutProfileStableId);
@@ -381,83 +424,105 @@ namespace ShooterMover.Contracts.Flow.Session
                     PlayerRouteProfileValidationStatusV1.MissingWeaponSlots,
                     "route-profile-slots-missing");
             }
-
             if (envelope.WeaponSlots.Count != WeaponSlotCount)
             {
                 return Reject(
-                    PlayerRouteProfileValidationStatusV1.WeaponSlotCountMismatch,
+                    PlayerRouteProfileValidationStatusV1
+                        .WeaponSlotCountMismatch,
                     "route-profile-slot-count-mismatch");
             }
 
-            var parsedSlots = new List<PlayerRouteWeaponSlotV1>(WeaponSlotCount);
+            var parsedSlots = new List<PlayerRouteWeaponSlotV1>(
+                WeaponSlotCount);
             var seenSlotIds = new HashSet<StableId>();
             var seenInstanceIds = new HashSet<StableId>();
-            for (int index = 0; index < envelope.WeaponSlots.Count; index++)
+            int boundCount = 0;
+            for (int index = 0;
+                index < envelope.WeaponSlots.Count;
+                index++)
             {
-                PlayerRouteWeaponSlotEnvelopeV1 slot = envelope.WeaponSlots[index];
+                PlayerRouteWeaponSlotEnvelopeV1 slot =
+                    envelope.WeaponSlots[index];
                 if (slot == null)
                 {
                     return Reject(
                         PlayerRouteProfileValidationStatusV1.NullWeaponSlot,
                         "route-profile-slot-null");
                 }
-
                 if (string.IsNullOrWhiteSpace(slot.WeaponSlotStableId))
                 {
                     return Reject(
-                        PlayerRouteProfileValidationStatusV1.MissingWeaponSlotIdentity,
+                        PlayerRouteProfileValidationStatusV1
+                            .MissingWeaponSlotIdentity,
                         "route-profile-slot-id-missing");
                 }
 
                 StableId slotStableId;
-                if (!StableId.TryParse(slot.WeaponSlotStableId, out slotStableId))
+                if (!StableId.TryParse(
+                    slot.WeaponSlotStableId,
+                    out slotStableId))
                 {
                     return Reject(
-                        PlayerRouteProfileValidationStatusV1.MalformedWeaponSlotIdentity,
+                        PlayerRouteProfileValidationStatusV1
+                            .MalformedWeaponSlotIdentity,
                         "route-profile-slot-id-malformed");
                 }
-
                 if (!seenSlotIds.Add(slotStableId))
                 {
                     return Reject(
-                        PlayerRouteProfileValidationStatusV1.DuplicateWeaponSlotIdentity,
+                        PlayerRouteProfileValidationStatusV1
+                            .DuplicateWeaponSlotIdentity,
                         "route-profile-slot-id-duplicate");
                 }
-
                 if (slotStableId != expectedWeaponSlotIds[index])
                 {
                     return Reject(
-                        PlayerRouteProfileValidationStatusV1.UnexpectedWeaponSlotIdentity,
+                        PlayerRouteProfileValidationStatusV1
+                            .UnexpectedWeaponSlotIdentity,
                         "route-profile-slot-order-or-id-mismatch");
                 }
 
-                if (string.IsNullOrWhiteSpace(slot.EquipmentInstanceStableId))
+                StableId equipmentInstanceStableId = null;
+                if (slot.EquipmentInstanceStableId != null)
                 {
-                    return Reject(
-                        PlayerRouteProfileValidationStatusV1.MissingEquipmentInstanceIdentity,
-                        "route-profile-equipment-instance-missing");
-                }
-
-                StableId equipmentInstanceStableId;
-                if (!StableId.TryParse(
-                    slot.EquipmentInstanceStableId,
-                    out equipmentInstanceStableId))
-                {
-                    return Reject(
-                        PlayerRouteProfileValidationStatusV1.MalformedEquipmentInstanceIdentity,
-                        "route-profile-equipment-instance-malformed");
-                }
-
-                if (!seenInstanceIds.Add(equipmentInstanceStableId))
-                {
-                    return Reject(
-                        PlayerRouteProfileValidationStatusV1.DuplicateEquipmentInstanceIdentity,
-                        "route-profile-equipment-instance-duplicate");
+                    if (string.IsNullOrWhiteSpace(
+                        slot.EquipmentInstanceStableId))
+                    {
+                        return Reject(
+                            PlayerRouteProfileValidationStatusV1
+                                .MissingEquipmentInstanceIdentity,
+                            "route-profile-equipment-instance-missing");
+                    }
+                    if (!StableId.TryParse(
+                        slot.EquipmentInstanceStableId,
+                        out equipmentInstanceStableId))
+                    {
+                        return Reject(
+                            PlayerRouteProfileValidationStatusV1
+                                .MalformedEquipmentInstanceIdentity,
+                            "route-profile-equipment-instance-malformed");
+                    }
+                    if (!seenInstanceIds.Add(equipmentInstanceStableId))
+                    {
+                        return Reject(
+                            PlayerRouteProfileValidationStatusV1
+                                .DuplicateEquipmentInstanceIdentity,
+                            "route-profile-equipment-instance-duplicate");
+                    }
+                    boundCount++;
                 }
 
                 parsedSlots.Add(new PlayerRouteWeaponSlotV1(
                     slotStableId,
                     equipmentInstanceStableId));
+            }
+
+            if (boundCount == 0)
+            {
+                return Reject(
+                    PlayerRouteProfileValidationStatusV1
+                        .MissingEquipmentInstanceIdentity,
+                    "route-profile-all-weapon-positions-unbound");
             }
 
             var candidate = new PlayerRouteProfilePayloadV1(
@@ -470,7 +535,6 @@ namespace ShooterMover.Contracts.Flow.Session
                     PlayerRouteProfileValidationStatusV1.MissingFingerprint,
                     "route-profile-fingerprint-missing");
             }
-
             if (!string.Equals(
                 candidate.Fingerprint,
                 envelope.Fingerprint,
@@ -486,12 +550,17 @@ namespace ShooterMover.Contracts.Flow.Session
 
         public PlayerRouteProfileEnvelopeV1 ToEnvelope()
         {
-            var slots = new List<PlayerRouteWeaponSlotEnvelopeV1>(weaponSlots.Count);
+            var slots = new List<PlayerRouteWeaponSlotEnvelopeV1>(
+                weaponSlots.Count);
             for (int index = 0; index < weaponSlots.Count; index++)
             {
                 slots.Add(new PlayerRouteWeaponSlotEnvelopeV1(
                     weaponSlots[index].WeaponSlotStableId.ToString(),
-                    weaponSlots[index].EquipmentInstanceStableId.ToString()));
+                    weaponSlots[index].EquipmentInstanceStableId == null
+                        ? null
+                        : weaponSlots[index]
+                            .EquipmentInstanceStableId
+                            .ToString()));
             }
 
             return new PlayerRouteProfileEnvelopeV1(
@@ -508,8 +577,11 @@ namespace ShooterMover.Contracts.Flow.Session
             var instances = new List<StableId>(weaponSlots.Count);
             for (int index = 0; index < weaponSlots.Count; index++)
             {
-                instances.Add(StableId.Parse(
-                    weaponSlots[index].EquipmentInstanceStableId.ToString()));
+                StableId source =
+                    weaponSlots[index].EquipmentInstanceStableId;
+                instances.Add(source == null
+                    ? null
+                    : StableId.Parse(source.ToString()));
             }
 
             return Create(
@@ -529,8 +601,14 @@ namespace ShooterMover.Contracts.Flow.Session
         public bool Equals(PlayerRouteProfilePayloadV1 other)
         {
             return !ReferenceEquals(other, null)
-                && string.Equals(canonicalText, other.canonicalText, StringComparison.Ordinal)
-                && string.Equals(Fingerprint, other.Fingerprint, StringComparison.Ordinal);
+                && string.Equals(
+                    canonicalText,
+                    other.canonicalText,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    Fingerprint,
+                    other.Fingerprint,
+                    StringComparison.Ordinal);
         }
 
         public override bool Equals(object obj)
@@ -561,30 +639,28 @@ namespace ShooterMover.Contracts.Flow.Session
                     hash ^= source[index];
                     hash *= prime;
                 }
-
                 return (int)hash;
             }
         }
 
-        private static PlayerRouteProfileValidationResultV1 TryParseRequiredIdentity(
-            string text,
-            PlayerRouteProfileValidationStatusV1 missingStatus,
-            PlayerRouteProfileValidationStatusV1 malformedStatus,
-            string missingCode,
-            string malformedCode,
-            out StableId stableId)
+        private static PlayerRouteProfileValidationResultV1
+            TryParseRequiredIdentity(
+                string text,
+                PlayerRouteProfileValidationStatusV1 missingStatus,
+                PlayerRouteProfileValidationStatusV1 malformedStatus,
+                string missingCode,
+                string malformedCode,
+                out StableId stableId)
         {
             stableId = null;
             if (string.IsNullOrWhiteSpace(text))
             {
                 return Reject(missingStatus, missingCode);
             }
-
             if (!StableId.TryParse(text, out stableId))
             {
                 return Reject(malformedStatus, malformedCode);
             }
-
             return null;
         }
 
@@ -592,7 +668,9 @@ namespace ShooterMover.Contracts.Flow.Session
             PlayerRouteProfileValidationStatusV1 status,
             string rejectionCode)
         {
-            return PlayerRouteProfileValidationResultV1.Reject(status, rejectionCode);
+            return PlayerRouteProfileValidationResultV1.Reject(
+                status,
+                rejectionCode);
         }
 
         private static string BuildCanonicalText(
@@ -616,14 +694,18 @@ namespace ShooterMover.Contracts.Flow.Session
             {
                 Append(
                     builder,
-                    "slot-" + index.ToString("D2", CultureInfo.InvariantCulture),
+                    "slot-" + index.ToString(
+                        "D2",
+                        CultureInfo.InvariantCulture),
                     slots[index].ToCanonicalString());
             }
-
             return builder.ToString();
         }
 
-        private static void Append(StringBuilder builder, string name, string value)
+        private static void Append(
+            StringBuilder builder,
+            string name,
+            string value)
         {
             string safe = value ?? string.Empty;
             builder.Append(name)
@@ -636,7 +718,8 @@ namespace ShooterMover.Contracts.Flow.Session
 
         private static string ComputeFingerprint(string canonicalText)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(canonicalText ?? string.Empty);
+            byte[] bytes = Encoding.UTF8.GetBytes(
+                canonicalText ?? string.Empty);
             byte[] digest;
             using (SHA256 sha256 = SHA256.Create())
             {
@@ -646,9 +729,10 @@ namespace ShooterMover.Contracts.Flow.Session
             var builder = new StringBuilder(digest.Length * 2);
             for (int index = 0; index < digest.Length; index++)
             {
-                builder.Append(digest[index].ToString("x2", CultureInfo.InvariantCulture));
+                builder.Append(digest[index].ToString(
+                    "x2",
+                    CultureInfo.InvariantCulture));
             }
-
             return builder.ToString();
         }
     }
