@@ -17,7 +17,6 @@ using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.TestSupport.VisibleSlice;
 using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
@@ -134,33 +133,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             if (!installed)
             {
                 TryInstall();
-                return;
-            }
-
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return;
-            }
-
-            if (keyboard.digit4Key.wasPressedThisFrame && ricochetSelected)
-            {
-                RebuildFourthSlot(ArcDefinitionId, "Arc Gun", false, 3);
-            }
-            else if (keyboard.digit5Key.wasPressedThisFrame)
-            {
-                if (!ricochetSelected)
-                {
-                    RebuildFourthSlot(RicochetDefinitionId, "Ricochet Gun", true, 3);
-                }
-                else
-                {
-                    InventoryWeaponRuntimeComposition runtime = ReadWeapons();
-                    if (runtime != null)
-                    {
-                        runtime.SelectSlot(3);
-                    }
-                }
             }
         }
 
@@ -215,6 +187,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 SetDiagnostic("Five-weapon repair could not resolve the live cutover fields.");
                 enabled = false;
+                return;
+            }
+
+            if (controller.LoadoutSelector != null && controller.LoadoutSelector.Visible)
+            {
                 return;
             }
 

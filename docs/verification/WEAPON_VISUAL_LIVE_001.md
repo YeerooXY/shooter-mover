@@ -19,8 +19,8 @@ The cutover catalog also exposed Blaster, Shotgun, Rocket Launcher, and Flamethr
 
 `Stage1WeaponPresentationRepairV1` is installed only for the existing Stage 1 visible-slice scene.
 
-- Blaster, Shotgun, Rocket Launcher, Arc Gun, and Ricochet Gun are available with keys `1` through `5`.
-- The immutable route payload remains four-slot truth. Keys `4` and `5` select deterministic Arc/Ricochet alternatives for the fourth local slice slot without rewriting the persisted profile.
+- Blaster, Shotgun, Rocket Launcher, Arc Gun, and Ricochet Gun are available through the pre-arena loadout selector.
+- The loadout is confirmed before entering the arena and remains immutable during combat. There are no in-arena weapon-switch keys.
 - Every fire request still goes through `InventoryBackedWeaponExecutionAdapter` and WPN-CORE-002.
 - Projectile visuals use generated 24x12 sprites, dedicated child transforms, higher sorting order, and readable trails.
 - Projectile root scale remains `Vector3.one`; visual size no longer changes the trigger collider.
@@ -47,6 +47,6 @@ Because the production route model intentionally has exactly four weapon slots, 
 8. Press `4`; confirm Arc Gun draws an energized line and damages no more than primary plus three targets.
 9. Press `5`; confirm Ricochet Gun visibly reflects from walls no more than twice and terminates on enemy contact.
 10. Restart with `R`; confirm firing still works under the new lifecycle generation.
-11. Repeat rapid switching and firing; confirm no duplicate award, damage, or scene authority appears.
+11. Repeat restart and firing; confirm no duplicate award, damage, or scene authority appears.
 
 No Unity execution result is claimed from the connector-only environment.
