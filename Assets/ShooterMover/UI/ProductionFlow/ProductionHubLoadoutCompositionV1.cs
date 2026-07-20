@@ -10,9 +10,9 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
-    /// Persistent production composition for the Hub inventory/loadout screen. The
-    /// production-flow coordinator remains the route/profile persistence owner; this
-    /// component supplies the shared holdings and loadout authorities only.
+    /// Persistent production composition for one active profile. The flow coordinator
+    /// remains persistence owner; this component supplies profile-local holdings,
+    /// class-normalized mount bindings, and the loadout authority.
     /// </summary>
     [DefaultExecutionOrder(-31900)]
     [DisallowMultipleComponent]
@@ -95,7 +95,6 @@ namespace ShooterMover.UI.ProductionFlow
                 existing = flow.gameObject
                     .AddComponent<ProductionHubLoadoutCompositionV1>();
             }
-
             instance = existing;
         }
 
@@ -106,7 +105,6 @@ namespace ShooterMover.UI.ProductionFlow
                 Destroy(this);
                 return;
             }
-
             instance = this;
             coordinator = GetComponent<ProductionFlowCoordinatorV1>();
         }
@@ -152,7 +150,6 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 return;
             }
-
             HandleConfirmed(boundController.LastResult.RoutePayload);
         }
 
@@ -235,10 +232,12 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
+            PlayerRouteProfilePayloadV1 normalizedPayload =
+                runtime.RoutePayload;
             if (ReferenceEquals(boundController, controller)
                 && string.Equals(
                     boundPayloadFingerprint,
-                    currentProfile.Payload.Fingerprint,
+                    normalizedPayload.Fingerprint,
                     StringComparison.Ordinal)
                 && controller.IsConfigured)
             {
@@ -252,12 +251,11 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime.LoadoutAuthority);
             controller.Present(
                 HubRouteV1.Inventory,
-                currentProfile.Payload);
+                normalizedPayload);
             controller.Confirmed -= HandleConfirmed;
             controller.Confirmed += HandleConfirmed;
             boundController = controller;
-            boundPayloadFingerprint =
-                currentProfile.Payload.Fingerprint;
+            boundPayloadFingerprint = normalizedPayload.Fingerprint;
         }
 
         private void DetachBoundController()
