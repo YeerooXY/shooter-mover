@@ -58,26 +58,31 @@ The Level 1 scene adapter consumes the immutable impact and creates the existing
 
 Trusted participant attribution remains resolved from the exact source actor identity registered by the Level 1 composition. Client-supplied participant claims remain unused.
 
-## Naming migration
+## Naming migration completed here
 
-The runtime implementation now has the canonical name:
+The runtime implementation now has a canonical production path and name:
 
-- `Level1PlayerRuntimeSceneAdapterV1`
+- `Assets/ShooterMover/Production/Level1/Level1PlayerRuntimeSceneAdapterV1.cs`;
+- `ShooterMover.UnityAdapters.Production.Level1.Level1PlayerRuntimeSceneAdapterV1`.
 
-The serialized-era name remains only as a zero-logic compatibility subclass:
+The serialized-era script remains only as a zero-logic compatibility subclass:
 
-- `Stage1PlayerLiveAuthorityAdapterV1`
+- `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1PlayerLiveAuthorityAdapterV1.cs`;
+- `Stage1PlayerLiveAuthorityAdapterV1`.
 
-The old file and Unity GUID remain in place so the retained controller and existing tests do not lose their serialized component identity.
+The old script and Unity GUID remain in place so the retained scene/controller and existing tests do not lose their serialized component identity. It contains no player state, enemy registration, projectile ledger, damage routing, HUD routing, restart logic, or lifecycle parsing.
 
-The broader serialized migration remains separate:
+## Serialized scene-root migration deliberately isolated
+
+The broader rename remains a separate migration:
 
 - `Stage1VisibleSliceController`;
 - `Stage1VisibleSlice.unity`;
-- Visible Slice camera, HUD, room-presentation, and loadout presentation names;
-- production composition fields currently typed to the retained controller.
+- Visible Slice camera, HUD, room-presentation, and loadout-presentation names;
+- `Stage1PlayableLoopCompositionV1` and its direct controller dependency;
+- the reflection-based legacy-loop retirement seam.
 
-That migration must preserve `.meta` GUIDs, update build settings and scene paths, and pass an Editor scene-open plus Bootstrap-to-Level-1 smoke run. It is not safe to perform as a connector-only blind path rename.
+That migration must preserve `.meta` GUIDs, update build settings and scene paths, remove the production dependency on `ShooterMover.TestSupport.*`, and pass an Editor scene-open plus Bootstrap-to-Level-1 smoke run. Moving that large serialized root inside the combat fix would mix behavior change, source ownership, scene routing, and serialization risk in one unprovable patch.
 
 ## Runtime registrations in this version
 
@@ -92,7 +97,7 @@ Both use the same router. Registering a future ranged enemy requires supplying a
 
 `EnemyProjectileDamageRoutingPlayModeTests` proves:
 
-- the serialized old component is a compatibility subclass of the canonical implementation;
+- the serialized old component is a compatibility subclass of the canonical production implementation;
 - the canonical implementation owns one shared router;
 - no `HandleTurretHit` callback remains;
 - no `HandleDroidHit` callback remains;
