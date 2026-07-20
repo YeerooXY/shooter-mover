@@ -22,7 +22,7 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
         private const string CompatibilityAdapterTypeName =
             "ShooterMover.TestSupport.VisibleSlice.Stage1PlayerLiveAuthorityAdapterV1";
         private const string CanonicalAdapterTypeName =
-            "ShooterMover.TestSupport.VisibleSlice.Level1PlayerRuntimeSceneAdapterV1";
+            "ShooterMover.UnityAdapters.Production.Level1.Level1PlayerRuntimeSceneAdapterV1";
 
         [UnityTearDown]
         public IEnumerator UnloadScene()
@@ -55,8 +55,12 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 value => adapter = value);
 
             Assert.That(controller, Is.Not.Null);
-            Assert.That(adapter.GetType().BaseType, Is.EqualTo(FindType(CanonicalAdapterTypeName)));
-            Assert.That(Read<int>(adapter, "RegisteredEnemyDamageSourceCount"), Is.EqualTo(2));
+            Assert.That(
+                adapter.GetType().BaseType,
+                Is.EqualTo(FindType(CanonicalAdapterTypeName)));
+            Assert.That(
+                Read<int>(adapter, "RegisteredEnemyDamageSourceCount"),
+                Is.EqualTo(2));
 
             Type canonical = adapter.GetType().BaseType;
             Assert.That(
@@ -77,7 +81,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             Assert.That(
                 canonical.GetMethod(
                     "TryResolveLifecycleGeneration",
-                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic),
+                    BindingFlags.Static
+                        | BindingFlags.Public
+                        | BindingFlags.NonPublic),
                 Is.Null);
         }
 
@@ -92,7 +98,8 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
 
             PlayerRuntimeSnapshot before =
                 Invoke<PlayerRuntimeSnapshot>(adapter, "ExportSnapshot");
-            Component droid = (Component)Read<object>(controller, "MobileBlasterDroid");
+            Component droid =
+                (Component)Read<object>(controller, "MobileBlasterDroid");
             object droidTarget = Read<object>(droid, "EnemyTarget");
             StableId droidActorId = Read<StableId>(droidTarget, "TargetId");
             Transform player = Read<Transform>(controller, "PlayerTransform");
@@ -107,7 +114,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
             }
 
             Assert.That(impact, Is.Not.Null);
-            Assert.That(Read<StableId>(impact, "SourceActorId"), Is.EqualTo(droidActorId));
+            Assert.That(
+                Read<StableId>(impact, "SourceActorId"),
+                Is.EqualTo(droidActorId));
             Assert.That(
                 Read<StableId>(impact, "TargetActorId"),
                 Is.EqualTo(before.Player.ActorInstanceId));
@@ -117,7 +126,9 @@ namespace ShooterMover.Tests.PlayMode.VisibleSliceIntegration
                 Is.EqualTo(before.Player.LifecycleGeneration));
             Assert.That(Read<StableId>(impact, "HitEventId"), Is.Not.Null);
             Assert.That(
-                Invoke<PlayerHudHealthSnapshot>(adapter, "ExportHudHealth").CurrentHealth,
+                Invoke<PlayerHudHealthSnapshot>(
+                    adapter,
+                    "ExportHudHealth").CurrentHealth,
                 Is.LessThan(100d));
         }
 
