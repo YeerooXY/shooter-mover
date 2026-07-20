@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Flow.Production;
@@ -238,8 +237,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 stats = new ParticipantRunStats(participantId);
             }
 
-            pendingResults = new Stage1ReadOnlyResultsProjectionV1(
-                result.ResultPayload,
+            var summary = new ProductionResultsSummaryV1(
                 profile.DisplayName,
                 DisplayClass(profile.Payload.LoadoutProfileStableId),
                 experience.CurrentState.Level,
@@ -248,10 +246,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 stats.Experience,
                 0L,
                 0L);
-            if (!flow.Transitions.TryLoadSubflow(ProductionFlowScenePathsV1.Results))
+            if (!ProductionReadOnlyResultsBridgeV1.Present(
+                flow,
+                result.ResultPayload,
+                summary))
             {
                 ending = false;
-                diagnostic = "ProductionFlowCoordinatorV1 rejected the Results route.";
+                diagnostic =
+                    "The canonical Results handoff rejected the mission result.";
             }
         }
 
@@ -392,16 +394,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             return null;
         }
 
-        private static TextAsset ReadResultsBackground(
-            ProductionResultsControllerV1 controller)
-        {
-            if (controller == null) return null;
-            FieldInfo field = typeof(ProductionResultsControllerV1).GetField(
-                "resultsBackgroundAsset",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            return field == null ? null : field.GetValue(controller) as TextAsset;
-        }
-
         private static string DisplayClass(StableId loadoutProfileStableId)
         {
             string value = loadoutProfileStableId == null
@@ -428,30 +420,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 }
                 return builder.ToString();
             }
-        }
-
-        private Sprite RuntimeSprite(string key, Color color)
-        {
-            Sprite cached;
-            if (projectileSprites.TryGetValue(key, out cached)
-                && cached != null)
-            {
-                return cached;
-            }
-
-            Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            texture.name = "DEMO-CUTOVER-001 Projectile Pixel " + key;
-            texture.SetPixel(0, 0, color);
-            texture.Apply(false, true);
-            Sprite sprite = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, 1f, 1f),
-                new Vector2(0.5f, 0.5f),
-                1f);
-            projectileSprites[key] = sprite;
-            runtimeAssets.Add(texture);
-            runtimeAssets.Add(sprite);
-            return sprite;
         }
     }
 }
