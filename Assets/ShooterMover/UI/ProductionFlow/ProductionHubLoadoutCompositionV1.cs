@@ -2,6 +2,7 @@ using System;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -71,7 +72,7 @@ namespace ShooterMover.UI.ProductionFlow
             if (instance != null)
             {
                 instance.CapturePendingConfirmation();
-                instance.boundController = null;
+                instance.DetachBoundController();
                 instance.boundPayloadFingerprint = string.Empty;
             }
         }
@@ -126,13 +127,11 @@ namespace ShooterMover.UI.ProductionFlow
             BindInventoryScene();
         }
 
-        private void CapturePendingConfirmation()
+        private void HandleConfirmed(
+            PlayerRouteProfilePayloadV1 confirmedPayload)
         {
-            if (boundController == null
-                || boundController.LastResult == null
-                || boundController.LastResult.Status
-                    != InventoryLoadoutScreenStatusV1.Confirmed
-                || boundController.LastResult.RoutePayload == null
+            if (confirmedPayload == null
+                || !confirmedPayload.HasValidFingerprint()
                 || runtime == null)
             {
                 return;
@@ -140,7 +139,21 @@ namespace ShooterMover.UI.ProductionFlow
 
             pendingConfirmedRuntime = runtime;
             pendingConfirmedPayloadFingerprint =
-                boundController.LastResult.RoutePayload.Fingerprint;
+                confirmedPayload.Fingerprint;
+        }
+
+        private void CapturePendingConfirmation()
+        {
+            if (boundController == null
+                || boundController.LastResult == null
+                || boundController.LastResult.Status
+                    != InventoryLoadoutScreenStatusV1.Confirmed
+                || boundController.LastResult.RoutePayload == null)
+            {
+                return;
+            }
+
+            HandleConfirmed(boundController.LastResult.RoutePayload);
         }
 
         private void SynchronizeProfile()
@@ -153,7 +166,7 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime = null;
                 pendingConfirmedRuntime = null;
                 pendingConfirmedPayloadFingerprint = string.Empty;
-                boundController = null;
+                DetachBoundController();
                 boundPayloadFingerprint = string.Empty;
                 return;
             }
@@ -179,7 +192,7 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime = pendingConfirmedRuntime;
                 pendingConfirmedRuntime = null;
                 pendingConfirmedPayloadFingerprint = string.Empty;
-                boundController = null;
+                DetachBoundController();
                 boundPayloadFingerprint = string.Empty;
                 return;
             }
@@ -195,7 +208,7 @@ namespace ShooterMover.UI.ProductionFlow
                 currentProfile.Payload);
             pendingConfirmedRuntime = null;
             pendingConfirmedPayloadFingerprint = string.Empty;
-            boundController = null;
+            DetachBoundController();
             boundPayloadFingerprint = string.Empty;
         }
 
@@ -232,6 +245,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
+            DetachBoundController();
             controller.ConnectAuthorities(
                 runtime.Holdings,
                 runtime.CatalogAdapter,
@@ -239,13 +253,25 @@ namespace ShooterMover.UI.ProductionFlow
             controller.Present(
                 HubRouteV1.Inventory,
                 currentProfile.Payload);
+            controller.Confirmed -= HandleConfirmed;
+            controller.Confirmed += HandleConfirmed;
             boundController = controller;
             boundPayloadFingerprint =
                 currentProfile.Payload.Fingerprint;
         }
 
+        private void DetachBoundController()
+        {
+            if (boundController != null)
+            {
+                boundController.Confirmed -= HandleConfirmed;
+            }
+            boundController = null;
+        }
+
         private void OnDestroy()
         {
+            DetachBoundController();
             if (instance == this)
             {
                 instance = null;
