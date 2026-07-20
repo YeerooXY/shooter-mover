@@ -1,0 +1,10 @@
+{
+  "room": "room.level1-entry",
+  "props": [
+    {
+      "object": "prop.level1-cover",
+      "position": [0, -3],
+      "rotation": 0
+    }
+  ]
+}
