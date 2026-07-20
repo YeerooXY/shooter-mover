@@ -233,7 +233,8 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             PlayerRouteProfilePayloadV1 normalizedPayload =
-                runtime.RoutePayload;
+                ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
+                    currentProfile.Payload);
             if (ReferenceEquals(boundController, controller)
                 && string.Equals(
                     boundPayloadFingerprint,
