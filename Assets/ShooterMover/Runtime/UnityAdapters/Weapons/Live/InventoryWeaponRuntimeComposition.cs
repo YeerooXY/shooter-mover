@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
@@ -12,10 +16,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Active-slot projection over the real immutable route/loadout payload. The payload
-    /// remains loadout truth; this class owns only the current four-slot selection index.
+    /// Legacy active-slot projection retained for callers outside the production mount
+    /// path. Production gameplay uses the mounted constructor below and does not switch.
     /// </summary>
-    public sealed class RouteProfileActiveWeaponSource : IActiveWeaponEquipmentInstanceSource
+    public sealed class RouteProfileActiveWeaponSource :
+        IActiveWeaponEquipmentInstanceSource
     {
         private readonly PlayerRouteProfilePayloadV1 routeProfile;
         private int selectedSlotIndex;
@@ -24,48 +29,61 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             PlayerRouteProfilePayloadV1 profile,
             int initialSlotIndex = 0)
         {
-            routeProfile = profile ?? throw new ArgumentNullException(nameof(profile));
+            routeProfile = profile
+                ?? throw new ArgumentNullException(nameof(profile));
             if (routeProfile.WeaponSlots == null
-                || routeProfile.WeaponSlots.Count != PlayerRouteProfilePayloadV1.WeaponSlotCount)
+                || routeProfile.WeaponSlots.Count
+                    != PlayerRouteProfilePayloadV1.WeaponSlotCount)
             {
                 throw new ArgumentException(
-                    "The route profile must contain exactly four weapon slots.",
+                    "The route profile must contain four position records.",
                     nameof(profile));
             }
-
             if (initialSlotIndex < 0
-                || initialSlotIndex >= PlayerRouteProfilePayloadV1.WeaponSlotCount)
+                || initialSlotIndex
+                    >= PlayerRouteProfilePayloadV1.WeaponSlotCount
+                || routeProfile.WeaponSlots[initialSlotIndex]
+                    .EquipmentInstanceStableId == null)
             {
-                throw new ArgumentOutOfRangeException(nameof(initialSlotIndex));
+                throw new ArgumentOutOfRangeException(
+                    nameof(initialSlotIndex));
             }
-
             selectedSlotIndex = initialSlotIndex;
         }
 
-        public int SelectedSlotIndex { get { return selectedSlotIndex; } }
+        public int SelectedSlotIndex
+        {
+            get { return selectedSlotIndex; }
+        }
 
         public EquipmentInstanceId SelectedEquipmentInstanceId
         {
             get
             {
-                return new EquipmentInstanceId(
-                    routeProfile.WeaponSlots[selectedSlotIndex].EquipmentInstanceStableId);
+                StableId stableId = routeProfile
+                    .WeaponSlots[selectedSlotIndex]
+                    .EquipmentInstanceStableId;
+                return stableId == null
+                    ? null
+                    : new EquipmentInstanceId(stableId);
             }
         }
 
         public InventoryWeaponSlotSelectionStatus SelectSlot(int slotIndex)
         {
             if (slotIndex < 0
-                || slotIndex >= PlayerRouteProfilePayloadV1.WeaponSlotCount)
+                || slotIndex
+                    >= PlayerRouteProfilePayloadV1.WeaponSlotCount
+                || routeProfile.WeaponSlots[slotIndex]
+                    .EquipmentInstanceStableId == null)
             {
                 return InventoryWeaponSlotSelectionStatus.InvalidSlot;
             }
-
             if (slotIndex == selectedSlotIndex)
             {
-                return InventoryWeaponSlotSelectionStatus.ExactDuplicateNoChange;
+                return InventoryWeaponSlotSelectionStatus
+                    .ExactDuplicateNoChange;
             }
-
             selectedSlotIndex = slotIndex;
             return InventoryWeaponSlotSelectionStatus.Selected;
         }
@@ -75,7 +93,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             LifecycleGeneration lifecycleGeneration,
             out EquipmentInstanceId equipmentInstanceId)
         {
-            equipmentInstanceId = actorId == null || lifecycleGeneration == null
+            equipmentInstanceId = actorId == null
+                    || lifecycleGeneration == null
                 ? null
                 : SelectedEquipmentInstanceId;
             return equipmentInstanceId != null;
@@ -83,8 +102,41 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Production-facing composition of actor/lifecycle facts, active route slot,
-    /// immutable fire-intent locking, and the inventory-backed execution adapter.
+    /// One currently enabled physical mount. It carries only position, exact equipment
+    /// identity, and the muzzle's lateral offset. Activation policy remains upstream.
+    /// </summary>
+    public sealed class InventoryWeaponMountedRuntimeV1
+    {
+        public InventoryWeaponMountedRuntimeV1(
+            StableId mountStableId,
+            EquipmentInstanceId equipmentInstanceId,
+            double lateralOffset)
+        {
+            MountStableId = mountStableId
+                ?? throw new ArgumentNullException(nameof(mountStableId));
+            EquipmentInstanceId = equipmentInstanceId
+                ?? throw new ArgumentNullException(
+                    nameof(equipmentInstanceId));
+            if (double.IsNaN(lateralOffset)
+                || double.IsInfinity(lateralOffset))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(lateralOffset));
+            }
+            LateralOffset = lateralOffset;
+        }
+
+        public StableId MountStableId { get; }
+
+        public EquipmentInstanceId EquipmentInstanceId { get; }
+
+        public double LateralOffset { get; }
+    }
+
+    /// <summary>
+    /// Composes actor/lifecycle facts with either the retained active-slot source or a
+    /// set of concurrently firing physical mounts. Each mount receives a locked exact
+    /// equipment identity, operation ID, origin, seed, and independent WPN-CORE state.
     /// </summary>
     public sealed class InventoryWeaponRuntimeComposition
     {
@@ -92,22 +144,106 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private readonly InventoryWeaponFireIntentFactory intentFactory;
         private readonly InventoryBackedWeaponExecutionAdapter executionAdapter;
         private readonly RouteProfileActiveWeaponSource activeWeaponSource;
+        private readonly ReadOnlyCollection<InventoryWeaponMountedRuntimeV1>
+            mountedWeapons;
 
         public InventoryWeaponRuntimeComposition(
             IInventoryWeaponActorStateSource actorState,
             RouteProfileActiveWeaponSource activeWeapon,
             InventoryBackedWeaponExecutionAdapter adapter)
         {
-            actorStateSource = actorState ?? throw new ArgumentNullException(nameof(actorState));
-            activeWeaponSource = activeWeapon ?? throw new ArgumentNullException(nameof(activeWeapon));
-            executionAdapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
-            intentFactory = new InventoryWeaponFireIntentFactory(activeWeaponSource);
+            actorStateSource = actorState
+                ?? throw new ArgumentNullException(nameof(actorState));
+            activeWeaponSource = activeWeapon
+                ?? throw new ArgumentNullException(nameof(activeWeapon));
+            executionAdapter = adapter
+                ?? throw new ArgumentNullException(nameof(adapter));
+            intentFactory = new InventoryWeaponFireIntentFactory(
+                activeWeaponSource);
+            mountedWeapons = new ReadOnlyCollection<
+                InventoryWeaponMountedRuntimeV1>(
+                new List<InventoryWeaponMountedRuntimeV1>());
         }
 
-        public int SelectedSlotIndex { get { return activeWeaponSource.SelectedSlotIndex; } }
+        public InventoryWeaponRuntimeComposition(
+            IInventoryWeaponActorStateSource actorState,
+            IEnumerable<InventoryWeaponMountedRuntimeV1> enabledMounts,
+            InventoryBackedWeaponExecutionAdapter adapter)
+        {
+            actorStateSource = actorState
+                ?? throw new ArgumentNullException(nameof(actorState));
+            executionAdapter = adapter
+                ?? throw new ArgumentNullException(nameof(adapter));
+            var mounts = new List<InventoryWeaponMountedRuntimeV1>(
+                enabledMounts
+                ?? throw new ArgumentNullException(nameof(enabledMounts)));
+            if (mounts.Count < 1 || mounts.Count > 4)
+            {
+                throw new ArgumentOutOfRangeException(nameof(enabledMounts));
+            }
+
+            var mountIds = new HashSet<StableId>();
+            var equipmentIds = new HashSet<StableId>();
+            for (int index = 0; index < mounts.Count; index++)
+            {
+                InventoryWeaponMountedRuntimeV1 mount = mounts[index];
+                if (mount == null
+                    || !mountIds.Add(mount.MountStableId)
+                    || !equipmentIds.Add(
+                        mount.EquipmentInstanceId.Value))
+                {
+                    throw new ArgumentException(
+                        "Enabled mounts and exact equipment instances must be unique.",
+                        nameof(enabledMounts));
+                }
+            }
+
+            mountedWeapons = new ReadOnlyCollection<
+                InventoryWeaponMountedRuntimeV1>(mounts);
+        }
+
+        public bool IsConcurrentMountMode
+        {
+            get { return mountedWeapons.Count > 0; }
+        }
+
+        public int EnabledMountCount
+        {
+            get
+            {
+                return IsConcurrentMountMode
+                    ? mountedWeapons.Count
+                    : 1;
+            }
+        }
+
+        public IReadOnlyList<InventoryWeaponMountedRuntimeV1>
+            EnabledMounts
+        {
+            get { return mountedWeapons; }
+        }
+
+        public int SelectedSlotIndex
+        {
+            get
+            {
+                return activeWeaponSource == null
+                    ? 0
+                    : activeWeaponSource.SelectedSlotIndex;
+            }
+        }
 
         public InventoryWeaponSlotSelectionStatus SelectSlot(int slotIndex)
         {
+            if (activeWeaponSource == null)
+            {
+                return slotIndex >= 0
+                        && slotIndex
+                            < PlayerRouteProfilePayloadV1.WeaponSlotCount
+                    ? InventoryWeaponSlotSelectionStatus
+                        .ExactDuplicateNoChange
+                    : InventoryWeaponSlotSelectionStatus.InvalidSlot;
+            }
             return activeWeaponSource.SelectSlot(slotIndex);
         }
 
@@ -123,27 +259,54 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             request = null;
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
-            if (!actorStateSource.TryResolveActorState(out actorId, out generation)
+            if (!actorStateSource.TryResolveActorState(
+                out actorId,
+                out generation)
                 || actorId == null
                 || generation == null)
             {
-                rejectionCode = "weapon-live-actor-state-unresolved";
+                rejectionCode =
+                    "weapon-live-actor-state-unresolved";
                 return false;
             }
 
-            return intentFactory.TryCreate(
+            if (!IsConcurrentMountMode)
+            {
+                return intentFactory.TryCreate(
+                    actorId,
+                    fireOperationId,
+                    generation,
+                    simulationTick,
+                    deterministicSeed,
+                    origin,
+                    aimDirection,
+                    out request,
+                    out rejectionCode);
+            }
+
+            if (fireOperationId == null)
+            {
+                rejectionCode = "weapon-live-intent-invalid";
+                return false;
+            }
+
+            InventoryWeaponMountedRuntimeV1 first = mountedWeapons[0];
+            request = CreateMountedRequest(
                 actorId,
-                fireOperationId,
                 generation,
+                first,
+                0,
+                fireOperationId,
                 simulationTick,
                 deterministicSeed,
                 origin,
-                aimDirection,
-                out request,
-                out rejectionCode);
+                aimDirection);
+            rejectionCode = string.Empty;
+            return true;
         }
 
-        public InventoryWeaponExecutionResult TryExecute(InventoryWeaponFireRequest request)
+        public InventoryWeaponExecutionResult TryExecute(
+            InventoryWeaponFireRequest request)
         {
             return executionAdapter.TryExecute(request);
         }
@@ -155,9 +318,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             WeaponVector2 origin,
             WeaponVector2 aimDirection)
         {
-            InventoryWeaponFireRequest request;
-            string rejectionCode;
-            if (!TryCreateFireIntent(
+            if (!IsConcurrentMountMode)
+            {
+                InventoryWeaponFireRequest request;
+                string rejectionCode;
+                if (!TryCreateFireIntent(
                     fireOperationId,
                     simulationTick,
                     deterministicSeed,
@@ -165,17 +330,126 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     aimDirection,
                     out request,
                     out rejectionCode))
-            {
-                return new InventoryWeaponExecutionResult(
-                    null,
-                    ShooterMover.Application.Weapons.Execution.WeaponExecutionResult.Reject(
-                        ShooterMover.Application.Weapons.Execution.WeaponExecutionStatus.InvalidCommand,
-                        rejectionCode,
-                        0L),
-                    null);
+                {
+                    return Reject(rejectionCode);
+                }
+                return executionAdapter.TryExecute(request);
             }
 
-            return executionAdapter.TryExecute(request);
+            WeaponActorInstanceId actorId;
+            LifecycleGeneration generation;
+            if (fireOperationId == null
+                || !actorStateSource.TryResolveActorState(
+                    out actorId,
+                    out generation)
+                || actorId == null
+                || generation == null)
+            {
+                return Reject("weapon-live-actor-state-unresolved");
+            }
+
+            InventoryWeaponExecutionResult firstAccepted = null;
+            InventoryWeaponExecutionResult firstCooldown = null;
+            InventoryWeaponExecutionResult firstFailure = null;
+            for (int index = 0; index < mountedWeapons.Count; index++)
+            {
+                InventoryWeaponFireRequest request = CreateMountedRequest(
+                    actorId,
+                    generation,
+                    mountedWeapons[index],
+                    index,
+                    fireOperationId,
+                    simulationTick,
+                    deterministicSeed,
+                    origin,
+                    aimDirection);
+                InventoryWeaponExecutionResult result =
+                    executionAdapter.TryExecute(request);
+                if (result.Status == WeaponExecutionStatus.Accepted
+                    || result.Status
+                        == WeaponExecutionStatus.ReplayAccepted)
+                {
+                    if (firstAccepted == null)
+                    {
+                        firstAccepted = result;
+                    }
+                }
+                else if (result.Status
+                    == WeaponExecutionStatus.CooldownActive)
+                {
+                    if (firstCooldown == null)
+                    {
+                        firstCooldown = result;
+                    }
+                }
+                else if (firstFailure == null)
+                {
+                    firstFailure = result;
+                }
+            }
+
+            return firstAccepted
+                ?? firstCooldown
+                ?? firstFailure
+                ?? Reject("weapon-live-no-enabled-mounts");
+        }
+
+        private static InventoryWeaponFireRequest CreateMountedRequest(
+            WeaponActorInstanceId actorId,
+            LifecycleGeneration generation,
+            InventoryWeaponMountedRuntimeV1 mount,
+            int mountOrdinal,
+            FireOperationId baseOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection)
+        {
+            double length = Math.Sqrt(
+                (aimDirection.X * aimDirection.X)
+                + (aimDirection.Y * aimDirection.Y));
+            double normalizedX = length <= 0.0000001d
+                ? 0d
+                : aimDirection.X / length;
+            double normalizedY = length <= 0.0000001d
+                ? 1d
+                : aimDirection.Y / length;
+            double perpendicularX = -normalizedY;
+            double perpendicularY = normalizedX;
+            var mountOrigin = new WeaponVector2(
+                origin.X + (perpendicularX * mount.LateralOffset),
+                origin.Y + (perpendicularY * mount.LateralOffset));
+            var operationId = new FireOperationId(
+                StableId.Create(
+                    "fire-operation",
+                    baseOperationId.Value
+                    + "-"
+                    + mount.MountStableId));
+            ulong mountSeed = deterministicSeed
+                ^ (unchecked((ulong)(mountOrdinal + 1))
+                    * 11400714819323198485UL);
+
+            return new InventoryWeaponFireRequest(
+                actorId,
+                mount.EquipmentInstanceId,
+                operationId,
+                generation,
+                simulationTick,
+                mountSeed,
+                mountOrigin,
+                aimDirection);
+        }
+
+        private static InventoryWeaponExecutionResult Reject(
+            string rejectionCode)
+        {
+            return new InventoryWeaponExecutionResult(
+                null,
+                WeaponExecutionResult.Reject(
+                    WeaponExecutionStatus.InvalidCommand,
+                    rejectionCode,
+                    0L),
+                null);
         }
     }
 }
