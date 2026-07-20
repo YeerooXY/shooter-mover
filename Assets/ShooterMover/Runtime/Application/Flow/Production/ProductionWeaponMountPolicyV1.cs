@@ -265,8 +265,8 @@ namespace ShooterMover.Application.Flow.Production
                 return Defensive;
             }
 
-            // Unknown/custom profiles fail closed to the smallest current layout.
-            return Aggressive;
+            // Non-production and test profiles retain the legacy four-position behavior.
+            return Defensive;
         }
 
         public static bool IsConfigurableLoadoutSlot(
