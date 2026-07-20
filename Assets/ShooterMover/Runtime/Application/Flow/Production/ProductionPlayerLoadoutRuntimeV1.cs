@@ -14,17 +14,19 @@ using ShooterMover.Domain.Weapons.Catalog;
 namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
-    /// Production composition for the current starter inventory. Later save/import,
-    /// shop, crafting and strongbox systems can populate the same holdings/loadout
-    /// boundary without changing the Hub screen or Level 1 weapon execution.
+    /// Profile-local production inventory and loadout composition. The route payload is
+    /// normalized through the class mount policy before any equipment is seeded, so an
+    /// unavailable physical position never reserves a hidden weapon instance.
     /// </summary>
     public sealed class ProductionPlayerLoadoutRuntimeV1
     {
         public ProductionPlayerLoadoutRuntimeV1(
             PlayerRouteProfilePayloadV1 routePayload)
         {
-            RoutePayload = routePayload
-                ?? throw new ArgumentNullException(nameof(routePayload));
+            if (routePayload == null)
+            {
+                throw new ArgumentNullException(nameof(routePayload));
+            }
             if (!routePayload.HasValidFingerprint())
             {
                 throw new ArgumentException(
@@ -32,6 +34,10 @@ namespace ShooterMover.Application.Flow.Production
                     nameof(routePayload));
             }
 
+            RoutePayload = ProductionWeaponMountPolicyV1
+                .NormalizeRoutePayload(routePayload);
+            MountLayout = ProductionWeaponMountPolicyV1.ResolveLayout(
+                RoutePayload.LoadoutProfileStableId);
             EquipmentCatalog = ProductionStarterWeaponCatalogV1
                 .BuildEquipmentCatalog();
             CatalogAdapter = new ProductionEquipmentCatalogAdapterV1(
@@ -43,14 +49,16 @@ namespace ShooterMover.Application.Flow.Production
                 999L,
                 CatalogAdapter);
 
-            SeedStarterInventory(routePayload);
+            SeedStarterInventory(RoutePayload);
             LoadoutAuthority = new ProductionInventoryLoadoutAuthorityV1(
-                routePayload,
+                RoutePayload,
                 Holdings,
                 CatalogAdapter);
         }
 
         public PlayerRouteProfilePayloadV1 RoutePayload { get; }
+
+        public ProductionWeaponMountLayoutV1 MountLayout { get; }
 
         public PlayerHoldingsService Holdings { get; }
 
@@ -85,6 +93,11 @@ namespace ShooterMover.Application.Flow.Production
                 StableId instanceStableId = routePayload
                     .WeaponSlots[index]
                     .EquipmentInstanceStableId;
+                if (instanceStableId == null)
+                {
+                    continue;
+                }
+
                 StableId definitionStableId;
                 if (!ProductionStarterWeaponCatalogV1
                     .TryResolveDefinitionForInstance(
@@ -200,14 +213,15 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Sole equipped-slot truth for the current production profile. It accepts only
-    /// exact owned instances and rejects stale holdings/loadout snapshots.
+    /// Exact-instance equipped truth for one profile. The class mount layout determines
+    /// which weapon positions are required; unavailable positions must remain unbound.
     /// </summary>
     public sealed class ProductionInventoryLoadoutAuthorityV1 :
         IInventoryLoadoutAuthorityPortV1
     {
         private readonly IPlayerHoldingsAuthorityV1 holdings;
         private readonly IEquipmentCatalogProvider catalogProvider;
+        private readonly ProductionWeaponMountLayoutV1 mountLayout;
         private InventoryLoadoutAuthoritySnapshotV1 snapshot;
         private string lastAcceptedCommandFingerprint = string.Empty;
 
@@ -231,6 +245,8 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(holdings));
             this.catalogProvider = catalogProvider
                 ?? throw new ArgumentNullException(nameof(catalogProvider));
+            mountLayout = ProductionWeaponMountPolicyV1.ResolveLayout(
+                routePayload.LoadoutProfileStableId);
 
             var bindings = new List<InventoryLoadoutSlotBindingV1>(
                 InventoryLoadoutSlotsV1.All.Count);
@@ -240,29 +256,32 @@ namespace ShooterMover.Application.Flow.Production
             {
                 StableId instanceStableId = index
                     < PlayerRouteProfilePayloadV1.WeaponSlotCount
-                    ? routePayload.WeaponSlots[index]
-                        .EquipmentInstanceStableId
-                    : null;
-                bindings.Add(
-                    new InventoryLoadoutSlotBindingV1(
-                        InventoryLoadoutSlotsV1.All[index]
-                            .SlotStableId,
-                        instanceStableId));
+                        ? routePayload.WeaponSlots[index]
+                            .EquipmentInstanceStableId
+                        : null;
+                bindings.Add(new InventoryLoadoutSlotBindingV1(
+                    InventoryLoadoutSlotsV1.All[index].SlotStableId,
+                    instanceStableId));
             }
 
             snapshot = InventoryLoadoutAuthoritySnapshotV1
                 .CreateCanonical(0L, bindings);
             string rejectionCode;
             if (!ValidateBindings(
-                    snapshot.Bindings,
-                    holdings.ExportSnapshot(),
-                    out rejectionCode))
+                snapshot.Bindings,
+                holdings.ExportSnapshot(),
+                out rejectionCode))
             {
                 throw new ArgumentException(
                     "The initial route payload cannot seed the loadout: "
                     + rejectionCode,
                     nameof(routePayload));
             }
+        }
+
+        public ProductionWeaponMountLayoutV1 MountLayout
+        {
+            get { return mountLayout; }
         }
 
         public InventoryLoadoutAuthoritySnapshotV1 ExportSnapshot()
@@ -302,8 +321,7 @@ namespace ShooterMover.Application.Flow.Production
             PlayerHoldingsSnapshotV1 holdingsSnapshot =
                 holdings.ExportSnapshot();
             if (holdingsSnapshot == null
-                || command.ExpectedHoldingsSequence
-                    != holdings.Sequence)
+                || command.ExpectedHoldingsSequence != holdings.Sequence)
             {
                 return new InventoryLoadoutAuthorityResultV1(
                     InventoryLoadoutAuthorityMutationStatusV1
@@ -314,9 +332,9 @@ namespace ShooterMover.Application.Flow.Production
 
             string rejectionCode;
             if (!ValidateBindings(
-                    command.Bindings,
-                    holdingsSnapshot,
-                    out rejectionCode))
+                command.Bindings,
+                holdingsSnapshot,
+                out rejectionCode))
             {
                 return Reject(rejectionCode);
             }
@@ -359,7 +377,8 @@ namespace ShooterMover.Application.Flow.Production
             if (bindings == null
                 || bindings.Count != InventoryLoadoutSlotsV1.All.Count)
             {
-                rejectionCode = "production-loadout-binding-count-invalid";
+                rejectionCode =
+                    "production-loadout-binding-count-invalid";
                 return false;
             }
             if (holdingsSnapshot == null)
@@ -391,7 +410,6 @@ namespace ShooterMover.Application.Flow.Production
                 {
                     continue;
                 }
-
                 equipmentByInstance[holding.InstanceStableId] =
                     holding.EquipmentInstance;
             }
@@ -403,26 +421,42 @@ namespace ShooterMover.Application.Flow.Production
                     InventoryLoadoutSlotsV1.All[index];
                 InventoryLoadoutSlotBindingV1 binding = bindings[index];
                 if (binding == null
-                    || binding.SlotStableId
-                        != expectedSlot.SlotStableId)
+                    || binding.SlotStableId != expectedSlot.SlotStableId)
                 {
                     rejectionCode =
                         "production-loadout-slot-order-invalid";
                     return false;
                 }
 
+                bool configurableWeapon = expectedSlot.Kind
+                        == InventoryLoadoutSlotKindV1.Weapon
+                    && mountLayout.ContainsLoadoutSlot(
+                        expectedSlot.SlotStableId);
+                bool unavailableWeapon = expectedSlot.Kind
+                        == InventoryLoadoutSlotKindV1.Weapon
+                    && !configurableWeapon;
                 StableId instanceStableId =
                     binding.EquipmentInstanceStableId;
+
+                if (unavailableWeapon)
+                {
+                    if (instanceStableId != null)
+                    {
+                        rejectionCode =
+                            "production-loadout-slot-unavailable-for-profile";
+                        return false;
+                    }
+                    continue;
+                }
+
                 if (instanceStableId == null)
                 {
-                    if (expectedSlot.Kind
-                        == InventoryLoadoutSlotKindV1.Weapon)
+                    if (configurableWeapon)
                     {
                         rejectionCode =
                             "production-loadout-weapon-slot-empty";
                         return false;
                     }
-
                     continue;
                 }
 
@@ -444,8 +478,7 @@ namespace ShooterMover.Application.Flow.Production
                 }
 
                 EquipmentDefinition definition =
-                    catalog.FindEquipmentDefinition(
-                        instance.DefinitionId);
+                    catalog.FindEquipmentDefinition(instance.DefinitionId);
                 EquipmentValidationResult validation =
                     catalog.ValidateInstance(instance);
                 if (definition == null
@@ -459,10 +492,10 @@ namespace ShooterMover.Application.Flow.Production
 
                 bool correctKind = expectedSlot.Kind
                     == InventoryLoadoutSlotKindV1.Weapon
-                    ? definition.CategoryId
-                        == EquipmentCategoryIds.Weapon
-                    : definition.CategoryId
-                        == EquipmentCategoryIds.Armor;
+                        ? definition.CategoryId
+                            == EquipmentCategoryIds.Weapon
+                        : definition.CategoryId
+                            == EquipmentCategoryIds.Armor;
                 if (!correctKind)
                 {
                     rejectionCode =
@@ -484,7 +517,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return false;
             }
-
             for (int index = 0; index < left.Count; index++)
             {
                 if (!left[index].Equals(right[index]))
@@ -492,7 +524,6 @@ namespace ShooterMover.Application.Flow.Production
                     return false;
                 }
             }
-
             return true;
         }
     }
