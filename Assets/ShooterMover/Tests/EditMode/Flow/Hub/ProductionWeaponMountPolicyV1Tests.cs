@@ -35,6 +35,29 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         [Test]
+        public void BuiltInCharacterSpecificProfilesResolveByClassSuffix()
+        {
+            Assert.That(
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    StableId.Parse(
+                        "loadout-profile.frontier-vanguard-aggressive"))
+                    .BaselineEnabledMountCount,
+                Is.EqualTo(2));
+            Assert.That(
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    StableId.Parse(
+                        "loadout-profile.custom-pilot-healer"))
+                    .BaselineEnabledMountCount,
+                Is.EqualTo(3));
+            Assert.That(
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    StableId.Parse(
+                        "loadout-profile.frontier-vanguard-defensive"))
+                    .BaselineEnabledMountCount,
+                Is.EqualTo(4));
+        }
+
+        [Test]
         public void AggressiveKeepsOnlyOuterBindingsAndRoundTripsUnboundPositions()
         {
             PlayerRouteProfilePayloadV1 normalized =
