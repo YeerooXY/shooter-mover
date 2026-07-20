@@ -10,6 +10,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
         public const int MaximumLevel = 10000;
         public const int MaximumAttacksPerDefinition = 32;
         public const int MaximumSpecialCapabilitiesPerDefinition = 64;
+        public const int MaximumAttackSelectionPriority = 1000000;
         public const double MaximumHealth = 1000000000d;
         public const double MaximumDistance = 100000d;
         public const double MaximumCooldownSeconds = 3600d;
@@ -126,6 +127,8 @@ namespace ShooterMover.Domain.Enemies.Catalog
 
             ValidateHealth(issues, path, definition);
 
+            // Faction IDs remain intentionally open stable identities because the repository
+            // does not currently expose one canonical faction registry at this boundary.
             if (definition.FactionId == null)
             {
                 Add(
@@ -143,35 +146,10 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     path + ".perception.detection_radius",
                     "Detection radius must be finite, positive, and bounded.");
             }
-            ValidateArc(issues, path + ".perception.vision_arc_degrees", definition.VisionArcDegrees);
-            ValidateArc(issues, path + ".attack_geometry.attack_arc_degrees", definition.AttackArcDegrees);
-
-            bool rangesValid = IsFiniteInRange(
-                    definition.MinimumAttackRange,
-                    0d,
-                    MaximumDistance,
-                    true)
-                && IsFiniteInRange(
-                    definition.PreferredAttackRange,
-                    0d,
-                    MaximumDistance,
-                    true)
-                && IsFiniteInRange(
-                    definition.MaximumAttackRange,
-                    0d,
-                    MaximumDistance,
-                    true)
-                && definition.MinimumAttackRange <= definition.PreferredAttackRange
-                && definition.PreferredAttackRange <= definition.MaximumAttackRange
-                && definition.MaximumAttackRange <= definition.DetectionRadius;
-            if (!rangesValid)
-            {
-                Add(
-                    issues,
-                    "enemy-catalog-range-invalid",
-                    path + ".attack_geometry",
-                    "Attack ranges must be finite, ordered, non-negative, and inside detection radius.");
-            }
+            ValidateArc(
+                issues,
+                path + ".perception.vision_arc_degrees",
+                definition.VisionArcDegrees);
 
             if (definition.MovementPolicyId == null
                 || registry == null
@@ -314,6 +292,5 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     "Levels and health growth must remain finite, ordered, positive, and bounded.");
             }
         }
-
     }
 }
