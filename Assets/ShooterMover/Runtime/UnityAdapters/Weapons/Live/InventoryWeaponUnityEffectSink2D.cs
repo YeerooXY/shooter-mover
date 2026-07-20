@@ -19,9 +19,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             get { return emitted; }
         }
 
-        public int AcceptedBatchCount { get { return accepted.Count; } }
+        public int AcceptedBatchCount
+        {
+            get { return accepted.Count; }
+        }
 
-        public WeaponEffectBatchSinkResult TryAccept(InventoryWeaponEffectBatch batch)
+        public WeaponEffectBatchSinkResult TryAccept(
+            InventoryWeaponEffectBatch batch)
         {
             if (batch == null
                 || batch.CoreBatch == null
@@ -54,23 +58,40 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             try
             {
-                for (int index = 0; index < batch.CoreBatch.Effects.Count; index++)
+                for (int index = 0;
+                    index < batch.CoreBatch.Effects.Count;
+                    index++)
                 {
-                    IWeaponEffectDescription effect = batch.CoreBatch.Effects[index];
+                    IWeaponEffectDescription effect =
+                        batch.CoreBatch.Effects[index];
                     var effectObject = new GameObject(
                         "WeaponEffect_" + index + "_" + effect.Kind);
-                    effectObject.transform.SetParent(batchRoot.transform, false);
-                    var instance = effectObject.AddComponent<InventoryWeaponEffectInstance2D>();
+                    effectObject.transform.SetParent(
+                        batchRoot.transform,
+                        false);
+                    var instance = effectObject.AddComponent<
+                        InventoryWeaponEffectInstance2D>();
                     if (!instance.TryConfigure(effect))
                     {
                         throw new InvalidOperationException(
-                            "Unity effect configuration rejected ordinal " + index + ".");
+                            "Unity effect configuration rejected ordinal "
+                            + index + ".");
                     }
 
                     staged.Add(instance);
                 }
 
                 batchRoot.SetActive(true);
+                for (int index = 0; index < staged.Count; index++)
+                {
+                    if (!staged[index].BeginEmission())
+                    {
+                        throw new InvalidOperationException(
+                            "Unity effect launch rejected ordinal "
+                            + index + ".");
+                    }
+                }
+
                 emitted.AddRange(staged);
                 accepted.Add(
                     operationKey,
@@ -103,7 +124,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             emitted.Clear();
         }
 
-        private static string OperationKey(WeaponEffectIdentity identity)
+        private static string OperationKey(
+            WeaponEffectIdentity identity)
         {
             return identity.ActorId + "|"
                 + identity.LifecycleGeneration + "|"
@@ -112,7 +134,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         private sealed class AcceptedEmission
         {
-            public AcceptedEmission(string fingerprint, GameObject root)
+            public AcceptedEmission(
+                string fingerprint,
+                GameObject root)
             {
                 Fingerprint = fingerprint;
                 Root = root;
@@ -122,5 +146,4 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             public GameObject Root { get; }
         }
     }
-
 }
