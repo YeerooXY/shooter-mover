@@ -44,16 +44,27 @@ a switch without interaction, or decorative-only content that also owns combat/r
 Adding another prop that only uses registered mechanics requires a definition, a presentation
 mapping, and a placement. No runtime class or controller branch is required.
 
-## Authority and replay rules
+## Authority, replay, and fact identity rules
 
 `PropRuntimeV1` owns the health and switch state of exactly one placement. Two placements using
 one definition therefore have separate state and snapshot fingerprints.
 
-Damage and interaction commands use stable operation IDs:
+Damage and interaction commands use stable root operation IDs:
 
-- exact retries return `DuplicateNoChange`;
-- conflicting reuse rejects without mutation;
-- duplicate retries emit no terminal, explosion, drop, objective, interaction, or switch facts.
+- first accepted execution mutates health, terminal state, interaction state, or switch state once;
+- an exact retry returns the original immutable result, including its original output snapshot and
+  complete terminal, explosion, drop, objective, interaction, and switch facts;
+- exact retry does not invoke the injected damage policy, toggle a switch, or rebuild downstream work;
+- conflicting reuse rejects without mutation or emitted facts.
+
+This replay contract lets callers recover from a lost first response. Downstream reward,
+objective, explosion, interaction, and room consumers still deduplicate by immutable child fact ID.
+
+Every emitted child fact receives a deterministic ID distinct from the root operation ID. Child
+identity derives from the root operation ID, exact prop participant/placement ID, fact kind, and
+relevant definition/profile/fact ID. Fact IDs use the `prop-fact.*` namespace and a fact-kind prefix
+plus deterministic fingerprint. The same command replay reproduces byte-equivalent IDs and
+fingerprints, while analogous commands against different placements produce different fact IDs.
 
 On accepted terminal destruction, the runtime emits immutable attributed facts. It does not
 roll rewards, mutate inventory, complete objectives, or execute explosion damage. Those remain
@@ -72,7 +83,8 @@ alignment, policy ID, and damage channel before health can change.
 Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Props.PropRuntimeV1Tests -testResults Temp/prop-runtime-001-editmode.xml -logFile Temp/prop-runtime-001-editmode.log
 ```
 
-The focused suite covers decorative props, independent placement health, one-shot barrel
-terminal/explosion/drop facts, exact and conflicting replay, authored damage resistance,
-indestructible props, unknown capabilities, invalid combinations, injected friendly-fire
-policy, replay-safe switches, and deterministic catalog ordering.
+The focused suite covers decorative props, independent placement health, lost-response replay
+recovery, byte-equivalent fact replay, distinct child fact IDs, exactly-once health/terminal/switch
+mutation, conflicting replay rejection, placement-distinct fact identity, authored damage
+resistance, indestructible props, unknown capabilities, invalid combinations, injected
+friendly-fire policy, and deterministic catalog ordering.
