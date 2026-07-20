@@ -1,1016 +1,755 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using NUnit.Framework;
-using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Economy.Money;
+using ShooterMover.Application.Economy.Scrap;
+using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Holdings;
+using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Progression.Experience;
+using ShooterMover.Application.Progression.Skills;
+using ShooterMover.Contracts.Economy;
+using ShooterMover.Contracts.Equipment;
+using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Progression.Experience;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
+using ShooterMover.Domain.Economy.Scrap;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Curves;
 using ShooterMover.Domain.Progression.Experience;
-using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Persistence.Accounts;
+using ShooterMover.Domain.Progression.Skills;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Persistence.Components
 {
-    public sealed class SaveAdaptersV1Tests
+    public sealed class RealAuthoritySaveAdaptersV1Tests
     {
         [Test]
-        public void RoundTripCharacterContainingEverySupportedComponent()
+        public void PlayerExperienceRealAuthorityRoundTripPreservesReplay()
         {
-            SaveComponentDefinitionV1[] definitions = AllDefinitions();
-            var sourceAuthorities = new List<FixtureAuthority>();
-            var sourceAdapters = new List<ISaveComponentAdapterV1>();
-            for (int index = 0; index < definitions.Length; index++)
-            {
-                var authority = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                    "source-" + index,
-                    index + 1,
-                    new[]
-                    {
-                        new FixtureReceiptV1(
-                            "operation-" + index,
-                            index == 1 ? "weapon.shared" : "definition-" + index,
-                            "instance-" + index,
-                            index == 6 ? "opened" : "applied"),
-                    }));
-                sourceAuthorities.Add(authority);
-                sourceAdapters.Add(CreateAdapter(
-                    definitions[index],
-                    authority,
-                    "source-" + index));
-            }
+            PlayerExperienceCurveV1 curve = ConstantCurve();
+            PlayerExperienceAuthorityV1 source = ExperienceAuthority(curve);
+            var request = new PlayerExperienceGrantRequestV1(
+                Id("xp-source.real-roundtrip"),
+                250L);
+            Assert.That(source.Grant(request).Status,
+                Is.EqualTo(PlayerExperienceGrantStatusV1.Applied));
 
-            IReadOnlyList<SaveComponentSnapshotV1> components =
-                PlayerAccountRestoreCoordinatorV1.ExportComponents(
-                    sourceAdapters);
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.alpha",
-                components);
+            PlayerExperienceAuthorityV1 target = ExperienceAuthority(curve);
+            ISaveComponentAdapterV1 sourceAdapter = ExperienceAdapter(source, curve);
+            ISaveComponentAdapterV1 targetAdapter = ExperienceAdapter(target, curve);
+            PlayerAccountSnapshotV1 decoded = FileRoundTrip(sourceAdapter.ExportComponent());
 
-            string encoded = PlayerAccountFileCodecV1.Encode(account);
-            PlayerAccountSnapshotV1 decoded;
-            string decodeError;
-            Assert.That(PlayerAccountFileCodecV1.TryDecode(
-                encoded,
-                out decoded,
-                out decodeError), Is.True, decodeError);
-            Assert.That(decoded.Fingerprint, Is.EqualTo(account.Fingerprint));
-            Assert.That(
-                decoded.CharacterAt(0).Components.Count,
-                Is.EqualTo(definitions.Length));
+            PlayerAccountRestoreResultV1 restored = Restore(decoded, targetAdapter);
 
-            var targetAuthorities = new List<FixtureAuthority>();
-            var targetAdapters = new List<ISaveComponentAdapterV1>();
-            for (int index = 0; index < definitions.Length; index++)
-            {
-                var target = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                    "source-" + index,
-                    0,
-                    Array.Empty<FixtureReceiptV1>()));
-                targetAuthorities.Add(target);
-                targetAdapters.Add(CreateAdapter(
-                    definitions[index],
-                    target,
-                    "source-" + index));
-            }
+            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
+            Assert.That(target.ExportSnapshot().Fingerprint,
+                Is.EqualTo(source.ExportSnapshot().Fingerprint));
+            long sequence = target.CurrentSnapshot.Sequence;
+            Assert.That(target.Grant(request).Status,
+                Is.EqualTo(PlayerExperienceGrantStatusV1.DuplicateNoChange));
+            Assert.That(target.CurrentSnapshot.Sequence, Is.EqualTo(sequence));
+        }
 
-            var coordinator = new PlayerAccountRestoreCoordinatorV1();
-            PlayerAccountRestoreResultV1 restored = coordinator.Restore(
+        [Test]
+        public void MoneyWalletRealAuthorityRoundTripPreservesAcceptedAndRejectedReplay()
+        {
+            var source = new MoneyWalletService();
+            MoneyTransactionCommand grant = MoneyTransactionCommand.CreateGrant(
+                Id("transaction.money.real-grant"),
+                Id("operation.money.real-grant"),
+                40L);
+            MoneyTransactionCommand rejected = MoneyTransactionCommand.CreateSpend(
+                Id("transaction.money.real-rejected"),
+                Id("operation.money.real-rejected"),
+                50L,
+                1L);
+            source.Apply(grant);
+            source.Apply(rejected);
+
+            var target = new MoneyWalletService();
+            PlayerAccountSnapshotV1 decoded = FileRoundTrip(
+                MoneyAdapter(source).ExportComponent());
+            PlayerAccountRestoreResultV1 restored = Restore(
                 decoded,
-                new[]
-                {
-                    new CharacterSaveRestoreBindingV1(
-                        0,
-                        StableId.Parse("character.alpha"),
-                        targetAdapters),
-                });
+                MoneyAdapter(target));
 
-            Assert.That(restored.Status, Is.EqualTo(
-                PlayerAccountRestoreStatusV1.Restored));
-            for (int index = 0; index < definitions.Length; index++)
-            {
-                Assert.That(
-                    targetAuthorities[index].Current.Fingerprint,
-                    Is.EqualTo(sourceAuthorities[index].Current.Fingerprint));
-                Assert.That(targetAuthorities[index].ApplyCount, Is.EqualTo(1));
-            }
-            Assert.That(
-                targetAuthorities[6].Current.Receipts[0].Outcome,
-                Is.EqualTo("opened"));
+            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
+            Assert.That(target.CurrentSnapshot.Fingerprint,
+                Is.EqualTo(source.CurrentSnapshot.Fingerprint));
+            long sequence = target.Sequence;
+            Assert.That(target.Apply(grant).Status,
+                Is.EqualTo(MoneyWalletTransactionStatus.DuplicateNoChange));
+            MoneyWalletChangeFact rejectedReplay = target.Apply(rejected);
+            Assert.That(rejectedReplay.Status,
+                Is.EqualTo(MoneyWalletTransactionStatus.DuplicateNoChange));
+            Assert.That(rejectedReplay.OriginalStatus,
+                Is.EqualTo(MoneyWalletTransactionStatus.InsufficientFunds));
+            Assert.That(target.Sequence, Is.EqualTo(sequence));
         }
 
         [Test]
-        public void ExistingXpAndMoneyReplayHistoriesSurviveTypedAdapters()
+        public void ScrapWalletRealAuthorityRoundTripPreservesReplay()
         {
-            PlayerExperienceCurveV1 curve = new PlayerExperienceCurveV1(
-                100L,
-                100L,
-                50,
-                new SoftActivationCurveParameters(0.1, 10L, 10L));
-            PlayerExperienceAuthorityV1 sourceXp =
-                CreateExperienceAuthority(curve);
-            var xpRequest = new PlayerExperienceGrantRequestV1(
-                StableId.Parse("xp-source.save-adapter"),
-                125L);
-            sourceXp.Grant(xpRequest);
+            StableId authorityId = Id("authority.scrap.real-roundtrip");
+            StableId currencyId = Id("currency.scrap");
+            var source = new ScrapWalletServiceV1(authorityId, currencyId);
+            ScrapTransactionCommandV1 grant = ScrapGrant(
+                authorityId,
+                currencyId,
+                "real-grant",
+                30L,
+                0L);
+            ScrapTransactionCommandV1 rejected = ScrapSpend(
+                authorityId,
+                currencyId,
+                "real-rejected",
+                99L,
+                1L);
+            Assert.That(source.Apply(grant).Status,
+                Is.EqualTo(EconomyTransactionStatusV1.Applied));
+            source.Apply(rejected);
 
-            var sourceMoney = new MoneyWalletService();
-            MoneyTransactionCommand moneyGrant =
-                MoneyTransactionCommand.CreateGrant(
-                    StableId.Parse("transaction.save-adapter-grant"),
-                    StableId.Parse("operation.save-adapter-grant"),
-                    40L);
-            MoneyTransactionCommand moneyRejected =
-                MoneyTransactionCommand.CreateSpend(
-                    StableId.Parse("transaction.save-adapter-rejected"),
-                    StableId.Parse("operation.save-adapter-rejected"),
-                    50L,
-                    1L);
-            sourceMoney.Apply(moneyGrant);
-            sourceMoney.Apply(moneyRejected);
+            var target = new ScrapWalletServiceV1(authorityId, currencyId);
+            PlayerAccountSnapshotV1 decoded = FileRoundTrip(
+                ScrapAdapter(source, authorityId, currencyId).ExportComponent());
+            PlayerAccountRestoreResultV1 restored = Restore(
+                decoded,
+                ScrapAdapter(target, authorityId, currencyId));
 
-            ISaveComponentAdapterV1 sourceXpAdapter =
-                KnownSaveComponentAdaptersV1.PlayerExperience(
-                    sourceXp.ExportSnapshot,
-                    snapshot => ValidateExperienceSnapshot(curve, snapshot),
-                    snapshot => ApplyExperienceSnapshot(sourceXp, snapshot));
-            ISaveComponentAdapterV1 sourceMoneyAdapter =
-                KnownSaveComponentAdaptersV1.MoneyWallet(
-                    () => sourceMoney.CurrentSnapshot,
-                    ValidateMoneySnapshot,
-                    snapshot => ApplyMoneySnapshot(sourceMoney, snapshot));
-
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.real-authorities",
-                PlayerAccountRestoreCoordinatorV1.ExportComponents(
-                    new[] { sourceXpAdapter, sourceMoneyAdapter }));
-
-            PlayerExperienceAuthorityV1 targetXp =
-                CreateExperienceAuthority(curve);
-            var targetMoney = new MoneyWalletService();
-            ISaveComponentAdapterV1 targetXpAdapter =
-                KnownSaveComponentAdaptersV1.PlayerExperience(
-                    targetXp.ExportSnapshot,
-                    snapshot => ValidateExperienceSnapshot(curve, snapshot),
-                    snapshot => ApplyExperienceSnapshot(targetXp, snapshot));
-            ISaveComponentAdapterV1 targetMoneyAdapter =
-                KnownSaveComponentAdaptersV1.MoneyWallet(
-                    () => targetMoney.CurrentSnapshot,
-                    ValidateMoneySnapshot,
-                    snapshot => ApplyMoneySnapshot(targetMoney, snapshot));
-
-            PlayerAccountRestoreResultV1 restore =
-                new PlayerAccountRestoreCoordinatorV1().Restore(
-                    account,
-                    new[]
-                    {
-                        new CharacterSaveRestoreBindingV1(
-                            0,
-                            StableId.Parse("character.real-authorities"),
-                            new[] { targetXpAdapter, targetMoneyAdapter }),
-                    });
-
-            Assert.That(restore.Succeeded, Is.True, restore.RejectionCode);
-            Assert.That(targetXp.Grant(xpRequest).Status, Is.EqualTo(
-                PlayerExperienceGrantStatusV1.DuplicateNoChange));
-            Assert.That(targetMoney.Apply(moneyGrant).Status, Is.EqualTo(
-                MoneyWalletTransactionStatus.DuplicateNoChange));
-            MoneyWalletChangeFact rejectedReplay =
-                targetMoney.Apply(moneyRejected);
-            Assert.That(rejectedReplay.Status, Is.EqualTo(
-                MoneyWalletTransactionStatus.DuplicateNoChange));
-            Assert.That(rejectedReplay.OriginalStatus, Is.EqualTo(
-                MoneyWalletTransactionStatus.InsufficientFunds));
-            Assert.That(targetXp.CurrentSnapshot.Sequence, Is.EqualTo(1L));
-            Assert.That(targetMoney.Sequence, Is.EqualTo(1L));
+            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
+            Assert.That(target.ExportSnapshot().Fingerprint,
+                Is.EqualTo(source.ExportSnapshot().Fingerprint));
+            long sequence = target.Sequence;
+            Assert.That(target.Apply(grant).Status,
+                Is.EqualTo(EconomyTransactionStatusV1.DuplicateNoChange));
+            Assert.That(target.Apply(rejected).Status,
+                Is.EqualTo(EconomyTransactionStatusV1.DuplicateNoChange));
+            Assert.That(target.Sequence, Is.EqualTo(sequence));
         }
 
         [Test]
-        public void SixSlotsRemainIsolated()
+        public void HoldingsRealAuthorityRoundTripPreservesDistinctInstancesAndUnopenedBox()
         {
-            SaveComponentDefinitionV1 definition =
-                KnownSaveComponentDefinitionsV1.PlayerExperience();
-            var slots = new CharacterInstanceSnapshotV1[
-                PlayerAccountSnapshotV1.CharacterSlotCount];
-            var bindings = new List<CharacterSaveRestoreBindingV1>();
-            var targets = new List<FixtureAuthority>();
+            StableId authorityId = Id("authority.holdings.real-roundtrip");
+            var source = new PlayerHoldingsService(
+                authorityId,
+                1000L,
+                new AcceptingEquipmentValidator());
+            StableId sharedDefinition = Id("equipment-definition.shared-shotgun");
+            EquipmentInstance first = Equipment(
+                "equipment-instance.shared-shotgun-a",
+                sharedDefinition);
+            EquipmentInstance second = Equipment(
+                "equipment-instance.shared-shotgun-b",
+                sharedDefinition);
+            StableId boxId = Id("strongbox.instance.unopened-real");
+            PlayerHoldingsCommandV1 firstCommand = AddEquipmentCommand(
+                source,
+                first,
+                "first",
+                0L);
+            PlayerHoldingsCommandV1 secondCommand = AddEquipmentCommand(
+                source,
+                second,
+                "second",
+                1L);
+            PlayerHoldingsCommandV1 boxCommand =
+                PlayerHoldingsCommandV1.AddStrongbox(
+                    Id("transaction.holdings.box"),
+                    Id("operation.holdings.box"),
+                    authorityId,
+                    Id("strongbox.tier.test"),
+                    boxId,
+                    HoldingProvenanceV1.Create(
+                        Id("grant.holdings.box"),
+                        Id("source.holdings.box")),
+                    2L);
+            Assert.That(source.Apply(firstCommand).Status,
+                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+            Assert.That(source.Apply(secondCommand).Status,
+                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+            Assert.That(source.Apply(boxCommand).Status,
+                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
 
-            for (int index = 0;
-                index < PlayerAccountSnapshotV1.CharacterSlotCount;
-                index++)
-            {
-                string characterId = "character.slot-" + index;
-                string ownerId = "owner-slot-" + index;
-                var source = new FixtureAuthority(
-                    FixtureSnapshotV1.CreateCanonical(
-                        ownerId,
-                        index + 10,
-                        new[]
-                        {
-                            new FixtureReceiptV1(
-                                "operation-slot-" + index,
-                                "xp.enemy",
-                                "enemy-instance-" + index,
-                                "applied"),
-                        }));
-                ISaveComponentAdapterV1 sourceAdapter = CreateAdapter(
-                    definition,
-                    source,
-                    ownerId);
-                slots[index] = Character(
-                    index,
-                    characterId,
-                    new[] { sourceAdapter.ExportComponent() });
+            var target = new PlayerHoldingsService(
+                authorityId,
+                1000L,
+                new AcceptingEquipmentValidator());
+            PlayerAccountSnapshotV1 decoded = FileRoundTrip(
+                HoldingsAdapter(source, authorityId).ExportComponent());
+            PlayerAccountRestoreResultV1 restored = Restore(
+                decoded,
+                HoldingsAdapter(target, authorityId));
 
-                var target = new FixtureAuthority(
-                    FixtureSnapshotV1.CreateCanonical(
-                        ownerId,
-                        0,
-                        Array.Empty<FixtureReceiptV1>()));
-                targets.Add(target);
-                bindings.Add(new CharacterSaveRestoreBindingV1(
-                    index,
-                    StableId.Parse(characterId),
-                    new[] { CreateAdapter(definition, target, ownerId) }));
-            }
-
-            var account = new PlayerAccountSnapshotV1(
-                StableId.Parse("account.six-slot-test"),
-                0L,
-                slots,
-                null);
-            PlayerAccountRestoreResultV1 result =
-                new PlayerAccountRestoreCoordinatorV1().Restore(
-                    account,
-                    bindings);
-
-            Assert.That(result.Succeeded, Is.True, result.RejectionCode);
-            for (int index = 0; index < targets.Count; index++)
-            {
-                Assert.That(targets[index].Current.OwnerId,
-                    Is.EqualTo("owner-slot-" + index));
-                Assert.That(targets[index].Current.Sequence,
-                    Is.EqualTo(index + 10));
-                Assert.That(targets[index].Current.Receipts.Single().InstanceId,
-                    Is.EqualTo("enemy-instance-" + index));
-            }
-        }
-
-        [Test]
-        public void DuplicateDefinitionsRemainDistinctInstancesAndReplaySurvives()
-        {
-            var snapshot = FixtureSnapshotV1.CreateCanonical(
-                "inventory-owner",
-                2,
-                new[]
-                {
-                    new FixtureReceiptV1(
-                        "operation.add-first",
-                        "weapon.shared-shotgun",
-                        "equipment.instance-one",
-                        "applied"),
-                    new FixtureReceiptV1(
-                        "operation.add-second",
-                        "weapon.shared-shotgun",
-                        "equipment.instance-two",
-                        "applied"),
-                });
-            string payload = CanonicalSnapshotCodecV1.Serialize(snapshot);
-            FixtureSnapshotV1 restored;
-            string error;
-
-            Assert.That(CanonicalSnapshotCodecV1.TryDeserialize(
-                payload,
-                out restored,
-                out error), Is.True, error);
-            Assert.That(restored.Receipts.Count, Is.EqualTo(2));
-            Assert.That(restored.Receipts.Select(item => item.DefinitionId)
-                .Distinct().Single(), Is.EqualTo("weapon.shared-shotgun"));
-            Assert.That(restored.Receipts.Select(item => item.InstanceId)
+            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
+            PlayerHoldingsSnapshotV1 snapshot = target.ExportSnapshot();
+            Assert.That(snapshot.Fingerprint,
+                Is.EqualTo(source.ExportSnapshot().Fingerprint));
+            Assert.That(snapshot.UniqueHoldings.Count, Is.EqualTo(3));
+            Assert.That(snapshot.UniqueHoldings
+                .Where(item => item.RewardKind
+                    == RewardGrantKindV1.EquipmentReference)
+                .Select(item => item.DefinitionStableId)
+                .Distinct().Single(), Is.EqualTo(sharedDefinition));
+            Assert.That(snapshot.UniqueHoldings
+                .Where(item => item.RewardKind
+                    == RewardGrantKindV1.EquipmentReference)
+                .Select(item => item.InstanceStableId)
                 .Distinct().Count(), Is.EqualTo(2));
-            Assert.That(restored.Receipts.Select(item => item.OperationId),
-                Is.EquivalentTo(new[]
-                {
-                    "operation.add-first",
-                    "operation.add-second",
-                }));
+            Assert.That(snapshot.UniqueHoldings.Any(item =>
+                item.RewardKind == RewardGrantKindV1.Strongbox
+                && item.InstanceStableId == boxId), Is.True);
+            long sequence = target.Sequence;
+            Assert.That(target.Apply(firstCommand).Status,
+                Is.EqualTo(PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange));
+            Assert.That(target.Sequence, Is.EqualTo(sequence));
         }
 
         [Test]
-        public void AggregateSemanticMismatchRejectsBeforeAnyAuthorityChanges()
+        public void RankedSkillRealAuthorityRoundTripPreservesAllocationAndBlocksReplayMutation()
         {
-            SaveComponentDefinitionV1 holdings =
-                KnownSaveComponentDefinitionsV1.PlayerHoldings();
-            SaveComponentDefinitionV1 loadout =
-                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout();
-            var holdingsSource = new FixtureAuthority(
-                FixtureSnapshotV1.CreateCanonical(
-                    "holdings-owner", 2, Receipts("holdings")));
-            var loadoutSource = new FixtureAuthority(
-                FixtureSnapshotV1.CreateCanonical(
-                    "loadout-owner", 5, Receipts("loadout")));
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.semantic-mismatch",
-                new[]
-                {
-                    CreateAdapter(
-                        holdings, holdingsSource, "holdings-owner")
-                        .ExportComponent(),
-                    CreateAdapter(
-                        loadout, loadoutSource, "loadout-owner")
-                        .ExportComponent(),
-                });
-            var holdingsTarget = new FixtureAuthority(
-                FixtureSnapshotV1.CreateCanonical(
-                    "holdings-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            var loadoutTarget = new FixtureAuthority(
-                FixtureSnapshotV1.CreateCanonical(
-                    "loadout-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            var coordinator = new PlayerAccountRestoreCoordinatorV1(
-                null,
-                ignored => SaveComponentValidationResultV1.Reject(
-                    "loadout-references-missing-holding-instance"));
+            RankedSkillCatalogV2 catalog = RankedSkillSampleCatalogV2.Create();
+            var source = new RankedSkillAllocationAuthorityV2(catalog);
+            source.Seed(RankedSkillAllocationSnapshotV2.Empty(
+                "profile.real-skills",
+                "striker",
+                catalog));
+            var command = new AllocateSkillRankCommandV2(
+                "operation.real-skills",
+                "profile.real-skills",
+                "generic.movement_speed",
+                0L,
+                2);
+            Assert.That(source.Allocate(command).Accepted, Is.True);
 
-            PlayerAccountRestoreResultV1 result = coordinator.Restore(
-                account,
-                new[]
-                {
-                    new CharacterSaveRestoreBindingV1(
-                        0,
-                        StableId.Parse("character.semantic-mismatch"),
-                        new[]
-                        {
-                            CreateAdapter(
-                                holdings, holdingsTarget, "holdings-owner"),
-                            CreateAdapter(
-                                loadout, loadoutTarget, "loadout-owner"),
-                        }),
-                });
+            var target = new RankedSkillAllocationAuthorityV2(catalog);
+            target.Seed(RankedSkillAllocationSnapshotV2.Empty(
+                "profile.real-skills",
+                "striker",
+                catalog));
+            PlayerAccountSnapshotV1 decoded = FileRoundTrip(
+                SkillAdapter(source, "profile.real-skills")
+                    .ExportComponent());
+            PlayerAccountRestoreResultV1 restored = Restore(
+                decoded,
+                SkillAdapter(target, "profile.real-skills"));
 
-            Assert.That(result.Status, Is.EqualTo(
-                PlayerAccountRestoreStatusV1.ValidationRejected));
-            Assert.That(result.RejectionCode, Is.EqualTo(
-                "loadout-references-missing-holding-instance"));
-            Assert.That(holdingsTarget.ApplyCount, Is.Zero);
-            Assert.That(loadoutTarget.ApplyCount, Is.Zero);
+            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
+            Assert.That(target.Get("profile.real-skills").Fingerprint,
+                Is.EqualTo(source.Get("profile.real-skills").Fingerprint));
+            string before = target.Get("profile.real-skills").Fingerprint;
+            SkillAllocationResultV2 replay = target.Allocate(command);
+            Assert.That(replay.Accepted, Is.False);
+            Assert.That(replay.Rejection,
+                Is.EqualTo(SkillAllocationRejectionV2.StaleVersion));
+            Assert.That(target.Get("profile.real-skills").Fingerprint,
+                Is.EqualTo(before));
         }
 
         [Test]
-        public void CorruptComponentRejectsBeforeAnyAuthorityChanges()
+        public void LoadoutRealAuthorityRoundTripPreservesExactSlotBindingAndReplay()
         {
-            SaveComponentDefinitionV1 xp =
-                KnownSaveComponentDefinitionsV1.PlayerExperience();
-            SaveComponentDefinitionV1 money =
-                KnownSaveComponentDefinitionsV1.StrongboxState(true);
-            var xpSource = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "xp-owner",
-                3,
-                Receipts("xp")));
-            var moneySource = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "money-owner",
-                4,
-                Receipts("money")));
-            SaveComponentSnapshotV1 validXp = CreateAdapter(
-                xp,
-                xpSource,
-                "xp-owner").ExportComponent();
-            SaveComponentSnapshotV1 validMoney = CreateAdapter(
-                money,
-                moneySource,
-                "money-owner").ExportComponent();
-            string corruptPayload = validMoney.CanonicalPayload.Substring(
-                0,
-                validMoney.CanonicalPayload.Length - 1) + "x";
-            var corruptMoney = new SaveComponentSnapshotV1(
-                validMoney.ComponentStableId,
-                validMoney.SchemaVersion,
-                validMoney.ContentVersion,
-                corruptPayload);
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.corrupt-test",
-                new[] { validXp, corruptMoney });
+            PlayerRouteProfilePayloadV1 route = Route("real-loadout");
+            var source = new ProductionPlayerLoadoutRuntimeV1(route);
+            InventoryLoadoutAuthoritySnapshotV1 before =
+                source.LoadoutAuthority.ExportSnapshot();
+            List<InventoryLoadoutSlotBindingV1> bindings = CopyBindings(before);
+            bindings[3] = new InventoryLoadoutSlotBindingV1(
+                InventoryLoadoutSlotIdsV1.WeaponFour,
+                source.RicochetEquipmentInstanceStableId);
+            var originalCommand = new InventoryLoadoutAuthorityCommandV1(
+                before.Sequence,
+                source.Holdings.Sequence,
+                bindings);
+            Assert.That(source.LoadoutAuthority.Apply(originalCommand).Status,
+                Is.EqualTo(InventoryLoadoutAuthorityMutationStatusV1.Applied));
 
-            var xpTarget = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "xp-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            var moneyTarget = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "money-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            PlayerAccountRestoreResultV1 result =
-                new PlayerAccountRestoreCoordinatorV1().Restore(
-                    account,
-                    new[]
-                    {
-                        new CharacterSaveRestoreBindingV1(
-                            0,
-                            StableId.Parse("character.corrupt-test"),
-                            new[]
-                            {
-                                CreateAdapter(xp, xpTarget, "xp-owner"),
-                                CreateAdapter(money, moneyTarget, "money-owner"),
-                            }),
-                    });
+            var target = new ProductionPlayerLoadoutRuntimeV1(route);
+            PlayerAccountSnapshotV1 decoded = FileRoundTrip(
+                LoadoutAdapter(source).ExportComponent());
+            PlayerAccountRestoreResultV1 restored = Restore(
+                decoded,
+                LoadoutAdapter(target));
 
-            Assert.That(result.Status, Is.EqualTo(
-                PlayerAccountRestoreStatusV1.ValidationRejected));
-            Assert.That(xpTarget.ApplyCount, Is.Zero);
-            Assert.That(moneyTarget.ApplyCount, Is.Zero);
-            Assert.That(xpTarget.Current.Sequence, Is.Zero);
-            Assert.That(moneyTarget.Current.Sequence, Is.Zero);
+            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
+            InventoryLoadoutAuthoritySnapshotV1 restoredSnapshot =
+                target.LoadoutAuthority.ExportSnapshot();
+            Assert.That(restoredSnapshot.Fingerprint,
+                Is.EqualTo(source.LoadoutAuthority.ExportSnapshot().Fingerprint));
+            Assert.That(restoredSnapshot.GetBinding(
+                InventoryLoadoutSlotIdsV1.WeaponFour)
+                .EquipmentInstanceStableId,
+                Is.EqualTo(target.RicochetEquipmentInstanceStableId));
+            InventoryLoadoutAuthorityResultV1 replay =
+                target.LoadoutAuthority.Apply(originalCommand);
+            Assert.That(replay.Status,
+                Is.EqualTo(InventoryLoadoutAuthorityMutationStatusV1
+                    .ExactRepeatNoChange));
+            Assert.That(target.LoadoutAuthority.ExportSnapshot().Fingerprint,
+                Is.EqualTo(restoredSnapshot.Fingerprint));
         }
 
         [Test]
-        public void MissingOptionalAcceptedButMissingRequiredRejected()
+        public void SemanticValidatorRejectsLoadoutInstanceAbsentFromHoldings()
         {
-            var xpDefinition =
-                KnownSaveComponentDefinitionsV1.PlayerExperience(true);
-            var optionalBox =
-                KnownSaveComponentDefinitionsV1.StrongboxState(false);
-            var source = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "xp-owner", 1, Receipts("xp")));
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.optional-test",
-                new[] { CreateAdapter(xpDefinition, source, "xp-owner")
-                    .ExportComponent() });
-
-            var target = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "xp-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            var optionalTarget = new FixtureAuthority(
-                FixtureSnapshotV1.CreateCanonical(
-                    "box-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            var coordinator = new PlayerAccountRestoreCoordinatorV1();
-            PlayerAccountRestoreResultV1 accepted = coordinator.Restore(
-                account,
-                new[]
-                {
-                    new CharacterSaveRestoreBindingV1(
-                        0,
-                        StableId.Parse("character.optional-test"),
-                        new[]
-                        {
-                            CreateAdapter(xpDefinition, target, "xp-owner"),
-                            CreateAdapter(optionalBox, optionalTarget, "box-owner"),
-                        }),
-                });
-            Assert.That(accepted.Succeeded, Is.True, accepted.RejectionCode);
-            Assert.That(optionalTarget.ApplyCount, Is.Zero);
-
-            var missingRequiredTarget = new FixtureAuthority(
-                FixtureSnapshotV1.CreateCanonical(
-                    "money-owner", 0, Array.Empty<FixtureReceiptV1>()));
-            PlayerAccountRestoreResultV1 rejected = coordinator.Restore(
-                account,
-                new[]
-                {
-                    new CharacterSaveRestoreBindingV1(
-                        0,
-                        StableId.Parse("character.optional-test"),
-                        new[]
-                        {
-                            CreateAdapter(
-                                KnownSaveComponentDefinitionsV1.MoneyWallet(true),
-                                missingRequiredTarget,
-                                "money-owner"),
-                        }),
-                });
-            Assert.That(rejected.Status, Is.EqualTo(
-                PlayerAccountRestoreStatusV1.ValidationRejected));
-            Assert.That(missingRequiredTarget.ApplyCount, Is.Zero);
-        }
-
-        [Test]
-        public void UnsupportedSchemaDoesNotOverwriteLastValidSave()
-        {
-            var files = new MemoryAtomicFilePort();
-            var store = new AtomicPlayerAccountStoreV1(
-                files,
-                "account.active",
-                "account.temp",
-                "account.backup",
-                ValidateKnownComponentSchemas);
-            PlayerAccountSnapshotV1 valid = AccountWithCharacter(
-                0,
-                "character.store-test",
-                new[]
-                {
-                    new SaveComponentSnapshotV1(
-                        KnownSaveComponentDefinitionsV1.PlayerExperience()
-                            .ComponentStableId,
-                        1,
-                        "player-experience-snapshot-v1",
-                        CanonicalSnapshotCodecV1.Serialize(
-                            FixtureSnapshotV1.CreateCanonical(
-                                "xp-owner", 1, Receipts("xp")))),
-                });
-            Assert.That(store.Save(valid).Status,
-                Is.EqualTo(PlayerAccountStoreStatusV1.Saved));
-            string previousActive = files.ReadAllText("account.active");
-
-            PlayerAccountSnapshotV1 unsupported = AccountWithCharacter(
-                0,
-                "character.store-test",
-                new[]
-                {
-                    new SaveComponentSnapshotV1(
-                        KnownSaveComponentDefinitionsV1.PlayerExperience()
-                            .ComponentStableId,
-                        99,
-                        "player-experience-snapshot-v1",
-                        CanonicalSnapshotCodecV1.Serialize(
-                            FixtureSnapshotV1.CreateCanonical(
-                                "xp-owner", 2, Receipts("xp-new")))),
-                });
-            PlayerAccountStoreResultV1 rejected = store.Save(unsupported);
-
-            Assert.That(rejected.Status, Is.EqualTo(
-                PlayerAccountStoreStatusV1.ValidationRejected));
-            Assert.That(files.ReadAllText("account.active"),
-                Is.EqualTo(previousActive));
-            Assert.That(store.Load().Snapshot.Fingerprint,
-                Is.EqualTo(valid.Fingerprint));
-        }
-
-        [Test]
-        public void TemporaryWriteInterruptionPreservesPreviousValidSave()
-        {
-            var files = new MemoryAtomicFilePort();
-            var store = new AtomicPlayerAccountStoreV1(
-                files,
-                "account.active",
-                "account.temp",
-                "account.backup");
-            PlayerAccountSnapshotV1 first = AccountWithCharacter(
-                0,
-                "character.interruption",
-                Array.Empty<SaveComponentSnapshotV1>());
-            Assert.That(store.Save(first).Succeeded, Is.True);
-            string previous = files.ReadAllText("account.active");
-
-            files.FailNextReadPath = "account.temp";
-            PlayerAccountSnapshotV1 second = first.WithCharacter(
-                0,
-                Character(
-                    0,
-                    "character.interruption",
-                    new[]
-                    {
-                        new SaveComponentSnapshotV1(
-                            StableId.Parse("future.optional-state"),
-                            1,
-                            "future-v1",
-                            "opaque"),
-                    }));
-            PlayerAccountStoreResultV1 interrupted = store.Save(second);
-
-            Assert.That(interrupted.Status, Is.EqualTo(
-                PlayerAccountStoreStatusV1.IoFailure));
-            Assert.That(files.ReadAllText("account.active"), Is.EqualTo(previous));
-            Assert.That(store.Load().Snapshot.Fingerprint,
-                Is.EqualTo(first.Fingerprint));
-        }
-
-        [Test]
-        public void UnknownOptionalComponentIsRetainedWithoutInterpretation()
-        {
-            var unknown = new SaveComponentSnapshotV1(
-                StableId.Parse("future.seasonal-state"),
-                7,
-                "season-2030-v7",
-                "opaque-future-payload");
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.future-state",
-                new[] { unknown });
-            PlayerAccountRestoreResultV1 result =
-                new PlayerAccountRestoreCoordinatorV1().Restore(
-                    account,
-                    new[]
-                    {
-                        new CharacterSaveRestoreBindingV1(
-                            0,
-                            StableId.Parse("character.future-state"),
-                            Array.Empty<ISaveComponentAdapterV1>()),
-                    });
-
-            Assert.That(result.Succeeded, Is.True, result.RejectionCode);
-            Assert.That(result.RetainedUnknownComponents.Count, Is.EqualTo(1));
-            Assert.That(result.RetainedUnknownComponents[0].Component,
-                Is.SameAs(unknown));
-            Assert.That(result.RetainedUnknownComponents[0].CharacterSlotIndex,
-                Is.EqualTo(0));
-        }
-
-        [Test]
-        public void CommitFailureRollsBackEarlierAuthority()
-        {
-            SaveComponentDefinitionV1 xp =
-                KnownSaveComponentDefinitionsV1.PlayerExperience();
-            SaveComponentDefinitionV1 money =
-                KnownSaveComponentDefinitionsV1.StrongboxState(true);
-            var xpSource = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "xp-owner", 5, Receipts("xp")));
-            var moneySource = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "money-owner", 6, Receipts("money")));
-            PlayerAccountSnapshotV1 account = AccountWithCharacter(
-                0,
-                "character.rollback",
-                new[]
-                {
-                    CreateAdapter(xp, xpSource, "xp-owner").ExportComponent(),
-                    CreateAdapter(money, moneySource, "money-owner")
-                        .ExportComponent(),
-                });
-
-            FixtureSnapshotV1 xpInitial = FixtureSnapshotV1.CreateCanonical(
-                "xp-owner", 1, Receipts("initial"));
-            var xpTarget = new FixtureAuthority(xpInitial);
-            var moneyTarget = new FixtureAuthority(FixtureSnapshotV1.CreateCanonical(
-                "money-owner", 1, Receipts("initial")));
-            moneyTarget.FailNextApply = true;
-
-            PlayerAccountRestoreResultV1 result =
-                new PlayerAccountRestoreCoordinatorV1().Restore(
-                    account,
-                    new[]
-                    {
-                        new CharacterSaveRestoreBindingV1(
-                            0,
-                            StableId.Parse("character.rollback"),
-                            new[]
-                            {
-                                CreateAdapter(xp, xpTarget, "xp-owner"),
-                                CreateAdapter(money, moneyTarget, "money-owner"),
-                            }),
-                    });
-
-            Assert.That(result.Status, Is.EqualTo(
-                PlayerAccountRestoreStatusV1.CommitFailedRolledBack));
-            Assert.That(xpTarget.Current.Fingerprint,
-                Is.EqualTo(xpInitial.Fingerprint));
-            Assert.That(moneyTarget.Current.Sequence, Is.EqualTo(1));
-        }
-
-        private static SaveComponentValidationResultV1
-            ValidateExperienceSnapshot(
-                PlayerExperienceCurveV1 curve,
-                PlayerExperienceSnapshotV1 snapshot)
-        {
-            PlayerExperienceImportResultV1 result =
-                CreateExperienceAuthority(curve).TryImport(snapshot);
-            return result.Status == PlayerExperienceImportStatusV1.Imported
-                ? SaveComponentValidationResultV1.Accept()
-                : SaveComponentValidationResultV1.Reject(
-                    result.RejectionCode);
-        }
-
-        private static SaveComponentApplyResultV1 ApplyExperienceSnapshot(
-            PlayerExperienceAuthorityV1 authority,
-            PlayerExperienceSnapshotV1 snapshot)
-        {
-            PlayerExperienceImportResultV1 result =
-                authority.TryImport(snapshot);
-            return result.Status == PlayerExperienceImportStatusV1.Imported
-                ? SaveComponentApplyResultV1.Applied()
-                : SaveComponentApplyResultV1.Rejected(
-                    result.RejectionCode);
-        }
-
-        private static SaveComponentValidationResultV1 ValidateMoneySnapshot(
-            MoneyWalletSnapshot snapshot)
-        {
-            MoneyWalletImportResult result =
-                new MoneyWalletService().ImportSnapshot(snapshot);
-            return result.Status == MoneyWalletImportStatus.Imported
-                ? SaveComponentValidationResultV1.Accept()
-                : SaveComponentValidationResultV1.Reject(
-                    result.RejectionCode);
-        }
-
-        private static SaveComponentApplyResultV1 ApplyMoneySnapshot(
-            MoneyWalletService authority,
-            MoneyWalletSnapshot snapshot)
-        {
-            MoneyWalletImportResult result = authority.ImportSnapshot(snapshot);
-            return result.Status == MoneyWalletImportStatus.Imported
-                ? SaveComponentApplyResultV1.Applied()
-                : SaveComponentApplyResultV1.Rejected(
-                    result.RejectionCode);
-        }
-
-        private static PlayerExperienceAuthorityV1
-            CreateExperienceAuthority(PlayerExperienceCurveV1 curve)
-        {
-            return new PlayerExperienceAuthorityV1(
-                curve,
-                ProgressionContext.Create(
-                    42,
-                    1,
-                    StableId.Parse("difficulty.normal"),
-                    0,
-                    new[]
-                    {
-                        StableId.Parse("progression-tag.campaign"),
-                    }));
-        }
-
-        private static SaveComponentValidationResultV1
-            ValidateKnownComponentSchemas(PlayerAccountSnapshotV1 account)
-        {
-            SaveComponentValidationResultV1 integrity =
-                CanonicalSnapshotIntegrityV1.Validate(account);
-            if (!integrity.Succeeded)
+            StableId authorityId = Id("authority.holdings.semantic-test");
+            var holdings = new PlayerHoldingsService(
+                authorityId,
+                1000L,
+                new AcceptingEquipmentValidator());
+            PlayerHoldingsSnapshotV1 holdingsSnapshot = holdings.ExportSnapshot();
+            var bindings = new List<InventoryLoadoutSlotBindingV1>();
+            for (int index = 0; index < InventoryLoadoutSlotsV1.All.Count; index++)
             {
-                return integrity;
+                InventoryLoadoutSlotDescriptorV1 slot =
+                    InventoryLoadoutSlotsV1.All[index];
+                bindings.Add(new InventoryLoadoutSlotBindingV1(
+                    slot.SlotStableId,
+                    index == 0
+                        ? Id("equipment-instance.absent")
+                        : null));
             }
-            foreach (CharacterInstanceSnapshotV1 character in
-                account.CharacterSlots)
-            {
-                if (character == null) continue;
-                foreach (SaveComponentSnapshotV1 component in
-                    character.Components.Values)
+            InventoryLoadoutAuthoritySnapshotV1 loadout =
+                InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(0L, bindings);
+            CharacterInstanceSnapshotV1 character = Character(
+                new SaveComponentSnapshotV1[]
                 {
-                    if (component.ComponentStableId
-                        == KnownSaveComponentDefinitionsV1.PlayerExperience()
-                            .ComponentStableId
-                        && component.SchemaVersion != 1)
+                    Component(
+                        KnownSaveComponentDefinitionsV1.PlayerHoldings(),
+                        KnownSaveComponentCodecsV1.PlayerHoldings.Encode(
+                            holdingsSnapshot)),
+                    Component(
+                        KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
+                        KnownSaveComponentCodecsV1.ExactInstanceLoadout.Encode(
+                            loadout)),
+                });
+
+            SaveComponentValidationResultV1 result =
+                PlayerAccountComponentSemanticsV1.ValidateCharacter(character);
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.RejectionCode,
+                Does.StartWith("loadout-equipment-instance-absent-from-holdings"));
+        }
+
+        [Test]
+        public void ExplicitCodecGoldenPayloadsAreStableAndDoNotUseClrTypes()
+        {
+            PlayerExperienceCurveV1 curve = ConstantCurve();
+            PlayerExperienceAuthorityV1 experience = ExperienceAuthority(curve);
+            experience.Grant(new PlayerExperienceGrantRequestV1(
+                Id("xp-source.golden"),
+                100L));
+            var money = new MoneyWalletService();
+            money.Grant(
+                Id("transaction.money.golden"),
+                Id("operation.money.golden"),
+                5L);
+
+            string xpPayload = KnownSaveComponentCodecsV1.PlayerExperience
+                .Encode(experience.ExportSnapshot());
+            string moneyPayload = KnownSaveComponentCodecsV1.MoneyWallet
+                .Encode(money.CurrentSnapshot);
+
+            Assert.That(xpPayload, Does.StartWith("O7:"));
+            Assert.That(moneyPayload, Does.StartWith("O4:"));
+            Assert.That(xpPayload, Does.Not.Contain("PlayerExperienceSnapshotV1"));
+            Assert.That(moneyPayload, Does.Not.Contain("MoneyWalletSnapshot"));
+            Assert.That(Sha256(xpPayload), Is.EqualTo(Sha256(
+                KnownSaveComponentCodecsV1.PlayerExperience.Encode(
+                    experience.ExportSnapshot()))));
+            Assert.That(Sha256(moneyPayload), Is.EqualTo(Sha256(
+                KnownSaveComponentCodecsV1.MoneyWallet.Encode(
+                    money.CurrentSnapshot))));
+        }
+
+        private static PlayerAccountSnapshotV1 FileRoundTrip(
+            SaveComponentSnapshotV1 component)
+        {
+            PlayerAccountSnapshotV1 source = Account(component);
+            string file = PlayerAccountFileCodecV1.Encode(source);
+            PlayerAccountSnapshotV1 decoded;
+            string rejection;
+            Assert.That(PlayerAccountFileCodecV1.TryDecode(
+                file,
+                out decoded,
+                out rejection), Is.True, rejection);
+            Assert.That(decoded.Fingerprint, Is.EqualTo(source.Fingerprint));
+            return decoded;
+        }
+
+        private static PlayerAccountRestoreResultV1 Restore(
+            PlayerAccountSnapshotV1 account,
+            ISaveComponentAdapterV1 adapter)
+        {
+            return new PlayerAccountRestoreCoordinatorV1(
+                validateAggregate: PlayerAccountComponentSemanticsV1.Validate)
+                .Restore(
+                    account,
+                    new[]
                     {
-                        return SaveComponentValidationResultV1.Reject(
-                            "save-component-schema-unsupported");
-                    }
-                }
-            }
-            return SaveComponentValidationResultV1.Accept();
+                        new CharacterSaveRestoreBindingV1(
+                            0,
+                            Id("character.real-save-adapters"),
+                            new[] { adapter }),
+                    });
         }
 
-        private static SaveComponentDefinitionV1[] AllDefinitions()
-        {
-            return new[]
-            {
-                KnownSaveComponentDefinitionsV1.PlayerExperience(),
-                KnownSaveComponentDefinitionsV1.PlayerHoldings(),
-                KnownSaveComponentDefinitionsV1.MoneyWallet(),
-                KnownSaveComponentDefinitionsV1.ScrapWallet(),
-                KnownSaveComponentDefinitionsV1.RankedSkillAllocation(),
-                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
-                KnownSaveComponentDefinitionsV1.StrongboxState(true),
-                KnownSaveComponentDefinitionsV1.CharacterStatistics(true),
-            };
-        }
-
-        private static ISaveComponentAdapterV1 CreateAdapter(
-            SaveComponentDefinitionV1 definition,
-            FixtureAuthority authority,
-            string expectedOwner)
-        {
-            return new AuthoritySnapshotSaveComponentAdapterV1<FixtureSnapshotV1>(
-                definition,
-                () => authority.Current,
-                snapshot => string.Equals(
-                    snapshot.OwnerId,
-                    expectedOwner,
-                    StringComparison.Ordinal)
-                    ? SaveComponentValidationResultV1.Accept()
-                    : SaveComponentValidationResultV1.Reject(
-                        "fixture-owner-mismatch"),
-                authority.Apply);
-        }
-
-        private static PlayerAccountSnapshotV1 AccountWithCharacter(
-            int slotIndex,
-            string characterId,
-            IEnumerable<SaveComponentSnapshotV1> components)
+        private static PlayerAccountSnapshotV1 Account(
+            SaveComponentSnapshotV1 component)
         {
             var slots = new CharacterInstanceSnapshotV1[
                 PlayerAccountSnapshotV1.CharacterSlotCount];
-            slots[slotIndex] = Character(slotIndex, characterId, components);
+            slots[0] = Character(new[] { component });
             return new PlayerAccountSnapshotV1(
-                StableId.Parse("account.save-adapters-tests"),
-                0L,
+                Id("account.real-save-adapters"),
+                3L,
                 slots,
                 null);
         }
 
         private static CharacterInstanceSnapshotV1 Character(
-            int slotIndex,
-            string characterId,
             IEnumerable<SaveComponentSnapshotV1> components)
         {
             return new CharacterInstanceSnapshotV1(
-                StableId.Parse(characterId),
-                StableId.Parse("class.test-mech"),
-                slotIndex,
-                "Test Mech " + slotIndex,
-                0L,
+                Id("character.real-save-adapters"),
+                Id("class.striker"),
+                0,
+                "Real Save Adapter",
+                2L,
                 components);
         }
 
-        private static FixtureReceiptV1[] Receipts(string token)
+        private static SaveComponentSnapshotV1 Component(
+            SaveComponentDefinitionV1 definition,
+            string payload)
         {
-            return new[]
-            {
-                new FixtureReceiptV1(
-                    "operation." + token,
-                    "definition." + token,
-                    "instance." + token,
-                    "applied"),
-            };
+            return new SaveComponentSnapshotV1(
+                definition.ComponentStableId,
+                definition.SchemaVersion,
+                definition.ContentVersion,
+                payload);
         }
 
-        private sealed class FixtureAuthority
+        private static ISaveComponentAdapterV1 ExperienceAdapter(
+            PlayerExperienceAuthorityV1 authority,
+            PlayerExperienceCurveV1 curve)
         {
-            public FixtureAuthority(FixtureSnapshotV1 initial)
-            {
-                Current = initial;
-            }
-
-            public FixtureSnapshotV1 Current { get; private set; }
-
-            public int ApplyCount { get; private set; }
-
-            public bool FailNextApply { get; set; }
-
-            public SaveComponentApplyResultV1 Apply(FixtureSnapshotV1 snapshot)
-            {
-                if (FailNextApply)
+            return KnownSaveComponentAdaptersV1.PlayerExperience(
+                authority.ExportSnapshot,
+                snapshot =>
                 {
-                    FailNextApply = false;
-                    return SaveComponentApplyResultV1.Rejected(
-                        "fixture-apply-failed");
-                }
-                Current = snapshot;
-                ApplyCount++;
-                return SaveComponentApplyResultV1.Applied();
-            }
-        }
-
-        public sealed class FixtureReceiptV1
-        {
-            public FixtureReceiptV1(
-                string operationId,
-                string definitionId,
-                string instanceId,
-                string outcome)
-            {
-                OperationId = operationId;
-                DefinitionId = definitionId;
-                InstanceId = instanceId;
-                Outcome = outcome;
-            }
-
-            public string OperationId { get; }
-
-            public string DefinitionId { get; }
-
-            public string InstanceId { get; }
-
-            public string Outcome { get; }
-
-            public string ToCanonicalString()
-            {
-                return OperationId + "|" + DefinitionId + "|" + InstanceId
-                    + "|" + Outcome;
-            }
-        }
-
-        public sealed class FixtureSnapshotV1
-        {
-            public const int CurrentSchemaVersion = 1;
-            private readonly ReadOnlyCollection<FixtureReceiptV1> receipts;
-
-            public FixtureSnapshotV1(
-                int schemaVersion,
-                string ownerId,
-                long sequence,
-                IEnumerable<FixtureReceiptV1> receipts,
-                string fingerprint)
-            {
-                SchemaVersion = schemaVersion;
-                OwnerId = ownerId;
-                Sequence = sequence;
-                var copy = new List<FixtureReceiptV1>(
-                    receipts ?? Array.Empty<FixtureReceiptV1>());
-                copy.Sort((left, right) => string.CompareOrdinal(
-                    left.OperationId,
-                    right.OperationId));
-                this.receipts = new ReadOnlyCollection<FixtureReceiptV1>(copy);
-                Fingerprint = fingerprint;
-            }
-
-            public int SchemaVersion { get; }
-
-            public string OwnerId { get; }
-
-            public long Sequence { get; }
-
-            public IReadOnlyList<FixtureReceiptV1> Receipts
-            {
-                get { return receipts; }
-            }
-
-            public string Fingerprint { get; }
-
-            public static FixtureSnapshotV1 CreateCanonical(
-                string ownerId,
-                long sequence,
-                IEnumerable<FixtureReceiptV1> receipts)
-            {
-                var provisional = new FixtureSnapshotV1(
-                    CurrentSchemaVersion,
-                    ownerId,
-                    sequence,
-                    receipts,
-                    string.Empty);
-                return new FixtureSnapshotV1(
-                    provisional.SchemaVersion,
-                    provisional.OwnerId,
-                    provisional.Sequence,
-                    provisional.Receipts,
-                    ComputeFingerprint(provisional));
-            }
-
-            public static string ComputeFingerprint(
-                FixtureSnapshotV1 snapshot)
-            {
-                string canonical = snapshot.SchemaVersion
-                    .ToString(CultureInfo.InvariantCulture)
-                    + "|" + snapshot.OwnerId
-                    + "|" + snapshot.Sequence.ToString(
-                        CultureInfo.InvariantCulture)
-                    + "|" + string.Join(
-                        ";",
-                        snapshot.Receipts.Select(
-                            item => item.ToCanonicalString()));
-                using (SHA256 sha = SHA256.Create())
+                    PlayerExperienceImportResultV1 result =
+                        ExperienceAuthority(curve).TryImport(snapshot);
+                    return result.Status == PlayerExperienceImportStatusV1.Imported
+                        ? SaveComponentValidationResultV1.Accept()
+                        : SaveComponentValidationResultV1.Reject(
+                            result.RejectionCode);
+                },
+                snapshot =>
                 {
-                    return BitConverter.ToString(sha.ComputeHash(
-                        Encoding.UTF8.GetBytes(canonical)))
-                        .Replace("-", string.Empty)
-                        .ToLowerInvariant();
-                }
+                    PlayerExperienceImportResultV1 result =
+                        authority.TryImport(snapshot);
+                    return result.Status == PlayerExperienceImportStatusV1.Imported
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
+        }
+
+        private static ISaveComponentAdapterV1 MoneyAdapter(
+            MoneyWalletService authority)
+        {
+            return KnownSaveComponentAdaptersV1.MoneyWallet(
+                () => authority.CurrentSnapshot,
+                snapshot =>
+                {
+                    MoneyWalletImportResult result =
+                        new MoneyWalletService().ImportSnapshot(snapshot);
+                    return result.Status == MoneyWalletImportStatus.Imported
+                        ? SaveComponentValidationResultV1.Accept()
+                        : SaveComponentValidationResultV1.Reject(
+                            result.RejectionCode);
+                },
+                snapshot =>
+                {
+                    MoneyWalletImportResult result =
+                        authority.ImportSnapshot(snapshot);
+                    return result.Status == MoneyWalletImportStatus.Imported
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
+        }
+
+        private static ISaveComponentAdapterV1 ScrapAdapter(
+            ScrapWalletServiceV1 authority,
+            StableId authorityId,
+            StableId currencyId)
+        {
+            return KnownSaveComponentAdaptersV1.ScrapWallet(
+                authority.ExportSnapshot,
+                snapshot =>
+                {
+                    ScrapSnapshotImportResultV1 result =
+                        new ScrapWalletServiceV1(authorityId, currencyId)
+                            .ImportSnapshot(snapshot);
+                    return result.Succeeded
+                        ? SaveComponentValidationResultV1.Accept()
+                        : SaveComponentValidationResultV1.Reject(
+                            result.RejectionCode);
+                },
+                snapshot =>
+                {
+                    ScrapSnapshotImportResultV1 result =
+                        authority.ImportSnapshot(snapshot);
+                    return result.Succeeded
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
+        }
+
+        private static ISaveComponentAdapterV1 HoldingsAdapter(
+            PlayerHoldingsService authority,
+            StableId authorityId)
+        {
+            return KnownSaveComponentAdaptersV1.PlayerHoldings(
+                authority.ExportSnapshot,
+                snapshot =>
+                {
+                    PlayerHoldingsImportResultV1 result =
+                        new PlayerHoldingsService(
+                            authorityId,
+                            1000L,
+                            new AcceptingEquipmentValidator())
+                            .ImportSnapshot(snapshot);
+                    return result.Succeeded
+                        ? SaveComponentValidationResultV1.Accept()
+                        : SaveComponentValidationResultV1.Reject(
+                            result.RejectionCode);
+                },
+                snapshot =>
+                {
+                    PlayerHoldingsImportResultV1 result =
+                        authority.ImportSnapshot(snapshot);
+                    return result.Succeeded
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
+        }
+
+        private static ISaveComponentAdapterV1 SkillAdapter(
+            RankedSkillAllocationAuthorityV2 authority,
+            string targetProfile)
+        {
+            return KnownSaveComponentAdaptersV1.RankedSkillAllocation(
+                () => authority.Get(targetProfile),
+                snapshot => KnownSaveComponentCodecsV1.RankedSkillAllocation
+                    .Validate(snapshot),
+                snapshot =>
+                {
+                    authority.Seed(snapshot);
+                    return authority.Get(targetProfile).Fingerprint
+                            == snapshot.Fingerprint
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            "ranked-skill-seed-mismatch");
+                });
+        }
+
+        private static ISaveComponentAdapterV1 LoadoutAdapter(
+            ProductionPlayerLoadoutRuntimeV1 runtime)
+        {
+            return KnownSaveComponentAdaptersV1.ExactInstanceLoadout(
+                runtime.LoadoutAuthority.ExportSnapshot,
+                snapshot => KnownSaveComponentCodecsV1.ExactInstanceLoadout
+                    .Validate(snapshot),
+                snapshot =>
+                {
+                    InventoryLoadoutAuthoritySnapshotV1 current =
+                        runtime.LoadoutAuthority.ExportSnapshot();
+                    if (current.Fingerprint == snapshot.Fingerprint)
+                    {
+                        return SaveComponentApplyResultV1.Applied();
+                    }
+                    if (snapshot.Sequence != current.Sequence + 1L)
+                    {
+                        return SaveComponentApplyResultV1.Rejected(
+                            "loadout-import-sequence-not-replayable");
+                    }
+                    var command = new InventoryLoadoutAuthorityCommandV1(
+                        current.Sequence,
+                        runtime.Holdings.Sequence,
+                        snapshot.Bindings);
+                    InventoryLoadoutAuthorityResultV1 result =
+                        runtime.LoadoutAuthority.Apply(command);
+                    return result.Status
+                                == InventoryLoadoutAuthorityMutationStatusV1.Applied
+                            && result.Snapshot.Fingerprint == snapshot.Fingerprint
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
+        }
+
+        private static PlayerExperienceCurveV1 ConstantCurve()
+        {
+            return new PlayerExperienceCurveV1(
+                100L,
+                100L,
+                50,
+                new SoftActivationCurveParameters(0.1, 10L, 10L));
+        }
+
+        private static PlayerExperienceAuthorityV1 ExperienceAuthority(
+            PlayerExperienceCurveV1 curve)
+        {
+            return new PlayerExperienceAuthorityV1(
+                curve,
+                ProgressionContext.Create(
+                    1,
+                    1,
+                    Id("difficulty.normal"),
+                    0,
+                    new[] { Id("progression-tag.campaign") }));
+        }
+
+        private static ScrapTransactionCommandV1 ScrapGrant(
+            StableId authorityId,
+            StableId currencyId,
+            string suffix,
+            long amount,
+            long? expectedSequence)
+        {
+            return new ScrapTransactionCommandV1(
+                Id("transaction.scrap." + suffix),
+                Id("operation.scrap." + suffix),
+                authorityId,
+                currencyId,
+                ScrapMutationKindV1.Grant,
+                amount,
+                ScrapIdentityV1.RewardGrantReason,
+                new ScrapProvenanceV1(
+                    ScrapIdentityV1.RewardSourceKind,
+                    Id("source-operation.scrap." + suffix),
+                    Id("subject.scrap." + suffix)),
+                expectedSequence);
+        }
+
+        private static ScrapTransactionCommandV1 ScrapSpend(
+            StableId authorityId,
+            StableId currencyId,
+            string suffix,
+            long amount,
+            long? expectedSequence)
+        {
+            return new ScrapTransactionCommandV1(
+                Id("transaction.scrap." + suffix),
+                Id("operation.scrap." + suffix),
+                authorityId,
+                currencyId,
+                ScrapMutationKindV1.Spend,
+                amount,
+                ScrapIdentityV1.CraftingSpendReason,
+                new ScrapProvenanceV1(
+                    ScrapIdentityV1.CraftingSourceKind,
+                    Id("source-operation.scrap." + suffix),
+                    Id("subject.scrap." + suffix)),
+                expectedSequence);
+        }
+
+        private static EquipmentInstance Equipment(
+            string instanceId,
+            StableId definitionId)
+        {
+            return EquipmentInstance.Create(
+                Id(instanceId),
+                definitionId,
+                7,
+                Id("equipment-quality.common"),
+                Array.Empty<AugmentInstance>());
+        }
+
+        private static PlayerHoldingsCommandV1 AddEquipmentCommand(
+            PlayerHoldingsService authority,
+            EquipmentInstance equipment,
+            string suffix,
+            long expectedSequence)
+        {
+            return PlayerHoldingsCommandV1.AddEquipment(
+                Id("transaction.holdings." + suffix),
+                Id("operation.holdings." + suffix),
+                authority.AuthorityStableId,
+                equipment,
+                HoldingProvenanceV1.Create(
+                    Id("grant.holdings." + suffix),
+                    Id("source.holdings." + suffix)),
+                expectedSequence);
+        }
+
+        private static PlayerRouteProfilePayloadV1 Route(string suffix)
+        {
+            return PlayerRouteProfilePayloadV1.Create(
+                Id("character." + suffix),
+                Id("loadout-profile." + suffix),
+                new[]
+                {
+                    Id("equipment-instance." + suffix + "-1"),
+                    Id("equipment-instance." + suffix + "-2"),
+                    Id("equipment-instance." + suffix + "-3"),
+                    Id("equipment-instance." + suffix + "-4"),
+                });
+        }
+
+        private static List<InventoryLoadoutSlotBindingV1> CopyBindings(
+            InventoryLoadoutAuthoritySnapshotV1 snapshot)
+        {
+            return snapshot.Bindings.Select(binding =>
+                new InventoryLoadoutSlotBindingV1(
+                    binding.SlotStableId,
+                    binding.EquipmentInstanceStableId)).ToList();
+        }
+
+        private static string Sha256(string value)
+        {
+            using (SHA256 algorithm = SHA256.Create())
+            {
+                return BitConverter.ToString(algorithm.ComputeHash(
+                    Encoding.UTF8.GetBytes(value)))
+                    .Replace("-", string.Empty)
+                    .ToLowerInvariant();
             }
         }
 
-        private sealed class MemoryAtomicFilePort : IAtomicSaveFilePortV1
+        private static StableId Id(string value)
         {
-            private readonly Dictionary<string, string> files =
-                new Dictionary<string, string>(StringComparer.Ordinal);
+            return StableId.Parse(value);
+        }
 
-            public string FailNextReadPath { get; set; }
-
-            public bool Exists(string path)
+        private sealed class AcceptingEquipmentValidator :
+            IEquipmentInstanceValidator
+        {
+            public EquipmentInstanceValidationResponse Validate(
+                EquipmentInstanceValidationRequest request)
             {
-                return files.ContainsKey(path);
-            }
-
-            public string ReadAllText(string path)
-            {
-                if (string.Equals(
-                    FailNextReadPath,
-                    path,
-                    StringComparison.Ordinal))
-                {
-                    FailNextReadPath = null;
-                    throw new InvalidOperationException("simulated-read-failure");
-                }
-                return files[path];
-            }
-
-            public void WriteAllText(string path, string contents)
-            {
-                files[path] = contents;
-            }
-
-            public void Move(string sourcePath, string destinationPath)
-            {
-                files[destinationPath] = files[sourcePath];
-                files.Remove(sourcePath);
-            }
-
-            public void Replace(
-                string sourcePath,
-                string destinationPath,
-                string backupPath)
-            {
-                string source = files[sourcePath];
-                string previous = files[destinationPath];
-                files[backupPath] = previous;
-                files[destinationPath] = source;
-                files.Remove(sourcePath);
-            }
-
-            public void Delete(string path)
-            {
-                files.Remove(path);
+                return new EquipmentInstanceValidationResponse(
+                    request != null && request.Instance != null,
+                    "save-adapter-real-test-catalog",
+                    request == null || request.Instance == null
+                        ? null
+                        : request.Instance.Fingerprint,
+                    Array.Empty<EquipmentModelIssue>());
             }
         }
     }
