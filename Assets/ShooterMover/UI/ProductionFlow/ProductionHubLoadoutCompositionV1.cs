@@ -152,6 +152,8 @@ namespace ShooterMover.UI.ProductionFlow
         {
             if (runtime == null
                 || currentProfile == null
+                || coordinator.Transitions == null
+                || coordinator.Transitions.IsTransitionPending
                 || !string.Equals(
                     SceneManager.GetActiveScene().path,
                     ProductionFlowScenePathsV1.Inventory,
@@ -207,8 +209,7 @@ namespace ShooterMover.UI.ProductionFlow
                 payload);
             new PlayerPrefsProductionFlowProfileStoreV1()
                 .Save(currentProfile);
-            boundController = null;
-            boundPayloadFingerprint = string.Empty;
+            boundPayloadFingerprint = payload.Fingerprint;
             coordinator.Transitions.TryReturnToHub(payload);
         }
 
