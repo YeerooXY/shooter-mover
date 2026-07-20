@@ -35,12 +35,18 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             AuthorableRoomDefinitionV1 room = result.Bundle.RuntimeDefinition.GetRoom(
                 StableId.Parse("room.test-entry"));
             Assert.That(room.Placements.Count, Is.EqualTo(3));
-            Assert.That(
-                room.Placements[0].DefinitionStableId,
-                Is.EqualTo(StableId.Parse("enemy.mobile-blaster-droid")));
-            Assert.That(
-                room.Placements[1].DefinitionStableId,
-                Is.EqualTo(StableId.Parse("enemy.mobile-blaster-droid")));
+            int runtimeDroids = 0;
+            for (int index = 0; index < room.Placements.Count; index++)
+            {
+                RoomPlacedEntityDefinitionV1 placement = room.Placements[index];
+                if (placement.PlacementKind == RoomLivePlacementKindV1.Enemy
+                    && placement.DefinitionStableId
+                        == StableId.Parse("enemy.mobile-blaster-droid"))
+                {
+                    runtimeDroids++;
+                }
+            }
+            Assert.That(runtimeDroids, Is.EqualTo(2));
         }
 
         [Test]
@@ -59,9 +65,11 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
 
             Assert.That(first.IsValid, Is.True, FirstIssue(first));
             Assert.That(second.IsValid, Is.True, FirstIssue(second));
-            Assert.That(FindEnemy(first.Bundle, 1).InstanceStableId,
+            Assert.That(
+                FindEnemy(first.Bundle, 1).InstanceStableId,
                 Is.EqualTo(FindEnemy(second.Bundle, 1).InstanceStableId));
-            Assert.That(FindEnemy(first.Bundle, 2).InstanceStableId,
+            Assert.That(
+                FindEnemy(first.Bundle, 2).InstanceStableId,
                 Is.EqualTo(FindEnemy(second.Bundle, 2).InstanceStableId));
             Assert.That(first.Bundle.Fingerprint, Is.EqualTo(second.Bundle.Fingerprint));
         }
@@ -105,14 +113,18 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 + "\"open_when\":\"room-complete\"}]}" );
 
             Assert.That(result.IsValid, Is.True, FirstIssue(result));
+            RoomEnemyPlacementContentV1 enemy = result.Bundle.Enemies[0];
             AuthorableRoomDefinitionV1 room = result.Bundle.RuntimeDefinition.GetRoom(
                 StableId.Parse("room.test-entry"));
-            Assert.That(room.Placements.Count, Is.EqualTo(2));
+            RoomPlacedEntityDefinitionV1 runtimePlacement;
             Assert.That(
-                room.Placements[0].ClearRole,
+                room.TryGetPlacement(enemy.InstanceStableId, out runtimePlacement),
+                Is.True);
+            Assert.That(
+                runtimePlacement.ClearRole,
                 Is.EqualTo(RoomOccupantClearRoleV1.OptionalEnemy));
-            Assert.That(result.Bundle.Enemies[0].Level, Is.EqualTo(4));
-            Assert.That(result.Bundle.Enemies[0].AuthoredId, Is.EqualTo("bonus-droid"));
+            Assert.That(enemy.Level, Is.EqualTo(4));
+            Assert.That(enemy.AuthoredId, Is.EqualTo("bonus-droid"));
         }
 
         [Test]
@@ -186,7 +198,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
 
         private static string EntryEnemies(string entries)
         {
-            if (entries.StartsWith("{"))
+            if (entries.StartsWith("{\"room\""))
             {
                 return entries;
             }
