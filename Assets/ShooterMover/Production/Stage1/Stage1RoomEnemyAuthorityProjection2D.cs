@@ -1,149 +1,20 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
-using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Missions.Results;
-using ShooterMover.Application.Progression.Experience;
-using ShooterMover.Application.Progression.Experience.EnemyRewards;
-using ShooterMover.Application.Weapons.Catalog;
-using ShooterMover.Application.Weapons.Execution;
-using ShooterMover.Content.Definitions.Missions.Rooms;
-using ShooterMover.Contracts.Combat;
-using ShooterMover.Contracts.Equipment;
-using ShooterMover.Contracts.Flow.Session;
-using ShooterMover.Contracts.Holdings;
-using ShooterMover.Contracts.Missions.Results;
-using ShooterMover.Contracts.Missions.Rooms;
-using ShooterMover.ContentPackages.Enemies.BlasterTurret;
-using ShooterMover.ContentPackages.Enemies.MobileBlasterDroid;
-using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies;
-using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Holdings;
-using ShooterMover.Domain.Progression.Context;
-using ShooterMover.Domain.Progression.Curves;
-using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
-using ShooterMover.TestSupport.VisibleSlice;
-using ShooterMover.UI.ProductionFlow;
-using ShooterMover.UnityAdapters.Authoring.LevelDesign;
-using ShooterMover.UnityAdapters.Enemies;
-using ShooterMover.UnityAdapters.Missions.Rooms;
-using ShooterMover.UnityAdapters.Weapons.Live;
+using ShooterMover.Production.Stage1;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
+    /// <summary>
+    /// Compatibility component retained for the DEMO-CUTOVER-001 presentation catalog.
+    /// New code should use <see cref="Stage1RoomEnemyAuthorityAdapter2D"/>.
+    /// </summary>
+    [Obsolete("Use Stage1RoomEnemyAuthorityAdapter2D. This type adapts authority identity; it is not merely a projection.")]
     [DisallowMultipleComponent]
     internal sealed class Stage1RoomEnemyAuthorityProjection2D :
-        MonoBehaviour,
-        IEnemyActor2DAuthority
+        Stage1RoomEnemyAuthorityAdapter2D
     {
-        public long Generation
-        {
-            get
-            {
-                RoomPlacedInstance2D marker =
-                    GetComponent<RoomPlacedInstance2D>();
-                return marker == null ? 0L : marker.RuntimeLifecycleGeneration;
-            }
-        }
-
-        public bool TryReadState(out EnemyActorState state)
-        {
-            state = null;
-            RoomPlacedInstance2D marker = GetComponent<RoomPlacedInstance2D>();
-            IEnemyActor2DAuthority source;
-            EnemyActorState sourceState;
-            if (marker == null
-                || !marker.IsConfigured
-                || !Stage1PlayableLoopCompositionV1.TryResolveProjectedEnemy(
-                    marker.InstanceStableId,
-                    out source)
-                || !source.TryReadState(out sourceState)
-                || sourceState == null)
-            {
-                return false;
-            }
-
-            EnemyActorState projected = EnemyActorState.Create(
-                marker.InstanceStableId,
-                sourceState.RoleId,
-                sourceState.MaximumHealth,
-                sourceState.WeightClassValue,
-                sourceState.ContactPolicy);
-            double missing = sourceState.MaximumHealth - sourceState.Health;
-            if (missing > 0d)
-            {
-                projected = EnemyActorStepper.Step(
-                    projected,
-                    new[]
-                    {
-                        EnemyActorCommand.Damage(
-                            0L,
-                            StableId.Create(
-                                "combat-event",
-                                "room-projection-" + HashProjectionToken(
-                                    marker.InstanceStableId.ToString())),
-                            sourceState.ActorId,
-                            (int)CombatChannel.Kinetic,
-                            missing),
-                    }).State;
-            }
-
-            state = projected;
-            return true;
-        }
-
-        private static string HashProjectionToken(string value)
-        {
-            using (SHA256 sha = SHA256.Create())
-            {
-                byte[] hash = sha.ComputeHash(
-                    Encoding.UTF8.GetBytes(value ?? string.Empty));
-                var builder = new StringBuilder(24);
-                for (int index = 0; index < 12; index++)
-                {
-                    builder.Append(hash[index].ToString(
-                        "x2",
-                        CultureInfo.InvariantCulture));
-                }
-                return builder.ToString();
-            }
-        }
-
-        public EnemyActorStepResult Apply(EnemyActorCommand command)
-        {
-            RoomPlacedInstance2D marker = GetComponent<RoomPlacedInstance2D>();
-            IEnemyActor2DAuthority source;
-            if (marker == null
-                || !Stage1PlayableLoopCompositionV1.TryResolveProjectedEnemy(
-                    marker.InstanceStableId,
-                    out source))
-            {
-                return null;
-            }
-            return source.Apply(command);
-        }
-
-        public bool Reset()
-        {
-            RoomPlacedInstance2D marker = GetComponent<RoomPlacedInstance2D>();
-            IEnemyActor2DAuthority source;
-            return marker != null
-                && Stage1PlayableLoopCompositionV1.TryResolveProjectedEnemy(
-                    marker.InstanceStableId,
-                    out source)
-                && source.Reset();
-        }
     }
 
     [DisallowMultipleComponent]
@@ -227,5 +98,4 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             owner.ApplyPoolTick(pool, other, tick++);
         }
     }
-
 }
