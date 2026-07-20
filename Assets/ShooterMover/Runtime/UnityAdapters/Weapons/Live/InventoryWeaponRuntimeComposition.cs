@@ -419,12 +419,16 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             var mountOrigin = new WeaponVector2(
                 origin.X + (perpendicularX * mount.LateralOffset),
                 origin.Y + (perpendicularY * mount.LateralOffset));
+            string operationFingerprint =
+                WeaponExecutionFingerprint.Compute(
+                    baseOperationId
+                    + "|"
+                    + mount.MountStableId);
             var operationId = new FireOperationId(
                 StableId.Create(
                     "fire-operation",
-                    baseOperationId.Value
-                    + "-"
-                    + mount.MountStableId));
+                    operationFingerprint.Substring(
+                        WeaponExecutionFingerprint.Prefix.Length)));
             ulong mountSeed = deterministicSeed
                 ^ (unchecked((ulong)(mountOrdinal + 1))
                     * 11400714819323198485UL);
