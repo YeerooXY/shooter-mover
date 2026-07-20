@@ -182,6 +182,11 @@ namespace ShooterMover.Application.Flow.Production
         public const string DefensiveLoadoutProfileId =
             "loadout-profile.juggernaut";
 
+        private const string AggressiveProfileSuffix = "-aggressive";
+        private const string HealerProfileSuffix = "-healer";
+        private const string DefensiveProfileSuffix = "-defensive";
+        private const string LoadoutProfilePrefix = "loadout-profile.";
+
         public static readonly StableId OuterLeftMountStableId =
             StableId.Parse("weapon-mount.outer-left");
         public static readonly StableId InnerLeftMountStableId =
@@ -244,23 +249,32 @@ namespace ShooterMover.Application.Flow.Production
                 ? string.Empty
                 : loadoutProfileStableId.ToString();
             if (string.Equals(
-                value,
-                AggressiveLoadoutProfileId,
-                StringComparison.Ordinal))
+                    value,
+                    AggressiveLoadoutProfileId,
+                    StringComparison.Ordinal)
+                || IsCharacterClassProfile(
+                    value,
+                    AggressiveProfileSuffix))
             {
                 return Aggressive;
             }
             if (string.Equals(
-                value,
-                HealerLoadoutProfileId,
-                StringComparison.Ordinal))
+                    value,
+                    HealerLoadoutProfileId,
+                    StringComparison.Ordinal)
+                || IsCharacterClassProfile(
+                    value,
+                    HealerProfileSuffix))
             {
                 return Healer;
             }
             if (string.Equals(
-                value,
-                DefensiveLoadoutProfileId,
-                StringComparison.Ordinal))
+                    value,
+                    DefensiveLoadoutProfileId,
+                    StringComparison.Ordinal)
+                || IsCharacterClassProfile(
+                    value,
+                    DefensiveProfileSuffix))
             {
                 return Defensive;
             }
@@ -377,6 +391,19 @@ namespace ShooterMover.Application.Flow.Production
             }
 
             return null;
+        }
+
+        private static bool IsCharacterClassProfile(
+            string value,
+            string classSuffix)
+        {
+            return !string.IsNullOrEmpty(value)
+                && value.StartsWith(
+                    LoadoutProfilePrefix,
+                    StringComparison.Ordinal)
+                && value.EndsWith(
+                    classSuffix,
+                    StringComparison.Ordinal);
         }
     }
 }
