@@ -76,6 +76,93 @@ namespace ShooterMover.Tests.PlayMode.Flow.ProductionFlow
         }
 
         [UnityTest]
+        public IEnumerator ExplicitClickedSlotSurvivesCharacterCreation()
+        {
+            GameObject host = new GameObject("Exact character slot test");
+            ProductionCharacterSelectionControllerV1 controller =
+                host.AddComponent<ProductionCharacterSelectionControllerV1>();
+            PlayerRouteProfilePayloadV1 draft = Route("exact-slot-draft");
+            var profiles = new ProductionFlowProfileRecordV1[6];
+            profiles[5] = new ProductionFlowProfileRecordV1(
+                "Occupied Last Slot",
+                Route("exact-slot-occupied"));
+            int createdSlot = -1;
+
+            controller.Configure(
+                draft,
+                profiles,
+                delegate { return false; },
+                delegate(
+                    int slotIndex,
+                    string name,
+                    CharacterSelectionRouteResultV1 result)
+                {
+                    createdSlot = slotIndex;
+                    return result != null
+                        && result.Status
+                            == CharacterSelectionRouteStatusV1.Confirmed;
+                },
+                delegate { return false; },
+                delegate { return true; });
+
+            Assert.That(
+                controller.Stage,
+                Is.EqualTo(
+                    ProductionCharacterSelectionStageV1.CharacterSlots));
+            Assert.That(controller.ChooseEmptySlot(1), Is.True);
+            Assert.That(controller.SelectedSlotIndex, Is.EqualTo(1));
+            controller.SetCharacterName("Exact Slot Pilot");
+            Assert.That(controller.SelectClassByIndex(0), Is.True);
+            Assert.That(controller.ConfirmCreation(), Is.True);
+            Assert.That(createdSlot, Is.EqualTo(1));
+
+            UnityEngine.Object.Destroy(host);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ProfileDeletionRequiresConfirmationAndUsesExactSlot()
+        {
+            GameObject host = new GameObject("Exact profile deletion test");
+            ProductionCharacterSelectionControllerV1 controller =
+                host.AddComponent<ProductionCharacterSelectionControllerV1>();
+            var profiles = new ProductionFlowProfileRecordV1[6];
+            profiles[1] = new ProductionFlowProfileRecordV1(
+                "Delete Me",
+                Route("delete-selected"));
+            ProductionFlowProfileRecordV1 survivor =
+                new ProductionFlowProfileRecordV1(
+                    "Keep Me",
+                    Route("delete-survivor"));
+            profiles[4] = survivor;
+            int deletedSlot = -1;
+
+            controller.Configure(
+                profiles[1].Payload,
+                profiles,
+                delegate { return false; },
+                delegate { return false; },
+                delegate(int slotIndex)
+                {
+                    deletedSlot = slotIndex;
+                    profiles[slotIndex] = null;
+                    return true;
+                },
+                delegate { return true; });
+
+            Assert.That(controller.RequestDeleteProfile(1), Is.False);
+            Assert.That(controller.PendingDeleteSlotIndex, Is.EqualTo(1));
+            Assert.That(profiles[1], Is.Not.Null);
+            Assert.That(controller.RequestDeleteProfile(1), Is.True);
+            Assert.That(deletedSlot, Is.EqualTo(1));
+            Assert.That(profiles[1], Is.Null);
+            Assert.That(profiles[4], Is.SameAs(survivor));
+
+            UnityEngine.Object.Destroy(host);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator ExistingProfileRoutesExactPayloadDirectly()
         {
             GameObject host = new GameObject("Existing profile test");
@@ -136,6 +223,33 @@ namespace ShooterMover.Tests.PlayMode.Flow.ProductionFlow
                         payload.WeaponSlots[index]
                             .EquipmentInstanceStableId));
             }
+
+            store.Clear();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerPrefsDeletionClearsOnlyExactProfileSlot()
+        {
+            var store = new PlayerPrefsProductionFlowProfileStoreV1();
+            store.Clear();
+            var removed = new ProductionFlowProfileRecordV1(
+                "Removed Pilot",
+                Route("persisted-delete-removed"));
+            var survivor = new ProductionFlowProfileRecordV1(
+                "Surviving Pilot",
+                Route("persisted-delete-survivor"));
+            store.Save(1, removed);
+            store.Save(4, survivor);
+
+            store.Clear(1);
+
+            ProductionFlowProfileRecordV1 loadedRemoved;
+            ProductionFlowProfileRecordV1 loadedSurvivor;
+            Assert.That(store.TryLoad(1, out loadedRemoved), Is.False);
+            Assert.That(store.TryLoad(4, out loadedSurvivor), Is.True);
+            Assert.That(loadedSurvivor.DisplayName, Is.EqualTo("Surviving Pilot"));
+            Assert.That(loadedSurvivor.Payload, Is.EqualTo(survivor.Payload));
 
             store.Clear();
             yield return null;

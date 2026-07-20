@@ -34,12 +34,14 @@ namespace ShooterMover.UI.ProductionFlow
         private Func<int, PlayerRouteProfilePayloadV1, bool> selectExisting;
         private Func<int, string, CharacterSelectionRouteResultV1, bool>
             createCharacter;
+        private Func<int, bool> deleteProfile;
         private Func<bool> navigateBack;
         private bool classExplicitlySelected;
         private bool terminal;
         private string characterName = string.Empty;
         private string validationMessage = string.Empty;
         private int selectedSlotIndex;
+        private int pendingDeleteSlotIndex = -1;
         private GUIStyle titleStyle;
         private GUIStyle cardStyle;
         private GUIStyle selectedStyle;
@@ -58,6 +60,13 @@ namespace ShooterMover.UI.ProductionFlow
         public bool IsTerminal { get { return terminal; } }
 
         public int SelectedSlotIndex { get { return selectedSlotIndex; } }
+
+        public int PendingDeleteSlotIndex
+        {
+            get { return pendingDeleteSlotIndex; }
+        }
+
+        public string ValidationMessage { get { return validationMessage; } }
 
         public CharacterSelectionServiceV1 Selection
         {
@@ -78,6 +87,7 @@ namespace ShooterMover.UI.ProductionFlow
                 (slot, payload) => slot == 0 && selectExisting(payload),
                 (slot, name, result) =>
                     slot == 0 && createCharacter(name, result),
+                delegate { return false; },
                 navigateBack);
         }
 
@@ -87,6 +97,24 @@ namespace ShooterMover.UI.ProductionFlow
             Func<int, PlayerRouteProfilePayloadV1, bool> selectExisting,
             Func<int, string, CharacterSelectionRouteResultV1, bool>
                 createCharacter,
+            Func<bool> navigateBack)
+        {
+            Configure(
+                incomingPayload,
+                profiles,
+                selectExisting,
+                createCharacter,
+                delegate { return false; },
+                navigateBack);
+        }
+
+        public void Configure(
+            PlayerRouteProfilePayloadV1 incomingPayload,
+            IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
+            Func<int, PlayerRouteProfilePayloadV1, bool> selectExisting,
+            Func<int, string, CharacterSelectionRouteResultV1, bool>
+                createCharacter,
+            Func<int, bool> deleteProfile,
             Func<bool> navigateBack)
         {
             CharacterSelectionCatalogV1 catalog =
@@ -101,9 +129,12 @@ namespace ShooterMover.UI.ProductionFlow
                 ?? throw new ArgumentNullException(nameof(selectExisting));
             this.createCharacter = createCharacter
                 ?? throw new ArgumentNullException(nameof(createCharacter));
+            this.deleteProfile = deleteProfile
+                ?? throw new ArgumentNullException(nameof(deleteProfile));
             this.navigateBack = navigateBack
                 ?? throw new ArgumentNullException(nameof(navigateBack));
             selectedSlotIndex = 0;
+            pendingDeleteSlotIndex = -1;
             Stage = HasAnyProfile()
                 ? ProductionCharacterSelectionStageV1.CharacterSlots
                 : ProductionCharacterSelectionStageV1.CharacterCreation;
@@ -153,21 +184,68 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool ChooseExisting()
         {
-            ProductionFlowProfileRecordV1 selected = SelectedProfile;
+            return ChooseExisting(selectedSlotIndex);
+        }
+
+        public bool ChooseExisting(int slotIndex)
+        {
+            ProductionFlowProfileRecordV1 selected = ProfileAt(slotIndex);
             if (terminal || selected == null) return false;
-            if (!selectExisting(selectedSlotIndex, selected.Payload)) return false;
+
+            selectedSlotIndex = slotIndex;
+            pendingDeleteSlotIndex = -1;
+            validationMessage = string.Empty;
+            if (!selectExisting(slotIndex, selected.Payload)) return false;
+
             terminal = true;
             return true;
         }
 
         public bool ChooseEmptySlot()
         {
-            if (terminal) return false;
-            if (SelectedProfile != null) return false;
+            return ChooseEmptySlot(selectedSlotIndex);
+        }
+
+        public bool ChooseEmptySlot(int slotIndex)
+        {
+            if (terminal || !IsValidSlot(slotIndex)) return false;
+            if (ProfileAt(slotIndex) != null) return false;
+
+            selectedSlotIndex = slotIndex;
+            pendingDeleteSlotIndex = -1;
             Stage = ProductionCharacterSelectionStageV1.CharacterCreation;
             characterName = string.Empty;
             classExplicitlySelected = false;
             validationMessage = string.Empty;
+            return true;
+        }
+
+        public bool RequestDeleteProfile(int slotIndex)
+        {
+            ProductionFlowProfileRecordV1 selected = ProfileAt(slotIndex);
+            if (terminal || selected == null) return false;
+
+            selectedSlotIndex = slotIndex;
+            if (pendingDeleteSlotIndex != slotIndex)
+            {
+                pendingDeleteSlotIndex = slotIndex;
+                validationMessage =
+                    "Press CONFIRM DELETE to permanently delete "
+                    + selected.DisplayName
+                    + ".";
+                return false;
+            }
+
+            if (!deleteProfile(slotIndex))
+            {
+                validationMessage =
+                    "Profile deletion could not be completed for slot "
+                    + (slotIndex + 1)
+                    + ".";
+                return false;
+            }
+
+            terminal = true;
             return true;
         }
 
@@ -180,13 +258,13 @@ namespace ShooterMover.UI.ProductionFlow
         public bool SelectClassByIndex(int index)
         {
             if (terminal || selection == null) return false;
-            IReadOnlyList<CharacterClassProfileDefinitionV1> profiles =
+            IReadOnlyList<CharacterClassProfileDefinitionV1> classProfiles =
                 selection.Catalog.GetProfiles(
                     selection.HighlightedCharacterStableId);
-            if (index < 0 || index >= profiles.Count) return false;
+            if (index < 0 || index >= classProfiles.Count) return false;
             CharacterSelectionOperationResultV1 result =
                 selection.TryHighlightProfile(
-                    profiles[index].LoadoutProfileStableId);
+                    classProfiles[index].LoadoutProfileStableId);
             if (result.Status == CharacterSelectionOperationStatusV1.Rejected)
             {
                 validationMessage = result.RejectionCode;
@@ -219,7 +297,10 @@ namespace ShooterMover.UI.ProductionFlow
                 characterName.Trim(),
                 result))
             {
-                validationMessage = "The route transition is busy.";
+                validationMessage =
+                    "Character creation could not be completed for slot "
+                    + (selectedSlotIndex + 1)
+                    + ".";
                 return false;
             }
 
@@ -230,8 +311,16 @@ namespace ShooterMover.UI.ProductionFlow
         public bool Back()
         {
             if (terminal) return false;
+
+            if (pendingDeleteSlotIndex >= 0)
+            {
+                pendingDeleteSlotIndex = -1;
+                validationMessage = string.Empty;
+                return true;
+            }
+
             if (Stage == ProductionCharacterSelectionStageV1.CharacterCreation
-                && profiles != null)
+                && HasAnyProfile())
             {
                 Stage = ProductionCharacterSelectionStageV1.CharacterSlots;
                 characterName = string.Empty;
@@ -252,31 +341,60 @@ namespace ShooterMover.UI.ProductionFlow
             for (int index = 0; index < ProfileSlotCount; index++)
             {
                 if (index % 3 == 0) GUILayout.BeginHorizontal();
-                selectedSlotIndex = index;
-                ProductionFlowProfileRecordV1 slot = SelectedProfile;
+                ProductionFlowProfileRecordV1 slot = ProfileAt(index);
                 GUILayout.BeginVertical(cardStyle, GUILayout.ExpandWidth(true));
                 GUILayout.Label("SLOT " + (index + 1), titleStyle);
                 if (slot == null)
                 {
                     GUILayout.Label("EMPTY SLOT", bodyStyle);
-                    GUILayout.Label("Create a named character and choose one class.", bodyStyle);
-                    if (GUILayout.Button("CREATE CHARACTER", actionStyle, GUILayout.Height(54f)))
+                    GUILayout.Label(
+                        "Create a named character and choose one class.",
+                        bodyStyle);
+                    if (GUILayout.Button(
+                        "CREATE CHARACTER",
+                        actionStyle,
+                        GUILayout.Height(54f)))
                     {
-                        ChooseEmptySlot();
+                        ChooseEmptySlot(index);
                     }
                 }
                 else
                 {
                     GUILayout.Label(slot.DisplayName, titleStyle);
-                    GUILayout.Label(slot.Payload.SelectedCharacterStableId + "\n" + slot.Payload.LoadoutProfileStableId, bodyStyle);
-                    if (GUILayout.Button("PLAY THIS CHARACTER", actionStyle, GUILayout.Height(54f)))
+                    GUILayout.Label(
+                        slot.Payload.SelectedCharacterStableId
+                        + "\n"
+                        + slot.Payload.LoadoutProfileStableId,
+                        bodyStyle);
+                    if (GUILayout.Button(
+                        "PLAY THIS CHARACTER",
+                        actionStyle,
+                        GUILayout.Height(54f)))
                     {
-                        ChooseExisting();
+                        ChooseExisting(index);
+                    }
+
+                    string deleteLabel = pendingDeleteSlotIndex == index
+                        ? "CONFIRM DELETE"
+                        : "DELETE PROFILE";
+                    if (GUILayout.Button(
+                        deleteLabel,
+                        actionStyle,
+                        GUILayout.Height(40f)))
+                    {
+                        RequestDeleteProfile(index);
                     }
                 }
                 GUILayout.EndVertical();
                 if (index % 3 == 2) GUILayout.EndHorizontal();
             }
+
+            if (!string.IsNullOrEmpty(validationMessage))
+            {
+                GUILayout.Space(10f);
+                GUILayout.Label(validationMessage, bodyStyle);
+            }
+
             GUILayout.Space(16f);
             if (GUILayout.Button("BACK", actionStyle, GUILayout.Height(44f)))
             {
@@ -286,14 +404,16 @@ namespace ShooterMover.UI.ProductionFlow
 
         private ProductionFlowProfileRecordV1 SelectedProfile
         {
-            get
-            {
-                return profiles != null
-                    && selectedSlotIndex >= 0
-                    && selectedSlotIndex < profiles.Count
-                    ? profiles[selectedSlotIndex]
-                    : null;
-            }
+            get { return ProfileAt(selectedSlotIndex); }
+        }
+
+        private ProductionFlowProfileRecordV1 ProfileAt(int slotIndex)
+        {
+            return profiles != null
+                && slotIndex >= 0
+                && slotIndex < profiles.Count
+                ? profiles[slotIndex]
+                : null;
         }
 
         private bool HasAnyProfile()
@@ -307,6 +427,11 @@ namespace ShooterMover.UI.ProductionFlow
             return false;
         }
 
+        private static bool IsValidSlot(int slotIndex)
+        {
+            return slotIndex >= 0 && slotIndex < ProfileSlotCount;
+        }
+
         private void DrawCreation()
         {
             GUILayout.Label("CHARACTER CREATION", titleStyle);
@@ -318,14 +443,14 @@ namespace ShooterMover.UI.ProductionFlow
             GUILayout.Space(14f);
             GUILayout.Label("CHOOSE ONE CLASS", titleStyle);
 
-            IReadOnlyList<CharacterClassProfileDefinitionV1> profiles =
+            IReadOnlyList<CharacterClassProfileDefinitionV1> classProfiles =
                 selection.Catalog.GetProfiles(
                     selection.HighlightedCharacterStableId);
             GUILayout.BeginHorizontal();
-            for (int index = 0; index < profiles.Count; index++)
+            for (int index = 0; index < classProfiles.Count; index++)
             {
-                DrawClassCard(profiles[index], index);
-                if (index + 1 < profiles.Count) GUILayout.Space(10f);
+                DrawClassCard(classProfiles[index], index);
+                if (index + 1 < classProfiles.Count) GUILayout.Space(10f);
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(12f);
