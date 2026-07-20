@@ -287,11 +287,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         private void RetireInGameLoadoutSelector()
         {
-            if (controller.LoadoutSelector == null)
+            if (controller.LoadoutSelector != null)
             {
-                return;
+                controller.LoadoutSelector.gameObject.SetActive(false);
             }
-            controller.LoadoutSelector.gameObject.SetActive(false);
+            if (controller.WeaponStrip != null)
+            {
+                controller.WeaponStrip.gameObject.SetActive(false);
+            }
         }
     }
 
