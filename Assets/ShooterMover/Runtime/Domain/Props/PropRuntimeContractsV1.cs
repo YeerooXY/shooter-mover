@@ -108,21 +108,85 @@ namespace ShooterMover.Domain.Props
         RejectedTerminal = 7
     }
 
+    public static class PropFactKindIdsV1
+    {
+        public static readonly StableId Terminal =
+            StableId.Parse("fact-kind.prop-terminal");
+        public static readonly StableId ExplosionRequest =
+            StableId.Parse("fact-kind.prop-explosion");
+        public static readonly StableId DropRequest =
+            StableId.Parse("fact-kind.prop-drop-request");
+        public static readonly StableId ObjectiveOnDestroy =
+            StableId.Parse("fact-kind.prop-objective-destroy");
+        public static readonly StableId Interaction =
+            StableId.Parse("fact-kind.prop-interaction");
+        public static readonly StableId SwitchOn =
+            StableId.Parse("fact-kind.prop-switch-on");
+        public static readonly StableId SwitchOff =
+            StableId.Parse("fact-kind.prop-switch-off");
+        public static readonly StableId ObjectiveOnInteraction =
+            StableId.Parse("fact-kind.prop-objective-interact");
+    }
+
+    internal static class PropFactIdentityV1
+    {
+        private const string FactNamespace = "prop-fact";
+
+        public static StableId Derive(
+            StableId rootOperationId,
+            StableId propParticipantId,
+            StableId factKindId,
+            StableId profileOrFactId)
+        {
+            if (rootOperationId == null)
+            {
+                throw new ArgumentNullException(nameof(rootOperationId));
+            }
+
+            if (propParticipantId == null)
+            {
+                throw new ArgumentNullException(nameof(propParticipantId));
+            }
+
+            if (factKindId == null)
+            {
+                throw new ArgumentNullException(nameof(factKindId));
+            }
+
+            string fingerprint = PropFingerprintV1.Compute64Hex(
+                "root=" + rootOperationId
+                + "|prop=" + propParticipantId
+                + "|kind=" + factKindId
+                + "|value=" + (profileOrFactId == null
+                    ? "none"
+                    : profileOrFactId.ToString()));
+            return StableId.Create(
+                FactNamespace,
+                factKindId.Value + "-" + fingerprint);
+        }
+    }
+
     public sealed class PropTerminalFactV1
     {
         internal PropTerminalFactV1(
+            StableId factId,
+            StableId kindId,
             PropDamageCommandV1 command,
             StableId propParticipantId,
             StableId propDefinitionId)
         {
-            FactId = command.OperationId;
-            PropParticipantId = propParticipantId;
-            PropDefinitionId = propDefinitionId;
+            FactId = factId ?? throw new ArgumentNullException(nameof(factId));
+            KindId = kindId ?? throw new ArgumentNullException(nameof(kindId));
+            PropParticipantId = propParticipantId
+                ?? throw new ArgumentNullException(nameof(propParticipantId));
+            PropDefinitionId = propDefinitionId
+                ?? throw new ArgumentNullException(nameof(propDefinitionId));
             SourceParticipantId = command.SourceParticipantId;
             SourceFactionId = command.SourceFactionId;
             DamageChannelId = command.DamageChannelId;
             Fingerprint = PropFingerprintV1.Compute64Hex(
-                "kind=prop-destroyed|fact=" + FactId
+                "kind=" + KindId
+                + "|fact=" + FactId
                 + "|prop=" + PropParticipantId
                 + "|definition=" + PropDefinitionId
                 + "|source=" + SourceParticipantId
@@ -131,6 +195,7 @@ namespace ShooterMover.Domain.Props
         }
 
         public StableId FactId { get; }
+        public StableId KindId { get; }
         public StableId PropParticipantId { get; }
         public StableId PropDefinitionId { get; }
         public StableId SourceParticipantId { get; }
@@ -148,11 +213,14 @@ namespace ShooterMover.Domain.Props
             StableId propParticipantId,
             StableId sourceParticipantId)
         {
-            FactId = factId;
-            KindId = kindId;
-            ProfileOrFactId = profileOrFactId;
-            PropParticipantId = propParticipantId;
-            SourceParticipantId = sourceParticipantId;
+            FactId = factId ?? throw new ArgumentNullException(nameof(factId));
+            KindId = kindId ?? throw new ArgumentNullException(nameof(kindId));
+            ProfileOrFactId = profileOrFactId
+                ?? throw new ArgumentNullException(nameof(profileOrFactId));
+            PropParticipantId = propParticipantId
+                ?? throw new ArgumentNullException(nameof(propParticipantId));
+            SourceParticipantId = sourceParticipantId
+                ?? throw new ArgumentNullException(nameof(sourceParticipantId));
             Fingerprint = PropFingerprintV1.Compute64Hex(
                 "kind=" + KindId
                 + "|fact=" + FactId
