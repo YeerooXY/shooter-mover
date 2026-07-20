@@ -52,6 +52,25 @@ namespace ShooterMover.UI.ProductionFlow
             return currentRuntime != null && profile != null;
         }
 
+        /// <summary>
+        /// Resolves the current profile-local runtime synchronously. Scene consumers use
+        /// this path when they must compose authority state before their first Update.
+        /// </summary>
+        public static bool TryResolveCurrent(
+            out ProductionPlayerLoadoutRuntimeV1 currentRuntime,
+            out ProductionFlowProfileRecordV1 profile)
+        {
+            EnsureInstalled();
+            if (instance == null || !instance.SynchronizeNow())
+            {
+                currentRuntime = null;
+                profile = null;
+                return false;
+            }
+
+            return TryGetCurrent(out currentRuntime, out profile);
+        }
+
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -116,18 +135,28 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void Update()
         {
+            if (!SynchronizeNow())
+            {
+                return;
+            }
+
+            BindInventoryScene();
+        }
+
+        private bool SynchronizeNow()
+        {
             if (coordinator == null)
             {
                 coordinator = GetComponent<ProductionFlowCoordinatorV1>();
                 if (coordinator == null)
                 {
-                    return;
+                    return false;
                 }
             }
 
             CapturePendingConfirmation();
             SynchronizeProfile();
-            BindInventoryScene();
+            return runtime != null && currentProfile != null;
         }
 
         private void HandleConfirmed(

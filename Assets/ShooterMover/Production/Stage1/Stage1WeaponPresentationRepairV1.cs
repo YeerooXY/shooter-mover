@@ -10,9 +10,9 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
     /// <summary>
-    /// Typed Level 1 weapon integration. It adopts the Hub-owned holdings/loadout
-    /// composition once, then projects weapon effects. It never creates holdings,
-    /// changes equipped slots or exposes an in-game loadout editor.
+    /// Typed Level 1 weapon integration. It projects effects emitted by the Hub-owned
+    /// holdings/loadout composition. It never creates holdings, changes equipped slots,
+    /// adopts authority state, or exposes an in-game loadout editor.
     /// </summary>
     [DefaultExecutionOrder(19900)]
     [DisallowMultipleComponent]
@@ -103,8 +103,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             composition = GetComponent<
                 Stage1PlayableLoopCompositionV1>();
             if (composition == null
-                || !composition.IsHubLoadoutIntegrationReady
-                || !composition.TryAdoptHubLoadout())
+                || !composition.IsHubLoadoutIntegrationReady)
             {
                 return;
             }
