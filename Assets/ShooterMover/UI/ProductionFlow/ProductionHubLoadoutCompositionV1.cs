@@ -1,6 +1,7 @@
 using System;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -21,6 +22,8 @@ namespace ShooterMover.UI.ProductionFlow
         private ProductionFlowCoordinatorV1 coordinator;
         private ProductionFlowProfileRecordV1 currentProfile;
         private ProductionPlayerLoadoutRuntimeV1 runtime;
+        private ProductionPlayerLoadoutRuntimeV1 pendingConfirmedRuntime;
+        private string pendingConfirmedPayloadFingerprint = string.Empty;
         private InventoryLoadoutScreenControllerV1 boundController;
         private string boundPayloadFingerprint = string.Empty;
 
@@ -67,6 +70,7 @@ namespace ShooterMover.UI.ProductionFlow
             EnsureInstalled();
             if (instance != null)
             {
+                instance.CapturePendingConfirmation();
                 instance.boundController = null;
                 instance.boundPayloadFingerprint = string.Empty;
             }
@@ -117,8 +121,26 @@ namespace ShooterMover.UI.ProductionFlow
                 }
             }
 
+            CapturePendingConfirmation();
             SynchronizeProfile();
             BindInventoryScene();
+        }
+
+        private void CapturePendingConfirmation()
+        {
+            if (boundController == null
+                || boundController.LastResult == null
+                || boundController.LastResult.Status
+                    != InventoryLoadoutScreenStatusV1.Confirmed
+                || boundController.LastResult.RoutePayload == null
+                || runtime == null)
+            {
+                return;
+            }
+
+            pendingConfirmedRuntime = runtime;
+            pendingConfirmedPayloadFingerprint =
+                boundController.LastResult.RoutePayload.Fingerprint;
         }
 
         private void SynchronizeProfile()
@@ -129,21 +151,52 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 currentProfile = null;
                 runtime = null;
+                pendingConfirmedRuntime = null;
+                pendingConfirmedPayloadFingerprint = string.Empty;
                 boundController = null;
                 boundPayloadFingerprint = string.Empty;
                 return;
             }
 
-            if (runtime == null
-                || currentProfile == null
-                || !ReferenceEquals(currentProfile, coordinatorProfile))
+            if (runtime == null || currentProfile == null)
+            {
+                ComposeFreshProfile(coordinatorProfile);
+                return;
+            }
+
+            if (ReferenceEquals(currentProfile, coordinatorProfile))
+            {
+                return;
+            }
+
+            if (pendingConfirmedRuntime != null
+                && string.Equals(
+                    pendingConfirmedPayloadFingerprint,
+                    coordinatorProfile.Payload.Fingerprint,
+                    StringComparison.Ordinal))
             {
                 currentProfile = coordinatorProfile;
-                runtime = new ProductionPlayerLoadoutRuntimeV1(
-                    currentProfile.Payload);
+                runtime = pendingConfirmedRuntime;
+                pendingConfirmedRuntime = null;
+                pendingConfirmedPayloadFingerprint = string.Empty;
                 boundController = null;
                 boundPayloadFingerprint = string.Empty;
+                return;
             }
+
+            ComposeFreshProfile(coordinatorProfile);
+        }
+
+        private void ComposeFreshProfile(
+            ProductionFlowProfileRecordV1 coordinatorProfile)
+        {
+            currentProfile = coordinatorProfile;
+            runtime = new ProductionPlayerLoadoutRuntimeV1(
+                currentProfile.Payload);
+            pendingConfirmedRuntime = null;
+            pendingConfirmedPayloadFingerprint = string.Empty;
+            boundController = null;
+            boundPayloadFingerprint = string.Empty;
         }
 
         private void BindInventoryScene()
