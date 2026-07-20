@@ -4,6 +4,7 @@ using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -30,16 +31,14 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 service.TrySelect(
                     InventoryLoadoutSlotIdsV1.WeaponOne,
                     fixture.InstanceId(leftKey)).Status,
-                Is.AnyOf(
-                    InventoryLoadoutScreenStatusV1.SelectionChanged,
-                    InventoryLoadoutScreenStatusV1.NoChange));
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged)
+                    .Or.EqualTo(InventoryLoadoutScreenStatusV1.NoChange));
             Assert.That(
                 service.TrySelect(
                     InventoryLoadoutSlotIdsV1.WeaponFour,
                     fixture.InstanceId(rightKey)).Status,
-                Is.AnyOf(
-                    InventoryLoadoutScreenStatusV1.SelectionChanged,
-                    InventoryLoadoutScreenStatusV1.NoChange));
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged)
+                    .Or.EqualTo(InventoryLoadoutScreenStatusV1.NoChange));
 
             InventoryLoadoutScreenResultV1 confirmed = service.Confirm();
             Assert.That(
