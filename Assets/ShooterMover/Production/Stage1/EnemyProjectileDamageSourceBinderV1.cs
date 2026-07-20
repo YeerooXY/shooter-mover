@@ -164,17 +164,17 @@ namespace ShooterMover.Production.Combat
                 return;
             }
 
-            EnemyProjectileEmissionObservationStatus observation =
+            EnemyDamageAdmissionObservationStatus observation =
                 router.ObserveEmission(
                     new EnemyProjectileEmissionFactV1(
                         emission.HitEventId,
                         generation));
             if (observation
-                    == EnemyProjectileEmissionObservationStatus.InvalidInput
+                    == EnemyDamageAdmissionObservationStatus.InvalidInput
                 || observation
-                    == EnemyProjectileEmissionObservationStatus.ConflictingDuplicate
+                    == EnemyDamageAdmissionObservationStatus.ConflictingDuplicate
                 || observation
-                    == EnemyProjectileEmissionObservationStatus.Disposed)
+                    == EnemyDamageAdmissionObservationStatus.Disposed)
             {
                 return;
             }
