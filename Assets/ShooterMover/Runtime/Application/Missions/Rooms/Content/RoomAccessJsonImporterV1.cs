@@ -24,7 +24,9 @@ namespace ShooterMover.Application.Missions.Rooms.Content
         }
 
         public string Code { get; }
+
         public string Path { get; }
+
         public string Message { get; }
     }
 
@@ -43,22 +45,34 @@ namespace ShooterMover.Application.Missions.Rooms.Content
         }
 
         public RoomAccessDefinitionV1 Definition { get; }
+
         public IReadOnlyList<RoomAccessImportIssueV1> Issues => issues;
+
         public bool IsValid => Definition != null && issues.Count == 0;
     }
 
     /// <summary>
     /// Imports a readable companion access document for one authored room graph.
-    /// The access document is separate from placement and encounter documents so
-    /// new keys, switches, objectives, and compound gates remain data-only.
+    /// External holding, objective, switch, and collected-drop references must be
+    /// present in an immutable authoring-time registry; runtime authorities are not
+    /// consulted during import.
     /// </summary>
     public static class RoomAccessJsonImporterV1
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
+        public const int MinimumSupportedVersion = 1;
 
         public static RoomAccessImportResultV1 Import(
             string json,
             AuthorableRoomGraphDefinitionV1 roomGraph)
+        {
+            return Import(json, roomGraph, RoomAccessReferenceCatalogV1.Empty);
+        }
+
+        public static RoomAccessImportResultV1 Import(
+            string json,
+            AuthorableRoomGraphDefinitionV1 roomGraph,
+            IRoomAccessReferenceRegistryV1 referenceRegistry)
         {
             if (roomGraph == null)
             {
@@ -67,6 +81,34 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     "$",
                     "An authored room graph is required.");
             }
+            if (referenceRegistry == null)
+            {
+                return Failure(
+                    "room-access-reference-registry-missing",
+                    "$.reference_registry",
+                    "An immutable room access reference registry is required.");
+            }
+            if (string.IsNullOrWhiteSpace(referenceRegistry.Fingerprint))
+            {
+                return Failure(
+                    "room-access-reference-registry-fingerprint-missing",
+                    "$.reference_registry",
+                    "The room access reference registry requires a deterministic fingerprint.");
+            }
+            RoomAccessReferenceCatalogV1 immutableReferenceRegistry;
+            try
+            {
+                immutableReferenceRegistry =
+                    RoomAccessReferenceCatalogV1.Snapshot(referenceRegistry);
+            }
+            catch (Exception exception)
+            {
+                return Failure(
+                    "room-access-reference-registry-invalid",
+                    "$.reference_registry",
+                    exception.Message);
+            }
+
             if (string.IsNullOrWhiteSpace(json))
             {
                 return Failure(
@@ -78,17 +120,22 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             try
             {
                 RootDto root = Deserialize(json);
-                if (root.Version != CurrentVersion)
+                if (root.Version < MinimumSupportedVersion
+                    || root.Version > CurrentVersion)
                 {
                     throw Mapping(
                         "room-access-version-unsupported",
                         "$.version",
-                        "Expected room access version "
+                        "Supported room access versions are "
+                        + MinimumSupportedVersion
+                        + " through "
                         + CurrentVersion
-                        + " but received "
+                        + "; received "
                         + root.Version
                         + ".");
                 }
+
+                ValidateRegistryProvenance(root, immutableReferenceRegistry);
 
                 StableId layout = ParseStableId(root.Layout, "$.layout");
                 if (layout != roomGraph.LayoutStableId)
@@ -138,7 +185,9 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     List<string> childValues = dto.Children ?? new List<string>();
                     var children = new List<StableId>();
                     var seenChildren = new HashSet<StableId>();
-                    for (int childIndex = 0; childIndex < childValues.Count; childIndex++)
+                    for (int childIndex = 0;
+                        childIndex < childValues.Count;
+                        childIndex++)
                     {
                         StableId child = ParseStableId(
                             childValues[childIndex],
@@ -176,7 +225,10 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 }
 
                 ValidateConditionReferences(conditionSources);
-                ValidateConditionSubjects(roomGraph, conditionSources);
+                ValidateConditionSubjects(
+                    roomGraph,
+                    immutableReferenceRegistry,
+                    conditionSources);
                 ValidateAcyclic(conditionSources);
 
                 List<DoorDto> authoredDoors = RequireList(root.Doors, "$.doors");
@@ -216,9 +268,21 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                             "Unknown access condition: " + conditionId);
                     }
 
-                    StableId consumeHolding = string.IsNullOrWhiteSpace(dto.ConsumeHolding)
+                    StableId consumeHolding = string.IsNullOrWhiteSpace(
+                        dto.ConsumeHolding)
                         ? null
-                        : ParseStableId(dto.ConsumeHolding, path + ".consume_holding");
+                        : ParseStableId(
+                            dto.ConsumeHolding,
+                            path + ".consume_holding");
+                    if (consumeHolding != null
+                        && !immutableReferenceRegistry.ContainsHolding(consumeHolding))
+                    {
+                        throw Mapping(
+                            "room-access-consume-holding-reference-unknown",
+                            path + ".consume_holding",
+                            "Unknown run holding reference: " + consumeHolding);
+                    }
+
                     doors.Add(new RoomDoorAccessDefinitionV1(
                         roomId,
                         doorId,
@@ -231,6 +295,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 {
                     definitionResult = new RoomAccessDefinitionV1(
                         roomGraph,
+                        immutableReferenceRegistry,
                         conditions,
                         doors);
                 }
@@ -261,6 +326,36 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     "room-access-invalid",
                     "$",
                     exception.GetType().Name + ": " + exception.Message);
+            }
+        }
+
+        private static void ValidateRegistryProvenance(
+            RootDto root,
+            IRoomAccessReferenceRegistryV1 referenceRegistry)
+        {
+            if (root.Version >= 2
+                && string.IsNullOrWhiteSpace(root.ReferenceRegistryFingerprint))
+            {
+                throw Mapping(
+                    "room-access-reference-registry-fingerprint-required",
+                    "$.reference_registry_fingerprint",
+                    "Version 2 room access documents must include the immutable reference registry fingerprint.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(root.ReferenceRegistryFingerprint)
+                && !string.Equals(
+                    root.ReferenceRegistryFingerprint.Trim(),
+                    referenceRegistry.Fingerprint,
+                    StringComparison.Ordinal))
+            {
+                throw Mapping(
+                    "room-access-reference-registry-fingerprint-mismatch",
+                    "$.reference_registry_fingerprint",
+                    "Expected reference registry fingerprint "
+                    + referenceRegistry.Fingerprint
+                    + " but received "
+                    + root.ReferenceRegistryFingerprint.Trim()
+                    + ".");
             }
         }
 
@@ -331,6 +426,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
 
         private static void ValidateConditionSubjects(
             AuthorableRoomGraphDefinitionV1 graph,
+            IRoomAccessReferenceRegistryV1 referenceRegistry,
             Dictionary<StableId, ConditionSource> conditions)
         {
             var placements = new HashSet<StableId>();
@@ -348,6 +444,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             foreach (KeyValuePair<StableId, ConditionSource> pair in conditions)
             {
                 RoomAccessConditionDefinitionV1 condition = pair.Value.Definition;
+                string path = pair.Value.Path + ".subject";
                 if (condition.Kind == RoomAccessConditionKindV1.RoomEntered
                     || condition.Kind == RoomAccessConditionKindV1.RoomComplete)
                 {
@@ -356,18 +453,66 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     {
                         throw Mapping(
                             "room-access-room-reference-unknown",
-                            pair.Value.Path + ".subject",
+                            path,
                             "Unknown room identity: " + condition.SubjectStableId);
                     }
                 }
-                else if (condition.Kind == RoomAccessConditionKindV1.ExactEntityTerminal
-                    && !placements.Contains(condition.SubjectStableId))
+                else if (condition.Kind == RoomAccessConditionKindV1.ExactEntityTerminal)
                 {
-                    throw Mapping(
-                        "room-access-terminal-reference-unknown",
-                        pair.Value.Path + ".subject",
-                        "Unknown enemy or prop placement identity: "
-                        + condition.SubjectStableId);
+                    if (!placements.Contains(condition.SubjectStableId))
+                    {
+                        throw Mapping(
+                            "room-access-terminal-reference-unknown",
+                            path,
+                            "Unknown enemy or prop placement identity: "
+                            + condition.SubjectStableId);
+                    }
+                }
+                else if (condition.Kind == RoomAccessConditionKindV1.HoldingPresent
+                    || condition.Kind == RoomAccessConditionKindV1.HoldingConsumed)
+                {
+                    if (!referenceRegistry.ContainsHolding(condition.SubjectStableId))
+                    {
+                        throw Mapping(
+                            "room-access-holding-reference-unknown",
+                            path,
+                            "Unknown run holding reference: "
+                            + condition.SubjectStableId);
+                    }
+                }
+                else if (condition.Kind == RoomAccessConditionKindV1.ObjectiveComplete)
+                {
+                    if (!referenceRegistry.ContainsObjective(condition.SubjectStableId))
+                    {
+                        throw Mapping(
+                            "room-access-objective-reference-unknown",
+                            path,
+                            "Unknown objective reference: "
+                            + condition.SubjectStableId);
+                    }
+                }
+                else if (condition.Kind == RoomAccessConditionKindV1.SwitchActive)
+                {
+                    if (!referenceRegistry.ContainsSwitch(condition.SubjectStableId))
+                    {
+                        throw Mapping(
+                            "room-access-switch-reference-unknown",
+                            path,
+                            "Unknown switch reference: "
+                            + condition.SubjectStableId);
+                    }
+                }
+                else if (condition.Kind == RoomAccessConditionKindV1.CollectedDrop)
+                {
+                    if (!referenceRegistry.ContainsCollectedDrop(
+                        condition.SubjectStableId))
+                    {
+                        throw Mapping(
+                            "room-access-drop-reference-unknown",
+                            path,
+                            "Unknown explicitly registered collected-drop reference: "
+                            + condition.SubjectStableId);
+                    }
                 }
             }
         }
@@ -443,7 +588,10 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     throw Mapping(
                         "room-access-door-unknown",
                         path + ".door",
-                        "Unknown door identity in room " + room.RoomStableId + ": " + id);
+                        "Unknown door identity in room "
+                        + room.RoomStableId
+                        + ": "
+                        + id);
                 }
                 return id;
             }
@@ -470,7 +618,9 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 throw Mapping(
                     "room-access-door-selector-no-match",
                     path,
-                    "No door in " + room.RoomStableId + " matches the authored selector.");
+                    "No door in "
+                    + room.RoomStableId
+                    + " matches the authored selector.");
             }
             if (matches.Count != 1)
             {
@@ -629,6 +779,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             }
 
             public RoomAccessConditionDefinitionV1 Definition { get; }
+
             public string Path { get; }
         }
 
@@ -645,6 +796,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             }
 
             public string Code { get; }
+
             public string Path { get; }
         }
 
@@ -656,6 +808,11 @@ namespace ShooterMover.Application.Missions.Rooms.Content
 
             [DataMember(Name = "layout", IsRequired = true)]
             public string Layout { get; set; }
+
+            [DataMember(
+                Name = "reference_registry_fingerprint",
+                EmitDefaultValue = false)]
+            public string ReferenceRegistryFingerprint { get; set; }
 
             [DataMember(Name = "conditions", IsRequired = true)]
             public List<ConditionDto> Conditions { get; set; }
