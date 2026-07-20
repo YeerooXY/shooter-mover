@@ -15,6 +15,8 @@ namespace ShooterMover.TestSupport.VisibleSlice
     public sealed class Stage1PlayerLiveAuthorityAdapterV1 :
         Level1PlayerRuntimeAdapterV1
     {
+        Level1PlayerRuntimeAdapterV1
+    {
         protected override void Awake()
         {
             base.Awake();
