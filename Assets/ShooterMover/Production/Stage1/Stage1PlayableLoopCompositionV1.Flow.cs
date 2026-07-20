@@ -429,29 +429,5 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return builder.ToString();
             }
         }
-
-        private Sprite RuntimeSprite(string key, Color color)
-        {
-            Sprite cached;
-            if (projectileSprites.TryGetValue(key, out cached)
-                && cached != null)
-            {
-                return cached;
-            }
-
-            Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            texture.name = "DEMO-CUTOVER-001 Projectile Pixel " + key;
-            texture.SetPixel(0, 0, color);
-            texture.Apply(false, true);
-            Sprite sprite = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, 1f, 1f),
-                new Vector2(0.5f, 0.5f),
-                1f);
-            projectileSprites[key] = sprite;
-            runtimeAssets.Add(texture);
-            runtimeAssets.Add(sprite);
-            return sprite;
-        }
     }
 }

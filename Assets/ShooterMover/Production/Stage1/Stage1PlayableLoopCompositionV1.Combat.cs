@@ -177,7 +177,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 Stage1InventoryWeaponProjectileHit2D hit =
                     effect.gameObject.AddComponent<Stage1InventoryWeaponProjectileHit2D>();
                 hit.Configure(this, effect);
-                AddProjectilePresentation(effect);
             }
         }
 
@@ -194,27 +193,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 Stage1InventoryWeaponPoolDamage2D damage =
                     pool.gameObject.AddComponent<Stage1InventoryWeaponPoolDamage2D>();
                 damage.Configure(this, pool);
-            }
-        }
-
-        private void AddProjectilePresentation(InventoryWeaponEffectInstance2D effect)
-        {
-            string id = effect.Description.Identity.WeaponDefinitionId.Value;
-            ProjectilePresentation presentation;
-            if (!projectilePresentation.TryGetValue(id, out presentation))
-            {
-                diagnostic = "Missing projectile presentation for " + id;
-                return;
-            }
-
-            var renderer = effect.gameObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = RuntimeSprite(id, presentation.Color);
-            renderer.sortingOrder = 30;
-            effect.transform.localScale = presentation.Scale;
-            Rigidbody2D body = effect.GetComponent<Rigidbody2D>();
-            if (body != null && body.linearVelocity.sqrMagnitude > 0.0001f)
-            {
-                effect.transform.right = body.linearVelocity.normalized;
             }
         }
 
