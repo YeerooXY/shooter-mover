@@ -22,19 +22,6 @@ namespace ShooterMover.Domain.Props
             public T Result { get; }
         }
 
-        private static readonly StableId ExplosionKind =
-            StableId.Parse("fact-kind.prop-explosion");
-        private static readonly StableId DropKind =
-            StableId.Parse("fact-kind.prop-drop-request");
-        private static readonly StableId ObjectiveKind =
-            StableId.Parse("fact-kind.prop-objective");
-        private static readonly StableId InteractionKind =
-            StableId.Parse("fact-kind.prop-interaction");
-        private static readonly StableId SwitchOnKind =
-            StableId.Parse("fact-kind.prop-switch-on");
-        private static readonly StableId SwitchOffKind =
-            StableId.Parse("fact-kind.prop-switch-off");
-
         private readonly PropDefinitionV1 _definition;
         private readonly IPropDamageEligibilityPolicyV1 _policy;
         private readonly Dictionary<StableId, double> _resistances;
@@ -164,13 +151,7 @@ namespace ShooterMover.Domain.Props
                         "Damage operation ID was reused with conflicting input.");
                 }
 
-                return DamageResult(
-                    PropDamageStatusV1.DuplicateNoChange,
-                    replay.Result.PreviousHealth,
-                    replay.Result.CurrentHealth,
-                    0d,
-                    PropFactBatchV1.Empty,
-                    "Exact damage retry produced no mutation or repeated facts.");
+                return replay.Result;
             }
 
             PropDamageResultV1 result = ApplyFirstDamage(command);
@@ -203,12 +184,7 @@ namespace ShooterMover.Domain.Props
                         "Interaction operation ID was reused with conflicting input.");
                 }
 
-                return InteractionResult(
-                    PropInteractionStatusV1.DuplicateNoChange,
-                    null,
-                    null,
-                    null,
-                    "Exact interaction retry produced no repeated facts.");
+                return replay.Result;
             }
 
             PropInteractionResultV1 result = ApplyFirstInteraction(command);
@@ -291,21 +267,29 @@ namespace ShooterMover.Domain.Props
             }
 
             _terminal = true;
-            PropTerminalFactV1 terminal =
-                new PropTerminalFactV1(command, ParticipantId, _definition.DefinitionId);
+            PropTerminalFactV1 terminal = new PropTerminalFactV1(
+                PropFactIdentityV1.Derive(
+                    command.OperationId,
+                    ParticipantId,
+                    PropFactKindIdsV1.Terminal,
+                    _definition.DefinitionId),
+                PropFactKindIdsV1.Terminal,
+                command,
+                ParticipantId,
+                _definition.DefinitionId);
             PropTriggeredFactV1 explosion = Triggered(
                 command.OperationId,
-                ExplosionKind,
+                PropFactKindIdsV1.ExplosionRequest,
                 _explosionProfileId,
                 command.SourceParticipantId);
             PropTriggeredFactV1 drop = Triggered(
                 command.OperationId,
-                DropKind,
+                PropFactKindIdsV1.DropRequest,
                 _dropProfileId,
                 command.SourceParticipantId);
             PropTriggeredFactV1 objective = Triggered(
                 command.OperationId,
-                ObjectiveKind,
+                PropFactKindIdsV1.ObjectiveOnDestroy,
                 _objectiveFactId,
                 command.SourceParticipantId);
             return DamageResult(
@@ -342,7 +326,7 @@ namespace ShooterMover.Domain.Props
 
             PropTriggeredFactV1 interaction = Triggered(
                 command.OperationId,
-                InteractionKind,
+                PropFactKindIdsV1.Interaction,
                 _interactionFactId,
                 command.SourceParticipantId);
             PropTriggeredFactV1 switchFact = null;
@@ -351,14 +335,16 @@ namespace ShooterMover.Domain.Props
                 _switchActive = !_switchActive.Value;
                 switchFact = Triggered(
                     command.OperationId,
-                    _switchActive.Value ? SwitchOnKind : SwitchOffKind,
+                    _switchActive.Value
+                        ? PropFactKindIdsV1.SwitchOn
+                        : PropFactKindIdsV1.SwitchOff,
                     _switchId,
                     command.SourceParticipantId);
             }
 
             PropTriggeredFactV1 objective = Triggered(
                 command.OperationId,
-                ObjectiveKind,
+                PropFactKindIdsV1.ObjectiveOnInteraction,
                 _objectiveFactId,
                 command.SourceParticipantId);
             return InteractionResult(
@@ -370,7 +356,7 @@ namespace ShooterMover.Domain.Props
         }
 
         private PropTriggeredFactV1 Triggered(
-            StableId factId,
+            StableId rootOperationId,
             StableId kindId,
             StableId valueId,
             StableId sourceParticipantId)
@@ -378,7 +364,11 @@ namespace ShooterMover.Domain.Props
             return valueId == null
                 ? null
                 : new PropTriggeredFactV1(
-                    factId,
+                    PropFactIdentityV1.Derive(
+                        rootOperationId,
+                        ParticipantId,
+                        kindId,
+                        valueId),
                     kindId,
                     valueId,
                     ParticipantId,
