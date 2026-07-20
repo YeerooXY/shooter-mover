@@ -48,17 +48,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     internal sealed class Stage1ReadOnlyResultsControllerV1 :
         Stage1MissionSummaryControllerV1
     {
-        private void Update()
+        private new void Update()
         {
             base.Update();
         }
 
-        private void OnGUI()
+        private new void OnGUI()
         {
             base.OnGUI();
         }
 
-        private void OnDestroy()
+        private new void OnDestroy()
         {
             base.OnDestroy();
         }
