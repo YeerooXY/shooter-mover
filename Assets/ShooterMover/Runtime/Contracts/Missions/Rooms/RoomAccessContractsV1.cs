@@ -152,10 +152,15 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public StableId ConditionStableId { get; }
+
         public RoomAccessConditionKindV1 Kind { get; }
+
         public StableId SubjectStableId { get; }
+
         public int MinimumDifficulty { get; }
-        public IReadOnlyList<StableId> ChildConditionStableIds => childConditionStableIds;
+
+        public IReadOnlyList<StableId> ChildConditionStableIds =>
+            childConditionStableIds;
     }
 
     public sealed class RoomDoorAccessDefinitionV1
@@ -176,8 +181,11 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public StableId RoomStableId { get; }
+
         public StableId DoorStableId { get; }
+
         public StableId RootConditionStableId { get; }
+
         public StableId ConsumeHoldingStableId { get; }
     }
 
@@ -188,19 +196,44 @@ namespace ShooterMover.Contracts.Missions.Rooms
         private readonly Dictionary<StableId, RoomAccessConditionDefinitionV1> conditionsById;
         private readonly Dictionary<StableId, RoomDoorAccessDefinitionV1> doorsById;
 
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
 
         public RoomAccessDefinitionV1(
             AuthorableRoomGraphDefinitionV1 roomGraph,
             IEnumerable<RoomAccessConditionDefinitionV1> conditions,
             IEnumerable<RoomDoorAccessDefinitionV1> doors)
+            : this(
+                roomGraph,
+                RoomAccessReferenceCatalogV1.Empty,
+                conditions,
+                doors)
+        {
+        }
+
+        public RoomAccessDefinitionV1(
+            AuthorableRoomGraphDefinitionV1 roomGraph,
+            IRoomAccessReferenceRegistryV1 referenceRegistry,
+            IEnumerable<RoomAccessConditionDefinitionV1> conditions,
+            IEnumerable<RoomDoorAccessDefinitionV1> doors)
         {
             RoomGraph = roomGraph ?? throw new ArgumentNullException(nameof(roomGraph));
-            var conditionCopy = CopyAndSort(
-                conditions,
-                (left, right) => left.ConditionStableId.CompareTo(right.ConditionStableId),
-                nameof(conditions));
-            var doorCopy = CopyAndSort(
+            ReferenceRegistry = RoomAccessReferenceCatalogV1.Snapshot(
+                referenceRegistry
+                    ?? throw new ArgumentNullException(nameof(referenceRegistry)));
+            if (string.IsNullOrWhiteSpace(ReferenceRegistry.Fingerprint))
+            {
+                throw new ArgumentException(
+                    "room-access-reference-registry-fingerprint-missing",
+                    nameof(referenceRegistry));
+            }
+
+            ReadOnlyCollection<RoomAccessConditionDefinitionV1> conditionCopy =
+                CopyAndSort(
+                    conditions,
+                    (left, right) => left.ConditionStableId.CompareTo(
+                        right.ConditionStableId),
+                    nameof(conditions));
+            ReadOnlyCollection<RoomDoorAccessDefinitionV1> doorCopy = CopyAndSort(
                 doors,
                 (left, right) => left.DoorStableId.CompareTo(right.DoorStableId),
                 nameof(doors));
@@ -231,10 +264,19 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public AuthorableRoomGraphDefinitionV1 RoomGraph { get; }
+
+        public RoomAccessReferenceCatalogV1 ReferenceRegistry { get; }
+
         public StableId LayoutStableId => RoomGraph.LayoutStableId;
+
+        public string ReferenceRegistryFingerprint => ReferenceRegistry.Fingerprint;
+
         public IReadOnlyList<RoomAccessConditionDefinitionV1> Conditions => conditions;
+
         public IReadOnlyList<RoomDoorAccessDefinitionV1> Doors => doors;
+
         public string CanonicalJson { get; }
+
         public string Fingerprint { get; }
 
         public bool TryGetCondition(
@@ -310,11 +352,62 @@ namespace ShooterMover.Contracts.Missions.Rooms
                         + ":"
                         + condition.SubjectStableId);
                 }
+
                 if (condition.Kind == RoomAccessConditionKindV1.ExactEntityTerminal
                     && !placementIds.Contains(condition.SubjectStableId))
                 {
                     throw new ArgumentException(
                         "room-access-terminal-reference-unknown:"
+                        + condition.ConditionStableId
+                        + ":"
+                        + condition.SubjectStableId);
+                }
+
+                if (condition.Kind == RoomAccessConditionKindV1.HoldingPresent
+                    && !ReferenceRegistry.ContainsHolding(condition.SubjectStableId))
+                {
+                    throw new ArgumentException(
+                        "room-access-holding-reference-unknown:"
+                        + condition.ConditionStableId
+                        + ":"
+                        + condition.SubjectStableId);
+                }
+
+                if (condition.Kind == RoomAccessConditionKindV1.HoldingConsumed
+                    && !ReferenceRegistry.ContainsHolding(condition.SubjectStableId))
+                {
+                    throw new ArgumentException(
+                        "room-access-holding-reference-unknown:"
+                        + condition.ConditionStableId
+                        + ":"
+                        + condition.SubjectStableId);
+                }
+
+                if (condition.Kind == RoomAccessConditionKindV1.ObjectiveComplete
+                    && !ReferenceRegistry.ContainsObjective(condition.SubjectStableId))
+                {
+                    throw new ArgumentException(
+                        "room-access-objective-reference-unknown:"
+                        + condition.ConditionStableId
+                        + ":"
+                        + condition.SubjectStableId);
+                }
+
+                if (condition.Kind == RoomAccessConditionKindV1.SwitchActive
+                    && !ReferenceRegistry.ContainsSwitch(condition.SubjectStableId))
+                {
+                    throw new ArgumentException(
+                        "room-access-switch-reference-unknown:"
+                        + condition.ConditionStableId
+                        + ":"
+                        + condition.SubjectStableId);
+                }
+
+                if (condition.Kind == RoomAccessConditionKindV1.CollectedDrop
+                    && !ReferenceRegistry.ContainsCollectedDrop(condition.SubjectStableId))
+                {
+                    throw new ArgumentException(
+                        "room-access-drop-reference-unknown:"
                         + condition.ConditionStableId
                         + ":"
                         + condition.SubjectStableId);
@@ -336,6 +429,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
                         + ":"
                         + door.RoomStableId);
                 }
+
                 RoomDoorDefinitionV1 existingDoor;
                 if (!room.TryGetDoor(door.DoorStableId, out existingDoor))
                 {
@@ -345,6 +439,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
                         + ":"
                         + door.DoorStableId);
                 }
+
                 if (!conditionsById.ContainsKey(door.RootConditionStableId))
                 {
                     throw new ArgumentException(
@@ -352,6 +447,17 @@ namespace ShooterMover.Contracts.Missions.Rooms
                         + door.DoorStableId
                         + ":"
                         + door.RootConditionStableId);
+                }
+
+                if (door.ConsumeHoldingStableId != null
+                    && !ReferenceRegistry.ContainsHolding(
+                        door.ConsumeHoldingStableId))
+                {
+                    throw new ArgumentException(
+                        "room-access-consume-holding-reference-unknown:"
+                        + door.DoorStableId
+                        + ":"
+                        + door.ConsumeHoldingStableId);
                 }
             }
         }
@@ -365,7 +471,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
             }
         }
 
-        private void Visit(StableId conditionStableId, Dictionary<StableId, int> states)
+        private void Visit(
+            StableId conditionStableId,
+            Dictionary<StableId, int> states)
         {
             int state;
             if (states.TryGetValue(conditionStableId, out state))
@@ -379,7 +487,8 @@ namespace ShooterMover.Contracts.Missions.Rooms
             }
 
             states[conditionStableId] = 1;
-            RoomAccessConditionDefinitionV1 condition = conditionsById[conditionStableId];
+            RoomAccessConditionDefinitionV1 condition =
+                conditionsById[conditionStableId];
             for (int index = 0;
                 index < condition.ChildConditionStableIds.Count;
                 index++)
@@ -396,6 +505,8 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 .Append(CurrentSchemaVersion.ToString(CultureInfo.InvariantCulture))
                 .Append(",\"layout\":");
             AppendString(builder, LayoutStableId.ToString());
+            builder.Append(",\"reference_registry_fingerprint\":");
+            AppendString(builder, ReferenceRegistryFingerprint);
             builder.Append(",\"conditions\":[");
             for (int index = 0; index < conditions.Count; index++)
             {
@@ -408,7 +519,8 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 builder.Append(",\"subject\":");
                 AppendNullableId(builder, value.SubjectStableId);
                 builder.Append(",\"minimum_difficulty\":")
-                    .Append(value.MinimumDifficulty.ToString(CultureInfo.InvariantCulture))
+                    .Append(value.MinimumDifficulty.ToString(
+                        CultureInfo.InvariantCulture))
                     .Append(",\"children\":[");
                 for (int childIndex = 0;
                     childIndex < value.ChildConditionStableIds.Count;
@@ -421,6 +533,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 }
                 builder.Append("]}");
             }
+
             builder.Append("],\"doors\":[");
             for (int index = 0; index < doors.Count; index++)
             {
@@ -457,7 +570,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 case RoomAccessConditionKindV1.All: return "all";
                 case RoomAccessConditionKindV1.Any: return "any";
                 case RoomAccessConditionKindV1.Not: return "not";
-                default: throw new InvalidOperationException("Unsupported room access kind: " + kind);
+                default:
+                    throw new InvalidOperationException(
+                        "Unsupported room access kind: " + kind);
             }
         }
 
@@ -500,7 +615,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
             return result;
         }
 
-        private static void AppendNullableId(StringBuilder builder, StableId value)
+        private static void AppendNullableId(
+            StringBuilder builder,
+            StableId value)
         {
             if (value == null) builder.Append("null");
             else AppendString(builder, value.ToString());
@@ -527,11 +644,14 @@ namespace ShooterMover.Contracts.Missions.Rooms
         {
             using (SHA256 sha = SHA256.Create())
             {
-                byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(value ?? string.Empty));
+                byte[] hash = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(value ?? string.Empty));
                 var builder = new StringBuilder(hash.Length * 2);
                 for (int index = 0; index < hash.Length; index++)
                 {
-                    builder.Append(hash[index].ToString("x2", CultureInfo.InvariantCulture));
+                    builder.Append(hash[index].ToString(
+                        "x2",
+                        CultureInfo.InvariantCulture));
                 }
                 return builder.ToString();
             }
@@ -564,20 +684,32 @@ namespace ShooterMover.Contracts.Missions.Rooms
             this.completedRooms = CopyUnique(completedRooms, nameof(completedRooms));
             this.terminalEntities = CopyUnique(terminalEntities, nameof(terminalEntities));
             this.collectedDrops = CopyUnique(collectedDrops, nameof(collectedDrops));
-            this.completedObjectives = CopyUnique(completedObjectives, nameof(completedObjectives));
+            this.completedObjectives = CopyUnique(
+                completedObjectives,
+                nameof(completedObjectives));
             this.activeSwitches = CopyUnique(activeSwitches, nameof(activeSwitches));
-            this.consumedHoldings = CopyUnique(consumedHoldings, nameof(consumedHoldings));
+            this.consumedHoldings = CopyUnique(
+                consumedHoldings,
+                nameof(consumedHoldings));
             Fingerprint = BuildFingerprint();
         }
 
         public int Difficulty { get; }
+
         public IReadOnlyList<StableId> EnteredRooms => enteredRooms;
+
         public IReadOnlyList<StableId> CompletedRooms => completedRooms;
+
         public IReadOnlyList<StableId> TerminalEntities => terminalEntities;
+
         public IReadOnlyList<StableId> CollectedDrops => collectedDrops;
+
         public IReadOnlyList<StableId> CompletedObjectives => completedObjectives;
+
         public IReadOnlyList<StableId> ActiveSwitches => activeSwitches;
+
         public IReadOnlyList<StableId> ConsumedHoldings => consumedHoldings;
+
         public string Fingerprint { get; }
 
         public bool Contains(IReadOnlyList<StableId> values, StableId id)
@@ -603,17 +735,22 @@ namespace ShooterMover.Contracts.Missions.Rooms
             Append(builder, consumedHoldings);
             using (SHA256 sha = SHA256.Create())
             {
-                byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(builder.ToString()));
+                byte[] hash = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(builder.ToString()));
                 var hex = new StringBuilder(hash.Length * 2);
                 for (int index = 0; index < hash.Length; index++)
                 {
-                    hex.Append(hash[index].ToString("x2", CultureInfo.InvariantCulture));
+                    hex.Append(hash[index].ToString(
+                        "x2",
+                        CultureInfo.InvariantCulture));
                 }
                 return hex.ToString();
             }
         }
 
-        private static void Append(StringBuilder builder, IReadOnlyList<StableId> values)
+        private static void Append(
+            StringBuilder builder,
+            IReadOnlyList<StableId> values)
         {
             builder.Append('|');
             for (int index = 0; index < values.Count; index++)
@@ -661,7 +798,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
             {
                 if (pair.Key == null || pair.Value < 0)
                 {
-                    throw new ArgumentException("Invalid run holding snapshot.", nameof(quantities));
+                    throw new ArgumentException(
+                        "Invalid run holding snapshot.",
+                        nameof(quantities));
                 }
                 copy.Add(pair.Key, pair.Value);
             }
@@ -672,9 +811,14 @@ namespace ShooterMover.Contracts.Missions.Rooms
 
         public int GetQuantity(StableId holdingStableId)
         {
-            if (holdingStableId == null) throw new ArgumentNullException(nameof(holdingStableId));
+            if (holdingStableId == null)
+            {
+                throw new ArgumentNullException(nameof(holdingStableId));
+            }
             int quantity;
-            return quantities.TryGetValue(holdingStableId, out quantity) ? quantity : 0;
+            return quantities.TryGetValue(holdingStableId, out quantity)
+                ? quantity
+                : 0;
         }
     }
 
@@ -692,13 +836,19 @@ namespace ShooterMover.Contracts.Missions.Rooms
                 ?? throw new ArgumentNullException(nameof(operationStableId));
             HoldingStableId = holdingStableId
                 ?? throw new ArgumentNullException(nameof(holdingStableId));
-            if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+            if (quantity <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(quantity));
+            }
             Quantity = quantity;
         }
 
         public StableId RuntimeInstanceStableId { get; }
+
         public StableId OperationStableId { get; }
+
         public StableId HoldingStableId { get; }
+
         public int Quantity { get; }
     }
 
@@ -717,13 +867,16 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public RoomHoldingConsumeStatusV1 Status { get; }
+
         public string RejectionCode { get; }
+
         public bool IsAccepted => Status != RoomHoldingConsumeStatusV1.Rejected;
     }
 
     public interface IRoomRunHoldingPortV1
     {
         RoomRunHoldingSnapshotV1 CurrentSnapshot { get; }
+
         RoomHoldingConsumeResultV1 Consume(RoomHoldingConsumeCommandV1 command);
     }
 
@@ -754,8 +907,11 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public StableId RuntimeInstanceStableId { get; }
+
         public StableId OperationStableId { get; }
+
         public long LifecycleGeneration { get; }
+
         public StableId DoorStableId { get; }
     }
 
@@ -778,9 +934,13 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public StableId RoomStableId { get; }
+
         public StableId DoorStableId { get; }
+
         public bool IsConditionSatisfied { get; }
+
         public bool IsUnlocked { get; }
+
         public bool IsOpen { get; }
     }
 
@@ -803,31 +963,47 @@ namespace ShooterMover.Contracts.Missions.Rooms
             {
                 throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
             }
-            if (sequence < 0L) throw new ArgumentOutOfRangeException(nameof(sequence));
+            if (sequence < 0L)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sequence));
+            }
             LifecycleGeneration = lifecycleGeneration;
             Sequence = sequence;
             SourceFingerprint = sourceFingerprint ?? string.Empty;
             var copy = new List<RoomDoorAccessProjectionV1>(
                 doors ?? Array.Empty<RoomDoorAccessProjectionV1>());
-            copy.Sort((left, right) => left.DoorStableId.CompareTo(right.DoorStableId));
+            copy.Sort((left, right) => left.DoorStableId.CompareTo(
+                right.DoorStableId));
             this.doors = new ReadOnlyCollection<RoomDoorAccessProjectionV1>(copy);
         }
 
         public StableId RuntimeInstanceStableId { get; }
+
         public string DefinitionFingerprint { get; }
+
         public long LifecycleGeneration { get; }
+
         public long Sequence { get; }
+
         public string SourceFingerprint { get; }
+
         public IReadOnlyList<RoomDoorAccessProjectionV1> Doors => doors;
 
         public RoomDoorAccessProjectionV1 GetDoor(StableId doorStableId)
         {
-            if (doorStableId == null) throw new ArgumentNullException(nameof(doorStableId));
+            if (doorStableId == null)
+            {
+                throw new ArgumentNullException(nameof(doorStableId));
+            }
             for (int index = 0; index < doors.Count; index++)
             {
-                if (doors[index].DoorStableId == doorStableId) return doors[index];
+                if (doors[index].DoorStableId == doorStableId)
+                {
+                    return doors[index];
+                }
             }
-            throw new KeyNotFoundException("Unknown access door identity: " + doorStableId);
+            throw new KeyNotFoundException(
+                "Unknown access door identity: " + doorStableId);
         }
     }
 
@@ -848,7 +1024,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
 
         public RoomAccessOperationStatusV1 Status { get; }
+
         public string RejectionCode { get; }
+
         public RoomAccessSnapshotV1 Snapshot { get; }
     }
 }
