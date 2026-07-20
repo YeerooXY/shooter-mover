@@ -275,29 +275,69 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 == Level1AuthorableRoomDefinitionV1.EntryRoomStableId
                     ? "Room 1: Moving Droid"
                     : "Room 2: Blaster Turret";
-            string weaponName = WeaponDisplayNames[weapons.SelectedSlotIndex];
             GUILayout.Label(roomName, bodyStyle);
             GUILayout.Label(
                 "HP " + controller.PlayerHealth
-                + "   Weapon " + weaponName
-                + "   Slot " + (weapons.SelectedSlotIndex + 1),
+                + "   Mounted weapons " + weapons.EnabledMountCount,
                 smallStyle);
             GUILayout.Label(
-                "1 " + WeaponDisplayNames[0]
-                + "   2 " + WeaponDisplayNames[1]
-                + "   3 " + WeaponDisplayNames[2]
-                + "   4 " + WeaponDisplayNames[3],
+                BuildMountedWeaponSummary(),
                 smallStyle);
             GUILayout.Label(
                 controller.IsPlayerDead
                     ? "Destroyed — press R to restart through PlayerActorAuthority."
-                    : "Move, aim with the mouse, hold left click/Space to fire. Press R to restart.",
+                    : "Move, aim with the mouse, and hold left click/Space to fire every enabled mount. Press R to restart.",
                 smallStyle);
             if (!string.IsNullOrEmpty(diagnostic))
             {
                 GUILayout.Label(diagnostic, smallStyle);
             }
             GUILayout.EndArea();
+        }
+
+        private string BuildMountedWeaponSummary()
+        {
+            if (profile == null || profile.Payload == null)
+            {
+                return "Mounted weapons unavailable";
+            }
+
+            ProductionWeaponMountLayoutV1 layout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    profile.Payload.LoadoutProfileStableId);
+            var builder = new StringBuilder();
+            for (int positionIndex = 0;
+                positionIndex < layout.ConfigurablePositions.Count;
+                positionIndex++)
+            {
+                ProductionWeaponMountPositionV1 position =
+                    layout.ConfigurablePositions[positionIndex];
+                for (int slotIndex = 0;
+                    slotIndex < profile.Payload.WeaponSlots.Count;
+                    slotIndex++)
+                {
+                    PlayerRouteWeaponSlotV1 slot =
+                        profile.Payload.WeaponSlots[slotIndex];
+                    if (slot.WeaponSlotStableId
+                        != position.LoadoutSlotStableId)
+                    {
+                        continue;
+                    }
+
+                    if (builder.Length > 0)
+                    {
+                        builder.Append("   •   ");
+                    }
+                    builder.Append(position.DisplayName)
+                        .Append(": ")
+                        .Append(WeaponDisplayNames[slotIndex]);
+                    break;
+                }
+            }
+
+            return builder.Length == 0
+                ? "No enabled weapon mounts"
+                : builder.ToString();
         }
 
         private void EnsureStyles()
