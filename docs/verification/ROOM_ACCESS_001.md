@@ -20,6 +20,8 @@ Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -te
 
 Do not add `-quit`; Unity test execution exits after `-runTests`.
 
+Both commands were attempted in the implementation environment. Each exited with status `127` because the `Unity` executable is not installed. No XML files were produced and no passing Unity result is claimed.
+
 ## Coverage authored
 
 Authority tests cover:
@@ -49,17 +51,17 @@ Importer tests cover:
 
 Additional provenance coverage proves canonical version 2 documents reject a mismatched reference-registry fingerprint.
 
-## Static checks performed in the implementation environment
+## Static checks completed
 
-The implementation environment does not include Unity or a C# compiler. Before updating the PR, perform and record:
-
-- Tree-sitter C# grammar parse for every changed/added C# compilation unit;
-- JSON parse for the checked-in access example;
-- trailing-whitespace/tab audit;
-- StableId literal audit;
-- duplicate Unity GUID audit for new metadata;
-- changed-file boundary comparison against the original launch SHA;
-- confirmation that `Stage1VisibleSliceController.cs` is untouched.
+- Tree-sitter C# grammar parse passed for all six correction C# compilation units.
+- The checked-in version 1 access JSON example parsed successfully.
+- StableId literal audit passed for the correction sources.
+- No tabs or trailing whitespace exist in the correction files.
+- The new Unity metadata GUID is valid, unique in repository search, and its remote blob matches the audited local file.
+- Every modified remote blob hash matches the locally audited source.
+- The branch remains ahead-only from the exact original launch SHA.
+- The changed-file comparison contains 20 added files and no modifications or deletions relative to `main`.
+- `Stage1VisibleSliceController.cs` is absent from the changed-file list.
 
 ## Unity merge gate
 
