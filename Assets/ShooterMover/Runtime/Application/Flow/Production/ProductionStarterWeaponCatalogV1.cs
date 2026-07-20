@@ -24,13 +24,13 @@ namespace ShooterMover.Application.Flow.Production
             StableId.Parse("equipment.production-starter-ricochet-gun");
 
         public static readonly StableId BlasterEquipmentInstanceStableId =
-            StableId.Parse("equipment-instance.production-starter-blaster");
+            StableId.Parse("equipment-instance.flow-draft-slot-1");
         public static readonly StableId ShotgunEquipmentInstanceStableId =
-            StableId.Parse("equipment-instance.production-starter-shotgun");
+            StableId.Parse("equipment-instance.flow-draft-slot-2");
         public static readonly StableId RocketEquipmentInstanceStableId =
-            StableId.Parse("equipment-instance.production-starter-rocket");
+            StableId.Parse("equipment-instance.flow-draft-slot-3");
         public static readonly StableId ArcEquipmentInstanceStableId =
-            StableId.Parse("equipment-instance.production-starter-arc");
+            StableId.Parse("equipment-instance.flow-draft-slot-4");
         public static readonly StableId RicochetEquipmentInstanceStableId =
             StableId.Parse("equipment-instance.production-starter-ricochet");
 
@@ -314,22 +314,6 @@ namespace ShooterMover.Application.Flow.Production
             BuildKnownDefinitionMap()
         {
             var result = new Dictionary<StableId, StableId>();
-            AddKnown(
-                result,
-                StableId.Parse("equipment-instance.flow-draft-slot-1"),
-                BlasterEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                StableId.Parse("equipment-instance.flow-draft-slot-2"),
-                ShotgunEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                StableId.Parse("equipment-instance.flow-draft-slot-3"),
-                RocketEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                StableId.Parse("equipment-instance.flow-draft-slot-4"),
-                ArcEquipmentDefinitionStableId);
             AddKnown(
                 result,
                 BlasterEquipmentInstanceStableId,
