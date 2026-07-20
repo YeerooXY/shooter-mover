@@ -4,7 +4,6 @@ using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Flow.Hub
@@ -12,7 +11,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
     public sealed class ProductionStarterLoadoutMigrationV1Tests
     {
         [Test]
-        public void ReorderedPersistedRouteRebuildsAllFiveDefinitionIdentities()
+        public void ReorderedPersistedRouteRebuildsAllFiveExactStarterIdentities()
         {
             PlayerRouteProfilePayloadV1 initial =
                 PlayerRouteProfilePayloadV1.Create(
@@ -21,14 +20,14 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                         "loadout-profile.starter-migration"),
                     new[]
                     {
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-1"),
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-2"),
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-3"),
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-4"),
+                        ProductionStarterWeaponCatalogV1
+                            .BlasterEquipmentInstanceStableId,
+                        ProductionStarterWeaponCatalogV1
+                            .ShotgunEquipmentInstanceStableId,
+                        ProductionStarterWeaponCatalogV1
+                            .RocketEquipmentInstanceStableId,
+                        ProductionStarterWeaponCatalogV1
+                            .ArcEquipmentInstanceStableId,
                     });
             var first = new ProductionPlayerLoadoutRuntimeV1(initial);
             var service = new InventoryLoadoutScreenServiceV1(
@@ -45,21 +44,23 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             var restored =
                 new ProductionPlayerLoadoutRuntimeV1(persisted);
             var definitions = new HashSet<StableId>();
+            var instances = new HashSet<StableId>();
+            var holdings = restored.Holdings.ExportSnapshot();
             for (int index = 0;
-                index < restored.Holdings.ExportSnapshot()
-                    .UniqueHoldings.Count;
+                index < holdings.UniqueHoldings.Count;
                 index++)
             {
-                var holding = restored.Holdings.ExportSnapshot()
-                    .UniqueHoldings[index];
+                var holding = holdings.UniqueHoldings[index];
                 if (holding.RewardKind
                     == RewardGrantKindV1.EquipmentReference)
                 {
                     definitions.Add(holding.DefinitionStableId);
+                    instances.Add(holding.InstanceStableId);
                 }
             }
 
             Assert.That(definitions.Count, Is.EqualTo(5));
+            Assert.That(instances.Count, Is.EqualTo(5));
             for (int index = 0;
                 index < ProductionStarterWeaponCatalogV1
                     .AllEquipmentDefinitionStableIds.Count;
@@ -71,6 +72,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                             .AllEquipmentDefinitionStableIds[index]),
                     Is.True);
             }
+            Assert.That(
+                instances.Contains(
+                    ProductionStarterWeaponCatalogV1
+                        .BlasterEquipmentInstanceStableId),
+                Is.True,
+                "The displaced Blaster must retain its original concrete identity.");
             Assert.That(
                 restored.LoadoutAuthority.ExportSnapshot()
                     .GetBinding(
