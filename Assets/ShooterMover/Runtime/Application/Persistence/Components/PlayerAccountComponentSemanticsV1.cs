@@ -1,30 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Text;
 using ShooterMover.Application.Inventory.LoadoutScreen;
-using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
-using ShooterMover.Contracts.Economy;
 using ShooterMover.Contracts.Holdings;
-using ShooterMover.Contracts.Rewards;
-using ShooterMover.Contracts.Rewards.Application;
-using ShooterMover.Contracts.Progression.Experience;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Economy.Ledger;
-using ShooterMover.Domain.Economy.Money;
-using ShooterMover.Domain.Economy.Scrap;
-using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
-using ShooterMover.Domain.Progression.Context;
-using ShooterMover.Domain.Progression.Experience;
-using ShooterMover.Domain.Progression.Skills;
-using ShooterMover.Domain.Rewards.Application;
-using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.Application.Persistence.Components
 {
@@ -157,6 +139,16 @@ namespace ShooterMover.Application.Persistence.Components
                         "strongbox-opening-box-identity-duplicate:" + boxId);
                 }
                 openingsByBox.Add(boxId, opening);
+            }
+
+            foreach (KeyValuePair<StableId, StrongboxOpeningRecordSnapshotV1> pair
+                in openingsByBox)
+            {
+                if (!contexts.ContainsKey(pair.Key))
+                {
+                    return SaveComponentValidationResultV1.Reject(
+                        "strongbox-opening-context-missing:" + pair.Key);
+                }
             }
 
             foreach (KeyValuePair<StableId, UniqueHoldingSnapshotV1> pair in heldBoxes)
