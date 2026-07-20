@@ -14,10 +14,9 @@ using ShooterMover.Domain.Weapons.Catalog;
 namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
-    /// Temporary production composition for the current starter inventory. The ownership
-    /// boundary is intentionally the same one that later save/import, shop, crafting and
-    /// strongbox systems will populate: one holdings authority, one loadout authority and
-    /// catalogs consumed read-only by Hub and gameplay.
+    /// Production composition for the current starter inventory. Later save/import,
+    /// shop, crafting and strongbox systems can populate the same holdings/loadout
+    /// boundary without changing the Hub screen or Level 1 weapon execution.
     /// </summary>
     public sealed class ProductionPlayerLoadoutRuntimeV1
     {
@@ -76,6 +75,9 @@ namespace ShooterMover.Application.Flow.Production
             PlayerRouteProfilePayloadV1 routePayload)
         {
             StableId common = StableId.Parse("equipment-quality.common");
+            var presentDefinitions = new HashSet<StableId>();
+            var presentInstances = new HashSet<StableId>();
+
             for (int index = 0;
                 index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
                 index++)
@@ -83,9 +85,17 @@ namespace ShooterMover.Application.Flow.Production
                 StableId instanceStableId = routePayload
                     .WeaponSlots[index]
                     .EquipmentInstanceStableId;
-                StableId definitionStableId =
-                    ProductionStarterWeaponCatalogV1
-                        .StarterEquipmentDefinitionStableIds[index];
+                StableId definitionStableId;
+                if (!ProductionStarterWeaponCatalogV1
+                    .TryResolveDefinitionForInstance(
+                        instanceStableId,
+                        out definitionStableId))
+                {
+                    definitionStableId =
+                        ProductionStarterWeaponCatalogV1
+                            .InitialEquipmentDefinitionStableIds[index];
+                }
+
                 AddEquipment(
                     EquipmentInstance.Create(
                         instanceStableId,
@@ -94,18 +104,43 @@ namespace ShooterMover.Application.Flow.Production
                         common,
                         Array.Empty<AugmentInstance>()),
                     "route-slot-" + (index + 1));
+                presentInstances.Add(instanceStableId);
+                presentDefinitions.Add(definitionStableId);
             }
 
-            AddEquipment(
-                EquipmentInstance.Create(
+            for (int index = 0;
+                index < ProductionStarterWeaponCatalogV1
+                    .AllEquipmentDefinitionStableIds.Count;
+                index++)
+            {
+                StableId definitionStableId =
                     ProductionStarterWeaponCatalogV1
-                        .RicochetEquipmentInstanceStableId,
+                        .AllEquipmentDefinitionStableIds[index];
+                if (presentDefinitions.Contains(definitionStableId))
+                {
+                    continue;
+                }
+
+                StableId reserveInstanceStableId =
                     ProductionStarterWeaponCatalogV1
-                        .RicochetEquipmentDefinitionStableId,
-                    1,
-                    common,
-                    Array.Empty<AugmentInstance>()),
-                "ricochet-reserve");
+                        .ReserveInstanceForDefinition(
+                            definitionStableId);
+                if (!presentInstances.Add(reserveInstanceStableId))
+                {
+                    throw new InvalidOperationException(
+                        "A starter reserve equipment identity collided.");
+                }
+
+                AddEquipment(
+                    EquipmentInstance.Create(
+                        reserveInstanceStableId,
+                        definitionStableId,
+                        1,
+                        common,
+                        Array.Empty<AugmentInstance>()),
+                    "reserve-" + (index + 1));
+                presentDefinitions.Add(definitionStableId);
+            }
         }
 
         private void AddEquipment(
@@ -165,9 +200,8 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Sole equipped-slot truth for the current production profile. The authority accepts
-    /// only exact owned equipment instances, preserves duplicate definitions as distinct
-    /// instances, rejects stale holdings/loadout snapshots and records exact replay.
+    /// Sole equipped-slot truth for the current production profile. It accepts only
+    /// exact owned instances and rejects stale holdings/loadout snapshots.
     /// </summary>
     public sealed class ProductionInventoryLoadoutAuthorityV1 :
         IInventoryLoadoutAuthorityPortV1
@@ -269,7 +303,7 @@ namespace ShooterMover.Application.Flow.Production
                 holdings.ExportSnapshot();
             if (holdingsSnapshot == null
                 || command.ExpectedHoldingsSequence
-                    != holdingsSnapshot.Sequence)
+                    != holdings.Sequence)
             {
                 return new InventoryLoadoutAuthorityResultV1(
                     InventoryLoadoutAuthorityMutationStatusV1
@@ -460,353 +494,6 @@ namespace ShooterMover.Application.Flow.Production
             }
 
             return true;
-        }
-    }
-
-    public static class ProductionStarterWeaponCatalogV1
-    {
-        public const string ArcWeaponDefinitionId = "weapon.arc-gun";
-        public const string RicochetWeaponDefinitionId =
-            "weapon.ricochet-gun";
-
-        public static readonly StableId BlasterEquipmentDefinitionStableId =
-            StableId.Parse("equipment.production-starter-blaster");
-        public static readonly StableId ShotgunEquipmentDefinitionStableId =
-            StableId.Parse("equipment.production-starter-shotgun");
-        public static readonly StableId RocketEquipmentDefinitionStableId =
-            StableId.Parse("equipment.production-starter-rocket-launcher");
-        public static readonly StableId ArcEquipmentDefinitionStableId =
-            StableId.Parse("equipment.production-starter-arc-gun");
-        public static readonly StableId RicochetEquipmentDefinitionStableId =
-            StableId.Parse("equipment.production-starter-ricochet-gun");
-        public static readonly StableId RicochetEquipmentInstanceStableId =
-            StableId.Parse("equipment-instance.production-starter-ricochet");
-
-        private static readonly StableId[] starterEquipmentDefinitionStableIds =
-        {
-            BlasterEquipmentDefinitionStableId,
-            ShotgunEquipmentDefinitionStableId,
-            RocketEquipmentDefinitionStableId,
-            ArcEquipmentDefinitionStableId,
-        };
-
-        public static IReadOnlyList<StableId>
-            StarterEquipmentDefinitionStableIds
-        {
-            get { return starterEquipmentDefinitionStableIds; }
-        }
-
-        public static EquipmentCatalog BuildEquipmentCatalog()
-        {
-            EquipmentQualityTier common = EquipmentQualityTier.Create(
-                StableId.Parse("equipment-quality.common"),
-                "Common",
-                1);
-            EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
-                new[]
-                {
-                    WeaponEquipment(
-                        BlasterEquipmentDefinitionStableId,
-                        "family.blaster",
-                        "Blaster",
-                        "weapon.blaster-machine-gun",
-                        common),
-                    WeaponEquipment(
-                        ShotgunEquipmentDefinitionStableId,
-                        "family.shotgun",
-                        "Shotgun",
-                        "weapon.shotgun",
-                        common),
-                    WeaponEquipment(
-                        RocketEquipmentDefinitionStableId,
-                        "family.rocket-launcher",
-                        "Rocket Launcher",
-                        "weapon.rocket-launcher",
-                        common),
-                    WeaponEquipment(
-                        ArcEquipmentDefinitionStableId,
-                        "family.arc-gun",
-                        "Arc Gun",
-                        ArcWeaponDefinitionId,
-                        common),
-                    WeaponEquipment(
-                        RicochetEquipmentDefinitionStableId,
-                        "family.ricochet-gun",
-                        "Ricochet Gun",
-                        RicochetWeaponDefinitionId,
-                        common),
-                },
-                Array.Empty<AugmentDefinition>());
-            if (!result.IsValid || result.Catalog == null)
-            {
-                throw new InvalidOperationException(
-                    "The production starter equipment catalog is invalid.");
-            }
-
-            return result.Catalog;
-        }
-
-        public static WeaponCatalog BuildWeaponCatalog()
-        {
-            var rules = new WeaponCatalogRules(
-                true,
-                false,
-                "20-25",
-                new[] { 75, 105, 135 },
-                new[] { "Kinetic", "Energized" },
-                10,
-                true,
-                true,
-                true);
-            var inputs = new WeaponCatalogInputs(
-                12d,
-                0.05d,
-                0.055d,
-                0.06d,
-                new Dictionary<string, WeaponRarityInput>(
-                    StringComparer.Ordinal)
-                {
-                    {
-                        "Common",
-                        new WeaponRarityInput(
-                            "Common",
-                            1000d,
-                            0,
-                            4d,
-                            13d)
-                    },
-                });
-            var archetype = new WeaponArchetypeDefinition(
-                "DemoCutover",
-                "Demo Cutover",
-                1d,
-                1d,
-                1,
-                1,
-                0d,
-                10d,
-                10d,
-                1d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0,
-                0,
-                0d,
-                0d,
-                1d);
-
-            WeaponFamilyDefinition[] families =
-            {
-                Family("production-starter-blaster", "Blaster", "Kinetic"),
-                Family("production-starter-shotgun", "Shotgun", "Kinetic"),
-                Family(
-                    "production-starter-rocket",
-                    "Rocket Launcher",
-                    "Kinetic"),
-                Family("production-starter-arc", "Arc Gun", "Energized"),
-                Family(
-                    "production-starter-ricochet",
-                    "Ricochet Gun",
-                    "Kinetic"),
-            };
-            return new WeaponCatalog(
-                "1.0",
-                "production-hub-loadout",
-                rules,
-                inputs,
-                new Dictionary<string, WeaponArchetypeDefinition>(
-                    StringComparer.Ordinal)
-                {
-                    { "DemoCutover", archetype },
-                },
-                families,
-                new[]
-                {
-                    WeaponDefinition(
-                        "weapon.blaster-machine-gun",
-                        "Blaster",
-                        "production-starter-blaster",
-                        "Kinetic",
-                        10d,
-                        1,
-                        0d,
-                        40d,
-                        30d,
-                        5d,
-                        1),
-                    WeaponDefinition(
-                        "weapon.shotgun",
-                        "Shotgun",
-                        "production-starter-shotgun",
-                        "Kinetic",
-                        2d,
-                        7,
-                        24d,
-                        30d,
-                        15d,
-                        3d,
-                        0),
-                    WeaponDefinition(
-                        "weapon.rocket-launcher",
-                        "Rocket Launcher",
-                        "production-starter-rocket",
-                        "Kinetic",
-                        1d,
-                        1,
-                        0d,
-                        12d,
-                        35d,
-                        4d,
-                        0,
-                        20d,
-                        3d),
-                    WeaponDefinition(
-                        ArcWeaponDefinitionId,
-                        "Arc Gun",
-                        "production-starter-arc",
-                        "Energized",
-                        1.5d,
-                        1,
-                        0d,
-                        12d,
-                        12d,
-                        12d,
-                        0,
-                        0d,
-                        0d,
-                        3,
-                        6d),
-                    WeaponDefinition(
-                        RicochetWeaponDefinitionId,
-                        "Ricochet Gun",
-                        "production-starter-ricochet",
-                        "Kinetic",
-                        2.5d,
-                        1,
-                        0d,
-                        24d,
-                        30d,
-                        8d,
-                        0),
-                });
-        }
-
-        private static EquipmentDefinition WeaponEquipment(
-            StableId definitionStableId,
-            string family,
-            string displayName,
-            string runtime,
-            EquipmentQualityTier quality)
-        {
-            return EquipmentDefinition.Create(
-                definitionStableId,
-                EquipmentCategoryIds.Weapon,
-                StableId.Parse(family),
-                displayName,
-                StableId.Parse(runtime),
-                InclusiveIntRange.Create(1, 100),
-                0,
-                new[] { quality },
-                Array.Empty<StableId>());
-        }
-
-        private static WeaponFamilyDefinition Family(
-            string id,
-            string displayName,
-            string damageType)
-        {
-            return new WeaponFamilyDefinition(
-                id,
-                displayName,
-                "DemoCutover",
-                damageType,
-                "Universal",
-                1,
-                20,
-                20,
-                3,
-                "Common",
-                "Common",
-                "Common",
-                1d,
-                "Standard",
-                "Production vertical slice",
-                "Production vertical slice",
-                WeaponCatalogAvailability.Live,
-                Array.Empty<string>());
-        }
-
-        private static WeaponDefinitionData WeaponDefinition(
-            string id,
-            string displayName,
-            string family,
-            string damageType,
-            double fireRate,
-            int projectiles,
-            double spread,
-            double speed,
-            double range,
-            double damage,
-            int pierce,
-            double areaDamage = 0d,
-            double explosionRadius = 0d,
-            int chainTargets = 0,
-            double chainRange = 0d)
-        {
-            bool explosive = areaDamage > 0d;
-            return new WeaponDefinitionData(
-                id,
-                displayName,
-                family,
-                1,
-                damageType,
-                "DemoCutover",
-                "Universal",
-                1,
-                1,
-                1,
-                "Common",
-                1000d,
-                1d,
-                1000d,
-                4d,
-                13d,
-                "Standard",
-                false,
-                "Standard",
-                1d,
-                100d,
-                10d,
-                explosive ? 0.2d : 1d,
-                explosive ? 0.8d : 0d,
-                0d,
-                fireRate,
-                projectiles,
-                1,
-                damage,
-                spread,
-                speed,
-                range,
-                pierce,
-                explosionRadius,
-                areaDamage,
-                0d,
-                0d,
-                0d,
-                0d,
-                chainTargets,
-                chainRange,
-                0.5d,
-                1d,
-                0d,
-                "Production vertical slice",
-                "Production vertical slice",
-                WeaponCatalogAvailability.Live,
-                Array.Empty<string>());
         }
     }
 }
