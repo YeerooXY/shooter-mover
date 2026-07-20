@@ -1,4 +1,4 @@
-using System;
+using System.ComponentModel;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Production.Stage1;
@@ -10,7 +10,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// Compatibility alias retained for DEMO-CUTOVER-001 callers.
     /// New code should use <see cref="Stage1MissionSummaryProjectionV1"/>.
     /// </summary>
-    [Obsolete("Use Stage1MissionSummaryProjectionV1. The old results-projection name is retained only for source compatibility.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     internal sealed class Stage1ReadOnlyResultsProjectionV1 :
         Stage1MissionSummaryProjectionV1
     {
@@ -43,7 +43,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// replacing serialized Unity references. New code should use
     /// <see cref="Stage1MissionSummaryControllerV1"/>.
     /// </summary>
-    [Obsolete("Use Stage1MissionSummaryControllerV1. The old read-only-results name is retained only for compatibility.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     [DisallowMultipleComponent]
     internal sealed class Stage1ReadOnlyResultsControllerV1 :
         Stage1MissionSummaryControllerV1
