@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
+using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Combat;
 
 namespace ShooterMover.UnityAdapters.Players
