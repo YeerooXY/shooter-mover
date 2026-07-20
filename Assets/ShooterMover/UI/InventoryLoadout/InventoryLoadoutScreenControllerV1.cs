@@ -33,6 +33,8 @@ namespace ShooterMover.UI.InventoryLoadout
         private GUIStyle smallStyle;
         private GUIStyle invalidStyle;
 
+        public event Action<PlayerRouteProfilePayloadV1> Confirmed;
+
         public InventoryLoadoutScreenSnapshotV1 Snapshot
         {
             get { return service == null ? null : service.Snapshot; }
@@ -213,6 +215,11 @@ namespace ShooterMover.UI.InventoryLoadout
             if (lastResult.Status
                 == InventoryLoadoutScreenStatusV1.Confirmed)
             {
+                Action<PlayerRouteProfilePayloadV1> handler = Confirmed;
+                if (handler != null)
+                {
+                    handler(lastResult.RoutePayload);
+                }
                 DispatchReturn(lastResult.RoutePayload);
             }
             return lastResult;
