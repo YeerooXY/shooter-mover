@@ -1,4 +1,4 @@
-# WPN-IDENTITY-AIM-001 — Exact weapon instances and mounted cursor convergence
+# WPN-IDENTITY-AIM-001 — Exact weapon instances, mounted aim, and readable spread
 
 ## Launch boundary
 
@@ -78,6 +78,32 @@ applied afterward by WPN-CORE.
 The live presentation scale reduces current outer mount spacing from `0.9` to `0.45`
 and inner spacing from `0.3` to `0.15` without changing persisted mount identities.
 
+## Shotgun spread defect
+
+The production starter Shotgun is correctly configured for seven projectiles and a
+24-degree spread. WPN-CORE also created seven immutable projectile effects. The defects
+were inside deterministic angle derivation:
+
+1. the projectile ordinal was appended at the end of an FNV-1a input string;
+2. adjacent ordinal changes were concentrated in the hash's lowest bits;
+3. conversion to a 53-bit floating-point unit discarded eleven low bits;
+4. ordinals `0` through `6` therefore sampled the same retained value;
+5. all seven physical projectiles launched on one trajectory and appeared to be one.
+
+The deterministic spread implementation now:
+
+- applies a 64-bit avalanche before floating-point sampling, so each complete immutable
+  projectile identity influences the retained high bits;
+- treats multi-projectile output as an ordered stratified fan across the configured
+  spread;
+- gives each projectile one lane with small bounded deterministic jitter;
+- keeps every direction inside the configured cone;
+- preserves byte-equivalent output for an exact retry;
+- preserves the existing single-projectile deterministic inaccuracy behavior.
+
+For the current seven-pellet, 24-degree Shotgun this produces seven separated lanes from
+approximately `-12` through `+12` degrees instead of seven stacked centre-lines.
+
 ## Inventory presentation
 
 Physical mount cards now show:
@@ -113,6 +139,18 @@ It verifies:
 - augment and fingerprint identity remaining attached to the correct instance;
 - rejection when one concrete instance is assigned to both mounts.
 
+### EditMode — `WeaponDeterministicSpreadTests`
+
+It verifies:
+
+- a seven-pellet, 24-degree Shotgun produces seven distinct directions;
+- pellet directions remain ordered from the left edge to the right edge of the cone;
+- adjacent lanes remain visibly separated by more than three degrees;
+- first and last pellets occupy the outer portion of the configured cone;
+- all pellets stay inside the configured spread;
+- rejected exact retries rebuild a byte-equivalent batch while retaining seven distinct
+  directions.
+
 ### PlayMode — `MountedMuzzlesConvergeOnOneLockedTargetPoint`
 
 It verifies:
@@ -123,13 +161,27 @@ It verifies:
 - both physical projectiles move toward that target after fixed updates;
 - exact operation replay emits no duplicate effects.
 
+### PlayMode — `ShotgunLaunchesSevenPhysicalPelletsOnDistinctTrajectories`
+
+It verifies:
+
+- the live Shotgun result contains seven effects;
+- the Unity emitter launches seven projectile objects;
+- all seven physical travel directions are distinct;
+- all seven positions separate after fixed updates;
+- the live fan visibly crosses both sides of the centre-line.
+
 ## Required Unity proof
 
 Unity is unavailable in the connected authoring environment. No compilation or test
 pass is claimed. Run:
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Flow.Hub.ProductionExactWeaponInstanceLoadoutTests -testResults Temp/wpn-identity-aim-001-editmode.xml -logFile Temp/wpn-identity-aim-001-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Flow.Hub.ProductionExactWeaponInstanceLoadoutTests -testResults Temp/wpn-identity-aim-001-loadout-editmode.xml -logFile Temp/wpn-identity-aim-001-loadout-editmode.log
+```
+
+```text
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Weapons.Execution.WeaponExecutionCoreTests -testResults Temp/wpn-identity-aim-001-spread-editmode.xml -logFile Temp/wpn-identity-aim-001-spread-editmode.log
 ```
 
 ```text
@@ -147,8 +199,9 @@ Do not add `-quit`; `-runTests` exits Unity after the test run.
 5. Equip either Blaster with the Shotgun, then with the Rocket Launcher.
 6. Enter Level 1 and aim directly at the moving droid from several world units away.
 7. Confirm both muzzle centre-lines converge on the cursor instead of passing beside it.
-8. Confirm Shotgun spread remains centred around its converged mount direction.
-9. Confirm Rocket, Arc, Ricochet, replay, cooldown, and restart behavior remain distinct.
-10. Switch profile slots and return; confirm exact instances and augment state remain intact during the session.
+8. Fire the Shotgun and confirm seven separate pellets fan across the cursor-centred cone.
+9. Confirm pellets can hit different points/targets and are not stacked on one trajectory.
+10. Confirm Rocket, Arc, Ricochet, replay, cooldown, and restart behavior remain distinct.
+11. Switch profile slots and return; confirm exact instances and augment state remain intact during the session.
 
 Draft only. Do not merge automatically.
