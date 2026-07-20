@@ -77,7 +77,7 @@ namespace ShooterMover.Application.Persistence.Components
         public static string Encode(PlayerAccountSnapshotV1 account)
         {
             SaveComponentValidationResultV1 integrity =
-                CanonicalSnapshotIntegrityV1.Validate(account);
+                PlayerAccountAggregateCodecV1.Validate(account);
             if (!integrity.Succeeded)
             {
                 throw new ArgumentException(
@@ -85,7 +85,14 @@ namespace ShooterMover.Application.Persistence.Components
                     nameof(account));
             }
 
-            string payload = CanonicalSnapshotCodecV1.Serialize(account);
+            string payload = PlayerAccountAggregateCodecV1.Encode(account);
+            if (Encoding.UTF8.GetByteCount(payload)
+                > SavePersistenceLimitsV1.MaximumAccountPayloadBytes)
+            {
+                throw new ArgumentException(
+                    "account-payload-too-large",
+                    nameof(account));
+            }
             string payloadBase64 = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(payload));
             string body = "format=" + Format
@@ -93,7 +100,15 @@ namespace ShooterMover.Application.Persistence.Components
                 + SchemaVersion.ToString(CultureInfo.InvariantCulture)
                 + "\naccount_fingerprint=" + account.Fingerprint
                 + "\npayload_base64=" + payloadBase64;
-            return body + "\nfile_fingerprint=" + Hash(body);
+            string output = body + "\nfile_fingerprint=" + Hash(body);
+            if (Encoding.UTF8.GetByteCount(output)
+                > SavePersistenceLimitsV1.MaximumAccountFileBytes)
+            {
+                throw new ArgumentException(
+                    "account-file-too-large",
+                    nameof(account));
+            }
+            return output;
         }
 
         public static bool TryDecode(
@@ -107,13 +122,33 @@ namespace ShooterMover.Application.Persistence.Components
                 rejectionCode = "account-file-null";
                 return false;
             }
+            if (Encoding.UTF8.GetByteCount(text)
+                > SavePersistenceLimitsV1.MaximumAccountFileBytes)
+            {
+                rejectionCode = "account-file-too-large";
+                return false;
+            }
 
-            string[] lines = text.Split('\n');
-            if (lines.Length != 5
-                || !string.Equals(
-                    lines[0],
-                    "format=" + Format,
-                    StringComparison.Ordinal))
+            int first = text.IndexOf('\n');
+            int second = first < 0 ? -1 : text.IndexOf('\n', first + 1);
+            int third = second < 0 ? -1 : text.IndexOf('\n', second + 1);
+            int fourth = third < 0 ? -1 : text.IndexOf('\n', third + 1);
+            if (first < 0 || second < 0 || third < 0 || fourth < 0
+                || text.IndexOf('\n', fourth + 1) >= 0)
+            {
+                rejectionCode = "account-file-format-invalid";
+                return false;
+            }
+
+            string formatLine = text.Substring(0, first);
+            string schemaLine = text.Substring(first + 1, second - first - 1);
+            string accountLine = text.Substring(second + 1, third - second - 1);
+            string payloadLine = text.Substring(third + 1, fourth - third - 1);
+            string fileLine = text.Substring(fourth + 1);
+            if (!string.Equals(
+                formatLine,
+                "format=" + Format,
+                StringComparison.Ordinal))
             {
                 rejectionCode = "account-file-format-invalid";
                 return false;
@@ -123,14 +158,14 @@ namespace ShooterMover.Application.Persistence.Components
             string accountFingerprint;
             string payloadBase64;
             string fileFingerprint;
-            if (!TryRead(lines[1], "schema_version=", out schemaText)
+            if (!TryRead(schemaLine, "schema_version=", out schemaText)
                 || !TryRead(
-                    lines[2],
+                    accountLine,
                     "account_fingerprint=",
                     out accountFingerprint)
-                || !TryRead(lines[3], "payload_base64=", out payloadBase64)
+                || !TryRead(payloadLine, "payload_base64=", out payloadBase64)
                 || !TryRead(
-                    lines[4],
+                    fileLine,
                     "file_fingerprint=",
                     out fileFingerprint))
             {
@@ -150,7 +185,7 @@ namespace ShooterMover.Application.Persistence.Components
                 return false;
             }
 
-            string body = string.Join("\n", lines, 0, 4);
+            string body = text.Substring(0, fourth);
             if (!string.Equals(
                 Hash(body),
                 fileFingerprint,
@@ -160,34 +195,29 @@ namespace ShooterMover.Application.Persistence.Components
                 return false;
             }
 
-            string payload;
+            byte[] payloadBytes;
             try
             {
-                payload = Encoding.UTF8.GetString(
-                    Convert.FromBase64String(payloadBase64));
+                payloadBytes = Convert.FromBase64String(payloadBase64);
             }
             catch (FormatException)
             {
                 rejectionCode = "account-file-payload-base64-invalid";
                 return false;
             }
-
-            string payloadError;
-            if (!CanonicalSnapshotCodecV1.TryDeserialize(
-                payload,
-                out account,
-                out payloadError))
+            if (payloadBytes.Length
+                > SavePersistenceLimitsV1.MaximumAccountPayloadBytes)
             {
-                rejectionCode = payloadError;
+                rejectionCode = "account-payload-too-large";
                 return false;
             }
 
-            SaveComponentValidationResultV1 integrity =
-                CanonicalSnapshotIntegrityV1.Validate(account);
-            if (!integrity.Succeeded)
+            string payload = Encoding.UTF8.GetString(payloadBytes);
+            if (!PlayerAccountAggregateCodecV1.TryDecode(
+                payload,
+                out account,
+                out rejectionCode))
             {
-                account = null;
-                rejectionCode = integrity.RejectionCode;
                 return false;
             }
             if (!string.Equals(
@@ -282,7 +312,7 @@ namespace ShooterMover.Application.Persistence.Components
                     "Active, temporary, and backup paths must be distinct.");
             }
             this.validateAccount = validateAccount
-                ?? (snapshot => CanonicalSnapshotIntegrityV1.Validate(snapshot));
+                ?? PlayerAccountAggregateCodecV1.Validate;
         }
 
         public PlayerAccountStoreResultV1 Save(
@@ -310,10 +340,24 @@ namespace ShooterMover.Application.Persistence.Components
                 string encoded = PlayerAccountFileCodecV1.Encode(account);
                 files.WriteAllText(temporaryPath, encoded);
 
+                string temporaryText = files.ReadAllText(temporaryPath);
+                if (temporaryText == null
+                    || Encoding.UTF8.GetByteCount(temporaryText)
+                        > SavePersistenceLimitsV1.MaximumAccountFileBytes)
+                {
+                    SafeDeleteTemporary();
+                    return new PlayerAccountStoreResultV1(
+                        PlayerAccountStoreStatusV1.ValidationRejected,
+                        temporaryText == null
+                            ? "temporary-readback-null"
+                            : "account-file-too-large",
+                        null);
+                }
+
                 PlayerAccountSnapshotV1 readBack;
                 string rejectionCode;
                 if (!PlayerAccountFileCodecV1.TryDecode(
-                    files.ReadAllText(temporaryPath),
+                    temporaryText,
                     out readBack,
                     out rejectionCode))
                 {
@@ -432,8 +476,18 @@ namespace ShooterMover.Application.Persistence.Components
             }
             try
             {
+                string text = files.ReadAllText(path);
+                if (text == null
+                    || Encoding.UTF8.GetByteCount(text)
+                        > SavePersistenceLimitsV1.MaximumAccountFileBytes)
+                {
+                    rejectionCode = text == null
+                        ? "account-file-null"
+                        : "account-file-too-large";
+                    return false;
+                }
                 if (!PlayerAccountFileCodecV1.TryDecode(
-                    files.ReadAllText(path),
+                    text,
                     out snapshot,
                     out rejectionCode))
                 {
