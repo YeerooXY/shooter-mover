@@ -10,6 +10,7 @@ namespace ShooterMover.UI.ProductionFlow
         IProductionFlowProfileStoreV1
     {
         private const string Prefix = "shooter-mover.flow-ui-001.profile.";
+        private const int ProfileSlotCount = 6;
         private const string ExistsKey = Prefix + "exists";
         private const string DisplayNameKey = Prefix + "display-name";
         private const string SchemaKey = Prefix + "schema";
@@ -20,8 +21,16 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool TryLoad(out ProductionFlowProfileRecordV1 record)
         {
+            return TryLoad(0, out record);
+        }
+
+        public bool TryLoad(
+            int slotIndex,
+            out ProductionFlowProfileRecordV1 record)
+        {
+            ValidateSlotIndex(slotIndex);
             record = null;
-            if (PlayerPrefs.GetInt(ExistsKey, 0) != 1)
+            if (PlayerPrefs.GetInt(ExistsKeyFor(slotIndex), 0) != 1)
             {
                 return false;
             }
@@ -33,20 +42,20 @@ namespace ShooterMover.UI.ProductionFlow
                 index++)
             {
                 slots.Add(new PlayerRouteWeaponSlotEnvelopeV1(
-                    PlayerPrefs.GetString(SlotKey(index)),
-                    PlayerPrefs.GetString(InstanceKey(index))));
+                    PlayerPrefs.GetString(WeaponSlotKey(slotIndex, index)),
+                    PlayerPrefs.GetString(WeaponInstanceKey(slotIndex, index))));
             }
 
             var envelope = new PlayerRouteProfileEnvelopeV1(
-                PlayerPrefs.GetInt(SchemaKey, 0),
-                PlayerPrefs.GetString(ContractKey),
-                PlayerPrefs.GetString(CharacterKey),
-                PlayerPrefs.GetString(ProfileKey),
+                PlayerPrefs.GetInt(SchemaKeyFor(slotIndex), 0),
+                PlayerPrefs.GetString(ContractKeyFor(slotIndex)),
+                PlayerPrefs.GetString(CharacterKeyFor(slotIndex)),
+                PlayerPrefs.GetString(ProfileKeyFor(slotIndex)),
                 slots,
-                PlayerPrefs.GetString(FingerprintKey));
+                PlayerPrefs.GetString(FingerprintKeyFor(slotIndex)));
             PlayerRouteProfileValidationResultV1 imported =
                 PlayerRouteProfilePayloadV1.TryImport(envelope);
-            string displayName = PlayerPrefs.GetString(DisplayNameKey);
+            string displayName = PlayerPrefs.GetString(DisplayNameKeyFor(slotIndex));
             if (!imported.IsValid || string.IsNullOrWhiteSpace(displayName))
             {
                 Clear();
@@ -61,48 +70,57 @@ namespace ShooterMover.UI.ProductionFlow
 
         public void Save(ProductionFlowProfileRecordV1 record)
         {
+            Save(0, record);
+        }
+
+        public void Save(int slotIndex, ProductionFlowProfileRecordV1 record)
+        {
+            ValidateSlotIndex(slotIndex);
             if (record == null) throw new ArgumentNullException(nameof(record));
             PlayerRouteProfileEnvelopeV1 envelope = record.Payload.ToEnvelope();
 
-            PlayerPrefs.SetString(DisplayNameKey, record.DisplayName);
-            PlayerPrefs.SetInt(SchemaKey, envelope.SchemaVersion);
-            PlayerPrefs.SetString(ContractKey, envelope.ContractStableId);
+            PlayerPrefs.SetString(DisplayNameKeyFor(slotIndex), record.DisplayName);
+            PlayerPrefs.SetInt(SchemaKeyFor(slotIndex), envelope.SchemaVersion);
+            PlayerPrefs.SetString(ContractKeyFor(slotIndex), envelope.ContractStableId);
             PlayerPrefs.SetString(
-                CharacterKey,
+                CharacterKeyFor(slotIndex),
                 envelope.SelectedCharacterStableId);
             PlayerPrefs.SetString(
-                ProfileKey,
+                ProfileKeyFor(slotIndex),
                 envelope.LoadoutProfileStableId);
-            PlayerPrefs.SetString(FingerprintKey, envelope.Fingerprint);
+            PlayerPrefs.SetString(FingerprintKeyFor(slotIndex), envelope.Fingerprint);
             for (int index = 0; index < envelope.WeaponSlots.Count; index++)
             {
                 PlayerPrefs.SetString(
-                    SlotKey(index),
+                    WeaponSlotKey(slotIndex, index),
                     envelope.WeaponSlots[index].WeaponSlotStableId);
                 PlayerPrefs.SetString(
-                    InstanceKey(index),
+                    WeaponInstanceKey(slotIndex, index),
                     envelope.WeaponSlots[index].EquipmentInstanceStableId);
             }
 
-            PlayerPrefs.SetInt(ExistsKey, 1);
+            PlayerPrefs.SetInt(ExistsKeyFor(slotIndex), 1);
             PlayerPrefs.Save();
         }
 
         public void Clear()
         {
-            PlayerPrefs.DeleteKey(ExistsKey);
-            PlayerPrefs.DeleteKey(DisplayNameKey);
-            PlayerPrefs.DeleteKey(SchemaKey);
-            PlayerPrefs.DeleteKey(ContractKey);
-            PlayerPrefs.DeleteKey(CharacterKey);
-            PlayerPrefs.DeleteKey(ProfileKey);
-            PlayerPrefs.DeleteKey(FingerprintKey);
-            for (int index = 0;
-                index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                index++)
+            for (int slotIndex = 0; slotIndex < ProfileSlotCount; slotIndex++)
             {
-                PlayerPrefs.DeleteKey(SlotKey(index));
-                PlayerPrefs.DeleteKey(InstanceKey(index));
+                PlayerPrefs.DeleteKey(ExistsKeyFor(slotIndex));
+                PlayerPrefs.DeleteKey(DisplayNameKeyFor(slotIndex));
+                PlayerPrefs.DeleteKey(SchemaKeyFor(slotIndex));
+                PlayerPrefs.DeleteKey(ContractKeyFor(slotIndex));
+                PlayerPrefs.DeleteKey(CharacterKeyFor(slotIndex));
+                PlayerPrefs.DeleteKey(ProfileKeyFor(slotIndex));
+                PlayerPrefs.DeleteKey(FingerprintKeyFor(slotIndex));
+                for (int index = 0;
+                    index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                    index++)
+                {
+                    PlayerPrefs.DeleteKey(WeaponSlotKey(slotIndex, index));
+                    PlayerPrefs.DeleteKey(WeaponInstanceKey(slotIndex, index));
+                }
             }
 
             PlayerPrefs.Save();
@@ -116,6 +134,68 @@ namespace ShooterMover.UI.ProductionFlow
         private static string InstanceKey(int index)
         {
             return Prefix + "slot-" + index + "-instance";
+        }
+
+        private static string ProfileSlotPrefix(int slotIndex)
+        {
+            return Prefix + "character-slot-" + slotIndex + ".";
+        }
+
+        private static string ExistsKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? ExistsKey : ProfileSlotPrefix(slotIndex) + "exists";
+        }
+
+        private static string DisplayNameKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? DisplayNameKey : ProfileSlotPrefix(slotIndex) + "display-name";
+        }
+
+        private static string SchemaKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? SchemaKey : ProfileSlotPrefix(slotIndex) + "schema";
+        }
+
+        private static string ContractKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? ContractKey : ProfileSlotPrefix(slotIndex) + "contract";
+        }
+
+        private static string CharacterKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? CharacterKey : ProfileSlotPrefix(slotIndex) + "character";
+        }
+
+        private static string ProfileKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? ProfileKey : ProfileSlotPrefix(slotIndex) + "loadout-profile";
+        }
+
+        private static string FingerprintKeyFor(int slotIndex)
+        {
+            return slotIndex == 0 ? FingerprintKey : ProfileSlotPrefix(slotIndex) + "fingerprint";
+        }
+
+        private static string WeaponSlotKey(int profileSlot, int weaponSlot)
+        {
+            return profileSlot == 0
+                ? SlotKey(weaponSlot)
+                : ProfileSlotPrefix(profileSlot) + "weapon-slot-" + weaponSlot + "-id";
+        }
+
+        private static string WeaponInstanceKey(int profileSlot, int weaponSlot)
+        {
+            return profileSlot == 0
+                ? InstanceKey(weaponSlot)
+                : ProfileSlotPrefix(profileSlot) + "weapon-slot-" + weaponSlot + "-instance";
+        }
+
+        private static void ValidateSlotIndex(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= ProfileSlotCount)
+            {
+                throw new ArgumentOutOfRangeException(nameof(slotIndex));
+            }
         }
     }
 }

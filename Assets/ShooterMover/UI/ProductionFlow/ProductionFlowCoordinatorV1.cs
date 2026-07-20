@@ -36,11 +36,15 @@ namespace ShooterMover.UI.ProductionFlow
     [DisallowMultipleComponent]
     public sealed class ProductionFlowCoordinatorV1 : MonoBehaviour
     {
+        private const int ProfileSlotCount = 6;
         private static ProductionFlowCoordinatorV1 instance;
         private static ProductionResultsContextV1 pendingResultsContext;
 
         private IProductionFlowProfileStoreV1 profileStore;
+        private readonly ProductionFlowProfileRecordV1[] profiles =
+            new ProductionFlowProfileRecordV1[ProfileSlotCount];
         private ProductionFlowProfileRecordV1 profile;
+        private int activeProfileSlot;
         private PlayerRouteProfilePayloadV1 draftPayload;
         private ProductionSceneTransitionCoordinatorV1 transitions;
         private UnitySceneLoadPortV1 sceneLoader;
@@ -96,7 +100,12 @@ namespace ShooterMover.UI.ProductionFlow
             instance = this;
             DontDestroyOnLoad(gameObject);
             profileStore = new PlayerPrefsProductionFlowProfileStoreV1();
-            profileStore.TryLoad(out profile);
+            for (int slotIndex = 0; slotIndex < ProfileSlotCount; slotIndex++)
+            {
+                profileStore.TryLoad(slotIndex, out profiles[slotIndex]);
+            }
+            activeProfileSlot = FindFirstOccupiedSlot();
+            profile = profiles[activeProfileSlot];
             draftPayload = CreateDraftPayload();
             HubNavigationServiceV1 navigation =
                 new HubNavigationServiceV1(
@@ -169,7 +178,7 @@ namespace ShooterMover.UI.ProductionFlow
                 {
                     controller.Configure(
                         profile == null ? draftPayload : profile.Payload,
-                        profile,
+                        profiles,
                         SelectExistingProfile,
                         CreateProfile,
                         transitions.TryNavigateBack);
@@ -337,22 +346,31 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private bool SelectExistingProfile(
+            int slotIndex,
             PlayerRouteProfilePayloadV1 payload)
         {
-            if (profile == null
-                || !ReferenceEquals(profile.Payload, payload))
+            if (!IsValidSlot(slotIndex)
+                || profiles[slotIndex] == null
+                || !ReferenceEquals(profiles[slotIndex].Payload, payload))
             {
                 return false;
             }
 
+            activeProfileSlot = slotIndex;
+            profile = profiles[slotIndex];
             return transitions.TryNavigateTo(
                 HubRouteV1.InventoryLoadoutHub);
         }
 
         private bool CreateProfile(
+            int slotIndex,
             string displayName,
             CharacterSelectionRouteResultV1 result)
         {
+            if (!IsValidSlot(slotIndex) || profiles[slotIndex] != null)
+            {
+                return false;
+            }
             if (result == null
                 || result.Status
                     != CharacterSelectionRouteStatusV1.Confirmed)
@@ -369,7 +387,9 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            profileStore.Save(candidate);
+            profileStore.Save(slotIndex, candidate);
+            profiles[slotIndex] = candidate;
+            activeProfileSlot = slotIndex;
             profile = candidate;
             return true;
         }
@@ -383,11 +403,27 @@ namespace ShooterMover.UI.ProductionFlow
                     new ProductionFlowProfileRecordV1(
                         profile.DisplayName,
                         payload);
-                profileStore.Save(updated);
+                profileStore.Save(activeProfileSlot, updated);
+                profiles[activeProfileSlot] = updated;
                 profile = updated;
             }
 
             transitions.TryReturnToHub(payload);
+        }
+
+        private int FindFirstOccupiedSlot()
+        {
+            for (int index = 0; index < profiles.Length; index++)
+            {
+                if (profiles[index] != null) return index;
+            }
+
+            return 0;
+        }
+
+        private static bool IsValidSlot(int slotIndex)
+        {
+            return slotIndex >= 0 && slotIndex < ProfileSlotCount;
         }
 
         private bool ReturnFromResults()
