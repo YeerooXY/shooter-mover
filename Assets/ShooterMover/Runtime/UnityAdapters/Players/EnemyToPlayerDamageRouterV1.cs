@@ -15,7 +15,7 @@ namespace ShooterMover.UnityAdapters.Players
         Disposed = 5,
     }
 
-    public enum EnemyProjectileEmissionObservationStatus
+    public enum EnemyDamageAdmissionObservationStatus
     {
         Accepted = 1,
         Duplicate = 2,
@@ -24,36 +24,70 @@ namespace ShooterMover.UnityAdapters.Players
         Disposed = 5,
     }
 
-    /// <summary>
-    /// Immutable lifecycle fact emitted when one enemy projectile becomes live. The hit
-    /// event identifies the later physical collision; lifecycle generation is carried as
-    /// typed data rather than reconstructed by the damage router.
-    /// </summary>
-    public sealed class EnemyProjectileEmissionFactV1
+    public enum EnemyAttackDeliveryKind
     {
-        public EnemyProjectileEmissionFactV1(
-            StableId hitEventId,
-            long lifecycleGeneration)
+        Projectile = 1,
+        Contact = 2,
+        Pounce = 3,
+    }
+
+    /// <summary>
+    /// Immutable admission fact for one enemy attack that may later translate into a
+    /// physical hit. Lifecycle generation is typed data and delivery kind is diagnostic;
+    /// the damage router applies identical admission rules for every enemy attack kind.
+    /// </summary>
+    public class EnemyDamageAdmissionFactV1
+    {
+        public EnemyDamageAdmissionFactV1(
+            StableId eventId,
+            long lifecycleGeneration,
+            EnemyAttackDeliveryKind deliveryKind)
         {
-            HitEventId = hitEventId
-                ?? throw new ArgumentNullException(nameof(hitEventId));
+            EventId = eventId
+                ?? throw new ArgumentNullException(nameof(eventId));
             if (lifecycleGeneration < 0L)
             {
                 throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
             }
+            if (!Enum.IsDefined(typeof(EnemyAttackDeliveryKind), deliveryKind))
+            {
+                throw new ArgumentOutOfRangeException(nameof(deliveryKind));
+            }
 
             LifecycleGeneration = lifecycleGeneration;
+            DeliveryKind = deliveryKind;
         }
 
-        public StableId HitEventId { get; }
+        public StableId EventId { get; }
 
         public long LifecycleGeneration { get; }
+
+        public EnemyAttackDeliveryKind DeliveryKind { get; }
+    }
+
+    public sealed class EnemyProjectileEmissionFactV1 :
+        EnemyDamageAdmissionFactV1
+    {
+        public EnemyProjectileEmissionFactV1(
+            StableId hitEventId,
+            long lifecycleGeneration)
+            : base(
+                hitEventId,
+                lifecycleGeneration,
+                EnemyAttackDeliveryKind.Projectile)
+        {
+        }
+
+        public StableId HitEventId
+        {
+            get { return EventId; }
+        }
     }
 
     /// <summary>
-    /// Reusable enemy-projectile-to-player admission boundary. Every registered enemy
-    /// source uses the same immutable emission ledger and the same PlayerDamageRequest
-    /// path. It contains no enemy type, level, scene, package, or weapon-name branch.
+    /// Reusable enemy-to-player admission boundary. Every registered enemy source uses
+    /// the same immutable attack ledger and the same PlayerDamageRequest path. It contains
+    /// no enemy type, level, scene, package, hierarchy-name, or weapon-name branch.
     /// </summary>
     public sealed class EnemyToPlayerDamageRouterV1 : IDisposable
     {
@@ -134,32 +168,38 @@ namespace ShooterMover.UnityAdapters.Players
             return EnemyDamageSourceRegistrationStatus.Registered;
         }
 
-        public EnemyProjectileEmissionObservationStatus ObserveEmission(
-            EnemyProjectileEmissionFactV1 emission)
+        public EnemyDamageAdmissionObservationStatus ObserveAttack(
+            EnemyDamageAdmissionFactV1 admission)
         {
             if (disposed)
             {
-                return EnemyProjectileEmissionObservationStatus.Disposed;
+                return EnemyDamageAdmissionObservationStatus.Disposed;
             }
-            if (emission == null || emission.HitEventId == null)
+            if (admission == null || admission.EventId == null)
             {
-                return EnemyProjectileEmissionObservationStatus.InvalidInput;
+                return EnemyDamageAdmissionObservationStatus.InvalidInput;
             }
 
             long existingGeneration;
             if (emissionGenerations.TryGetValue(
-                    emission.HitEventId,
+                    admission.EventId,
                     out existingGeneration))
             {
-                return existingGeneration == emission.LifecycleGeneration
-                    ? EnemyProjectileEmissionObservationStatus.Duplicate
-                    : EnemyProjectileEmissionObservationStatus.ConflictingDuplicate;
+                return existingGeneration == admission.LifecycleGeneration
+                    ? EnemyDamageAdmissionObservationStatus.Duplicate
+                    : EnemyDamageAdmissionObservationStatus.ConflictingDuplicate;
             }
 
             emissionGenerations.Add(
-                emission.HitEventId,
-                emission.LifecycleGeneration);
-            return EnemyProjectileEmissionObservationStatus.Accepted;
+                admission.EventId,
+                admission.LifecycleGeneration);
+            return EnemyDamageAdmissionObservationStatus.Accepted;
+        }
+
+        public EnemyDamageAdmissionObservationStatus ObserveEmission(
+            EnemyProjectileEmissionFactV1 emission)
+        {
+            return ObserveAttack(emission);
         }
 
         public bool RetireEmission(StableId hitEventId)
