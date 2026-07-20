@@ -69,7 +69,11 @@ namespace ShooterMover.Application.Flow.Production
     {
         bool TryLoad(out ProductionFlowProfileRecordV1 record);
 
+        bool TryLoad(int slotIndex, out ProductionFlowProfileRecordV1 record);
+
         void Save(ProductionFlowProfileRecordV1 record);
+
+        void Save(int slotIndex, ProductionFlowProfileRecordV1 record);
 
         void Clear();
     }
@@ -77,22 +81,47 @@ namespace ShooterMover.Application.Flow.Production
     public sealed class InMemoryProductionFlowProfileStoreV1 :
         IProductionFlowProfileStoreV1
     {
-        private ProductionFlowProfileRecordV1 record;
+        public const int ProfileSlotCount = 6;
+        private readonly ProductionFlowProfileRecordV1[] records =
+            new ProductionFlowProfileRecordV1[ProfileSlotCount];
 
         public bool TryLoad(out ProductionFlowProfileRecordV1 value)
         {
-            value = record;
+            return TryLoad(0, out value);
+        }
+
+        public bool TryLoad(
+            int slotIndex,
+            out ProductionFlowProfileRecordV1 value)
+        {
+            ValidateSlotIndex(slotIndex);
+            value = records[slotIndex];
             return value != null;
         }
 
         public void Save(ProductionFlowProfileRecordV1 value)
         {
-            record = value ?? throw new ArgumentNullException(nameof(value));
+            Save(0, value);
+        }
+
+        public void Save(int slotIndex, ProductionFlowProfileRecordV1 value)
+        {
+            ValidateSlotIndex(slotIndex);
+            records[slotIndex] = value
+                ?? throw new ArgumentNullException(nameof(value));
         }
 
         public void Clear()
         {
-            record = null;
+            Array.Clear(records, 0, records.Length);
+        }
+
+        private static void ValidateSlotIndex(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= ProfileSlotCount)
+            {
+                throw new ArgumentOutOfRangeException(nameof(slotIndex));
+            }
         }
     }
 

@@ -25,19 +25,21 @@ namespace ShooterMover.UI.ProductionFlow
     public sealed class ProductionCharacterSelectionControllerV1 :
         MonoBehaviour
     {
+        private const int ProfileSlotCount = 6;
         private readonly Dictionary<string, Texture2D> textures =
             new Dictionary<string, Texture2D>(StringComparer.Ordinal);
 
         private CharacterSelectionServiceV1 selection;
-        private ProductionFlowProfileRecordV1 existingProfile;
-        private Func<PlayerRouteProfilePayloadV1, bool> selectExisting;
-        private Func<string, CharacterSelectionRouteResultV1, bool>
+        private IReadOnlyList<ProductionFlowProfileRecordV1> profiles;
+        private Func<int, PlayerRouteProfilePayloadV1, bool> selectExisting;
+        private Func<int, string, CharacterSelectionRouteResultV1, bool>
             createCharacter;
         private Func<bool> navigateBack;
         private bool classExplicitlySelected;
         private bool terminal;
         private string characterName = string.Empty;
         private string validationMessage = string.Empty;
+        private int selectedSlotIndex;
         private GUIStyle titleStyle;
         private GUIStyle cardStyle;
         private GUIStyle selectedStyle;
@@ -55,6 +57,8 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool IsTerminal { get { return terminal; } }
 
+        public int SelectedSlotIndex { get { return selectedSlotIndex; } }
+
         public CharacterSelectionServiceV1 Selection
         {
             get { return selection; }
@@ -68,22 +72,41 @@ namespace ShooterMover.UI.ProductionFlow
                 createCharacter,
             Func<bool> navigateBack)
         {
+            Configure(
+                incomingPayload,
+                new ProductionFlowProfileRecordV1[] { existingProfile },
+                (slot, payload) => slot == 0 && selectExisting(payload),
+                (slot, name, result) =>
+                    slot == 0 && createCharacter(name, result),
+                navigateBack);
+        }
+
+        public void Configure(
+            PlayerRouteProfilePayloadV1 incomingPayload,
+            IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
+            Func<int, PlayerRouteProfilePayloadV1, bool> selectExisting,
+            Func<int, string, CharacterSelectionRouteResultV1, bool>
+                createCharacter,
+            Func<bool> navigateBack)
+        {
             CharacterSelectionCatalogV1 catalog =
                 BuiltInCharacterSelectionCatalogV1.Create();
             selection = new CharacterSelectionServiceV1(
                 catalog,
                 incomingPayload
                     ?? throw new ArgumentNullException(nameof(incomingPayload)));
-            this.existingProfile = existingProfile;
+            this.profiles = profiles
+                ?? throw new ArgumentNullException(nameof(profiles));
             this.selectExisting = selectExisting
                 ?? throw new ArgumentNullException(nameof(selectExisting));
             this.createCharacter = createCharacter
                 ?? throw new ArgumentNullException(nameof(createCharacter));
             this.navigateBack = navigateBack
                 ?? throw new ArgumentNullException(nameof(navigateBack));
-            Stage = existingProfile == null
-                ? ProductionCharacterSelectionStageV1.CharacterCreation
-                : ProductionCharacterSelectionStageV1.CharacterSlots;
+            selectedSlotIndex = 0;
+            Stage = HasAnyProfile()
+                ? ProductionCharacterSelectionStageV1.CharacterSlots
+                : ProductionCharacterSelectionStageV1.CharacterCreation;
             classExplicitlySelected = false;
             terminal = false;
             characterName = string.Empty;
@@ -130,8 +153,9 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool ChooseExisting()
         {
-            if (terminal || existingProfile == null) return false;
-            if (!selectExisting(existingProfile.Payload)) return false;
+            ProductionFlowProfileRecordV1 selected = SelectedProfile;
+            if (terminal || selected == null) return false;
+            if (!selectExisting(selectedSlotIndex, selected.Payload)) return false;
             terminal = true;
             return true;
         }
@@ -139,6 +163,7 @@ namespace ShooterMover.UI.ProductionFlow
         public bool ChooseEmptySlot()
         {
             if (terminal) return false;
+            if (SelectedProfile != null) return false;
             Stage = ProductionCharacterSelectionStageV1.CharacterCreation;
             characterName = string.Empty;
             classExplicitlySelected = false;
@@ -189,7 +214,10 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             CharacterSelectionRouteResultV1 result = selection.Confirm();
-            if (!createCharacter(characterName.Trim(), result))
+            if (!createCharacter(
+                selectedSlotIndex,
+                characterName.Trim(),
+                result))
             {
                 validationMessage = "The route transition is busy.";
                 return false;
@@ -203,7 +231,7 @@ namespace ShooterMover.UI.ProductionFlow
         {
             if (terminal) return false;
             if (Stage == ProductionCharacterSelectionStageV1.CharacterCreation
-                && existingProfile != null)
+                && profiles != null)
             {
                 Stage = ProductionCharacterSelectionStageV1.CharacterSlots;
                 characterName = string.Empty;
@@ -221,47 +249,62 @@ namespace ShooterMover.UI.ProductionFlow
         {
             GUILayout.Label("CHARACTER SELECTION", titleStyle);
             GUILayout.Space(18f);
-            GUILayout.BeginHorizontal();
-
-            GUILayout.BeginVertical(cardStyle, GUILayout.ExpandWidth(true));
-            GUILayout.Label(existingProfile.DisplayName, titleStyle);
-            GUILayout.Label(
-                existingProfile.Payload.SelectedCharacterStableId
-                + "\n"
-                + existingProfile.Payload.LoadoutProfileStableId,
-                bodyStyle);
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(
-                "PLAY THIS CHARACTER",
-                actionStyle,
-                GUILayout.Height(54f)))
+            for (int index = 0; index < ProfileSlotCount; index++)
             {
-                ChooseExisting();
+                if (index % 3 == 0) GUILayout.BeginHorizontal();
+                selectedSlotIndex = index;
+                ProductionFlowProfileRecordV1 slot = SelectedProfile;
+                GUILayout.BeginVertical(cardStyle, GUILayout.ExpandWidth(true));
+                GUILayout.Label("SLOT " + (index + 1), titleStyle);
+                if (slot == null)
+                {
+                    GUILayout.Label("EMPTY SLOT", bodyStyle);
+                    GUILayout.Label("Create a named character and choose one class.", bodyStyle);
+                    if (GUILayout.Button("CREATE CHARACTER", actionStyle, GUILayout.Height(54f)))
+                    {
+                        ChooseEmptySlot();
+                    }
+                }
+                else
+                {
+                    GUILayout.Label(slot.DisplayName, titleStyle);
+                    GUILayout.Label(slot.Payload.SelectedCharacterStableId + "\n" + slot.Payload.LoadoutProfileStableId, bodyStyle);
+                    if (GUILayout.Button("PLAY THIS CHARACTER", actionStyle, GUILayout.Height(54f)))
+                    {
+                        ChooseExisting();
+                    }
+                }
+                GUILayout.EndVertical();
+                if (index % 3 == 2) GUILayout.EndHorizontal();
             }
-            GUILayout.EndVertical();
-
-            GUILayout.Space(18f);
-            GUILayout.BeginVertical(cardStyle, GUILayout.ExpandWidth(true));
-            GUILayout.Label("EMPTY SLOT", titleStyle);
-            GUILayout.Label(
-                "Create a named character and choose one class.",
-                bodyStyle);
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(
-                "CREATE CHARACTER",
-                actionStyle,
-                GUILayout.Height(54f)))
-            {
-                ChooseEmptySlot();
-            }
-            GUILayout.EndVertical();
-
-            GUILayout.EndHorizontal();
             GUILayout.Space(16f);
             if (GUILayout.Button("BACK", actionStyle, GUILayout.Height(44f)))
             {
                 Back();
             }
+        }
+
+        private ProductionFlowProfileRecordV1 SelectedProfile
+        {
+            get
+            {
+                return profiles != null
+                    && selectedSlotIndex >= 0
+                    && selectedSlotIndex < profiles.Count
+                    ? profiles[selectedSlotIndex]
+                    : null;
+            }
+        }
+
+        private bool HasAnyProfile()
+        {
+            if (profiles == null) return false;
+            for (int index = 0; index < profiles.Count; index++)
+            {
+                if (profiles[index] != null) return true;
+            }
+
+            return false;
         }
 
         private void DrawCreation()
