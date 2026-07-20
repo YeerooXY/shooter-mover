@@ -78,6 +78,8 @@ namespace ShooterMover.Domain.Enemies.Catalog
 
         bool IsPresentationRegistered(StableId presentationId);
 
+        bool IsProjectileProfileRegistered(StableId projectileProfileId);
+
         bool IsDamageChannelRegistered(StableId damageChannelId);
 
         bool IsExperienceProfileRegistered(StableId experienceProfileId);
@@ -92,6 +94,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
         private readonly Dictionary<StableId, EnemyAttackCapabilityRegistrationV1> attackCapabilities;
         private readonly HashSet<StableId> specialCapabilities;
         private readonly HashSet<StableId> presentations;
+        private readonly HashSet<StableId> projectileProfiles;
         private readonly HashSet<StableId> damageChannels;
         private readonly HashSet<StableId> experienceProfiles;
         private readonly HashSet<StableId> dropProfiles;
@@ -102,6 +105,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
             IEnumerable<EnemyAttackCapabilityRegistrationV1> attackCapabilityRegistrations,
             IEnumerable<StableId> specialCapabilityIds,
             IEnumerable<StableId> presentationIds,
+            IEnumerable<StableId> projectileProfileIds,
             IEnumerable<StableId> damageChannelIds,
             IEnumerable<StableId> experienceProfileIds,
             IEnumerable<StableId> dropProfileIds)
@@ -113,6 +117,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
                 nameof(attackCapabilityRegistrations));
             specialCapabilities = CopyIds(specialCapabilityIds, nameof(specialCapabilityIds));
             presentations = CopyIds(presentationIds, nameof(presentationIds));
+            projectileProfiles = CopyIds(projectileProfileIds, nameof(projectileProfileIds));
             damageChannels = CopyIds(damageChannelIds, nameof(damageChannelIds));
             experienceProfiles = CopyIds(experienceProfileIds, nameof(experienceProfileIds));
             dropProfiles = CopyIds(dropProfileIds, nameof(dropProfileIds));
@@ -146,6 +151,11 @@ namespace ShooterMover.Domain.Enemies.Catalog
         public bool IsPresentationRegistered(StableId presentationId)
         {
             return presentationId != null && presentations.Contains(presentationId);
+        }
+
+        public bool IsProjectileProfileRegistered(StableId projectileProfileId)
+        {
+            return projectileProfileId != null && projectileProfiles.Contains(projectileProfileId);
         }
 
         public bool IsDamageChannelRegistered(StableId damageChannelId)
@@ -334,6 +344,11 @@ namespace ShooterMover.Domain.Enemies.Catalog
         public EnemyAttackCapabilityDescriptorV1(
             StableId attackId,
             StableId capabilityId,
+            int selectionPriority,
+            double attackArcDegrees,
+            double minimumAttackRange,
+            double preferredAttackRange,
+            double maximumAttackRange,
             double cooldownSeconds,
             double damage,
             StableId damageChannelId,
@@ -343,6 +358,11 @@ namespace ShooterMover.Domain.Enemies.Catalog
         {
             AttackId = attackId;
             CapabilityId = capabilityId;
+            SelectionPriority = selectionPriority;
+            AttackArcDegrees = attackArcDegrees;
+            MinimumAttackRange = minimumAttackRange;
+            PreferredAttackRange = preferredAttackRange;
+            MaximumAttackRange = maximumAttackRange;
             CooldownSeconds = cooldownSeconds;
             Damage = damage;
             DamageChannelId = damageChannelId;
@@ -354,6 +374,16 @@ namespace ShooterMover.Domain.Enemies.Catalog
         public StableId AttackId { get; }
 
         public StableId CapabilityId { get; }
+
+        public int SelectionPriority { get; }
+
+        public double AttackArcDegrees { get; }
+
+        public double MinimumAttackRange { get; }
+
+        public double PreferredAttackRange { get; }
+
+        public double MaximumAttackRange { get; }
 
         public double CooldownSeconds { get; }
 
@@ -393,10 +423,6 @@ namespace ShooterMover.Domain.Enemies.Catalog
             StableId factionId,
             double detectionRadius,
             double visionArcDegrees,
-            double attackArcDegrees,
-            double minimumAttackRange,
-            double preferredAttackRange,
-            double maximumAttackRange,
             StableId movementPolicyId,
             StableId decisionPolicyId,
             IEnumerable<EnemyAttackCapabilityDescriptorV1> attacks,
@@ -412,19 +438,13 @@ namespace ShooterMover.Domain.Enemies.Catalog
             FactionId = factionId;
             DetectionRadius = detectionRadius;
             VisionArcDegrees = visionArcDegrees;
-            AttackArcDegrees = attackArcDegrees;
-            MinimumAttackRange = minimumAttackRange;
-            PreferredAttackRange = preferredAttackRange;
-            MaximumAttackRange = maximumAttackRange;
             MovementPolicyId = movementPolicyId;
             DecisionPolicyId = decisionPolicyId;
-            this.attacks = Copy(attacks, nameof(attacks));
+            this.attacks = CopyAttacks(attacks);
             ExperienceProfileId = experienceProfileId;
             DropProfileId = dropProfileId;
             RoomClearRole = roomClearRole;
-            this.specialCapabilityIds = CopyIds(
-                specialCapabilityIds,
-                nameof(specialCapabilityIds));
+            this.specialCapabilityIds = CopyIds(specialCapabilityIds);
         }
 
         public StableId DefinitionId { get; }
@@ -435,19 +455,14 @@ namespace ShooterMover.Domain.Enemies.Catalog
 
         public EnemyLevelScalingProfileV1 LevelScaling { get; }
 
+        /// <summary>
+        /// Open stable identity. The repository has no canonical faction registry at this boundary.
+        /// </summary>
         public StableId FactionId { get; }
 
         public double DetectionRadius { get; }
 
         public double VisionArcDegrees { get; }
-
-        public double AttackArcDegrees { get; }
-
-        public double MinimumAttackRange { get; }
-
-        public double PreferredAttackRange { get; }
-
-        public double MaximumAttackRange { get; }
 
         public StableId MovementPolicyId { get; }
 
@@ -479,39 +494,39 @@ namespace ShooterMover.Domain.Enemies.Catalog
             get { return EnemyCatalogFingerprintV1.BuildDefinition(this); }
         }
 
-        private static ReadOnlyCollection<EnemyAttackCapabilityDescriptorV1> Copy(
-            IEnumerable<EnemyAttackCapabilityDescriptorV1> values,
-            string parameterName)
+        public EnemyDefinitionV1 WithAttacks(
+            IEnumerable<EnemyAttackCapabilityDescriptorV1> replacementAttacks)
         {
-            if (values == null)
-            {
-                return new ReadOnlyCollection<EnemyAttackCapabilityDescriptorV1>(
-                    new List<EnemyAttackCapabilityDescriptorV1>());
-            }
-
-            var result = new List<EnemyAttackCapabilityDescriptorV1>();
-            foreach (EnemyAttackCapabilityDescriptorV1 value in values)
-            {
-                result.Add(value);
-            }
-            return new ReadOnlyCollection<EnemyAttackCapabilityDescriptorV1>(result);
+            return new EnemyDefinitionV1(
+                DefinitionId,
+                PresentationId,
+                BaseHealth,
+                LevelScaling,
+                FactionId,
+                DetectionRadius,
+                VisionArcDegrees,
+                MovementPolicyId,
+                DecisionPolicyId,
+                replacementAttacks,
+                ExperienceProfileId,
+                DropProfileId,
+                RoomClearRole,
+                SpecialCapabilityIds);
         }
 
-        private static ReadOnlyCollection<StableId> CopyIds(
-            IEnumerable<StableId> values,
-            string parameterName)
+        private static ReadOnlyCollection<EnemyAttackCapabilityDescriptorV1> CopyAttacks(
+            IEnumerable<EnemyAttackCapabilityDescriptorV1> values)
         {
-            if (values == null)
-            {
-                return new ReadOnlyCollection<StableId>(new List<StableId>());
-            }
+            return new ReadOnlyCollection<EnemyAttackCapabilityDescriptorV1>(
+                values == null
+                    ? new List<EnemyAttackCapabilityDescriptorV1>()
+                    : new List<EnemyAttackCapabilityDescriptorV1>(values));
+        }
 
-            var result = new List<StableId>();
-            foreach (StableId value in values)
-            {
-                result.Add(value);
-            }
-            return new ReadOnlyCollection<StableId>(result);
+        private static ReadOnlyCollection<StableId> CopyIds(IEnumerable<StableId> values)
+        {
+            return new ReadOnlyCollection<StableId>(
+                values == null ? new List<StableId>() : new List<StableId>(values));
         }
     }
 }
