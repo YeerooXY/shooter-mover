@@ -51,16 +51,19 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return false;
             }
 
+            PlayerRouteProfilePayloadV1 missionPayload =
+                ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
+                    currentProfile.Payload);
             profile = new ProductionFlowProfileRecordV1(
                 currentProfile.DisplayName,
-                runtime.RoutePayload);
+                missionPayload);
             holdings = runtime.Holdings;
             equipmentCatalog = runtime.EquipmentCatalog;
             weaponCatalog = runtime.WeaponCatalog;
 
             ProductionWeaponMountSetV1 mountSet =
                 ProductionWeaponMountPolicyV1.BuildMountSet(
-                    runtime.RoutePayload);
+                    missionPayload);
             var enabledMounts =
                 new List<InventoryWeaponMountedRuntimeV1>(
                     mountSet.EnabledBindings.Count);
