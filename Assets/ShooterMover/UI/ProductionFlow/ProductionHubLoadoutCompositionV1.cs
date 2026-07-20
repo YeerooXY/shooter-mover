@@ -127,31 +127,21 @@ namespace ShooterMover.UI.ProductionFlow
                 coordinator.Profile;
             if (coordinatorProfile == null)
             {
-                return;
-            }
-
-            bool needsInitialComposition = runtime == null
-                || currentProfile == null;
-            bool changedCharacter = !needsInitialComposition
-                && currentProfile.Payload.SelectedCharacterStableId
-                    != coordinatorProfile.Payload
-                        .SelectedCharacterStableId;
-            if (needsInitialComposition || changedCharacter)
-            {
-                currentProfile = coordinatorProfile;
-                runtime = new ProductionPlayerLoadoutRuntimeV1(
-                    currentProfile.Payload);
+                currentProfile = null;
+                runtime = null;
                 boundController = null;
                 boundPayloadFingerprint = string.Empty;
                 return;
             }
 
-            if (!string.Equals(
-                currentProfile.Payload.Fingerprint,
-                coordinatorProfile.Payload.Fingerprint,
-                StringComparison.Ordinal))
+            if (runtime == null
+                || currentProfile == null
+                || !ReferenceEquals(currentProfile, coordinatorProfile))
             {
                 currentProfile = coordinatorProfile;
+                runtime = new ProductionPlayerLoadoutRuntimeV1(
+                    currentProfile.Payload);
+                boundController = null;
                 boundPayloadFingerprint = string.Empty;
             }
         }
