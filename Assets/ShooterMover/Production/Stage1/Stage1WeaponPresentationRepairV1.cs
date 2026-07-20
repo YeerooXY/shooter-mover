@@ -258,7 +258,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             var holdings = new PlayerHoldingsService(
                 StableId.Parse("authority.demo-cutover-player-holdings"),
                 999L,
-                new CatalogEquipmentValidatorV1(equipmentCatalog));
+                new RepairEquipmentValidatorV1(equipmentCatalog));
             string[] definitions =
             {
                 "equipment.demo-cutover-blaster",
@@ -892,7 +892,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         internal void SpawnRocketExplosion(Vector3 position)
         {
             Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null || !Application.isPlaying)
+            if (shader == null || !UnityEngine.Application.isPlaying)
             {
                 return;
             }
@@ -1246,6 +1246,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 Destroy(gameObject);
             }
+        }
+    }
+
+    internal sealed class RepairEquipmentValidatorV1 : IEquipmentInstanceValidator
+    {
+        private readonly EquipmentCatalog catalog;
+
+        public RepairEquipmentValidatorV1(EquipmentCatalog catalog)
+        {
+            this.catalog = catalog;
+        }
+
+        public EquipmentInstanceValidationResponse Validate(
+            EquipmentInstanceValidationRequest request)
+        {
+            return EquipmentInstanceValidationResponse.From(
+                catalog,
+                request == null ? null : request.Instance,
+                catalog.ValidateInstance(request == null ? null : request.Instance));
         }
     }
 }
