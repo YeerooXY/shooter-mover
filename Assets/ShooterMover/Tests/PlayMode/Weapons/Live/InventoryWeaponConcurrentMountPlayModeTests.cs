@@ -76,9 +76,13 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 Assert.That(runtime.EnabledMountCount, Is.EqualTo(2));
                 Assert.That(emitter.EmittedEffects.Count, Is.EqualTo(2));
 
-                var left = emitter.EmittedEffects[0].Description
+                InventoryWeaponEffectInstance2D leftInstance =
+                    emitter.EmittedEffects[0];
+                InventoryWeaponEffectInstance2D rightInstance =
+                    emitter.EmittedEffects[1];
+                var left = leftInstance.Description
                     as DirectProjectileEffect;
-                var right = emitter.EmittedEffects[1].Description
+                var right = rightInstance.Description
                     as ExplosiveProjectileEffect;
                 Assert.That(left, Is.Not.Null);
                 Assert.That(right, Is.Not.Null);
@@ -89,6 +93,30 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 Assert.That(
                     left.Identity.FireOperationId,
                     Is.Not.EqualTo(right.Identity.FireOperationId));
+                Assert.That(leftInstance.IsLaunched, Is.True);
+                Assert.That(rightInstance.IsLaunched, Is.True);
+
+                Vector2 leftStart = leftInstance.transform.position;
+                Vector2 rightStart = rightInstance.transform.position;
+                yield return new WaitForFixedUpdate();
+                yield return new WaitForFixedUpdate();
+
+                Assert.That(
+                    leftInstance.transform.position.x,
+                    Is.GreaterThan(leftStart.x + 0.1f));
+                Assert.That(
+                    rightInstance.transform.position.x,
+                    Is.GreaterThan(rightStart.x + 0.1f));
+                Assert.That(
+                    leftInstance.transform.position.y,
+                    Is.EqualTo(19f).Within(0.05f));
+                Assert.That(
+                    rightInstance.transform.position.y,
+                    Is.EqualTo(21f).Within(0.05f));
+                Assert.That(
+                    rightInstance.transform.position.y
+                        - leftInstance.transform.position.y,
+                    Is.EqualTo(2f).Within(0.1f));
 
                 Assert.That(
                     runtime.SelectSlot(3),
@@ -107,7 +135,6 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                     replay.Status,
                     Is.EqualTo(WeaponExecutionStatus.ReplayAccepted));
                 Assert.That(emitter.EmittedEffects.Count, Is.EqualTo(2));
-                yield return null;
             }
             finally
             {

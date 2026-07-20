@@ -1,29 +1,78 @@
 using System;
-using System.Collections.Generic;
-using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Domain.Weapons.Execution;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
     /// <summary>
-    /// Concrete emitted Unity effect. Projectile effects travel for range/speed seconds;
-    /// canonical DoT projectiles create a persistent pool on completion when configured.
+    /// Concrete emitted Unity effect. Projectile effects are configured while their
+    /// atomic batch is inactive, then explicitly launched after the whole batch becomes
+    /// active. Canonical DoT projectiles create a persistent pool on completion.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class InventoryWeaponEffectInstance2D : MonoBehaviour
     {
         private IWeaponEffectDescription description;
+        private Vector2 origin;
         private Vector2 direction;
         private float speed;
         private float remainingSeconds;
+        private Rigidbody2D body;
+        private CircleCollider2D projectileCollider;
         private bool configured;
+        private bool launched;
+        private bool instantaneous;
         private bool completed;
 
-        public IWeaponEffectDescription Description { get { return description; } }
-        public WeaponEffectKind Kind { get { return description.Kind; } }
-        public bool IsConfigured { get { return configured; } }
-        public bool IsCompleted { get { return completed; } }
+        public IWeaponEffectDescription Description
+        {
+            get { return description; }
+        }
+
+        public WeaponEffectKind Kind
+        {
+            get { return description.Kind; }
+        }
+
+        public bool IsConfigured
+        {
+            get { return configured; }
+        }
+
+        public bool IsLaunched
+        {
+            get { return launched; }
+        }
+
+        public bool IsInstantaneous
+        {
+            get { return instantaneous; }
+        }
+
+        public bool IsCompleted
+        {
+            get { return completed; }
+        }
+
+        public Vector2 TravelDirection
+        {
+            get { return direction; }
+        }
+
+        public float TravelSpeed
+        {
+            get { return speed; }
+        }
+
+        public Rigidbody2D Body
+        {
+            get { return body; }
+        }
+
+        public Collider2D ProjectileCollider
+        {
+            get { return projectileCollider; }
+        }
 
         public bool TryConfigure(IWeaponEffectDescription effect)
         {
@@ -32,13 +81,19 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return false;
             }
 
-            WeaponVector2 origin;
+            ChainArcEffect chain = effect as ChainArcEffect;
+            if (chain != null)
+            {
+                return TryConfigureInstantaneous(chain);
+            }
+
+            WeaponVector2 effectOrigin;
             WeaponVector2 effectDirection;
             double effectSpeed;
             double effectRange;
-            if (!TryReadTravel(
+            if (!TryReadProjectileTravel(
                     effect,
-                    out origin,
+                    out effectOrigin,
                     out effectDirection,
                     out effectSpeed,
                     out effectRange))
@@ -46,28 +101,108 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return false;
             }
 
-            description = effect;
-            transform.position = new Vector3((float)origin.X, (float)origin.Y, 0f);
-            direction = new Vector2(
+            Vector2 normalizedDirection = new Vector2(
                 (float)effectDirection.X,
-                (float)effectDirection.Y).normalized;
-            speed = (float)effectSpeed;
-            remainingSeconds = speed <= 0f ? 0f : (float)(effectRange / effectSpeed);
-            configured = true;
+                (float)effectDirection.Y);
+            if (normalizedDirection.sqrMagnitude < 0.000001f
+                || effectSpeed <= 0d
+                || effectRange <= 0d
+                || double.IsNaN(effectSpeed)
+                || double.IsInfinity(effectSpeed)
+                || double.IsNaN(effectRange)
+                || double.IsInfinity(effectRange))
+            {
+                return false;
+            }
 
-            var body = gameObject.AddComponent<Rigidbody2D>();
+            description = effect;
+            origin = new Vector2(
+                (float)effectOrigin.X,
+                (float)effectOrigin.Y);
+            direction = normalizedDirection.normalized;
+            speed = (float)effectSpeed;
+            remainingSeconds = (float)(effectRange / effectSpeed);
+            transform.position = new Vector3(origin.x, origin.y, 0f);
+
+            body = gameObject.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Kinematic;
             body.gravityScale = 0f;
+            body.collisionDetectionMode =
+                CollisionDetectionMode2D.Continuous;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            body.simulated = false;
+
+            projectileCollider = gameObject.AddComponent<CircleCollider2D>();
+            projectileCollider.isTrigger = true;
+            projectileCollider.radius = 0.05f;
+            configured = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Starts the configured effect after its complete batch is active. Exact repeat
+        /// calls are accepted without restarting or changing the locked trajectory.
+        /// </summary>
+        public bool BeginEmission()
+        {
+            if (!configured || completed)
+            {
+                return false;
+            }
+            if (launched)
+            {
+                return true;
+            }
+            if (!gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            launched = true;
+            if (instantaneous)
+            {
+                return true;
+            }
+            if (body == null || projectileCollider == null)
+            {
+                launched = false;
+                return false;
+            }
+
+            body.position = origin;
+            body.rotation = Mathf.Atan2(direction.y, direction.x)
+                * Mathf.Rad2Deg;
+            body.simulated = true;
             body.linearVelocity = direction * speed;
-            var collider = gameObject.AddComponent<CircleCollider2D>();
-            collider.isTrigger = true;
-            collider.radius = 0.05f;
+            return true;
+        }
+
+        private bool TryConfigureInstantaneous(ChainArcEffect chain)
+        {
+            Vector2 suppliedDirection = new Vector2(
+                (float)chain.Direction.X,
+                (float)chain.Direction.Y);
+            if (suppliedDirection.sqrMagnitude < 0.000001f)
+            {
+                return false;
+            }
+
+            description = chain;
+            origin = new Vector2(
+                (float)chain.Origin.X,
+                (float)chain.Origin.Y);
+            direction = suppliedDirection.normalized;
+            speed = 0f;
+            remainingSeconds = 1f;
+            instantaneous = true;
+            configured = true;
+            transform.position = new Vector3(origin.x, origin.y, 0f);
             return true;
         }
 
         private void Update()
         {
-            if (!configured || completed)
+            if (!configured || !launched || completed)
             {
                 return;
             }
@@ -87,44 +222,55 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             completed = true;
+            if (body != null)
+            {
+                body.linearVelocity = Vector2.zero;
+                body.simulated = false;
+            }
+
             DamageOverTimeProjectileEffect dot =
                 description as DamageOverTimeProjectileEffect;
-            if (dot != null && dot.PoolRadius > 0d && dot.PoolDuration > 0d)
+            if (dot != null
+                && dot.PoolRadius > 0d
+                && dot.PoolDuration > 0d)
             {
                 GameObject poolObject = new GameObject(
                     "WeaponPersistentPool_" + dot.Identity.FireOperationId);
                 poolObject.transform.position = transform.position;
-                var pool = poolObject.AddComponent<InventoryWeaponPersistentDamageArea2D>();
+                var pool = poolObject.AddComponent<
+                    InventoryWeaponPersistentDamageArea2D>();
                 pool.Configure(dot);
             }
 
             Destroy(gameObject);
         }
 
-        private static bool TryReadTravel(
+        private static bool TryReadProjectileTravel(
             IWeaponEffectDescription effect,
-            out WeaponVector2 origin,
-            out WeaponVector2 direction,
-            out double speed,
-            out double range)
+            out WeaponVector2 effectOrigin,
+            out WeaponVector2 effectDirection,
+            out double effectSpeed,
+            out double effectRange)
         {
-            DirectProjectileEffect direct = effect as DirectProjectileEffect;
+            DirectProjectileEffect direct =
+                effect as DirectProjectileEffect;
             if (direct != null)
             {
-                origin = direct.Origin;
-                direction = direct.Direction;
-                speed = direct.Speed;
-                range = direct.Range;
+                effectOrigin = direct.Origin;
+                effectDirection = direct.Direction;
+                effectSpeed = direct.Speed;
+                effectRange = direct.Range;
                 return true;
             }
 
-            ExplosiveProjectileEffect explosive = effect as ExplosiveProjectileEffect;
+            ExplosiveProjectileEffect explosive =
+                effect as ExplosiveProjectileEffect;
             if (explosive != null)
             {
-                origin = explosive.Origin;
-                direction = explosive.Direction;
-                speed = explosive.Speed;
-                range = explosive.Range;
+                effectOrigin = explosive.Origin;
+                effectDirection = explosive.Direction;
+                effectSpeed = explosive.Speed;
+                effectRange = explosive.Range;
                 return true;
             }
 
@@ -132,29 +278,18 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 effect as DamageOverTimeProjectileEffect;
             if (dot != null)
             {
-                origin = dot.Origin;
-                direction = dot.Direction;
-                speed = dot.Speed;
-                range = dot.Range;
+                effectOrigin = dot.Origin;
+                effectDirection = dot.Direction;
+                effectSpeed = dot.Speed;
+                effectRange = dot.Range;
                 return true;
             }
 
-            ChainArcEffect chain = effect as ChainArcEffect;
-            if (chain != null)
-            {
-                origin = chain.Origin;
-                direction = chain.Direction;
-                speed = chain.MaximumRange;
-                range = chain.MaximumRange;
-                return true;
-            }
-
-            origin = null;
-            direction = null;
-            speed = 0d;
-            range = 0d;
+            effectOrigin = null;
+            effectDirection = null;
+            effectSpeed = 0d;
+            effectRange = 0d;
             return false;
         }
     }
-
 }
