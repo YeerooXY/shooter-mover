@@ -283,7 +283,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 + "   Slot " + (weapons.SelectedSlotIndex + 1),
                 smallStyle);
             GUILayout.Label(
-                "1 Blaster   2 Shotgun   3 Rocket Launcher   4 Flamethrower",
+                "1 " + WeaponDisplayNames[0]
+                + "   2 " + WeaponDisplayNames[1]
+                + "   3 " + WeaponDisplayNames[2]
+                + "   4 " + WeaponDisplayNames[3],
                 smallStyle);
             GUILayout.Label(
                 controller.IsPlayerDead
