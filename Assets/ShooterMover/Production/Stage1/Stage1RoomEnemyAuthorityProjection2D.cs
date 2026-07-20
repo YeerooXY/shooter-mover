@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.Production.Stage1;
 using UnityEngine;
@@ -10,7 +10,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// Compatibility component retained for the DEMO-CUTOVER-001 presentation catalog.
     /// New code should use <see cref="Stage1RoomEnemyAuthorityAdapter2D"/>.
     /// </summary>
-    [Obsolete("Use Stage1RoomEnemyAuthorityAdapter2D. This type adapts authority identity; it is not merely a projection.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     [DisallowMultipleComponent]
     internal sealed class Stage1RoomEnemyAuthorityProjection2D :
         Stage1RoomEnemyAuthorityAdapter2D
