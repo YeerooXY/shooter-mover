@@ -24,7 +24,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 return initialized
                     && controller != null
-                    && effectEmitter != null;
+                    && effectEmitter != null
+                    && holdings != null
+                    && weapons != null;
             }
         }
 
@@ -35,14 +37,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         internal bool TryAdoptHubLoadout()
         {
-            if (!IsHubLoadoutIntegrationReady)
+            if (controller == null || effectEmitter == null)
             {
+                diagnostic =
+                    "The Level 1 weapon composition boundary is unavailable.";
                 return false;
             }
 
             ProductionPlayerLoadoutRuntimeV1 runtime;
             ProductionFlowProfileRecordV1 currentProfile;
-            if (!ProductionHubLoadoutCompositionV1.TryGetCurrent(
+            if (!ProductionHubLoadoutCompositionV1.TryResolveCurrent(
                 out runtime,
                 out currentProfile))
             {
@@ -112,7 +116,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             RegisterHubWeaponPresentationProfiles();
             UpdateWeaponDisplayNames();
             RetireInGameLoadoutSelector();
-            BeginRun();
             diagnostic = string.Empty;
             return true;
         }
