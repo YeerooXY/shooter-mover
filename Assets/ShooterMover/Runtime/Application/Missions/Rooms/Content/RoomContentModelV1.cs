@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Contracts.Missions.Rooms;
@@ -118,7 +119,9 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             StableId objectStableId,
             RoomContentObjectKindV1 kind)
         {
-            return ((int)kind).ToString() + "|" + objectStableId;
+            return ((int)kind).ToString(CultureInfo.InvariantCulture)
+                + "|"
+                + objectStableId;
         }
     }
 
@@ -386,7 +389,9 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 var hex = new StringBuilder(hash.Length * 2);
                 for (int index = 0; index < hash.Length; index++)
                 {
-                    hex.Append(hash[index].ToString("x2"));
+                    hex.Append(hash[index].ToString(
+                        "x2",
+                        CultureInfo.InvariantCulture));
                 }
                 return hex.ToString();
             }
@@ -406,13 +411,13 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     .Append('|')
                     .Append(value.ObjectStableId)
                     .Append('|')
-                    .Append(value.Level)
+                    .Append(value.Level.ToString(CultureInfo.InvariantCulture))
                     .Append('|')
-                    .Append(value.LocalPosition.X.ToString("R"))
+                    .Append(Number(value.LocalPosition.X))
                     .Append('|')
-                    .Append(value.LocalPosition.Y.ToString("R"))
+                    .Append(Number(value.LocalPosition.Y))
                     .Append('|')
-                    .Append(value.LocalRotationDegrees.ToString("R"));
+                    .Append(Number(value.LocalRotationDegrees));
             }
         }
 
@@ -430,11 +435,11 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     .Append('|')
                     .Append(value.ObjectStableId)
                     .Append('|')
-                    .Append(value.LocalPosition.X.ToString("R"))
+                    .Append(Number(value.LocalPosition.X))
                     .Append('|')
-                    .Append(value.LocalPosition.Y.ToString("R"))
+                    .Append(Number(value.LocalPosition.Y))
                     .Append('|')
-                    .Append(value.LocalRotationDegrees.ToString("R"));
+                    .Append(Number(value.LocalRotationDegrees));
             }
         }
 
@@ -452,14 +457,19 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     .Append('|')
                     .Append(value.ObjectStableId)
                     .Append('|')
-                    .Append((int)value.Layer)
+                    .Append(((int)value.Layer).ToString(CultureInfo.InvariantCulture))
                     .Append('|')
-                    .Append(value.LocalPosition.X.ToString("R"))
+                    .Append(Number(value.LocalPosition.X))
                     .Append('|')
-                    .Append(value.LocalPosition.Y.ToString("R"))
+                    .Append(Number(value.LocalPosition.Y))
                     .Append('|')
-                    .Append(value.LocalRotationDegrees.ToString("R"));
+                    .Append(Number(value.LocalRotationDegrees));
             }
+        }
+
+        private static string Number(double value)
+        {
+            return value.ToString("R", CultureInfo.InvariantCulture);
         }
 
         private static ReadOnlyCollection<T> Copy<T>(
