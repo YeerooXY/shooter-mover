@@ -1,14 +1,14 @@
-# MENU-001 presentation backplates
+# Canonical flow presentation backplates
 
-These four 640x360 image payloads are presentation-only backplates for the standalone MENU-001 scene:
+These 640x360 image payloads are passive artwork retained for the dedicated production-flow scenes:
 
 - `MainMenuBackground.png.bytes`
 - `LevelSelectBackground.png.bytes`
 - `SkillsBackground.png.bytes`
 - `ResultsBackground.png.bytes`
 
-The files contain base64-encoded PNG data and are decoded by `MainMenuArtworkController`. Text, icons, cards, and buttons baked into these images are never used as controls. All selectable behavior comes from code-owned overlay hit regions.
+The files contain base64-encoded PNG data. Each canonical scene has one scene-specific controller that decodes or projects its own artwork. The Main Menu no longer embeds Level Selection, Skills, Inventory, Shop, Crafting, Settings, or Results inside one `OnGUI` owner.
 
-The original File Library images were available to this implementation environment as visual descriptions/previews, not transferable binary attachments. The committed compact backplates reproduce their intended layout and can be replaced with the original 16:9 image payloads later without changing menu state, scene routing, hit regions, or gameplay authorities.
+Text, icons, cards, and buttons baked into these images are presentation only. Selectable behavior comes from the code-owned hit regions and routing of the controller for the currently loaded scene.
 
-MENU-001 owns no wallet, inventory, XP, skill, purchase, crafting, or reward truth. The skills, results, and second-level content shown here remain navigation/presentation shells for their separate follow-up scene tasks.
+The original File Library images were available to the initial implementation environment as visual descriptions/previews rather than transferable binary attachments. These compact backplates can still be replaced later without changing route, inventory, economy, skill, crafting, reward, or gameplay authority.
