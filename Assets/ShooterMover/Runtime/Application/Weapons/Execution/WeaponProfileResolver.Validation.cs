@@ -1,5 +1,6 @@
 using System;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
 {

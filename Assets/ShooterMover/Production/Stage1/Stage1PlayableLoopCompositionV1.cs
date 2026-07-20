@@ -218,6 +218,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StableId placedInstanceStableId,
             out IEnemyActor2DAuthority authority)
         {
+            authority = null;
             return placedInstanceStableId != null
                 && projectedRoomEnemies.TryGetValue(
                     placedInstanceStableId,
