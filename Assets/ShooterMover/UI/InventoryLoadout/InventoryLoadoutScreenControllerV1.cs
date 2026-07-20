@@ -1,5 +1,6 @@
 using System;
 using ShooterMover.Application.Flow.Hub;
+using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
@@ -33,6 +34,8 @@ namespace ShooterMover.UI.InventoryLoadout
         private GUIStyle smallStyle;
         private GUIStyle invalidStyle;
 
+        public event Action<PlayerRouteProfilePayloadV1> Confirmed;
+
         public InventoryLoadoutScreenSnapshotV1 Snapshot
         {
             get { return service == null ? null : service.Snapshot; }
@@ -56,7 +59,10 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public int ReturnCount { get; private set; }
 
-        public StableId ActiveSlotStableId { get { return activeSlotStableId; } }
+        public StableId ActiveSlotStableId
+        {
+            get { return activeSlotStableId; }
+        }
 
         public bool IsConfigured
         {
@@ -74,6 +80,22 @@ namespace ShooterMover.UI.InventoryLoadout
             IInventoryLoadoutAuthorityPortV1 loadoutAuthority,
             Action<PlayerRouteProfilePayloadV1> returnToHub)
         {
+            ConnectAuthorities(
+                holdingsAuthority,
+                equipmentCatalogProvider,
+                loadoutAuthority);
+            this.returnToHub = returnToHub;
+        }
+
+        /// <summary>
+        /// Replaces only the disconnected authority ports while preserving the route
+        /// callback already supplied by the production-flow owner.
+        /// </summary>
+        public void ConnectAuthorities(
+            IPlayerHoldingsAuthorityV1 holdingsAuthority,
+            IEquipmentCatalogProvider equipmentCatalogProvider,
+            IInventoryLoadoutAuthorityPortV1 loadoutAuthority)
+        {
             this.holdingsAuthority = holdingsAuthority
                 ?? throw new ArgumentNullException(nameof(holdingsAuthority));
             this.equipmentCatalogProvider = equipmentCatalogProvider
@@ -81,8 +103,10 @@ namespace ShooterMover.UI.InventoryLoadout
                     nameof(equipmentCatalogProvider));
             this.loadoutAuthority = loadoutAuthority
                 ?? throw new ArgumentNullException(nameof(loadoutAuthority));
-            this.returnToHub = returnToHub;
-            if (incomingPayload != null) BuildService(incomingPayload);
+            if (incomingPayload != null)
+            {
+                BuildService(incomingPayload);
+            }
         }
 
         public void ConfigureDisconnected(
@@ -131,7 +155,11 @@ namespace ShooterMover.UI.InventoryLoadout
             LastReturnedPayload = null;
             ReturnCount = 0;
             lastResult = null;
-            activeSlotStableId = InventoryLoadoutSlotIdsV1.WeaponOne;
+            ProductionWeaponMountLayoutV1 layout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    payload.LoadoutProfileStableId);
+            activeSlotStableId = layout.ConfigurablePositions[0]
+                .LoadoutSlotStableId;
             service = IsConfigured
                 ? new InventoryLoadoutScreenServiceV1(
                     payload,
@@ -146,12 +174,16 @@ namespace ShooterMover.UI.InventoryLoadout
             InventoryLoadoutSlotDescriptorV1 descriptor;
             if (!InventoryLoadoutSlotsV1.TryFind(
                 slotStableId,
-                out descriptor))
+                out descriptor)
+                || !IsSlotAvailable(descriptor))
             {
                 return false;
             }
 
-            if (activeSlotStableId == descriptor.SlotStableId) return false;
+            if (activeSlotStableId == descriptor.SlotStableId)
+            {
+                return false;
+            }
             activeSlotStableId = descriptor.SlotStableId;
             return true;
         }
@@ -162,7 +194,6 @@ namespace ShooterMover.UI.InventoryLoadout
             {
                 return false;
             }
-
             return SelectSlot(
                 InventoryLoadoutSlotsV1.All[index].SlotStableId);
         }
@@ -170,7 +201,10 @@ namespace ShooterMover.UI.InventoryLoadout
         public InventoryLoadoutScreenResultV1 SelectInstance(
             StableId equipmentInstanceStableId)
         {
-            if (service == null) return null;
+            if (service == null)
+            {
+                return null;
+            }
             lastResult = service.TrySelect(
                 activeSlotStableId,
                 equipmentInstanceStableId);
@@ -179,25 +213,39 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public InventoryLoadoutScreenResultV1 UnequipActiveSlot()
         {
-            if (service == null) return null;
+            if (service == null)
+            {
+                return null;
+            }
             lastResult = service.TryUnequip(activeSlotStableId);
             return lastResult;
         }
 
         public InventoryLoadoutScreenResultV1 Refresh()
         {
-            if (service == null) return null;
+            if (service == null)
+            {
+                return null;
+            }
             lastResult = service.Refresh();
             return lastResult;
         }
 
         public InventoryLoadoutScreenResultV1 Confirm()
         {
-            if (service == null) return null;
+            if (service == null)
+            {
+                return null;
+            }
             lastResult = service.Confirm();
             if (lastResult.Status
                 == InventoryLoadoutScreenStatusV1.Confirmed)
             {
+                Action<PlayerRouteProfilePayloadV1> handler = Confirmed;
+                if (handler != null)
+                {
+                    handler(lastResult.RoutePayload);
+                }
                 DispatchReturn(lastResult.RoutePayload);
             }
             return lastResult;
@@ -237,7 +285,10 @@ namespace ShooterMover.UI.InventoryLoadout
                 && Keyboard.current.enterKey.wasPressedThisFrame;
             confirm |= Gamepad.current != null
                 && Gamepad.current.buttonSouth.wasPressedThisFrame;
-            if (confirm) Confirm();
+            if (confirm)
+            {
+                Confirm();
+            }
         }
 
         private void OnGUI()
@@ -262,15 +313,27 @@ namespace ShooterMover.UI.InventoryLoadout
             GUILayout.Label("INVENTORY / LOADOUT", titleStyle);
             if (incomingPayload != null)
             {
+                ProductionWeaponMountLayoutV1 layout =
+                    ProductionWeaponMountPolicyV1.ResolveLayout(
+                        incomingPayload.LoadoutProfileStableId);
                 GUILayout.Label(
                     incomingPayload.SelectedCharacterStableId
                     + " / "
-                    + incomingPayload.LoadoutProfileStableId,
+                    + incomingPayload.LoadoutProfileStableId
+                    + " / "
+                    + layout.BaselineEnabledMountCount
+                    + " mounted weapons",
                     smallStyle);
             }
 
-            if (service == null) DrawDisconnected();
-            else DrawConnected();
+            if (service == null)
+            {
+                DrawDisconnected();
+            }
+            else
+            {
+                DrawConnected();
+            }
             GUILayout.EndArea();
         }
 
@@ -300,11 +363,17 @@ namespace ShooterMover.UI.InventoryLoadout
             GUILayout.BeginVertical(
                 GUILayout.Width(
                     Mathf.Min(360f, Screen.width * 0.34f)));
-            GUILayout.Label("LOADOUT SLOTS", headingStyle);
+            GUILayout.Label("PHYSICAL MOUNTS", headingStyle);
             slotScroll = GUILayout.BeginScrollView(slotScroll);
             for (int index = 0; index < current.Selections.Count; index++)
             {
-                DrawSlot(current.Selections[index]);
+                InventoryLoadoutSelectionProjectionV1 selection =
+                    current.Selections[index];
+                if (!IsSlotAvailable(selection.Slot))
+                {
+                    continue;
+                }
+                DrawSlot(selection);
             }
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
@@ -326,7 +395,6 @@ namespace ShooterMover.UI.InventoryLoadout
                 {
                     continue;
                 }
-
                 DrawEquipment(equipment);
             }
             GUILayout.EndScrollView();
@@ -341,7 +409,7 @@ namespace ShooterMover.UI.InventoryLoadout
                 Refresh();
             }
             if (GUILayout.Button(
-                "UNEQUIP SLOT",
+                "UNEQUIP MOUNT",
                 GUILayout.MinHeight(42f)))
             {
                 UnequipActiveSlot();
@@ -386,7 +454,7 @@ namespace ShooterMover.UI.InventoryLoadout
                     : ShortIdentity(
                         selection.EquipmentInstanceStableId);
             string label = (active ? "▶ " : string.Empty)
-                + selection.Slot.DisplayName
+                + SlotDisplayName(selection.Slot)
                 + "\n"
                 + equipmentText;
             if (GUILayout.Button(
@@ -433,6 +501,47 @@ namespace ShooterMover.UI.InventoryLoadout
             GUILayout.Space(4f);
         }
 
+        private bool IsSlotAvailable(
+            InventoryLoadoutSlotDescriptorV1 descriptor)
+        {
+            if (descriptor == null || incomingPayload == null)
+            {
+                return false;
+            }
+            return descriptor.Kind != InventoryLoadoutSlotKindV1.Weapon
+                || ProductionWeaponMountPolicyV1
+                    .IsConfigurableLoadoutSlot(
+                        incomingPayload.LoadoutProfileStableId,
+                        descriptor.SlotStableId);
+        }
+
+        private string SlotDisplayName(
+            InventoryLoadoutSlotDescriptorV1 descriptor)
+        {
+            if (descriptor.Kind != InventoryLoadoutSlotKindV1.Weapon
+                || incomingPayload == null)
+            {
+                return descriptor.DisplayName;
+            }
+
+            ProductionWeaponMountLayoutV1 layout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    incomingPayload.LoadoutProfileStableId);
+            for (int index = 0;
+                index < layout.ConfigurablePositions.Count;
+                index++)
+            {
+                ProductionWeaponMountPositionV1 position =
+                    layout.ConfigurablePositions[index];
+                if (position.LoadoutSlotStableId
+                    == descriptor.SlotStableId)
+                {
+                    return position.DisplayName;
+                }
+            }
+            return descriptor.DisplayName;
+        }
+
         private void BuildService(PlayerRouteProfilePayloadV1 payload)
         {
             service = new InventoryLoadoutScreenServiceV1(
@@ -444,16 +553,25 @@ namespace ShooterMover.UI.InventoryLoadout
 
         private void DispatchReturn(PlayerRouteProfilePayloadV1 payload)
         {
-            if (returnDispatched || payload == null) return;
+            if (returnDispatched || payload == null)
+            {
+                return;
+            }
             returnDispatched = true;
             LastReturnedPayload = payload;
             ReturnCount++;
-            if (returnToHub != null) returnToHub(payload);
+            if (returnToHub != null)
+            {
+                returnToHub(payload);
+            }
         }
 
         private void EnsureStyles()
         {
-            if (titleStyle != null) return;
+            if (titleStyle != null)
+            {
+                return;
+            }
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
