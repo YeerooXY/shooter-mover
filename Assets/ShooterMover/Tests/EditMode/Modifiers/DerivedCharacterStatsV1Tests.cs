@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Modifiers;
 using ShooterMover.Domain.Progression.Skills;
@@ -300,29 +301,39 @@ namespace ShooterMover.Tests.EditMode.Characters.Stats
                 "content.fixture",
                 new[] { armorSkill },
                 null);
-            var allocation = new RankedSkillAllocationSnapshotV2(
+            var authority = new RankedSkillAllocationAuthorityV2(catalog);
+            authority.Seed(RankedSkillAllocationSnapshotV2.Empty(
                 "profile.juggernaut-one",
                 "juggernaut",
-                4L,
-                catalog.SchemaVersion,
-                catalog.ContentVersion,
-                new Dictionary<string, int>
-                {
-                    { armorSkill.Id, 2 },
-                });
-            SkillEffectSnapshotV2 effects = new SkillEffectProjectorV2()
-                .Project(catalog, allocation);
+                catalog));
+            SkillAllocationResultV2 first = authority.Allocate(
+                new AllocateSkillRankCommandV2(
+                    "allocate.armor.1",
+                    "profile.juggernaut-one",
+                    armorSkill.Id,
+                    0L,
+                    2));
+            SkillAllocationResultV2 second = authority.Allocate(
+                new AllocateSkillRankCommandV2(
+                    "allocate.armor.2",
+                    "profile.juggernaut-one",
+                    armorSkill.Id,
+                    1L,
+                    2));
             RuntimeModifierSnapshotV1 projected =
-                SkillEffectModifierAdapterV1.Adapt(effects);
+                SkillEffectModifierAdapterV1.Adapt(second.Effects);
             var source = new DerivedStatModifierSourceV1(
                 "skills.allocation",
                 DerivedStatSourcePrioritiesV1.Skills,
-                effects.Fingerprint,
+                second.Effects.Fingerprint,
                 projected);
 
             DerivedCharacterStatsSnapshotV1 result = composer.DeriveCharacter(
                 Input(BaseValues(100m, 5m), new[] { source }));
 
+            Assert.That(first.Accepted, Is.True);
+            Assert.That(second.Accepted, Is.True);
+            Assert.That(second.Snapshot.RankOf(armorSkill.Id), Is.EqualTo(2));
             Assert.That(armorSkill.EffectiveMaximumRank("juggernaut"), Is.EqualTo(2));
             Assert.That(result.Armor, Is.EqualTo(14m));
             Assert.That(result.SourceFingerprints, Has.Count.EqualTo(1));
