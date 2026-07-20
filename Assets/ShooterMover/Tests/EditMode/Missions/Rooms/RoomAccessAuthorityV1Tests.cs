@@ -432,6 +432,58 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             Assert.That(facts.Difficulty, Is.EqualTo(2));
         }
 
+        [Test]
+        public void Definition_UnknownExternalReferenceRejectsFailClosed()
+        {
+            AuthorableRoomGraphDefinitionV1 graph =
+                Level1AuthorableRoomDefinitionV1.Create();
+            var condition = Leaf(
+                Id("access.unknown-holding"),
+                RoomAccessConditionKindV1.HoldingPresent,
+                Id("holding.not-registered"));
+
+            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+                new RoomAccessDefinitionV1(
+                    graph,
+                    RoomAccessReferenceCatalogV1.Empty,
+                    new[] { condition },
+                    Array.Empty<RoomDoorAccessDefinitionV1>()));
+
+            Assert.That(
+                exception.Message,
+                Does.Contain("room-access-holding-reference-unknown"));
+        }
+
+        [Test]
+        public void Definition_UnknownConsumeHoldingRejectsFailClosed()
+        {
+            AuthorableRoomGraphDefinitionV1 graph =
+                Level1AuthorableRoomDefinitionV1.Create();
+            StableId conditionId = Id("access.always-open");
+            var condition = new RoomAccessConditionDefinitionV1(
+                conditionId,
+                RoomAccessConditionKindV1.Always,
+                null,
+                0,
+                Array.Empty<StableId>());
+            var door = Door(
+                Level1AuthorableRoomDefinitionV1.EntryRoomStableId,
+                Level1AuthorableRoomDefinitionV1.ForwardDoorStableId,
+                conditionId,
+                Id("holding.not-registered"));
+
+            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+                new RoomAccessDefinitionV1(
+                    graph,
+                    RoomAccessReferenceCatalogV1.Empty,
+                    new[] { condition },
+                    new[] { door }));
+
+            Assert.That(
+                exception.Message,
+                Does.Contain("room-access-consume-holding-reference-unknown"));
+        }
+
         private static RoomAccessAuthorityV1 Authority(
             RoomAccessDefinitionV1 definition,
             IRoomAccessFactPortV1 facts,
@@ -450,7 +502,94 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             IEnumerable<RoomAccessConditionDefinitionV1> conditions,
             IEnumerable<RoomDoorAccessDefinitionV1> doors)
         {
-            return new RoomAccessDefinitionV1(graph, conditions, doors);
+            var conditionList = new List<RoomAccessConditionDefinitionV1>(conditions);
+            var doorList = new List<RoomDoorAccessDefinitionV1>(doors);
+            RoomAccessReferenceCatalogV1 references = ReferencesFor(
+                conditionList,
+                doorList);
+            return new RoomAccessDefinitionV1(
+                graph,
+                references,
+                conditionList,
+                doorList);
+        }
+
+        private static RoomAccessReferenceCatalogV1 ReferencesFor(
+            IReadOnlyList<RoomAccessConditionDefinitionV1> conditions,
+            IReadOnlyList<RoomDoorAccessDefinitionV1> doors)
+        {
+            var registrations = new List<RoomAccessReferenceRegistrationV1>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int index = 0; index < conditions.Count; index++)
+            {
+                RoomAccessConditionDefinitionV1 condition = conditions[index];
+                RoomAccessReferenceKindV1 kind;
+                RoomAccessReferenceSourceV1 source;
+                if (!TryReferenceKind(condition.Kind, out kind, out source)) continue;
+                AddReference(
+                    registrations,
+                    seen,
+                    condition.SubjectStableId,
+                    kind,
+                    source);
+            }
+            for (int index = 0; index < doors.Count; index++)
+            {
+                if (doors[index].ConsumeHoldingStableId == null) continue;
+                AddReference(
+                    registrations,
+                    seen,
+                    doors[index].ConsumeHoldingStableId,
+                    RoomAccessReferenceKindV1.Holding,
+                    RoomAccessReferenceSourceV1.RunHolding);
+            }
+            return new RoomAccessReferenceCatalogV1(registrations);
+        }
+
+        private static bool TryReferenceKind(
+            RoomAccessConditionKindV1 conditionKind,
+            out RoomAccessReferenceKindV1 referenceKind,
+            out RoomAccessReferenceSourceV1 source)
+        {
+            switch (conditionKind)
+            {
+                case RoomAccessConditionKindV1.HoldingPresent:
+                case RoomAccessConditionKindV1.HoldingConsumed:
+                    referenceKind = RoomAccessReferenceKindV1.Holding;
+                    source = RoomAccessReferenceSourceV1.RunHolding;
+                    return true;
+                case RoomAccessConditionKindV1.ObjectiveComplete:
+                    referenceKind = RoomAccessReferenceKindV1.Objective;
+                    source = RoomAccessReferenceSourceV1.ObjectiveDefinition;
+                    return true;
+                case RoomAccessConditionKindV1.SwitchActive:
+                    referenceKind = RoomAccessReferenceKindV1.Switch;
+                    source = RoomAccessReferenceSourceV1.SwitchDefinition;
+                    return true;
+                case RoomAccessConditionKindV1.CollectedDrop:
+                    referenceKind = RoomAccessReferenceKindV1.CollectedDrop;
+                    source = RoomAccessReferenceSourceV1.ExternalDropReference;
+                    return true;
+                default:
+                    referenceKind = default(RoomAccessReferenceKindV1);
+                    source = default(RoomAccessReferenceSourceV1);
+                    return false;
+            }
+        }
+
+        private static void AddReference(
+            ICollection<RoomAccessReferenceRegistrationV1> registrations,
+            ISet<string> seen,
+            StableId id,
+            RoomAccessReferenceKindV1 kind,
+            RoomAccessReferenceSourceV1 source)
+        {
+            string key = ((int)kind) + "|" + id;
+            if (!seen.Add(key)) return;
+            registrations.Add(new RoomAccessReferenceRegistrationV1(
+                id,
+                kind,
+                source));
         }
 
         private static RoomAccessConditionDefinitionV1 Leaf(
@@ -566,14 +705,19 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
 
             public void SetQuantity(StableId holdingStableId, int quantity)
             {
-                if (quantity < 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+                if (quantity < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(quantity));
+                }
                 quantities[holdingStableId] = quantity;
             }
 
             public int Quantity(StableId holdingStableId)
             {
                 int value;
-                return quantities.TryGetValue(holdingStableId, out value) ? value : 0;
+                return quantities.TryGetValue(holdingStableId, out value)
+                    ? value
+                    : 0;
             }
 
             public RoomHoldingConsumeResultV1 Consume(
