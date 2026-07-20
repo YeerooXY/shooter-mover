@@ -193,7 +193,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 (float)chain.Origin.Y);
             direction = suppliedDirection.normalized;
             speed = 0f;
-            remainingSeconds = float.PositiveInfinity;
+            remainingSeconds = 1f;
             instantaneous = true;
             configured = true;
             transform.position = new Vector3(origin.x, origin.y, 0f);
@@ -202,10 +202,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         private void Update()
         {
-            if (!configured
-                || !launched
-                || instantaneous
-                || completed)
+            if (!configured || !launched || completed)
             {
                 return;
             }
