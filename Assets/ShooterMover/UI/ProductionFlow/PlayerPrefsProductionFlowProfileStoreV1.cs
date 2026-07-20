@@ -72,7 +72,7 @@ namespace ShooterMover.UI.ProductionFlow
                 DisplayNameKeyFor(slotIndex));
             if (!imported.IsValid || string.IsNullOrWhiteSpace(displayName))
             {
-                Clear();
+                Clear(slotIndex);
                 return false;
             }
 
@@ -138,30 +138,42 @@ namespace ShooterMover.UI.ProductionFlow
             PlayerPrefs.Save();
         }
 
+        public void Clear(int slotIndex)
+        {
+            ValidateSlotIndex(slotIndex);
+            ClearSlotKeys(slotIndex);
+            PlayerPrefs.Save();
+        }
+
         public void Clear()
         {
             for (int slotIndex = 0;
                 slotIndex < ProfileSlotCount;
                 slotIndex++)
             {
-                PlayerPrefs.DeleteKey(ExistsKeyFor(slotIndex));
-                PlayerPrefs.DeleteKey(DisplayNameKeyFor(slotIndex));
-                PlayerPrefs.DeleteKey(SchemaKeyFor(slotIndex));
-                PlayerPrefs.DeleteKey(ContractKeyFor(slotIndex));
-                PlayerPrefs.DeleteKey(CharacterKeyFor(slotIndex));
-                PlayerPrefs.DeleteKey(ProfileKeyFor(slotIndex));
-                PlayerPrefs.DeleteKey(FingerprintKeyFor(slotIndex));
-                for (int index = 0;
-                    index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                    index++)
-                {
-                    PlayerPrefs.DeleteKey(
-                        WeaponSlotKey(slotIndex, index));
-                    PlayerPrefs.DeleteKey(
-                        WeaponInstanceKey(slotIndex, index));
-                }
+                ClearSlotKeys(slotIndex);
             }
             PlayerPrefs.Save();
+        }
+
+        private static void ClearSlotKeys(int slotIndex)
+        {
+            PlayerPrefs.DeleteKey(ExistsKeyFor(slotIndex));
+            PlayerPrefs.DeleteKey(DisplayNameKeyFor(slotIndex));
+            PlayerPrefs.DeleteKey(SchemaKeyFor(slotIndex));
+            PlayerPrefs.DeleteKey(ContractKeyFor(slotIndex));
+            PlayerPrefs.DeleteKey(CharacterKeyFor(slotIndex));
+            PlayerPrefs.DeleteKey(ProfileKeyFor(slotIndex));
+            PlayerPrefs.DeleteKey(FingerprintKeyFor(slotIndex));
+            for (int index = 0;
+                index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                index++)
+            {
+                PlayerPrefs.DeleteKey(
+                    WeaponSlotKey(slotIndex, index));
+                PlayerPrefs.DeleteKey(
+                    WeaponInstanceKey(slotIndex, index));
+            }
         }
 
         private static string SlotKey(int index)
