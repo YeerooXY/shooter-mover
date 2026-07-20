@@ -1,0 +1,19 @@
+{
+  "room": "room.level1-terminal",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {
+        "exit_type": "return"
+      },
+      "open_when": "room-entered"
+    },
+    {
+      "match": {
+        "link_kind": "final-exit"
+      },
+      "open_when": "room-complete"
+    }
+  ]
+}
