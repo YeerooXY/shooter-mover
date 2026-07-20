@@ -333,10 +333,20 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 "equipment.demo-cutover-flamethrower",
             };
             StableId common = StableId.Parse("equipment-quality.common");
+            int firstBoundSlot = -1;
             for (int index = 0; index < PlayerRouteProfilePayloadV1.WeaponSlotCount; index++)
             {
                 StableId instanceId =
                     profile.Payload.WeaponSlots[index].EquipmentInstanceStableId;
+                if (instanceId == null)
+                {
+                    continue;
+                }
+                if (firstBoundSlot < 0)
+                {
+                    firstBoundSlot = index;
+                }
+
                 EquipmentInstance instance = EquipmentInstance.Create(
                     instanceId,
                     StableId.Parse(definitionIds[index]),
@@ -344,6 +354,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     common,
                     Array.Empty<AugmentInstance>());
                 AddEquipment(instance, index);
+            }
+            if (firstBoundSlot < 0)
+            {
+                throw new InvalidOperationException(
+                    "The retained Stage 1 bootstrap requires one bound weapon position.");
             }
 
             weaponCatalog = BuildWeaponCatalog();
@@ -353,7 +368,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             effectEmitter = emitterObject.AddComponent<InventoryWeaponEffectEmitter2D>();
 
             var actorState = new PlayerWeaponActorStateSourceV1(controller);
-            var activeWeapon = new RouteProfileActiveWeaponSource(profile.Payload, 0);
+            var activeWeapon = new RouteProfileActiveWeaponSource(
+                profile.Payload,
+                firstBoundSlot);
             var adapter = new InventoryBackedWeaponExecutionAdapter(
                 holdings,
                 equipmentCatalog,
