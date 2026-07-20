@@ -1,7 +1,6 @@
 using System;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -10,9 +9,8 @@ namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
     /// Persistent production composition for the Hub inventory/loadout screen. The
-    /// existing InventoryLoadoutScreenServiceV1 remains the UI/application workflow;
-    /// this component supplies the one shared holdings/loadout context and persists the
-    /// confirmed immutable route payload.
+    /// production-flow coordinator remains the route/profile persistence owner; this
+    /// component supplies the shared holdings and loadout authorities only.
     /// </summary>
     [DefaultExecutionOrder(-31900)]
     [DisallowMultipleComponent]
@@ -145,6 +143,16 @@ namespace ShooterMover.UI.ProductionFlow
                     currentProfile.Payload);
                 boundController = null;
                 boundPayloadFingerprint = string.Empty;
+                return;
+            }
+
+            if (!string.Equals(
+                currentProfile.Payload.Fingerprint,
+                coordinatorProfile.Payload.Fingerprint,
+                StringComparison.Ordinal))
+            {
+                currentProfile = coordinatorProfile;
+                boundPayloadFingerprint = string.Empty;
             }
         }
 
@@ -181,36 +189,16 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            controller.Configure(
+            controller.ConnectAuthorities(
                 runtime.Holdings,
                 runtime.CatalogAdapter,
-                runtime.LoadoutAuthority,
-                CommitAndReturnToHub);
+                runtime.LoadoutAuthority);
             controller.Present(
                 HubRouteV1.Inventory,
                 currentProfile.Payload);
             boundController = controller;
             boundPayloadFingerprint =
                 currentProfile.Payload.Fingerprint;
-        }
-
-        private void CommitAndReturnToHub(
-            PlayerRouteProfilePayloadV1 payload)
-        {
-            if (payload == null
-                || currentProfile == null
-                || !payload.HasValidFingerprint())
-            {
-                return;
-            }
-
-            currentProfile = new ProductionFlowProfileRecordV1(
-                currentProfile.DisplayName,
-                payload);
-            new PlayerPrefsProductionFlowProfileStoreV1()
-                .Save(currentProfile);
-            boundPayloadFingerprint = payload.Fingerprint;
-            coordinator.Transitions.TryReturnToHub(payload);
         }
 
         private void OnDestroy()
