@@ -82,37 +82,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             "Flamethrower",
         };
 
-        private readonly Dictionary<string, ProjectilePresentation> projectilePresentation =
-            new Dictionary<string, ProjectilePresentation>(StringComparer.Ordinal)
-            {
-                {
-                    "weapon.blaster-machine-gun",
-                    new ProjectilePresentation(
-                        new Color(0.16f, 0.88f, 1f, 1f),
-                        new Vector3(0.22f, 0.08f, 1f))
-                },
-                {
-                    "weapon.shotgun",
-                    new ProjectilePresentation(
-                        new Color(1f, 0.78f, 0.22f, 1f),
-                        new Vector3(0.13f, 0.07f, 1f))
-                },
-                {
-                    "weapon.rocket-launcher",
-                    new ProjectilePresentation(
-                        new Color(1f, 0.25f, 0.08f, 1f),
-                        new Vector3(0.38f, 0.18f, 1f))
-                },
-                {
-                    "weapon.flamethrower",
-                    new ProjectilePresentation(
-                        new Color(1f, 0.48f, 0.05f, 0.9f),
-                        new Vector3(0.22f, 0.14f, 1f))
-                },
-            };
-
-        private readonly Dictionary<string, Sprite> projectileSprites =
-            new Dictionary<string, Sprite>(StringComparer.Ordinal);
         private readonly HashSet<InventoryWeaponEffectInstance2D> preparedEffects =
             new HashSet<InventoryWeaponEffectInstance2D>();
         private readonly HashSet<InventoryWeaponPersistentDamageArea2D> preparedPools =
