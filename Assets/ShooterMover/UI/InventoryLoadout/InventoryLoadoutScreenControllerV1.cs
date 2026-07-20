@@ -74,6 +74,22 @@ namespace ShooterMover.UI.InventoryLoadout
             IInventoryLoadoutAuthorityPortV1 loadoutAuthority,
             Action<PlayerRouteProfilePayloadV1> returnToHub)
         {
+            ConnectAuthorities(
+                holdingsAuthority,
+                equipmentCatalogProvider,
+                loadoutAuthority);
+            this.returnToHub = returnToHub;
+        }
+
+        /// <summary>
+        /// Replaces only the disconnected authority ports while preserving the route
+        /// callback already supplied by the production-flow owner.
+        /// </summary>
+        public void ConnectAuthorities(
+            IPlayerHoldingsAuthorityV1 holdingsAuthority,
+            IEquipmentCatalogProvider equipmentCatalogProvider,
+            IInventoryLoadoutAuthorityPortV1 loadoutAuthority)
+        {
             this.holdingsAuthority = holdingsAuthority
                 ?? throw new ArgumentNullException(nameof(holdingsAuthority));
             this.equipmentCatalogProvider = equipmentCatalogProvider
@@ -81,7 +97,6 @@ namespace ShooterMover.UI.InventoryLoadout
                     nameof(equipmentCatalogProvider));
             this.loadoutAuthority = loadoutAuthority
                 ?? throw new ArgumentNullException(nameof(loadoutAuthority));
-            this.returnToHub = returnToHub;
             if (incomingPayload != null) BuildService(incomingPayload);
         }
 
