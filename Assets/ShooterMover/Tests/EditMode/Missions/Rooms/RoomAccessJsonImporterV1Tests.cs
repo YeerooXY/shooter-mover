@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Content.Definitions.Missions.Rooms;
@@ -9,7 +11,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
     public sealed class RoomAccessJsonImporterV1Tests
     {
         [Test]
-        public void ReadableKeyAndDoorDefinition_ImportsWithoutProductionBranches()
+        public void KnownHoldingKey_ImportsAndCanBeConsumedByAuthoredDoor()
         {
             AuthorableRoomGraphDefinitionV1 graph =
                 Level1AuthorableRoomDefinitionV1.Create();
@@ -25,9 +27,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 + "\"condition\":\"access.blue-key\","
                 + "\"consume_holding\":\"holding.blue-key\"}]}";
 
-            RoomAccessImportResultV1 result = RoomAccessJsonImporterV1.Import(
-                json,
-                graph);
+            RoomAccessImportResultV1 result = Import(json, graph, Registry());
 
             Assert.That(result.IsValid, Is.True, FirstIssue(result));
             Assert.That(result.Definition.Doors, Has.Count.EqualTo(1));
@@ -37,7 +37,139 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 Is.EqualTo(Level1AuthorableRoomDefinitionV1.ForwardDoorStableId));
             Assert.That(
                 door.ConsumeHoldingStableId,
-                Is.EqualTo(StableId.Parse("holding.blue-key")));
+                Is.EqualTo(Id("holding.blue-key")));
+            Assert.That(
+                result.Definition.ReferenceRegistryFingerprint,
+                Is.EqualTo(Registry().Fingerprint));
+        }
+
+        [Test]
+        public void UnknownHoldingPresent_RejectsAtSubject()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "holding-present",
+                "holding.misspelled-key",
+                Registry());
+
+            AssertIssue(
+                result,
+                "room-access-holding-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void UnknownHoldingConsumed_RejectsAtSubject()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "holding-consumed",
+                "holding.misspelled-key",
+                Registry());
+
+            AssertIssue(
+                result,
+                "room-access-holding-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void UnknownConsumeHolding_RejectsAtConsumeHolding()
+        {
+            AuthorableRoomGraphDefinitionV1 graph =
+                Level1AuthorableRoomDefinitionV1.Create();
+            string json = Header(graph)
+                + "\"conditions\":["
+                + Always("access.open")
+                + "],\"doors\":[{\"room\":\""
+                + Level1AuthorableRoomDefinitionV1.EntryRoomStableId
+                + "\",\"exit_type\":\"progression\","
+                + "\"condition\":\"access.open\","
+                + "\"consume_holding\":\"holding.misspelled-key\"}]}";
+
+            RoomAccessImportResultV1 result = Import(json, graph, Registry());
+
+            AssertIssue(
+                result,
+                "room-access-consume-holding-reference-unknown",
+                "$.doors[0].consume_holding");
+        }
+
+        [Test]
+        public void KnownSwitch_Imports()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "switch-active",
+                "switch.main-power",
+                Registry());
+
+            Assert.That(result.IsValid, Is.True, FirstIssue(result));
+            Assert.That(
+                result.Definition.Conditions[0].SubjectStableId,
+                Is.EqualTo(Id("switch.main-power")));
+        }
+
+        [Test]
+        public void MisspelledSwitch_RejectsAtSubject()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "switch-active",
+                "switch.main-pwoer",
+                Registry());
+
+            AssertIssue(
+                result,
+                "room-access-switch-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void UnknownObjective_RejectsAtSubject()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "objective-complete",
+                "objective.not-registered",
+                Registry());
+
+            AssertIssue(
+                result,
+                "room-access-objective-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void UnknownCollectedDrop_RejectsAtSubject()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "collected-drop",
+                "drop.not-registered",
+                Registry());
+
+            AssertIssue(
+                result,
+                "room-access-drop-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void RegistrationOrder_DoesNotChangeRegistryOrDefinitionFingerprint()
+        {
+            AuthorableRoomGraphDefinitionV1 graph =
+                Level1AuthorableRoomDefinitionV1.Create();
+            string json = CompoundJson(graph, reverseOrder: false);
+            RoomAccessReferenceCatalogV1 firstRegistry = Registry(reverse: false);
+            RoomAccessReferenceCatalogV1 secondRegistry = Registry(reverse: true);
+
+            RoomAccessImportResultV1 first = Import(json, graph, firstRegistry);
+            RoomAccessImportResultV1 second = Import(json, graph, secondRegistry);
+
+            Assert.That(first.IsValid, Is.True, FirstIssue(first));
+            Assert.That(second.IsValid, Is.True, FirstIssue(second));
+            Assert.That(secondRegistry.Fingerprint, Is.EqualTo(firstRegistry.Fingerprint));
+            Assert.That(
+                second.Definition.Fingerprint,
+                Is.EqualTo(first.Definition.Fingerprint));
+            Assert.That(
+                second.Definition.ReferenceRegistryFingerprint,
+                Is.EqualTo(first.Definition.ReferenceRegistryFingerprint));
         }
 
         [Test]
@@ -69,9 +201,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                     "access.final-open")
                 + "]}";
 
-            RoomAccessImportResultV1 result = RoomAccessJsonImporterV1.Import(
-                json,
-                graph);
+            RoomAccessImportResultV1 result = Import(json, graph, Registry());
 
             Assert.That(result.IsValid, Is.True, FirstIssue(result));
             AssertDoor(result.Definition, Level1AuthorableRoomDefinitionV1.ForwardDoorStableId);
@@ -80,17 +210,21 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         }
 
         [Test]
-        public void CanonicalJson_RoundTripsWithIdenticalFingerprint()
+        public void CanonicalJson_RoundTripsWithIdenticalFingerprintAndProvenance()
         {
             AuthorableRoomGraphDefinitionV1 graph =
                 Level1AuthorableRoomDefinitionV1.Create();
-            string json = CompoundJson(graph, reverseOrder: false);
-            RoomAccessImportResultV1 first = RoomAccessJsonImporterV1.Import(json, graph);
+            RoomAccessReferenceCatalogV1 references = Registry();
+            RoomAccessImportResultV1 first = Import(
+                CompoundJson(graph, reverseOrder: false),
+                graph,
+                references);
 
             Assert.That(first.IsValid, Is.True, FirstIssue(first));
-            RoomAccessImportResultV1 roundTrip = RoomAccessJsonImporterV1.Import(
+            RoomAccessImportResultV1 roundTrip = Import(
                 first.Definition.ToCanonicalJson(),
-                graph);
+                graph,
+                references);
 
             Assert.That(roundTrip.IsValid, Is.True, FirstIssue(roundTrip));
             Assert.That(
@@ -99,6 +233,9 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             Assert.That(
                 roundTrip.Definition.ToCanonicalJson(),
                 Is.EqualTo(first.Definition.ToCanonicalJson()));
+            Assert.That(
+                roundTrip.Definition.ReferenceRegistryFingerprint,
+                Is.EqualTo(references.Fingerprint));
         }
 
         [Test]
@@ -106,12 +243,15 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         {
             AuthorableRoomGraphDefinitionV1 graph =
                 Level1AuthorableRoomDefinitionV1.Create();
-            RoomAccessImportResultV1 first = RoomAccessJsonImporterV1.Import(
+            RoomAccessReferenceCatalogV1 references = Registry();
+            RoomAccessImportResultV1 first = Import(
                 CompoundJson(graph, reverseOrder: false),
-                graph);
-            RoomAccessImportResultV1 second = RoomAccessJsonImporterV1.Import(
+                graph,
+                references);
+            RoomAccessImportResultV1 second = Import(
                 CompoundJson(graph, reverseOrder: true),
-                graph);
+                graph,
+                references);
 
             Assert.That(first.IsValid, Is.True, FirstIssue(first));
             Assert.That(second.IsValid, Is.True, FirstIssue(second));
@@ -131,15 +271,12 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 + "\"children\":[\"access.missing\"]}],"
                 + "\"doors\":[]}";
 
-            RoomAccessImportResultV1 result = RoomAccessJsonImporterV1.Import(
-                json,
-                graph);
+            RoomAccessImportResultV1 result = Import(json, graph, Registry());
 
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                result.Issues[0].Code,
-                Is.EqualTo("room-access-condition-reference-unknown"));
-            Assert.That(result.Issues[0].Path, Is.EqualTo("$.conditions[0].children[0]"));
+            AssertIssue(
+                result,
+                "room-access-condition-reference-unknown",
+                "$.conditions[0].children[0]");
         }
 
         [Test]
@@ -155,9 +292,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 + "\"children\":[\"access.a\"]}],"
                 + "\"doors\":[]}";
 
-            RoomAccessImportResultV1 result = RoomAccessJsonImporterV1.Import(
-                json,
-                graph);
+            RoomAccessImportResultV1 result = Import(json, graph, Registry());
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(result.Definition, Is.Null);
@@ -168,26 +303,96 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         }
 
         [Test]
-        public void UnknownExactTerminal_RejectsWithSubjectDiagnostic()
+        public void UnknownRoomReference_RejectsAtSubject()
+        {
+            RoomAccessImportResultV1 result = ImportLeaf(
+                "room-entered",
+                "room.not-authored",
+                Registry());
+
+            AssertIssue(
+                result,
+                "room-access-room-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void ExactTerminal_KnownPlacementImportsAndUnknownPlacementRejects()
+        {
+            AuthorableRoomGraphDefinitionV1 graph =
+                Level1AuthorableRoomDefinitionV1.Create();
+            string knownJson = Header(graph)
+                + "\"conditions\":[{\"id\":\"access.terminal\","
+                + "\"kind\":\"exact-terminal\",\"subject\":\""
+                + Level1AuthorableRoomDefinitionV1.MovingDroidInstanceStableId
+                + "\"}],\"doors\":[]}";
+            RoomAccessImportResultV1 known = Import(knownJson, graph, Registry());
+            RoomAccessImportResultV1 unknown = ImportLeaf(
+                "exact-terminal",
+                "entity.not-authored",
+                Registry());
+
+            Assert.That(known.IsValid, Is.True, FirstIssue(known));
+            AssertIssue(
+                unknown,
+                "room-access-terminal-reference-unknown",
+                "$.conditions[0].subject");
+        }
+
+        [Test]
+        public void VersionTwoCanonicalDocument_RejectsMismatchedRegistryFingerprint()
+        {
+            AuthorableRoomGraphDefinitionV1 graph =
+                Level1AuthorableRoomDefinitionV1.Create();
+            RoomAccessReferenceCatalogV1 references = Registry();
+            RoomAccessImportResultV1 imported = Import(
+                CompoundJson(graph, reverseOrder: false),
+                graph,
+                references);
+            Assert.That(imported.IsValid, Is.True, FirstIssue(imported));
+
+            RoomAccessReferenceCatalogV1 different = new RoomAccessReferenceCatalogV1(
+                new[]
+                {
+                    Registration(
+                        "switch.different",
+                        RoomAccessReferenceKindV1.Switch,
+                        RoomAccessReferenceSourceV1.SwitchDefinition),
+                });
+            RoomAccessImportResultV1 result = Import(
+                imported.Definition.ToCanonicalJson(),
+                graph,
+                different);
+
+            AssertIssue(
+                result,
+                "room-access-reference-registry-fingerprint-mismatch",
+                "$.reference_registry_fingerprint");
+        }
+
+        private static RoomAccessImportResultV1 ImportLeaf(
+            string kind,
+            string subject,
+            IRoomAccessReferenceRegistryV1 references)
         {
             AuthorableRoomGraphDefinitionV1 graph =
                 Level1AuthorableRoomDefinitionV1.Create();
             string json = Header(graph)
-                + "\"conditions\":[{"
-                + "\"id\":\"access.terminal\","
-                + "\"kind\":\"exact-terminal\","
-                + "\"subject\":\"entity.not-authored\"}],"
-                + "\"doors\":[]}";
+                + "\"conditions\":[{\"id\":\"access.leaf\","
+                + "\"kind\":\""
+                + kind
+                + "\",\"subject\":\""
+                + subject
+                + "\"}],\"doors\":[]}";
+            return Import(json, graph, references);
+        }
 
-            RoomAccessImportResultV1 result = RoomAccessJsonImporterV1.Import(
-                json,
-                graph);
-
-            Assert.That(result.IsValid, Is.False);
-            Assert.That(
-                result.Issues[0].Code,
-                Is.EqualTo("room-access-terminal-reference-unknown"));
-            Assert.That(result.Issues[0].Path, Is.EqualTo("$.conditions[0].subject"));
+        private static RoomAccessImportResultV1 Import(
+            string json,
+            AuthorableRoomGraphDefinitionV1 graph,
+            IRoomAccessReferenceRegistryV1 references)
+        {
+            return RoomAccessJsonImporterV1.Import(json, graph, references);
         }
 
         private static string CompoundJson(
@@ -222,6 +427,43 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 + "],\"doors\":["
                 + doors
                 + "]}";
+        }
+
+        private static RoomAccessReferenceCatalogV1 Registry(bool reverse = false)
+        {
+            var registrations = new List<RoomAccessReferenceRegistrationV1>
+            {
+                Registration(
+                    "holding.blue-key",
+                    RoomAccessReferenceKindV1.Holding,
+                    RoomAccessReferenceSourceV1.RunHolding),
+                Registration(
+                    "holding.consumed-key",
+                    RoomAccessReferenceKindV1.Holding,
+                    RoomAccessReferenceSourceV1.RunHolding),
+                Registration(
+                    "switch.main-power",
+                    RoomAccessReferenceKindV1.Switch,
+                    RoomAccessReferenceSourceV1.SwitchDefinition),
+                Registration(
+                    "objective.restore-power",
+                    RoomAccessReferenceKindV1.Objective,
+                    RoomAccessReferenceSourceV1.ObjectiveDefinition),
+                Registration(
+                    "drop.mission-key",
+                    RoomAccessReferenceKindV1.CollectedDrop,
+                    RoomAccessReferenceSourceV1.ExternalDropReference),
+            };
+            if (reverse) registrations.Reverse();
+            return new RoomAccessReferenceCatalogV1(registrations);
+        }
+
+        private static RoomAccessReferenceRegistrationV1 Registration(
+            string id,
+            RoomAccessReferenceKindV1 kind,
+            RoomAccessReferenceSourceV1 source)
+        {
+            return new RoomAccessReferenceRegistrationV1(Id(id), kind, source);
         }
 
         private static string Header(AuthorableRoomGraphDefinitionV1 graph)
@@ -273,6 +515,18 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             Assert.That(door, Is.Not.Null);
         }
 
+        private static void AssertIssue(
+            RoomAccessImportResultV1 result,
+            string code,
+            string path)
+        {
+            Assert.That(result.IsValid, Is.False);
+            Assert.That(result.Definition, Is.Null);
+            Assert.That(result.Issues, Has.Count.EqualTo(1));
+            Assert.That(result.Issues[0].Code, Is.EqualTo(code));
+            Assert.That(result.Issues[0].Path, Is.EqualTo(path));
+        }
+
         private static string FirstIssue(RoomAccessImportResultV1 result)
         {
             return result.Issues.Count == 0
@@ -282,6 +536,11 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                     + result.Issues[0].Path
                     + ":"
                     + result.Issues[0].Message;
+        }
+
+        private static StableId Id(string value)
+        {
+            return StableId.Parse(value);
         }
     }
 }
