@@ -1,209 +1,68 @@
+using System.ComponentModel;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Missions.Rooms;
 
 namespace ShooterMover.Content.Definitions.Missions.Rooms
 {
     /// <summary>
-    /// Example Level 1 live definition: Room 1 has a moving droid, Room 2 has a turret,
-    /// the Room 2 return door is available on entry, and the final exit is independently
-    /// gated by the Room 2 clear condition.
+    /// Compatibility alias retained for callers compiled against ROOM-LIVE-001.
+    /// New production code should use <see cref="Level1LiveRoomGraphDefinitionV1"/>.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static class Level1AuthorableRoomDefinitionV1
     {
-        public static readonly StableId LayoutStableId =
-            StableId.Parse("layout.level1-authorable-two-room");
-        public static readonly StableId EntryRoomStableId =
-            StableId.Parse("room.level1-entry");
-        public static readonly StableId TerminalRoomStableId =
-            StableId.Parse("room.level1-terminal");
+        public static StableId LayoutStableId =>
+            Level1LiveRoomGraphDefinitionV1.LayoutStableId;
+        public static StableId EntryRoomStableId =>
+            Level1LiveRoomGraphDefinitionV1.EntryRoomStableId;
+        public static StableId TerminalRoomStableId =>
+            Level1LiveRoomGraphDefinitionV1.TerminalRoomStableId;
 
-        public static readonly StableId EntrySpawnStableId =
-            StableId.Parse("entry.level1-entry-main");
-        public static readonly StableId TerminalSpawnStableId =
-            StableId.Parse("entry.level1-terminal-main");
+        public static StableId EntrySpawnStableId =>
+            Level1LiveRoomGraphDefinitionV1.EntrySpawnStableId;
+        public static StableId TerminalSpawnStableId =>
+            Level1LiveRoomGraphDefinitionV1.TerminalSpawnStableId;
 
-        public static readonly StableId MovingDroidInstanceStableId =
-            StableId.Parse("enemy-instance.level1-room1-moving-droid");
-        public static readonly StableId TurretInstanceStableId =
-            StableId.Parse("enemy-instance.level1-room2-blaster-turret");
-        public static readonly StableId CoverPropInstanceStableId =
-            StableId.Parse("prop-instance.level1-room1-cover");
+        public static StableId MovingDroidInstanceStableId =>
+            Level1LiveRoomGraphDefinitionV1.MovingDroidInstanceStableId;
+        public static StableId TurretInstanceStableId =>
+            Level1LiveRoomGraphDefinitionV1.TurretInstanceStableId;
+        public static StableId CoverPropInstanceStableId =>
+            Level1LiveRoomGraphDefinitionV1.CoverPropInstanceStableId;
 
-        public static readonly StableId ForwardExitStableId =
-            StableId.Parse("exit.level1-entry-to-terminal");
-        public static readonly StableId ReturnExitStableId =
-            StableId.Parse("exit.level1-terminal-to-entry");
-        public static readonly StableId FinalExitStableId =
-            StableId.Parse("exit.level1-terminal-final");
+        public static StableId ForwardExitStableId =>
+            Level1LiveRoomGraphDefinitionV1.ForwardExitStableId;
+        public static StableId ReturnExitStableId =>
+            Level1LiveRoomGraphDefinitionV1.ReturnExitStableId;
+        public static StableId FinalExitStableId =>
+            Level1LiveRoomGraphDefinitionV1.FinalExitStableId;
 
-        public static readonly StableId ForwardDoorStableId =
-            StableId.Parse("door-instance.level1-entry-forward");
-        public static readonly StableId ReturnDoorStableId =
-            StableId.Parse("door-instance.level1-terminal-return");
-        public static readonly StableId FinalDoorStableId =
-            StableId.Parse("door-instance.level1-terminal-final");
+        public static StableId ForwardDoorStableId =>
+            Level1LiveRoomGraphDefinitionV1.ForwardDoorStableId;
+        public static StableId ReturnDoorStableId =>
+            Level1LiveRoomGraphDefinitionV1.ReturnDoorStableId;
+        public static StableId FinalDoorStableId =>
+            Level1LiveRoomGraphDefinitionV1.FinalDoorStableId;
 
-        public static readonly StableId EntryClearConditionStableId =
-            StableId.Parse("completion.level1-entry-clear");
-        public static readonly StableId TerminalEnteredConditionStableId =
-            StableId.Parse("completion.level1-terminal-entered");
-        public static readonly StableId TerminalClearConditionStableId =
-            StableId.Parse("completion.level1-terminal-clear");
+        public static StableId EntryClearConditionStableId =>
+            Level1LiveRoomGraphDefinitionV1.EntryClearConditionStableId;
+        public static StableId TerminalEnteredConditionStableId =>
+            Level1LiveRoomGraphDefinitionV1.TerminalEnteredConditionStableId;
+        public static StableId TerminalClearConditionStableId =>
+            Level1LiveRoomGraphDefinitionV1.TerminalClearConditionStableId;
 
-        public static readonly StableId MovingDroidPresentationStableId =
-            StableId.Parse("presentation.enemy-mobile-blaster-droid");
-        public static readonly StableId TurretPresentationStableId =
-            StableId.Parse("presentation.enemy-blaster-turret");
-        public static readonly StableId CoverPresentationStableId =
-            StableId.Parse("presentation.prop-level1-cover");
-        public static readonly StableId DoorPresentationStableId =
-            StableId.Parse("presentation.environment-room-door");
+        public static StableId MovingDroidPresentationStableId =>
+            Level1LiveRoomGraphDefinitionV1.MovingDroidPresentationStableId;
+        public static StableId TurretPresentationStableId =>
+            Level1LiveRoomGraphDefinitionV1.TurretPresentationStableId;
+        public static StableId CoverPresentationStableId =>
+            Level1LiveRoomGraphDefinitionV1.CoverPresentationStableId;
+        public static StableId DoorPresentationStableId =>
+            Level1LiveRoomGraphDefinitionV1.DoorPresentationStableId;
 
         public static AuthorableRoomGraphDefinitionV1 Create()
         {
-            var entryRoom = new AuthorableRoomDefinitionV1(
-                EntryRoomStableId,
-                0,
-                "DROID APPROACH",
-                new RoomBoundsV1(
-                    new RoomVector2V1(0d, 0d),
-                    new RoomVector2V1(24d, 14d)),
-                new[]
-                {
-                    new RoomSpawnPointDefinitionV1(
-                        EntrySpawnStableId,
-                        RoomSpawnPointKindV1.ForwardEntry,
-                        new RoomVector2V1(-10d, 0d),
-                        0d),
-                },
-                new[]
-                {
-                    new RoomPlacedEntityDefinitionV1(
-                        MovingDroidInstanceStableId,
-                        RoomLivePlacementKindV1.Enemy,
-                        StableId.Parse("enemy.mobile-blaster-droid"),
-                        MovingDroidPresentationStableId,
-                        RoomOccupantClearRoleV1.RequiredEnemy,
-                        new RoomVector2V1(4d, 0d),
-                        180d),
-                    new RoomPlacedEntityDefinitionV1(
-                        CoverPropInstanceStableId,
-                        RoomLivePlacementKindV1.Prop,
-                        StableId.Parse("prop.level1-cover"),
-                        CoverPresentationStableId,
-                        RoomOccupantClearRoleV1.NonParticipant,
-                        new RoomVector2V1(0d, -3d),
-                        0d),
-                },
-                new[]
-                {
-                    new RoomDoorDefinitionV1(
-                        ForwardDoorStableId,
-                        DoorPresentationStableId,
-                        ForwardExitStableId,
-                        new[] { EntryClearConditionStableId },
-                        new RoomVector2V1(11d, 0d),
-                        0d),
-                },
-                new[]
-                {
-                    new RoomExitLinkDefinitionV1(
-                        ForwardExitStableId,
-                        ForwardDoorStableId,
-                        RoomLiveLinkKindV1.Room,
-                        RoomExitTypeV1.Progression,
-                        TerminalRoomStableId,
-                        TerminalSpawnStableId),
-                },
-                new[]
-                {
-                    new RoomCompletionConditionDefinitionV1(
-                        EntryClearConditionStableId,
-                        RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal,
-                        null,
-                        true),
-                });
-
-            var terminalRoom = new AuthorableRoomDefinitionV1(
-                TerminalRoomStableId,
-                1,
-                "TURRET TERMINAL",
-                new RoomBoundsV1(
-                    new RoomVector2V1(0d, 0d),
-                    new RoomVector2V1(24d, 14d)),
-                new[]
-                {
-                    new RoomSpawnPointDefinitionV1(
-                        TerminalSpawnStableId,
-                        RoomSpawnPointKindV1.ForwardEntry,
-                        new RoomVector2V1(-10d, 0d),
-                        0d),
-                },
-                new[]
-                {
-                    new RoomPlacedEntityDefinitionV1(
-                        TurretInstanceStableId,
-                        RoomLivePlacementKindV1.Enemy,
-                        StableId.Parse("enemy.blaster-turret"),
-                        TurretPresentationStableId,
-                        RoomOccupantClearRoleV1.RequiredEnemy,
-                        new RoomVector2V1(4d, 0d),
-                        180d),
-                },
-                new[]
-                {
-                    new RoomDoorDefinitionV1(
-                        ReturnDoorStableId,
-                        DoorPresentationStableId,
-                        ReturnExitStableId,
-                        new[] { TerminalEnteredConditionStableId },
-                        new RoomVector2V1(-11d, -3d),
-                        180d),
-                    new RoomDoorDefinitionV1(
-                        FinalDoorStableId,
-                        DoorPresentationStableId,
-                        FinalExitStableId,
-                        new[] { TerminalClearConditionStableId },
-                        new RoomVector2V1(11d, 3d),
-                        0d),
-                },
-                new[]
-                {
-                    new RoomExitLinkDefinitionV1(
-                        ReturnExitStableId,
-                        ReturnDoorStableId,
-                        RoomLiveLinkKindV1.Room,
-                        RoomExitTypeV1.Return,
-                        EntryRoomStableId,
-                        EntrySpawnStableId),
-                    new RoomExitLinkDefinitionV1(
-                        FinalExitStableId,
-                        FinalDoorStableId,
-                        RoomLiveLinkKindV1.FinalExit,
-                        RoomExitTypeV1.Progression,
-                        null,
-                        null),
-                },
-                new[]
-                {
-                    new RoomCompletionConditionDefinitionV1(
-                        TerminalEnteredConditionStableId,
-                        RoomCompletionConditionKindV1.AlwaysSatisfied,
-                        null,
-                        false),
-                    new RoomCompletionConditionDefinitionV1(
-                        TerminalClearConditionStableId,
-                        RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal,
-                        null,
-                        true),
-                });
-
-            return new AuthorableRoomGraphDefinitionV1(
-                LayoutStableId,
-                EntryRoomStableId,
-                TerminalRoomStableId,
-                new[] { entryRoom, terminalRoom });
+            return Level1LiveRoomGraphDefinitionV1.Create();
         }
     }
 }
