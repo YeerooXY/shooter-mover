@@ -5,7 +5,6 @@ using ShooterMover.Application.Flow.Production;
 using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
@@ -37,61 +36,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private Material arcMaterial;
         private Material explosionMaterial;
         private bool installed;
-
-        [RuntimeInitializeOnLoadMethod(
-            RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetSceneHook()
-        {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
-        }
-
-        [RuntimeInitializeOnLoadMethod(
-            RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallSceneHook()
-        {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
-            SceneManager.sceneLoaded += OnSceneLoaded;
-            InstallForScene(SceneManager.GetActiveScene());
-        }
-
-        private static void OnSceneLoaded(
-            Scene scene,
-            LoadSceneMode mode)
-        {
-            InstallForScene(scene);
-        }
-
-        private static void InstallForScene(Scene scene)
-        {
-            if (!string.Equals(
-                scene.path,
-                ShooterMover.TestSupport.VisibleSlice
-                    .Stage1VisibleSliceController.ScenePath,
-                StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int index = 0; index < roots.Length; index++)
-            {
-                Stage1PlayableLoopCompositionV1 loop =
-                    roots[index].GetComponentInChildren<
-                        Stage1PlayableLoopCompositionV1>(true);
-                if (loop == null)
-                {
-                    continue;
-                }
-
-                if (loop.GetComponent<
-                    Stage1WeaponPresentationRepairV1>() == null)
-                {
-                    loop.gameObject.AddComponent<
-                        Stage1WeaponPresentationRepairV1>();
-                }
-                return;
-            }
-        }
 
         private void Update()
         {

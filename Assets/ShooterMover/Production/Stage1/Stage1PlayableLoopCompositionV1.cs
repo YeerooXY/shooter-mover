@@ -153,10 +153,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 Stage1VisibleSliceController visibleSlice =
                     FindInScene<Stage1VisibleSliceController>(scene);
-                if (visibleSlice != null
-                    && visibleSlice.GetComponent<Stage1PlayableLoopCompositionV1>() == null)
+                if (visibleSlice != null)
                 {
-                    visibleSlice.gameObject.AddComponent<Stage1PlayableLoopCompositionV1>();
+                    if (visibleSlice.GetComponent<Stage1PlayableLoopCompositionV1>() == null)
+                    {
+                        visibleSlice.gameObject.AddComponent<Stage1PlayableLoopCompositionV1>();
+                    }
+                    if (visibleSlice.GetComponent<Stage1WeaponPresentationRepairV1>() == null)
+                    {
+                        visibleSlice.gameObject.AddComponent<Stage1WeaponPresentationRepairV1>();
+                    }
                 }
 
                 return;
