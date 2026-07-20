@@ -60,12 +60,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private static readonly Dictionary<StableId, IEnemyActor2DAuthority>
             projectedRoomEnemies = new Dictionary<StableId, IEnemyActor2DAuthority>();
         private static Stage1PlayableLoopCompositionV1 activeComposition;
-        private static Stage1ReadOnlyResultsProjectionV1 pendingResults;
-
-        internal static void ClearPendingResults()
-        {
-            pendingResults = null;
-        }
 
         private readonly Dictionary<Collider2D, EnemyBinding> enemyByCollider =
             new Dictionary<Collider2D, EnemyBinding>();
@@ -128,7 +122,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             SceneManager.sceneLoaded -= HandleSceneLoaded;
             projectedRoomEnemies.Clear();
             activeComposition = null;
-            pendingResults = null;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -168,24 +161,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            if (string.Equals(
-                    scene.path,
-                    ProductionFlowScenePathsV1.Results,
-                    StringComparison.Ordinal)
-                && pendingResults != null)
+            Stage1VisibleSliceController visibleSlice =
+                FindInScene<Stage1VisibleSliceController>(scene);
+            if (visibleSlice != null
+                && visibleSlice.GetComponent<Stage1PlayableLoopCompositionV1>() == null)
             {
-                ProductionResultsControllerV1 existing =
-                    FindInScene<ProductionResultsControllerV1>(scene);
-                TextAsset suppliedBackground = ReadResultsBackground(existing);
-                if (existing != null)
-                {
-                    existing.enabled = false;
-                }
-
-                GameObject owner = new GameObject("DEMO-CUTOVER-001 Read-Only Results");
-                Stage1ReadOnlyResultsControllerV1 results =
-                    owner.AddComponent<Stage1ReadOnlyResultsControllerV1>();
-                results.Configure(pendingResults, suppliedBackground);
+                visibleSlice.gameObject.AddComponent<Stage1PlayableLoopCompositionV1>();
             }
         }
 

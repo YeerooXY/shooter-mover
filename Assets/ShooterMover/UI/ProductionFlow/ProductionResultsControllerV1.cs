@@ -1,11 +1,179 @@
 using System;
+using System.Globalization;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Contracts.Missions.Results;
+using ShooterMover.Domain.Common;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace ShooterMover.UI.ProductionFlow
 {
+    /// <summary>
+    /// Optional immutable presentation facts that supplement, but never replace, the exact
+    /// RUN-001 mission-result payload.
+    /// </summary>
+    public sealed class ProductionResultsSummaryV1
+    {
+        public ProductionResultsSummaryV1(
+            string playerName,
+            string className,
+            int level,
+            StableId participantStableId,
+            int kills,
+            long experience,
+            long money,
+            long scrap)
+        {
+            if (string.IsNullOrWhiteSpace(playerName))
+            {
+                throw new ArgumentException(
+                    "A Results player name is required.",
+                    nameof(playerName));
+            }
+            if (string.IsNullOrWhiteSpace(className))
+            {
+                throw new ArgumentException(
+                    "A Results class name is required.",
+                    nameof(className));
+            }
+            if (level < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(level));
+            }
+            if (participantStableId == null)
+            {
+                throw new ArgumentNullException(nameof(participantStableId));
+            }
+            if (kills < 0
+                || experience < 0L
+                || money < 0L
+                || scrap < 0L)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(kills),
+                    "Results metrics cannot be negative.");
+            }
+
+            PlayerName = playerName.Trim();
+            ClassName = className.Trim();
+            Level = level;
+            ParticipantStableId = participantStableId;
+            Kills = kills;
+            Experience = experience;
+            Money = money;
+            Scrap = scrap;
+        }
+
+        public string PlayerName { get; }
+        public string ClassName { get; }
+        public int Level { get; }
+        public StableId ParticipantStableId { get; }
+        public int Kills { get; }
+        public long Experience { get; }
+        public long Money { get; }
+        public long Scrap { get; }
+    }
+
+    /// <summary>
+    /// One-shot handoff for completed runs that contain no unopened strongboxes and
+    /// therefore require no BOX command binding. The canonical Results controller remains
+    /// the sole screen owner.
+    /// </summary>
+    public static class ProductionReadOnlyResultsBridgeV1
+    {
+        private static ReadOnlyContext pending;
+
+        [RuntimeInitializeOnLoadMethod(
+            RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Reset()
+        {
+            pending = null;
+        }
+
+        public static bool Present(
+            ProductionFlowCoordinatorV1 flow,
+            MissionResultPayloadV1 result,
+            ProductionResultsSummaryV1 summary)
+        {
+            if (flow == null)
+            {
+                throw new ArgumentNullException(nameof(flow));
+            }
+            if (result == null)
+            {
+                throw new ArgumentNullException(nameof(result));
+            }
+            if (summary == null)
+            {
+                throw new ArgumentNullException(nameof(summary));
+            }
+            if (result.UnopenedStrongboxes.Count != 0)
+            {
+                throw new InvalidOperationException(
+                    "Read-only Results cannot accept unopened strongboxes without a BOX binding.");
+            }
+            if (pending != null || flow.Transitions.IsTransitionPending)
+            {
+                return false;
+            }
+
+            pending = new ReadOnlyContext(result, summary);
+            if (flow.Transitions.TryLoadSubflow(
+                ProductionFlowScenePathsV1.Results))
+            {
+                return true;
+            }
+
+            pending = null;
+            return false;
+        }
+
+        internal static bool TryConfigure(
+            ProductionResultsControllerV1 controller)
+        {
+            if (controller == null || pending == null)
+            {
+                return false;
+            }
+
+            ProductionFlowCoordinatorV1 flow =
+                UnityEngine.Object.FindFirstObjectByType<
+                    ProductionFlowCoordinatorV1>(
+                    FindObjectsInactive.Include);
+            if (flow == null || flow.Transitions == null)
+            {
+                return false;
+            }
+
+            ReadOnlyContext context = pending;
+            pending = null;
+            controller.Configure(
+                context.Result,
+                context.Summary,
+                delegate { return false; },
+                delegate
+                {
+                    return flow.Transitions.TryReturnToHub(
+                        context.Result.RoutePayload);
+                });
+            return true;
+        }
+
+        private sealed class ReadOnlyContext
+        {
+            public ReadOnlyContext(
+                MissionResultPayloadV1 result,
+                ProductionResultsSummaryV1 summary)
+            {
+                Result = result;
+                Summary = summary;
+            }
+
+            public MissionResultPayloadV1 Result { get; }
+            public ProductionResultsSummaryV1 Summary { get; }
+        }
+    }
+
     /// <summary>
     /// Read-only Results projection over the exact immutable RUN-001 payload. Opening
     /// requests pass the exact MissionRunStrongboxResultV1 object to the composition root.
@@ -16,6 +184,7 @@ namespace ShooterMover.UI.ProductionFlow
         [SerializeField] private TextAsset resultsBackgroundAsset;
 
         private MissionResultPayloadV1 result;
+        private ProductionResultsSummaryV1 summary;
         private Func<MissionRunStrongboxResultV1, bool> openStrongbox;
         private Func<bool> returnToHub;
         private Texture2D background;
@@ -26,6 +195,7 @@ namespace ShooterMover.UI.ProductionFlow
         private GUIStyle smallStyle;
 
         public MissionResultPayloadV1 Result { get { return result; } }
+        public ProductionResultsSummaryV1 Summary { get { return summary; } }
 
         public MissionRunStrongboxResultV1 LastSelectedStrongbox
         {
@@ -40,12 +210,27 @@ namespace ShooterMover.UI.ProductionFlow
             get { return resultsBackgroundAsset != null; }
         }
 
+        private void Awake()
+        {
+            ProductionReadOnlyResultsBridgeV1.TryConfigure(this);
+        }
+
         public void Configure(
             MissionResultPayloadV1 result,
             Func<MissionRunStrongboxResultV1, bool> openStrongbox,
             Func<bool> returnToHub)
         {
+            Configure(result, null, openStrongbox, returnToHub);
+        }
+
+        public void Configure(
+            MissionResultPayloadV1 result,
+            ProductionResultsSummaryV1 summary,
+            Func<MissionRunStrongboxResultV1, bool> openStrongbox,
+            Func<bool> returnToHub)
+        {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
+            this.summary = summary;
             this.openStrongbox = openStrongbox
                 ?? throw new ArgumentNullException(nameof(openStrongbox));
             this.returnToHub = returnToHub
@@ -105,6 +290,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
+            DrawSummary();
             GUILayout.Label(
                 "Run " + result.RunStableId
                 + "  •  "
@@ -116,6 +302,12 @@ namespace ShooterMover.UI.ProductionFlow
             GUILayout.Space(12f);
 
             scroll = GUILayout.BeginScrollView(scroll);
+            if (result.Strongboxes.Count == 0)
+            {
+                GUILayout.Label(
+                    "Collected strongboxes: none (authoritative empty result).",
+                    bodyStyle);
+            }
             for (int index = 0; index < result.Strongboxes.Count; index++)
             {
                 DrawStrongbox(result.Strongboxes[index]);
@@ -133,7 +325,10 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool OpenExact(MissionRunStrongboxResultV1 strongbox)
         {
-            if (inputLocked || strongbox == null || !strongbox.IsUnopened)
+            if (inputLocked
+                || result == null
+                || strongbox == null
+                || !strongbox.IsUnopened)
             {
                 return false;
             }
@@ -165,6 +360,51 @@ namespace ShooterMover.UI.ProductionFlow
             if (!returnToHub()) return false;
             inputLocked = true;
             return true;
+        }
+
+        private void DrawSummary()
+        {
+            if (summary == null)
+            {
+                return;
+            }
+
+            GUILayout.Label(
+                summary.PlayerName
+                + "  •  "
+                + summary.ClassName
+                + "  •  Level "
+                + summary.Level.ToString(CultureInfo.InvariantCulture),
+                bodyStyle);
+            GUILayout.Label(
+                "Participant: " + summary.ParticipantStableId,
+                smallStyle);
+            GUILayout.Space(10f);
+            GUILayout.BeginHorizontal();
+            DrawMetric(
+                "KILLS",
+                summary.Kills.ToString(CultureInfo.InvariantCulture));
+            DrawMetric(
+                "XP EARNED",
+                summary.Experience.ToString(CultureInfo.InvariantCulture));
+            DrawMetric(
+                "MONEY",
+                summary.Money.ToString(CultureInfo.InvariantCulture));
+            DrawMetric(
+                "SCRAP",
+                summary.Scrap.ToString(CultureInfo.InvariantCulture));
+            GUILayout.EndHorizontal();
+            GUILayout.Space(12f);
+        }
+
+        private void DrawMetric(string label, string value)
+        {
+            GUILayout.BeginVertical(
+                GUI.skin.box,
+                GUILayout.MinWidth(180f));
+            GUILayout.Label(label, smallStyle);
+            GUILayout.Label(value, titleStyle);
+            GUILayout.EndVertical();
         }
 
         private void DrawStrongbox(MissionRunStrongboxResultV1 strongbox)
