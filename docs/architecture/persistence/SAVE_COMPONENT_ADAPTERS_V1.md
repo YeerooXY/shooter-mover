@@ -112,10 +112,11 @@ The caller may surface recovery and choose when to write the recovered snapshot.
 
 ## Focused verification
 
-EditMode fixture:
+EditMode fixtures:
 
 ```text
 Assets/ShooterMover/Tests/EditMode/Persistence/Components/SaveAdaptersV1Tests.cs
+Assets/ShooterMover/Tests/EditMode/Persistence/Components/StrongboxSaveAdapterReplayTests.cs
 ```
 
 Pinned editor command:
@@ -124,7 +125,7 @@ Pinned editor command:
 "<UNITY_6000.3.19f1>" -batchmode -nographics -quit \
   -projectPath "<REPO>" \
   -runTests -testPlatform EditMode \
-  -testFilter "ShooterMover.Tests.EditMode.Persistence.Components.SaveAdaptersV1Tests" \
+  -testFilter "ShooterMover.Tests.EditMode.Persistence.Components" \
   -testResults "<REPO>/TestResults/save-adapters-editmode.xml" \
   -logFile "<REPO>/TestResults/save-adapters-editmode.log"
 ```
@@ -133,7 +134,9 @@ The suite covers all supported component IDs in one character, six-slot
 isolation, duplicate definitions with distinct equipment instance identities,
 replay receipt preservation, pre-commit corrupt rejection, required/optional
 behavior, unsupported-schema non-overwrite, temporary-read interruption,
-unknown-component retention, and rollback after a later commit failure.
+unknown-component retention, rollback after a later commit failure, real XP and
+money authority replay, and real strongbox-opening replay without re-running the
+generator.
 
 ## Rollback
 
