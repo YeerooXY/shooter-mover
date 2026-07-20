@@ -5,6 +5,7 @@ using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
+using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Production.Stage1;
 using UnityEngine;
 

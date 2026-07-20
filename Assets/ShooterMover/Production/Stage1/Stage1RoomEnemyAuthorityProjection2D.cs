@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.Production.Stage1;
+using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
