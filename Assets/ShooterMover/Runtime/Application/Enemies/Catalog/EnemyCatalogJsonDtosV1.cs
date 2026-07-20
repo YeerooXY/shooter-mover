@@ -54,28 +54,25 @@ namespace ShooterMover.Application.Enemies.Catalog
             [DataMember(Name = "perception", IsRequired = true, Order = 5)]
             public PerceptionDtoV1 Perception;
 
-            [DataMember(Name = "attack_geometry", IsRequired = true, Order = 6)]
-            public AttackGeometryDtoV1 AttackGeometry;
-
-            [DataMember(Name = "movement_policy", IsRequired = true, Order = 7)]
+            [DataMember(Name = "movement_policy", IsRequired = true, Order = 6)]
             public string MovementPolicy;
 
-            [DataMember(Name = "decision_policy", IsRequired = true, Order = 8)]
+            [DataMember(Name = "decision_policy", IsRequired = true, Order = 7)]
             public string DecisionPolicy;
 
-            [DataMember(Name = "attacks", IsRequired = true, Order = 9)]
+            [DataMember(Name = "attacks", IsRequired = true, Order = 8)]
             public List<AttackDtoV1> Attacks;
 
-            [DataMember(Name = "xp_profile", IsRequired = true, Order = 10)]
+            [DataMember(Name = "xp_profile", IsRequired = true, Order = 9)]
             public string ExperienceProfile;
 
-            [DataMember(Name = "drop_profile", IsRequired = true, Order = 11)]
+            [DataMember(Name = "drop_profile", IsRequired = true, Order = 10)]
             public string DropProfile;
 
-            [DataMember(Name = "room_clear_role", IsRequired = true, Order = 12)]
+            [DataMember(Name = "room_clear_role", IsRequired = true, Order = 11)]
             public string RoomClearRole;
 
-            [DataMember(Name = "special_capabilities", EmitDefaultValue = false, Order = 13)]
+            [DataMember(Name = "special_capabilities", EmitDefaultValue = false, Order = 12)]
             public List<string> SpecialCapabilities;
         }
 
@@ -106,22 +103,6 @@ namespace ShooterMover.Application.Enemies.Catalog
         }
 
         [DataContract]
-        private sealed class AttackGeometryDtoV1
-        {
-            [DataMember(Name = "attack_arc_degrees", IsRequired = true, Order = 0)]
-            public double AttackArcDegrees;
-
-            [DataMember(Name = "minimum_range", IsRequired = true, Order = 1)]
-            public double MinimumRange;
-
-            [DataMember(Name = "preferred_range", IsRequired = true, Order = 2)]
-            public double PreferredRange;
-
-            [DataMember(Name = "maximum_range", IsRequired = true, Order = 3)]
-            public double MaximumRange;
-        }
-
-        [DataContract]
         private sealed class AttackDtoV1
         {
             [DataMember(Name = "id", IsRequired = true, Order = 0)]
@@ -130,22 +111,37 @@ namespace ShooterMover.Application.Enemies.Catalog
             [DataMember(Name = "capability", IsRequired = true, Order = 1)]
             public string Capability;
 
-            [DataMember(Name = "cooldown_seconds", IsRequired = true, Order = 2)]
+            [DataMember(Name = "selection_priority", IsRequired = true, Order = 2)]
+            public int SelectionPriority;
+
+            [DataMember(Name = "attack_arc_degrees", IsRequired = true, Order = 3)]
+            public double AttackArcDegrees;
+
+            [DataMember(Name = "minimum_range", IsRequired = true, Order = 4)]
+            public double MinimumRange;
+
+            [DataMember(Name = "preferred_range", IsRequired = true, Order = 5)]
+            public double PreferredRange;
+
+            [DataMember(Name = "maximum_range", IsRequired = true, Order = 6)]
+            public double MaximumRange;
+
+            [DataMember(Name = "cooldown_seconds", IsRequired = true, Order = 7)]
             public double CooldownSeconds;
 
-            [DataMember(Name = "damage", IsRequired = true, Order = 3)]
+            [DataMember(Name = "damage", IsRequired = true, Order = 8)]
             public double Damage;
 
-            [DataMember(Name = "damage_channel", IsRequired = true, Order = 4)]
+            [DataMember(Name = "damage_channel", IsRequired = true, Order = 9)]
             public string DamageChannel;
 
-            [DataMember(Name = "projectile", EmitDefaultValue = false, Order = 5)]
+            [DataMember(Name = "projectile", EmitDefaultValue = false, Order = 10)]
             public ProjectileDtoV1 Projectile;
 
-            [DataMember(Name = "area", EmitDefaultValue = false, Order = 6)]
+            [DataMember(Name = "area", EmitDefaultValue = false, Order = 11)]
             public AreaDtoV1 Area;
 
-            [DataMember(Name = "melee", EmitDefaultValue = false, Order = 7)]
+            [DataMember(Name = "melee", EmitDefaultValue = false, Order = 12)]
             public MeleeDtoV1 Melee;
         }
 
