@@ -51,23 +51,46 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return false;
             }
 
-            int selectedSlot = weapons == null
-                ? 0
-                : Mathf.Clamp(
-                    weapons.SelectedSlotIndex,
-                    0,
-                    PlayerRouteProfilePayloadV1.WeaponSlotCount - 1);
-
-            profile = currentProfile;
+            profile = new ProductionFlowProfileRecordV1(
+                currentProfile.DisplayName,
+                runtime.RoutePayload);
             holdings = runtime.Holdings;
             equipmentCatalog = runtime.EquipmentCatalog;
             weaponCatalog = runtime.WeaponCatalog;
 
+            ProductionWeaponMountSetV1 mountSet =
+                ProductionWeaponMountPolicyV1.BuildMountSet(
+                    runtime.RoutePayload);
+            var enabledMounts =
+                new List<InventoryWeaponMountedRuntimeV1>(
+                    mountSet.EnabledBindings.Count);
+            for (int index = 0;
+                index < mountSet.EnabledBindings.Count;
+                index++)
+            {
+                ProductionWeaponMountBindingV1 binding =
+                    mountSet.EnabledBindings[index];
+                ProductionWeaponMountPositionV1 position =
+                    ProductionWeaponMountPolicyV1.FindPosition(
+                        mountSet.Layout,
+                        binding.MountStableId);
+                if (position == null)
+                {
+                    diagnostic =
+                        "A configured weapon mount has no physical position.";
+                    return false;
+                }
+
+                enabledMounts.Add(
+                    new InventoryWeaponMountedRuntimeV1(
+                        binding.MountStableId,
+                        new EquipmentInstanceId(
+                            binding.EquipmentInstanceStableId),
+                        position.LateralOffset));
+            }
+
             var actorState = new PlayerWeaponActorStateSourceV1(
                 controller);
-            var activeWeapon = new RouteProfileActiveWeaponSource(
-                profile.Payload,
-                selectedSlot);
             var adapter = new InventoryBackedWeaponExecutionAdapter(
                 holdings,
                 equipmentCatalog,
@@ -77,7 +100,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 SimulationTicksPerSecond);
             weapons = new InventoryWeaponRuntimeComposition(
                 actorState,
-                activeWeapon,
+                enabledMounts,
                 adapter);
 
             missionPort = new EmptyStrongboxMissionPortV1(holdings);
@@ -166,8 +189,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         binding.RoomInstanceStableId));
             }
 
-            candidates.Sort(
-                Stage1ArcTargetProjectionV1.Compare);
+            candidates.Sort(Stage1ArcTargetProjectionV1.Compare);
             return candidates;
         }
 
@@ -236,6 +258,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 StableId instanceStableId = profile.Payload
                     .WeaponSlots[index]
                     .EquipmentInstanceStableId;
+                if (instanceStableId == null)
+                {
+                    WeaponDisplayNames[index] = "Inactive mount";
+                    continue;
+                }
+
                 EquipmentInstance instance;
                 if (!instances.TryGetValue(
                     instanceStableId,
@@ -260,7 +288,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 return;
             }
-
             controller.LoadoutSelector.gameObject.SetActive(false);
         }
     }
@@ -280,11 +307,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
 
         public Collider2D Collider { get; }
-
         public Vector3 Position { get; }
-
         public float Distance { get; }
-
         public StableId StableId { get; }
 
         public static int Compare(
