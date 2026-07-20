@@ -60,7 +60,7 @@ Additional provenance coverage proves canonical version 2 documents reject a mis
 - The new Unity metadata GUID is valid, unique in repository search, and its remote blob matches the audited local file.
 - Every modified remote blob hash matches the locally audited source.
 - The branch remains ahead-only from the exact original launch SHA.
-- The changed-file comparison contains 20 added files and no modifications or deletions relative to `main`.
+- The PR comparison contains 20 files, all added relative to `main`, and no deletions.
 - `Stage1VisibleSliceController.cs` is absent from the changed-file list.
 
 ## Unity merge gate
