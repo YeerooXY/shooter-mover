@@ -6,6 +6,9 @@ using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Holdings;
+using ShooterMover.Domain.Rewards.Model;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -359,6 +362,8 @@ namespace ShooterMover.UI.InventoryLoadout
         private void DrawConnected()
         {
             InventoryLoadoutScreenSnapshotV1 current = service.Snapshot;
+            PlayerHoldingsSnapshotV1 holdingsSnapshot =
+                holdingsAuthority.ExportSnapshot();
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical(
                 GUILayout.Width(
@@ -373,7 +378,7 @@ namespace ShooterMover.UI.InventoryLoadout
                 {
                     continue;
                 }
-                DrawSlot(selection);
+                DrawSlot(selection, current, holdingsSnapshot);
             }
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
@@ -395,7 +400,7 @@ namespace ShooterMover.UI.InventoryLoadout
                 {
                     continue;
                 }
-                DrawEquipment(equipment);
+                DrawEquipment(equipment, holdingsSnapshot);
             }
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
@@ -444,22 +449,40 @@ namespace ShooterMover.UI.InventoryLoadout
         }
 
         private void DrawSlot(
-            InventoryLoadoutSelectionProjectionV1 selection)
+            InventoryLoadoutSelectionProjectionV1 selection,
+            InventoryLoadoutScreenSnapshotV1 snapshot,
+            PlayerHoldingsSnapshotV1 holdingsSnapshot)
         {
             bool active =
                 selection.Slot.SlotStableId == activeSlotStableId;
-            string equipmentText =
-                selection.EquipmentInstanceStableId == null
-                    ? "UNEQUIPPED"
-                    : ShortIdentity(
+            string equipmentText = "UNEQUIPPED";
+            if (selection.EquipmentInstanceStableId != null)
+            {
+                InventoryLoadoutEquipmentProjectionV1 projection =
+                    snapshot.FindEquipment(
                         selection.EquipmentInstanceStableId);
+                EquipmentInstance instance = FindOwnedEquipment(
+                    holdingsSnapshot,
+                    selection.EquipmentInstanceStableId);
+                equipmentText = projection == null
+                    ? "MISSING ITEM\n"
+                        + ShortIdentity(
+                            selection.EquipmentInstanceStableId)
+                    : projection.DisplayName
+                        + "  •  "
+                        + AugmentSummary(instance)
+                        + "\n"
+                        + ShortIdentity(
+                            selection.EquipmentInstanceStableId);
+            }
+
             string label = (active ? "▶ " : string.Empty)
                 + SlotDisplayName(selection.Slot)
                 + "\n"
                 + equipmentText;
             if (GUILayout.Button(
                 label,
-                GUILayout.MinHeight(54f)))
+                GUILayout.MinHeight(72f)))
             {
                 SelectSlot(selection.Slot.SlotStableId);
             }
@@ -472,8 +495,12 @@ namespace ShooterMover.UI.InventoryLoadout
         }
 
         private void DrawEquipment(
-            InventoryLoadoutEquipmentProjectionV1 equipment)
+            InventoryLoadoutEquipmentProjectionV1 equipment,
+            PlayerHoldingsSnapshotV1 holdingsSnapshot)
         {
+            EquipmentInstance instance = FindOwnedEquipment(
+                holdingsSnapshot,
+                equipment.InstanceStableId);
             GUILayout.BeginVertical(GUI.skin.box);
             GUILayout.Label(equipment.DisplayName, headingStyle);
             GUILayout.Label(
@@ -481,7 +508,9 @@ namespace ShooterMover.UI.InventoryLoadout
                 + "  •  " + equipment.DefinitionStableId,
                 smallStyle);
             GUILayout.Label(
-                "Instance: " + equipment.InstanceStableId,
+                AugmentSummary(instance)
+                + "  •  Instance: "
+                + ShortIdentity(equipment.InstanceStableId),
                 smallStyle);
             if (!equipment.IsSelectable)
             {
@@ -499,6 +528,47 @@ namespace ShooterMover.UI.InventoryLoadout
             GUI.enabled = true;
             GUILayout.EndVertical();
             GUILayout.Space(4f);
+        }
+
+        private static EquipmentInstance FindOwnedEquipment(
+            PlayerHoldingsSnapshotV1 snapshot,
+            StableId instanceStableId)
+        {
+            if (snapshot == null || instanceStableId == null)
+            {
+                return null;
+            }
+
+            for (int index = 0;
+                index < snapshot.UniqueHoldings.Count;
+                index++)
+            {
+                UniqueHoldingSnapshotV1 holding =
+                    snapshot.UniqueHoldings[index];
+                if (holding != null
+                    && holding.RewardKind
+                        == RewardGrantKindV1.EquipmentReference
+                    && holding.InstanceStableId == instanceStableId)
+                {
+                    return holding.EquipmentInstance;
+                }
+            }
+            return null;
+        }
+
+        private static string AugmentSummary(
+            EquipmentInstance instance)
+        {
+            int count = instance == null || instance.Augments == null
+                ? 0
+                : instance.Augments.Count;
+            if (count == 0)
+            {
+                return "No augments";
+            }
+            return count == 1
+                ? "1 augment"
+                : count + " augments";
         }
 
         private bool IsSlotAvailable(

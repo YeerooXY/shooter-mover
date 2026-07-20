@@ -143,11 +143,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 target3 = origin3 + controller.PlayerTransform.up;
             }
 
-            Vector2 direction = ((Vector2)(target3 - origin3)).normalized;
-            if (direction.sqrMagnitude < 0.001f) return;
+            Vector2 targetDelta = (Vector2)(target3 - origin3);
+            if (targetDelta.sqrMagnitude < 0.001f) return;
 
             long operation = fireSequence++;
-            InventoryWeaponExecutionResult result = weapons.TryFire(
+            InventoryWeaponExecutionResult result = weapons.TryFireAtTarget(
                 new FireOperationId(StableId.Create(
                     "fire-operation",
                     "demo-cutover-g"
@@ -157,7 +157,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 (long)Math.Floor(Time.unscaledTimeAsDouble * SimulationTicksPerSecond),
                 unchecked((ulong)operation + 1UL),
                 new WeaponVector2(origin3.x, origin3.y),
-                new WeaponVector2(direction.x, direction.y));
+                new WeaponVector2(target3.x, target3.y));
             if (result.Status != WeaponExecutionStatus.Accepted
                 && result.Status != WeaponExecutionStatus.CooldownActive
                 && result.Status != WeaponExecutionStatus.ReplayAccepted)

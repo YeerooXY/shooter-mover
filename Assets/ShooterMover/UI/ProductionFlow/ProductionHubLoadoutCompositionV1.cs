@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Common;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,6 +22,9 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private static ProductionHubLoadoutCompositionV1 instance;
 
+        private readonly Dictionary<StableId, ProductionPlayerLoadoutRuntimeV1>
+            runtimeByCharacter =
+                new Dictionary<StableId, ProductionPlayerLoadoutRuntimeV1>();
         private ProductionFlowCoordinatorV1 coordinator;
         private ProductionFlowProfileRecordV1 currentProfile;
         private ProductionPlayerLoadoutRuntimeV1 runtime;
@@ -159,6 +164,7 @@ namespace ShooterMover.UI.ProductionFlow
                 coordinator.Profile;
             if (coordinatorProfile == null)
             {
+                CacheCurrentRuntime();
                 currentProfile = null;
                 runtime = null;
                 pendingConfirmedRuntime = null;
@@ -187,6 +193,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 currentProfile = coordinatorProfile;
                 runtime = pendingConfirmedRuntime;
+                CacheCurrentRuntime();
                 pendingConfirmedRuntime = null;
                 pendingConfirmedPayloadFingerprint = string.Empty;
                 DetachBoundController();
@@ -200,13 +207,125 @@ namespace ShooterMover.UI.ProductionFlow
         private void ComposeFreshProfile(
             ProductionFlowProfileRecordV1 coordinatorProfile)
         {
-            currentProfile = coordinatorProfile;
-            runtime = new ProductionPlayerLoadoutRuntimeV1(
-                currentProfile.Payload);
+            CacheCurrentRuntime();
+            currentProfile = coordinatorProfile
+                ?? throw new ArgumentNullException(nameof(coordinatorProfile));
+            PlayerRouteProfilePayloadV1 normalized =
+                ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
+                    currentProfile.Payload);
+            StableId characterStableId =
+                normalized.SelectedCharacterStableId;
+
+            ProductionPlayerLoadoutRuntimeV1 cached;
+            if (runtimeByCharacter.TryGetValue(
+                    characterStableId,
+                    out cached)
+                && RuntimeMatchesPayload(cached, normalized))
+            {
+                runtime = cached;
+            }
+            else
+            {
+                ValidateStarterReconstruction(normalized);
+                runtime = new ProductionPlayerLoadoutRuntimeV1(normalized);
+                runtimeByCharacter[characterStableId] = runtime;
+            }
+
             pendingConfirmedRuntime = null;
             pendingConfirmedPayloadFingerprint = string.Empty;
             DetachBoundController();
             boundPayloadFingerprint = string.Empty;
+        }
+
+        private void CacheCurrentRuntime()
+        {
+            if (runtime == null
+                || currentProfile == null
+                || currentProfile.Payload == null
+                || currentProfile.Payload.SelectedCharacterStableId == null)
+            {
+                return;
+            }
+
+            runtimeByCharacter[
+                currentProfile.Payload.SelectedCharacterStableId] = runtime;
+        }
+
+        private static bool RuntimeMatchesPayload(
+            ProductionPlayerLoadoutRuntimeV1 candidate,
+            PlayerRouteProfilePayloadV1 payload)
+        {
+            if (candidate == null
+                || payload == null
+                || candidate.LoadoutAuthority == null)
+            {
+                return false;
+            }
+
+            ProductionWeaponMountLayoutV1 expectedLayout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    payload.LoadoutProfileStableId);
+            if (candidate.MountLayout == null
+                || candidate.MountLayout.LoadoutProfileStableId
+                    != expectedLayout.LoadoutProfileStableId)
+            {
+                return false;
+            }
+
+            InventoryLoadoutAuthoritySnapshotV1 snapshot =
+                candidate.LoadoutAuthority.ExportSnapshot();
+            if (snapshot == null || !snapshot.HasValidFingerprint())
+            {
+                return false;
+            }
+
+            for (int index = 0;
+                index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                index++)
+            {
+                PlayerRouteWeaponSlotV1 routeSlot =
+                    payload.WeaponSlots[index];
+                InventoryLoadoutSlotBindingV1 binding =
+                    snapshot.GetBinding(routeSlot.WeaponSlotStableId);
+                if (binding.EquipmentInstanceStableId
+                    != routeSlot.EquipmentInstanceStableId)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static void ValidateStarterReconstruction(
+            PlayerRouteProfilePayloadV1 payload)
+        {
+            for (int index = 0;
+                index < payload.WeaponSlots.Count;
+                index++)
+            {
+                StableId instanceStableId = payload.WeaponSlots[index]
+                    .EquipmentInstanceStableId;
+                if (instanceStableId == null)
+                {
+                    continue;
+                }
+
+                StableId ignoredDefinitionStableId;
+                if (!ProductionStarterWeaponCatalogV1
+                    .TryResolveDefinitionForInstance(
+                        instanceStableId,
+                        out ignoredDefinitionStableId))
+                {
+                    throw new InvalidOperationException(
+                        "Cannot reconstruct exact equipment instance "
+                        + instanceStableId
+                        + " from route position "
+                        + payload.WeaponSlots[index].WeaponSlotStableId
+                        + ". Slot-based weapon substitution is forbidden; "
+                        + "an authoritative holdings snapshot is required.");
+                }
+            }
         }
 
         private void BindInventoryScene()
@@ -270,6 +389,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void OnDestroy()
         {
+            CacheCurrentRuntime();
             DetachBoundController();
             if (instance == this)
             {
