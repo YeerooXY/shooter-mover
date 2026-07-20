@@ -60,7 +60,7 @@ namespace ShooterMover.Tests.PlayMode.Players
                         router.ObserveEmission(
                             new EnemyProjectileEmissionFactV1(eventId, 4L)),
                         Is.EqualTo(
-                            EnemyProjectileEmissionObservationStatus.Accepted));
+                            EnemyDamageAdmissionObservationStatus.Accepted));
 
                     CombatHit2DTranslationResult translated =
                         hitAdapter.TranslateConfirmedHit(
@@ -82,6 +82,44 @@ namespace ShooterMover.Tests.PlayMode.Players
                     Assert.That(requests[index].TargetActorId, Is.EqualTo(targetId));
                     Assert.That(requests[index].LifecycleGeneration, Is.EqualTo(4L));
                 }
+            }
+        }
+
+        [Test]
+        public void ContactAttackUsesTheSameRouterAdmissionPath()
+        {
+            PlayerDamageRequest forwarded = null;
+            using (var router = new EnemyToPlayerDamageRouterV1(
+                request =>
+                {
+                    forwarded = request;
+                    return null;
+                }))
+            {
+                StableId sourceId = StableId.Parse("actor.router-contact-enemy");
+                StableId targetId = StableId.Parse("actor.router-contact-player");
+                StableId eventId = StableId.Parse("contact-hit.router-contact");
+                Collider2D target = CreateTarget("ContactTarget");
+                var hitAdapter = new CombatHit2DAdapter(sourceId);
+                hitAdapter.RegisterTarget(target, targetId);
+                router.RegisterDamageSource(hitAdapter, 9d);
+
+                Assert.That(
+                    router.ObserveAttack(
+                        new EnemyDamageAdmissionFactV1(
+                            eventId,
+                            6L,
+                            EnemyAttackDeliveryKind.Contact)),
+                    Is.EqualTo(EnemyDamageAdmissionObservationStatus.Accepted));
+                hitAdapter.TranslateConfirmedHit(
+                    eventId,
+                    target,
+                    CombatChannel.Kinetic,
+                    false);
+
+                Assert.That(forwarded, Is.Not.Null);
+                Assert.That(forwarded.Amount, Is.EqualTo(9d));
+                Assert.That(forwarded.LifecycleGeneration, Is.EqualTo(6L));
             }
         }
 
@@ -159,12 +197,12 @@ namespace ShooterMover.Tests.PlayMode.Players
                 Assert.That(
                     router.ObserveEmission(
                         new EnemyProjectileEmissionFactV1(eventId, 3L)),
-                    Is.EqualTo(EnemyProjectileEmissionObservationStatus.Accepted));
+                    Is.EqualTo(EnemyDamageAdmissionObservationStatus.Accepted));
                 Assert.That(
                     router.ObserveEmission(
                         new EnemyProjectileEmissionFactV1(eventId, 4L)),
                     Is.EqualTo(
-                        EnemyProjectileEmissionObservationStatus.ConflictingDuplicate));
+                        EnemyDamageAdmissionObservationStatus.ConflictingDuplicate));
                 Assert.That(router.PendingEmissionCount, Is.EqualTo(1));
             }
         }
