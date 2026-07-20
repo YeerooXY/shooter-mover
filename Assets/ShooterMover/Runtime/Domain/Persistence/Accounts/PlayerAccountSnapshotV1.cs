@@ -365,7 +365,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
                 null);
         }
 
-        internal static void ValidateSlotIndex(int slotIndex)
+        public static void ValidateSlotIndex(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= CharacterSlotCount)
             {
