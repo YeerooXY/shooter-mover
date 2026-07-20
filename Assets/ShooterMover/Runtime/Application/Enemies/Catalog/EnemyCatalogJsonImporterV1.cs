@@ -97,9 +97,6 @@ namespace ShooterMover.Application.Enemies.Catalog
                 DefinitionDtoV1 dto = Require(source[index], path);
                 LevelScalingDtoV1 scaling = Require(dto.LevelScaling, path + ".level_scaling");
                 PerceptionDtoV1 perception = Require(dto.Perception, path + ".perception");
-                AttackGeometryDtoV1 geometry = Require(
-                    dto.AttackGeometry,
-                    path + ".attack_geometry");
                 definitions.Add(
                     new EnemyDefinitionV1(
                         ParseId(dto.Id, path + ".id"),
@@ -113,10 +110,6 @@ namespace ShooterMover.Application.Enemies.Catalog
                         ParseId(dto.Faction, path + ".faction"),
                         perception.DetectionRadius,
                         perception.VisionArcDegrees,
-                        geometry.AttackArcDegrees,
-                        geometry.MinimumRange,
-                        geometry.PreferredRange,
-                        geometry.MaximumRange,
                         ParseId(dto.MovementPolicy, path + ".movement_policy"),
                         ParseId(dto.DecisionPolicy, path + ".decision_policy"),
                         MapAttacks(dto.Attacks, path + ".attacks"),
@@ -142,6 +135,11 @@ namespace ShooterMover.Application.Enemies.Catalog
                     new EnemyAttackCapabilityDescriptorV1(
                         ParseId(dto.Id, attackPath + ".id"),
                         ParseId(dto.Capability, attackPath + ".capability"),
+                        dto.SelectionPriority,
+                        dto.AttackArcDegrees,
+                        dto.MinimumRange,
+                        dto.PreferredRange,
+                        dto.MaximumRange,
                         dto.CooldownSeconds,
                         dto.Damage,
                         ParseId(dto.DamageChannel, attackPath + ".damage_channel"),
