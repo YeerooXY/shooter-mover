@@ -102,6 +102,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 if (batchRoot != null)
                 {
+                    batchRoot.SetActive(false);
                     Destroy(batchRoot);
                 }
 
