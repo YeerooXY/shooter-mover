@@ -76,37 +76,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             "Flamethrower",
         };
 
-        private readonly Dictionary<string, ProjectilePresentation> projectilePresentation =
-            new Dictionary<string, ProjectilePresentation>(StringComparer.Ordinal)
-            {
-                {
-                    "weapon.blaster-machine-gun",
-                    new ProjectilePresentation(
-                        new Color(0.16f, 0.88f, 1f, 1f),
-                        new Vector3(0.22f, 0.08f, 1f))
-                },
-                {
-                    "weapon.shotgun",
-                    new ProjectilePresentation(
-                        new Color(1f, 0.78f, 0.22f, 1f),
-                        new Vector3(0.13f, 0.07f, 1f))
-                },
-                {
-                    "weapon.rocket-launcher",
-                    new ProjectilePresentation(
-                        new Color(1f, 0.25f, 0.08f, 1f),
-                        new Vector3(0.38f, 0.18f, 1f))
-                },
-                {
-                    "weapon.flamethrower",
-                    new ProjectilePresentation(
-                        new Color(1f, 0.48f, 0.05f, 0.9f),
-                        new Vector3(0.22f, 0.14f, 1f))
-                },
-            };
-
-        private readonly Dictionary<string, Sprite> projectileSprites =
-            new Dictionary<string, Sprite>(StringComparer.Ordinal);
         private readonly HashSet<InventoryWeaponEffectInstance2D> preparedEffects =
             new HashSet<InventoryWeaponEffectInstance2D>();
         private readonly HashSet<InventoryWeaponPersistentDamageArea2D> preparedPools =
@@ -170,11 +139,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         private static void InstallForScene(Scene scene)
         {
-            if (!string.Equals(
+            if (string.Equals(
                     scene.path,
                     Stage1VisibleSliceController.ScenePath,
                     StringComparison.Ordinal))
             {
+                Stage1VisibleSliceController visibleSlice =
+                    FindInScene<Stage1VisibleSliceController>(scene);
+                if (visibleSlice != null)
+                {
+                    if (visibleSlice.GetComponent<Stage1PlayableLoopCompositionV1>() == null)
+                    {
+                        visibleSlice.gameObject.AddComponent<Stage1PlayableLoopCompositionV1>();
+                    }
+                    if (visibleSlice.GetComponent<Stage1WeaponPresentationRepairV1>() == null)
+                    {
+                        visibleSlice.gameObject.AddComponent<Stage1WeaponPresentationRepairV1>();
+                    }
+                }
+
                 return;
             }
 
@@ -239,8 +222,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             profile = flow.Profile;
             ValidateAcceptedSceneAuthorities();
             RetireLegacyGameplayLoop();
-            BuildInventoryAndWeaponAuthority();
-            BuildExperienceAndMissionAuthorities();
+            BuildWeaponEffectEmitter();
+            if (!TryAdoptHubLoadout())
+            {
+                throw new InvalidOperationException(
+                    string.IsNullOrEmpty(diagnostic)
+                        ? "The authoritative Hub loadout is unavailable."
+                        : diagnostic);
+            }
+            BuildExperienceAuthorities();
             BuildAcceptedRoomRuntime();
             RegisterRealEnemies();
             restartObserved = controller.RestartGeneration;
@@ -290,74 +280,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             controller.enabled = false;
         }
 
-        private void BuildInventoryAndWeaponAuthority()
+        private void BuildWeaponEffectEmitter()
         {
-            equipmentCatalog = BuildEquipmentCatalog();
-            holdings = new PlayerHoldingsService(
-                StableId.Parse("authority.demo-cutover-player-holdings"),
-                999L,
-                new CatalogEquipmentValidatorV1(equipmentCatalog));
-
-            string[] definitionIds =
-            {
-                "equipment.demo-cutover-blaster",
-                "equipment.demo-cutover-shotgun",
-                "equipment.demo-cutover-rocket-launcher",
-                "equipment.demo-cutover-flamethrower",
-            };
-            StableId common = StableId.Parse("equipment-quality.common");
-            int firstBoundSlot = -1;
-            for (int index = 0; index < PlayerRouteProfilePayloadV1.WeaponSlotCount; index++)
-            {
-                StableId instanceId =
-                    profile.Payload.WeaponSlots[index].EquipmentInstanceStableId;
-                if (instanceId == null)
-                {
-                    continue;
-                }
-                if (firstBoundSlot < 0)
-                {
-                    firstBoundSlot = index;
-                }
-
-                EquipmentInstance instance = EquipmentInstance.Create(
-                    instanceId,
-                    StableId.Parse(definitionIds[index]),
-                    1,
-                    common,
-                    Array.Empty<AugmentInstance>());
-                AddEquipment(instance, index);
-            }
-            if (firstBoundSlot < 0)
-            {
-                throw new InvalidOperationException(
-                    "The retained Stage 1 bootstrap requires one bound weapon position.");
-            }
-
-            weaponCatalog = BuildWeaponCatalog();
             GameObject emitterObject = new GameObject(
                 "DEMO-CUTOVER-001 Inventory Weapon Effects");
             emitterObject.transform.SetParent(transform, false);
             effectEmitter = emitterObject.AddComponent<InventoryWeaponEffectEmitter2D>();
-
-            var actorState = new PlayerWeaponActorStateSourceV1(controller);
-            var activeWeapon = new RouteProfileActiveWeaponSource(
-                profile.Payload,
-                firstBoundSlot);
-            var adapter = new InventoryBackedWeaponExecutionAdapter(
-                holdings,
-                equipmentCatalog,
-                weaponCatalog,
-                new PlayerWeaponOwnershipResolverV1(controller),
-                effectEmitter,
-                SimulationTicksPerSecond);
-            weapons = new InventoryWeaponRuntimeComposition(
-                actorState,
-                activeWeapon,
-                adapter);
         }
 
-        private void BuildExperienceAndMissionAuthorities()
+        private void BuildExperienceAuthorities()
         {
             experience = new PlayerExperienceAuthorityV1(
                 new PlayerExperienceCurveV1(
@@ -383,8 +314,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             EnemyExperienceRewardIdsV1.BlasterTurret,
                             60L),
                     }));
-            missionPort = new EmptyStrongboxMissionPortV1(holdings);
-            missionResults = new MissionRunResultAuthorityV1(missionPort);
         }
 
         private void BuildAcceptedRoomRuntime()

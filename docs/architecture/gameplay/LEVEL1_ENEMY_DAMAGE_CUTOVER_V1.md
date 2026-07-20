@@ -3,16 +3,19 @@
 ## Launch boundary
 
 - Repository: `YeerooXY/shooter-mover`
-- Exact base: `850762ef3628d356a1856a859d32981eebfd5c56`
-- Base state: current `main` immediately after merged PR #237
-- Branch: `agent/level1-enemy-damage-cutover-001`
+- Original exact base: `850762ef3628d356a1856a859d32981eebfd5c56`
+- Original branch: `agent/level1-enemy-damage-cutover-001`
+- Canonical-route consolidation base: `8b4d4e401827735d10082f6f3b04a5d1b2103920`
+- Canonical-route consolidation branch: `agent/cleanup-player-routing-002`
 - Target: `main`
 
 ## Purpose
 
 Replace the retained Level 1 player bridge's turret-specific and Mobile Blaster Droid-specific projectile handlers with one reusable many-source enemy projectile impact route.
 
-This task does not change Hub loadout IDs, weapon names, equipment persistence, player weapon execution, projectile presentation, weapon catalogs, or the PR #237 travel repair.
+The consolidation follow-up also removes the overlapping `EnemyToPlayerDamageRouterV1` implementation so the repository has one canonical Level 1 enemy-projectile-to-player route.
+
+This work does not change Hub loadout IDs, weapon names, equipment persistence, player weapon execution, projectile presentation, weapon catalogs, or the PR #237 travel repair.
 
 ## Previous coupling
 
@@ -58,19 +61,27 @@ The Level 1 scene adapter consumes the immutable impact and creates the existing
 
 Trusted participant attribution remains resolved from the exact source actor identity registered by the Level 1 composition. Client-supplied participant claims remain unused.
 
-## Naming migration completed here
+## Canonical production path
 
-The runtime implementation now has a canonical production path and name:
+The runtime implementation has one canonical production path and name:
 
 - `Assets/ShooterMover/Production/Level1/Level1PlayerRuntimeSceneAdapterV1.cs`;
-- `ShooterMover.UnityAdapters.Production.Level1.Level1PlayerRuntimeSceneAdapterV1`.
+- `ShooterMover.UnityAdapters.Production.Level1.Level1PlayerRuntimeSceneAdapterV1`;
+- `Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/EnemyProjectileImpactRouter2D.cs`.
 
-The serialized-era script remains only as a zero-logic compatibility subclass:
+The historical component remains temporarily as a zero-logic runtime compatibility subclass:
 
 - `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1PlayerLiveAuthorityAdapterV1.cs`;
 - `Stage1PlayerLiveAuthorityAdapterV1`.
 
-The old script and Unity GUID remain in place so the retained scene/controller and existing tests do not lose their serialized component identity. It contains no player state, enemy registration, projectile ledger, damage routing, HUD routing, restart logic, or lifecycle parsing.
+The Stage 1 scene does not serialize this compatibility component. `Stage1VisibleSliceController` adds it dynamically and still exposes the historical concrete type to callers and tests. The shell therefore remains only until that controller API is migrated; it contains no player state, enemy registration, projectile ledger, damage routing, HUD routing, restart logic, or lifecycle parsing.
+
+The overlapping route introduced by `LEVEL1-COMBAT-CUTOVER-001` was removed during canonical-route consolidation:
+
+- `Level1PlayerRuntimeAdapterV1`;
+- `EnemyProjectileDamageSourceBinderV1`;
+- `EnemyToPlayerDamageRouterV1`;
+- their focused test and superseded architecture/verification documents.
 
 ## Serialized scene-root migration deliberately isolated
 
@@ -82,7 +93,7 @@ The broader rename remains a separate migration:
 - `Stage1PlayableLoopCompositionV1` and its direct controller dependency;
 - the reflection-based legacy-loop retirement seam.
 
-That migration must preserve `.meta` GUIDs, update build settings and scene paths, remove the production dependency on `ShooterMover.TestSupport.*`, and pass an Editor scene-open plus Bootstrap-to-Level-1 smoke run. Moving that large serialized root inside the combat fix would mix behavior change, source ownership, scene routing, and serialization risk in one unprovable patch.
+That migration must preserve the actual serialized controller GUID, update build settings and scene paths, remove the production dependency on `ShooterMover.TestSupport.*`, and pass an Editor scene-open plus Bootstrap-to-Level-1 smoke run. Moving that large serialized root inside the combat fix would mix behavior change, source ownership, scene routing, and serialization risk in one unprovable patch.
 
 ## Runtime registrations in this version
 
@@ -97,7 +108,7 @@ Both use the same router. Registering a future ranged enemy requires supplying a
 
 `EnemyProjectileDamageRoutingPlayModeTests` proves:
 
-- the serialized old component is a compatibility subclass of the canonical production implementation;
+- the runtime compatibility component is a subclass of the canonical production implementation;
 - the canonical implementation owns one shared router;
 - no `HandleTurretHit` callback remains;
 - no `HandleDroidHit` callback remains;

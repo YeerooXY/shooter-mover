@@ -24,7 +24,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 return initialized
                     && controller != null
-                    && effectEmitter != null;
+                    && effectEmitter != null
+                    && holdings != null
+                    && weapons != null;
             }
         }
 
@@ -35,14 +37,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         internal bool TryAdoptHubLoadout()
         {
-            if (!IsHubLoadoutIntegrationReady)
+            if (controller == null || effectEmitter == null)
             {
+                diagnostic =
+                    "The Level 1 weapon composition boundary is unavailable.";
                 return false;
             }
 
             ProductionPlayerLoadoutRuntimeV1 runtime;
             ProductionFlowProfileRecordV1 currentProfile;
-            if (!ProductionHubLoadoutCompositionV1.TryGetCurrent(
+            if (!ProductionHubLoadoutCompositionV1.TryResolveCurrent(
                 out runtime,
                 out currentProfile))
             {
@@ -109,10 +113,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             missionPort = new EmptyStrongboxMissionPortV1(holdings);
             missionResults = new MissionRunResultAuthorityV1(
                 missionPort);
-            RegisterHubWeaponPresentationProfiles();
             UpdateWeaponDisplayNames();
             RetireInGameLoadoutSelector();
-            BeginRun();
             diagnostic = string.Empty;
             return true;
         }
@@ -214,21 +216,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     identity,
                     damage,
                     phase);
-        }
-
-        private void RegisterHubWeaponPresentationProfiles()
-        {
-            projectilePresentation[
-                ProductionStarterWeaponCatalogV1.ArcWeaponDefinitionId] =
-                new ProjectilePresentation(
-                    new Color(0.35f, 0.95f, 1f, 1f),
-                    new Vector3(0.18f, 0.08f, 1f));
-            projectilePresentation[
-                ProductionStarterWeaponCatalogV1
-                    .RicochetWeaponDefinitionId] =
-                new ProjectilePresentation(
-                    new Color(0.2f, 0.75f, 1f, 1f),
-                    new Vector3(0.28f, 0.14f, 1f));
         }
 
         private void UpdateWeaponDisplayNames()
