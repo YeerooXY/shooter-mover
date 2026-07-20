@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 
@@ -68,6 +69,38 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 Is.EqualTo(
                     ProductionWeaponMountPolicyV1
                         .OuterRightMountStableId));
+        }
+
+        [Test]
+        public void AggressiveRuntimeKeepsAllFiveOwnedButOnlyTwoConfigurable()
+        {
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(
+                Route(
+                    ProductionWeaponMountPolicyV1
+                        .AggressiveLoadoutProfileId,
+                    "aggressive-runtime"));
+            var service = new InventoryLoadoutScreenServiceV1(
+                runtime.RoutePayload,
+                runtime.Holdings,
+                runtime.CatalogAdapter,
+                runtime.LoadoutAuthority);
+
+            Assert.That(
+                runtime.Holdings.ExportSnapshot().UniqueHoldings.Count,
+                Is.EqualTo(5));
+            Assert.That(
+                runtime.RoutePayload.WeaponSlots[1].IsBound,
+                Is.False);
+            Assert.That(
+                runtime.RoutePayload.WeaponSlots[2].IsBound,
+                Is.False);
+            Assert.That(service.Snapshot.CanConfirm, Is.True);
+            Assert.That(
+                service.TrySelect(
+                    InventoryLoadoutSlotIdsV1.WeaponTwo,
+                    runtime.RicochetEquipmentInstanceStableId).Status,
+                Is.EqualTo(
+                    InventoryLoadoutScreenStatusV1.InvalidSlot));
         }
 
         [Test]
