@@ -716,7 +716,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
             lineMaterial = new Material(Shader.Find("Sprites/Default"));
             lineMaterial.name = "VS007 Session Line Material";
 
-            roomPresentation = Instantiate(roomPresentationPrefab, transform);
+            roomPresentation = CreateRoomPresentation();
             roomPresentation.name = "RoomPresentation";
             roomPresentation.SetReducedEffects(reducedEffects);
             sessionObjects.Add(roomPresentation.gameObject);
@@ -2243,8 +2243,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 StableId.TryParse(playerRunParticipantIdText, out parsedIdentity)
                 && StableId.TryParse(playerCharacterIdText, out parsedIdentity)
                 && StableId.TryParse(playerFactionIdText, out parsedIdentity);
-            if (roomPresentationPrefab == null
-                || blasterShotSprite == null
+            if (blasterShotSprite == null
                 || turretPresentationPrefab == null
                 || roomContentDefinitions == null
                 || roomContentDefinitions.Length == 0
@@ -2260,6 +2259,25 @@ namespace ShooterMover.TestSupport.VisibleSlice
                         : roomContentDefinitions.Length)
                     + " player-identity=" + validPlayerIdentity);
             }
+
+            if (roomPresentationPrefab == null)
+            {
+                Debug.LogWarning(
+                    "VS-007 room presentation prefab is missing; using the built-in room presentation fallback.",
+                    this);
+            }
+        }
+
+        private Stage1VisibleSliceRoomPresentation CreateRoomPresentation()
+        {
+            if (roomPresentationPrefab != null)
+            {
+                return Instantiate(roomPresentationPrefab, transform);
+            }
+
+            GameObject fallbackObject = new GameObject("RoomPresentationFallback");
+            fallbackObject.transform.SetParent(transform, false);
+            return fallbackObject.AddComponent<Stage1VisibleSliceRoomPresentation>();
         }
 
         private void OnDestroy()

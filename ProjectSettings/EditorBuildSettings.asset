@@ -41,4 +41,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/ShooterMover/Scenes/StrongboxOpening/StrongboxOpening.unity
     guid: bd0328b97fbc4c92a5c4c352ffc6700e
+  - enabled: 1
+    path: Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity
+    guid: 7a007000000000000000000000000004
   m_configObjects: {}

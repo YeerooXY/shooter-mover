@@ -105,7 +105,7 @@ MonoBehaviour:
   playerSprite: {fileID: 21300000, guid: a4f7d1c2e6b8493a9c8d2e7f105b6a31, type: 3}
   crateDestructionAnimation: {fileID: 11400000, guid: c3c15a703e274257adf626083da3d8e2, type: 2}
   explosiveDestructionAnimation: {fileID: 11400000, guid: 57635762d1ab47529786c2db175e0f49, type: 2}
-  shootingSandbox: 1
+  shootingSandbox: 0
   reducedEffects: 0
   grayscale: 0
 --- !u!1660057539 &9223372036854775807
