@@ -11,7 +11,8 @@
 - `IAuthoritativeEventClockV1` supplies the only time value used by active-event selection.
 - `ActiveEventModifierProjectionServiceV1` selects active definitions once for one injected instant and either projects a snapshot or rejects overlapping conflicts.
 - `ActiveEventModifierSnapshotV1` is the immutable active-event projection and contains the merged `RuntimeModifierSnapshotV1`.
-- `FrozenEventModifierContextV1` is the command/result boundary used by reward generation, drop generation, strongbox opening, and mission-result freezing.
+- `FrozenEventModifierContextV1` is the immutable modifier input retained by reward generation, drop generation, strongbox opening, and mission-result freezing.
+- `EventStampedCommandEnvelopeV1` binds an existing command fingerprint to the exact frozen active-event snapshot without changing the command's underlying generation algorithm.
 
 No event class owns reward generation, item selection, wallet mutation, XP mutation, strongbox opening, or mission completion.
 
@@ -66,7 +67,14 @@ Targets remain open strings. Unknown future target IDs remain present in the mod
 
 ## Freezing generation and opening results
 
-A reward, drop, opening, or mission command should obtain one successful `ActiveEventModifierSnapshotV1`, call `FreezeForCommand()`, and include at least `FrozenEventModifierContextV1.ActiveEventSnapshotFingerprint` in its own canonical command text.
+A reward, drop, opening, or mission command obtains one successful `ActiveEventModifierSnapshotV1` and calls `FreezeForCommand()`. The command boundary then creates the corresponding `EventStampedCommandEnvelopeV1` factory:
+
+- `ForRewardGeneration`;
+- `ForDropGeneration`;
+- `ForStrongboxOpening`;
+- `ForMissionResult`.
+
+The envelope's canonical fingerprint binds together the command kind, the underlying command fingerprint, `ActiveEventSnapshotFingerprint`, and the complete frozen event-context fingerprint. Existing reward/drop/opening algorithms remain unchanged, while their command records can prove the exact event snapshot applied.
 
 When later evaluation is required, the command/record retains the complete frozen context. It must not ask the event service to project again. This guarantees that:
 
@@ -93,5 +101,7 @@ No network transport, remote event service, signing scheme, monetization backend
 ## Focused verification
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.ActiveEventModifierProjectionV1Tests -testResults Temp/event-modifier-001-editmode.xml -logFile Temp/event-modifier-001-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.ActiveEventModifierProjectionV1Tests -testResults Temp/event-modifier-001-projection-editmode.xml -logFile Temp/event-modifier-001-projection-editmode.log
+
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.EventStampedCommandEnvelopeV1Tests -testResults Temp/event-modifier-001-command-editmode.xml -logFile Temp/event-modifier-001-command-editmode.log
 ```
