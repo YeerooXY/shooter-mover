@@ -1,4 +1,4 @@
-using System;
+using System.ComponentModel;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 
@@ -8,7 +8,7 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
     /// Compatibility alias retained for callers compiled against ROOM-LIVE-001.
     /// New production code should use <see cref="Level1LiveRoomGraphDefinitionV1"/>.
     /// </summary>
-    [Obsolete("Use Level1LiveRoomGraphDefinitionV1. The old 'Authorable' name is retained only for source compatibility.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static class Level1AuthorableRoomDefinitionV1
     {
         public static StableId LayoutStableId =>
