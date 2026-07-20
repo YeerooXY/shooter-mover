@@ -63,6 +63,10 @@ Additional provenance coverage proves canonical version 2 documents reject a mis
 - The PR comparison contains 20 files, all added relative to `main`, and no deletions.
 - `Stage1VisibleSliceController.cs` is absent from the changed-file list.
 
+## Corrected source boundary
+
+The correction adds one immutable reference-catalog source and `.meta`, and updates the existing access contracts, importer, Unity authoring adapter, two focused test files, architecture documentation, and this verification file. The runtime authority, ROOM-LIVE projection bridge, Stage 1 controller, scenes, prefabs, and live composition remain unchanged.
+
 ## Unity merge gate
 
 Keep PR #259 as a draft until both focused commands produce XML files with zero failures and Unity compilation succeeds. No passing Unity result is claimed from an environment where Unity is unavailable.
