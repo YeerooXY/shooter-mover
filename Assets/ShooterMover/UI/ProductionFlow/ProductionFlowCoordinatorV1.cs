@@ -40,7 +40,7 @@ namespace ShooterMover.UI.ProductionFlow
         private static ProductionFlowCoordinatorV1 instance;
         private static ProductionResultsContextV1 pendingResultsContext;
 
-        private IProductionFlowProfileStoreV1 profileStore;
+        private PlayerPrefsProductionFlowProfileStoreV1 profileStore;
         private readonly ProductionFlowProfileRecordV1[] profiles =
             new ProductionFlowProfileRecordV1[ProfileSlotCount];
         private ProductionFlowProfileRecordV1 profile;
@@ -181,6 +181,7 @@ namespace ShooterMover.UI.ProductionFlow
                         profiles,
                         SelectExistingProfile,
                         CreateProfile,
+                        DeleteProfile,
                         transitions.TryNavigateBack);
                 }
                 return;
@@ -358,8 +359,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             activeProfileSlot = slotIndex;
             profile = profiles[slotIndex];
-            return transitions.TryNavigateTo(
-                HubRouteV1.InventoryLoadoutHub);
+            return transitions.TryReturnToHub(payload);
         }
 
         private bool CreateProfile(
@@ -391,6 +391,32 @@ namespace ShooterMover.UI.ProductionFlow
             profiles[slotIndex] = candidate;
             activeProfileSlot = slotIndex;
             profile = candidate;
+            return true;
+        }
+
+        private bool DeleteProfile(int slotIndex)
+        {
+            if (!IsValidSlot(slotIndex)
+                || profiles[slotIndex] == null
+                || transitions.IsTransitionPending)
+            {
+                return false;
+            }
+
+            if (!transitions.TryLoadSubflow(
+                ProductionFlowScenePathsV1.CharacterSelection))
+            {
+                return false;
+            }
+
+            profileStore.Clear(slotIndex);
+            profiles[slotIndex] = null;
+            if (activeProfileSlot == slotIndex)
+            {
+                activeProfileSlot = FindFirstOccupiedSlot();
+                profile = profiles[activeProfileSlot];
+            }
+            draftPayload = CreateDraftPayload();
             return true;
         }
 
