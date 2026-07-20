@@ -5,6 +5,7 @@ using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Rewards.Application;
+using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Holdings;
