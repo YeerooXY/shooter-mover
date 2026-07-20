@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
@@ -37,12 +38,21 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             InventoryLoadoutScreenControllerV1 controller =
                 host.AddComponent<InventoryLoadoutScreenControllerV1>();
             PlayerRouteProfilePayloadV1 returned = null;
+            PlayerRouteProfilePayloadV1 confirmed = null;
+            var order = new List<string>();
 
             controller.ConfigureDisconnected(
                 delegate(PlayerRouteProfilePayloadV1 payload)
                 {
+                    order.Add("returned");
                     returned = payload;
                 });
+            controller.Confirmed +=
+                delegate(PlayerRouteProfilePayloadV1 payload)
+                {
+                    order.Add("confirmed");
+                    confirmed = payload;
+                };
             controller.Present(HubRouteV1.Inventory, route);
             controller.ConnectAuthorities(
                 runtime.Holdings,
@@ -55,7 +65,11 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 result.Status,
                 Is.EqualTo(
                     InventoryLoadoutScreenStatusV1.Confirmed));
+            Assert.That(confirmed, Is.SameAs(result.RoutePayload));
             Assert.That(returned, Is.SameAs(result.RoutePayload));
+            Assert.That(
+                order,
+                Is.EqualTo(new[] { "confirmed", "returned" }));
             Assert.That(controller.ReturnCount, Is.EqualTo(1));
 
             Object.Destroy(host);
