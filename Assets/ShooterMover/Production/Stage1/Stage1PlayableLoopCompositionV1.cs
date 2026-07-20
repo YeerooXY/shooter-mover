@@ -266,8 +266,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             profile = flow.Profile;
             ValidateAcceptedSceneAuthorities();
             RetireLegacyGameplayLoop();
-            BuildInventoryAndWeaponAuthority();
-            BuildExperienceAndMissionAuthorities();
+            BuildWeaponEffectEmitter();
+            if (!TryAdoptHubLoadout())
+            {
+                throw new InvalidOperationException(
+                    string.IsNullOrEmpty(diagnostic)
+                        ? "The authoritative Hub loadout is unavailable."
+                        : diagnostic);
+            }
+            BuildExperienceAuthorities();
             BuildAcceptedRoomRuntime();
             RegisterRealEnemies();
             restartObserved = controller.RestartGeneration;
@@ -317,74 +324,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             controller.enabled = false;
         }
 
-        private void BuildInventoryAndWeaponAuthority()
+        private void BuildWeaponEffectEmitter()
         {
-            equipmentCatalog = BuildEquipmentCatalog();
-            holdings = new PlayerHoldingsService(
-                StableId.Parse("authority.demo-cutover-player-holdings"),
-                999L,
-                new CatalogEquipmentValidatorV1(equipmentCatalog));
-
-            string[] definitionIds =
-            {
-                "equipment.demo-cutover-blaster",
-                "equipment.demo-cutover-shotgun",
-                "equipment.demo-cutover-rocket-launcher",
-                "equipment.demo-cutover-flamethrower",
-            };
-            StableId common = StableId.Parse("equipment-quality.common");
-            int firstBoundSlot = -1;
-            for (int index = 0; index < PlayerRouteProfilePayloadV1.WeaponSlotCount; index++)
-            {
-                StableId instanceId =
-                    profile.Payload.WeaponSlots[index].EquipmentInstanceStableId;
-                if (instanceId == null)
-                {
-                    continue;
-                }
-                if (firstBoundSlot < 0)
-                {
-                    firstBoundSlot = index;
-                }
-
-                EquipmentInstance instance = EquipmentInstance.Create(
-                    instanceId,
-                    StableId.Parse(definitionIds[index]),
-                    1,
-                    common,
-                    Array.Empty<AugmentInstance>());
-                AddEquipment(instance, index);
-            }
-            if (firstBoundSlot < 0)
-            {
-                throw new InvalidOperationException(
-                    "The retained Stage 1 bootstrap requires one bound weapon position.");
-            }
-
-            weaponCatalog = BuildWeaponCatalog();
             GameObject emitterObject = new GameObject(
                 "DEMO-CUTOVER-001 Inventory Weapon Effects");
             emitterObject.transform.SetParent(transform, false);
             effectEmitter = emitterObject.AddComponent<InventoryWeaponEffectEmitter2D>();
-
-            var actorState = new PlayerWeaponActorStateSourceV1(controller);
-            var activeWeapon = new RouteProfileActiveWeaponSource(
-                profile.Payload,
-                firstBoundSlot);
-            var adapter = new InventoryBackedWeaponExecutionAdapter(
-                holdings,
-                equipmentCatalog,
-                weaponCatalog,
-                new PlayerWeaponOwnershipResolverV1(controller),
-                effectEmitter,
-                SimulationTicksPerSecond);
-            weapons = new InventoryWeaponRuntimeComposition(
-                actorState,
-                activeWeapon,
-                adapter);
         }
 
-        private void BuildExperienceAndMissionAuthorities()
+        private void BuildExperienceAuthorities()
         {
             experience = new PlayerExperienceAuthorityV1(
                 new PlayerExperienceCurveV1(
@@ -410,8 +358,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             EnemyExperienceRewardIdsV1.BlasterTurret,
                             60L),
                     }));
-            missionPort = new EmptyStrongboxMissionPortV1(holdings);
-            missionResults = new MissionRunResultAuthorityV1(missionPort);
         }
 
         private void BuildAcceptedRoomRuntime()
