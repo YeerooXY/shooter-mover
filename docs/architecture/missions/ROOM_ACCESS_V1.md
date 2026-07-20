@@ -2,13 +2,13 @@
 
 ## Purpose
 
-ROOM-ACCESS-001 adds an engine-neutral, data-driven access layer on top of the existing room graph and ROOM-LIVE facts. It does not replace room topology, occupancy, completion, traversal, inventory, or presentation authority.
+ROOM-ACCESS-001 adds an engine-neutral, data-driven access layer on top of the existing room graph and ROOM-LIVE facts. It does not replace room topology, occupancy, completion, traversal, inventory, objective, switch, drop, or presentation authority.
 
 The access layer answers one question deterministically:
 
-> Given immutable room/run facts and the current run holdings, which authored doors are open, and which consumptive locks have been permanently unlocked in this lifecycle?
+> Given immutable room/run facts, current run holdings, and validated authored references, which doors are open and which consumptive locks are permanently unlocked in this lifecycle?
 
-## Authority boundary
+## Immutable authoring boundaries
 
 `RoomAccessDefinitionV1` owns immutable authored access data:
 
@@ -16,7 +16,52 @@ The access layer answers one question deterministically:
 - condition kind, exact subject identity, threshold, or child identities;
 - the exact room door controlled by each root condition;
 - the optional exact holding consumed when that door is unlocked;
+- the immutable reference-registry fingerprint used to validate external leaves;
 - canonical JSON and deterministic SHA-256 fingerprinting.
+
+`RoomAccessReferenceCatalogV1` is a narrow authoring-validation catalog. It contains sorted immutable registrations for:
+
+- run holding IDs;
+- objective IDs;
+- switch IDs;
+- collected-drop references.
+
+Each registration records both its kind and source. Collected-drop references must be explicitly registered as either:
+
+- `AuthoredDropInstance`; or
+- `ExternalDropReference`.
+
+A syntactically valid `StableId` is never accepted as a collected-drop reference merely because it parses.
+
+The catalog is **not** an inventory, objective, switch, reward, drop, or room authority. It provides membership checks, canonical JSON, and a deterministic fingerprint only. Registration order does not affect its canonical representation or fingerprint.
+
+## Definition validation
+
+`RoomAccessDefinitionV1` validates all references before an authority can be created.
+
+Room-owned references are checked against the authored room graph:
+
+- `room-entered` and `room-complete` subjects must be exact room IDs;
+- `exact-terminal` subjects must be exact authored enemy/prop placement IDs;
+- child condition references must exist;
+- door IDs must exist in the authored room;
+- root condition IDs must exist;
+- condition graphs must be acyclic.
+
+External leaves are checked against `IRoomAccessReferenceRegistryV1`:
+
+- `holding-present`;
+- `holding-consumed`;
+- door `consume_holding`;
+- `objective-complete`;
+- `switch-active`;
+- `collected-drop`.
+
+The compatibility constructor that does not receive a registry uses the immutable empty catalog. Consequently, it remains safe for room-only conditions but fails closed when an external reference is present.
+
+The definition canonical JSON includes `reference_registry_fingerprint`. Therefore the definition fingerprint changes when its validated external-reference provenance changes.
+
+## Runtime authority boundary
 
 `RoomAccessAuthorityV1` owns only:
 
@@ -33,20 +78,22 @@ It does **not** own:
 - door animation, colliders, scenes, UI, key art, or pickup presentation;
 - Stage 1 composition or cutover.
 
-## Narrow ports
+## Narrow runtime ports
 
 `IRoomAccessFactPortV1` exposes one immutable `RoomAccessFactSnapshotV1`. Facts are exact stable identities for:
 
 - entered rooms;
 - completed rooms;
 - terminal enemy or prop instances;
-- collected drop instances;
+- collected drop references;
 - completed objectives;
 - active switches;
 - consumed holding types;
 - current difficulty.
 
 `IRoomRunHoldingPortV1` is intentionally narrower than inventory authority. It exposes quantities for stable run-holding IDs and one exactly-once consume command. The room layer cannot enumerate or mutate general equipment, loadout, strongboxes, currency, or persistent inventory.
+
+The authoring-time reference catalog never queries either runtime port. Import and definition validation are deterministic and independent of mutable runtime state.
 
 `RoomLiveAccessFactProjectionV1` is a pure bridge from the existing immutable ROOM-LIVE projection:
 
@@ -65,17 +112,15 @@ The bridge does not infer completion from clear state and does not infer entity 
 | `room-entered` | One exact room has been visited. |
 | `room-complete` | One exact room is completed by ROOM-LIVE. |
 | `exact-terminal` | One exact authored enemy or prop instance is terminal. |
-| `holding-present` | Current run quantity for one exact holding ID is greater than zero. |
-| `holding-consumed` | One exact holding ID has been consumed and retained as a fact. |
-| `collected-drop` | One exact drop instance has been collected. |
-| `objective-complete` | One exact objective ID is complete. |
-| `switch-active` | One exact switch ID is active. |
+| `holding-present` | Current run quantity for one registered holding ID is greater than zero. |
+| `holding-consumed` | One registered holding ID has been consumed and retained as a fact. |
+| `collected-drop` | One explicitly registered drop reference has been collected. |
+| `objective-complete` | One registered objective ID is complete. |
+| `switch-active` | One registered switch ID is active. |
 | `difficulty-at-least` | Current difficulty meets the authored threshold. |
 | `all` | Every child condition is true. |
 | `any` | At least one child condition is true. |
 | `not` | The single child condition is false. |
-
-Definitions reject unknown child references, duplicate identities, invalid subjects, unknown rooms/placements/doors, invalid composite shapes, and circular graphs before an authority can be created.
 
 ## Door behavior
 
@@ -93,44 +138,34 @@ An exact unlock-command replay never calls the holding port again. A crash-safe 
 
 Rejected attempts are journaled. A later retry after facts or holdings change must use a new operation ID.
 
-## JSON authoring
+## JSON authoring and provenance
 
-Access is a readable companion document to split room content. It can select a door by exact stable ID or by authored meaning within one exact room:
+Access is a readable companion document to split room content. Version 1 documents remain accepted for existing authored content. Canonical version 2 output includes the immutable reference-registry fingerprint:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "layout": "layout.level1-authorable-two-room",
+  "reference_registry_fingerprint": "<sha256>",
   "conditions": [
-    {
-      "id": "access.level1-entry-complete",
-      "kind": "room-complete",
-      "subject": "room.level1-entry"
-    },
     {
       "id": "access.level1-blue-key-present",
       "kind": "holding-present",
       "subject": "holding.level1-blue-key"
-    },
-    {
-      "id": "access.level1-forward-gate",
-      "kind": "all",
-      "children": [
-        "access.level1-entry-complete",
-        "access.level1-blue-key-present"
-      ]
     }
   ],
   "doors": [
     {
       "room": "room.level1-entry",
-      "exit_type": "progression",
-      "condition": "access.level1-forward-gate",
+      "door": "door-instance.level1-forward",
+      "condition": "access.level1-blue-key-present",
       "consume_holding": "holding.level1-blue-key"
     }
   ]
 }
 ```
+
+When a version 2 document supplies a registry fingerprint, import rejects a different registry with `room-access-reference-registry-fingerprint-mismatch`. Version 2 documents without the fingerprint reject. Version 1 input receives the active registry fingerprint when compiled into the canonical definition.
 
 Supported door selectors are:
 
@@ -141,9 +176,19 @@ Supported door selectors are:
 
 Meaning-based selectors must resolve to exactly one door in the authored room. Ambiguity fails closed and asks the author to use the exact door ID. This preserves return/progression/final-exit semantics without inferring them from room order.
 
-`RoomAccessJsonImporterV1` returns one structured issue with a code, JSON path, and message and never returns a partial definition. Canonical JSON uses exact door IDs, sorted condition/door records, sorted child IDs, and explicit null/default fields. Re-importing it produces the same fingerprint.
+`RoomAccessJsonImporterV1` returns one structured issue with a stable code, precise JSON path, and message, and never returns a partial definition. External reference diagnostics include:
 
-`JsonRoomAccessDefinition2D` composes an existing `JsonRoomContentDefinition2D` with one access `TextAsset`, so adding another key or locked door normally changes JSON only. The checked-in `level1.access.json` is an authoring example and is not installed into the playable Stage 1 composition by this task.
+- `room-access-holding-reference-unknown`;
+- `room-access-consume-holding-reference-unknown`;
+- `room-access-objective-reference-unknown`;
+- `room-access-switch-reference-unknown`;
+- `room-access-drop-reference-unknown`.
+
+Canonical JSON uses exact door IDs, sorted condition/door records, sorted child IDs, explicit null/default fields, and the reference-registry fingerprint. Re-importing it with the same registry produces the same fingerprint.
+
+`JsonRoomAccessDefinition2D` serializes authoring-only reference registrations and builds one immutable `RoomAccessReferenceCatalogV1` before import. Its test/import overload also accepts an already-built immutable registry. It never resolves references through mutable runtime authorities.
+
+The checked-in `level1.access.json` remains an authoring example and is not installed into the playable Stage 1 composition by this task.
 
 ## Lifecycle and persistence
 
