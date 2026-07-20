@@ -25,6 +25,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
             }
 
             var attackIds = new HashSet<StableId>();
+            var priorities = new HashSet<int>();
             for (int index = 0; index < definition.Attacks.Count; index++)
             {
                 EnemyAttackCapabilityDescriptorV1 attack = definition.Attacks[index];
@@ -46,6 +47,18 @@ namespace ShooterMover.Domain.Enemies.Catalog
                         attackPath + ".id",
                         "Attack IDs must be non-null and unique inside one definition.");
                 }
+                if (attack.SelectionPriority < 0
+                    || attack.SelectionPriority > MaximumAttackSelectionPriority
+                    || !priorities.Add(attack.SelectionPriority))
+                {
+                    Add(
+                        issues,
+                        "enemy-catalog-attack-priority-invalid",
+                        attackPath + ".selection_priority",
+                        "Selection priorities must be unique, non-negative, and bounded inside one definition.");
+                }
+
+                ValidateAttackGeometry(issues, attackPath, attack, definition.DetectionRadius);
 
                 EnemyAttackCapabilityRegistrationV1 registration;
                 if (attack.CapabilityId == null
@@ -112,21 +125,87 @@ namespace ShooterMover.Domain.Enemies.Catalog
                         "Damage channel is not registered: " + Value(attack.DamageChannelId));
                 }
 
-                ValidateProjectile(issues, attackPath, attack.Projectile, definition);
+                ValidateProjectile(issues, attackPath, attack, registry);
                 ValidateArea(issues, attackPath, attack.Area);
-                ValidateMelee(issues, attackPath, attack.Melee);
+                ValidateMelee(issues, attackPath, attack);
+            }
+        }
+
+        private static void ValidateAttackGeometry(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyAttackCapabilityDescriptorV1 attack,
+            double detectionRadius)
+        {
+            ValidateArc(issues, path + ".attack_arc_degrees", attack.AttackArcDegrees);
+
+            bool minimumValid = IsFiniteInRange(
+                attack.MinimumAttackRange,
+                0d,
+                MaximumDistance,
+                true);
+            bool preferredValid = IsFiniteInRange(
+                attack.PreferredAttackRange,
+                0d,
+                MaximumDistance,
+                true);
+            bool maximumValid = IsFiniteInRange(
+                attack.MaximumAttackRange,
+                0d,
+                MaximumDistance,
+                true);
+
+            if (!minimumValid)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-attack-range-invalid",
+                    path + ".minimum_range",
+                    "Minimum attack range must be finite, non-negative, and bounded.");
+            }
+            if (!preferredValid
+                || (minimumValid && attack.PreferredAttackRange < attack.MinimumAttackRange))
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-attack-range-invalid",
+                    path + ".preferred_range",
+                    "Preferred attack range must be finite, bounded, and at least the minimum range.");
+            }
+            if (!maximumValid
+                || (preferredValid && attack.MaximumAttackRange < attack.PreferredAttackRange)
+                || attack.MaximumAttackRange > detectionRadius)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-attack-range-invalid",
+                    path + ".maximum_range",
+                    "Maximum attack range must be finite, ordered, bounded, and within detection radius.");
             }
         }
 
         private static void ValidateProjectile(
             List<EnemyCatalogIssueV1> issues,
             string path,
-            EnemyProjectileAttackParametersV1 projectile,
-            EnemyDefinitionV1 definition)
+            EnemyAttackCapabilityDescriptorV1 attack,
+            IEnemyCatalogRegistryV1 registry)
         {
+            EnemyProjectileAttackParametersV1 projectile = attack.Projectile;
             if (projectile == null) return;
-            bool valid = projectile.ProjectileProfileId != null
-                && projectile.ProjectileCount >= 1
+
+            if (projectile.ProjectileProfileId == null
+                || registry == null
+                || !registry.IsProjectileProfileRegistered(projectile.ProjectileProfileId))
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-projectile-profile-unknown",
+                    path + ".projectile.profile",
+                    "Projectile profile is not registered: "
+                    + Value(projectile.ProjectileProfileId));
+            }
+
+            bool physicalValuesValid = projectile.ProjectileCount >= 1
                 && projectile.ProjectileCount <= 256
                 && IsFiniteInRange(projectile.ProjectileSpeed, 0d, MaximumDistance, false)
                 && IsFiniteInRange(
@@ -134,18 +213,30 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     0d,
                     MaximumDistance,
                     false)
-                && projectile.MaximumTravelDistance >= definition.MaximumAttackRange
                 && IsFiniteInRange(projectile.CollisionRadius, 0d, 1000d, false)
                 && IsFiniteInRange(projectile.SpreadDegrees, 0d, 360d, true)
                 && projectile.PierceCount >= 0
                 && projectile.PierceCount <= 1024;
-            if (!valid)
+            if (!physicalValuesValid)
             {
                 Add(
                     issues,
                     "enemy-catalog-projectile-parameters-invalid",
                     path + ".projectile",
-                    "Projectile profile, count, speed, travel, radius, spread, or pierce is invalid.");
+                    "Projectile count, speed, travel, radius, spread, or pierce is invalid.");
+            }
+            if (IsFiniteInRange(
+                    projectile.MaximumTravelDistance,
+                    0d,
+                    MaximumDistance,
+                    false)
+                && projectile.MaximumTravelDistance < attack.MaximumAttackRange)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-projectile-range-invalid",
+                    path + ".projectile.maximum_travel_distance",
+                    "Projectile travel distance must support this attack's maximum range.");
             }
         }
 
@@ -172,8 +263,9 @@ namespace ShooterMover.Domain.Enemies.Catalog
         private static void ValidateMelee(
             List<EnemyCatalogIssueV1> issues,
             string path,
-            EnemyMeleeAttackParametersV1 melee)
+            EnemyAttackCapabilityDescriptorV1 attack)
         {
+            EnemyMeleeAttackParametersV1 melee = attack.Melee;
             if (melee == null) return;
             bool valid = IsFiniteInRange(melee.ContactRadius, 0d, MaximumDistance, false)
                 && IsFiniteInRange(melee.PounceDistance, 0d, MaximumDistance, true)
@@ -194,6 +286,17 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     "enemy-catalog-melee-parameters-invalid",
                     path + ".melee",
                     "Melee radius, pounce distance, wind-up, or commitment is invalid.");
+                return;
+            }
+
+            double supportedRange = melee.ContactRadius + melee.PounceDistance;
+            if (attack.MaximumAttackRange > supportedRange)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-melee-range-incompatible",
+                    path + ".maximum_range",
+                    "Melee/contact reach must support this attack's maximum range.");
             }
         }
 
