@@ -188,7 +188,7 @@ Canonical JSON uses exact door IDs, sorted condition/door records, sorted child 
 
 `JsonRoomAccessDefinition2D` serializes authoring-only reference registrations and builds one immutable `RoomAccessReferenceCatalogV1` before import. Its test/import overload also accepts an already-built immutable registry. It never resolves references through mutable runtime authorities.
 
-The checked-in `level1.access.json` remains an authoring example and is not installed into the playable Stage 1 composition by this task.
+The checked-in `level1.access.json` remains an authoring example and is not installed into the playable Stage 1 composition by this task. Its `holding.level1-blue-key` reference must be supplied by a future composition's immutable registry before that example can import; the current task intentionally does not wire that composition.
 
 ## Lifecycle and persistence
 
