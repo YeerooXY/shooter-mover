@@ -1,17 +1,35 @@
-using ShooterMover.UnityAdapters.Production.Level1;
+using System.ComponentModel;
+using ShooterMover.Production.Level1;
 using UnityEngine;
 
 namespace ShooterMover.TestSupport.VisibleSlice
 {
     /// <summary>
-    /// Serialized compatibility shell retained until the Stage1VisibleSlice scene root is
-    /// renamed with its Unity GUID and scene references. All runtime behavior lives in the
-    /// canonical Level1PlayerRuntimeSceneAdapterV1 production component.
+    /// Serialized compatibility component retained for the current Level 1 scene GUID.
+    /// All implementation lives in Level1PlayerRuntimeAdapterV1.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [AddComponentMenu("")]
     [DefaultExecutionOrder(10100)]
     [DisallowMultipleComponent]
     public sealed class Stage1PlayerLiveAuthorityAdapterV1 :
-        Level1PlayerRuntimeSceneAdapterV1
+        Level1PlayerRuntimeAdapterV1
     {
+        Level1PlayerRuntimeAdapterV1
+    {
+        protected override void Awake()
+        {
+            base.Awake();
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+        }
     }
 }
