@@ -83,7 +83,7 @@ namespace ShooterMover.Tests.EditMode.Props
         }
 
         [Test]
-        public void ExplosiveBarrel_EmitsTerminalFactsOnce_AndReplayCannotDuplicateRewards()
+        public void LethalDamage_ExactReplayRecoversOriginalFacts_AndMutatesOnlyOnce()
         {
             PropDefinitionV1 definition = BarrelDefinition();
             RecordingDamagePolicy policy = new RecordingDamagePolicy(true);
@@ -94,36 +94,87 @@ namespace ShooterMover.Tests.EditMode.Props
             PropDamageCommandV1 command = Damage("operation.destroy-barrel", 100d);
 
             PropDamageResultV1 first = runtime.ApplyDamage(command);
+            PropRuntimeSnapshotV1 terminalSnapshot = runtime.Snapshot;
             PropDamageResultV1 exactReplay = runtime.ApplyDamage(command);
-            PropDamageResultV1 conflictingReplay = runtime.ApplyDamage(
-                Damage("operation.destroy-barrel", 101d));
 
             Assert.That(first.Status, Is.EqualTo(PropDamageStatusV1.Destroyed));
-            Assert.That(first.Facts.Terminal, Is.Not.Null);
-            Assert.That(first.Facts.Explosion, Is.Not.Null);
-            Assert.That(first.Facts.DropRequest, Is.Not.Null);
-            Assert.That(first.Facts.Terminal.SourceParticipantId, Is.EqualTo(Id("participant.player")));
-            Assert.That(first.Facts.DropRequest.SourceParticipantId, Is.EqualTo(Id("participant.player")));
+            AssertCompleteDamageFacts(first.Facts);
+            Assert.That(first.Snapshot.Fingerprint, Is.EqualTo(terminalSnapshot.Fingerprint));
 
+            Assert.That(exactReplay.Status, Is.EqualTo(first.Status));
+            AssertDamageFactsEquivalent(first.Facts, exactReplay.Facts);
             Assert.That(
-                exactReplay.Status,
-                Is.EqualTo(PropDamageStatusV1.DuplicateNoChange));
-            Assert.That(exactReplay.Facts.IsEmpty, Is.True);
-            Assert.That(
-                conflictingReplay.Status,
-                Is.EqualTo(PropDamageStatusV1.RejectedConflictingReplay));
-            Assert.That(conflictingReplay.Facts.IsEmpty, Is.True);
+                exactReplay.Snapshot.Fingerprint,
+                Is.EqualTo(first.Snapshot.Fingerprint));
             Assert.That(policy.CallCount, Is.EqualTo(1));
+            Assert.That(runtime.Snapshot.CurrentHealth, Is.EqualTo(0d));
             Assert.That(runtime.Snapshot.IsTerminal, Is.True);
             Assert.That(runtime.Snapshot.BlocksRoomClear, Is.False);
         }
 
         [Test]
-        public void SameDefinition_TwoPlacementsRemainDistinct()
+        public void LostFirstDamageResponse_ExactRetryRecoversCompleteDistinctFactBatch()
+        {
+            RecordingDamagePolicy policy = new RecordingDamagePolicy(true);
+            PropRuntimeV1 runtime = Create(
+                BarrelDefinition(),
+                "placed.lost-response-barrel",
+                policy).Runtime;
+            PropDamageCommandV1 command = Damage(
+                "operation.lost-destroy-response",
+                100d);
+
+            runtime.ApplyDamage(command);
+            PropDamageResultV1 recovered = runtime.ApplyDamage(command);
+
+            Assert.That(recovered.Status, Is.EqualTo(PropDamageStatusV1.Destroyed));
+            AssertCompleteDamageFacts(recovered.Facts);
+            HashSet<StableId> factIds = new HashSet<StableId>
+            {
+                recovered.Facts.Terminal.FactId,
+                recovered.Facts.Explosion.FactId,
+                recovered.Facts.DropRequest.FactId,
+                recovered.Facts.Objective.FactId
+            };
+            Assert.That(factIds.Count, Is.EqualTo(4));
+            Assert.That(factIds.Contains(command.OperationId), Is.False);
+            Assert.That(policy.CallCount, Is.EqualTo(1));
+            Assert.That(runtime.Snapshot.CurrentHealth, Is.EqualTo(0d));
+            Assert.That(runtime.Snapshot.IsTerminal, Is.True);
+        }
+
+        [Test]
+        public void ConflictingDamageReplay_EmitsNoFactsAndDoesNotMutateTerminalState()
+        {
+            RecordingDamagePolicy policy = new RecordingDamagePolicy(true);
+            PropRuntimeV1 runtime = Create(
+                BarrelDefinition(),
+                "placed.conflicting-barrel",
+                policy).Runtime;
+            PropDamageCommandV1 accepted = Damage(
+                "operation.conflicting-destroy",
+                100d);
+
+            runtime.ApplyDamage(accepted);
+            string terminalFingerprint = runtime.Snapshot.Fingerprint;
+            PropDamageResultV1 conflicting = runtime.ApplyDamage(
+                Damage("operation.conflicting-destroy", 101d));
+
+            Assert.That(
+                conflicting.Status,
+                Is.EqualTo(PropDamageStatusV1.RejectedConflictingReplay));
+            Assert.That(conflicting.Facts.IsEmpty, Is.True);
+            Assert.That(runtime.Snapshot.Fingerprint, Is.EqualTo(terminalFingerprint));
+            Assert.That(runtime.Snapshot.CurrentHealth, Is.EqualTo(0d));
+            Assert.That(runtime.Snapshot.IsTerminal, Is.True);
+            Assert.That(policy.CallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void AnalogousDamageOperations_AcrossPlacementsEmitPlacementDistinctFactIds()
         {
             PropDefinitionV1 definition = BarrelDefinition();
             RecordingDamagePolicy policy = new RecordingDamagePolicy(true);
-
             PropRuntimeV1 first = Create(
                 definition,
                 "placed.barrel-a",
@@ -132,10 +183,25 @@ namespace ShooterMover.Tests.EditMode.Props
                 definition,
                 "placed.barrel-b",
                 policy).Runtime;
+            PropDamageCommandV1 command = Damage(
+                "operation.analogous-destroy",
+                100d);
 
-            Assert.That(first.Placement.DefinitionId, Is.EqualTo(second.Placement.DefinitionId));
-            Assert.That(first.ParticipantId, Is.Not.EqualTo(second.ParticipantId));
-            Assert.That(first.Snapshot.Fingerprint, Is.Not.EqualTo(second.Snapshot.Fingerprint));
+            PropDamageResultV1 firstResult = first.ApplyDamage(command);
+            PropDamageResultV1 secondResult = second.ApplyDamage(command);
+
+            Assert.That(
+                firstResult.Facts.Terminal.FactId,
+                Is.Not.EqualTo(secondResult.Facts.Terminal.FactId));
+            Assert.That(
+                firstResult.Facts.Explosion.FactId,
+                Is.Not.EqualTo(secondResult.Facts.Explosion.FactId));
+            Assert.That(
+                firstResult.Facts.DropRequest.FactId,
+                Is.Not.EqualTo(secondResult.Facts.DropRequest.FactId));
+            Assert.That(
+                firstResult.Facts.Objective.FactId,
+                Is.Not.EqualTo(secondResult.Facts.Objective.FactId));
         }
 
         [Test]
@@ -255,18 +321,9 @@ namespace ShooterMover.Tests.EditMode.Props
         }
 
         [Test]
-        public void SwitchInteraction_IsReplaySafeAndPlacementLocal()
+        public void SwitchInteraction_ExactReplayRecoversFacts_AndTogglesOnlyOnce()
         {
-            PropDefinitionV1 definition = new PropDefinitionV1(
-                Id("prop.switch-terminal"),
-                Id("presentation.switch-terminal"),
-                new[]
-                {
-                    PropCapabilitiesV1.Collision(true),
-                    PropCapabilitiesV1.Interactable(Id("fact.terminal-used")),
-                    PropCapabilitiesV1.Switch(Id("switch.power-grid"), false),
-                    PropCapabilitiesV1.Objective(Id("objective.power-restored"))
-                });
+            PropDefinitionV1 definition = SwitchDefinition();
             PropRuntimeV1 first = Create(
                 definition,
                 "placed.switch-a",
@@ -280,23 +337,54 @@ namespace ShooterMover.Tests.EditMode.Props
                 Id("participant.player"));
 
             PropInteractionResultV1 applied = first.Interact(command);
+            string toggledFingerprint = first.Snapshot.Fingerprint;
             PropInteractionResultV1 replay = first.Interact(command);
 
             Assert.That(applied.Status, Is.EqualTo(PropInteractionStatusV1.Applied));
-            Assert.That(applied.Interaction, Is.Not.Null);
-            Assert.That(applied.SwitchFact, Is.Not.Null);
+            AssertCompleteInteractionFacts(applied);
             Assert.That(
                 applied.SwitchFact.KindId,
-                Is.EqualTo(Id("fact-kind.prop-switch-on")));
-            Assert.That(applied.Objective, Is.Not.Null);
+                Is.EqualTo(PropFactKindIdsV1.SwitchOn));
             Assert.That(first.Snapshot.SwitchActive, Is.True);
             Assert.That(second.Snapshot.SwitchActive, Is.False);
+
+            Assert.That(replay.Status, Is.EqualTo(applied.Status));
+            AssertTriggeredFactsEquivalent(applied.Interaction, replay.Interaction);
+            AssertTriggeredFactsEquivalent(applied.SwitchFact, replay.SwitchFact);
+            AssertTriggeredFactsEquivalent(applied.Objective, replay.Objective);
             Assert.That(
-                replay.Status,
-                Is.EqualTo(PropInteractionStatusV1.DuplicateNoChange));
-            Assert.That(replay.Interaction, Is.Null);
-            Assert.That(replay.SwitchFact, Is.Null);
-            Assert.That(replay.Objective, Is.Null);
+                replay.Snapshot.Fingerprint,
+                Is.EqualTo(applied.Snapshot.Fingerprint));
+            Assert.That(first.Snapshot.Fingerprint, Is.EqualTo(toggledFingerprint));
+            Assert.That(first.Snapshot.SwitchActive, Is.True);
+
+            HashSet<StableId> factIds = new HashSet<StableId>
+            {
+                replay.Interaction.FactId,
+                replay.SwitchFact.FactId,
+                replay.Objective.FactId
+            };
+            Assert.That(factIds.Count, Is.EqualTo(3));
+            Assert.That(factIds.Contains(command.OperationId), Is.False);
+        }
+
+        [Test]
+        public void LostFirstSwitchResponse_ExactRetryRecoversCompleteFactSet()
+        {
+            PropRuntimeV1 runtime = Create(
+                SwitchDefinition(),
+                "placed.switch-lost-response",
+                null).Runtime;
+            PropInteractionCommandV1 command = new PropInteractionCommandV1(
+                Id("operation.lost-switch-response"),
+                Id("participant.player"));
+
+            runtime.Interact(command);
+            PropInteractionResultV1 recovered = runtime.Interact(command);
+
+            Assert.That(recovered.Status, Is.EqualTo(PropInteractionStatusV1.Applied));
+            AssertCompleteInteractionFacts(recovered);
+            Assert.That(runtime.Snapshot.SwitchActive, Is.True);
         }
 
         [Test]
@@ -313,6 +401,59 @@ namespace ShooterMover.Tests.EditMode.Props
                 new[] { barrel, cover });
 
             Assert.That(first.Fingerprint, Is.EqualTo(reordered.Fingerprint));
+        }
+
+        private static void AssertCompleteDamageFacts(PropFactBatchV1 facts)
+        {
+            Assert.That(facts.Terminal, Is.Not.Null);
+            Assert.That(facts.Explosion, Is.Not.Null);
+            Assert.That(facts.DropRequest, Is.Not.Null);
+            Assert.That(facts.Objective, Is.Not.Null);
+            Assert.That(facts.Terminal.KindId, Is.EqualTo(PropFactKindIdsV1.Terminal));
+            Assert.That(
+                facts.Explosion.KindId,
+                Is.EqualTo(PropFactKindIdsV1.ExplosionRequest));
+            Assert.That(
+                facts.DropRequest.KindId,
+                Is.EqualTo(PropFactKindIdsV1.DropRequest));
+            Assert.That(
+                facts.Objective.KindId,
+                Is.EqualTo(PropFactKindIdsV1.ObjectiveOnDestroy));
+        }
+
+        private static void AssertDamageFactsEquivalent(
+            PropFactBatchV1 expected,
+            PropFactBatchV1 actual)
+        {
+            Assert.That(actual.Terminal.FactId, Is.EqualTo(expected.Terminal.FactId));
+            Assert.That(actual.Terminal.Fingerprint, Is.EqualTo(expected.Terminal.Fingerprint));
+            AssertTriggeredFactsEquivalent(expected.Explosion, actual.Explosion);
+            AssertTriggeredFactsEquivalent(expected.DropRequest, actual.DropRequest);
+            AssertTriggeredFactsEquivalent(expected.Objective, actual.Objective);
+        }
+
+        private static void AssertCompleteInteractionFacts(
+            PropInteractionResultV1 result)
+        {
+            Assert.That(result.Interaction, Is.Not.Null);
+            Assert.That(result.SwitchFact, Is.Not.Null);
+            Assert.That(result.Objective, Is.Not.Null);
+            Assert.That(
+                result.Interaction.KindId,
+                Is.EqualTo(PropFactKindIdsV1.Interaction));
+            Assert.That(
+                result.Objective.KindId,
+                Is.EqualTo(PropFactKindIdsV1.ObjectiveOnInteraction));
+        }
+
+        private static void AssertTriggeredFactsEquivalent(
+            PropTriggeredFactV1 expected,
+            PropTriggeredFactV1 actual)
+        {
+            Assert.That(actual.FactId, Is.EqualTo(expected.FactId));
+            Assert.That(actual.KindId, Is.EqualTo(expected.KindId));
+            Assert.That(actual.ProfileOrFactId, Is.EqualTo(expected.ProfileOrFactId));
+            Assert.That(actual.Fingerprint, Is.EqualTo(expected.Fingerprint));
         }
 
         private static PropDefinitionV1 CoverDefinition()
@@ -359,6 +500,20 @@ namespace ShooterMover.Tests.EditMode.Props
                     PropCapabilitiesV1.Objective(
                         Id("objective-fact.prop-destroyed")),
                     PropCapabilitiesV1.RoomClear(true)
+                });
+        }
+
+        private static PropDefinitionV1 SwitchDefinition()
+        {
+            return new PropDefinitionV1(
+                Id("prop.switch-terminal"),
+                Id("presentation.switch-terminal"),
+                new[]
+                {
+                    PropCapabilitiesV1.Collision(true),
+                    PropCapabilitiesV1.Interactable(Id("fact.terminal-used")),
+                    PropCapabilitiesV1.Switch(Id("switch.power-grid"), false),
+                    PropCapabilitiesV1.Objective(Id("objective.power-restored"))
                 });
         }
 
