@@ -38,7 +38,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
                         "Enemy catalogs cannot contain null definitions.",
                         nameof(definitions));
                 }
-                ordered.Add(definition);
+                ordered.Add(CanonicalizeDefinition(definition));
             }
             ordered.Sort(CompareDefinitions);
 
@@ -94,6 +94,17 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     "Enemy definition is not present in the catalog: " + definitionId);
             }
             return definition;
+        }
+
+        private static EnemyDefinitionV1 CanonicalizeDefinition(EnemyDefinitionV1 definition)
+        {
+            var attacks = new List<EnemyAttackCapabilityDescriptorV1>();
+            for (int index = 0; index < definition.Attacks.Count; index++)
+            {
+                attacks.Add(definition.Attacks[index]);
+            }
+            attacks.Sort(EnemyCatalogFingerprintV1.CompareAttacks);
+            return definition.WithAttacks(attacks);
         }
 
         private static int CompareDefinitions(
@@ -191,14 +202,6 @@ namespace ShooterMover.Domain.Enemies.Catalog
                 .Append(Number(definition.DetectionRadius))
                 .Append('|')
                 .Append(Number(definition.VisionArcDegrees))
-                .Append("|attack-geometry|")
-                .Append(Number(definition.AttackArcDegrees))
-                .Append('|')
-                .Append(Number(definition.MinimumAttackRange))
-                .Append('|')
-                .Append(Number(definition.PreferredAttackRange))
-                .Append('|')
-                .Append(Number(definition.MaximumAttackRange))
                 .Append("|movement|")
                 .Append(Id(definition.MovementPolicyId))
                 .Append("|decision|")
@@ -241,6 +244,18 @@ namespace ShooterMover.Domain.Enemies.Catalog
                 .Append(Id(attack == null ? null : attack.AttackId))
                 .Append('|')
                 .Append(Id(attack == null ? null : attack.CapabilityId))
+                .Append('|')
+                .Append(attack == null
+                    ? "-"
+                    : attack.SelectionPriority.ToString(CultureInfo.InvariantCulture))
+                .Append('|')
+                .Append(attack == null ? "-" : Number(attack.AttackArcDegrees))
+                .Append('|')
+                .Append(attack == null ? "-" : Number(attack.MinimumAttackRange))
+                .Append('|')
+                .Append(attack == null ? "-" : Number(attack.PreferredAttackRange))
+                .Append('|')
+                .Append(attack == null ? "-" : Number(attack.MaximumAttackRange))
                 .Append('|')
                 .Append(attack == null ? "-" : Number(attack.CooldownSeconds))
                 .Append('|')
@@ -294,13 +309,15 @@ namespace ShooterMover.Domain.Enemies.Catalog
                 .Append(melee == null ? "-" : Number(melee.CommitmentSeconds));
         }
 
-        private static int CompareAttacks(
+        internal static int CompareAttacks(
             EnemyAttackCapabilityDescriptorV1 left,
             EnemyAttackCapabilityDescriptorV1 right)
         {
             if (ReferenceEquals(left, right)) return 0;
             if (left == null) return -1;
             if (right == null) return 1;
+            int priority = left.SelectionPriority.CompareTo(right.SelectionPriority);
+            if (priority != 0) return priority;
             if (left.AttackId == null) return right.AttackId == null ? 0 : -1;
             return left.AttackId.CompareTo(right.AttackId);
         }
