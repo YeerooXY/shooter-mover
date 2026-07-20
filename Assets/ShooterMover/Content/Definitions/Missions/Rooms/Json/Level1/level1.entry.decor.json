@@ -1,0 +1,14 @@
+{
+  "room": "room.level1-entry",
+  "tiles": [
+    {
+      "object": "tile.floor-industrial",
+      "fill": {
+        "from": [-12, -7],
+        "to": [12, 7]
+      }
+    }
+  ],
+  "background": [],
+  "foreground": []
+}

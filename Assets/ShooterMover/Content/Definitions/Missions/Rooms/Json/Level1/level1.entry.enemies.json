@@ -1,0 +1,11 @@
+{
+  "room": "room.level1-entry",
+  "enemies": [
+    {
+      "object": "enemy.moving-droid",
+      "level": 1,
+      "position": [4, 0],
+      "rotation": 180
+    }
+  ]
+}

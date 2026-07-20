@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "layout": "layout.level1-authorable-two-room",
+  "start_room": "room.level1-entry",
+  "terminal_room": "room.level1-terminal",
+  "rooms": [
+    {
+      "layout": "level1.entry.layout",
+      "enemies": "level1.entry.enemies",
+      "props": "level1.entry.props",
+      "decor": "level1.entry.decor",
+      "encounter": "level1.entry.encounter"
+    },
+    {
+      "layout": "level1.terminal.layout",
+      "enemies": "level1.terminal.enemies",
+      "props": "level1.terminal.props",
+      "decor": "level1.terminal.decor",
+      "encounter": "level1.terminal.encounter"
+    }
+  ]
+}
