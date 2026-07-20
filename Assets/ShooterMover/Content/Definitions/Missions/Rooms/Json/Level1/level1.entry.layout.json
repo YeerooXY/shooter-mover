@@ -1,0 +1,29 @@
+{
+  "room": "room.level1-entry",
+  "order": 0,
+  "display_name": "DROID APPROACH",
+  "bounds": {
+    "center": [0, 0],
+    "size": [24, 14]
+  },
+  "spawns": [
+    {
+      "kind": "forward-entry",
+      "position": [-10, 0],
+      "rotation": 0
+    }
+  ],
+  "doors": [
+    {
+      "object": "door.room-standard",
+      "position": [11, 0],
+      "rotation": 0,
+      "link": {
+        "kind": "room",
+        "exit_type": "progression",
+        "target_room": "room.level1-terminal",
+        "target_spawn_kind": "forward-entry"
+      }
+    }
+  ]
+}
