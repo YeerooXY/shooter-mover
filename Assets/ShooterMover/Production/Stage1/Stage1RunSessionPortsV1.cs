@@ -4,25 +4,19 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Runs.Session;
-using ShooterMover.Contracts.Missions.Results;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using ShooterMover.UnityAdapters.Players;
 using ShooterMover.UnityAdapters.Production.Level1;
-using ShooterMover.UnityAdapters.Weapons.Live;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
-    /// <summary>
-    /// Resolves the selected character's Run Session stat input while preserving the live player
-    /// authority's already composed maximum health. All other modifiers remain owned by the
-    /// existing derived-stat composer and selected-character graph.
-    /// </summary>
     internal sealed class Stage1ProductionRunStatInputResolverV1 :
         IProductionRunStatInputResolverV1
     {
@@ -38,28 +32,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StartRunSessionCommandV1 command,
             StableId resolvedRunStableId,
             ProductionCharacterRuntimeGraphV1 characterGraph,
-            ShooterMover.Domain.Persistence.Accounts.CharacterInstanceSnapshotV1 character,
-            ShooterMover.Contracts.Flow.Session.PlayerRouteProfilePayloadV1 currentRoutePayload,
+            CharacterInstanceSnapshotV1 character,
+            PlayerRouteProfilePayloadV1 currentRoutePayload,
             RankedSkillAllocationSnapshotV2 skillSnapshot,
             IReadOnlyList<FrozenRunEquipmentV1> frozenEquipment)
         {
             PlayerRuntimeSnapshot runtime = player.ExportSnapshot();
             if (runtime == null || runtime.Player == null)
             {
-                return ProductionRunStatInputResolutionV1.Reject(
+                throw new InvalidOperationException(
                     "stage1-run-player-snapshot-unavailable");
             }
-            var baseValues = new Dictionary<string, decimal>(StringComparer.Ordinal)
+
+            decimal maximumHealth = checked(
+                (decimal)runtime.Player.MaximumHealth);
+            var baseValues = new Dictionary<string, decimal>(
+                StringComparer.Ordinal)
             {
-                {
-                    DerivedStatTargetIdsV1.MaximumHealth,
-                    Convert.ToDecimal(runtime.Player.MaximumHealth,
-                        CultureInfo.InvariantCulture)
-                },
-                {
-                    DerivedStatTargetIdsV1.MovementSpeed,
-                    6m
-                },
+                { DerivedStatTargetIdsV1.MaximumHealth, maximumHealth },
+                { DerivedStatTargetIdsV1.MovementSpeed, 6m },
             };
             return new ProductionRunStatInputResolutionV1(
                 new DerivedCharacterStatInputV1(
@@ -94,7 +85,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             if (lifecycleGeneration <= 0L)
             {
-                throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
+                throw new ArgumentOutOfRangeException(
+                    nameof(lifecycleGeneration));
             }
             PortId = portId.Trim();
             this.lifecycleGeneration = lifecycleGeneration;
@@ -148,13 +140,19 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 authoritativeTick);
             if (!string.IsNullOrEmpty(rejection))
             {
-                return new RunRuntimePortRestartResultV1(
-                    false,
-                    rejection,
-                    LifecycleGeneration,
-                    SnapshotFingerprint);
+                return Rejected(rejection);
             }
             lifecycleGeneration = replacementLifecycleGeneration;
+            return Accepted();
+        }
+
+        protected void CommitGeneration(long generation)
+        {
+            lifecycleGeneration = generation;
+        }
+
+        protected RunRuntimePortRestartResultV1 Accepted()
+        {
             return new RunRuntimePortRestartResultV1(
                 true,
                 string.Empty,
@@ -162,9 +160,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 SnapshotFingerprint);
         }
 
-        protected void CommitGeneration(long replacementLifecycleGeneration)
+        protected RunRuntimePortRestartResultV1 Rejected(string code)
         {
-            lifecycleGeneration = replacementLifecycleGeneration;
+            return new RunRuntimePortRestartResultV1(
+                false,
+                code,
+                LifecycleGeneration,
+                SnapshotFingerprint);
         }
     }
 
@@ -176,9 +178,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         public Stage1PlayerRunPortV1(
             Level1PlayerRuntimeSceneAdapterV1 player)
-            : base(
-                "stage1-player-runtime",
-                ReadGeneration(player))
+            : base("stage1-player-runtime", ReadGeneration(player))
         {
             this.player = player;
         }
@@ -219,12 +219,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 authoritativeTick);
             if (!string.IsNullOrEmpty(rejection))
             {
-                return new RunRuntimePortRestartResultV1(
-                    false,
-                    rejection,
-                    LifecycleGeneration,
-                    SnapshotFingerprint);
+                return Rejected(rejection);
             }
+
             PlayerRuntimeSnapshot before = player.ExportSnapshot();
             PlayerRuntimeRestartResult result = player.ApplyRestartCommand(
                 new PlayerRuntimeRestartCommand(
@@ -235,15 +232,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             bool accepted = result != null
                 && (result.Status == PlayerRuntimeRestartStatus.Applied
                     || result.Status == PlayerRuntimeRestartStatus.Duplicate);
-            return new RunRuntimePortRestartResultV1(
-                accepted,
-                accepted
-                    ? string.Empty
-                    : (result == null
-                        ? "stage1-player-restart-null"
-                        : "stage1-player-restart-" + result.RejectionCode),
-                LifecycleGeneration,
-                SnapshotFingerprint);
+            return accepted
+                ? Accepted()
+                : Rejected(result == null
+                    ? "stage1-player-restart-null"
+                    : "stage1-player-restart-" + result.RejectionCode);
         }
 
         private static long ReadGeneration(
@@ -319,19 +312,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 authoritativeTick);
             if (!string.IsNullOrEmpty(rejection))
             {
-                return new RunRuntimePortRestartResultV1(
-                    false,
-                    rejection,
-                    LifecycleGeneration,
-                    SnapshotFingerprint);
+                return Rejected(rejection);
             }
             clearTransientEffects();
             CommitGeneration(replacementLifecycleGeneration);
-            return new RunRuntimePortRestartResultV1(
-                true,
-                string.Empty,
-                LifecycleGeneration,
-                SnapshotFingerprint);
+            return Accepted();
         }
     }
 
@@ -339,8 +324,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         Stage1RunLifecycleProjectionV1,
         IRunStatusEffectRuntimePortV1
     {
-        public Stage1StatusRunProjectionV1(long lifecycleGeneration)
-            : base("stage1-status-runtime-projection", lifecycleGeneration)
+        public Stage1StatusRunProjectionV1(long generation)
+            : base("stage1-status-runtime-projection", generation)
         {
         }
 
@@ -354,8 +339,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         Stage1RunLifecycleProjectionV1,
         IRunConditionalFactRuntimePortV1
     {
-        public Stage1ConditionRunProjectionV1(long lifecycleGeneration)
-            : base("stage1-condition-runtime-projection", lifecycleGeneration)
+        public Stage1ConditionRunProjectionV1(long generation)
+            : base("stage1-condition-runtime-projection", generation)
         {
         }
     }
@@ -364,8 +349,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         Stage1RunLifecycleProjectionV1,
         IRunActiveAbilityRuntimePortV1
     {
-        public Stage1AbilityRunProjectionV1(long lifecycleGeneration)
-            : base("stage1-ability-runtime-projection", lifecycleGeneration)
+        public Stage1AbilityRunProjectionV1(long generation)
+            : base("stage1-ability-runtime-projection", generation)
         {
         }
     }
@@ -377,9 +362,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private readonly RoomRuntimeComposition2D rooms;
 
         public Stage1RoomRunPortV1(
-            long lifecycleGeneration,
+            long generation,
             RoomRuntimeComposition2D rooms)
-            : base("stage1-room-runtime", lifecycleGeneration)
+            : base("stage1-room-runtime", generation)
         {
             this.rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
         }
@@ -414,11 +399,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 authoritativeTick);
             if (!string.IsNullOrEmpty(rejection))
             {
-                return new RunRuntimePortRestartResultV1(
-                    false,
-                    rejection,
-                    LifecycleGeneration,
-                    SnapshotFingerprint);
+                return Rejected(rejection);
             }
             rooms.Restart(StableId.Create(
                 "operation",
@@ -426,11 +407,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     + replacementLifecycleGeneration.ToString(
                         CultureInfo.InvariantCulture)));
             CommitGeneration(replacementLifecycleGeneration);
-            return new RunRuntimePortRestartResultV1(
-                true,
-                string.Empty,
-                LifecycleGeneration,
-                SnapshotFingerprint);
+            return Accepted();
         }
     }
 
