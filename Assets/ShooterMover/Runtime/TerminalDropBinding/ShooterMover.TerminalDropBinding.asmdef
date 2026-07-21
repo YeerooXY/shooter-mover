@@ -1,0 +1,20 @@
+{
+  "name": "ShooterMover.TerminalDropBinding",
+  "rootNamespace": "ShooterMover.TerminalDropBinding",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.GameplayEntities"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}
