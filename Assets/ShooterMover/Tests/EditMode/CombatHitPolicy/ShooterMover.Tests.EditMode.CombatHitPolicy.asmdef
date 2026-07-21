@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.EditMode.CombatHitPolicy",
+  "rootNamespace": "ShooterMover.Tests.EditMode.CombatHitPolicy",
+  "references": [
+    "ShooterMover.CombatHitPolicy",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
