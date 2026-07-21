@@ -168,7 +168,7 @@ namespace ShooterMover.Application.Persistence.Composition
             get { return requiredCharacterComponentIds; }
         }
 
-        internal static bool TryResolveActive(
+        internal static bool TryResolve(
             PlayerAccountSaveAuthorityV1 authority,
             out CharacterCompositionCoordinatorV1 coordinator)
         {
@@ -183,9 +183,7 @@ namespace ShooterMover.Application.Persistence.Composition
                 CharacterCompositionCoordinatorV1 resolved;
                 if (!coordinators.TryGetValue(authority, out resolved)
                     || resolved == null
-                    || resolved.disposed
-                    || resolved.activeRuntime == null
-                    || resolved.activeRuntime.IsDisposed)
+                    || resolved.disposed)
                 {
                     return false;
                 }
@@ -465,11 +463,26 @@ namespace ShooterMover.Application.Persistence.Composition
                         createdCharacter);
                 }
 
+                candidate.MarkPersisted(persistedCharacter);
                 ICharacterRuntimeGraphV1 previous = activeRuntime;
+                try
+                {
+                    DisposeGraph(previous);
+                }
+                catch (Exception exception)
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-unbind-threw:"
+                            + exception.GetType().Name
+                            + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
                 activeRuntime = candidate;
                 activeSlotIndex = profile.SlotIndex;
                 candidate = null;
-                DisposeGraph(previous);
                 return new CharacterCompositionResultV1(
                     CharacterCompositionStatusV1.Selected,
                     string.Empty,
