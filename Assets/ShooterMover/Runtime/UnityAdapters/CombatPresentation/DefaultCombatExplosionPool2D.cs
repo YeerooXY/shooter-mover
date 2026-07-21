@@ -149,7 +149,14 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         {
             if (material != null)
             {
-                Destroy(material);
+                if (Application.isPlaying)
+                {
+                    Destroy(material);
+                }
+                else
+                {
+                    DestroyImmediate(material);
+                }
                 material = null;
             }
             instances.Clear();
