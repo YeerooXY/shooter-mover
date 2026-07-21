@@ -435,9 +435,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
 
             public RunSessionStartMaterialV1 Resolve(
-                StartRunSessionCommandV1 command,      }
-
-        StableId resolvedRunStableId)
+                StartRunSessionCommandV1 command,
+                StableId resolvedRunStableId)
             {
                 StableId definitionId = Id("equipment-definition.test-rifle");
                 StableId qualityId = Id("quality.common");
@@ -548,9 +547,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
 
         private sealed class FakeRuntimeBundle
         {
-            public FakeRuntimeBundle(      }
-
-        StableId runStableId,
+            public FakeRuntimeBundle(
+                StableId runStableId,
                 CharacterInstanceSnapshotV1 character,
                 FrozenCharacterRunInputsV1 frozen)
             {
@@ -619,22 +617,21 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     : "replacement-invalid";
             }
 
-            public virtual RunRuntimePortRestartResultV1 Restart(      }
-
-        StableId operationStableId,
+            public virtual RunRuntimePortRestartResultV1 Restart(
+                StableId operationStableId,
                 long retiringLifecycleGeneration,
                 long replacementLifecycleGeneration,
                 long authoritativeTick)
             {
-                        string r = ValidateRestart(
+                string rejection = ValidateRestart(
                     retiringLifecycleGeneration,
                     replacementLifecycleGeneration,
                     authoritativeTick);
-                if (!string.IsNullOrEmpty( string r))
+                if (!string.IsNullOrEmpty(rejection))
                 {
                     return new RunRuntimePortRestartResultV1(
                         false,
-                        retring r,
+                        rejection,
                         Generation,
                         SnapshotFingerprint);
                 }
@@ -659,11 +656,9 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             private double y;
             private long acceptedSequence;
 
-            public FakePlayerPort(      }
-
-        StableId actorId,      }
-
-        StableId participantId,
+            public FakePlayerPort(
+                StableId actorId,
+                StableId participantId,
                 long generation,
                 double maximumHealth)
                 : base("player-runtime", generation)
@@ -689,9 +684,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             public RunPlayerRuntimeSnapshotV1 ExportSnapshot()
             {
                 return new RunPlayerRuntimeSnapshotV1(
-                    actorId,      }
-
-            participantId,
+                    actorId,
+                    participantId,
                     Generation,
                     currentHealth,
                     maximumHealth,
@@ -705,9 +699,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 get { return ExportSnapshot().Fingerprint; }
             }
 
-            public override RunRuntimePortRestartResultV1 Restart(      }
-
-        StableId operationStableId,
+            public override RunRuntimePortRestartResultV1 Restart(
+                StableId operationStableId,
                 long retiringLifecycleGeneration,
                 long replacementLifecycleGeneration,
                 long authoritativeTick)
@@ -770,9 +763,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 }
             }
 
-            public override RunRuntimePortRestartResultV1 Restart(      }
-
-        StableId operationStableId,
+            public override RunRuntimePortRestartResultV1 Restart(
+                StableId operationStableId,
                 long retiringLifecycleGeneration,
                 long replacementLifecycleGeneration,
                 long authoritativeTick)
@@ -850,9 +842,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             public long Sequence { get; private set; }
             public int PermanentRewardApplyCount { get; private set; }
 
-            public bool TryGetRun(      }
-
-        StableId requestedRunStableId,
+            public bool TryGetRun(
+                StableId requestedRunStableId,
                 out MissionRunPayloadV1 payload)
             {
                 payload = requestedRunStableId == runStableId
@@ -866,7 +857,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 PlayerRouteProfilePayloadV1 routePayload)
             {
                 long previous = Sequence;
-                       holdingsFingerprint =
+                string holdingsFingerprint =
                     MissionRunCanonicalV1.Fingerprint("fixture-holdings");
                 var collection = new MissionRunStrongboxCollectionV1(
                     request.DefinitionStableId,
@@ -896,9 +887,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
 
             public MissionRunAuthorityResultV1 EndRun(
-                EndRunSessionCommandV1 command,      }
-
-        PlayerRouteProfilePayloadV1 routePayload)
+                EndRunSessionCommandV1 command,
+                PlayerRouteProfilePayloadV1 routePayload)
             {
                 long previous = Sequence;
                 Sequence++;

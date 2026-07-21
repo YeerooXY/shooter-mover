@@ -790,9 +790,8 @@ namespace ShooterMover.Application.Runs.Session
 
         private RunSessionRestartResultV1 RestartResult(
             RunSessionRestartStatusV1 status,
-            RestartRunSessionCommandV1 command,      }
-
-            string rCode)
+            RestartRunSessionCommandV1 command,
+            string rejectionCode)
         {
             return new RunSessionRestartResultV1(
                 status,
@@ -805,7 +804,7 @@ namespace ShooterMover.Application.Runs.Session
         private RunLocalMutationResultV1 RejectLocal(
             RunLocalMutationCommandV1 command,
             RunLocalStateSnapshotV1 state,
-                    string rCode)
+            string rejectionCode)
         {
             return new RunLocalMutationResultV1(
                 false,
@@ -818,7 +817,7 @@ namespace ShooterMover.Application.Runs.Session
 
         private static void Add(
             IDictionary<string, long> target,
-                   key,
+            string key,
             long amount)
         {
             long current;

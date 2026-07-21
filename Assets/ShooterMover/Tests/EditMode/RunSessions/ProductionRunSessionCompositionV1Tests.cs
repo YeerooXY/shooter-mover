@@ -161,9 +161,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 null);
             var composition = new CharacterCompositionCoordinatorV1(
                 new PlayerAccountSaveAuthorityV1(account),
-                factory,      }
-
-        Saved);
+                factory,
+                Saved);
             CharacterCompositionResultV1 selected = composition.Select(0);
             Assert.That(selected.Succeeded, Is.True, selected.Diagnostic);
             return composition;
@@ -171,7 +170,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
 
         private static StartRunSessionCommandV1 Command(
             ProductionCharacterRuntimeGraphV1 graph,
-                   operationValue,
+            string operationValue,
             long seed)
         {
             return new StartRunSessionCommandV1(
@@ -206,9 +205,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             IProductionRunStatInputResolverV1
         {
             public ProductionRunStatInputResolutionV1 Resolve(
-                StartRunSessionCommandV1 command,      }
-
-        StableId resolvedRunStableId,
+                StartRunSessionCommandV1 command,
+                StableId resolvedRunStableId,
                 ProductionCharacterRuntimeGraphV1 characterGraph,
                 CharacterInstanceSnapshotV1 character,
                 PlayerRouteProfilePayloadV1 currentRoutePayload,
@@ -241,9 +239,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             IRunSessionRuntimePortFactoryV1
         {
             public RunSessionRuntimePortsV1 Create(
-                StartRunSessionCommandV1 command,      }
-
-        StableId resolvedRunStableId,
+                StartRunSessionCommandV1 command,
+                StableId resolvedRunStableId,
                 FrozenCharacterRunInputsV1 frozenInputs)
             {
                 const long generation = 1L;
@@ -298,22 +295,21 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     : "fixture-generation-mismatch";
             }
 
-            public virtual RunRuntimePortRestartResultV1 Restart(      }
-
-        StableId operationStableId,
+            public virtual RunRuntimePortRestartResultV1 Restart(
+                StableId operationStableId,
                 long retiringLifecycleGeneration,
                 long replacementLifecycleGeneration,
                 long authoritativeTick)
             {
-                        string r = ValidateRestart(
+                string rejection = ValidateRestart(
                     retiringLifecycleGeneration,
                     replacementLifecycleGeneration,
                     authoritativeTick);
-                if (!string.IsNullOrEmpty( string r))
+                if (!string.IsNullOrEmpty(rejection))
                 {
                     return new RunRuntimePortRestartResultV1(
                         false,
-                        retring r,
+                        rejection,
                         LifecycleGeneration,
                         SnapshotFingerprint);
                 }
@@ -349,9 +345,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             public RunPlayerRuntimeSnapshotV1 ExportSnapshot()
             {
                 return new RunPlayerRuntimeSnapshotV1(
-                    actorId,      }
-
-            participantId,
+                    actorId,
+                    participantId,
                     LifecycleGeneration,
                     maximumHealth,
                     maximumHealth,
@@ -424,9 +419,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
         {
             public long Sequence { get { return 0L; } }
 
-            public bool TryGetRun(      }
-
-        StableId runStableId,
+            public bool TryGetRun(
+                StableId runStableId,
                 out MissionRunPayloadV1 runPayload)
             {
                 runPayload = null;
@@ -443,9 +437,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
 
             public MissionRunAuthorityResultV1 EndRun(
-                EndRunSessionCommandV1 command,      }
-
-        PlayerRouteProfilePayloadV1 routePayload)
+                EndRunSessionCommandV1 command,
+                PlayerRouteProfilePayloadV1 routePayload)
             {
                 return Invalid(
                     command == null ? null : command.OperationStableId,
@@ -454,7 +447,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
 
             private static MissionRunAuthorityResultV1 Invalid(
                 StableId operationStableId,
-                        squestFingerprint)
+                string requestFingerprint)
             {
                 return new MissionRunAuthorityResultV1(
                     MissionRunAuthorityStatusV1.InvalidRequest,
