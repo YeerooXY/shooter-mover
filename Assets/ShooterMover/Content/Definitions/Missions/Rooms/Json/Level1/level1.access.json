@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "layout": "layout.level1-authorable-two-room",
+  "conditions": [
+    {
+      "id": "access.level1-entry-complete",
+      "kind": "room-complete",
+      "subject": "room.level1-entry"
+    },
+    {
+      "id": "access.level1-blue-key-present",
+      "kind": "holding-present",
+      "subject": "holding.level1-blue-key"
+    },
+    {
+      "id": "access.level1-forward-gate",
+      "kind": "all",
+      "children": [
+        "access.level1-entry-complete",
+        "access.level1-blue-key-present"
+      ]
+    }
+  ],
+  "doors": [
+    {
+      "room": "room.level1-entry",
+      "exit_type": "progression",
+      "condition": "access.level1-forward-gate",
+      "consume_holding": "holding.level1-blue-key"
+    }
+  ]
+}
