@@ -70,13 +70,13 @@ namespace ShooterMover.UnityAdapters.Enemies
                 Source = source;
                 ObservedTargetLifecycles =
                     new Dictionary<StableId, long>(observedTargetLifecycles);
-                AcceptedTargets = new HashSet<StableId>();
+                AcceptedHitCountByTarget = new Dictionary<StableId, int>();
             }
 
             public EnemyAttackEffectEmissionV1 Emission { get; }
             public SourceState Source { get; }
             public Dictionary<StableId, long> ObservedTargetLifecycles { get; }
-            public HashSet<StableId> AcceptedTargets { get; }
+            public Dictionary<StableId, int> AcceptedHitCountByTarget { get; }
         }
 
         private readonly IEnemyAttackPatternRunTimeV1 runTime;
@@ -332,10 +332,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 MeleeWindowState window = ordered[index];
                 EnemyAttackPatternTargetBindingV1 target =
                     window.Source.Binding.FindTarget(candidate);
-                if (target == null
-                    || !target.IsActive
-                    || window.AcceptedTargets.Contains(
-                        target.TargetEntityStableId))
+                if (target == null || !target.IsActive)
                 {
                     continue;
                 }
@@ -344,6 +341,19 @@ namespace ShooterMover.UnityAdapters.Enemies
                     window.Emission.CommittedIntent.TargetEntityId;
                 if (committedTarget != null
                     && committedTarget != target.TargetEntityStableId)
+                {
+                    continue;
+                }
+
+                int acceptedHitCount;
+                if (!window.AcceptedHitCountByTarget.TryGetValue(
+                        target.TargetEntityStableId,
+                        out acceptedHitCount))
+                {
+                    acceptedHitCount = 0;
+                }
+                if (acceptedHitCount
+                    >= window.Emission.MeleeStrike.Pattern.HitsPerTarget)
                 {
                     continue;
                 }
@@ -361,7 +371,10 @@ namespace ShooterMover.UnityAdapters.Enemies
                         + Hash64(
                             window.Emission.EmissionStableId
                             + "|"
-                            + target.TargetEntityStableId));
+                            + target.TargetEntityStableId
+                            + "|"
+                            + acceptedHitCount.ToString(
+                                CultureInfo.InvariantCulture)));
                 EnemyAttackPatternHitRouteResultV1 result =
                     hitRouter.RouteActorContact(
                         window.Emission,
@@ -371,8 +384,8 @@ namespace ShooterMover.UnityAdapters.Enemies
                         0d);
                 if (result != null && result.IsAccepted)
                 {
-                    window.AcceptedTargets.Add(
-                        target.TargetEntityStableId);
+                    window.AcceptedHitCountByTarget[
+                        target.TargetEntityStableId] = acceptedHitCount + 1;
                 }
             }
         }
@@ -480,7 +493,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             EnemyMeleePatternV1 pattern =
                 strike == null ? null : strike.Pattern;
             if (pattern == null
-                || pattern.HitsPerTarget != 1
+                || pattern.HitsPerTarget <= 0
                 || double.IsNaN(pattern.ContactRadius)
                 || double.IsInfinity(pattern.ContactRadius)
                 || pattern.ContactRadius <= 0d)
