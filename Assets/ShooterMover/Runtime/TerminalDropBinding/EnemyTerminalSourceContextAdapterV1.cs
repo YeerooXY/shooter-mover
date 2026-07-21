@@ -1,5 +1,6 @@
 using System;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.EnemyRuntimeComposition;
 
 namespace ShooterMover.TerminalDropBinding
@@ -53,28 +54,31 @@ namespace ShooterMover.TerminalDropBinding
     }
 
     /// <summary>
-    /// Production-safe enemy adapter that keeps Run Session lifecycle and enemy
-    /// lifecycle distinct. Definition/profile validation remains delegated to the
-    /// existing generic enemy adapter.
+    /// The only built-in complete enemy terminal-drop adapter. It combines the internal
+    /// definition/profile projection with production-owned Run Session lifecycle context.
     /// </summary>
     public sealed class ContextResolvedEnemyDeathTerminalDropFactAdapterV1 :
         ITerminalDropFactAdapterV1
     {
-        private readonly EnemyDeathTerminalDropFactAdapterV1 definitionAdapter;
+        private readonly EnemyDeathTerminalDropDefinitionProjectorV1 definitionProjector;
         private readonly IEnemyTerminalSourceContextResolverV1 sourceContexts;
 
         public ContextResolvedEnemyDeathTerminalDropFactAdapterV1(
-            EnemyDeathTerminalDropFactAdapterV1 definitionAdapter,
+            EnemyCatalogV1 catalog,
             IEnemyTerminalSourceContextResolverV1 sourceContexts)
         {
-            this.definitionAdapter = definitionAdapter
-                ?? throw new ArgumentNullException(nameof(definitionAdapter));
+            definitionProjector = new EnemyDeathTerminalDropDefinitionProjectorV1(
+                catalog ?? throw new ArgumentNullException(nameof(catalog)));
             this.sourceContexts = sourceContexts
                 ?? throw new ArgumentNullException(nameof(sourceContexts));
         }
 
-        public StableId FactKindStableId { get { return definitionAdapter.FactKindStableId; } }
-        public Type FactType { get { return definitionAdapter.FactType; } }
+        public StableId FactKindStableId
+        {
+            get { return TerminalDropFactKindIdsV1.EnemyDeath; }
+        }
+
+        public Type FactType { get { return typeof(EnemyDeathFactV1); } }
 
         public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
         {
@@ -86,20 +90,44 @@ namespace ShooterMover.TerminalDropBinding
                     "enemy-death-fact-type-mismatch");
             }
 
-            TerminalDropAdaptationResultV1 definitionResult =
-                definitionAdapter.Adapt(fact);
+            EnemyDeathTerminalDropDefinitionProjectionResultV1 definitionResult;
+            try
+            {
+                definitionResult = definitionProjector.Project(fact);
+            }
+            catch (Exception exception)
+            {
+                return TerminalDropAdaptationResultV1.Rejected(
+                    TerminalDropRejectionCodeV1.InvalidTerminalFact,
+                    "enemy-definition-projection-exception:"
+                        + exception.GetType().Name + ":" + exception.Message);
+            }
             if (definitionResult == null || !definitionResult.Succeeded)
             {
-                return definitionResult
-                    ?? TerminalDropAdaptationResultV1.Rejected(
+                return definitionResult == null
+                    ? TerminalDropAdaptationResultV1.Rejected(
                         TerminalDropRejectionCodeV1.InvalidTerminalFact,
-                        "enemy-definition-adapter-returned-null");
+                        "enemy-definition-projector-returned-null")
+                    : TerminalDropAdaptationResultV1.Rejected(
+                        definitionResult.RejectionCode,
+                        definitionResult.Diagnostic);
             }
 
             EnemyTerminalSourceContextV1 context;
             string diagnostic;
-            if (!sourceContexts.TryResolve(fact, out context, out diagnostic)
-                || context == null)
+            bool resolved;
+            try
+            {
+                resolved = sourceContexts.TryResolve(fact, out context, out diagnostic);
+            }
+            catch (Exception exception)
+            {
+                return TerminalDropAdaptationResultV1.Rejected(
+                    TerminalDropRejectionCodeV1.MissingSourceContext,
+                    "enemy-source-context-exception:"
+                        + exception.GetType().Name + ":" + exception.Message);
+            }
+            if (!resolved || context == null)
             {
                 return TerminalDropAdaptationResultV1.Rejected(
                     TerminalDropRejectionCodeV1.MissingSourceContext,
@@ -119,25 +147,26 @@ namespace ShooterMover.TerminalDropBinding
                     "enemy-source-context-does-not-match-death-fact");
             }
 
-            TerminalDropSourceFactV1 source = definitionResult.SourceFact;
+            EnemyDeathTerminalDropDefinitionProjectionV1 projection =
+                definitionResult.Projection;
             return TerminalDropAdaptationResultV1.Accepted(
                 new TerminalDropSourceFactV1(
-                    source.FactKindStableId,
-                    source.TerminalEventStableId,
-                    source.TriggeringEventStableId,
+                    FactKindStableId,
+                    fact.DeathEventStableId,
+                    fact.TriggeringEventStableId,
                     context.RunStableId,
                     context.RunLifecycleGeneration,
-                    context.SourceEntityStableId,
-                    context.SourcePlacementStableId,
+                    fact.Identity.EntityInstanceId,
+                    fact.Identity.PlacementStableId,
                     context.SourceLifecycleGeneration,
-                    source.SourceDefinitionStableId,
-                    source.AttributedParticipantStableId,
-                    source.DamageSourceStableId,
-                    source.DamageChannelStableId,
-                    source.DeclaredDropProfileStableId,
+                    fact.DefinitionStableId,
+                    fact.KillerRunParticipantStableId,
+                    fact.KillerEntityStableId,
+                    null,
+                    projection.DeclaredDropProfileStableId,
                     context.Fingerprint,
-                    source.DefinitionFingerprint,
-                    source.UpstreamFactFingerprint));
+                    projection.DefinitionFingerprint,
+                    projection.UpstreamFactFingerprint));
         }
     }
 }
