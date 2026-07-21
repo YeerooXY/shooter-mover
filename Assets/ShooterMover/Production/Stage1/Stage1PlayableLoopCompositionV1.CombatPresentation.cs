@@ -217,12 +217,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
             public void SynchronizeLifecycle()
             {
-                long generation = readLifecycleGeneration();
-                if (generation > deathVfx.LifecycleGeneration)
-                {
-                    deathVfx.AdvanceLifecycle(generation);
-                    healthBar.Refresh();
-                }
+                SynchronizeLifecycle(readLifecycleGeneration());
             }
 
             public void PresentAcceptedTerminal(
@@ -234,14 +229,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     return;
                 }
 
+                long generation = readLifecycleGeneration();
+                SynchronizeLifecycle(generation);
                 deathVfx.TryPresent(
                     new EnemyTerminalPresentationFactV1(
                         destruction.EventId,
                         actorId,
-                        readLifecycleGeneration(),
+                        generation,
                         presentationRoot.position,
                         EnemyPresentationBounds2D.MeasureLargestDimension(
                             presentationRoot)));
+            }
+
+            private void SynchronizeLifecycle(long generation)
+            {
+                if (generation > deathVfx.LifecycleGeneration)
+                {
+                    deathVfx.AdvanceLifecycle(generation);
+                    healthBar.Refresh();
+                }
             }
         }
 
