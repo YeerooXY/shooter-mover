@@ -4,98 +4,92 @@ Launch base: `7b2dfb1dadb13a6d8c0631a56d10fc44f3080472`
 
 ## Ownership boundary
 
-`CriticalHitResolutionAuthorityV1` is the single engine-neutral boundary between:
+`CriticalHitResolutionAuthorityV1` sits between an accepted `CombatHitPolicyResultV1` and the existing `DamageReceiverCommand`.
 
-1. an accepted `CombatHitPolicyResultV1`; and
-2. the existing `DamageReceiverCommand` consumed by player/enemy health authorities.
+It owns deterministic critical resolution and run-local operation replay state only. It does not mutate health, select targets, infer factions, author weapon stats, own status effects, or grant rewards. The existing player/enemy damage receiver remains the sole health authority.
 
-It owns only deterministic critical-hit resolution and operation replay state. It does **not** mutate health, select targets, evaluate factions, author weapon stats, own status effects, or generate rewards.
+## Explicit critical policy
 
-The existing health authority remains the sole mutation owner.
+Critical behavior is not inferred from effect geometry. The weapon, attack, or effect execution supplies immutable `CriticalHitEffectFactsV1` containing:
 
-## Immutable inputs
+- effect-definition identity;
+- explicit critical-policy identity;
+- concrete equipment-instance identity when the effect is equipment-backed.
 
-Each `CriticalHitResolutionCommandV1` carries:
+`CriticalHitPolicyRegistryV1` resolves the policy definition. The default registry provides:
 
-- stable operation identity;
-- deterministic seed;
-- hit sequence;
-- base damage and combat channel;
-- immutable `RunCombatProfileV1`;
-- the accepted hit-policy result.
+- `critical-hit-policy.normal-v1` — profile chance and multiplier;
+- `critical-hit-policy.cannot-crit-v1` — effective chance `0`, effective multiplier `1`;
+- `critical-hit-policy.guaranteed-v1` — chance override `1`;
+- `critical-hit-policy.modified-chance-v1` — data-defined chance modification;
+- `critical-hit-policy.modified-multiplier-v1` — data-defined multiplier modification.
 
-The run profile is produced by `DefaultDerivedCharacterStatComposerV1`, so permanent skill/equipment modifiers and run/event/status modifiers continue to flow through the shared `RuntimeModifierSnapshotV1` language. CRIT-LIVE reads only:
+Definitions support chance and multiplier overrides, flat modifiers, and multiplicative modifiers. Unknown policy identities fail closed without consuming the operation ID.
 
-- `OutgoingDamageMultiplier`;
-- `CriticalChance`;
-- `CriticalMultiplier`;
-- the run-profile fingerprint.
+A projectile, explosion, melee swing, contact attack, persistent field, or chain may select any policy. The same geometry can therefore be normal, non-crittable, guaranteed, or modified according to its authored execution facts.
 
-It does not recompute or reinterpret modifiers.
+## Shared stat composition
+
+`RunCombatProfileV1` remains the source of:
+
+- outgoing damage multiplier;
+- character/run critical chance;
+- character/run critical multiplier.
+
+Permanent skills/equipment and temporary event/status contributions continue to flow through the existing `RuntimeModifierSnapshotV1` and `DefaultDerivedCharacterStatComposerV1`. The critical policy is applied after that shared profile is built; no second modifier system is introduced.
+
+For `cannot-crit`, profile critical modifiers are deliberately ignored for the critical decision and multiplier. Outgoing damage still applies normally.
 
 ## Deterministic roll domain
 
-The SHA-256 roll domain includes:
+The SHA-256 domain includes:
 
-- operation ID;
-- deterministic seed;
-- hit sequence;
-- source actor identity and lifecycle generation;
-- source run-participant identity, when present;
-- target actor identity and lifecycle generation;
-- effect identity;
-- hit-policy identity;
-- effect geometry;
-- run-combat-profile fingerprint;
-- base damage;
-- combat channel.
+- operation ID, deterministic seed, and hit sequence;
+- explicit run ID, run-context fingerprint, and run-profile fingerprint;
+- equipment-instance identity when present;
+- effect-definition identity and critical-policy identity;
+- resolved critical-policy-definition/application fingerprint;
+- source/target actor, generation, participant, character, and faction facts;
+- effect-instance identity, hit-admission policy, and geometry;
+- base damage and damage channel.
 
-The first 48 digest bits produce a decimal sample in `[0, 1)`. The same immutable facts therefore produce the same roll sample, critical decision, final damage, and resolved-damage fingerprint on every machine.
-
-A changed source, target, effect, sequence, seed, profile, base amount, or channel changes the domain fingerprint.
+The first 64 digest bits produce a decimal sample in `[0, 1)`. Identical immutable facts produce the same roll, outcome, damage, and fingerprints. Changing run, equipment instance, effect definition, policy, source, target, sequence, seed, profile, base damage, or channel changes the domain.
 
 ## Resolution order
 
-1. Validate the command and accepted hit facts.
-2. Resolve exact replay/conflict by operation ID.
-3. Hash the immutable roll domain once.
+1. Resolve exact operation replay/conflict.
+2. Validate the accepted hit, run profile, and effect execution facts.
+3. Resolve the explicit critical policy from the immutable registry.
 4. Calculate ordinary damage: `base damage × outgoing damage multiplier`.
-5. Compare the roll sample with critical chance.
-6. For a critical hit, calculate: `ordinary damage × critical multiplier`.
-7. Store one immutable resolved result in the operation ledger.
-8. Project only the resolved final amount through `CriticalHitDamageCommandAdapterV1`.
+5. Apply policy rules to profile chance and multiplier.
+6. Decide critical outcome from policy eligibility and deterministic roll.
+7. For a critical hit: `ordinary damage × effective critical multiplier`.
+8. Store one immutable result in the operation ledger.
+9. Project only final damage through `CriticalHitDamageCommandAdapterV1`.
 
-The critical operation ID becomes the downstream damage event ID. Exact command re-dispatch is therefore idempotent in the receiving health authority as well.
+The critical operation ID is reused as the downstream damage event ID, preserving health-authority idempotency.
 
 ## Replay behavior
 
 - First valid operation: `Applied`.
-- Identical operation replay: `Duplicate`, returning the original immutable resolved result.
-- Same operation ID with different facts: `ConflictingDuplicate`, without rolling or producing damage.
-- Invalid/non-eligible hit: `Rejected`, without consuming an applied operation.
+- Exact replay: `Duplicate`, returning the original immutable resolved object.
+- Same operation ID with changed facts, including changed policy/equipment/effect identity: `ConflictingDuplicate`.
+- Invalid or non-damage-eligible input: `Rejected` without consuming an applied operation.
 
-`AppliedResolutionCount` advances only for first valid operations.
+## Focused coverage
 
-## Edge behavior
+EditMode tests cover:
 
-- `CriticalChance == 0`: guaranteed ordinary hit.
-- `CriticalChance == 1`: guaranteed critical hit.
-- Zero outgoing damage resolves to an immutable zero-damage outcome; no damage command is emitted.
-- Decimal arithmetic overflow rejects before ledger insertion.
-- Projectile, explosion, melee swing, contact attack, persistent field, and chain geometries use the same boundary.
+- deterministic equality for identical immutable facts;
+- explicit run, equipment-instance, and effect-definition domain separation;
+- exact duplicate and conflicting operation reuse;
+- outgoing damage before critical multiplication;
+- `100%` character crit chance plus `cannot-crit` producing ordinary damage;
+- guaranteed, modified-chance, and modified-multiplier policies;
+- same geometry selecting different critical policies;
+- every supported geometry respecting an explicit non-crittable policy;
+- permanent, event, and conditional status modifiers through shared profile composition;
+- multiplayer attribution and replay-safe downstream command identity;
+- unknown policy and non-eligible hit rejection.
 
-## Validation coverage
-
-Focused EditMode tests cover:
-
-- deterministic replay across separate authorities;
-- source/target/effect/sequence/seed domain separation;
-- exact duplicate and conflicting duplicate behavior;
-- guaranteed non-critical and critical edges;
-- every supported effect geometry;
-- permanent, event, and conditional status modifiers through shared run-profile composition;
-- multiplayer source participant attribution;
-- replay-safe downstream damage command identity;
-- rejection of non-damage-eligible policy results.
-
-No scene, Unity collision callback, weapon-specific executor, or health authority is modified.
+No scenes, collision callbacks, weapon-specific controllers, health authorities, reward systems, inventory systems, or status authorities are modified.
