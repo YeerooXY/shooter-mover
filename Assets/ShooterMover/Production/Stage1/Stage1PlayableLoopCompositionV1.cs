@@ -363,8 +363,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StableId definitionStableId,
             StableId roomInstanceStableId)
         {
+            IEnemyActor2DAuthority presentedAuthority =
+                RegisterEnemyCombatPresentation(root, authority);
             var binding = new EnemyBinding(
-                authority,
+                presentedAuthority,
                 definitionStableId,
                 roomInstanceStableId);
             Collider2D[] colliders = root.GetComponentsInChildren<Collider2D>(true);
