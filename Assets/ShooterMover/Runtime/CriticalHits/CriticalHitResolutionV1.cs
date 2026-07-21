@@ -29,8 +29,7 @@ namespace ShooterMover.Combat.CriticalHits
 
     /// <summary>
     /// Immutable critical rules authored by a weapon, attack, or effect definition.
-    /// Geometry is intentionally absent: a projectile, field, contact attack, or any
-    /// future geometry may select any policy through its execution facts.
+    /// Geometry is intentionally absent: execution facts select the policy.
     /// </summary>
     public sealed class CriticalHitPolicyDefinitionV1
     {
@@ -236,8 +235,7 @@ namespace ShooterMover.Combat.CriticalHits
 
     /// <summary>
     /// Immutable execution facts projected from the concrete weapon/attack/effect
-    /// definition. EquipmentInstanceId is optional for attacks that are not equipment
-    /// backed; EffectDefinitionId and CriticalPolicyId are always required at resolution.
+    /// definition. EquipmentInstanceId is optional for non-equipment attacks.
     /// </summary>
     public sealed class CriticalHitEffectFactsV1
     {
@@ -295,7 +293,8 @@ namespace ShooterMover.Combat.CriticalHits
         MissingCommand = 1,
         MissingOperationId = 2,
         MissingDeterministicSeed = 3,
-        InvalidHitSequence = 4,
+        InvalidShotSequence = 4,
+        InvalidHitSequence = InvalidShotSequence,
         InvalidBaseDamage = 5,
         InvalidDamageChannel = 6,
         MissingRunCombatProfile = 7,
@@ -308,14 +307,20 @@ namespace ShooterMover.Combat.CriticalHits
         MissingEffectDefinitionId = 14,
         MissingCriticalPolicyId = 15,
         UnknownCriticalPolicy = 16,
+        InvalidHitOrdinal = 17,
     }
 
+    /// <summary>
+    /// Immutable input to the critical-hit boundary. ShotSequence identifies the fire
+    /// operation; HitOrdinal identifies one pellet/contact/target evaluation within it.
+    /// </summary>
     public sealed class CriticalHitResolutionCommandV1
     {
         public CriticalHitResolutionCommandV1(
             StableId operationId,
             string deterministicSeed,
-            long hitSequence,
+            long shotSequence,
+            int hitOrdinal,
             decimal baseDamage,
             CombatChannel channel,
             RunCombatProfileV1 runCombatProfile,
@@ -326,7 +331,8 @@ namespace ShooterMover.Combat.CriticalHits
             DeterministicSeed = deterministicSeed == null
                 ? null
                 : deterministicSeed.Trim();
-            HitSequence = hitSequence;
+            ShotSequence = shotSequence;
+            HitOrdinal = hitOrdinal;
             BaseDamage = baseDamage;
             Channel = channel;
             RunCombatProfile = runCombatProfile;
@@ -335,9 +341,37 @@ namespace ShooterMover.Combat.CriticalHits
             Fingerprint = CriticalHitFingerprintV1.Hash(ToCanonicalString());
         }
 
+        /// <summary>
+        /// Compatibility overload for callers that predate explicit hit ordinals.
+        /// Such calls represent the first hit/contact in the shot.
+        /// </summary>
+        public CriticalHitResolutionCommandV1(
+            StableId operationId,
+            string deterministicSeed,
+            long hitSequence,
+            decimal baseDamage,
+            CombatChannel channel,
+            RunCombatProfileV1 runCombatProfile,
+            CriticalHitEffectFactsV1 effectFacts,
+            CombatHitPolicyResultV1 acceptedHit)
+            : this(
+                operationId,
+                deterministicSeed,
+                hitSequence,
+                0,
+                baseDamage,
+                channel,
+                runCombatProfile,
+                effectFacts,
+                acceptedHit)
+        {
+        }
+
         public StableId OperationId { get; }
         public string DeterministicSeed { get; }
-        public long HitSequence { get; }
+        public long ShotSequence { get; }
+        public int HitOrdinal { get; }
+        public long HitSequence { get { return ShotSequence; } }
         public decimal BaseDamage { get; }
         public CombatChannel Channel { get; }
         public RunCombatProfileV1 RunCombatProfile { get; }
@@ -359,8 +393,12 @@ namespace ShooterMover.Combat.CriticalHits
                 DeterministicSeed ?? string.Empty);
             CriticalHitFingerprintV1.Append(
                 builder,
-                "hit-sequence",
-                HitSequence.ToString(CultureInfo.InvariantCulture));
+                "shot-sequence",
+                ShotSequence.ToString(CultureInfo.InvariantCulture));
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "hit-ordinal",
+                HitOrdinal.ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.AppendDecimal(builder, "base-damage", BaseDamage);
             CriticalHitFingerprintV1.Append(
                 builder,
@@ -370,6 +408,12 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "run-id",
                 RunCombatProfile == null ? string.Empty : RunCombatProfile.RunId);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "run-context",
+                RunCombatProfile == null
+                    ? string.Empty
+                    : RunCombatProfile.RunContextFingerprint);
             CriticalHitFingerprintV1.Append(
                 builder,
                 "run-profile",
@@ -448,6 +492,11 @@ namespace ShooterMover.Combat.CriticalHits
         }
     }
 
+    /// <summary>
+    /// Exact immutable hash domain for one critical roll. The command fingerprint is
+    /// included in addition to explicit identity fields so accepted-hit facts and history
+    /// counters cannot be accidentally omitted from deterministic separation.
+    /// </summary>
     public sealed class CriticalHitRollDomainV1
     {
         internal CriticalHitRollDomainV1(
@@ -456,6 +505,8 @@ namespace ShooterMover.Combat.CriticalHits
         {
             CommandFingerprint = command.Fingerprint;
             PolicyApplicationFingerprint = policyApplication.Fingerprint;
+            ShotSequence = command.ShotSequence;
+            HitOrdinal = command.HitOrdinal;
             string canonical = BuildCanonicalString(command, policyApplication);
             byte[] digest = CriticalHitFingerprintV1.HashBytes(canonical);
             Fingerprint = CriticalHitFingerprintV1.ToHex(digest);
@@ -464,6 +515,8 @@ namespace ShooterMover.Combat.CriticalHits
 
         public string CommandFingerprint { get; }
         public string PolicyApplicationFingerprint { get; }
+        public long ShotSequence { get; }
+        public int HitOrdinal { get; }
         public string Fingerprint { get; }
         public decimal RollSample { get; }
 
@@ -478,6 +531,10 @@ namespace ShooterMover.Combat.CriticalHits
 
             var builder = new StringBuilder();
             CriticalHitFingerprintV1.Append(builder, "schema", "critical-hit-roll.v1");
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "command-fingerprint",
+                command.Fingerprint);
             CriticalHitFingerprintV1.AppendId(
                 builder,
                 "operation",
@@ -488,8 +545,12 @@ namespace ShooterMover.Combat.CriticalHits
                 command.DeterministicSeed);
             CriticalHitFingerprintV1.Append(
                 builder,
-                "hit-sequence",
-                command.HitSequence.ToString(CultureInfo.InvariantCulture));
+                "shot-sequence",
+                command.ShotSequence.ToString(CultureInfo.InvariantCulture));
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "hit-ordinal",
+                command.HitOrdinal.ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.Append(
                 builder,
                 "run-id",
@@ -558,7 +619,10 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "target-faction",
                 target.FactionId);
-            CriticalHitFingerprintV1.AppendId(builder, "effect-instance", effect.EffectId);
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "effect-instance",
+                effect.EffectId);
             CriticalHitFingerprintV1.AppendId(
                 builder,
                 "hit-policy",
@@ -593,6 +657,8 @@ namespace ShooterMover.Combat.CriticalHits
             RunId = command.RunCombatProfile.RunId;
             RunCombatProfileFingerprint = command.RunCombatProfile.Fingerprint;
             EffectFactsFingerprint = command.EffectFacts.Fingerprint;
+            ShotSequence = command.ShotSequence;
+            HitOrdinal = command.HitOrdinal;
             PolicyApplication = policyApplication;
             RollDomainFingerprint = rollDomain.Fingerprint;
             RollSample = rollDomain.RollSample;
@@ -609,6 +675,8 @@ namespace ShooterMover.Combat.CriticalHits
         public string RunId { get; }
         public string RunCombatProfileFingerprint { get; }
         public string EffectFactsFingerprint { get; }
+        public long ShotSequence { get; }
+        public int HitOrdinal { get; }
         public CriticalHitPolicyApplicationV1 PolicyApplication { get; }
         public string RollDomainFingerprint { get; }
         public decimal RollSample { get; }
@@ -645,6 +713,14 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "effect-facts",
                 EffectFactsFingerprint);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "shot-sequence",
+                ShotSequence.ToString(CultureInfo.InvariantCulture));
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "hit-ordinal",
+                HitOrdinal.ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.Append(
                 builder,
                 "policy-application",
@@ -752,6 +828,10 @@ namespace ShooterMover.Combat.CriticalHits
             CriticalHitResolutionCommandV1 command);
     }
 
+    /// <summary>
+    /// Run-local deterministic authority. It owns only operation replay state and
+    /// immutable critical outcomes; health mutation remains downstream.
+    /// </summary>
     public sealed class CriticalHitResolutionAuthorityV1 :
         ICriticalHitResolutionAuthorityV1
     {
@@ -865,8 +945,7 @@ namespace ShooterMover.Combat.CriticalHits
                     finalDamage = isCritical
                         ? checked(
                             ordinaryDamage
-                                * policyApplication
-                                    .EffectiveCriticalMultiplier)
+                                * policyApplication.EffectiveCriticalMultiplier)
                         : ordinaryDamage;
                 }
                 catch (OverflowException)
@@ -910,9 +989,13 @@ namespace ShooterMover.Combat.CriticalHits
             {
                 return CriticalHitRejectionCodeV1.MissingDeterministicSeed;
             }
-            if (command.HitSequence < 0L)
+            if (command.ShotSequence < 0L)
             {
-                return CriticalHitRejectionCodeV1.InvalidHitSequence;
+                return CriticalHitRejectionCodeV1.InvalidShotSequence;
+            }
+            if (command.HitOrdinal < 0)
+            {
+                return CriticalHitRejectionCodeV1.InvalidHitOrdinal;
             }
             if (command.BaseDamage <= 0m)
             {
