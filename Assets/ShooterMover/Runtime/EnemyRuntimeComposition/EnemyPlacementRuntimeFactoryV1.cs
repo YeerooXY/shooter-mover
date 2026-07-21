@@ -439,48 +439,55 @@ namespace ShooterMover.EnemyRuntimeComposition
                         requested,
                         authoritativeContext,
                         binding.TargetingAim.Configuration);
-                    var executionContext = new EnemyAttackExecutionContextV1(
-                        operationStableId,
-                        Identity,
-                        LifecycleGeneration,
-                        occurredAtSeconds,
-                        DifficultyScaling);
-                    StableId itemInstance = ResolveAttackItemInstance(binding.Descriptor.AttackId);
-                    EnemyAttackExecutionRequestV1 execution =
-                        binding.Capability.Adapter.BuildExecution(
-                            binding.Descriptor,
-                            committed,
-                            itemInstance,
-                            binding.Capability.Configuration,
-                            executionContext);
-                    if (!ExecutionMatchesAuthoritativeInputs(
-                        execution,
-                        operationStableId,
-                        occurredAtSeconds,
-                        binding,
-                        committed,
-                        itemInstance))
+                    if (!CommittedIntentPreservesIssuedSelection(requested, committed))
                     {
                         result = RejectedAttack(EnemyRuntimeRejectionCodeV1.InvalidCommand);
                     }
                     else
                     {
-                        string executionFingerprint = EnemyRuntimeAuthorityFingerprintV1.Execution(
-                            execution,
-                            issued.Fingerprint);
-                        acceptedExecutions.Add(
+                        var executionContext = new EnemyAttackExecutionContextV1(
                             operationStableId,
-                            new AcceptedExecutionRecord(
-                                executionFingerprint,
-                                issued.Fingerprint,
-                                execution));
-                        downstream.AttackEffects.Emit(execution);
-                        nextReadyAtByAttack[requested.AttackId] =
-                            occurredAtSeconds + execution.ResolvedCooldownSeconds;
-                        result = new EnemyAttackExecutionResultV1(
-                            EnemyRuntimeOperationStatusV1.Applied,
-                            EnemyRuntimeRejectionCodeV1.None,
-                            execution);
+                            Identity,
+                            LifecycleGeneration,
+                            occurredAtSeconds,
+                            DifficultyScaling);
+                        StableId itemInstance = ResolveAttackItemInstance(binding.Descriptor.AttackId);
+                        EnemyAttackExecutionRequestV1 execution =
+                            binding.Capability.Adapter.BuildExecution(
+                                binding.Descriptor,
+                                committed,
+                                itemInstance,
+                                binding.Capability.Configuration,
+                                executionContext);
+                        if (!ExecutionMatchesAuthoritativeInputs(
+                            execution,
+                            operationStableId,
+                            occurredAtSeconds,
+                            binding,
+                            committed,
+                            itemInstance))
+                        {
+                            result = RejectedAttack(EnemyRuntimeRejectionCodeV1.InvalidCommand);
+                        }
+                        else
+                        {
+                            string executionFingerprint = EnemyRuntimeAuthorityFingerprintV1.Execution(
+                                execution,
+                                issued.Fingerprint);
+                            acceptedExecutions.Add(
+                                operationStableId,
+                                new AcceptedExecutionRecord(
+                                    executionFingerprint,
+                                    issued.Fingerprint,
+                                    execution));
+                            downstream.AttackEffects.Emit(execution);
+                            nextReadyAtByAttack[requested.AttackId] =
+                                occurredAtSeconds + execution.ResolvedCooldownSeconds;
+                            result = new EnemyAttackExecutionResultV1(
+                                EnemyRuntimeOperationStatusV1.Applied,
+                                EnemyRuntimeRejectionCodeV1.None,
+                                execution);
+                        }
                     }
                 }
             }
@@ -614,6 +621,22 @@ namespace ShooterMover.EnemyRuntimeComposition
                 Request.RoomLifecycleGeneration,
                 RoomStableId,
                 SpawnStableId);
+        }
+
+        private static bool CommittedIntentPreservesIssuedSelection(
+            EnemyAttackIntent requested,
+            EnemyAttackIntent committed)
+        {
+            return requested != null
+                && committed != null
+                && committed.AttackerEntityId == requested.AttackerEntityId
+                && committed.SourceRunParticipantId == requested.SourceRunParticipantId
+                && committed.TargetEntityId == requested.TargetEntityId
+                && committed.AttackId == requested.AttackId
+                && committed.CommittedOrigin.Equals(requested.CommittedOrigin)
+                && committed.DecisionId == requested.DecisionId
+                && committed.BehaviorPhaseId == requested.BehaviorPhaseId
+                && committed.ReasonCode == requested.ReasonCode;
         }
 
         private bool ExecutionMatchesAuthoritativeInputs(
