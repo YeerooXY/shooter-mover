@@ -335,18 +335,18 @@ namespace ShooterMover.Editor.BalanceSimulator
             diagnostic = string.Empty;
             string runtimeId = runtimeWeaponReferenceId.ToString();
 
-            // Production equipment stores the canonical weapon StableId directly.
-            if (weaponCatalog.TryGetDefinition(runtimeId, out definition)
-                && definition != null)
+            // Production equipment may store the canonical weapon StableId directly.
+            // Imported definitions use a deterministic canonical weapon.* projection.
+            // Count both forms and accept only one unique target.
+            int matches = 0;
+            WeaponDefinitionData direct;
+            if (weaponCatalog.TryGetDefinition(runtimeId, out direct)
+                && direct != null)
             {
-                return true;
+                matches++;
+                definition = direct;
             }
 
-            // Imported catalog definitions use a deterministic canonical weapon.*
-            // runtime reference because their string definition IDs are not necessarily
-            // StableIds in the production runtime-reference shape. Resolve that reference
-            // uniquely instead of bypassing EquipmentDefinition.RuntimeWeaponReferenceId.
-            int matches = 0;
             IReadOnlyList<WeaponDefinitionData> candidates =
                 weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.All);
             for (int index = 0; index < candidates.Count; index++)
@@ -355,7 +355,12 @@ namespace ShooterMover.Editor.BalanceSimulator
                 StableId projectedReference = StrongboxCanonicalV1.DeriveId(
                     "weapon",
                     candidate.DefinitionId);
-                if (projectedReference == runtimeWeaponReferenceId)
+                if (projectedReference == runtimeWeaponReferenceId
+                    && (definition == null
+                        || !string.Equals(
+                            definition.DefinitionId,
+                            candidate.DefinitionId,
+                            StringComparison.Ordinal)))
                 {
                     matches++;
                     definition = candidate;
