@@ -1,0 +1,57 @@
+name: RUN-SESSION-001 materialize exact sources
+
+on:
+  push:
+    branches:
+      - agent/run-session-001-character-to-mission
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/run-session-001-character-to-mission
+          fetch-depth: 0
+
+      - name: Materialize and verify sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .run-session-payload/part* | base64 --decode > /tmp/run-session.tar.gz
+          tar -xzf /tmp/run-session.tar.gz
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          expected = {
+              "Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionPortsV1.cs": "c39931b2517fc30456234400e3d6f49ec3391d68",
+              "Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionSnapshotsV1.cs": "6ef334be5789ce289c71572fc4c98ccfb167235f",
+              "Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionAuthorityV1.cs": "24f6afe49827753cc345a0b378e59e8d175bafa9",
+              "Assets/ShooterMover/Tests/EditMode/RunSessions/RunSessionAuthorityV1Tests.cs": "07f4143275bd8cd54611efa118d065be9bf9f07a",
+              "Assets/ShooterMover/Tests/EditMode/RunSessions/ProductionRunSessionCompositionV1Tests.cs": "bd023f51b1b26d3de9dc04b2f2b8092c71abe99e",
+          }
+          for path, wanted in expected.items():
+              data = Path(path).read_bytes()
+              header = b"blob " + str(len(data)).encode("ascii") + b"\0"
+              actual = hashlib.sha1(header + data).hexdigest()
+              if actual != wanted:
+                  raise SystemExit(f"Git blob mismatch for {path}: {actual} != {wanted}")
+          PY
+          rm -rf .run-session-payload
+          rm -f .github/workflows/run-session-materialize.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+
+      - name: Commit exact source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "RUN-SESSION-001: materialize exact run-session sources"
+          git push origin HEAD:agent/run-session-001-character-to-mission
