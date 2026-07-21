@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "layout": "layout.guardrails-extension",
+  "conditions": [
+    {
+      "id": "access.guardrail-key",
+      "kind": "holding-present",
+      "subject": "holding.guardrail-key"
+    }
+  ],
+  "doors": [
+    {
+      "room": "room.guardrail-entry",
+      "exit_type": "progression",
+      "condition": "access.guardrail-key",
+      "consume_holding": "holding.guardrail-key"
+    }
+  ]
+}
