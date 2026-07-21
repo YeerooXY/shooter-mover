@@ -56,9 +56,33 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             combatPresentationByActor.Add(
                 registration.EntityInstanceStableId,
                 registration);
-            return new CombatPresentationEnemyActorAuthority2D(
-                authority,
-                registration);
+
+            IEnemyActor2DAuthority presentedAuthority =
+                new CombatPresentationEnemyActorAuthority2D(
+                    authority,
+                    registration);
+            ReplaceProjectedRoomEnemyAuthority(authority, presentedAuthority);
+            return presentedAuthority;
+        }
+
+        private static void ReplaceProjectedRoomEnemyAuthority(
+            IEnemyActor2DAuthority originalAuthority,
+            IEnemyActor2DAuthority presentedAuthority)
+        {
+            var matchingPlacements = new List<StableId>();
+            foreach (KeyValuePair<StableId, IEnemyActor2DAuthority> pair in
+                projectedRoomEnemies)
+            {
+                if (object.ReferenceEquals(pair.Value, originalAuthority))
+                {
+                    matchingPlacements.Add(pair.Key);
+                }
+            }
+
+            for (int index = 0; index < matchingPlacements.Count; index++)
+            {
+                projectedRoomEnemies[matchingPlacements[index]] = presentedAuthority;
+            }
         }
 
         private void EnsureCombatDeathVfxPool()
