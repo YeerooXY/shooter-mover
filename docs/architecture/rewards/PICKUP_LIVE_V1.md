@@ -48,10 +48,16 @@ A Unity `GameObject` owns none of these facts.
 
 ### Run Session
 
-`ExistingRunSessionPickupPortV1` adapts the current `RunSessionAggregateV1`. It validates
-active run/lifecycle and the exact player actor/participant, then admits the immutable
-collection fact through `RunSessionAggregateV1.AdmitFact`. The typed pickup journal remains
-inside the run-local pickup authority and is visible through immutable snapshots.
+`ExistingRunSessionPickupPortV1` adapts the current `RunSessionAggregateV1`. It projects
+one `RunSessionCollectedRewardV1` containing the exact pickup, generated child, source DROP
+operation, terminal/source provenance, reward content and quantity, world-spawn context,
+collector, collection operation, order, and authoritative tick.
+
+`RunSessionAggregateV1.RecordCollectedRunReward` validates the active lifecycle and exact
+player actor/participant, admits the typed record fingerprint through the existing Run
+Session fact replay boundary, and stores the exact immutable record in a lifecycle-filtered
+run-local journal. The pickup authority also retains its immutable world projection so
+presentation can be reconstructed without querying Unity objects.
 
 The adapter does not call `RecordCollectedStrongbox`, the mission-result port, RAP, wallet,
 holdings, inventory, save, or Results transfer.
@@ -128,9 +134,10 @@ Unity trigger callbacks only submit `RunPickupCollectionCommandV1`, containing:
 
 The authority validates the complete context while holding one synchronization gate.
 
-- First valid command records the exact immutable fact and transitions
-  `Available -> Collected` once.
-- Exact operation replay returns the original accepted fact.
+- First valid command records the exact immutable child in the Run Session journal and
+  transitions `Available -> Collected` once.
+- Exact operation replay returns the original accepted collection fact while the lifecycle
+  remains current; the same replay rejects as stale after a Run Session generation change.
 - Conflicting operation reuse rejects.
 - Wrong run, stale/future lifecycle, wrong pickup-child pairing, wrong collector, missing
   attribution, changed fingerprint, or unavailable pickup rejects without mutation.
