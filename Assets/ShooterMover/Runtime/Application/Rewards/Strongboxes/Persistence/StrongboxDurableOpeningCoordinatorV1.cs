@@ -1,24 +1,16 @@
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Reflection;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
-using ShooterMover.Application.Rewards.Application;
-using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
-using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Persistence.Accounts;
-using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
 {
-    public sealed partial class StrongboxDurableOpeningCoordinatorV1
+    public sealed partial class StrongboxDurableOpeningCoordinatorV1 :
+        IStrongboxDurableOpeningExecutorV1
     {
         private readonly CharacterCompositionCoordinatorV1 composition;
 
@@ -31,7 +23,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
 
         public StrongboxOpeningResultRuntimeV1 OpenAndPersist(
             MissionRunStrongboxResultV1 selectedStrongbox,
-            StrongboxOpeningServiceV1 openingService,
+            ShooterMover.Application.Rewards.Strongboxes
+                .StrongboxOpeningServiceV1 openingService,
             StrongboxOpenCommandV1 command)
         {
             var graph = composition.ActiveRuntime
@@ -64,15 +57,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                 return Rejected(command, "durable-opening-command-context-mismatch");
             }
 
-            string recoveryError;
-            if (!TryRehydrateRewardApplication(
-                openingService,
-                command,
-                out recoveryError))
-            {
-                return Rejected(command, recoveryError);
-            }
-
             string validation = ValidateExactUnopenedState(
                 graph,
                 selectedStrongbox,
@@ -83,64 +67,117 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             }
 
             CharacterInstanceSnapshotV1 beforeCharacter = graph.Character;
-            string beforeComponentFingerprint = ExportComponentFingerprint(graph);
-            StrongboxOpeningResultRuntimeV1 result;
+            string beforeComponentFingerprint;
             try
             {
-                result = openingService.Open(command);
+                beforeComponentFingerprint = ExportComponentFingerprint(graph);
             }
             catch (Exception exception)
             {
-                string restore = Restore(
-                    beforeAccount,
-                    graph,
-                    beforeCharacter,
-                    beforeComponentFingerprint);
                 return Rejected(
                     command,
-                    "durable-opening-authority-exception-"
-                        + exception.GetType().Name.ToLowerInvariant()
-                        + AppendRestore(restore));
+                    "durable-opening-preflight-exception-"
+                        + exception.GetType().Name.ToLowerInvariant());
             }
 
-            bool retryablePending = result != null
-                && (result.Status
-                        == StrongboxOpeningRuntimeStatusV1
-                            .ClaimedPendingApplication
-                    || result.Status
-                        == StrongboxOpeningRuntimeStatusV1.ConsumePending);
-            if (result == null || (!result.Succeeded && !retryablePending))
+            StrongboxOpeningResultRuntimeV1 result = null;
+            try
             {
-                string restore = Restore(
-                    beforeAccount,
-                    graph,
-                    beforeCharacter,
-                    beforeComponentFingerprint);
-                if (!string.IsNullOrEmpty(restore))
+                string recoveryError;
+                if (!TryRehydrateRewardApplication(
+                    graph.StrongboxRecovery,
+                    command,
+                    out recoveryError))
                 {
+                    string restore = Restore(
+                        beforeAccount,
+                        graph,
+                        beforeCharacter,
+                        beforeComponentFingerprint);
+                    return SnapshotRejected(
+                        command,
+                        null,
+                        recoveryError + AppendRestore(restore));
+                }
+
+                result = openingService.Open(command);
+                bool retryablePending = result != null
+                    && (result.Status
+                            == StrongboxOpeningRuntimeStatusV1
+                                .ClaimedPendingApplication
+                        || result.Status
+                            == StrongboxOpeningRuntimeStatusV1
+                                .ConsumePending);
+                if (result == null
+                    || (!result.Succeeded && !retryablePending))
+                {
+                    string restore = Restore(
+                        beforeAccount,
+                        graph,
+                        beforeCharacter,
+                        beforeComponentFingerprint);
+                    if (!string.IsNullOrEmpty(restore))
+                    {
+                        return SnapshotRejected(
+                            command,
+                            result,
+                            "durable-opening-nonterminal-rollback-failed:"
+                                + restore);
+                    }
+                    return result
+                        ?? Rejected(command, "durable-opening-result-null");
+                }
+
+                string currentFingerprint =
+                    ExportComponentFingerprint(graph);
+                StableId saveOperation = StrongboxCanonicalV1.DeriveId(
+                    "boxterminalsave",
+                    command.OpeningStableId.ToString(),
+                    command.RunStableId.ToString(),
+                    command.StrongboxInstanceStableId.ToString(),
+                    result.GeneratedOutcome == null
+                        ? "none"
+                        : result.GeneratedOutcome.Fingerprint,
+                    currentFingerprint);
+                CharacterCompositionResultV1 persisted =
+                    composition.PersistActive(saveOperation);
+                if (persisted == null || !persisted.Succeeded)
+                {
+                    string restore = Restore(
+                        beforeAccount,
+                        graph,
+                        beforeCharacter,
+                        beforeComponentFingerprint);
                     return SnapshotRejected(
                         command,
                         result,
-                        "durable-opening-nonterminal-rollback-failed:"
-                            + restore);
+                        "durable-opening-save-rejected:"
+                            + (persisted == null
+                                ? "null"
+                                : persisted.Diagnostic)
+                            + AppendRestore(restore));
                 }
-                return result ?? Rejected(command, "durable-opening-result-null");
-            }
 
-            string currentFingerprint = ExportComponentFingerprint(graph);
-            StableId saveOperation = StrongboxCanonicalV1.DeriveId(
-                "boxterminalsave",
-                command.OpeningStableId.ToString(),
-                command.RunStableId.ToString(),
-                command.StrongboxInstanceStableId.ToString(),
-                result.GeneratedOutcome == null
-                    ? "none"
-                    : result.GeneratedOutcome.Fingerprint,
-                currentFingerprint);
-            CharacterCompositionResultV1 persisted;
-            try
-            {
-                persisted = composition.PersistActive(saveOperation);
+                PlayerAccountSnapshotV1 durable = persisted.Account;
+                CharacterInstanceSnapshotV1 durableCharacter =
+                    persisted.Character;
+                if (durable == null || durableCharacter == null
+                    || durableCharacter.CharacterInstanceStableId
+                        != graph.Character.CharacterInstanceStableId
+                    || !ComponentsMatchGraph(durableCharacter, graph))
+                {
+                    string restore = Restore(
+                        beforeAccount,
+                        graph,
+                        beforeCharacter,
+                        beforeComponentFingerprint);
+                    return SnapshotRejected(
+                        command,
+                        result,
+                        "durable-opening-durable-verification-mismatch"
+                            + AppendRestore(restore));
+                }
+                return result;
             }
             catch (Exception exception)
             {
@@ -152,39 +189,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                 return SnapshotRejected(
                     command,
                     result,
-                    "durable-opening-save-exception-"
+                    "durable-opening-transaction-exception-"
                         + exception.GetType().Name.ToLowerInvariant()
                         + AppendRestore(restore));
             }
-
-            if (persisted == null || !persisted.Succeeded)
-            {
-                string restore = Restore(
-                    beforeAccount,
-                    graph,
-                    beforeCharacter,
-                    beforeComponentFingerprint);
-                return SnapshotRejected(
-                    command,
-                    result,
-                    "durable-opening-save-rejected:"
-                        + (persisted == null ? "null" : persisted.Diagnostic)
-                        + AppendRestore(restore));
-            }
-
-            PlayerAccountSnapshotV1 durable = composition.Account;
-            CharacterInstanceSnapshotV1 durableCharacter = durable == null
-                ? null
-                : durable.CharacterAt(composition.ActiveSlotIndex);
-            if (durableCharacter == null
-                || durableCharacter.CharacterInstanceStableId
-                    != graph.Character.CharacterInstanceStableId
-                || !ComponentsMatchGraph(durableCharacter, graph))
-            {
-                throw new InvalidOperationException(
-                    "Atomic persistence reported success without publishing the complete selected-character component graph.");
-            }
-            return result;
         }
     }
 }

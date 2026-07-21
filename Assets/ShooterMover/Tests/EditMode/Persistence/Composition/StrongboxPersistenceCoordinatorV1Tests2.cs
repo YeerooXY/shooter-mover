@@ -67,7 +67,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 missing);
             var coordinator =
                 new StrongboxMissionResultApplicationCoordinatorV1(
-                    composition);
+                    composition,
+                    () => 1L);
 
             StrongboxMissionResultApplicationResultV1 rejected =
                 coordinator.Apply(TransferCommand(

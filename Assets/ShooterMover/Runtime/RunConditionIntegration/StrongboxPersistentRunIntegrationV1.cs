@@ -1,105 +1,55 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Application.Runs.Session;
-using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
-using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
-using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 
 namespace ShooterMover.RunConditionIntegration
 {
-    public interface IRunMissionStrongboxSnapshotSourceV1
-    {
-        PlayerHoldingsSnapshotV1 ExportCollectedStrongboxHoldings();
-        StrongboxOpeningSnapshotV1 ExportCollectedStrongboxRegistrations();
-    }
-
     internal static class RunMissionStrongboxSnapshotSourceResolverV1
     {
         public static bool TryResolve(
             IRunMissionResultPortV1 port,
-            ProductionCharacterRuntimeGraphV1 graph,
-            MissionResultPayloadV1 result,
             out PlayerHoldingsSnapshotV1 holdings,
             out StrongboxOpeningSnapshotV1 strongboxes,
-            out string rejectionCode)
+            out string rejectionCode,
+            out bool retryable)
         {
             holdings = null;
             strongboxes = null;
             rejectionCode = string.Empty;
-
+            retryable = false;
             var source = port as IRunMissionStrongboxSnapshotSourceV1;
-            if (source != null)
+            if (source == null)
+            {
+                rejectionCode =
+                    "box-transfer-source-snapshot-port-unavailable";
+                return false;
+            }
+
+            try
             {
                 holdings = source.ExportCollectedStrongboxHoldings();
-                strongboxes = source.ExportCollectedStrongboxRegistrations();
+                strongboxes =
+                    source.ExportCollectedStrongboxRegistrations();
             }
-            else if (port is ExistingMissionResultRunPortV1)
+            catch (Exception exception)
             {
-                // Compatibility seam for the merged RUN-SESSION adapter. This does not
-                // create authority state; it exposes the two immutable snapshots already
-                // captured by that adapter until the port can implement the typed source
-                // interface directly. Reflection failure is closed and reported below.
-                try
-                {
-                    const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-                    FieldInfo holdingsField = typeof(ExistingMissionResultRunPortV1)
-                        .GetField("holdings", flags);
-                    FieldInfo exporterField = typeof(ExistingMissionResultRunPortV1)
-                        .GetField("openingExporter", flags);
-                    var authority = holdingsField == null
-                        ? null
-                        : holdingsField.GetValue(port) as IPlayerHoldingsAuthorityV1;
-                    var exporter = exporterField == null
-                        ? null
-                        : exporterField.GetValue(port)
-                            as Func<StrongboxOpeningSnapshotV1>;
-                    holdings = authority == null ? null : authority.ExportSnapshot();
-                    strongboxes = exporter == null ? null : exporter();
-                }
-                catch (Exception)
-                {
-                    holdings = null;
-                    strongboxes = null;
-                }
+                rejectionCode = "box-transfer-source-snapshot-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+                retryable = true;
+                return false;
             }
-
-            if ((holdings == null || strongboxes == null) && graph != null)
-            {
-                PlayerHoldingsSnapshotV1 graphHoldings =
-                    graph.LoadoutRuntime.Holdings.ExportSnapshot();
-                StrongboxOpeningSnapshotV1 graphStrongboxes =
-                    graph.StrongboxAuthority.ExportSnapshot();
-                if (graphHoldings != null && graphStrongboxes != null
-                    && string.Equals(
-                        graphHoldings.Fingerprint,
-                        result.HoldingsFingerprint,
-                        StringComparison.Ordinal)
-                    && string.Equals(
-                        graphStrongboxes.Fingerprint,
-                        result.StrongboxOpeningFingerprint,
-                        StringComparison.Ordinal))
-                {
-                    holdings = graphHoldings;
-                    strongboxes = graphStrongboxes;
-                }
-            }
-
             if (holdings == null || strongboxes == null)
             {
                 rejectionCode = "box-transfer-source-snapshot-unavailable";
+                retryable = true;
                 return false;
             }
             return true;
@@ -109,23 +59,30 @@ namespace ShooterMover.RunConditionIntegration
     /// <summary>
     /// Decorates the existing mission-result port. The immutable result is accepted by
     /// Run Session only after the complete selected-character transfer is durably saved.
+    /// Compensated transient failures remain exact-retryable even after the inner RUN
+    /// authority has frozen its terminal mission result.
     /// </summary>
-
-    public sealed class PersistentMissionResultRunPortV1 : IRunMissionResultPortV1
+    public sealed class PersistentMissionResultRunPortV1 :
+        IRunMissionResultPortV1,
+        IRunMissionResultEndRetryPolicyV1,
+        IRunMissionResultLifecycleBindingV1
     {
         private readonly IRunMissionResultPortV1 inner;
         private readonly CharacterCompositionCoordinatorV1 composition;
         private readonly FrozenCharacterRunInputsV1 frozenInputs;
         private readonly long expectedAccountRevision;
-        private readonly IRunPlayerRuntimePortV1 player;
-        private readonly StrongboxMissionResultApplicationCoordinatorV1 coordinator;
+        private readonly StrongboxMissionResultApplicationCoordinatorV1
+            coordinator;
+        private readonly Dictionary<StableId, string> retryableEndFailures =
+            new Dictionary<StableId, string>();
+        private StableId boundRunStableId;
+        private Func<long> runLifecycleGenerationExporter;
 
         public PersistentMissionResultRunPortV1(
             IRunMissionResultPortV1 inner,
             CharacterCompositionCoordinatorV1 composition,
             FrozenCharacterRunInputsV1 frozenInputs,
-            long expectedAccountRevision,
-            IRunPlayerRuntimePortV1 player)
+            long expectedAccountRevision)
         {
             this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
             this.composition = composition
@@ -134,49 +91,131 @@ namespace ShooterMover.RunConditionIntegration
                 ?? throw new ArgumentNullException(nameof(frozenInputs));
             if (expectedAccountRevision < 0L)
             {
-                throw new ArgumentOutOfRangeException(nameof(expectedAccountRevision));
+                throw new ArgumentOutOfRangeException(
+                    nameof(expectedAccountRevision));
             }
             this.expectedAccountRevision = expectedAccountRevision;
-            this.player = player ?? throw new ArgumentNullException(nameof(player));
-            coordinator = new StrongboxMissionResultApplicationCoordinatorV1(composition);
+            coordinator = new StrongboxMissionResultApplicationCoordinatorV1(
+                composition,
+                ExportBoundRunLifecycleGeneration);
         }
 
         public long Sequence { get { return inner.Sequence; } }
 
-        public bool TryGetRun(StableId runStableId, out MissionRunPayloadV1 runPayload)
+        public void BindRunLifecycle(
+            StableId runStableId,
+            Func<long> lifecycleGenerationExporter)
+        {
+            if (runStableId == null)
+            {
+                throw new ArgumentNullException(nameof(runStableId));
+            }
+            if (lifecycleGenerationExporter == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(lifecycleGenerationExporter));
+            }
+            if (boundRunStableId != null
+                && boundRunStableId != runStableId)
+            {
+                throw new InvalidOperationException(
+                    "The mission-result persistence port is already bound to another run.");
+            }
+            boundRunStableId = runStableId;
+            runLifecycleGenerationExporter = lifecycleGenerationExporter;
+        }
+
+        private long ExportBoundRunLifecycleGeneration()
+        {
+            if (boundRunStableId == null
+                || runLifecycleGenerationExporter == null)
+            {
+                throw new InvalidOperationException(
+                    "The mission-result persistence port is not bound to Run Session.");
+            }
+            return runLifecycleGenerationExporter();
+        }
+
+        public bool TryGetRun(
+            StableId runStableId,
+            out MissionRunPayloadV1 runPayload)
         {
             return inner.TryGetRun(runStableId, out runPayload);
         }
 
         public MissionRunAuthorityResultV1 RecordCollectedStrongbox(
             RunStrongboxCollectionRequestV1 request,
-            ShooterMover.Contracts.Flow.Session.PlayerRouteProfilePayloadV1 routePayload)
+            ShooterMover.Contracts.Flow.Session.PlayerRouteProfilePayloadV1
+                routePayload)
         {
             return inner.RecordCollectedStrongbox(request, routePayload);
         }
 
         public MissionRunAuthorityResultV1 EndRun(
             EndRunSessionCommandV1 command,
-            ShooterMover.Contracts.Flow.Session.PlayerRouteProfilePayloadV1 routePayload)
+            ShooterMover.Contracts.Flow.Session.PlayerRouteProfilePayloadV1
+                routePayload)
         {
-            MissionRunAuthorityResultV1 result = inner.EndRun(command, routePayload);
-            if (result == null || !result.Succeeded || result.ResultPayload == null)
+            long authoritativeRunGeneration;
+            try
             {
+                authoritativeRunGeneration =
+                    ExportBoundRunLifecycleGeneration();
+            }
+            catch (Exception exception)
+            {
+                return InvalidEnd(
+                    command,
+                    "box-transfer-run-lifecycle-unbound-"
+                        + exception.GetType().Name.ToLowerInvariant());
+            }
+            if (command != null
+                && (command.RunStableId != boundRunStableId
+                    || command.LifecycleGeneration
+                        != authoritativeRunGeneration))
+            {
+                retryableEndFailures.Remove(command.OperationStableId);
+                return new MissionRunAuthorityResultV1(
+                    MissionRunAuthorityStatusV1.InvalidRequest,
+                    inner.Sequence,
+                    inner.Sequence,
+                    command.OperationStableId,
+                    command.Fingerprint,
+                    null,
+                    null,
+                    null,
+                    command.RunStableId != boundRunStableId
+                        ? "box-transfer-run-identity-mismatch"
+                        : (command.LifecycleGeneration
+                                < authoritativeRunGeneration
+                            ? "box-transfer-run-generation-stale"
+                            : "box-transfer-run-generation-future"));
+            }
+
+            MissionRunAuthorityResultV1 result =
+                inner.EndRun(command, routePayload);
+            if (result == null || !result.Succeeded
+                || result.ResultPayload == null)
+            {
+                if (command != null)
+                {
+                    retryableEndFailures.Remove(command.OperationStableId);
+                }
                 return result;
             }
 
-            var graph = composition.ActiveRuntime as ProductionCharacterRuntimeGraphV1;
             PlayerHoldingsSnapshotV1 sourceHoldings;
             StrongboxOpeningSnapshotV1 sourceStrongboxes;
             string sourceError;
+            bool sourceRetryable;
             if (!RunMissionStrongboxSnapshotSourceResolverV1.TryResolve(
                 inner,
-                graph,
-                result.ResultPayload,
                 out sourceHoldings,
                 out sourceStrongboxes,
-                out sourceError))
+                out sourceError,
+                out sourceRetryable))
             {
+                RememberRetryable(command, sourceRetryable);
                 return ExternalReject(result, command, sourceError);
             }
 
@@ -186,21 +225,28 @@ namespace ShooterMover.RunConditionIntegration
                 command.RunStableId.ToString(),
                 result.ResultPayload.Fingerprint,
                 frozenInputs.Character.CharacterInstanceStableId.ToString(),
-                player.LifecycleGeneration.ToString(CultureInfo.InvariantCulture));
-            var application = new StrongboxMissionResultApplicationCommandV1(
-                applicationOperation,
-                command.RunStableId,
-                player.LifecycleGeneration,
-                result.ResultPayload,
-                frozenInputs.Character.CharacterInstanceStableId,
-                frozenInputs.Character.Revision,
-                frozenInputs.Character.Fingerprint,
-                expectedAccountRevision,
-                sourceHoldings,
-                sourceStrongboxes);
+                command.LifecycleGeneration.ToString(
+                    CultureInfo.InvariantCulture));
+            var application =
+                new StrongboxMissionResultApplicationCommandV1(
+                    applicationOperation,
+                    command.RunStableId,
+                    command.LifecycleGeneration,
+                    result.ResultPayload,
+                    frozenInputs.Character.CharacterInstanceStableId,
+                    frozenInputs.Character.Revision,
+                    frozenInputs.Character.Fingerprint,
+                    expectedAccountRevision,
+                    sourceHoldings,
+                    sourceStrongboxes);
             StrongboxMissionResultApplicationResultV1 applied =
                 coordinator.Apply(application);
-            return applied != null && applied.Succeeded
+            bool succeeded = applied != null && applied.Succeeded;
+            RememberRetryable(
+                command,
+                !succeeded
+                    && (applied == null || applied.ExactRetryAllowed));
+            return succeeded
                 ? result
                 : ExternalReject(
                     result,
@@ -208,6 +254,65 @@ namespace ShooterMover.RunConditionIntegration
                     applied == null
                         ? "box-transfer-result-null"
                         : applied.RejectionCode);
+        }
+
+        public bool IsRetryableEndFailure(
+            EndRunSessionCommandV1 command,
+            MissionRunAuthorityResultV1 result)
+        {
+            if (command == null || result == null
+                || result.Status
+                    != MissionRunAuthorityStatusV1.ExternalAuthorityRejected)
+            {
+                return false;
+            }
+            string fingerprint;
+            return retryableEndFailures.TryGetValue(
+                    command.OperationStableId,
+                    out fingerprint)
+                && string.Equals(
+                    fingerprint,
+                    command.Fingerprint,
+                    StringComparison.Ordinal);
+        }
+
+        private void RememberRetryable(
+            EndRunSessionCommandV1 command,
+            bool retryable)
+        {
+            if (command == null)
+            {
+                return;
+            }
+            if (retryable)
+            {
+                retryableEndFailures[command.OperationStableId] =
+                    command.Fingerprint;
+            }
+            else
+            {
+                retryableEndFailures.Remove(command.OperationStableId);
+            }
+        }
+
+        private MissionRunAuthorityResultV1 InvalidEnd(
+            EndRunSessionCommandV1 command,
+            string rejection)
+        {
+            if (command != null)
+            {
+                retryableEndFailures.Remove(command.OperationStableId);
+            }
+            return new MissionRunAuthorityResultV1(
+                MissionRunAuthorityStatusV1.InvalidRequest,
+                inner.Sequence,
+                inner.Sequence,
+                command == null ? null : command.OperationStableId,
+                command == null ? string.Empty : command.Fingerprint,
+                null,
+                null,
+                null,
+                rejection);
         }
 
         private static MissionRunAuthorityResultV1 ExternalReject(
@@ -272,8 +377,7 @@ namespace ShooterMover.RunConditionIntegration
                     ports.MissionResults,
                     composition,
                     frozenInputs,
-                    account.Revision,
-                    ports.Player));
+                    account.Revision));
         }
     }
 }

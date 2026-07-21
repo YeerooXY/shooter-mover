@@ -52,7 +52,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 box.Result);
             var coordinator =
                 new StrongboxMissionResultApplicationCoordinatorV1(
-                    composition);
+                    composition,
+                    () => 1L);
             StrongboxMissionResultApplicationCommandV1 command =
                 TransferCommand(
                     target,

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Holdings;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
@@ -22,6 +21,24 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
         {
             plan = null;
             rejection = string.Empty;
+
+            long authoritativeRunGeneration =
+                runLifecycleGenerationExporter();
+            if (authoritativeRunGeneration <= 0L)
+            {
+                rejection = "box-transfer-authoritative-run-generation-invalid";
+                return false;
+            }
+            if (command.RunLifecycleGeneration
+                != authoritativeRunGeneration)
+            {
+                rejection = command.RunLifecycleGeneration
+                        < authoritativeRunGeneration
+                    ? "box-transfer-run-generation-stale"
+                    : "box-transfer-run-generation-future";
+                return false;
+            }
+
             PlayerAccountSnapshotV1 account = composition.Account;
             var graph = composition.ActiveRuntime
                 as ProductionCharacterRuntimeGraphV1;
@@ -83,11 +100,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                 return false;
             }
 
-            PlayerHoldingsService targetHoldings =
-                graph.LoadoutRuntime.Holdings;
-            StrongboxOpeningServiceV1 targetStrongboxes =
-                graph.StrongboxAuthority;
-            if (targetHoldings == null || targetStrongboxes == null)
+            IStrongboxMissionResultApplicationAuthorityPortV1 target =
+                authorityPortFactory(graph);
+            if (target == null)
             {
                 rejection = "box-transfer-target-authority-missing";
                 return false;
@@ -111,9 +126,14 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                     item => item);
 
             PlayerHoldingsSnapshotV1 beforeHoldings =
-                targetHoldings.ExportSnapshot();
+                target.ExportHoldings();
             StrongboxOpeningSnapshotV1 beforeStrongboxes =
-                targetStrongboxes.ExportSnapshot();
+                target.ExportStrongboxes();
+            if (beforeHoldings == null || beforeStrongboxes == null)
+            {
+                rejection = "box-transfer-target-snapshot-null";
+                return false;
+            }
             var targetHeld = beforeHoldings.UniqueHoldings
                 .Where(item => item != null
                     && item.RewardKind == RewardGrantKindV1.Strongbox)
@@ -168,13 +188,13 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
 
             plan = new TransferPlan(
                 graph,
-                targetHoldings,
-                targetStrongboxes,
+                target,
+                account,
+                character,
                 beforeHoldings,
                 beforeStrongboxes,
                 transfers);
             return true;
         }
-
     }
 }

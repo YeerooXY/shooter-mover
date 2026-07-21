@@ -10,6 +10,7 @@ using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Scrap;
@@ -43,6 +44,7 @@ namespace ShooterMover.Application.Flow.Production
             string skillProfileId,
             StrongboxDefinitionCatalogV1 strongboxCatalog,
             StrongboxOpeningServiceV1 strongboxAuthority,
+            IStrongboxOpeningRecoveryPortV1 strongboxRecovery,
             IEnumerable<ISaveComponentAdapterV1> saveAdapters)
         {
             this.character = character
@@ -63,6 +65,8 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(strongboxCatalog));
             StrongboxAuthority = strongboxAuthority
                 ?? throw new ArgumentNullException(nameof(strongboxAuthority));
+            StrongboxRecovery = strongboxRecovery
+                ?? throw new ArgumentNullException(nameof(strongboxRecovery));
             if (string.IsNullOrWhiteSpace(skillProfileId))
             {
                 throw new ArgumentException(
@@ -105,6 +109,8 @@ namespace ShooterMover.Application.Flow.Production
         public StrongboxDefinitionCatalogV1 StrongboxCatalog { get; }
 
         public StrongboxOpeningServiceV1 StrongboxAuthority { get; }
+
+        public IStrongboxOpeningRecoveryPortV1 StrongboxRecovery { get; }
 
         public IReadOnlyList<ISaveComponentAdapterV1> SaveAdapters { get; }
 
@@ -338,6 +344,7 @@ namespace ShooterMover.Application.Flow.Production
                 skillProfileId,
                 strongboxes.Catalog,
                 strongboxes.Authority,
+                strongboxes.Recovery,
                 adapters);
             if (additionalAdapterFactory == null)
             {
@@ -362,6 +369,7 @@ namespace ShooterMover.Application.Flow.Production
                 skillProfileId,
                 strongboxes.Catalog,
                 strongboxes.Authority,
+                strongboxes.Recovery,
                 adapters);
         }
 

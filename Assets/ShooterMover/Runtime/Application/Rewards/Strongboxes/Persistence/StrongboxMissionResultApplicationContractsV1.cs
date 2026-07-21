@@ -2,17 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Persistence.Components;
-using ShooterMover.Application.Persistence.Composition;
-using ShooterMover.Application.Runs.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
@@ -122,7 +116,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             string holdingsFingerprint,
             string strongboxFingerprint,
             string accountFingerprint,
-            string rejectionCode)
+            string rejectionCode,
+            bool exactRetryAllowed = false)
         {
             Status = status;
             OperationStableId = operationStableId;
@@ -133,6 +128,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             StrongboxFingerprint = strongboxFingerprint ?? string.Empty;
             AccountFingerprint = accountFingerprint ?? string.Empty;
             RejectionCode = rejectionCode ?? string.Empty;
+            ExactRetryAllowed = exactRetryAllowed;
         }
 
         public StrongboxMissionResultApplicationStatusV1 Status { get; }
@@ -144,6 +140,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
         public string StrongboxFingerprint { get; }
         public string AccountFingerprint { get; }
         public string RejectionCode { get; }
+        public bool ExactRetryAllowed { get; }
         public bool Succeeded
         {
             get

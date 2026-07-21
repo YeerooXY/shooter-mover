@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Persistence.Accounts;
 
 namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
 {
@@ -24,14 +23,30 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
         }
 
         private readonly CharacterCompositionCoordinatorV1 composition;
+        private readonly Func<long> runLifecycleGenerationExporter;
+        private readonly Func<ProductionCharacterRuntimeGraphV1,
+            IStrongboxMissionResultApplicationAuthorityPortV1>
+                authorityPortFactory;
         private readonly Dictionary<StableId, ReplayRecord> replay =
             new Dictionary<StableId, ReplayRecord>();
 
         public StrongboxMissionResultApplicationCoordinatorV1(
-            CharacterCompositionCoordinatorV1 composition)
+            CharacterCompositionCoordinatorV1 composition,
+            Func<long> runLifecycleGenerationExporter,
+            Func<ProductionCharacterRuntimeGraphV1,
+                IStrongboxMissionResultApplicationAuthorityPortV1>
+                    authorityPortFactory = null)
         {
             this.composition = composition
                 ?? throw new ArgumentNullException(nameof(composition));
+            this.runLifecycleGenerationExporter =
+                runLifecycleGenerationExporter
+                ?? throw new ArgumentNullException(
+                    nameof(runLifecycleGenerationExporter));
+            this.authorityPortFactory = authorityPortFactory
+                ?? (graph =>
+                    new ExistingStrongboxMissionResultApplicationAuthorityPortV1(
+                        graph));
         }
 
         public StrongboxMissionResultApplicationResultV1 Apply(
@@ -68,40 +83,52 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                             : composition.Account.Fingerprint,
                         "box-transfer-operation-conflicting-duplicate");
                 }
-                if (!prior.Result.Succeeded)
+                if (prior.Result.Succeeded)
+                {
+                    return new StrongboxMissionResultApplicationResultV1(
+                        StrongboxMissionResultApplicationStatusV1.ExactReplay,
+                        command.OperationStableId,
+                        command.Fingerprint,
+                        prior.Result.ResultFingerprint,
+                        prior.Result.TransferredCount,
+                        prior.Result.HoldingsFingerprint,
+                        prior.Result.StrongboxFingerprint,
+                        prior.Result.AccountFingerprint,
+                        string.Empty);
+                }
+                if (!prior.Result.ExactRetryAllowed)
                 {
                     return prior.Result;
                 }
-                return new StrongboxMissionResultApplicationResultV1(
-                    StrongboxMissionResultApplicationStatusV1.ExactReplay,
-                    command.OperationStableId,
-                    command.Fingerprint,
-                    prior.Result.ResultFingerprint,
-                    prior.Result.TransferredCount,
-                    prior.Result.HoldingsFingerprint,
-                    prior.Result.StrongboxFingerprint,
-                    prior.Result.AccountFingerprint,
-                    string.Empty);
             }
 
             StrongboxMissionResultApplicationResultV1 result =
                 ApplyFirst(command);
-            replay.Add(
-                command.OperationStableId,
-                new ReplayRecord(command.Fingerprint, result));
+            replay[command.OperationStableId] =
+                new ReplayRecord(command.Fingerprint, result);
             return result;
         }
 
         private StrongboxMissionResultApplicationResultV1 ApplyFirst(
             StrongboxMissionResultApplicationCommandV1 command)
         {
-            TransferPlan plan;
-            string rejection;
-            if (!TryCreatePlan(command, out plan, out rejection))
+            try
             {
-                return Reject(command, rejection);
+                TransferPlan plan;
+                string rejection;
+                if (!TryCreatePlan(command, out plan, out rejection))
+                {
+                    return Reject(command, rejection);
+                }
+                return ExecutePlan(command, plan);
             }
-            return ExecutePlan(command, plan);
+            catch (Exception exception)
+            {
+                return RejectRetryable(
+                    command,
+                    "box-transfer-preflight-exception-"
+                        + exception.GetType().Name.ToLowerInvariant());
+            }
         }
     }
 }

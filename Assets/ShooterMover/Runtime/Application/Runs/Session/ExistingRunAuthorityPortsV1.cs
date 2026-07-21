@@ -104,7 +104,8 @@ namespace ShooterMover.Application.Runs.Session
     }
 
     public sealed class ExistingMissionResultRunPortV1 :
-        IRunMissionResultPortV1
+        IRunMissionResultPortV1,
+        IRunMissionStrongboxSnapshotSourceV1
     {
         private readonly MissionRunResultAuthorityV1 authority;
         private readonly IPlayerHoldingsAuthorityV1 holdings;
@@ -133,6 +134,17 @@ namespace ShooterMover.Application.Runs.Session
             out MissionRunPayloadV1 runPayload)
         {
             return authority.TryGetRun(runStableId, out runPayload);
+        }
+
+        public PlayerHoldingsSnapshotV1 ExportCollectedStrongboxHoldings()
+        {
+            return holdings.ExportSnapshot();
+        }
+
+        public StrongboxOpeningSnapshotV1
+            ExportCollectedStrongboxRegistrations()
+        {
+            return openingExporter();
         }
 
         public MissionRunAuthorityResultV1 RecordCollectedStrongbox(

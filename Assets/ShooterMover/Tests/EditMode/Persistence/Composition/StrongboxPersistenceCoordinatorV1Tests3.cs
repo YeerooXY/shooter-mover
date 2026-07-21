@@ -67,16 +67,20 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 box.Result);
             var coordinator =
                 new StrongboxMissionResultApplicationCoordinatorV1(
-                    composition);
+                    composition,
+                    () => 1L);
 
-            StrongboxMissionResultApplicationResultV1 failed =
-                coordinator.Apply(TransferCommand(
+            StrongboxMissionResultApplicationCommandV1 command =
+                TransferCommand(
                     target,
                     composition.Account,
                     result,
                     source,
-                    "transfer-save-failure-first"));
+                    "transfer-save-failure");
+            StrongboxMissionResultApplicationResultV1 failed =
+                coordinator.Apply(command);
             Assert.That(failed.Succeeded, Is.False);
+            Assert.That(failed.ExactRetryAllowed, Is.True);
             Assert.That(
                 target.LoadoutRuntime.Holdings.ExportSnapshot()
                     .UniqueHoldings.Any(item =>
@@ -89,13 +93,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             failSave = false;
             StrongboxMissionResultApplicationResultV1 retried =
-                coordinator.Apply(TransferCommand(
-                    target,
-                    composition.Account,
-                    result,
-                    source,
-                    "transfer-save-failure-retry"));
+                coordinator.Apply(command);
             Assert.That(retried.Succeeded, Is.True, retried.RejectionCode);
+            StrongboxMissionResultApplicationResultV1 replay =
+                coordinator.Apply(command);
+            Assert.That(replay.Status, Is.EqualTo(
+                StrongboxMissionResultApplicationStatusV1.ExactReplay));
             Assert.That(
                 target.LoadoutRuntime.Holdings.ExportSnapshot()
                     .UniqueHoldings.Any(item =>

@@ -126,23 +126,33 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
         {
             public TransferPlan(
                 ProductionCharacterRuntimeGraphV1 graph,
-                PlayerHoldingsService holdings,
-                StrongboxOpeningServiceV1 strongboxes,
+                IStrongboxMissionResultApplicationAuthorityPortV1 authorityPort,
+                PlayerAccountSnapshotV1 beforeAccount,
+                CharacterInstanceSnapshotV1 beforeCharacter,
                 PlayerHoldingsSnapshotV1 beforeHoldings,
                 StrongboxOpeningSnapshotV1 beforeStrongboxes,
                 IReadOnlyList<TransferItem> transfers)
             {
-                Graph = graph;
-                Holdings = holdings;
-                Strongboxes = strongboxes;
-                BeforeHoldings = beforeHoldings;
-                BeforeStrongboxes = beforeStrongboxes;
-                Transfers = transfers;
+                Graph = graph ?? throw new ArgumentNullException(nameof(graph));
+                AuthorityPort = authorityPort
+                    ?? throw new ArgumentNullException(nameof(authorityPort));
+                BeforeAccount = beforeAccount
+                    ?? throw new ArgumentNullException(nameof(beforeAccount));
+                BeforeCharacter = beforeCharacter
+                    ?? throw new ArgumentNullException(nameof(beforeCharacter));
+                BeforeHoldings = beforeHoldings
+                    ?? throw new ArgumentNullException(nameof(beforeHoldings));
+                BeforeStrongboxes = beforeStrongboxes
+                    ?? throw new ArgumentNullException(nameof(beforeStrongboxes));
+                Transfers = transfers
+                    ?? throw new ArgumentNullException(nameof(transfers));
             }
 
             public ProductionCharacterRuntimeGraphV1 Graph { get; }
-            public PlayerHoldingsService Holdings { get; }
-            public StrongboxOpeningServiceV1 Strongboxes { get; }
+            public IStrongboxMissionResultApplicationAuthorityPortV1
+                AuthorityPort { get; }
+            public PlayerAccountSnapshotV1 BeforeAccount { get; }
+            public CharacterInstanceSnapshotV1 BeforeCharacter { get; }
             public PlayerHoldingsSnapshotV1 BeforeHoldings { get; }
             public StrongboxOpeningSnapshotV1 BeforeStrongboxes { get; }
             public IReadOnlyList<TransferItem> Transfers { get; }

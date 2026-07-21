@@ -6,6 +6,7 @@ using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Progression.Curves;
@@ -18,15 +19,19 @@ namespace ShooterMover.Application.Flow.Production
     {
         public ProductionCharacterStrongboxRuntimeV1(
             StrongboxDefinitionCatalogV1 catalog,
-            StrongboxOpeningServiceV1 authority)
+            StrongboxOpeningServiceV1 authority,
+            IStrongboxOpeningRecoveryPortV1 recovery)
         {
             Catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             Authority = authority ?? throw new ArgumentNullException(nameof(authority));
+            Recovery = recovery ?? throw new ArgumentNullException(nameof(recovery));
         }
 
         public StrongboxDefinitionCatalogV1 Catalog { get; }
 
         public StrongboxOpeningServiceV1 Authority { get; }
+
+        public IStrongboxOpeningRecoveryPortV1 Recovery { get; }
     }
 
     /// <summary>
@@ -95,7 +100,10 @@ namespace ShooterMover.Application.Flow.Production
                     equipmentResolver));
             return new ProductionCharacterStrongboxRuntimeV1(
                 catalog,
-                authority);
+                authority,
+                new ExistingStrongboxOpeningRecoveryPortV1(
+                    authority,
+                    rewardApplication));
         }
 
         private static EquipmentGenerationPolicyV1 CreateGenerationPolicy(

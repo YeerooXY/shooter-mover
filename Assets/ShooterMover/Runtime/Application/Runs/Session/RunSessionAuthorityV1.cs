@@ -274,6 +274,15 @@ namespace ShooterMover.Application.Runs.Session
             lifecycleGeneration = RuntimePorts.Player.LifecycleGeneration;
             authoritativeTick = StartCommand.AuthoritativeInitialTick;
             lifecycleState = RunSessionLifecycleStateV1.Active;
+
+            var missionLifecycle = RuntimePorts.MissionResults
+                as IRunMissionResultLifecycleBindingV1;
+            if (missionLifecycle != null)
+            {
+                missionLifecycle.BindRunLifecycle(
+                    RunStableId,
+                    () => lifecycleGeneration);
+            }
             IRunConditionRuntimePortV1 conditionRuntime =
                 RuntimePorts.ConditionalFacts as IRunConditionRuntimePortV1;
             if (conditionRuntime != null)
@@ -638,9 +647,21 @@ namespace ShooterMover.Application.Runs.Session
                         existingResult == null
                             ? "mission-result-port-null"
                             : existingResult.RejectionCode);
-                endReplay.Add(
-                    command.OperationStableId,
-                    new EndReplayRecord(command.Fingerprint, rejected));
+                var retryPolicy = RuntimePorts.MissionResults
+                    as IRunMissionResultEndRetryPolicyV1;
+                bool retryable = existingResult != null
+                    && retryPolicy != null
+                    && retryPolicy.IsRetryableEndFailure(
+                        command,
+                        existingResult);
+                if (!retryable)
+                {
+                    endReplay.Add(
+                        command.OperationStableId,
+                        new EndReplayRecord(
+                            command.Fingerprint,
+                            rejected));
+                }
                 return rejected;
             }
 
