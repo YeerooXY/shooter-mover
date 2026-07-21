@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
-using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
-using ShooterMover.Domain.Common;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -12,9 +10,10 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
-    /// Persistent production composition for one active profile. The flow coordinator
-    /// remains persistence owner; this component supplies profile-local holdings,
-    /// class-normalized mount bindings, and the loadout authority.
+    /// Hub adapter over the selected account-backed character graph. It does not cache or
+    /// reconstruct starter authorities. Inventory confirmation explicitly asks the account
+    /// composition to export the real authorities through SAVE-ADAPTERS-001 and atomically
+    /// persist the selected exact character slot.
     /// </summary>
     [DefaultExecutionOrder(-31900)]
     [DisallowMultipleComponent]
@@ -22,14 +21,9 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private static ProductionHubLoadoutCompositionV1 instance;
 
-        private readonly Dictionary<StableId, ProductionPlayerLoadoutRuntimeV1>
-            runtimeByCharacter =
-                new Dictionary<StableId, ProductionPlayerLoadoutRuntimeV1>();
         private ProductionFlowCoordinatorV1 coordinator;
         private ProductionFlowProfileRecordV1 currentProfile;
         private ProductionPlayerLoadoutRuntimeV1 runtime;
-        private ProductionPlayerLoadoutRuntimeV1 pendingConfirmedRuntime;
-        private string pendingConfirmedPayloadFingerprint = string.Empty;
         private InventoryLoadoutScreenControllerV1 boundController;
         private string boundPayloadFingerprint = string.Empty;
 
@@ -53,8 +47,8 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         /// <summary>
-        /// Resolves the current profile-local runtime synchronously. Scene consumers use
-        /// this path when they must compose authority state before their first Update.
+        /// Resolves the current selected-character graph synchronously. Scene consumers
+        /// use this before their first Update; no fallback authority is constructed.
         /// </summary>
         public static bool TryResolveCurrent(
             out ProductionPlayerLoadoutRuntimeV1 currentRuntime,
@@ -93,12 +87,15 @@ namespace ShooterMover.UI.ProductionFlow
             LoadSceneMode mode)
         {
             EnsureInstalled();
-            if (instance != null)
+            if (instance == null)
             {
-                instance.CapturePendingConfirmation();
-                instance.DetachBoundController();
-                instance.boundPayloadFingerprint = string.Empty;
+                return;
             }
+
+            instance.CaptureConfirmedResult();
+            instance.DetachBoundController();
+            instance.boundPayloadFingerprint = string.Empty;
+            instance.SynchronizeNow();
         }
 
         private static void EnsureInstalled()
@@ -135,12 +132,10 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void Update()
         {
-            if (!SynchronizeNow())
+            if (SynchronizeNow())
             {
-                return;
+                BindInventoryScene();
             }
-
-            BindInventoryScene();
         }
 
         private bool SynchronizeNow()
@@ -150,12 +145,33 @@ namespace ShooterMover.UI.ProductionFlow
                 coordinator = GetComponent<ProductionFlowCoordinatorV1>();
                 if (coordinator == null)
                 {
+                    Clear();
                     return false;
                 }
             }
 
-            CapturePendingConfirmation();
-            SynchronizeProfile();
+            CaptureConfirmedResult();
+
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 profile;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                out graph,
+                out profile))
+            {
+                Clear();
+                return false;
+            }
+
+            bool graphChanged = !ReferenceEquals(
+                runtime,
+                graph.LoadoutRuntime);
+            runtime = graph.LoadoutRuntime;
+            currentProfile = profile;
+            if (graphChanged)
+            {
+                DetachBoundController();
+                boundPayloadFingerprint = string.Empty;
+            }
             return runtime != null && currentProfile != null;
         }
 
@@ -169,12 +185,33 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            pendingConfirmedRuntime = runtime;
-            pendingConfirmedPayloadFingerprint =
-                confirmedPayload.Fingerprint;
+            CharacterCompositionResultV1 saved =
+                ProductionCharacterAccountCompositionV1.PersistCurrent(
+                    "inventory-loadout-confirmed",
+                    confirmedPayload.Fingerprint);
+            if (saved == null || !saved.Succeeded)
+            {
+                Debug.LogError(
+                    "Confirmed inventory loadout could not be persisted: "
+                        + (saved == null
+                            ? "character-composition-unavailable"
+                            : saved.Diagnostic),
+                    this);
+                return;
+            }
+
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 profile;
+            if (ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                out graph,
+                out profile))
+            {
+                runtime = graph.LoadoutRuntime;
+                currentProfile = profile;
+            }
         }
 
-        private void CapturePendingConfirmation()
+        private void CaptureConfirmedResult()
         {
             if (boundController == null
                 || boundController.LastResult == null
@@ -185,176 +222,6 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
             HandleConfirmed(boundController.LastResult.RoutePayload);
-        }
-
-        private void SynchronizeProfile()
-        {
-            ProductionFlowProfileRecordV1 coordinatorProfile =
-                coordinator.Profile;
-            if (coordinatorProfile == null)
-            {
-                CacheCurrentRuntime();
-                currentProfile = null;
-                runtime = null;
-                pendingConfirmedRuntime = null;
-                pendingConfirmedPayloadFingerprint = string.Empty;
-                DetachBoundController();
-                boundPayloadFingerprint = string.Empty;
-                return;
-            }
-
-            if (runtime == null || currentProfile == null)
-            {
-                ComposeFreshProfile(coordinatorProfile);
-                return;
-            }
-
-            if (ReferenceEquals(currentProfile, coordinatorProfile))
-            {
-                return;
-            }
-
-            if (pendingConfirmedRuntime != null
-                && string.Equals(
-                    pendingConfirmedPayloadFingerprint,
-                    coordinatorProfile.Payload.Fingerprint,
-                    StringComparison.Ordinal))
-            {
-                currentProfile = coordinatorProfile;
-                runtime = pendingConfirmedRuntime;
-                CacheCurrentRuntime();
-                pendingConfirmedRuntime = null;
-                pendingConfirmedPayloadFingerprint = string.Empty;
-                DetachBoundController();
-                boundPayloadFingerprint = string.Empty;
-                return;
-            }
-
-            ComposeFreshProfile(coordinatorProfile);
-        }
-
-        private void ComposeFreshProfile(
-            ProductionFlowProfileRecordV1 coordinatorProfile)
-        {
-            CacheCurrentRuntime();
-            currentProfile = coordinatorProfile
-                ?? throw new ArgumentNullException(nameof(coordinatorProfile));
-            PlayerRouteProfilePayloadV1 normalized =
-                ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
-                    currentProfile.Payload);
-            StableId characterStableId =
-                normalized.SelectedCharacterStableId;
-
-            ProductionPlayerLoadoutRuntimeV1 cached;
-            if (runtimeByCharacter.TryGetValue(
-                    characterStableId,
-                    out cached)
-                && RuntimeMatchesPayload(cached, normalized))
-            {
-                runtime = cached;
-            }
-            else
-            {
-                ValidateStarterReconstruction(normalized);
-                runtime = new ProductionPlayerLoadoutRuntimeV1(normalized);
-                runtimeByCharacter[characterStableId] = runtime;
-            }
-
-            pendingConfirmedRuntime = null;
-            pendingConfirmedPayloadFingerprint = string.Empty;
-            DetachBoundController();
-            boundPayloadFingerprint = string.Empty;
-        }
-
-        private void CacheCurrentRuntime()
-        {
-            if (runtime == null
-                || currentProfile == null
-                || currentProfile.Payload == null
-                || currentProfile.Payload.SelectedCharacterStableId == null)
-            {
-                return;
-            }
-
-            runtimeByCharacter[
-                currentProfile.Payload.SelectedCharacterStableId] = runtime;
-        }
-
-        private static bool RuntimeMatchesPayload(
-            ProductionPlayerLoadoutRuntimeV1 candidate,
-            PlayerRouteProfilePayloadV1 payload)
-        {
-            if (candidate == null
-                || payload == null
-                || candidate.LoadoutAuthority == null)
-            {
-                return false;
-            }
-
-            ProductionWeaponMountLayoutV1 expectedLayout =
-                ProductionWeaponMountPolicyV1.ResolveLayout(
-                    payload.LoadoutProfileStableId);
-            if (candidate.MountLayout == null
-                || candidate.MountLayout.LoadoutProfileStableId
-                    != expectedLayout.LoadoutProfileStableId)
-            {
-                return false;
-            }
-
-            InventoryLoadoutAuthoritySnapshotV1 snapshot =
-                candidate.LoadoutAuthority.ExportSnapshot();
-            if (snapshot == null || !snapshot.HasValidFingerprint())
-            {
-                return false;
-            }
-
-            for (int index = 0;
-                index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                index++)
-            {
-                PlayerRouteWeaponSlotV1 routeSlot =
-                    payload.WeaponSlots[index];
-                InventoryLoadoutSlotBindingV1 binding =
-                    snapshot.GetBinding(routeSlot.WeaponSlotStableId);
-                if (binding.EquipmentInstanceStableId
-                    != routeSlot.EquipmentInstanceStableId)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static void ValidateStarterReconstruction(
-            PlayerRouteProfilePayloadV1 payload)
-        {
-            for (int index = 0;
-                index < payload.WeaponSlots.Count;
-                index++)
-            {
-                StableId instanceStableId = payload.WeaponSlots[index]
-                    .EquipmentInstanceStableId;
-                if (instanceStableId == null)
-                {
-                    continue;
-                }
-
-                StableId ignoredDefinitionStableId;
-                if (!ProductionStarterWeaponCatalogV1
-                    .TryResolveDefinitionForInstance(
-                        instanceStableId,
-                        out ignoredDefinitionStableId))
-                {
-                    throw new InvalidOperationException(
-                        "Cannot reconstruct exact equipment instance "
-                        + instanceStableId
-                        + " from route position "
-                        + payload.WeaponSlots[index].WeaponSlotStableId
-                        + ". Slot-based weapon substitution is forbidden; "
-                        + "an authoritative holdings snapshot is required.");
-                }
-            }
         }
 
         private void BindInventoryScene()
@@ -380,13 +247,11 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            PlayerRouteProfilePayloadV1 normalizedPayload =
-                ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
-                    currentProfile.Payload);
+            PlayerRouteProfilePayloadV1 payload = currentProfile.Payload;
             if (ReferenceEquals(boundController, controller)
                 && string.Equals(
                     boundPayloadFingerprint,
-                    normalizedPayload.Fingerprint,
+                    payload.Fingerprint,
                     StringComparison.Ordinal)
                 && controller.IsConfigured)
             {
@@ -398,13 +263,19 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime.Holdings,
                 runtime.CatalogAdapter,
                 runtime.LoadoutAuthority);
-            controller.Present(
-                HubRouteV1.Inventory,
-                normalizedPayload);
+            controller.Present(HubRouteV1.Inventory, payload);
             controller.Confirmed -= HandleConfirmed;
             controller.Confirmed += HandleConfirmed;
             boundController = controller;
-            boundPayloadFingerprint = normalizedPayload.Fingerprint;
+            boundPayloadFingerprint = payload.Fingerprint;
+        }
+
+        private void Clear()
+        {
+            runtime = null;
+            currentProfile = null;
+            DetachBoundController();
+            boundPayloadFingerprint = string.Empty;
         }
 
         private void DetachBoundController()
@@ -418,7 +289,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void OnDestroy()
         {
-            CacheCurrentRuntime();
+            CaptureConfirmedResult();
             DetachBoundController();
             if (instance == this)
             {
