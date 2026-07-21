@@ -119,7 +119,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 Array.Empty<ExclusiveRewardGroupV1>());
             ITerminalDropFactAdapterV1 adapter =
                 new ContextResolvedEnemyDeathTerminalDropFactAdapterV1(
-                    new EnemyDeathTerminalDropFactAdapterV1(catalog),
+                    catalog,
                     new EnemyContextResolver());
             TerminalDropGenerationAuthorityV1 authority =
                 new TerminalDropGenerationAuthorityV1(
@@ -135,6 +135,23 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             Assert.That(result.SourceFact.RunLifecycleGeneration, Is.EqualTo(1L));
             Assert.That(result.SourceFact.SourceLifecycleGeneration, Is.EqualTo(2L));
             Assert.That(result.GeneratedRewards.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CatalogOnlyEnemyProjector_IsInternalAndCannotActAsCompleteAdapter()
+        {
+            Type assemblyProjector = typeof(ContextResolvedEnemyDeathTerminalDropFactAdapterV1)
+                .Assembly.GetType(
+                    "ShooterMover.TerminalDropBinding.EnemyDeathTerminalDropDefinitionProjectorV1",
+                    true);
+            Type unsafeRawAdapter = typeof(ContextResolvedEnemyDeathTerminalDropFactAdapterV1)
+                .Assembly.GetType(
+                    "ShooterMover.TerminalDropBinding.EnemyDeathTerminalDropFactAdapterV1",
+                    false);
+
+            Assert.That(assemblyProjector.IsPublic, Is.False);
+            Assert.That(typeof(ITerminalDropFactAdapterV1).IsAssignableFrom(assemblyProjector), Is.False);
+            Assert.That(unsafeRawAdapter, Is.Null);
         }
 
         private static StableId Id(string scope, string value)
