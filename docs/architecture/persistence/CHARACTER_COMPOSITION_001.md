@@ -26,7 +26,7 @@ The selected runtime graph constructs the existing production authority implemen
 
 ## Transactional selection and switching
 
-The explicit activation sequence is:
+The explicit existing-slot activation sequence is:
 
 1. Character Select supplies the exact target six-slot index.
 2. If another runtime graph is active, every current authority snapshot is exported and durably saved first.
@@ -38,7 +38,25 @@ The explicit activation sequence is:
 8. Non-selected slots are bound with no runtime adapters, so their immutable snapshots stay opaque and untouched.
 9. Hub, inventory, and gameplay-facing adapters publish the selected restored graph instead of reconstructing starter state from a route payload.
 
-The same guarded activation boundary is used when confirming a newly created character while another character is active. A failed target restore leaves the account snapshot unchanged, publishes no partially restored graph, and exposes the restore diagnostic.
+Selecting the already-active exact character is an identity-preserving no-op. This is required after a successful creation transaction because the Unity profile lifecycle projects the newly committed account character and invokes selection once more before updating the visible active slot.
+
+## Transactional empty-slot creation
+
+A new character is not installed by saving a migration result before the old character. `CharacterCompositionCoordinatorV1.CreateAndSelect` owns the complete sequence:
+
+1. Persist the currently active graph, when present.
+2. Reject immediately if that pre-save fails; the target slot remains empty and the old graph remains published.
+3. Capture the complete post-pre-save account authority snapshot as the rollback point.
+4. Build the starter graph from the existing production authority factory and export its merged save components.
+5. Apply one deterministic `CreateCharacter` command to the account authority in memory only.
+6. Restore and validate the candidate graph through `PlayerAccountRestoreCoordinatorV1` while the old graph remains active.
+7. Durably save the aggregate containing the persisted old character and the restored new character.
+8. If creation, restore, or durable save fails, restore the rollback authority snapshot, attempt a compensating save of that snapshot, dispose only the candidate graph, and keep the old graph published.
+9. After durable success, dispose the old graph and publish the exact new slot.
+
+This transaction also handles first-character creation. A single empty-slot request entering through the legacy-profile adapter delegates to this coordinator transaction. Multi-slot PlayerPrefs import remains a deterministic one-time batch migration because no existing selected runtime is being replaced.
+
+A process interruption before the new aggregate commit leaves the previously persisted account authoritative. An interruption after the commit may leave the new character durably created, but the old character's latest accepted state is already present in that same aggregate.
 
 ## Explicit persistence
 
@@ -104,20 +122,31 @@ It does not replay an equip command or create a second loadout model.
 
 `CharacterActivationAndStrongboxRegressionTests` additionally covers:
 
-- mutating A, activating B directly without a manual save, restarting, and restoring A's mutation;
+- mutating A, activating existing B directly without a manual save, restarting, and restoring A's mutation;
 - failed pre-activation persistence rejecting the switch without disposing or unpublishing A;
 - a real production BOX registration/open/save/restart/replay path over the character-owned holdings, money, scrap, GEN, RAP, and BOX authorities;
 - exact duplicate opening replay returning no second award.
+
+`CharacterCreationTransactionRegressionTests` covers the empty-slot failure window:
+
+- mutate active A;
+- begin creating B;
+- successfully persist A;
+- fail B's post-restore durable commit;
+- compensate back to the post-A aggregate;
+- keep A active and undisposed;
+- restart with A's mutation restored and B absent.
 
 ## Manual verification checklist
 
 1. Start with legacy PlayerPrefs profiles and no `player-account-v1.save`.
 2. Enter Character Select and confirm all occupied legacy slots are projected from the new account file.
 3. Select character A and mutate XP, money, scrap, skills, holdings, or loadout without manually saving.
-4. Select or create character B directly, restart, return to A, and verify A's exact mutation survived.
-5. Simulate an account-store failure during A → B activation and verify the switch is rejected while A remains active.
-6. Collect and open an exact strongbox for A, close/reload, and verify the box remains opened and its grants are not repeated.
-7. Select B and verify A's XP, holdings, wallets, skills, loadout, and BOX history do not appear in B.
-8. Switch repeatedly between A and B and verify no duplicate starter equipment or stale subscriptions.
-9. Corrupt one selected character component and verify an explicit restore diagnostic, no partial graph, and unchanged other slots.
-10. Interrupt an atomic save and verify the active file or last-known-good backup restores without a partial aggregate.
+4. Select existing character B directly, restart, return to A, and verify A's exact mutation survived.
+5. Create B in an empty slot directly, restart, return to A, and verify A's exact mutation survived.
+6. Simulate failure of B's post-restore account commit and verify A remains active, A's mutation survives restart, and B is absent.
+7. Collect and open an exact strongbox for A, close/reload, and verify the box remains opened and its grants are not repeated.
+8. Select B and verify A's XP, holdings, wallets, skills, loadout, and BOX history do not appear in B.
+9. Switch repeatedly between A and B and verify no duplicate starter equipment or stale subscriptions.
+10. Corrupt one selected character component and verify an explicit restore diagnostic, no partial graph, and unchanged other slots.
+11. Interrupt an atomic save and verify the active file or last-known-good backup restores without a partial aggregate.
