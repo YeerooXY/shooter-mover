@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.CombatPresentation",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.CombatPresentation",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.PlayerRuntime",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.CombatPresentation"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
