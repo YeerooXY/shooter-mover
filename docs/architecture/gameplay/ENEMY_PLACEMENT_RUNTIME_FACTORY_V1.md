@@ -11,88 +11,65 @@
 
 ## Composition flow
 
-`EnemyPlacementRuntimeFactoryV1` consumes one imported `RoomEnemyPlacementContentV1` and resolves:
-
-1. exact room object ID;
-2. exact enemy definition and presentation ID;
-3. level health plus a typed difficulty-scaling policy;
-4. deterministic actor and enemy-participant identities from run, room-runtime, room, and placement facts;
-5. a lifecycle identity derived from that actor identity and the authoritative lifecycle generation;
-6. independently registered perception, movement, decision, targeting/aim, and attack-capability boundaries;
-7. canonical `EnemyActorState`, `GameplayEntityIdentity`, `EnemyRuntimeProjection`, and room-occupant registration;
-8. narrow attack-effect, player-damage, room-terminal, collision-terminal, XP, drop, and kill-stat ports.
-
-No room number, prefab name, hierarchy name, or enemy-definition ID is switched on by the factory.
-
-## Policy boundaries
-
-The runtime keeps four behavior boundaries independent:
-
-- **Movement policy** converts a decision into typed movement intent.
-- **Movement realizer** consumes that intent with typed speed/collision configuration and an optional environment-query port.
-- **Decision policy** selects targets, movement, and requested attacks from immutable perception facts.
-- **Targeting/aim policy** commits direction and target point from an internally reconstructed context. Callers cannot substitute perception or difficulty after decision issuance. Predictive aim can consume richer authoritative perception later without changing that ownership rule.
-- **Attack capability adapter** converts the committed intent and typed descriptor into an immutable execution request. The attack-effect port remains the narrow adapter point for later combat-hit integration.
-
-The shipped registrations intentionally implement direct movement and locked non-predictive aim. Advanced movement or predictive aim remain replaceable registrations rather than enemy-type branches.
+`EnemyPlacementRuntimeFactoryV1` turns imported room placements into independent enemy runtimes by resolving the exact room object, enemy definition, presentation, level/difficulty scaling, stable actor and participant identities, lifecycle generation, registered behavior policies, canonical actor state, and room occupancy. It contains no enemy-type, room-number, prefab-name, or hierarchy-name dispatcher.
 
 ## Issued-decision authority
 
-Every successful `Evaluate` call creates an immutable decision projection and records a deterministic SHA-256 fingerprint inside that runtime and lifecycle. The fingerprint includes:
+Every successful `Evaluate` records a deterministic immutable fingerprint covering enemy identity/lifecycle, complete perception facts, selected target and attack, movement intent, committed attack intent, and execution-relevant debug projection fields. Target collections are canonicalized before hashing.
 
-- enemy identity and lifecycle generation;
-- simulation tick, observer position, and observer facing;
-- every perceived target identity, faction, relationship, position, velocity, distance, direction, detection membership, vision membership, and LOS fact;
-- selected target and attack;
-- requested movement and attack intent;
-- committed origin, direction, and target point;
-- execution-relevant decision and debug fields.
-
-Target collections are canonicalized before hashing. `RealizeMovement` and `TryExecuteAttack` accept only a byte-equivalent immutable projection whose fingerprint was issued by that runtime. Reference equality is not required, but fabricated, foreign, stale, or altered decisions reject.
+`RealizeMovement` and `TryExecuteAttack` accept only an exact decision projection issued by the same runtime and lifecycle. Exact immutable copies remain valid; fabricated, altered, foreign, and stale decisions reject. Terminal enemies may still be evaluated for immutable state/debug presentation, but movement realization rejects before invoking movement policy or realization.
 
 ## Accepted-execution authority
 
-A successful first attack execution records a canonical accepted-execution entry keyed by attack operation ID. Its fingerprint contains:
+A successful first attack execution records a canonical ledger entry keyed by attack operation ID. Its fingerprint includes full source identity/lifecycle, occurrence time, descriptor and nested capability values, committed intent, item identity, execution kind, resolved damage/cooldown, and the authorizing decision fingerprint.
 
-- operation ID, full enemy/run-participant identity, and lifecycle generation;
-- occurrence time;
-- full attack descriptor and nested projectile/area/melee values;
-- committed intent, direction, point, and target;
-- item/equipment instance identity;
-- execution kind, resolved damage, and resolved cooldown;
-- the issued-decision fingerprint that authorized the attack.
+`RoutePlayerImpact` requires an exact ledger-backed execution. Fabricated or altered execution facts reject before reaching the player-damage port.
 
-`RoutePlayerImpact` requires that ledger entry and an exact execution fingerprint. It also requires the target lifecycle generation observed by the projectile/contact. That generation is part of impact replay identity and is forwarded unchanged to the player-damage port, allowing the eventual PlayerActorAuthority adapter to reject an impact observed against an earlier player generation. A caller-created request with matching IDs but altered damage, cooldown, descriptor, intent, source, or lifecycle cannot reach the player-damage port.
+## Player target lifecycle
 
-## Replay, death, and multi-hit behavior
+The authoritative impact API requires:
 
-- Attack replay signatures include the issued-decision fingerprint, full targeting/perception facts, occurrence time, difficulty context and resolved scaling, descriptor, aim configuration, and capability configuration.
-- Exact attack-operation replay returns the original execution request and emits the attack effect once.
-- Conflicting operation reuse rejects without emitting a second effect or changing cooldown.
-- A valid accepted execution remains authorized after ordinary enemy death. A projectile fired before death can therefore still impact later.
-- Death does not authorize new attacks: a new execution operation attempted after terminal state rejects.
-- Recomposition creates a fresh runtime ledger. Old decisions and old projectiles reject through lifecycle generation.
-- Impact idempotency remains keyed by the distinct hit-event operation ID. Exact hit replay routes damage once, conflicting reuse rejects, and multiple distinct hit IDs can reference one accepted execution for projectile count, pierce, area, chain, or damage-over-time behavior.
-- Impact replay identity includes the target entity and observed target lifecycle generation, so one hit-event ID cannot be reused across player generations.
-- Terminal enemies may still be evaluated for immutable state/debug projection, but `RealizeMovement` rejects before invoking movement policy or movement realization once canonical actor state is terminal.
+```csharp
+RoutePlayerImpact(
+    execution,
+    hitEventStableId,
+    targetEntityStableId,
+    observedTargetLifecycleGeneration)
+```
 
-## Perception configuration
+`EnemyPlayerDamageRequestV1` carries both source lifecycle generation and `ObservedTargetLifecycleGeneration`. The observed target generation is included in impact replay identity and forwarded unchanged to the downstream PlayerActorAuthority / Combat Hit Policy adapter.
 
-The unused `RequireMatchingObserverPosition` field was removed. The engine-neutral adapter has no duplicate position authority and therefore no longer exposes configuration that promises an unenforced invariant. A compatibility constructor accepts `false` only and rejects `true`; new registrations use the policy-ID-only constructor.
+This allows a downstream authority adapter to reject a projectile that observed player generation 4 after the same stable player entity has restarted into generation 5. One hit-event operation ID also cannot be replayed across different target generations.
 
-## Terminal facts and room composition
+A temporary obsolete three-argument overload exists only so earlier test/caller code still compiles; new production adapters must pass the observed target generation explicitly.
 
-Incoming enemy damage mutates only canonical `EnemyActorState` through `EnemyActorStepper`. Lethal damage emits one immutable attributed `EnemyDeathFactV1`, which is delivered once to room terminal, collision terminal, XP, drop, and kill-stat consumers. The runtime does not grant XP, roll drops, mutate inventory, or own room-clear authority.
+## Replay, death, restart, and multi-hit behavior
 
-`CreateRoom` remains all-or-nothing. It rejects mixed rooms, mixed run/room-runtime contexts, duplicate derived actor identities, or unresolved registrations before producing occupancy. Required/objective occupants block room clear; optional/non-participating occupants do not.
+- Exact attack replay emits once and returns the original immutable execution.
+- Conflicting attack-operation reuse rejects without cooldown mutation.
+- Exact hit replay routes player damage once.
+- Conflicting hit-event reuse rejects.
+- Distinct hit IDs may reference one accepted execution for projectile count, pierce, area, chain, or damage-over-time behavior.
+- A projectile issued while the enemy was alive remains authorized after ordinary enemy death.
+- Death does not permit new attack execution or movement realization.
+- Enemy recomposition creates a fresh lifecycle ledger; old enemy decisions and executions reject.
+- Player lifecycle freshness remains downstream authority: the factory carries the immutable observed generation rather than duplicating PlayerActorAuthority.
+
+## Terminal and downstream facts
+
+Incoming enemy damage mutates only canonical `EnemyActorState` through `EnemyActorStepper`. Lethal damage emits one attributed immutable death fact and fans it out once to room terminal, collision terminal, XP, drop, and kill-stat consumers. The runtime does not grant rewards, mutate inventory, or own room-clear authority.
 
 ## Focused EditMode coverage
 
-The existing `EnemyPlacementRuntimeFactoryV1Tests` suite retains its 10 composition tests. The prefixed authority-boundary fixture adds 22 focused tests covering fabricated and altered decisions, exact decision copies, attack replay conflicts, fabricated and altered executions, observed player-lifecycle forwarding and restart rejection, post-death projectiles, enemy lifecycle restart rejection, terminal attack and movement rejection, exact/conflicting hit replay, multi-hit execution, and the removed perception option.
+Current focused inventory is 32 authored tests:
+
+- 10 composition tests;
+- 20 decision/execution/replay authority tests;
+- 2 lifecycle-routing and terminal-movement regressions.
+
+The lifecycle regressions prove that an impact observed against player generation 4 is rejected by a downstream adapter after the player authority has advanced to generation 5, while a generation-5 impact is accepted, and that a dead enemy cannot realize movement from a newly evaluated decision.
 
 ## Unity proof commands
-
-Focused EditMode suite and prefixed authority tests:
 
 ```bash
 "<UNITY_EDITOR>" -batchmode -nographics -projectPath . \
@@ -101,8 +78,6 @@ Focused EditMode suite and prefixed authority tests:
   -testResults artifacts/enemy-factory-001-editmode.xml \
   -logFile artifacts/enemy-factory-001-editmode.log -quit
 ```
-
-Full EditMode compilation/test discovery:
 
 ```bash
 "<UNITY_EDITOR>" -batchmode -nographics -projectPath . \
@@ -113,4 +88,4 @@ Full EditMode compilation/test discovery:
 
 ## Known limitation
 
-The connector execution environment has no repository checkout, Unity Editor, .NET SDK, or C# compiler. Source/API, metadata, delimiter, deterministic-fingerprint, changed-path, and forbidden-switch audits are performed before publication, but no Unity compilation or XML proof is claimed. The PR remains draft until Unity validation succeeds.
+This connector environment has no repository checkout, Unity Editor, .NET SDK, or C# compiler. Source/API, metadata, deterministic-fingerprint, changed-path, and forbidden-switch audits can be performed here, but no current-head Unity compilation or XML test proof is claimed. The PR remains draft until Unity validation succeeds.
