@@ -1,0 +1,26 @@
+{
+  "name": "ShooterMover.Tests.EditMode.TerminalDropBinding",
+  "rootNamespace": "ShooterMover.Tests.EditMode.TerminalDropBinding",
+  "references": [
+    "ShooterMover.TerminalDropBinding",
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.GameplayEntities"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
