@@ -9,7 +9,9 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         [Test]
         public void CatalogDefinesExactlyTheElevenNormalTiersInOrder()
         {
-            Assert.That(ProductionStrongboxCatalogV1.Tiers.Count, Is.EqualTo(11));
+            Assert.That(
+                ProductionStrongboxCatalogV1.Tiers.Count,
+                Is.EqualTo(11));
             string[] expected =
             {
                 "Steel",
@@ -28,10 +30,15 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             {
                 ProductionStrongboxTierV1 tier =
                     ProductionStrongboxCatalogV1.Tiers[index];
-                Assert.That(tier.TierNumber, Is.EqualTo(index + 1));
-                Assert.That(tier.DisplayName, Is.EqualTo(expected[index]));
                 Assert.That(
-                    ProductionStrongboxCatalogV1.GetByNumber(index + 1),
+                    tier.TierNumber,
+                    Is.EqualTo(index + 1));
+                Assert.That(
+                    tier.DisplayName,
+                    Is.EqualTo(expected[index]));
+                Assert.That(
+                    ProductionStrongboxCatalogV1.GetByNumber(
+                        index + 1),
                     Is.SameAs(tier));
             }
         }
@@ -55,8 +62,13 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
 
             ProductionStrongboxTierV1 antimatter =
                 ProductionStrongboxCatalogV1.GetByNumber(11);
-            Assert.That(antimatter.ResolveEffectivePlayerLevel(playerLevel), Is.EqualTo(playerLevel));
-            Assert.That(antimatter.CreatePowerBudgetPolicy().TierLevelBonus, Is.EqualTo(14));
+            Assert.That(
+                antimatter.ResolveEffectivePlayerLevel(playerLevel),
+                Is.EqualTo(playerLevel));
+            Assert.That(
+                antimatter.CreatePowerBudgetPolicy()
+                    .TierLevelBonus,
+                Is.EqualTo(14));
         }
 
         [Test]
@@ -66,27 +78,65 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
                 ProductionStrongboxCatalogV1.Tiers;
             for (int index = 1; index < tiers.Count; index++)
             {
-                Assert.That(tiers[index].LevelOffset, Is.GreaterThan(tiers[index - 1].LevelOffset));
-                Assert.That(tiers[index].ScrapMinimum, Is.GreaterThan(tiers[index - 1].ScrapMinimum));
-                Assert.That(tiers[index].ExceptionalWeight, Is.GreaterThan(tiers[index - 1].ExceptionalWeight));
-                Assert.That(tiers[index].CommonWeight, Is.LessThan(tiers[index - 1].CommonWeight));
+                Assert.That(
+                    tiers[index].LevelOffset,
+                    Is.GreaterThan(
+                        tiers[index - 1].LevelOffset));
+                Assert.That(
+                    tiers[index].ScrapMinimum,
+                    Is.GreaterThan(
+                        tiers[index - 1].ScrapMinimum));
+                Assert.That(
+                    tiers[index].ExceptionalWeight,
+                    Is.GreaterThan(
+                        tiers[index - 1].ExceptionalWeight));
+                Assert.That(
+                    tiers[index].CommonWeight,
+                    Is.LessThan(
+                        tiers[index - 1].CommonWeight));
             }
         }
 
         [Test]
-        public void LateTierSlotPoliciesMakeTheUpgradeVisible()
+        public void EveryProductionTierGeneratesZeroInstalledAugments()
         {
-            Assert.That(ProductionStrongboxCatalogV1.GetByNumber(1).MinimumAugmentSlots, Is.EqualTo(1));
-            Assert.That(ProductionStrongboxCatalogV1.GetByNumber(4).MaximumAugmentSlots, Is.EqualTo(3));
-            Assert.That(ProductionStrongboxCatalogV1.GetByNumber(8).MinimumAugmentSlots, Is.EqualTo(2));
-            Assert.That(ProductionStrongboxCatalogV1.GetByNumber(11).MinimumAugmentSlots, Is.EqualTo(3));
-            Assert.That(ProductionStrongboxCatalogV1.GetByNumber(11).MaximumAugmentSlots, Is.EqualTo(3));
+            for (int index = 0;
+                index < ProductionStrongboxCatalogV1.Tiers.Count;
+                index++)
+            {
+                ProductionStrongboxTierV1 tier =
+                    ProductionStrongboxCatalogV1.Tiers[index];
+                Assert.That(
+                    tier.MinimumAugmentSlots,
+                    Is.Zero,
+                    tier.DisplayName);
+                Assert.That(
+                    tier.MaximumAugmentSlots,
+                    Is.Zero,
+                    tier.DisplayName);
+                Assert.That(
+                    tier.AugmentSlotStandardDeviationMilli,
+                    Is.Zero,
+                    tier.DisplayName);
+                Assert.That(
+                    tier.CreatePowerBudgetPolicy()
+                        .MinimumAugmentSlots,
+                    Is.Zero,
+                    tier.DisplayName);
+                Assert.That(
+                    tier.CreatePowerBudgetPolicy()
+                        .MaximumAugmentSlots,
+                    Is.Zero,
+                    tier.DisplayName);
+            }
         }
 
         [Test]
         public void SalePlaceholderIsExplicitlyOneThousand()
         {
-            Assert.That(LootboxSimulatorRuntimeV1.TemporarySaleValue, Is.EqualTo(1000L));
+            Assert.That(
+                LootboxSimulatorRuntimeV1.TemporarySaleValue,
+                Is.EqualTo(1000L));
         }
     }
 }

@@ -10,7 +10,8 @@ using UnityEngine;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
-    public sealed class AuthoritativeStrongboxSimulatorWindow : EditorWindow
+    public sealed class AuthoritativeStrongboxSimulatorWindow :
+        EditorWindow
     {
         private enum Page
         {
@@ -21,8 +22,9 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private readonly List<int> queue = new List<int>();
         private readonly List<int> frozenQueue = new List<int>();
-        private readonly List<AuthoritativeStrongboxPreparedOpenV1> prepared =
-            new List<AuthoritativeStrongboxPreparedOpenV1>();
+        private readonly List<AuthoritativeStrongboxPreparedOpenV1>
+            prepared =
+                new List<AuthoritativeStrongboxPreparedOpenV1>();
 
         private AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
         private StrongboxOpeningResultRuntimeV1 currentResult;
@@ -32,13 +34,16 @@ namespace ShooterMover.Editor.BalanceSimulator
         private string seedText = "123456";
         private string loadedCatalogJson;
         private Vector2 scroll;
+        private bool authorityDiagnosticsExpanded;
+        private bool cardDiagnosticsExpanded;
         private string diagnostic =
             "Load weapon_baseline_v01.json, click boxes into the queue, then open them through the real authorities.";
 
         [MenuItem("Tools/Shooter Mover/Authoritative Strongbox Wiring")]
         public static void Open()
         {
-            GetWindow<AuthoritativeStrongboxSimulatorWindow>("Strongbox Wiring");
+            GetWindow<AuthoritativeStrongboxSimulatorWindow>(
+                "Strongbox Wiring");
         }
 
         private void OnGUI()
@@ -47,19 +52,28 @@ namespace ShooterMover.Editor.BalanceSimulator
                 "Authoritative Strongbox Wiring",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This mode creates exact owned box instances and opens them through BOX -> GEN -> RAP -> MON/SCR/INV -> exact box consumption. It is the production-shaped wiring check, not a mock reward path.",
+                "Exact owned box -> BOX -> GEN -> RAP -> MON/SCR/INV -> exact box consumption. Fresh equipment is empty; the compact card resolves real weapon statistics through the equipment definition.",
                 MessageType.Info);
             EditorGUILayout.HelpBox(
-                "Rewards are applied when BOX opens. Keep/Sell remains available only in the separate decision-preview opener until an exactly-once equipment disposition/sale authority exists.",
+                "Keep/Sell remains only in the separate decision-preview opener until an exactly-once equipment disposition authority exists.",
                 MessageType.Warning);
 
             DrawCatalogControls();
             using (new EditorGUI.DisabledScope(runtime == null))
             {
                 scroll = EditorGUILayout.BeginScrollView(scroll);
-                if (page == Page.Queue) DrawQueue();
-                else if (page == Page.Opening) DrawOpening();
-                else DrawComplete();
+                if (page == Page.Queue)
+                {
+                    DrawQueue();
+                }
+                else if (page == Page.Opening)
+                {
+                    DrawOpening();
+                }
+                else
+                {
+                    DrawComplete();
+                }
                 EditorGUILayout.EndScrollView();
             }
 
@@ -70,7 +84,9 @@ namespace ShooterMover.Editor.BalanceSimulator
         private void DrawCatalogControls()
         {
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Load weapon_baseline_v01.json", GUILayout.Width(245f)))
+            if (GUILayout.Button(
+                    "Load weapon_baseline_v01.json",
+                    GUILayout.Width(245f)))
             {
                 string path = EditorUtility.OpenFilePanel(
                     "Select weapon catalog JSON",
@@ -83,7 +99,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             playerLevel = Math.Max(
                 0,
-                EditorGUILayout.IntField("Player Level", playerLevel));
+                EditorGUILayout.IntField(
+                    "Player Level",
+                    playerLevel));
             seedText = EditorGUILayout.TextField("Seed", seedText);
             EditorGUILayout.EndHorizontal();
 
@@ -92,10 +110,17 @@ namespace ShooterMover.Editor.BalanceSimulator
                 EditorGUILayout.LabelField(
                     "Live weapons: "
                     + runtime.WeaponCatalog.GetDefinitions(
-                        ShooterMover.Domain.Weapons.Catalog.WeaponCatalogContentFilter.LiveOnly).Count
-                    + " | Money: " + runtime.MoneyBalance.ToString(CultureInfo.InvariantCulture)
-                    + " | Scrap: " + runtime.ScrapBalance.ToString(CultureInfo.InvariantCulture)
-                    + " | BOX sequence: " + runtime.OpeningSequence.ToString(CultureInfo.InvariantCulture));
+                        ShooterMover.Domain.Weapons.Catalog
+                            .WeaponCatalogContentFilter.LiveOnly).Count
+                    + " | Money: "
+                    + runtime.MoneyBalance.ToString(
+                        CultureInfo.InvariantCulture)
+                    + " | Scrap: "
+                    + runtime.ScrapBalance.ToString(
+                        CultureInfo.InvariantCulture)
+                    + " | BOX sequence: "
+                    + runtime.OpeningSequence.ToString(
+                        CultureInfo.InvariantCulture));
             }
         }
 
@@ -109,16 +134,25 @@ namespace ShooterMover.Editor.BalanceSimulator
             {
                 EditorGUILayout.BeginHorizontal();
                 int start = row * 3;
-                int end = Math.Min(start + 3, ProductionStrongboxCatalogV1.Tiers.Count);
+                int end = Math.Min(
+                    start + 3,
+                    ProductionStrongboxCatalogV1.Tiers.Count);
                 for (int index = start; index < end; index++)
                 {
-                    ProductionStrongboxTierV1 tier = ProductionStrongboxCatalogV1.Tiers[index];
+                    ProductionStrongboxTierV1 tier =
+                        ProductionStrongboxCatalogV1.Tiers[index];
                     if (GUILayout.Button(
-                        "[BOX] " + tier.TierNumber + "\n" + tier.DisplayName,
-                        GUILayout.MinHeight(52f)))
+                            "[BOX] "
+                            + tier.TierNumber
+                            + "\n"
+                            + tier.DisplayName,
+                            GUILayout.MinHeight(52f)))
                     {
                         queue.Add(tier.TierNumber);
-                        diagnostic = tier.DisplayName + " added at queue position " + queue.Count + ".";
+                        diagnostic = tier.DisplayName
+                            + " added at queue position "
+                            + queue.Count
+                            + ".";
                     }
                 }
                 EditorGUILayout.EndHorizontal();
@@ -126,7 +160,8 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                "Currently Looted — " + queue.Count.ToString(CultureInfo.InvariantCulture),
+                "Currently Looted — "
+                + queue.Count.ToString(CultureInfo.InvariantCulture),
                 EditorStyles.boldLabel);
             if (queue.Count == 0)
             {
@@ -135,12 +170,20 @@ namespace ShooterMover.Editor.BalanceSimulator
             for (int index = 0; index < queue.Count; index++)
             {
                 ProductionStrongboxTierV1 tier =
-                    ProductionStrongboxCatalogV1.GetByNumber(queue[index]);
+                    ProductionStrongboxCatalogV1.GetByNumber(
+                        queue[index]);
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(
-                    (index + 1).ToString("D3", CultureInfo.InvariantCulture)
-                    + ". Tier " + tier.TierNumber + " — " + tier.DisplayName);
-                if (GUILayout.Button("Remove", GUILayout.Width(80f)))
+                    (index + 1).ToString(
+                        "D3",
+                        CultureInfo.InvariantCulture)
+                    + ". Tier "
+                    + tier.TierNumber
+                    + " — "
+                    + tier.DisplayName);
+                if (GUILayout.Button(
+                        "Remove",
+                        GUILayout.Width(80f)))
                 {
                     queue.RemoveAt(index);
                     index--;
@@ -151,12 +194,15 @@ namespace ShooterMover.Editor.BalanceSimulator
             EditorGUILayout.BeginHorizontal();
             using (new EditorGUI.DisabledScope(queue.Count == 0))
             {
-                if (GUILayout.Button("Prepare Exact Boxes And Start Opening"))
+                if (GUILayout.Button(
+                        "Prepare Exact Boxes And Start Opening"))
                 {
                     BeginOpening();
                 }
             }
-            if (GUILayout.Button("Clear Queue", GUILayout.Width(120f)))
+            if (GUILayout.Button(
+                    "Clear Queue",
+                    GUILayout.Width(120f)))
             {
                 queue.Clear();
             }
@@ -165,36 +211,75 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private void DrawOpening()
         {
-            if (prepared.Count == 0 || currentIndex >= prepared.Count)
+            if (prepared.Count == 0
+                || currentIndex >= prepared.Count)
             {
                 page = Page.Complete;
                 return;
             }
 
-            AuthoritativeStrongboxPreparedOpenV1 box = prepared[currentIndex];
+            AuthoritativeStrongboxPreparedOpenV1 box =
+                prepared[currentIndex];
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                "Box " + (currentIndex + 1).ToString(CultureInfo.InvariantCulture)
-                + " / " + prepared.Count.ToString(CultureInfo.InvariantCulture)
-                + " — " + box.Tier.DisplayName,
+                "Box "
+                + (currentIndex + 1).ToString(
+                    CultureInfo.InvariantCulture)
+                + " / "
+                + prepared.Count.ToString(
+                    CultureInfo.InvariantCulture)
+                + " — "
+                + box.Tier.DisplayName,
                 EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Exact instance ID", box.Context.InstanceStableId.ToString());
-            EditorGUILayout.LabelField("Production tier ID", box.Tier.TierStableId.ToString());
-            EditorGUILayout.LabelField("Authority binding tier ID", box.Context.TierStableId.ToString());
-            EditorGUILayout.LabelField("Committed weapon definition", box.CommittedSourceDefinitionId);
-            EditorGUILayout.LabelField("Root seed", box.Context.RootSeed.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Context fingerprint", box.Context.Fingerprint);
-            EditorGUILayout.LabelField("Opening ID", box.Command.OpeningStableId.ToString());
-            EditorGUILayout.LabelField("Prepared fingerprint", box.Fingerprint);
             EditorGUILayout.LabelField(
                 "Owned before/after open",
-                runtime.IsBoxOwned(box) ? "YES" : "NO — exact instance consumed");
+                runtime.IsBoxOwned(box)
+                    ? "YES"
+                    : "NO — exact instance consumed");
+
+            authorityDiagnosticsExpanded =
+                EditorGUILayout.Foldout(
+                    authorityDiagnosticsExpanded,
+                    "Authority diagnostics / identity",
+                    true);
+            if (authorityDiagnosticsExpanded)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.LabelField(
+                    "Exact instance ID",
+                    box.Context.InstanceStableId.ToString());
+                EditorGUILayout.LabelField(
+                    "Production tier ID",
+                    box.Tier.TierStableId.ToString());
+                EditorGUILayout.LabelField(
+                    "Authority binding tier ID",
+                    box.Context.TierStableId.ToString());
+                EditorGUILayout.LabelField(
+                    "Committed weapon definition",
+                    box.CommittedSourceDefinitionId);
+                EditorGUILayout.LabelField(
+                    "Root seed",
+                    box.Context.RootSeed.ToString(
+                        CultureInfo.InvariantCulture));
+                EditorGUILayout.LabelField(
+                    "Context fingerprint",
+                    box.Context.Fingerprint);
+                EditorGUILayout.LabelField(
+                    "Opening ID",
+                    box.Command.OpeningStableId.ToString());
+                EditorGUILayout.LabelField(
+                    "Prepared fingerprint",
+                    box.Fingerprint);
+                EditorGUI.indentLevel--;
+            }
 
             EditorGUILayout.Space();
             bool pending = IsPending(currentResult);
             if (currentResult == null)
             {
-                if (GUILayout.Button("OPEN THROUGH REAL BOX AUTHORITIES", GUILayout.MinHeight(46f)))
+                if (GUILayout.Button(
+                        "OPEN THROUGH REAL BOX AUTHORITIES",
+                        GUILayout.MinHeight(46f)))
                 {
                     OpenCurrent(box);
                 }
@@ -204,7 +289,9 @@ namespace ShooterMover.Editor.BalanceSimulator
                 EditorGUILayout.HelpBox(
                     "The transaction is pending. Retry submits the exact same immutable opening command.",
                     MessageType.Warning);
-                if (GUILayout.Button("RETRY SAME OPENING COMMAND", GUILayout.MinHeight(42f)))
+                if (GUILayout.Button(
+                        "RETRY SAME OPENING COMMAND",
+                        GUILayout.MinHeight(42f)))
                 {
                     OpenCurrent(box);
                 }
@@ -213,10 +300,14 @@ namespace ShooterMover.Editor.BalanceSimulator
             if (currentResult != null)
             {
                 DrawResult(currentResult);
-                if (!pending && GUILayout.Button("Continue To Next Exact Box"))
+                if (!pending
+                    && GUILayout.Button(
+                        "Continue To Next Exact Box"))
                 {
                     currentIndex++;
                     currentResult = null;
+                    authorityDiagnosticsExpanded = false;
+                    cardDiagnosticsExpanded = false;
                     if (currentIndex >= prepared.Count)
                     {
                         page = Page.Complete;
@@ -225,104 +316,150 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
         }
 
-        private void DrawResult(StrongboxOpeningResultRuntimeV1 result)
+        private void DrawResult(
+            StrongboxOpeningResultRuntimeV1 result)
         {
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Authority result", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Status", result.Status.ToString());
+            EditorGUILayout.LabelField(
+                "Authority result",
+                EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Status",
+                result.Status.ToString());
             EditorGUILayout.LabelField(
                 "Opening sequence",
-                result.PreviousSequence.ToString(CultureInfo.InvariantCulture)
-                + " -> " + result.CurrentSequence.ToString(CultureInfo.InvariantCulture));
+                result.PreviousSequence.ToString(
+                    CultureInfo.InvariantCulture)
+                + " -> "
+                + result.CurrentSequence.ToString(
+                    CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(result.RejectionCode))
             {
-                EditorGUILayout.LabelField("Rejection / pending code", result.RejectionCode);
+                EditorGUILayout.LabelField(
+                    "Rejection / pending code",
+                    result.RejectionCode);
             }
-            EditorGUILayout.LabelField("Money balance", runtime.MoneyBalance.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Scrap balance", runtime.ScrapBalance.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Holdings sequence", runtime.HoldingsSequence.ToString(CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Money balance",
+                runtime.MoneyBalance.ToString(
+                    CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Scrap balance",
+                runtime.ScrapBalance.ToString(
+                    CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Holdings sequence",
+                runtime.HoldingsSequence.ToString(
+                    CultureInfo.InvariantCulture));
 
             if (result.GeneratedOutcome == null)
             {
-                EditorGUILayout.LabelField("No frozen generated outcome.");
+                EditorGUILayout.LabelField(
+                    "No frozen generated outcome.");
                 return;
             }
 
+            IReadOnlyList<EquipmentInstance> equipment =
+                runtime.EquipmentFrom(result);
+            if (equipment.Count == 0)
+            {
+                EditorGUILayout.LabelField(
+                    "No equipment result.");
+            }
+            for (int index = 0; index < equipment.Count; index++)
+            {
+                EquipmentInstance item = equipment[index];
+                if (item.Augments.Count != 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        "Authoritative result rejected for display: fresh equipment contains installed augments.",
+                        MessageType.Error);
+                    continue;
+                }
+                WeaponLootCardEditorDrawerV1.Draw(
+                    item,
+                    runtime.EquipmentCatalog,
+                    runtime.WeaponCatalog,
+                    ref cardDiagnosticsExpanded);
+            }
+
+            authorityDiagnosticsExpanded =
+                EditorGUILayout.Foldout(
+                    authorityDiagnosticsExpanded,
+                    "Generated payload diagnostics",
+                    true);
+            if (!authorityDiagnosticsExpanded)
+            {
+                return;
+            }
+
+            EditorGUI.indentLevel++;
             EditorGUILayout.LabelField(
                 "Generated outcome fingerprint",
                 result.GeneratedOutcome.Fingerprint);
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Applied reward payloads", EditorStyles.boldLabel);
             for (int payloadIndex = 0;
-                 payloadIndex < result.GeneratedOutcome.Payloads.Count;
-                 payloadIndex++)
+                payloadIndex
+                    < result.GeneratedOutcome.Payloads.Count;
+                payloadIndex++)
             {
                 RewardGrantApplicationPayloadV1 payload =
                     result.GeneratedOutcome.Payloads[payloadIndex];
-                EditorGUILayout.BeginVertical(GUI.skin.box);
                 EditorGUILayout.LabelField(
-                    payload.Grant.Kind + " — " + payload.Grant.ContentStableId,
-                    EditorStyles.boldLabel);
-                EditorGUILayout.LabelField(
-                    "Quantity",
-                    payload.Grant.Quantity.ToString(CultureInfo.InvariantCulture));
-
-                for (int itemIndex = 0;
-                     itemIndex < payload.EquipmentInstances.Count;
-                     itemIndex++)
-                {
-                    DrawEquipment(payload.EquipmentInstances[itemIndex]);
-                }
+                    payload.Grant.Kind
+                    + " — "
+                    + payload.Grant.ContentStableId,
+                    payload.Grant.Quantity.ToString(
+                        CultureInfo.InvariantCulture));
                 for (int instanceIndex = 0;
-                     instanceIndex < payload.InstanceStableIds.Count;
-                     instanceIndex++)
+                    instanceIndex
+                        < payload.InstanceStableIds.Count;
+                    instanceIndex++)
                 {
                     EditorGUILayout.LabelField(
-                        "Instance " + (instanceIndex + 1),
-                        payload.InstanceStableIds[instanceIndex].ToString());
+                        "Instance "
+                        + (instanceIndex + 1).ToString(
+                            CultureInfo.InvariantCulture),
+                        payload.InstanceStableIds[
+                            instanceIndex].ToString());
                 }
-                EditorGUILayout.EndVertical();
             }
-        }
-
-        private void DrawEquipment(EquipmentInstance item)
-        {
-            EquipmentDefinition definition =
-                runtime.EquipmentCatalog.FindEquipmentDefinition(item.DefinitionId);
-            EditorGUILayout.LabelField(
-                definition == null ? item.DefinitionId.ToString() : definition.DisplayName,
-                EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Equipment instance", item.InstanceId.ToString());
-            EditorGUILayout.LabelField("Definition", item.DefinitionId.ToString());
-            EditorGUILayout.LabelField("Item level", item.ItemLevel.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Quality", item.QualityId.ToString());
-            EditorGUILayout.LabelField("Augment slots", item.Augments.Count.ToString(CultureInfo.InvariantCulture));
-            for (int augmentIndex = 0; augmentIndex < item.Augments.Count; augmentIndex++)
-            {
-                AugmentInstance augment = item.Augments[augmentIndex];
-                EditorGUILayout.LabelField(
-                    "  Slot " + (augmentIndex + 1)
-                    + ": " + augment.DefinitionId
-                    + " | Tier " + augment.Tier
-                    + " | Level " + augment.Level);
-            }
+            EditorGUI.indentLevel--;
         }
 
         private void DrawComplete()
         {
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Authoritative opening complete", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Boxes opened", prepared.Count.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Money balance", runtime.MoneyBalance.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Scrap balance", runtime.ScrapBalance.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("BOX sequence", runtime.OpeningSequence.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Holdings sequence", runtime.HoldingsSequence.ToString(CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Authoritative opening complete",
+                EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Boxes opened",
+                prepared.Count.ToString(
+                    CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Money balance",
+                runtime.MoneyBalance.ToString(
+                    CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Scrap balance",
+                runtime.ScrapBalance.ToString(
+                    CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "BOX sequence",
+                runtime.OpeningSequence.ToString(
+                    CultureInfo.InvariantCulture));
+            EditorGUILayout.LabelField(
+                "Holdings sequence",
+                runtime.HoldingsSequence.ToString(
+                    CultureInfo.InvariantCulture));
             if (GUILayout.Button("Return To Queue"))
             {
                 frozenQueue.Clear();
                 prepared.Clear();
                 currentIndex = 0;
                 currentResult = null;
+                authorityDiagnosticsExpanded = false;
+                cardDiagnosticsExpanded = false;
                 page = Page.Queue;
             }
         }
@@ -334,10 +471,11 @@ namespace ShooterMover.Editor.BalanceSimulator
                 string json = File.ReadAllText(path);
                 AuthoritativeStrongboxSimulatorRuntimeV1 created;
                 string error;
-                if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
-                    json,
-                    out created,
-                    out error))
+                if (!AuthoritativeStrongboxSimulatorRuntimeV1
+                    .TryCreate(
+                        json,
+                        out created,
+                        out error))
                 {
                     runtime = null;
                     loadedCatalogJson = null;
@@ -352,10 +490,14 @@ namespace ShooterMover.Editor.BalanceSimulator
                 prepared.Clear();
                 currentIndex = 0;
                 currentResult = null;
+                authorityDiagnosticsExpanded = false;
+                cardDiagnosticsExpanded = false;
                 page = Page.Queue;
-                diagnostic = "Loaded " + Path.GetFileName(path)
+                diagnostic = "Loaded "
+                    + Path.GetFileName(path)
                     + " with weapon-catalog fingerprint "
-                    + runtime.WeaponCatalog.Fingerprint + ".";
+                    + runtime.WeaponCatalog.Fingerprint
+                    + ".";
             }
             catch (Exception exception)
             {
@@ -368,10 +510,14 @@ namespace ShooterMover.Editor.BalanceSimulator
         private void BeginOpening()
         {
             ulong seed;
-            if (!TrySeed(out seed)) return;
+            if (!TrySeed(out seed))
+            {
+                return;
+            }
             if (string.IsNullOrEmpty(loadedCatalogJson))
             {
-                diagnostic = "Reload weapon_baseline_v01.json before preparing the batch.";
+                diagnostic =
+                    "Reload weapon_baseline_v01.json before preparing the batch.";
                 return;
             }
 
@@ -379,10 +525,11 @@ namespace ShooterMover.Editor.BalanceSimulator
             {
                 AuthoritativeStrongboxSimulatorRuntimeV1 fresh;
                 string error;
-                if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
-                    loadedCatalogJson,
-                    out fresh,
-                    out error))
+                if (!AuthoritativeStrongboxSimulatorRuntimeV1
+                    .TryCreate(
+                        loadedCatalogJson,
+                        out fresh,
+                        out error))
                 {
                     diagnostic = error;
                     return;
@@ -398,8 +545,11 @@ namespace ShooterMover.Editor.BalanceSimulator
 
                 currentIndex = 0;
                 currentResult = null;
+                authorityDiagnosticsExpanded = false;
+                cardDiagnosticsExpanded = false;
                 page = Page.Opening;
-                diagnostic = prepared.Count.ToString(CultureInfo.InvariantCulture)
+                diagnostic = prepared.Count.ToString(
+                    CultureInfo.InvariantCulture)
                     + " exact owned boxes committed, prepared, and registered with one BOX authority in insertion order.";
             }
             catch (Exception exception)
@@ -409,13 +559,28 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
         }
 
-        private void OpenCurrent(AuthoritativeStrongboxPreparedOpenV1 box)
+        private void OpenCurrent(
+            AuthoritativeStrongboxPreparedOpenV1 box)
         {
             try
             {
                 currentResult = runtime.OpenOrRetry(box);
-                diagnostic = "BOX returned " + currentResult.Status
-                    + " for exact instance " + box.Context.InstanceStableId + ".";
+                IReadOnlyList<EquipmentInstance> equipment =
+                    runtime.EquipmentFrom(currentResult);
+                for (int index = 0; index < equipment.Count; index++)
+                {
+                    if (equipment[index].Augments.Count != 0)
+                    {
+                        diagnostic =
+                            "BOX returned equipment with installed augments; the result is blocked from player-facing projection.";
+                        return;
+                    }
+                }
+                diagnostic = "BOX returned "
+                    + currentResult.Status
+                    + " for exact instance "
+                    + box.Context.InstanceStableId
+                    + ".";
             }
             catch (Exception exception)
             {
@@ -426,22 +591,28 @@ namespace ShooterMover.Editor.BalanceSimulator
         private bool TrySeed(out ulong seed)
         {
             if (!ulong.TryParse(
-                seedText,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out seed))
+                    seedText,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out seed))
             {
-                diagnostic = "Seed must be an unsigned 64-bit integer.";
+                diagnostic =
+                    "Seed must be an unsigned 64-bit integer.";
                 return false;
             }
             return true;
         }
 
-        private static bool IsPending(StrongboxOpeningResultRuntimeV1 result)
+        private static bool IsPending(
+            StrongboxOpeningResultRuntimeV1 result)
         {
             return result != null
-                && (result.Status == StrongboxOpeningRuntimeStatusV1.ClaimedPendingApplication
-                    || result.Status == StrongboxOpeningRuntimeStatusV1.ConsumePending);
+                && (result.Status
+                        == StrongboxOpeningRuntimeStatusV1
+                            .ClaimedPendingApplication
+                    || result.Status
+                        == StrongboxOpeningRuntimeStatusV1
+                            .ConsumePending);
         }
     }
 }
