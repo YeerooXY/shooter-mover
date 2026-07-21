@@ -4,7 +4,6 @@ using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
@@ -17,14 +16,13 @@ using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Strongboxes;
-using ShooterMover.UI.ProductionFlow;
 
 namespace ShooterMover.Tests.EditMode.Persistence.Composition
 {
     public sealed class CharacterActivationAndStrongboxRegressionTests
     {
         [Test]
-        public void DirectActivationPersistsUnsavedCharacterBeforeSwitchAndRestart()
+        public void DirectSelectPersistsUnsavedCharacterBeforeSwitchAndRestart()
         {
             ProductionCharacterRuntimeGraphFactoryV1 factory =
                 ProductionCharacterRuntimeGraphFactoryV1
@@ -38,9 +36,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 1,
                 "bravo");
             PlayerAccountSnapshotV1 durable = Account(alpha, bravo);
-            var authority = new PlayerAccountSaveAuthorityV1(durable);
             var composition = new CharacterCompositionCoordinatorV1(
-                authority,
+                new PlayerAccountSaveAuthorityV1(durable),
                 factory,
                 snapshot =>
                 {
@@ -56,22 +53,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 73L);
             Assert.That(alphaGraph.MoneyWallet.Balance, Is.EqualTo(73L));
 
-            ProductionFlowProfileRecordV1[] profiles = Profiles(alpha, bravo);
-            var inner = new CompositionLifecycle(composition, profiles);
-            var guarded = new PersistBeforeCharacterActivationLifecycleV1(
-                inner,
-                target => composition.ActiveRuntime != null
-                    && composition.ActiveSlotIndex != target,
-                (target, requested) => composition.PersistActive(
-                    Id("operation.persist-before-direct-switch")));
+            CharacterCompositionResultV1 switched = composition.Select(1);
 
-            ProductionFlowProfileRecordV1 activated;
-            string rejection;
-            Assert.That(guarded.TryActivate(
-                1,
-                profiles[1],
-                out activated,
-                out rejection), Is.True, rejection);
+            Assert.That(switched.Succeeded, Is.True, switched.Diagnostic);
             Assert.That(alphaGraph.IsDisposed, Is.True);
             Assert.That(composition.ActiveSlotIndex, Is.EqualTo(1));
 
@@ -90,7 +74,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         [Test]
-        public void FailedPreActivationSaveRejectsSwitchAndKeepsCurrentGraphPublished()
+        public void FailedPreSwitchSaveRejectsSelectAndKeepsCurrentGraphPublished()
         {
             ProductionCharacterRuntimeGraphFactoryV1 factory =
                 ProductionCharacterRuntimeGraphFactoryV1
@@ -118,28 +102,16 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Id("operation.failed-switch-money"),
                 11L);
 
-            ProductionFlowProfileRecordV1[] profiles = Profiles(alpha, bravo);
-            var inner = new CompositionLifecycle(composition, profiles);
-            var guarded = new PersistBeforeCharacterActivationLifecycleV1(
-                inner,
-                target => composition.ActiveRuntime != null
-                    && composition.ActiveSlotIndex != target,
-                (target, requested) => composition.PersistActive(
-                    Id("operation.failed-persist-before-switch")));
+            CharacterCompositionResultV1 rejected = composition.Select(1);
 
-            ProductionFlowProfileRecordV1 ignored;
-            string rejection;
-            Assert.That(guarded.TryActivate(
-                1,
-                profiles[1],
-                out ignored,
-                out rejection), Is.False);
-            Assert.That(rejection, Does.Contain("character-switch-save-rejected"));
+            Assert.That(rejected.Succeeded, Is.False);
+            Assert.That(
+                rejected.Diagnostic,
+                Does.Contain("character-switch-save-rejected"));
             Assert.That(composition.ActiveSlotIndex, Is.EqualTo(0));
             Assert.That(composition.ActiveRuntime, Is.SameAs(alphaGraph));
             Assert.That(alphaGraph.IsDisposed, Is.False);
             Assert.That(alphaGraph.MoneyWallet.Balance, Is.EqualTo(11L));
-            Assert.That(inner.ActivationCount, Is.Zero);
         }
 
         [Test]
@@ -304,46 +276,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 components);
         }
 
-        private static ProductionFlowProfileRecordV1[] Profiles(
-            params CharacterInstanceSnapshotV1[] characters)
-        {
-            var profiles = new ProductionFlowProfileRecordV1[
-                PlayerAccountSnapshotV1.CharacterSlotCount];
-            foreach (CharacterInstanceSnapshotV1 character in characters)
-            {
-                InventoryLoadoutAuthoritySnapshotV1 loadout;
-                string rejection;
-                SaveComponentSnapshotV1 component = character.Components[
-                    KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
-                        .ComponentStableId];
-                Assert.That(
-                    KnownSaveComponentCodecsV1.ExactInstanceLoadout.TryDecode(
-                        component.CanonicalPayload,
-                        out loadout,
-                        out rejection),
-                    Is.True,
-                    rejection);
-                var exactInstances = new List<StableId>(
-                    PlayerRouteProfilePayloadV1.WeaponSlotCount);
-                for (int index = 0;
-                    index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                    index++)
-                {
-                    exactInstances.Add(loadout.GetBinding(
-                        InventoryLoadoutSlotsV1.All[index].SlotStableId)
-                        .EquipmentInstanceStableId);
-                }
-                profiles[character.SlotIndex] =
-                    new ProductionFlowProfileRecordV1(
-                        character.DisplayName,
-                        PlayerRouteProfilePayloadV1.Create(
-                            character.CharacterInstanceStableId,
-                            character.ClassDefinitionStableId,
-                            exactInstances));
-            }
-            return profiles;
-        }
-
         private static PlayerAccountSnapshotV1 Account(
             params CharacterInstanceSnapshotV1[] characters)
         {
@@ -372,62 +304,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         private static StableId Id(string value)
         {
             return StableId.Parse(value);
-        }
-
-        private sealed class CompositionLifecycle :
-            IProductionCharacterProfileLifecycleV1
-        {
-            private readonly CharacterCompositionCoordinatorV1 composition;
-            private readonly IReadOnlyList<ProductionFlowProfileRecordV1>
-                profiles;
-
-            public CompositionLifecycle(
-                CharacterCompositionCoordinatorV1 composition,
-                IReadOnlyList<ProductionFlowProfileRecordV1> profiles)
-            {
-                this.composition = composition;
-                this.profiles = profiles;
-            }
-
-            public int ActivationCount { get; private set; }
-
-            public bool TryExportProfiles(
-                out IReadOnlyList<ProductionFlowProfileRecordV1> exported,
-                out string rejectionCode)
-            {
-                exported = profiles;
-                rejectionCode = string.Empty;
-                return true;
-            }
-
-            public bool TryActivate(
-                int slotIndex,
-                ProductionFlowProfileRecordV1 requestedProfile,
-                out ProductionFlowProfileRecordV1 authoritativeProfile,
-                out string rejectionCode)
-            {
-                ActivationCount++;
-                CharacterCompositionResultV1 result =
-                    composition.Select(slotIndex);
-                if (!result.Succeeded)
-                {
-                    authoritativeProfile = null;
-                    rejectionCode = result.Diagnostic;
-                    return false;
-                }
-                authoritativeProfile = requestedProfile;
-                rejectionCode = string.Empty;
-                return true;
-            }
-
-            public bool TryDelete(
-                int slotIndex,
-                ProductionFlowProfileRecordV1 requestedProfile,
-                out string rejectionCode)
-            {
-                rejectionCode = "not-used";
-                return false;
-            }
         }
     }
 }
