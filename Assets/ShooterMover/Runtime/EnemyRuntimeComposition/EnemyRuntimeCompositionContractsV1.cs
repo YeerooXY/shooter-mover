@@ -186,26 +186,37 @@ namespace ShooterMover.EnemyRuntimeComposition
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
             double delta = context.Scalar - 1d;
-            double health = Math.Max(0.01d, 1d + (delta * configuration.HealthResponse));
-            double damage = Math.Max(0.01d, 1d + (delta * configuration.DamageResponse));
-            double cooldown = Math.Max(0.01d, 1d - (delta * configuration.CooldownResponse));
-            double movement = Math.Max(0.01d, 1d + (delta * configuration.MovementResponse));
-            return new EnemyDifficultyScalingV1(health, damage, cooldown, movement);
+            return new EnemyDifficultyScalingV1(
+                Math.Max(0.01d, 1d + (delta * configuration.HealthResponse)),
+                Math.Max(0.01d, 1d + (delta * configuration.DamageResponse)),
+                Math.Max(0.01d, 1d - (delta * configuration.CooldownResponse)),
+                Math.Max(0.01d, 1d + (delta * configuration.MovementResponse)));
         }
     }
 
     public sealed class EnemyPerceptionPolicyConfigurationV1
     {
+        public EnemyPerceptionPolicyConfigurationV1(StableId policyId)
+        {
+            PolicyId = policyId ?? throw new ArgumentNullException(nameof(policyId));
+        }
+
+        // Compatibility for callers compiled against the first draft. The removed option can no
+        // longer promise an invariant that this engine-neutral adapter has no position authority to prove.
         public EnemyPerceptionPolicyConfigurationV1(
             StableId policyId,
             bool requireMatchingObserverPosition)
+            : this(policyId)
         {
-            PolicyId = policyId ?? throw new ArgumentNullException(nameof(policyId));
-            RequireMatchingObserverPosition = requireMatchingObserverPosition;
+            if (requireMatchingObserverPosition)
+            {
+                throw new ArgumentException(
+                    "Observer-position matching requires a real authoritative position port and is not configurable here.",
+                    nameof(requireMatchingObserverPosition));
+            }
         }
 
         public StableId PolicyId { get; }
-        public bool RequireMatchingObserverPosition { get; }
     }
 
     public interface IEnemyPerceptionRuntimeAdapterV1
@@ -282,6 +293,8 @@ namespace ShooterMover.EnemyRuntimeComposition
         ConflictingDuplicate = 6,
         InvalidCommand = 7,
         ActorTerminal = 8,
+        DecisionNotIssued = 9,
+        ExecutionNotIssued = 10,
     }
 
     public sealed class EnemyPlacementDecisionV1
@@ -315,8 +328,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             double occurredAtSeconds,
             EnemyDifficultyScalingV1 difficultyScaling)
         {
-            OperationStableId = operationStableId
-                ?? throw new ArgumentNullException(nameof(operationStableId));
+            OperationStableId = operationStableId ?? throw new ArgumentNullException(nameof(operationStableId));
             Identity = identity ?? throw new ArgumentNullException(nameof(identity));
             if (lifecycleGeneration <= 0L)
                 throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
@@ -326,8 +338,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                 throw new ArgumentOutOfRangeException(nameof(occurredAtSeconds));
             LifecycleGeneration = lifecycleGeneration;
             OccurredAtSeconds = occurredAtSeconds;
-            DifficultyScaling = difficultyScaling
-                ?? throw new ArgumentNullException(nameof(difficultyScaling));
+            DifficultyScaling = difficultyScaling ?? throw new ArgumentNullException(nameof(difficultyScaling));
         }
 
         public StableId OperationStableId { get; }
@@ -611,12 +622,9 @@ namespace ShooterMover.EnemyRuntimeComposition
             int channelValue,
             double amount)
         {
-            OperationStableId = operationStableId
-                ?? throw new ArgumentNullException(nameof(operationStableId));
-            SourceEntityStableId = sourceEntityStableId
-                ?? throw new ArgumentNullException(nameof(sourceEntityStableId));
-            TargetEntityStableId = targetEntityStableId
-                ?? throw new ArgumentNullException(nameof(targetEntityStableId));
+            OperationStableId = operationStableId ?? throw new ArgumentNullException(nameof(operationStableId));
+            SourceEntityStableId = sourceEntityStableId ?? throw new ArgumentNullException(nameof(sourceEntityStableId));
+            TargetEntityStableId = targetEntityStableId ?? throw new ArgumentNullException(nameof(targetEntityStableId));
             if (targetLifecycleGeneration <= 0L)
                 throw new ArgumentOutOfRangeException(nameof(targetLifecycleGeneration));
             if (order < 0L) throw new ArgumentOutOfRangeException(nameof(order));
