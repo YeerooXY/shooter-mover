@@ -1,0 +1,25 @@
+{
+  "name": "ShooterMover.Tests.EditMode.CriticalHits",
+  "rootNamespace": "ShooterMover.Tests.EditMode.CriticalHits",
+  "references": [
+    "ShooterMover.CriticalHits",
+    "ShooterMover.CombatHitPolicy",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
