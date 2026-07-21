@@ -99,8 +99,9 @@ namespace ShooterMover.Application.Persistence.Composition
     /// One-time route-profile migration. Exact character-instance IDs and account command
     /// IDs are derived from immutable legacy facts, so retrying before or after an
     /// interrupted durable save cannot duplicate a slot or starter equipment. Existing
-    /// occupied slots are never overwritten. PlayerPrefs is only a migration input; the
-    /// resulting account snapshot is the sole durable truth.
+    /// occupied slots are never overwritten. When the UI creates one new profile while a
+    /// character graph is active, creation is delegated to the composition transaction so
+    /// the active character is durably saved before the new slot can exist.
     /// </summary>
     public sealed class LegacyCharacterProfileMigrationV1
     {
@@ -145,6 +146,34 @@ namespace ShooterMover.Application.Persistence.Composition
                     string.Empty,
                     accountAuthority.Current,
                     Array.Empty<int>());
+            }
+
+            // Startup migration has no active graph and follows the normal batch path below.
+            // A single empty-slot request while a graph is active is real character creation
+            // and must use the coordinator's persist-create-restore-save-publish transaction.
+            CharacterCompositionCoordinatorV1 activeComposition;
+            if (profiles.Count == 1
+                && accountAuthority.Current.CharacterAt(
+                    profiles[0].SlotIndex) == null
+                && CharacterCompositionCoordinatorV1.TryResolveActive(
+                    accountAuthority,
+                    out activeComposition))
+            {
+                CharacterCompositionResultV1 created =
+                    activeComposition.CreateAndSelect(profiles[0]);
+                if (created == null || !created.Succeeded)
+                {
+                    return Reject(
+                        created == null
+                            ? "character-create-transaction-result-null"
+                            : "character-create-transaction-rejected:"
+                                + created.Diagnostic);
+                }
+                return new LegacyCharacterProfileMigrationResultV1(
+                    CharacterCompositionStatusV1.Migrated,
+                    string.Empty,
+                    created.Account,
+                    new[] { profiles[0].SlotIndex });
             }
 
             PlayerAccountSaveAuthoritySnapshotV1 rollback =
@@ -219,7 +248,8 @@ namespace ShooterMover.Application.Persistence.Composition
                     if (created == null
                         || (created.Status != PlayerAccountSaveStatusV1.Applied
                             && created.Status
-                                != PlayerAccountSaveStatusV1.ExactDuplicateNoChange))
+                                != PlayerAccountSaveStatusV1
+                                    .ExactDuplicateNoChange))
                     {
                         Dispose(graph);
                         RollBack(rollback);
