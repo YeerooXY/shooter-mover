@@ -483,10 +483,17 @@ namespace ShooterMover.Application.Flow.Production
         {
             RequireExactUnopenedSelection(selected);
             if (openingSucceeded
-                && !durablePersistenceAlreadyCompleted
                 && ProductionCharacterStrongboxBridgeRegistryV1.IsConfigured)
             {
-                PersistCharacterOpeningAndSynchronizeRunScope();
+                if (!durablePersistenceAlreadyCompleted)
+                {
+                    PersistCharacterOpening();
+                }
+
+                // Durable opening already persists the selected-character state,
+                // but Results is projected from the run-local authority. Always
+                // synchronize that projection before refreshing Results.
+                SynchronizeOpeningToRunScope();
             }
 
             MissionResultPayloadV1 refreshed = refreshResult();
@@ -573,7 +580,7 @@ namespace ShooterMover.Application.Flow.Production
             return characterAuthority;
         }
 
-        private void PersistCharacterOpeningAndSynchronizeRunScope()
+        private void PersistCharacterOpening()
         {
             StrongboxOpeningServiceV1 characterAuthority;
             string rejectionCode;
@@ -597,8 +604,25 @@ namespace ShooterMover.Application.Flow.Production
                         + rejectionCode);
             }
 
+        }
+
+        private void SynchronizeOpeningToRunScope()
+        {
+            StrongboxOpeningServiceV1 characterAuthority;
+            string rejectionCode;
+            if (!ProductionCharacterStrongboxBridgeRegistryV1.TryResolve(
+                out characterAuthority,
+                out rejectionCode))
+            {
+                throw new InvalidOperationException(
+                    "The confirmed opening has no selected-character BOX authority: "
+                        + rejectionCode);
+            }
+
             if (!ReferenceEquals(characterAuthority, OpeningService))
             {
+                StrongboxOpeningSnapshotV1 characterSnapshot =
+                    characterAuthority.ExportSnapshot();
                 ImportOrThrow(
                     OpeningService,
                     ProjectRunScope(

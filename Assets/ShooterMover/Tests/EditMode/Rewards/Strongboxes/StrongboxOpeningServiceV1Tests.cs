@@ -1,15 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
+using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Economy;
 using ShooterMover.Contracts.Equipment;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
@@ -45,6 +50,107 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             UniqueHoldingSnapshotV1 ignored;
             Assert.That(fixture.Holdings.TryGetUnique(BoxId, out ignored), Is.False);
             Assert.That(fixture.Service.Sequence, Is.EqualTo(1L));
+        }
+
+        [Test]
+        public void DurableOpeningRefreshSynchronizesDistinctRunScopeWithoutSecondPersist()
+        {
+            StableId untouchedBoxId = Id("strongbox.instance-run-scope-untouched");
+            var runScope = new Fixture();
+            var characterScope = new Fixture();
+            runScope.AddAndRegisterBox();
+            runScope.AddAndRegisterBox(untouchedBoxId, 654321UL);
+            characterScope.AddAndRegisterBox();
+            characterScope.AddAndRegisterBox(untouchedBoxId, 654321UL);
+
+            Assert.That(
+                characterScope.Open(),
+                Has.Property("Status").EqualTo(
+                    StrongboxOpeningRuntimeStatusV1.Opened));
+
+            MissionRunStrongboxCollectionV1 selectedCollection =
+                Collection("run-scope-selected", BoxId);
+            MissionRunStrongboxCollectionV1 untouchedCollection =
+                Collection("run-scope-untouched", untouchedBoxId);
+            var selected = new MissionRunStrongboxResultV1(
+                selectedCollection,
+                MissionRunStrongboxStateV1.Unopened,
+                null,
+                null);
+            var untouched = new MissionRunStrongboxResultV1(
+                untouchedCollection,
+                MissionRunStrongboxStateV1.Unopened,
+                null,
+                null);
+            PlayerRouteProfilePayloadV1 route = PlayerRouteProfilePayloadV1.Create(
+                Id("character.run-scope"),
+                Id("loadout.run-scope"),
+                new[] { Id("equipment.run-scope") });
+            MissionResultPayloadV1 before = MissionResultPayloadV1.Create(
+                Id("run.run-scope"),
+                route,
+                MissionRunCompletionStateV1.Completed,
+                new[] { selected, untouched },
+                1L,
+                1L,
+                MissionRunCanonicalV1.Fingerprint("holdings.run-scope-before"),
+                1L,
+                MissionRunCanonicalV1.Fingerprint("opening.run-scope-before"));
+            var bridge = new RecordingCharacterStrongboxBridge(
+                characterScope.Service);
+            ProductionCharacterStrongboxBridgeRegistryV1.Configure(bridge);
+            try
+            {
+                var context = new ProductionResultsContextV1(
+                    before,
+                    runScope.Service,
+                    value => characterScope.Command(),
+                    null,
+                    () => BuildRunScopeResult(
+                        before,
+                        selectedCollection,
+                        untouchedCollection,
+                        runScope.Service));
+
+                ProductionResultsContextV1 refreshed =
+                    context.RefreshAfterExactOpening(
+                        selected,
+                        true,
+                        durablePersistenceAlreadyCompleted: true);
+
+                Assert.That(bridge.PersistCallCount, Is.Zero,
+                    "Durable opening has already saved the character authority.");
+                StrongboxOpeningSnapshotV1 runSnapshot =
+                    runScope.Service.ExportSnapshot();
+                Assert.That(IsOpened(runSnapshot, BoxId), Is.True);
+                Assert.That(IsOpened(runSnapshot, untouchedBoxId), Is.False);
+                Assert.That(refreshed.Result.OpenedStrongboxes,
+                    Has.Count.EqualTo(1));
+                Assert.That(refreshed.Result.OpenedStrongboxes[0].InstanceStableId,
+                    Is.EqualTo(BoxId));
+                Assert.That(refreshed.Result.UnopenedStrongboxes,
+                    Has.Count.EqualTo(1));
+                Assert.That(refreshed.Result.UnopenedStrongboxes[0].InstanceStableId,
+                    Is.EqualTo(untouchedBoxId));
+
+                string fingerprintAfterRefresh = runSnapshot.Fingerprint;
+                var reentered = new ProductionResultsContextV1(
+                    refreshed.Result,
+                    runScope.Service,
+                    value => characterScope.Command(),
+                    null,
+                    () => refreshed.Result);
+                Assert.That(reentered.Result.UnopenedStrongboxes,
+                    Has.Count.EqualTo(1));
+                Assert.That(reentered.Result.UnopenedStrongboxes[0].InstanceStableId,
+                    Is.EqualTo(untouchedBoxId));
+                Assert.That(runScope.Service.ExportSnapshot().Fingerprint,
+                    Is.EqualTo(fingerprintAfterRefresh));
+            }
+            finally
+            {
+                ProductionCharacterStrongboxBridgeRegistryV1.Clear(bridge);
+            }
         }
 
         [Test]
@@ -440,6 +546,109 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
 
         private static StableId Id(string value) { return StableId.Parse(value); }
 
+        private static MissionRunStrongboxCollectionV1 Collection(
+            string suffix,
+            StableId instanceStableId)
+        {
+            return new MissionRunStrongboxCollectionV1(
+                Id("strongbox.definition." + suffix),
+                instanceStableId,
+                Id("grant." + suffix),
+                Id("source." + suffix),
+                Id("operation." + suffix),
+                1L,
+                MissionRunCanonicalV1.Fingerprint("collection." + suffix));
+        }
+
+        private static MissionResultPayloadV1 BuildRunScopeResult(
+            MissionResultPayloadV1 before,
+            MissionRunStrongboxCollectionV1 selectedCollection,
+            MissionRunStrongboxCollectionV1 untouchedCollection,
+            StrongboxOpeningServiceV1 runScope)
+        {
+            StrongboxOpeningSnapshotV1 snapshot = runScope.ExportSnapshot();
+            StrongboxOpeningRecordSnapshotV1 selectedOpening = snapshot.Openings
+                .SingleOrDefault(item => item.Command.StrongboxInstanceStableId
+                    == selectedCollection.InstanceStableId);
+            MissionRunStrongboxResultV1 selected = selectedOpening == null
+                ? new MissionRunStrongboxResultV1(
+                    selectedCollection,
+                    MissionRunStrongboxStateV1.Unopened,
+                    null,
+                    null)
+                : new MissionRunStrongboxResultV1(
+                    selectedCollection,
+                    MissionRunStrongboxStateV1.Opened,
+                    selectedOpening.Command.OpeningStableId,
+                    selectedOpening.Fingerprint);
+            var untouched = new MissionRunStrongboxResultV1(
+                untouchedCollection,
+                MissionRunStrongboxStateV1.Unopened,
+                null,
+                null);
+            return MissionResultPayloadV1.Create(
+                before.RunStableId,
+                before.RoutePayload,
+                before.CompletionState,
+                new[] { selected, untouched },
+                before.HoldingsSequence + 1L,
+                before.HoldingsSequence + 1L,
+                before.HoldingsFingerprint,
+                before.StrongboxOpeningSequence + 1L,
+                snapshot.Fingerprint);
+        }
+
+        private static bool IsOpened(
+            StrongboxOpeningSnapshotV1 snapshot,
+            StableId strongboxInstanceStableId)
+        {
+            return snapshot.Openings.Any(item =>
+                item.Command.StrongboxInstanceStableId == strongboxInstanceStableId
+                && item.Stage == StrongboxOpeningStageV1.Opened);
+        }
+
+        private sealed class RecordingCharacterStrongboxBridge :
+            IProductionCharacterStrongboxBridgeV1
+        {
+            private readonly StrongboxOpeningServiceV1 authority;
+
+            public RecordingCharacterStrongboxBridge(
+                StrongboxOpeningServiceV1 authority)
+            {
+                this.authority = authority
+                    ?? throw new ArgumentNullException(nameof(authority));
+            }
+
+            public int PersistCallCount { get; private set; }
+
+            public bool TryResolve(
+                out StrongboxOpeningServiceV1 resolved,
+                out string rejectionCode)
+            {
+                resolved = authority;
+                rejectionCode = string.Empty;
+                return true;
+            }
+
+            public bool TryResolveDurableOpeningExecutor(
+                out IStrongboxDurableOpeningExecutorV1 executor,
+                out string rejectionCode)
+            {
+                executor = null;
+                rejectionCode = "not-needed-for-refresh";
+                return false;
+            }
+
+            public bool TryPersist(
+                string strongboxSnapshotFingerprint,
+                out string rejectionCode)
+            {
+                PersistCallCount++;
+                rejectionCode = string.Empty;
+                return true;
+            }
+        }
+
         private sealed class Fixture
         {
             private readonly IStrongboxRewardGeneratorV1 generator;
@@ -503,10 +712,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                     payloadResolver);
             }
 
-            public StrongboxInstanceContextV1 Context(StableId tierId, ulong seed = 123456UL)
+            public StrongboxInstanceContextV1 Context(
+                StableId tierId,
+                ulong seed = 123456UL,
+                StableId instanceStableId = null)
             {
                 return StrongboxInstanceContextV1.Create(
-                    BoxId,
+                    instanceStableId ?? BoxId,
                     tierId,
                     seed,
                     1,
@@ -516,31 +728,44 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                     tierId == Definition.TierStableId ? Definition.Fingerprint : null);
             }
 
-            public StrongboxRegistrationResultV1 RegisterBox(StableId tierId = null)
+            public StrongboxRegistrationResultV1 RegisterBox(
+                StableId tierId = null,
+                ulong seed = 123456UL,
+                StableId instanceStableId = null)
             {
-                return Service.RegisterInstance(Context(tierId ?? Definition.TierStableId));
+                return Service.RegisterInstance(Context(
+                    tierId ?? Definition.TierStableId,
+                    seed,
+                    instanceStableId));
             }
 
-            public void AddBox(StableId tierId = null)
+            public void AddBox(
+                StableId tierId = null,
+                StableId instanceStableId = null)
             {
                 StableId definitionId = tierId ?? Definition.TierStableId;
+                StableId strongboxInstanceStableId = instanceStableId ?? BoxId;
                 PlayerHoldingsMutationResultV1 result = Holdings.Apply(
                     PlayerHoldingsCommandV1.AddStrongbox(
                         Id("holdtx.add-box"),
                         Id("holdop.add-box"),
                         HoldingsAuthority,
                         definitionId,
-                        BoxId,
+                        strongboxInstanceStableId,
                         HoldingProvenanceV1.Create(
                             Id("grant.add-box"),
                             Id("source.add-box"))));
                 Assert.That(result.Status, Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
             }
 
-            public void AddAndRegisterBox()
+            public void AddAndRegisterBox(
+                StableId instanceStableId = null,
+                ulong seed = 123456UL)
             {
-                AddBox();
-                Assert.That(RegisterBox().Status, Is.EqualTo(StrongboxRegistrationStatusV1.Registered));
+                AddBox(instanceStableId: instanceStableId);
+                Assert.That(
+                    RegisterBox(seed: seed, instanceStableId: instanceStableId).Status,
+                    Is.EqualTo(StrongboxRegistrationStatusV1.Registered));
             }
 
             public StrongboxOpenCommandV1 Command(
