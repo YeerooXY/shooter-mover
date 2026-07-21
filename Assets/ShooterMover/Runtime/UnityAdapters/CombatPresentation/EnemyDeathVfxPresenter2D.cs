@@ -142,11 +142,27 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             {
                 throw new ArgumentOutOfRangeException(nameof(initialLifecycleGeneration));
             }
+            if (boundHealthBar == null)
+            {
+                throw new ArgumentNullException(nameof(boundHealthBar));
+            }
+            if (sharedExplosionPool == null)
+            {
+                throw new ArgumentNullException(nameof(sharedExplosionPool));
+            }
+            if (configured
+                && (boundEntityStableId != entityInstanceStableId
+                    || !object.ReferenceEquals(healthBar, boundHealthBar)
+                    || !object.ReferenceEquals(explosionPool, sharedExplosionPool)))
+            {
+                throw new InvalidOperationException(
+                    "An enemy death VFX presenter cannot be rebound to another entity or source.");
+            }
+
             boundEntityStableId = entityInstanceStableId;
             lifecycleGeneration = initialLifecycleGeneration;
-            healthBar = boundHealthBar ?? throw new ArgumentNullException(nameof(boundHealthBar));
-            explosionPool = sharedExplosionPool
-                ?? throw new ArgumentNullException(nameof(sharedExplosionPool));
+            healthBar = boundHealthBar;
+            explosionPool = sharedExplosionPool;
             scaleConfiguration = configuredScale ?? new EnemyDeathVfxScaleConfigurationV1();
             configured = true;
         }
@@ -188,7 +204,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             }
 
             string ledgerKey = fact.LifecycleGeneration + "|" + fact.TerminalEventStableId;
-            if (!acceptedFacts.Add(ledgerKey))
+            if (acceptedFacts.Contains(ledgerKey))
             {
                 return EnemyDeathVfxPresentationStatusV1.ExactReplay;
             }
@@ -196,6 +212,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             float scale = scaleConfiguration.Resolve(fact.LargestPresentationDimension);
             healthBar.Clear();
             explosionPool.Spawn(fact.FinalWorldPosition, scale);
+            acceptedFacts.Add(ledgerKey);
             SpawnedCount++;
             LastResolvedScale = scale;
             return EnemyDeathVfxPresentationStatusV1.Spawned;
