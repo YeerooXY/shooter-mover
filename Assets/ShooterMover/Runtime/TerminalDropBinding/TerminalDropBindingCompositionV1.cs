@@ -81,6 +81,7 @@ namespace ShooterMover.TerminalDropBinding
 
         public static TerminalDropBindingCompositionV1 Create(
             EnemyCatalogV1 enemyCatalog,
+            IEnemyTerminalSourceContextResolverV1 enemySourceContexts,
             PropCatalogV1 propCatalog,
             IPropTerminalSourceContextResolverV1 propSourceContexts,
             ITerminalDropRunContextResolverV1 runContexts,
@@ -90,6 +91,8 @@ namespace ShooterMover.TerminalDropBinding
             IEnumerable<ITerminalDropFactAdapterV1> additionalAdapters = null)
         {
             if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
+            if (enemySourceContexts == null)
+                throw new ArgumentNullException(nameof(enemySourceContexts));
             if (propCatalog == null) throw new ArgumentNullException(nameof(propCatalog));
             if (propSourceContexts == null)
                 throw new ArgumentNullException(nameof(propSourceContexts));
@@ -101,7 +104,9 @@ namespace ShooterMover.TerminalDropBinding
 
             var adapters = new List<ITerminalDropFactAdapterV1>
             {
-                new EnemyDeathTerminalDropFactAdapterV1(enemyCatalog),
+                new ContextResolvedEnemyDeathTerminalDropFactAdapterV1(
+                    new EnemyDeathTerminalDropFactAdapterV1(enemyCatalog),
+                    enemySourceContexts),
                 new PropDestructionTerminalDropFactAdapterV1(
                     propCatalog,
                     propSourceContexts)
