@@ -30,6 +30,8 @@ The integration does not mutate or duplicate enemy health/death, player health, 
 - attributed participant and permanent character identity;
 - authoritative run tick.
 
+Every registered adapter must also implement `IAcceptedGameplayFactSourceFingerprintV1`. The authority requests the adapter's canonical immutable source-fact fingerprint before adaptation, so even adapter-rejected facts are replay-classified by their complete source contents rather than only their CLR type and rejection diagnostic. Unsupported types use the same deterministic public-property canonicalizer directly and still fail closed.
+
 `EnemyDeathConditionFactAdapterV1` validates the delivery against the immutable enemy death fact and projects one rich `ConditionObservedGameplayFactV1`. The projection preserves:
 
 - exact death/source fact ID and triggering damage/contact fact ID;
@@ -47,11 +49,11 @@ The adapter then creates the existing compact `RuntimeObservedFactV1` used by `F
 `AcceptedGameplayFactAdapterRegistryV1` registers adapters by source CLR fact type. The authority contains no fact-type switch. Adding a future accepted fact requires:
 
 1. one immutable source fact;
-2. one independent `IAcceptedGameplayFactAdapterV1` registration;
+2. one independent adapter implementing both `IAcceptedGameplayFactAdapterV1` and `IAcceptedGameplayFactSourceFingerprintV1`;
 3. ordinary `FactWindowConditionDefinitionV1`, status-effect definition, and binding data;
 4. focused tests.
 
-Unknown source types fail closed with `condition-fact-type-unsupported`.
+Unknown source types fail closed with `condition-fact-type-unsupported`. A registered adapter that omits or returns an invalid canonical source fingerprint also fails closed before fact-window mutation.
 
 The objective-collection fixture in the focused suite proves a second unrelated fact type can use the same public APIs without changing the condition authority, status-effect authority, or enemy-kill fixture.
 
@@ -75,10 +77,10 @@ The focused fixture is ordinary shared data, not a dedicated controller:
 ## Replay and conflict rules
 
 - First valid delivery operation and source fact: applied once.
-- Same delivery operation with identical facts: exact duplicate, no mutation.
-- Same source fact through another delivery operation with identical facts: exact duplicate, no mutation.
-- Reused delivery operation with changed facts: conflicting duplicate, no mutation.
-- Reused source fact ID with changed immutable attribution: conflicting duplicate, no mutation.
+- Same delivery operation with identical facts: exact duplicate, no mutation, and a duplicate result built from the original immutable replay snapshot rather than current state.
+- Same source fact through another delivery operation with identical full source contents: exact duplicate, no mutation, and the original accepted snapshot is reused.
+- Reused delivery operation with changed full source contents, including unsupported or adapter-rejected contents: conflicting duplicate, no mutation.
+- Reused source fact ID with changed immutable source fingerprint or changed adapted attribution: conflicting duplicate, no mutation.
 - Participants and runs have independent authorities and ledgers.
 - Unsupported facts and stale run/lifecycle facts reject before fact-window mutation.
 
@@ -90,7 +92,7 @@ Accepted reconstruction replaces every per-participant fact-window and status-ef
 
 - observed-window state;
 - temporary activation/effect state;
-- accepted source-fact audit;
+- accepted source-fact audit and source fingerprints;
 - delivery replay state;
 - tick-advance replay state.
 
@@ -98,9 +100,11 @@ Permanent skill-allocation fingerprints, permanent character IDs, stable actor I
 
 Old run IDs, old run lifecycle generations, and stale source actor lifecycle generations reject after reconstruction. Target enemy lifecycle generation is preserved from the already accepted `EnemyDeathFactV1`; freshness of that source fact remains enforced by the enemy authority before delivery.
 
-## Expiry
+## Expiry and advance atomicity
 
-Composition calls `Advance(operationId)` at an authoritative tick. The authority delegates to `StatusEffectAuthorityV1.Advance`; expired stacks disappear from its `RuntimeModifierSnapshotV1` projection at that tick. Exact advance replay returns the original immutable snapshot, while conflicting operation reuse fails closed.
+Composition calls `Advance(operationId)` at an authoritative tick. Before any participant is mutated, the authority prevalidates the run tick, subject, lifecycle generation, condition latest tick, and status-effect latest tick for every participant. A regressed clock therefore fails before the first downstream advance and does not consume the outer operation ID.
+
+After prevalidation, every `StatusEffectAuthorityV1.Advance` result is inspected and any unexpected downstream rejection fails closed instead of being silently recorded as a successful outer advance. Expired stacks disappear from the existing `RuntimeModifierSnapshotV1` projection at the authored tick. Exact advance replay returns the original immutable snapshot, while conflicting operation reuse fails closed.
 
 ## Expected RUN-SESSION-001 port
 
@@ -113,6 +117,15 @@ The future run aggregate only needs to provide:
 - deterministic calls to `Advance` as the run tick moves.
 
 No dependency on an unmerged run-session implementation is present.
+
+## Focused regression inventory
+
+The dedicated EditMode assembly now contains 20 focused tests. In addition to the original condition, expiry, isolation, reconstruction, and extensibility coverage, it explicitly proves:
+
+- delivery A, later state mutation B, then repeated replay of A returns identical replay fingerprints and A's original immutable snapshot without changing current state;
+- two different unsupported payloads under one delivery operation conflict;
+- two different invalid enemy-death facts producing the same adapter diagnostic conflict;
+- a two-participant regressed-clock advance fails before either participant mutates and the same outer operation remains usable at a later valid tick.
 
 ## Explicit exclusions
 
