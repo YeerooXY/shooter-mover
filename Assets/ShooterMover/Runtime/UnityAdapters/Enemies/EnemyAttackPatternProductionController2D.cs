@@ -234,14 +234,10 @@ namespace ShooterMover.UnityAdapters.Enemies
                 ReadyReasonId);
             EnemyCommittedAttackPatternResultV1 result =
                 executor.Commit(operationStableId, intent);
-            if (result != null
-                && result.Status
-                    != EnemyCommittedAttackPatternStatusV1.CooldownActive)
+            if (ShouldAdvanceOperationOrdinal(result)
+                && nextOperationOrdinal < long.MaxValue)
             {
-                if (nextOperationOrdinal < long.MaxValue)
-                {
-                    nextOperationOrdinal++;
-                }
+                nextOperationOrdinal++;
             }
             return result;
         }
@@ -264,6 +260,38 @@ namespace ShooterMover.UnityAdapters.Enemies
             executor.CancelLifecycle(
                 operationStableId,
                 runTime.CurrentTimeSeconds);
+        }
+
+        private static bool ShouldAdvanceOperationOrdinal(
+            EnemyCommittedAttackPatternResultV1 result)
+        {
+            if (result == null
+                || result.Status
+                    == EnemyCommittedAttackPatternStatusV1.CooldownActive)
+            {
+                return false;
+            }
+            if (result.IsAccepted
+                || result.Status
+                    == EnemyCommittedAttackPatternStatusV1.ConflictingDuplicate)
+            {
+                return true;
+            }
+            if (result.Status != EnemyCommittedAttackPatternStatusV1.Rejected)
+            {
+                return false;
+            }
+
+            // A pre-dispatch validation/authority rejection is terminal for this operation. A
+            // dispatch failure with a valid execution remains retryable unless it is an explicit
+            // conflicting duplicate, preserving the exact operation and committed aim facts.
+            if (result.Dispatch != null)
+            {
+                return result.Dispatch.Rejection
+                    == EnemyAttackPatternDispatchRejectionCodeV1
+                        .ConflictingDuplicate;
+            }
+            return result.Execution == null;
         }
 
         private static bool WithinArc(
