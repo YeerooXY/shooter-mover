@@ -18,30 +18,32 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void TwoCharactersMutateDifferentlyAndRestartWithoutCrossSlotLeakage()
         {
-            TestGraphFactory factory;
+            FakeGraphFactory factory;
             PlayerAccountSaveAuthorityV1 authority;
-            CharacterCompositionCoordinatorV1 composition = Composition(
+            CharacterCompositionCoordinatorV1 composition = CreateComposition(
                 Account(Character(0, "alpha"), Character(1, "bravo")),
                 out factory,
                 out authority);
 
             Assert.That(composition.Select(0).Succeeded, Is.True);
-            TestGraph alpha = (TestGraph)composition.ActiveRuntime;
+            FakeGraph alpha = (FakeGraph)composition.ActiveRuntime;
             alpha.State(KnownSaveComponentDefinitionsV1.MoneyWallet()).Value =
                 "alpha-money-mutated";
-            Assert.That(composition.PersistActive(
-                Id("operation.save-alpha")).Succeeded, Is.True);
+            Assert.That(
+                composition.PersistActive(Id("operation.save-alpha")).Succeeded,
+                Is.True);
 
             Assert.That(composition.Select(1).Succeeded, Is.True);
             Assert.That(alpha.IsDisposed, Is.True);
-            TestGraph bravo = (TestGraph)composition.ActiveRuntime;
-            Assert.That(bravo.State(
-                KnownSaveComponentDefinitionsV1.MoneyWallet()).Value,
+            FakeGraph bravo = (FakeGraph)composition.ActiveRuntime;
+            Assert.That(
+                bravo.State(KnownSaveComponentDefinitionsV1.MoneyWallet()).Value,
                 Is.EqualTo("bravo-money"));
             bravo.State(KnownSaveComponentDefinitionsV1.PlayerExperience()).Value =
                 "bravo-xp-mutated";
-            Assert.That(composition.PersistActive(
-                Id("operation.save-bravo")).Succeeded, Is.True);
+            Assert.That(
+                composition.PersistActive(Id("operation.save-bravo")).Succeeded,
+                Is.True);
 
             composition.Dispose();
             var restarted = new CharacterCompositionCoordinatorV1(
@@ -51,30 +53,34 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 snapshot => SaveComponentValidationResultV1.Accept());
 
             Assert.That(restarted.Select(0).Succeeded, Is.True);
-            TestGraph restoredAlpha = (TestGraph)restarted.ActiveRuntime;
-            Assert.That(restoredAlpha.State(
-                KnownSaveComponentDefinitionsV1.MoneyWallet()).Value,
+            FakeGraph restoredAlpha = (FakeGraph)restarted.ActiveRuntime;
+            Assert.That(
+                restoredAlpha.State(
+                    KnownSaveComponentDefinitionsV1.MoneyWallet()).Value,
                 Is.EqualTo("alpha-money-mutated"));
-            Assert.That(restoredAlpha.State(
-                KnownSaveComponentDefinitionsV1.PlayerExperience()).Value,
+            Assert.That(
+                restoredAlpha.State(
+                    KnownSaveComponentDefinitionsV1.PlayerExperience()).Value,
                 Is.EqualTo("alpha-xp"));
 
             Assert.That(restarted.Select(1).Succeeded, Is.True);
-            TestGraph restoredBravo = (TestGraph)restarted.ActiveRuntime;
-            Assert.That(restoredBravo.State(
-                KnownSaveComponentDefinitionsV1.MoneyWallet()).Value,
+            FakeGraph restoredBravo = (FakeGraph)restarted.ActiveRuntime;
+            Assert.That(
+                restoredBravo.State(
+                    KnownSaveComponentDefinitionsV1.MoneyWallet()).Value,
                 Is.EqualTo("bravo-money"));
-            Assert.That(restoredBravo.State(
-                KnownSaveComponentDefinitionsV1.PlayerExperience()).Value,
+            Assert.That(
+                restoredBravo.State(
+                    KnownSaveComponentDefinitionsV1.PlayerExperience()).Value,
                 Is.EqualTo("bravo-xp-mutated"));
         }
 
         [Test]
-        public void ReloadRestoresEveryKnownCharacterComponentIncludingOptionalBoxes()
+        public void ReloadRestoresEveryKnownCharacterComponentIncludingStrongboxes()
         {
-            TestGraphFactory factory;
+            FakeGraphFactory factory;
             PlayerAccountSaveAuthorityV1 ignored;
-            CharacterCompositionCoordinatorV1 composition = Composition(
+            CharacterCompositionCoordinatorV1 composition = CreateComposition(
                 Account(Character(0, "all")),
                 out factory,
                 out ignored);
@@ -82,7 +88,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             CharacterCompositionResultV1 result = composition.Select(0);
 
             Assert.That(result.Succeeded, Is.True, result.Diagnostic);
-            TestGraph graph = (TestGraph)composition.ActiveRuntime;
+            FakeGraph graph = (FakeGraph)composition.ActiveRuntime;
             foreach (SaveComponentDefinitionV1 definition in Definitions())
             {
                 Assert.That(
@@ -95,16 +101,15 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void SwitchingDisposesOldGraphBeforeNewGraphFactoryRuns()
         {
-            TestGraphFactory factory;
+            FakeGraphFactory factory;
             PlayerAccountSaveAuthorityV1 ignored;
-            CharacterCompositionCoordinatorV1 composition = Composition(
+            CharacterCompositionCoordinatorV1 composition = CreateComposition(
                 Account(Character(0, "first"), Character(1, "second")),
                 out factory,
                 out ignored);
             Assert.That(composition.Select(0).Succeeded, Is.True);
-            TestGraph first = (TestGraph)composition.ActiveRuntime;
-            factory.BeforeCreate = () =>
-                Assert.That(first.IsDisposed, Is.True);
+            FakeGraph first = (FakeGraph)composition.ActiveRuntime;
+            factory.BeforeCreate = () => Assert.That(first.IsDisposed, Is.True);
 
             Assert.That(composition.Select(1).Succeeded, Is.True);
 
@@ -114,75 +119,76 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         [Test]
-        public void CorruptSelectedCharacterFailsSafelyAndOtherSlotsRemainUntouched()
+        public void CorruptSelectedCharacterFailsSafelyAndOtherSlotsStayUnchanged()
         {
             CharacterInstanceSnapshotV1 valid = Character(0, "valid");
             CharacterInstanceSnapshotV1 corrupt = ReplaceComponent(
                 Character(1, "corrupt"),
                 KnownSaveComponentDefinitionsV1.PlayerExperience(),
                 "corrupt-payload");
-            PlayerAccountSnapshotV1 account = Account(valid, corrupt);
-            TestGraphFactory factory;
+            FakeGraphFactory factory;
             PlayerAccountSaveAuthorityV1 authority;
-            CharacterCompositionCoordinatorV1 composition = Composition(
-                account,
+            CharacterCompositionCoordinatorV1 composition = CreateComposition(
+                Account(valid, corrupt),
                 out factory,
                 out authority);
             Assert.That(composition.Select(0).Succeeded, Is.True);
-            TestGraph old = (TestGraph)composition.ActiveRuntime;
+            FakeGraph previous = (FakeGraph)composition.ActiveRuntime;
             string validFingerprint = authority.Current.CharacterAt(0).Fingerprint;
             string corruptFingerprint = authority.Current.CharacterAt(1).Fingerprint;
 
-            CharacterCompositionResultV1 rejected = composition.Select(1);
+            CharacterCompositionResultV1 result = composition.Select(1);
 
-            Assert.That(rejected.Status,
+            Assert.That(
+                result.Status,
                 Is.EqualTo(CharacterCompositionStatusV1.Rejected));
-            Assert.That(rejected.Diagnostic,
-                Does.Contain("test-component-corrupt"));
-            Assert.That(old.IsDisposed, Is.True);
+            Assert.That(result.Diagnostic, Does.Contain("test-component-corrupt"));
+            Assert.That(previous.IsDisposed, Is.True);
             Assert.That(composition.ActiveRuntime, Is.Null);
             Assert.That(composition.ActiveSlotIndex, Is.EqualTo(-1));
-            Assert.That(authority.Current.CharacterAt(0).Fingerprint,
+            Assert.That(
+                authority.Current.CharacterAt(0).Fingerprint,
                 Is.EqualTo(validFingerprint));
-            Assert.That(authority.Current.CharacterAt(1).Fingerprint,
+            Assert.That(
+                authority.Current.CharacterAt(1).Fingerprint,
                 Is.EqualTo(corruptFingerprint));
         }
 
         [Test]
-        public void FailedDurableSaveRollsAggregateBackToLastValidSnapshot()
+        public void FailedDurableSaveRollsBackToLastValidAggregate()
         {
-            var accountAuthority = new PlayerAccountSaveAuthorityV1(
+            var authority = new PlayerAccountSaveAuthorityV1(
                 Account(Character(0, "rollback")));
-            PlayerAccountSnapshotV1 before = accountAuthority.Current;
+            PlayerAccountSnapshotV1 before = authority.Current;
             var composition = new CharacterCompositionCoordinatorV1(
-                accountAuthority,
-                new TestGraphFactory(),
+                authority,
+                new FakeGraphFactory(),
                 snapshot => new PlayerAccountStoreResultV1(
                     PlayerAccountStoreStatusV1.IoFailure,
                     "simulated-write-failure",
                     null),
                 snapshot => SaveComponentValidationResultV1.Accept());
             Assert.That(composition.Select(0).Succeeded, Is.True);
-            ((TestGraph)composition.ActiveRuntime).State(
-                KnownSaveComponentDefinitionsV1.ScrapWallet()).Value =
+            ((FakeGraph)composition.ActiveRuntime)
+                .State(KnownSaveComponentDefinitionsV1.ScrapWallet()).Value =
                     "unsaved-scrap";
 
             CharacterCompositionResultV1 result = composition.PersistActive(
                 Id("operation.failed-save"));
 
-            Assert.That(result.Status,
+            Assert.That(
+                result.Status,
                 Is.EqualTo(CharacterCompositionStatusV1.Rejected));
-            Assert.That(accountAuthority.Current.Fingerprint,
-                Is.EqualTo(before.Fingerprint));
+            Assert.That(authority.Current.Fingerprint, Is.EqualTo(before.Fingerprint));
         }
 
         [Test]
-        public void LegacyMigrationRunsOncePreservesClassAndAvoidsDuplicateComponents()
+        public void LegacyMigrationRunsOncePreservesClassAndAvoidsDuplicates()
         {
             StableId accountId = Id("account.migration");
             var authority = new PlayerAccountSaveAuthorityV1(
                 PlayerAccountSnapshotV1.Empty(accountId));
-            var factory = new TestGraphFactory();
+            var factory = new FakeGraphFactory();
             var migration = new LegacyCharacterProfileMigrationV1(
                 authority,
                 factory,
@@ -199,21 +205,27 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             LegacyCharacterProfileMigrationResultV1 second =
                 migration.Migrate(profiles);
 
-            Assert.That(first.Status,
+            Assert.That(
+                first.Status,
                 Is.EqualTo(CharacterCompositionStatusV1.Migrated));
-            Assert.That(second.Status,
+            Assert.That(
+                second.Status,
                 Is.EqualTo(CharacterCompositionStatusV1.ExactNoChange));
-            Assert.That(authority.Current.Fingerprint,
-                Is.EqualTo(afterFirst.Fingerprint));
-            Assert.That(afterFirst.CharacterAt(0).ClassDefinitionStableId,
+            Assert.That(authority.Current.Fingerprint, Is.EqualTo(afterFirst.Fingerprint));
+            Assert.That(
+                afterFirst.CharacterAt(0).ClassDefinitionStableId,
                 Is.EqualTo(Id("loadout-profile.aggressive")));
-            Assert.That(afterFirst.CharacterAt(4).ClassDefinitionStableId,
+            Assert.That(
+                afterFirst.CharacterAt(4).ClassDefinitionStableId,
                 Is.EqualTo(Id("loadout-profile.healer")));
-            Assert.That(afterFirst.CharacterAt(0).Components.Count,
+            Assert.That(
+                afterFirst.CharacterAt(0).Components.Count,
                 Is.EqualTo(Definitions().Count));
-            Assert.That(afterFirst.CharacterAt(4).Components.Count,
+            Assert.That(
+                afterFirst.CharacterAt(4).Components.Count,
                 Is.EqualTo(Definitions().Count));
-            Assert.That(afterFirst.CharacterAt(0).CharacterInstanceStableId,
+            Assert.That(
+                afterFirst.CharacterAt(0).CharacterInstanceStableId,
                 Is.EqualTo(LegacyCharacterProfileMigrationV1.ExactCharacterId(
                     accountId,
                     profiles[0])));
@@ -221,12 +233,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         [Test]
-        public void ProductionFactoryRoundTripsRealAuthorityAdaptersAndExactLoadout()
+        public void ProductionFactoryRoundTripsRealAuthoritiesAndExactBindings()
         {
             var factory = ProductionCharacterRuntimeGraphFactoryV1
                 .CreateVerticalSliceDefaults();
-            StableId exactCharacter = Id("character-instance.real-roundtrip");
-            StableId classId = Id("loadout-profile.aggressive");
+            StableId characterId = Id("character-instance.real-roundtrip");
+            StableId classId = Id("loadout-profile.juggernaut");
             PlayerRouteProfilePayloadV1 legacyRoute =
                 PlayerRouteProfilePayloadV1.Create(
                     Id("character.frontier"),
@@ -244,7 +256,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     });
             ICharacterRuntimeGraphV1 starter = factory.CreateStarter(
                 2,
-                exactCharacter,
+                characterId,
                 classId,
                 "Real Pilot",
                 legacyRoute);
@@ -253,15 +265,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     starter.SaveAdapters);
             starter.Dispose();
             var character = new CharacterInstanceSnapshotV1(
-                exactCharacter,
+                characterId,
                 classId,
                 2,
                 "Real Pilot",
                 0L,
                 components);
-            var authority = new PlayerAccountSaveAuthorityV1(Account(character));
             var composition = new CharacterCompositionCoordinatorV1(
-                authority,
+                new PlayerAccountSaveAuthorityV1(Account(character)),
                 factory,
                 Saved);
 
@@ -272,30 +283,31 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 composition.ActiveRuntime;
             InventoryLoadoutAuthoritySnapshotV1 loadout =
                 graph.LoadoutRuntime.LoadoutAuthority.ExportSnapshot();
-            Assert.That(loadout.GetBinding(
-                    InventoryLoadoutSlotsV1.Weapon1.SlotStableId)
+            Assert.That(
+                loadout.GetBinding(InventoryLoadoutSlotIdsV1.WeaponOne)
                     .EquipmentInstanceStableId,
                 Is.EqualTo(ProductionStarterWeaponCatalogV1
                     .BlasterEquipmentInstanceStableId));
-            Assert.That(loadout.GetBinding(
-                    InventoryLoadoutSlotsV1.Weapon4.SlotStableId)
+            Assert.That(
+                loadout.GetBinding(InventoryLoadoutSlotIdsV1.WeaponFour)
                     .EquipmentInstanceStableId,
                 Is.EqualTo(ProductionStarterWeaponCatalogV1
                     .ArcEquipmentInstanceStableId));
-            Assert.That(graph.LoadoutRuntime.Holdings.ExportSnapshot()
-                .UniqueHoldings.Any(item =>
-                    item.InstanceStableId
-                        == ProductionStarterWeaponCatalogV1
-                            .RocketEquipmentInstanceStableId),
+            Assert.That(
+                graph.LoadoutRuntime.Holdings.ExportSnapshot()
+                    .UniqueHoldings.Any(item =>
+                        item.InstanceStableId
+                            == ProductionStarterWeaponCatalogV1
+                                .RocketEquipmentInstanceStableId),
                 Is.True);
         }
 
-        private static CharacterCompositionCoordinatorV1 Composition(
+        private static CharacterCompositionCoordinatorV1 CreateComposition(
             PlayerAccountSnapshotV1 account,
-            out TestGraphFactory factory,
+            out FakeGraphFactory factory,
             out PlayerAccountSaveAuthorityV1 authority)
         {
-            factory = new TestGraphFactory();
+            factory = new FakeGraphFactory();
             authority = new PlayerAccountSaveAuthorityV1(account);
             return new CharacterCompositionCoordinatorV1(
                 authority,
@@ -333,11 +345,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             int slotIndex,
             string prefix)
         {
-            var states = Definitions().ToDictionary(
-                definition => definition.ComponentStableId,
-                definition => new MutableState(
-                    prefix + "-" + Suffix(definition)));
-            TestGraph graph = TestGraph.Create(
+            Dictionary<StableId, MutableState> states = Definitions()
+                .ToDictionary(
+                    definition => definition.ComponentStableId,
+                    definition => new MutableState(
+                        prefix + "-" + Suffix(definition)));
+            FakeGraph graph = FakeGraph.Create(
                 new CharacterInstanceSnapshotV1(
                     Id("character-instance." + prefix),
                     Id("loadout-profile." + prefix),
@@ -364,9 +377,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             SaveComponentDefinitionV1 definition,
             string payload)
         {
-            var components = character.Components.Values.ToDictionary(
-                item => item.ComponentStableId,
-                item => item);
+            Dictionary<StableId, SaveComponentSnapshotV1> components =
+                character.Components.Values.ToDictionary(
+                    item => item.ComponentStableId,
+                    item => item);
             components[definition.ComponentStableId] =
                 new SaveComponentSnapshotV1(
                     definition.ComponentStableId,
@@ -383,18 +397,18 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         private static LegacyCharacterProfileV1 Legacy(
-            int slot,
-            string name,
-            string character,
+            int slotIndex,
+            string displayName,
+            string characterName,
             string className)
         {
             return new LegacyCharacterProfileV1(
-                slot,
-                name,
-                Id("character." + character),
+                slotIndex,
+                displayName,
+                Id("character." + characterName),
                 Id("loadout-profile." + className),
-                "legacy-fingerprint-" + slot,
-                "starter-" + slot);
+                "legacy-fingerprint-" + slotIndex,
+                "starter-" + slotIndex);
         }
 
         private static IReadOnlyList<SaveComponentDefinitionV1> Definitions()
@@ -423,11 +437,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             return StableId.Parse(value);
         }
 
-        private sealed class TestGraphFactory :
+        private sealed class FakeGraphFactory :
             ICharacterRuntimeGraphFactoryV1,
             IStarterCharacterRuntimeGraphFactoryV1
         {
-            public List<TestGraph> Created { get; } = new List<TestGraph>();
+            public List<FakeGraph> Created { get; } = new List<FakeGraph>();
 
             public Action BeforeCreate { get; set; }
 
@@ -439,10 +453,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     BeforeCreate();
                     BeforeCreate = null;
                 }
-                var states = Definitions().ToDictionary(
-                    definition => definition.ComponentStableId,
-                    definition => new MutableState("empty"));
-                TestGraph graph = TestGraph.Create(character, states);
+                Dictionary<StableId, MutableState> states = Definitions()
+                    .ToDictionary(
+                        definition => definition.ComponentStableId,
+                        definition => new MutableState("empty"));
+                FakeGraph graph = FakeGraph.Create(character, states);
                 Created.Add(graph);
                 return graph;
             }
@@ -457,11 +472,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 string prefix = legacyContext == null
                     ? "starter"
                     : legacyContext.ToString();
-                var states = Definitions().ToDictionary(
-                    definition => definition.ComponentStableId,
-                    definition => new MutableState(
-                        prefix + "-" + Suffix(definition)));
-                TestGraph graph = TestGraph.Create(
+                Dictionary<StableId, MutableState> states = Definitions()
+                    .ToDictionary(
+                        definition => definition.ComponentStableId,
+                        definition => new MutableState(
+                            prefix + "-" + Suffix(definition)));
+                FakeGraph graph = FakeGraph.Create(
                     new CharacterInstanceSnapshotV1(
                         exactCharacterInstanceStableId,
                         classDefinitionStableId,
@@ -475,11 +491,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             }
         }
 
-        private sealed class TestGraph : ICharacterRuntimeGraphV1
+        private sealed class FakeGraph : ICharacterRuntimeGraphV1
         {
             private readonly Dictionary<StableId, MutableState> states;
 
-            private TestGraph(
+            private FakeGraph(
                 CharacterInstanceSnapshotV1 character,
                 Dictionary<StableId, MutableState> states,
                 IReadOnlyList<ISaveComponentAdapterV1> adapters)
@@ -495,7 +511,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             public bool IsDisposed { get; private set; }
 
-            public static TestGraph Create(
+            public static FakeGraph Create(
                 CharacterInstanceSnapshotV1 character,
                 Dictionary<StableId, MutableState> states)
             {
@@ -524,7 +540,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                                 return SaveComponentApplyResultV1.Applied();
                             }));
                 }
-                return new TestGraph(character, states, adapters);
+                return new FakeGraph(character, states, adapters);
             }
 
             public MutableState State(SaveComponentDefinitionV1 definition)
