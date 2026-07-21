@@ -26,7 +26,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .run-session-payload/part* | base64 --decode > /tmp/run-session.tar.gz
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+
+          alphabet = set(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\r\n")
+          normalized = []
+          for path in sorted(Path(".run-session-payload").glob("part*")):
+              raw = path.read_bytes().strip()
+              first = base64.b64decode(raw, validate=True)
+              # Earlier connector publication used double base64 for a subset of
+              # chunks. Normalize those back to their original archive-base64 text.
+              if first and set(first).issubset(alphabet):
+                  candidate = first.strip()
+                  base64.b64decode(candidate, validate=True)
+                  normalized.append(candidate)
+              else:
+                  normalized.append(raw)
+          Path("/tmp/run-session.b64").write_bytes(b"".join(normalized))
+          PY
+          base64 --decode /tmp/run-session.b64 > /tmp/run-session.tar.gz
           tar -tzf /tmp/run-session.tar.gz
           tar -xzf /tmp/run-session.tar.gz
           python3 - <<'PY'
