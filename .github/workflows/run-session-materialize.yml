@@ -22,23 +22,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .run-session-payload/part* \
-            | base64 --decode \
-            > /tmp/run-session.tar.gz
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          import io
+          import tarfile
 
-          tar -tzf /tmp/run-session.tar.gz
-          tar -xzf /tmp/run-session.tar.gz
+          encoded = b''.join(
+              path.read_bytes().strip()
+              for path in sorted(Path('.run-session-payload').glob('part*'))
+          )
+          archive = base64.b64decode(encoded, validate=True)
+          Path('/tmp/run-session.tar.gz').write_bytes(archive)
+          with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as handle:
+              print('\n'.join(handle.getnames()))
+              handle.extractall('.', filter='data')
+          PY
+
+          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionAuthorityV1.cs
+          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionPortsV1.cs
+          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionSnapshotsV1.cs
+          test -f Assets/ShooterMover/Tests/EditMode/RunSessions/RunSessionAuthorityV1Tests.cs
 
           rm -rf .run-session-payload
           rm -f .github/workflows/run-session-materialize.yml
           rm -f .run-session-repair-diagnostic.txt
           rmdir .github/workflows 2>/dev/null || true
           rmdir .github 2>/dev/null || true
-
-          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionAuthorityV1.cs
-          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionPortsV1.cs
-          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionSnapshotsV1.cs
-          test -f Assets/ShooterMover/Tests/EditMode/RunSessions/RunSessionAuthorityV1Tests.cs
 
           test ! -e .run-session-payload
           test ! -e .github/workflows/run-session-materialize.yml
