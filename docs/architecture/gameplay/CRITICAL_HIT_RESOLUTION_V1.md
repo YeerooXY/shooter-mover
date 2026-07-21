@@ -40,11 +40,24 @@ Permanent skills/equipment and temporary event/status contributions continue to 
 
 For `cannot-crit`, profile critical modifiers are deliberately ignored for the critical decision and multiplier. Outgoing damage still applies normally.
 
+## Shot and hit identity
+
+Every critical-resolution command carries two separate sequence facts:
+
+- `ShotSequence` identifies the fire/attack execution;
+- `HitOrdinal` identifies one deterministic contact, pellet, chain hop, field tick target, or other hit evaluation within that shot.
+
+A shotgun shot may therefore use one shot sequence with ordinals `0..N-1`. Two contacts against the same target remain independent rolls when their ordinals differ. Negative shot sequences or hit ordinals reject before ledger insertion.
+
+The compatibility constructor maps the former single `HitSequence` value to `ShotSequence` with ordinal `0`; new execution adapters should always supply both explicit facts.
+
 ## Deterministic roll domain
 
 The SHA-256 domain includes:
 
-- operation ID, deterministic seed, and hit sequence;
+- the complete command fingerprint, including accepted-hit facts and history counters;
+- operation ID and deterministic seed;
+- explicit shot sequence and hit ordinal;
 - explicit run ID, run-context fingerprint, and run-profile fingerprint;
 - equipment-instance identity when present;
 - effect-definition identity and critical-policy identity;
@@ -53,12 +66,12 @@ The SHA-256 domain includes:
 - effect-instance identity, hit-admission policy, and geometry;
 - base damage and damage channel.
 
-The first 64 digest bits produce a decimal sample in `[0, 1)`. Identical immutable facts produce the same roll, outcome, damage, and fingerprints. Changing run, equipment instance, effect definition, policy, source, target, sequence, seed, profile, base damage, or channel changes the domain.
+The first 64 digest bits produce a decimal sample in `[0, 1)`. Identical immutable facts produce the same roll, outcome, damage, and fingerprints. Changing run, equipment instance, effect definition, policy, source, target, shot sequence, hit ordinal, seed, profile, base damage, or channel changes the domain.
 
 ## Resolution order
 
 1. Resolve exact operation replay/conflict.
-2. Validate the accepted hit, run profile, and effect execution facts.
+2. Validate shot sequence, hit ordinal, accepted hit, run profile, and effect execution facts.
 3. Resolve the explicit critical policy from the immutable registry.
 4. Calculate ordinary damage: `base damage × outgoing damage multiplier`.
 5. Apply policy rules to profile chance and multiplier.
@@ -73,7 +86,7 @@ The critical operation ID is reused as the downstream damage event ID, preservin
 
 - First valid operation: `Applied`.
 - Exact replay: `Duplicate`, returning the original immutable resolved object.
-- Same operation ID with changed facts, including changed policy/equipment/effect identity: `ConflictingDuplicate`.
+- Same operation ID with changed facts, including changed shot sequence, hit ordinal, policy, equipment, effect, or target identity: `ConflictingDuplicate`.
 - Invalid or non-damage-eligible input: `Rejected` without consuming an applied operation.
 
 ## Focused coverage
@@ -82,7 +95,10 @@ EditMode tests cover:
 
 - deterministic equality for identical immutable facts;
 - explicit run, equipment-instance, and effect-definition domain separation;
-- exact duplicate and conflicting operation reuse;
+- same shot and target with ordinal `0` versus `1` producing independent roll domains;
+- shot `10` versus `11` with the same ordinal and target producing independent roll domains;
+- the same shot and ordinal with a changed target producing independent roll domains;
+- exact replay and conflicting operation reuse when shot sequence or hit ordinal changes;
 - outgoing damage before critical multiplication;
 - `100%` character crit chance plus `cannot-crit` producing ordinary damage;
 - guaranteed, modified-chance, and modified-multiplier policies;
@@ -90,6 +106,6 @@ EditMode tests cover:
 - every supported geometry respecting an explicit non-crittable policy;
 - permanent, event, and conditional status modifiers through shared profile composition;
 - multiplayer attribution and replay-safe downstream command identity;
-- unknown policy and non-eligible hit rejection.
+- unknown policy, negative ordinal, and non-eligible hit rejection.
 
 No scenes, collision callbacks, weapon-specific controllers, health authorities, reward systems, inventory systems, or status authorities are modified.
