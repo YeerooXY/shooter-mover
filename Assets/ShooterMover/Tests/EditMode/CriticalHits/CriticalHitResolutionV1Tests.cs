@@ -17,9 +17,10 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
             new CombatHitPolicyV1(CombatHitPolicyRegistryV1.CreateDefault());
 
         [Test]
-        public void IdenticalImmutableHitFacts_ProduceIdenticalResolvedFingerprint()
+        public void IdenticalImmutableFacts_ProduceIdenticalResolution()
         {
             RunCombatProfileV1 profile = Profile(
+                "run.fixture-a",
                 "player-a",
                 0.42m,
                 2.25m,
@@ -35,7 +36,10 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 7L,
                 40m,
                 profile,
-                hit);
+                hit,
+                CriticalHitPolicyIdsV1.Normal,
+                "weapon-blaster",
+                "blaster-instance-a");
             CriticalHitResolutionCommandV1 secondCommand = Command(
                 "operation-a",
                 "run-seed-991",
@@ -46,7 +50,10 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     Actor("source-a", "players", "player-a", 3L),
                     Actor("target-a", "enemies", "enemy-a", 8L),
                     "effect-a",
-                    CombatEffectGeometryKindV1.Projectile));
+                    CombatEffectGeometryKindV1.Projectile),
+                CriticalHitPolicyIdsV1.Normal,
+                "weapon-blaster",
+                "blaster-instance-a");
 
             CriticalHitResolutionResultV1 first =
                 new CriticalHitResolutionAuthorityV1().Resolve(firstCommand);
@@ -72,30 +79,34 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
         }
 
         [Test]
-        public void SourceTargetEffectSequenceAndSeed_ChangeRollDomain()
+        public void RunEquipmentAndEffectDefinition_AreExplicitRollDomainFacts()
         {
-            RunCombatProfileV1 profile = Profile(
-                "player-a",
-                0.5m,
-                2m,
-                1m);
             CombatActorSnapshotV1 source =
                 Actor("source-a", "players", "player-a", 1L);
             CombatActorSnapshotV1 target =
                 Actor("target-a", "enemies", "enemy-a", 1L);
-            CriticalHitResolutionCommandV1 baselineCommand = Command(
-                "operation-domain",
-                "seed-a",
-                10L,
-                20m,
-                profile,
-                AcceptedHit(
-                    source,
-                    target,
-                    "effect-a",
-                    CombatEffectGeometryKindV1.Projectile));
-            CriticalHitResolutionResultV1 baseline =
-                new CriticalHitResolutionAuthorityV1().Resolve(baselineCommand);
+            CombatHitPolicyResultV1 hit = AcceptedHit(
+                source,
+                target,
+                "shared-effect-instance",
+                CombatEffectGeometryKindV1.Projectile);
+            RunCombatProfileV1 profileA = Profile(
+                "run.fixture-a",
+                "player-a",
+                0.5m,
+                2m,
+                1m);
+            CriticalHitResolutionResultV1 baseline = ResolveNew(
+                Command(
+                    "operation-domain",
+                    "seed-a",
+                    10L,
+                    20m,
+                    profileA,
+                    hit,
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-blaster",
+                    "equipment-a"));
 
             var variants = new[]
             {
@@ -104,65 +115,41 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     "seed-a",
                     10L,
                     20m,
-                    profile,
-                    AcceptedHit(
-                        Actor("source-b", "players", "player-a", 1L),
-                        target,
-                        "effect-a",
-                        CombatEffectGeometryKindV1.Projectile)),
+                    Profile(
+                        "run.fixture-b",
+                        "player-a",
+                        0.5m,
+                        2m,
+                        1m),
+                    hit,
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-blaster",
+                    "equipment-a"),
                 Command(
                     "operation-domain",
                     "seed-a",
                     10L,
                     20m,
-                    profile,
-                    AcceptedHit(
-                        source,
-                        Actor("target-b", "enemies", "enemy-b", 1L),
-                        "effect-a",
-                        CombatEffectGeometryKindV1.Projectile)),
+                    profileA,
+                    hit,
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-blaster",
+                    "equipment-b"),
                 Command(
                     "operation-domain",
                     "seed-a",
                     10L,
                     20m,
-                    profile,
-                    AcceptedHit(
-                        source,
-                        target,
-                        "effect-b",
-                        CombatEffectGeometryKindV1.Projectile)),
-                Command(
-                    "operation-domain",
-                    "seed-a",
-                    11L,
-                    20m,
-                    profile,
-                    AcceptedHit(
-                        source,
-                        target,
-                        "effect-a",
-                        CombatEffectGeometryKindV1.Projectile)),
-                Command(
-                    "operation-domain",
-                    "seed-b",
-                    10L,
-                    20m,
-                    profile,
-                    AcceptedHit(
-                        source,
-                        target,
-                        "effect-a",
-                        CombatEffectGeometryKindV1.Projectile)),
+                    profileA,
+                    hit,
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-shotgun",
+                    "equipment-a"),
             };
 
-            Assert.That(baseline.ResolvedDamage, Is.Not.Null);
             foreach (CriticalHitResolutionCommandV1 variantCommand in variants)
             {
-                CriticalHitResolutionResultV1 variant =
-                    new CriticalHitResolutionAuthorityV1().Resolve(
-                        variantCommand);
-                Assert.That(variant.ResolvedDamage, Is.Not.Null);
+                CriticalHitResolutionResultV1 variant = ResolveNew(variantCommand);
                 Assert.That(
                     variant.ResolvedDamage.RollDomainFingerprint,
                     Is.Not.EqualTo(
@@ -174,6 +161,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
         public void DuplicateAndConflictingOperations_DoNotResolveTwice()
         {
             RunCombatProfileV1 profile = Profile(
+                "run.fixture-a",
                 "player-a",
                 0.5m,
                 2m,
@@ -189,7 +177,10 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 4L,
                 25m,
                 profile,
-                hit);
+                hit,
+                CriticalHitPolicyIdsV1.Normal,
+                "weapon-blaster",
+                "equipment-a");
             var authority = new CriticalHitResolutionAuthorityV1();
 
             CriticalHitResolutionResultV1 applied = authority.Resolve(command);
@@ -200,15 +191,21 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     4L,
                     25m,
                     profile,
-                    hit));
+                    hit,
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-blaster",
+                    "equipment-a"));
             CriticalHitResolutionResultV1 conflict = authority.Resolve(
                 Command(
                     "operation-replay",
                     "seed-a",
-                    5L,
+                    4L,
                     25m,
                     profile,
-                    hit));
+                    hit,
+                    CriticalHitPolicyIdsV1.CannotCrit,
+                    "weapon-blaster",
+                    "equipment-a"));
 
             Assert.That(applied.Status, Is.EqualTo(
                 CriticalHitResolutionStatusV1.Applied));
@@ -226,39 +223,209 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
         }
 
         [Test]
-        public void GuaranteedNonCriticalAndCriticalEdges_ResolveExactDamage()
+        public void NormalPolicy_AppliesOutgoingDamageBeforeCriticalMultiplier()
         {
+            CriticalHitResolutionResultV1 result = ResolveNew(
+                Command(
+                    "operation-normal",
+                    "edge-seed",
+                    0L,
+                    40m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        2.5m,
+                        1.25m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "normal-effect",
+                        CombatEffectGeometryKindV1.Projectile),
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-blaster",
+                    "equipment-a"));
+
+            Assert.That(result.ResolvedDamage.IsCritical, Is.True);
+            Assert.That(result.ResolvedDamage.OrdinaryDamage, Is.EqualTo(50m));
+            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(125m));
+        }
+
+        [Test]
+        public void CannotCritPolicy_IgnoresOneHundredPercentCharacterCritModifiers()
+        {
+            CriticalHitResolutionResultV1 result = ResolveNew(
+                Command(
+                    "operation-field-cannot-crit",
+                    "field-seed",
+                    1L,
+                    40m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        9m,
+                        1.25m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "persistent-field-a",
+                        CombatEffectGeometryKindV1.PersistentField),
+                    CriticalHitPolicyIdsV1.CannotCrit,
+                    "acid-persistent-field",
+                    "equipment-acid-a"));
+
+            Assert.That(result.Status, Is.EqualTo(
+                CriticalHitResolutionStatusV1.Applied));
+            Assert.That(result.ResolvedDamage.IsCritical, Is.False);
+            Assert.That(
+                result.ResolvedDamage.PolicyApplication.CanCrit,
+                Is.False);
+            Assert.That(result.ResolvedDamage.CriticalChance, Is.EqualTo(0m));
+            Assert.That(result.ResolvedDamage.CriticalMultiplier, Is.EqualTo(1m));
+            Assert.That(result.ResolvedDamage.OrdinaryDamage, Is.EqualTo(50m));
+            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(50m));
+        }
+
+        [Test]
+        public void GuaranteedPolicy_CritsWithZeroCharacterCriticalChance()
+        {
+            CriticalHitResolutionResultV1 result = ResolveNew(
+                Command(
+                    "operation-guaranteed",
+                    "guaranteed-seed",
+                    2L,
+                    20m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        0m,
+                        2m,
+                        1m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "guaranteed-effect",
+                        CombatEffectGeometryKindV1.ContactAttack),
+                    CriticalHitPolicyIdsV1.Guaranteed,
+                    "contact-finisher",
+                    null));
+
+            Assert.That(result.ResolvedDamage.IsCritical, Is.True);
+            Assert.That(result.ResolvedDamage.CriticalChance, Is.EqualTo(1m));
+            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(40m));
+        }
+
+        [Test]
+        public void ModifiedChancePolicy_OverridesProfileChance()
+        {
+            var registry = new CriticalHitPolicyRegistryV1(
+                new[]
+                {
+                    new CriticalHitPolicyDefinitionV1(
+                        CriticalHitPolicyIdsV1.ModifiedChance,
+                        true,
+                        criticalChanceOverride: 0m),
+                });
+            var authority = new CriticalHitResolutionAuthorityV1(registry);
+            CriticalHitResolutionResultV1 result = authority.Resolve(
+                Command(
+                    "operation-modified-chance",
+                    "modified-seed",
+                    3L,
+                    20m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        5m,
+                        1m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "modified-chance-effect",
+                        CombatEffectGeometryKindV1.Projectile),
+                    CriticalHitPolicyIdsV1.ModifiedChance,
+                    "weapon-modified-chance",
+                    "equipment-a"));
+
+            Assert.That(result.ResolvedDamage.IsCritical, Is.False);
+            Assert.That(result.ResolvedDamage.CriticalChance, Is.EqualTo(0m));
+            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(20m));
+        }
+
+        [Test]
+        public void ModifiedMultiplierPolicy_ChangesOnlyCriticalMultiplier()
+        {
+            CriticalHitResolutionResultV1 result = ResolveNew(
+                Command(
+                    "operation-modified-multiplier",
+                    "modified-multiplier-seed",
+                    4L,
+                    10m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        2m,
+                        1m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "modified-multiplier-effect",
+                        CombatEffectGeometryKindV1.Explosion),
+                    CriticalHitPolicyIdsV1.ModifiedMultiplier,
+                    "weapon-modified-multiplier",
+                    "equipment-a"));
+
+            Assert.That(result.ResolvedDamage.IsCritical, Is.True);
+            Assert.That(result.ResolvedDamage.CriticalChance, Is.EqualTo(1m));
+            Assert.That(result.ResolvedDamage.CriticalMultiplier, Is.EqualTo(3m));
+            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(30m));
+        }
+
+        [Test]
+        public void SameGeometry_CanSelectDifferentCriticalPolicies()
+        {
+            RunCombatProfileV1 profile = Profile(
+                "run.fixture-a",
+                "player-a",
+                1m,
+                2m,
+                1m);
             CombatHitPolicyResultV1 hit = AcceptedHit(
                 Actor("source-a", "players", "player-a", 1L),
                 Actor("target-a", "enemies", "enemy-a", 1L),
-                "edge-effect",
+                "same-projectile-effect",
                 CombatEffectGeometryKindV1.Projectile);
 
-            CriticalHitResolutionResultV1 ordinary =
-                new CriticalHitResolutionAuthorityV1().Resolve(
-                    Command(
-                        "operation-never-crit",
-                        "edge-seed",
-                        0L,
-                        40m,
-                        Profile("player-a", 0m, 2.5m, 1.25m),
-                        hit));
-            CriticalHitResolutionResultV1 critical =
-                new CriticalHitResolutionAuthorityV1().Resolve(
-                    Command(
-                        "operation-always-crit",
-                        "edge-seed",
-                        0L,
-                        40m,
-                        Profile("player-a", 1m, 2.5m, 1.25m),
-                        hit));
+            CriticalHitResolutionResultV1 cannotCrit = ResolveNew(
+                Command(
+                    "operation-projectile-no-crit",
+                    "same-geometry-seed",
+                    0L,
+                    10m,
+                    profile,
+                    hit,
+                    CriticalHitPolicyIdsV1.CannotCrit,
+                    "projectile-no-crit",
+                    "equipment-a"));
+            CriticalHitResolutionResultV1 guaranteed = ResolveNew(
+                Command(
+                    "operation-projectile-guaranteed",
+                    "same-geometry-seed",
+                    0L,
+                    10m,
+                    profile,
+                    hit,
+                    CriticalHitPolicyIdsV1.Guaranteed,
+                    "projectile-guaranteed",
+                    "equipment-a"));
 
-            Assert.That(ordinary.ResolvedDamage.IsCritical, Is.False);
-            Assert.That(ordinary.ResolvedDamage.OrdinaryDamage, Is.EqualTo(50m));
-            Assert.That(ordinary.ResolvedDamage.FinalDamage, Is.EqualTo(50m));
-            Assert.That(critical.ResolvedDamage.IsCritical, Is.True);
-            Assert.That(critical.ResolvedDamage.OrdinaryDamage, Is.EqualTo(50m));
-            Assert.That(critical.ResolvedDamage.FinalDamage, Is.EqualTo(125m));
+            Assert.That(cannotCrit.ResolvedDamage.IsCritical, Is.False);
+            Assert.That(cannotCrit.ResolvedDamage.FinalDamage, Is.EqualTo(10m));
+            Assert.That(guaranteed.ResolvedDamage.IsCritical, Is.True);
+            Assert.That(guaranteed.ResolvedDamage.FinalDamage, Is.EqualTo(20m));
         }
 
         [TestCase(CombatEffectGeometryKindV1.Projectile)]
@@ -267,44 +434,38 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
         [TestCase(CombatEffectGeometryKindV1.ContactAttack)]
         [TestCase(CombatEffectGeometryKindV1.PersistentField)]
         [TestCase(CombatEffectGeometryKindV1.Chain)]
-        public void EverySupportedGeometry_UsesSameCriticalBoundary(
+        public void EveryGeometry_RespectsExplicitCannotCritPolicy(
             CombatEffectGeometryKindV1 geometry)
         {
-            RunCombatProfileV1 profile = Profile(
-                "player-a",
-                1m,
-                2m,
-                1m);
-            CriticalHitResolutionResultV1 result =
-                new CriticalHitResolutionAuthorityV1().Resolve(
-                    Command(
-                        "operation-geometry-" + ((int)geometry),
-                        "geometry-seed",
-                        (long)geometry,
-                        10m,
-                        profile,
-                        AcceptedHit(
-                            Actor(
-                                "source-a",
-                                "players",
-                                "player-a",
-                                1L),
-                            Actor(
-                                "target-a",
-                                "enemies",
-                                "enemy-a",
-                                1L),
-                            "effect-geometry-" + ((int)geometry),
-                            geometry)));
+            CriticalHitResolutionResultV1 result = ResolveNew(
+                Command(
+                    "operation-geometry-" + ((int)geometry),
+                    "geometry-seed",
+                    (long)geometry,
+                    10m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        4m,
+                        1m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "effect-geometry-" + ((int)geometry),
+                        geometry),
+                    CriticalHitPolicyIdsV1.CannotCrit,
+                    "definition-geometry-" + ((int)geometry),
+                    null));
 
             Assert.That(result.Status, Is.EqualTo(
                 CriticalHitResolutionStatusV1.Applied));
-            Assert.That(result.ResolvedDamage.IsCritical, Is.True);
-            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(20m));
+            Assert.That(result.ResolvedDamage.IsCritical, Is.False);
+            Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(10m));
         }
 
         [Test]
-        public void PermanentEventAndStatusModifiers_FlowThroughSharedProfile()
+        public void PermanentEventAndStatusModifiers_FlowIntoNormalPolicy()
         {
             DerivedStatModifierSourceV1 permanent =
                 new DerivedStatModifierSourceV1(
@@ -362,6 +523,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                                 "condition.focus-active"),
                         }));
             RunCombatProfileV1 profile = Profile(
+                "run.fixture-a",
                 "player-a",
                 0.2m,
                 1.5m,
@@ -370,43 +532,35 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 new[] { eventSource, statusSource },
                 new[] { "condition.focus-active" });
 
-            CriticalHitResolutionResultV1 result =
-                new CriticalHitResolutionAuthorityV1().Resolve(
-                    Command(
-                        "operation-modifiers",
-                        "modifier-seed",
-                        3L,
-                        40m,
-                        profile,
-                        AcceptedHit(
-                            Actor(
-                                "source-a",
-                                "players",
-                                "player-a",
-                                1L),
-                            Actor(
-                                "target-a",
-                                "enemies",
-                                "enemy-a",
-                                1L),
-                            "effect-modifiers",
-                            CombatEffectGeometryKindV1.PersistentField)));
+            CriticalHitResolutionResultV1 result = ResolveNew(
+                Command(
+                    "operation-modifiers",
+                    "modifier-seed",
+                    3L,
+                    40m,
+                    profile,
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "effect-modifiers",
+                        CombatEffectGeometryKindV1.PersistentField),
+                    CriticalHitPolicyIdsV1.Normal,
+                    "effect-modifiers",
+                    null));
 
             Assert.That(profile.CriticalChance, Is.EqualTo(1m));
             Assert.That(profile.CriticalMultiplier, Is.EqualTo(2.5m));
             Assert.That(profile.OutgoingDamageMultiplier, Is.EqualTo(1.25m));
-            Assert.That(
-                result.ResolvedDamage.RunCombatProfileFingerprint,
-                Is.EqualTo(profile.Fingerprint));
             Assert.That(result.ResolvedDamage.IsCritical, Is.True);
             Assert.That(result.ResolvedDamage.OrdinaryDamage, Is.EqualTo(50m));
             Assert.That(result.ResolvedDamage.FinalDamage, Is.EqualTo(125m));
         }
 
         [Test]
-        public void DamageAdapter_PreservesMultiplayerAttributionAndReplayIdentity()
+        public void DamageAdapter_PreservesAttributionAndReplayIdentity()
         {
             RunCombatProfileV1 profile = Profile(
+                "run.fixture-network",
                 "player-two",
                 1m,
                 2m,
@@ -417,22 +571,18 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 "effect-networked",
                 CombatEffectGeometryKindV1.Chain);
             var authority = new CriticalHitResolutionAuthorityV1();
-            CriticalHitResolutionResultV1 applied = authority.Resolve(
-                Command(
-                    "operation-networked",
-                    "network-seed",
-                    19L,
-                    15m,
-                    profile,
-                    hit));
-            CriticalHitResolutionResultV1 duplicate = authority.Resolve(
-                Command(
-                    "operation-networked",
-                    "network-seed",
-                    19L,
-                    15m,
-                    profile,
-                    hit));
+            CriticalHitResolutionCommandV1 command = Command(
+                "operation-networked",
+                "network-seed",
+                19L,
+                15m,
+                profile,
+                hit,
+                CriticalHitPolicyIdsV1.Normal,
+                "weapon-chain",
+                "equipment-chain-a");
+            CriticalHitResolutionResultV1 applied = authority.Resolve(command);
+            CriticalHitResolutionResultV1 duplicate = authority.Resolve(command);
 
             DamageReceiverCommand firstCommand;
             DamageReceiverCommand replayCommand;
@@ -450,9 +600,6 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 firstCommand.EventId,
                 Is.EqualTo(Id("critical-operation", "operation-networked")));
             Assert.That(
-                firstCommand.SourceActorId,
-                Is.EqualTo(Id("actor", "source-two")));
-            Assert.That(
                 firstCommand.SourceRunParticipantId,
                 Is.EqualTo(Id("participant", "player-two")));
             Assert.That(
@@ -460,6 +607,39 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 Is.EqualTo(Id("actor", "target-nine")));
             Assert.That(firstCommand.LifecycleGeneration, Is.EqualTo(12L));
             Assert.That(firstCommand.Amount, Is.EqualTo(30d));
+        }
+
+        [Test]
+        public void UnknownCriticalPolicy_FailsClosedWithoutConsumingOperation()
+        {
+            var authority = new CriticalHitResolutionAuthorityV1();
+            CriticalHitResolutionResultV1 result = authority.Resolve(
+                Command(
+                    "operation-unknown-policy",
+                    "seed-a",
+                    0L,
+                    10m,
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        2m,
+                        1m),
+                    AcceptedHit(
+                        Actor("source-a", "players", "player-a", 1L),
+                        Actor("target-a", "enemies", "enemy-a", 1L),
+                        "effect-unknown-policy",
+                        CombatEffectGeometryKindV1.Projectile),
+                    Id("critical-hit-policy", "missing-v1"),
+                    "weapon-unknown",
+                    "equipment-a"));
+
+            Assert.That(result.Status, Is.EqualTo(
+                CriticalHitResolutionStatusV1.Rejected));
+            Assert.That(result.RejectionCode, Is.EqualTo(
+                CriticalHitRejectionCodeV1.UnknownCriticalPolicy));
+            Assert.That(result.ResolvedDamage, Is.Null);
+            Assert.That(authority.AppliedResolutionCount, Is.EqualTo(0));
         }
 
         [Test]
@@ -482,8 +662,16 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     "seed-a",
                     0L,
                     10m,
-                    Profile("player-a", 1m, 2m, 1m),
-                    denied));
+                    Profile(
+                        "run.fixture-a",
+                        "player-a",
+                        1m,
+                        2m,
+                        1m),
+                    denied,
+                    CriticalHitPolicyIdsV1.Normal,
+                    "weapon-friendly",
+                    "equipment-a"));
 
             Assert.That(result.Status, Is.EqualTo(
                 CriticalHitResolutionStatusV1.Rejected));
@@ -493,13 +681,22 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
             Assert.That(authority.AppliedResolutionCount, Is.EqualTo(0));
         }
 
-        private CriticalHitResolutionCommandV1 Command(
+        private static CriticalHitResolutionResultV1 ResolveNew(
+            CriticalHitResolutionCommandV1 command)
+        {
+            return new CriticalHitResolutionAuthorityV1().Resolve(command);
+        }
+
+        private static CriticalHitResolutionCommandV1 Command(
             string operation,
             string seed,
             long hitSequence,
             decimal baseDamage,
             RunCombatProfileV1 profile,
-            CombatHitPolicyResultV1 hit)
+            CombatHitPolicyResultV1 hit,
+            StableId criticalPolicyId,
+            string effectDefinition,
+            string equipmentInstance)
         {
             return new CriticalHitResolutionCommandV1(
                 Id("critical-operation", operation),
@@ -508,6 +705,12 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 baseDamage,
                 CombatChannel.Kinetic,
                 profile,
+                new CriticalHitEffectFactsV1(
+                    Id("effect-definition", effectDefinition),
+                    criticalPolicyId,
+                    equipmentInstance == null
+                        ? null
+                        : Id("equipment-instance", equipmentInstance)),
                 hit);
         }
 
@@ -576,6 +779,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
         }
 
         private static RunCombatProfileV1 Profile(
+            string runId,
             string character,
             decimal criticalChance,
             decimal criticalMultiplier,
@@ -625,8 +829,8 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         policy));
             return composer.BuildRunProfile(
                 new RunCombatProfileInputV1(
-                    "run.fixture",
-                    "run-context-fixture-v1",
+                    runId,
+                    "run-context-" + runId,
                     characterStats,
                     runSources
                         ?? Array.Empty<DerivedStatModifierSourceV1>(),
