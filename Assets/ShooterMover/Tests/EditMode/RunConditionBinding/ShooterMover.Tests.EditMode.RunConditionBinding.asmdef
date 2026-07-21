@@ -1,0 +1,26 @@
+{
+  "name": "ShooterMover.Tests.EditMode.RunConditionBinding",
+  "rootNamespace": "ShooterMover.Tests.EditMode.RunConditionBinding",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.ConditionRuntime",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.RunConditionIntegration"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

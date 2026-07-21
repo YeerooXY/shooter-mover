@@ -165,7 +165,7 @@ namespace ShooterMover.Application.Runs.Session
         }
     }
 
-    public sealed class RunSessionAggregateV1
+    public sealed partial class RunSessionAggregateV1
     {
         private sealed class RestartReplayRecord
         {
@@ -274,6 +274,12 @@ namespace ShooterMover.Application.Runs.Session
             lifecycleGeneration = RuntimePorts.Player.LifecycleGeneration;
             authoritativeTick = StartCommand.AuthoritativeInitialTick;
             lifecycleState = RunSessionLifecycleStateV1.Active;
+            IRunConditionRuntimePortV1 conditionRuntime =
+                RuntimePorts.ConditionalFacts as IRunConditionRuntimePortV1;
+            if (conditionRuntime != null)
+            {
+                conditionRuntime.Bind(this);
+            }
         }
 
         public StartRunSessionCommandV1 StartCommand { get; }
