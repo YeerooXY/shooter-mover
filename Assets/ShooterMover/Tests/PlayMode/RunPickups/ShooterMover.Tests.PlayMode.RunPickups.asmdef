@@ -1,0 +1,22 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.RunPickups",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.RunPickups",
+  "references": [
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.RunPickups",
+    "ShooterMover.RunPickupUnity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
