@@ -119,24 +119,85 @@ namespace ShooterMover.TerminalDropBinding
         }
     }
 
-    public sealed class EnemyDeathTerminalDropFactAdapterV1 : ITerminalDropFactAdapterV1
+    internal sealed class EnemyDeathTerminalDropDefinitionProjectionV1
+    {
+        public EnemyDeathTerminalDropDefinitionProjectionV1(
+            EnemyDeathFactV1 fact,
+            StableId declaredDropProfileStableId,
+            string definitionFingerprint,
+            string upstreamFactFingerprint)
+        {
+            Fact = fact ?? throw new ArgumentNullException(nameof(fact));
+            DeclaredDropProfileStableId = declaredDropProfileStableId;
+            DefinitionFingerprint = definitionFingerprint
+                ?? throw new ArgumentNullException(nameof(definitionFingerprint));
+            UpstreamFactFingerprint = upstreamFactFingerprint
+                ?? throw new ArgumentNullException(nameof(upstreamFactFingerprint));
+        }
+
+        public EnemyDeathFactV1 Fact { get; }
+        public StableId DeclaredDropProfileStableId { get; }
+        public string DefinitionFingerprint { get; }
+        public string UpstreamFactFingerprint { get; }
+    }
+
+    internal sealed class EnemyDeathTerminalDropDefinitionProjectionResultV1
+    {
+        private EnemyDeathTerminalDropDefinitionProjectionResultV1(
+            EnemyDeathTerminalDropDefinitionProjectionV1 projection,
+            TerminalDropRejectionCodeV1 rejectionCode,
+            string diagnostic)
+        {
+            Projection = projection;
+            RejectionCode = rejectionCode;
+            Diagnostic = diagnostic ?? string.Empty;
+        }
+
+        public EnemyDeathTerminalDropDefinitionProjectionV1 Projection { get; }
+        public TerminalDropRejectionCodeV1 RejectionCode { get; }
+        public string Diagnostic { get; }
+        public bool Succeeded { get { return Projection != null; } }
+
+        public static EnemyDeathTerminalDropDefinitionProjectionResultV1 Accepted(
+            EnemyDeathTerminalDropDefinitionProjectionV1 projection)
+        {
+            return new EnemyDeathTerminalDropDefinitionProjectionResultV1(
+                projection ?? throw new ArgumentNullException(nameof(projection)),
+                TerminalDropRejectionCodeV1.None,
+                string.Empty);
+        }
+
+        public static EnemyDeathTerminalDropDefinitionProjectionResultV1 Rejected(
+            TerminalDropRejectionCodeV1 code,
+            string diagnostic)
+        {
+            return new EnemyDeathTerminalDropDefinitionProjectionResultV1(
+                null,
+                code,
+                diagnostic);
+        }
+    }
+
+    /// <summary>
+    /// Internal catalog-only projection. It validates definition/profile ownership but
+    /// deliberately cannot construct a complete terminal-drop source fact because it
+    /// does not own Run Session lifecycle context.
+    /// </summary>
+    internal sealed class EnemyDeathTerminalDropDefinitionProjectorV1
     {
         private readonly EnemyCatalogV1 catalog;
 
-        public EnemyDeathTerminalDropFactAdapterV1(EnemyCatalogV1 catalog)
+        public EnemyDeathTerminalDropDefinitionProjectorV1(EnemyCatalogV1 catalog)
         {
             this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         }
 
-        public StableId FactKindStableId { get { return TerminalDropFactKindIdsV1.EnemyDeath; } }
-        public Type FactType { get { return typeof(EnemyDeathFactV1); } }
-
-        public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
+        public EnemyDeathTerminalDropDefinitionProjectionResultV1 Project(
+            EnemyDeathFactV1 fact)
         {
-            EnemyDeathFactV1 fact = terminalFact as EnemyDeathFactV1;
             if (fact == null)
             {
-                return TerminalDropAdaptationResultV1.Rejected(
+                return EnemyDeathTerminalDropDefinitionProjectionResultV1.Rejected(
                     TerminalDropRejectionCodeV1.InvalidTerminalFact,
                     "enemy-death-fact-type-mismatch");
             }
@@ -144,22 +205,23 @@ namespace ShooterMover.TerminalDropBinding
             EnemyDefinitionV1 definition;
             if (!catalog.TryGetDefinition(fact.DefinitionStableId, out definition))
             {
-                return TerminalDropAdaptationResultV1.Rejected(
+                return EnemyDeathTerminalDropDefinitionProjectionResultV1.Rejected(
                     TerminalDropRejectionCodeV1.MissingDefinition,
                     "enemy-definition-missing:" + fact.DefinitionStableId);
             }
             if (fact.Identity == null
                 || fact.Identity.RunStableId == null
-                || fact.Identity.EntityInstanceId == null)
+                || fact.Identity.EntityInstanceId == null
+                || fact.Identity.PlacementStableId == null)
             {
-                return TerminalDropAdaptationResultV1.Rejected(
+                return EnemyDeathTerminalDropDefinitionProjectionResultV1.Rejected(
                     TerminalDropRejectionCodeV1.InvalidTerminalFact,
                     "enemy-death-identity-incomplete");
             }
             if (fact.DropProfileStableId != null
                 && definition.DropProfileId != fact.DropProfileStableId)
             {
-                return TerminalDropAdaptationResultV1.Rejected(
+                return EnemyDeathTerminalDropDefinitionProjectionResultV1.Rejected(
                     TerminalDropRejectionCodeV1.DropProfileMismatch,
                     "enemy-drop-profile-mismatch:fact=" + fact.DropProfileStableId
                     + ";definition=" + (definition.DropProfileId == null
@@ -167,44 +229,28 @@ namespace ShooterMover.TerminalDropBinding
                         : definition.DropProfileId.ToString()));
             }
 
-            var context = new StringBuilder("schema=enemy-terminal-drop-context-v1");
-            TerminalDropCanonicalV1.Append(context, "run", fact.Identity.RunStableId);
-            TerminalDropCanonicalV1.Append(context, "room-runtime", fact.Identity.RoomRuntimeInstanceStableId);
-            TerminalDropCanonicalV1.Append(context, "room", fact.Identity.RoomStableId);
-            TerminalDropCanonicalV1.Append(context, "placement", fact.Identity.PlacementStableId);
-            TerminalDropCanonicalV1.Append(context, "entity", fact.Identity.EntityInstanceId);
-            TerminalDropCanonicalV1.Append(context, "participant", fact.Identity.RunParticipantId);
-            TerminalDropCanonicalV1.Append(context, "level", fact.Level);
-
-            var upstream = new StringBuilder("schema=enemy-death-fact-drop-projection-v1");
+            var upstream = new StringBuilder("schema=enemy-death-fact-drop-projection-v2");
             TerminalDropCanonicalV1.Append(upstream, "death-event", fact.DeathEventStableId);
             TerminalDropCanonicalV1.Append(upstream, "trigger", fact.TriggeringEventStableId);
             TerminalDropCanonicalV1.Append(upstream, "definition", fact.DefinitionStableId);
             TerminalDropCanonicalV1.Append(upstream, "level", fact.Level);
-            TerminalDropCanonicalV1.Append(upstream, "generation", fact.LifecycleGeneration);
+            TerminalDropCanonicalV1.Append(upstream, "source-generation", fact.LifecycleGeneration);
             TerminalDropCanonicalV1.Append(upstream, "killer-entity", fact.KillerEntityStableId);
             TerminalDropCanonicalV1.Append(upstream, "killer-participant", fact.KillerRunParticipantStableId);
             TerminalDropCanonicalV1.Append(upstream, "experience-profile", fact.ExperienceProfileStableId);
             TerminalDropCanonicalV1.Append(upstream, "drop-profile", fact.DropProfileStableId);
             TerminalDropCanonicalV1.Append(upstream, "death-cause", (int)fact.DeathCause);
-            TerminalDropCanonicalV1.Append(upstream, "identity-context", context.ToString());
+            TerminalDropCanonicalV1.Append(upstream, "run", fact.Identity.RunStableId);
+            TerminalDropCanonicalV1.Append(upstream, "room-runtime", fact.Identity.RoomRuntimeInstanceStableId);
+            TerminalDropCanonicalV1.Append(upstream, "room", fact.Identity.RoomStableId);
+            TerminalDropCanonicalV1.Append(upstream, "placement", fact.Identity.PlacementStableId);
+            TerminalDropCanonicalV1.Append(upstream, "entity", fact.Identity.EntityInstanceId);
+            TerminalDropCanonicalV1.Append(upstream, "source-participant", fact.Identity.RunParticipantId);
 
-            return TerminalDropAdaptationResultV1.Accepted(
-                new TerminalDropSourceFactV1(
-                    FactKindStableId,
-                    fact.DeathEventStableId,
-                    fact.TriggeringEventStableId,
-                    fact.Identity.RunStableId,
-                    fact.LifecycleGeneration,
-                    fact.Identity.EntityInstanceId,
-                    fact.Identity.PlacementStableId,
-                    fact.LifecycleGeneration,
-                    fact.DefinitionStableId,
-                    fact.KillerRunParticipantStableId,
-                    fact.KillerEntityStableId,
-                    null,
+            return EnemyDeathTerminalDropDefinitionProjectionResultV1.Accepted(
+                new EnemyDeathTerminalDropDefinitionProjectionV1(
+                    fact,
                     definition.DropProfileId,
-                    TerminalDropCanonicalV1.Hash(context.ToString()),
                     definition.Fingerprint,
                     TerminalDropCanonicalV1.Hash(upstream.ToString())));
         }
@@ -318,14 +364,36 @@ namespace ShooterMover.TerminalDropBinding
 
             PropTerminalSourceContextV1 sourceContext;
             string sourceDiagnostic;
-            if (!sourceContextResolver.TryResolve(terminal, out sourceContext, out sourceDiagnostic)
-                || sourceContext == null)
+            bool resolved;
+            try
+            {
+                resolved = sourceContextResolver.TryResolve(
+                    terminal,
+                    out sourceContext,
+                    out sourceDiagnostic);
+            }
+            catch (Exception exception)
+            {
+                return TerminalDropAdaptationResultV1.Rejected(
+                    TerminalDropRejectionCodeV1.MissingSourceContext,
+                    "prop-source-context-exception:"
+                        + exception.GetType().Name + ":" + exception.Message);
+            }
+            if (!resolved || sourceContext == null)
             {
                 return TerminalDropAdaptationResultV1.Rejected(
                     TerminalDropRejectionCodeV1.MissingSourceContext,
                     string.IsNullOrWhiteSpace(sourceDiagnostic)
                         ? "prop-source-context-missing"
                         : sourceDiagnostic);
+            }
+            if (sourceContext.SourceEntityStableId != terminal.PropParticipantId)
+            {
+                return TerminalDropAdaptationResultV1.Rejected(
+                    TerminalDropRejectionCodeV1.MissingSourceContext,
+                    "prop-source-context-entity-mismatch:terminal="
+                        + terminal.PropParticipantId + ";resolved="
+                        + sourceContext.SourceEntityStableId);
             }
 
             var upstream = new StringBuilder("schema=prop-destruction-drop-projection-v1");
@@ -349,7 +417,7 @@ namespace ShooterMover.TerminalDropBinding
                     batch.DropRequest == null ? null : batch.DropRequest.FactId,
                     sourceContext.RunStableId,
                     sourceContext.RunLifecycleGeneration,
-                    sourceContext.SourceEntityStableId,
+                    terminal.PropParticipantId,
                     sourceContext.SourcePlacementStableId,
                     sourceContext.SourceLifecycleGeneration,
                     terminal.PropDefinitionId,
