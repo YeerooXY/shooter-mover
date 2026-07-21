@@ -1,12 +1,8 @@
-name: RUN-SESSION-001 materialize exact sources
+name: RUN-SESSION-001 diagnose staged publication
 
 on:
-  push:
-    branches:
-      - agent/run-session-001-character-to-mission
   pull_request:
     branches:
-      - main
       - agent/run-session-001-character-to-mission
   workflow_dispatch:
 
@@ -14,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  materialize:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,107 +18,62 @@ jobs:
           ref: agent/run-session-001-character-to-mission
           fetch-depth: 0
 
-      - name: Materialize and verify sources
+      - name: Diagnose payload reconstruction
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          python3 - <<'PY' > .run-session-repair-diagnostic.txt 2>&1
           from pathlib import Path
           import base64
+          import hashlib
           import io
           import tarfile
 
-          parts = [path.read_bytes().strip()
-                   for path in sorted(Path(".run-session-payload").glob("part*"))]
+          paths = sorted(Path('.run-session-payload').glob('part*'))
+          parts = [path.read_bytes().strip() for path in paths]
+          print('part_count', len(parts))
+          for path, raw in zip(paths, parts):
+              print(path.name, 'len', len(raw), 'sha256', hashlib.sha256(raw).hexdigest(), 'prefix', raw[:24])
 
-          def archive_from(encoded):
+          def inspect(label, encoded):
+              print('\nCANDIDATE', label, 'encoded_len', len(encoded))
               try:
                   archive = base64.b64decode(encoded, validate=True)
-                  if not archive.startswith(b"\x1f\x8b"):
-                      return None
-                  with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as handle:
+              except Exception as exc:
+                  print('archive_base64_error', repr(exc))
+                  return False
+              print('archive_len', len(archive), 'magic', archive[:16])
+              try:
+                  with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as handle:
                       names = handle.getnames()
-                      if not names:
-                          return None
-                  return archive
-              except Exception:
-                  return None
+                  print('tar_ok', len(names), names)
+                  return True
+              except Exception as exc:
+                  print('tar_error', repr(exc))
+                  return False
 
-          archive = archive_from(b"".join(parts))
-          selected = "all-direct"
-
-          if archive is None:
-              for split in range(len(parts) + 1):
-                  prefix = b"".join(parts[:split])
-                  suffix = b"".join(parts[split:])
-
-                  # The earlier connector workaround double-encoded one
-                  # contiguous suffix before splitting it into repository parts.
-                  try:
-                      decoded_suffix = base64.b64decode(suffix, validate=True)
-                  except Exception:
-                      decoded_suffix = None
-                  if decoded_suffix is not None:
-                      archive = archive_from(prefix + decoded_suffix)
-                      if archive is not None:
-                          selected = f"suffix-double-from-part-{split:02d}"
-                          break
-
-                  # Also tolerate a double-encoded prefix, for a deterministic
-                  # repair rather than relying on the staging implementation detail.
-                  try:
-                      decoded_prefix = base64.b64decode(prefix, validate=True)
-                  except Exception:
-                      decoded_prefix = None
-                  if decoded_prefix is not None:
-                      archive = archive_from(decoded_prefix + suffix)
-                      if archive is not None:
-                          selected = f"prefix-double-through-part-{split - 1:02d}"
-                          break
-
-          if archive is None:
-              raise SystemExit("No valid tar.gz archive could be reconstructed from payload parts")
-
-          print(f"Selected payload reconstruction: {selected}")
-          Path("/tmp/run-session.tar.gz").write_bytes(archive)
+          inspect('all-direct', b''.join(parts))
+          for split in range(len(parts) + 1):
+              prefix = b''.join(parts[:split])
+              suffix = b''.join(parts[split:])
+              try:
+                  decoded_suffix = base64.b64decode(suffix, validate=True)
+                  inspect(f'suffix-double-{split:02d}', prefix + decoded_suffix)
+              except Exception as exc:
+                  print('\nCANDIDATE', f'suffix-double-{split:02d}', 'outer_decode_error', repr(exc))
+              try:
+                  decoded_prefix = base64.b64decode(prefix, validate=True)
+                  inspect(f'prefix-double-{split:02d}', decoded_prefix + suffix)
+              except Exception as exc:
+                  print('\nCANDIDATE', f'prefix-double-{split:02d}', 'outer_decode_error', repr(exc))
           PY
-          tar -tzf /tmp/run-session.tar.gz
-          tar -xzf /tmp/run-session.tar.gz
-          python3 - <<'PY'
-          from pathlib import Path
-          import hashlib
 
-          expected = {
-              "Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionPortsV1.cs": "c39931b2517fc30456234400e3d6f49ec3391d68",
-              "Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionSnapshotsV1.cs": "6ef334be5789ce289c71572fc4c98ccfb167235f",
-              "Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionAuthorityV1.cs": "24f6afe49827753cc345a0b378e59e8d175bafa9",
-              "Assets/ShooterMover/Tests/EditMode/RunSessions/RunSessionAuthorityV1Tests.cs": "07f4143275bd8cd54611efa118d065be9bf9f07a",
-              "Assets/ShooterMover/Tests/EditMode/RunSessions/ProductionRunSessionCompositionV1Tests.cs": "bd023f51b1b26d3de9dc04b2f2b8092c71abe99e",
-          }
-          for path, wanted in expected.items():
-              data = Path(path).read_bytes()
-              header = b"blob " + str(len(data)).encode("ascii") + b"\0"
-              actual = hashlib.sha1(header + data).hexdigest()
-              if actual != wanted:
-                  raise SystemExit(f"Git blob mismatch for {path}: {actual} != {wanted}")
-          PY
-          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionAuthorityV1.cs
-          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionPortsV1.cs
-          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionSnapshotsV1.cs
-          test -f Assets/ShooterMover/Tests/EditMode/RunSessions/RunSessionAuthorityV1Tests.cs
-          rm -rf .run-session-payload
-          rm -f .github/workflows/run-session-materialize.yml
-          rmdir .github/workflows 2>/dev/null || true
-          rmdir .github 2>/dev/null || true
-          test ! -e .run-session-payload
-          test ! -e .github/workflows/run-session-materialize.yml
-
-      - name: Commit exact source tree
+      - name: Commit diagnostic
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "RUN-SESSION-001: materialize final source tree"
+          git add .run-session-repair-diagnostic.txt
+          git commit -m "RUN-SESSION-001: record publication repair diagnostic"
           git push origin HEAD:agent/run-session-001-character-to-mission
