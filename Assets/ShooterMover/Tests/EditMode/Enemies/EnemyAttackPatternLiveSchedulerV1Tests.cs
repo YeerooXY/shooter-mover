@@ -188,8 +188,8 @@ namespace ShooterMover.Tests.EditMode.Enemies
         {
             EnemyAttackSequenceDispatchV1 dispatch = DispatchFixture(
                 Melee("live-melee", 0.5d, 0.75d, 1, 0d, 0.4d, 2d, 0.25d,
-                    EnemyMeleeAimCommitPolicyV1.LockAtSequenceStart,
-                    EnemyMeleeTerminalOnImpactPolicyV1.ContinueWindow),
+                    EnemyMeleeAimCommitPolicyV1.LockAtWindUp,
+                    EnemyMeleeTerminalOnImpactPolicyV1.ContinueSequence),
                 "live-melee",
                 3d);
             var time = new RunTimeStub { CurrentTimeSeconds = 20d };
