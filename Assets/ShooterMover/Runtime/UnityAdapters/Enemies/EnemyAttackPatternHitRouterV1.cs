@@ -371,22 +371,35 @@ namespace ShooterMover.UnityAdapters.Enemies
         private static CombatEffectSnapshotV1 BuildEffect(
             EnemyAttackEffectEmissionV1 emission)
         {
-            int pierce = emission.Projectile == null
-                ? 0
-                : Math.Max(
-                    0,
-                    emission.Projectile.Payload.PierceCount);
-            int maximumHitsPerTarget = emission.MeleeStrike == null
-                ? 1
-                : Math.Max(
+            int pierce = 0;
+            int maximumHitsPerTarget = 1;
+            CombatEffectGeometryKindV1 geometry;
+            if (emission.Kind == EnemyAttackEffectEmissionKindV1.Projectile)
+            {
+                if (emission.Projectile.Payload.AreaPayload != null)
+                {
+                    geometry = CombatEffectGeometryKindV1.Explosion;
+                    pierce = Math.Max(
+                        0,
+                        emission.Projectile.Payload.AreaPayload.MaximumTargets - 1);
+                }
+                else
+                {
+                    geometry = CombatEffectGeometryKindV1.Projectile;
+                    pierce = Math.Max(
+                        0,
+                        emission.Projectile.Payload.PierceCount);
+                }
+            }
+            else
+            {
+                maximumHitsPerTarget = Math.Max(
                     1,
                     emission.MeleeStrike.Pattern.HitsPerTarget);
-            CombatEffectGeometryKindV1 geometry =
-                emission.Kind == EnemyAttackEffectEmissionKindV1.Projectile
-                    ? CombatEffectGeometryKindV1.Projectile
-                    : (emission.MeleeStrike.Pattern.LungeDistance > 0d
-                        ? CombatEffectGeometryKindV1.ContactAttack
-                        : CombatEffectGeometryKindV1.MeleeSwing);
+                geometry = emission.MeleeStrike.Pattern.LungeDistance > 0d
+                    ? CombatEffectGeometryKindV1.ContactAttack
+                    : CombatEffectGeometryKindV1.MeleeSwing;
+            }
             return new CombatEffectSnapshotV1(
                 emission.EmissionStableId,
                 CombatHitPolicyIdsV1.EnemyNormal,
