@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
@@ -165,7 +166,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 composition.ActiveRuntime;
             StrongboxDefinitionV1 definition =
                 graph.StrongboxCatalog.Definitions[0];
-            StableId boxId = Id("strongbox-instance.character-owned-regression");
+            StableId boxId = Id(
+                "strongbox-instance.character-owned-regression");
             StableId grantId = Id("grant.character-owned-strongbox");
             StableId sourceId = Id("source.character-owned-strongbox");
             PlayerHoldingsMutationResultV1 added =
@@ -321,16 +323,23 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                         out rejection),
                     Is.True,
                     rejection);
+                var exactInstances = new List<StableId>(
+                    PlayerRouteProfilePayloadV1.WeaponSlotCount);
+                for (int index = 0;
+                    index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                    index++)
+                {
+                    exactInstances.Add(loadout.GetBinding(
+                        InventoryLoadoutSlotsV1.All[index].SlotStableId)
+                        .EquipmentInstanceStableId);
+                }
                 profiles[character.SlotIndex] =
                     new ProductionFlowProfileRecordV1(
                         character.DisplayName,
                         PlayerRouteProfilePayloadV1.Create(
                             character.CharacterInstanceStableId,
                             character.ClassDefinitionStableId,
-                            loadout.Bindings.Take(
-                                PlayerRouteProfilePayloadV1.WeaponSlotCount)
-                                .Select(item =>
-                                    item.EquipmentInstanceStableId)));
+                            exactInstances));
             }
             return profiles;
         }
