@@ -8,6 +8,7 @@
     "ShooterMover.UnityAdapters",
     "ShooterMover.Presentation",
     "ShooterMover.GameplayEntities",
+    "ShooterMover.EnemyRuntimeComposition",
     "ShooterMover.Content.Definitions",
     "ShooterMover.Bootstrap"
   ],
