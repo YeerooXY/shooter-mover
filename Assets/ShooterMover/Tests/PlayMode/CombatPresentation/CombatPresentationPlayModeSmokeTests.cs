@@ -63,7 +63,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
 
                 DefaultCombatExplosionPool2D pool =
                     owner.AddComponent<DefaultCombatExplosionPool2D>();
-                pool.ConfigureForTests(4, 1f);
+                pool.ConfigureForTests(4, 0.05f);
                 EnemyDeathVfxPresenter2D ordinaryDeath =
                     ordinary.AddComponent<EnemyDeathVfxPresenter2D>();
                 EnemyDeathVfxPresenter2D largeDeath =
@@ -135,6 +135,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                     ordinaryDeath.TryPresent(terminal),
                     Is.EqualTo(EnemyDeathVfxPresentationStatusV1.ExactReplay));
                 Assert.That(pool.TotalSpawnCount, Is.EqualTo(1));
+                Assert.That(pool.ActiveCount, Is.EqualTo(1));
                 Assert.That(ordinaryBar.IsVisible, Is.False);
                 Assert.That(largeBar.IsVisible, Is.True);
                 Assert.That(largeBar.CurrentSnapshot.NormalizedFill, Is.EqualTo(1d));
@@ -156,7 +157,8 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                 Assert.That(ordinaryBar.IsVisible, Is.True);
                 Assert.That(ordinaryBar.CurrentSnapshot.LifecycleGeneration, Is.EqualTo(2L));
 
-                yield return null;
+                yield return new WaitForSeconds(0.06f);
+                Assert.That(pool.ActiveCount, Is.EqualTo(0));
             }
             finally
             {
