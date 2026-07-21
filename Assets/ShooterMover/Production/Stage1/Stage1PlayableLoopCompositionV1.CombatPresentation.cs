@@ -22,7 +22,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private AuthoritativePlayerCombatHudSourceV1 authoritativeCombatHudSource;
         private bool playerCombatHudBound;
 
-        private CombatEnemyPresentationRegistration2D RegisterEnemyCombatPresentation(
+        private IEnemyActor2DAuthority RegisterEnemyCombatPresentation(
             GameObject presentationRoot,
             IEnemyActor2DAuthority authority)
         {
@@ -56,7 +56,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             combatPresentationByActor.Add(
                 registration.EntityInstanceStableId,
                 registration);
-            return registration;
+            return new CombatPresentationEnemyActorAuthority2D(
+                authority,
+                registration);
         }
 
         private void EnsureCombatDeathVfxPool()
