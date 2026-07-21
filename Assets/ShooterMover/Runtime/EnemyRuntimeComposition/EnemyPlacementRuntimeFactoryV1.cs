@@ -81,6 +81,35 @@ namespace ShooterMover.EnemyRuntimeComposition
 
     public sealed class EnemyPlacementRuntimeInstanceV1
     {
+        private sealed class IssuedDecisionRecord
+        {
+            public IssuedDecisionRecord(string fingerprint, EnemyPlacementDecisionV1 decision)
+            {
+                Fingerprint = fingerprint;
+                Decision = decision;
+            }
+
+            public string Fingerprint { get; }
+            public EnemyPlacementDecisionV1 Decision { get; }
+        }
+
+        private sealed class AcceptedExecutionRecord
+        {
+            public AcceptedExecutionRecord(
+                string fingerprint,
+                string decisionFingerprint,
+                EnemyAttackExecutionRequestV1 execution)
+            {
+                Fingerprint = fingerprint;
+                DecisionFingerprint = decisionFingerprint;
+                Execution = execution;
+            }
+
+            public string Fingerprint { get; }
+            public string DecisionFingerprint { get; }
+            public EnemyAttackExecutionRequestV1 Execution { get; }
+        }
+
         private sealed class AttackReplayRecord
         {
             public AttackReplayRecord(string signature, EnemyAttackExecutionResultV1 result)
@@ -120,6 +149,8 @@ namespace ShooterMover.EnemyRuntimeComposition
         private readonly ReadOnlyCollection<EnemyRuntimeAttackBindingV1> attacks;
         private readonly Dictionary<StableId, EnemyRuntimeAttackBindingV1> attacksById;
         private readonly Dictionary<StableId, double> nextReadyAtByAttack;
+        private readonly Dictionary<string, IssuedDecisionRecord> issuedDecisions;
+        private readonly Dictionary<StableId, AcceptedExecutionRecord> acceptedExecutions;
         private readonly Dictionary<StableId, AttackReplayRecord> attackReplay;
         private readonly Dictionary<StableId, DamageReplayRecord> damageReplay;
         private readonly Dictionary<StableId, ImpactReplayRecord> impactReplay;
@@ -178,6 +209,8 @@ namespace ShooterMover.EnemyRuntimeComposition
             }
 
             nextReadyAtByAttack = new Dictionary<StableId, double>();
+            issuedDecisions = new Dictionary<string, IssuedDecisionRecord>(StringComparer.Ordinal);
+            acceptedExecutions = new Dictionary<StableId, AcceptedExecutionRecord>();
             attackReplay = new Dictionary<StableId, AttackReplayRecord>();
             damageReplay = new Dictionary<StableId, DamageReplayRecord>();
             impactReplay = new Dictionary<StableId, ImpactReplayRecord>();
@@ -245,18 +278,21 @@ namespace ShooterMover.EnemyRuntimeComposition
                 Decision.Configuration,
                 adapted);
             currentTargetId = evaluation.Decision.SelectedTargetId;
-            return new EnemyPlacementDecisionV1(
+            var projection = new EnemyPlacementDecisionV1(
                 Identity.EntityInstanceId,
                 LifecycleGeneration,
                 adapted,
                 evaluation);
+            string fingerprint = EnemyRuntimeAuthorityFingerprintV1.Decision(projection);
+            issuedDecisions[fingerprint] = new IssuedDecisionRecord(fingerprint, projection);
+            return projection;
         }
 
         public EnemyMovementRealizationV1 RealizeMovement(
             EnemyPlacementDecisionV1 decision,
             EnemyMovementRealizationContextV1 context)
         {
-            ValidateDecision(decision);
+            IssuedDecisionRecord issued = RequireIssuedDecision(decision);
             if (context == null) throw new ArgumentNullException(nameof(context));
             if (context.EntityInstanceId != Identity.EntityInstanceId)
                 throw new ArgumentException("Movement context must target this enemy instance.", nameof(context));
@@ -264,7 +300,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                 throw new ArgumentException("Movement context must target this enemy room.", nameof(context));
 
             EnemyMovementPolicyIntentV1 intent = Movement.Policy.BuildIntent(
-                decision.Evaluation,
+                issued.Decision.Evaluation,
                 Movement.Configuration);
             var scaledContext = new EnemyMovementRealizationContextV1(
                 context.EntityInstanceId,
@@ -279,7 +315,37 @@ namespace ShooterMover.EnemyRuntimeComposition
 
         public EnemyAttackExecutionResultV1 TryExecuteAttack(
             EnemyPlacementDecisionV1 decision,
+            StableId operationStableId,
+            double occurredAtSeconds)
+        {
+            return TryExecuteAttackCore(
+                decision,
+                null,
+                false,
+                operationStableId,
+                occurredAtSeconds);
+        }
+
+        // Compatibility overload. The supplied projection is validation-only; execution always rebuilds
+        // the authoritative context from the issued decision and this runtime's difficulty context.
+        public EnemyAttackExecutionResultV1 TryExecuteAttack(
+            EnemyPlacementDecisionV1 decision,
             EnemyTargetingAimContextV1 context,
+            StableId operationStableId,
+            double occurredAtSeconds)
+        {
+            return TryExecuteAttackCore(
+                decision,
+                context,
+                true,
+                operationStableId,
+                occurredAtSeconds);
+        }
+
+        private EnemyAttackExecutionResultV1 TryExecuteAttackCore(
+            EnemyPlacementDecisionV1 decision,
+            EnemyTargetingAimContextV1 suppliedContext,
+            bool callerSuppliedContext,
             StableId operationStableId,
             double occurredAtSeconds)
         {
@@ -289,21 +355,41 @@ namespace ShooterMover.EnemyRuntimeComposition
                 || occurredAtSeconds < 0d)
                 throw new ArgumentOutOfRangeException(nameof(occurredAtSeconds));
 
-            EnemyRuntimeRejectionCodeV1 validation = ValidateDecisionCode(decision);
+            IssuedDecisionRecord issued;
+            EnemyRuntimeRejectionCodeV1 validation = ValidateDecisionCode(decision, out issued);
             EnemyAttackIntent requested = validation == EnemyRuntimeRejectionCodeV1.None
-                ? decision.Evaluation.Decision.RequestedAttack
-                : null;
-            string signature = AttackSignature(decision, context, occurredAtSeconds);
+                ? issued.Decision.Evaluation.Decision.RequestedAttack
+                : decision == null ? null : decision.Evaluation.Decision.RequestedAttack;
+            EnemyRuntimeAttackBindingV1 binding = null;
+            if (requested != null) attacksById.TryGetValue(requested.AttackId, out binding);
+
+            EnemyTargetingAimContextV1 authoritativeContext = decision == null
+                ? null
+                : new EnemyTargetingAimContextV1(
+                    validation == EnemyRuntimeRejectionCodeV1.None
+                        ? issued.Decision.Perception
+                        : decision.Perception,
+                    Request.Difficulty.Scalar);
+            EnemyTargetingAimContextV1 signatureContext = callerSuppliedContext
+                ? suppliedContext
+                : authoritativeContext;
+            string decisionFingerprint = issued == null
+                ? EnemyRuntimeAuthorityFingerprintV1.Decision(decision)
+                : issued.Fingerprint;
+            string signature = EnemyRuntimeAuthorityFingerprintV1.AttackAttempt(
+                decisionFingerprint,
+                signatureContext,
+                false,
+                occurredAtSeconds,
+                Request.Difficulty,
+                DifficultyScaling,
+                binding);
+
             AttackReplayRecord replay;
             if (attackReplay.TryGetValue(operationStableId, out replay))
             {
                 if (!string.Equals(replay.Signature, signature, StringComparison.Ordinal))
-                {
-                    return new EnemyAttackExecutionResultV1(
-                        EnemyRuntimeOperationStatusV1.Rejected,
-                        EnemyRuntimeRejectionCodeV1.ConflictingDuplicate,
-                        null);
-                }
+                    return RejectedAttack(EnemyRuntimeRejectionCodeV1.ConflictingDuplicate);
                 return new EnemyAttackExecutionResultV1(
                     EnemyRuntimeOperationStatusV1.ExactReplay,
                     replay.Result.Rejection,
@@ -314,6 +400,15 @@ namespace ShooterMover.EnemyRuntimeComposition
             if (validation != EnemyRuntimeRejectionCodeV1.None)
             {
                 result = RejectedAttack(validation);
+            }
+            else if (callerSuppliedContext
+                && (suppliedContext == null
+                    || !string.Equals(
+                        EnemyRuntimeAuthorityFingerprintV1.AimContext(suppliedContext),
+                        EnemyRuntimeAuthorityFingerprintV1.AimContext(authoritativeContext),
+                        StringComparison.Ordinal)))
+            {
+                result = RejectedAttack(EnemyRuntimeRejectionCodeV1.InvalidCommand);
             }
             else if (!actorState.IsActive)
             {
@@ -326,45 +421,59 @@ namespace ShooterMover.EnemyRuntimeComposition
                     EnemyRuntimeRejectionCodeV1.MissingAttackIntent,
                     null);
             }
-            else if (context == null
-                || context.Perception.SimulationTick != decision.Perception.SimulationTick)
+            else if (binding == null)
             {
-                result = RejectedAttack(EnemyRuntimeRejectionCodeV1.InvalidCommand);
+                result = RejectedAttack(EnemyRuntimeRejectionCodeV1.UnknownAttack);
             }
             else
             {
-                EnemyRuntimeAttackBindingV1 binding;
-                if (!attacksById.TryGetValue(requested.AttackId, out binding))
+                double readyAt;
+                nextReadyAtByAttack.TryGetValue(requested.AttackId, out readyAt);
+                if (occurredAtSeconds < readyAt)
                 {
-                    result = RejectedAttack(EnemyRuntimeRejectionCodeV1.UnknownAttack);
+                    result = RejectedAttack(EnemyRuntimeRejectionCodeV1.CooldownActive);
                 }
                 else
                 {
-                    double readyAt;
-                    nextReadyAtByAttack.TryGetValue(requested.AttackId, out readyAt);
-                    if (occurredAtSeconds < readyAt)
+                    EnemyAttackIntent committed = binding.TargetingAim.Policy.Commit(
+                        requested,
+                        authoritativeContext,
+                        binding.TargetingAim.Configuration);
+                    var executionContext = new EnemyAttackExecutionContextV1(
+                        operationStableId,
+                        Identity,
+                        LifecycleGeneration,
+                        occurredAtSeconds,
+                        DifficultyScaling);
+                    StableId itemInstance = ResolveAttackItemInstance(binding.Descriptor.AttackId);
+                    EnemyAttackExecutionRequestV1 execution =
+                        binding.Capability.Adapter.BuildExecution(
+                            binding.Descriptor,
+                            committed,
+                            itemInstance,
+                            binding.Capability.Configuration,
+                            executionContext);
+                    if (!ExecutionMatchesAuthoritativeInputs(
+                        execution,
+                        operationStableId,
+                        occurredAtSeconds,
+                        binding,
+                        committed,
+                        itemInstance))
                     {
-                        result = RejectedAttack(EnemyRuntimeRejectionCodeV1.CooldownActive);
+                        result = RejectedAttack(EnemyRuntimeRejectionCodeV1.InvalidCommand);
                     }
                     else
                     {
-                        EnemyAttackIntent committed = binding.TargetingAim.Policy.Commit(
-                            requested,
-                            context,
-                            binding.TargetingAim.Configuration);
-                        var executionContext = new EnemyAttackExecutionContextV1(
+                        string executionFingerprint = EnemyRuntimeAuthorityFingerprintV1.Execution(
+                            execution,
+                            issued.Fingerprint);
+                        acceptedExecutions.Add(
                             operationStableId,
-                            Identity,
-                            LifecycleGeneration,
-                            occurredAtSeconds,
-                            DifficultyScaling);
-                        EnemyAttackExecutionRequestV1 execution =
-                            binding.Capability.Adapter.BuildExecution(
-                                binding.Descriptor,
-                                committed,
-                                ResolveAttackItemInstance(binding.Descriptor.AttackId),
-                                binding.Capability.Configuration,
-                                executionContext);
+                            new AcceptedExecutionRecord(
+                                executionFingerprint,
+                                issued.Fingerprint,
+                                execution));
                         downstream.AttackEffects.Emit(execution);
                         nextReadyAtByAttack[requested.AttackId] =
                             occurredAtSeconds + execution.ResolvedCooldownSeconds;
@@ -388,25 +497,26 @@ namespace ShooterMover.EnemyRuntimeComposition
             if (hitEventStableId == null) throw new ArgumentNullException(nameof(hitEventStableId));
             if (targetEntityStableId == null) throw new ArgumentNullException(nameof(targetEntityStableId));
             if (execution == null
+                || execution.Identity == null
                 || execution.Identity.EntityInstanceId != Identity.EntityInstanceId)
             {
                 return RejectedPlayerImpact(EnemyRuntimeRejectionCodeV1.EntityMismatch);
             }
             if (execution.LifecycleGeneration != LifecycleGeneration)
-            {
                 return RejectedPlayerImpact(EnemyRuntimeRejectionCodeV1.StaleLifecycle);
-            }
-            if (!actorState.IsActive)
-            {
-                return RejectedPlayerImpact(EnemyRuntimeRejectionCodeV1.ActorTerminal);
-            }
 
-            string signature = execution.OperationStableId
-                + "|" + execution.Identity.EntityInstanceId
-                + "|" + execution.LifecycleGeneration.ToString(CultureInfo.InvariantCulture)
-                + "|" + targetEntityStableId
-                + "|" + execution.ResolvedDamage.ToString("R", CultureInfo.InvariantCulture)
-                + "|" + execution.Descriptor.DamageChannelId;
+            AcceptedExecutionRecord accepted;
+            if (!acceptedExecutions.TryGetValue(execution.OperationStableId, out accepted))
+                return RejectedPlayerImpact(EnemyRuntimeRejectionCodeV1.ExecutionNotIssued);
+            string suppliedFingerprint = EnemyRuntimeAuthorityFingerprintV1.Execution(
+                execution,
+                accepted.DecisionFingerprint);
+            if (!string.Equals(accepted.Fingerprint, suppliedFingerprint, StringComparison.Ordinal))
+                return RejectedPlayerImpact(EnemyRuntimeRejectionCodeV1.InvalidCommand);
+
+            string signature = EnemyRuntimeAuthorityFingerprintV1.Impact(
+                accepted.Fingerprint,
+                targetEntityStableId);
             ImpactReplayRecord replay;
             if (impactReplay.TryGetValue(hitEventStableId, out replay))
             {
@@ -417,16 +527,17 @@ namespace ShooterMover.EnemyRuntimeComposition
                     replay.Result.Rejection);
             }
 
+            EnemyAttackExecutionRequestV1 canonical = accepted.Execution;
             var request = new EnemyPlayerDamageRequestV1(
                 hitEventStableId,
-                execution.OperationStableId,
+                canonical.OperationStableId,
                 Identity.EntityInstanceId,
                 Identity.RunParticipantId,
                 targetEntityStableId,
                 LifecycleGeneration,
-                execution.ResolvedDamage,
-                execution.Descriptor.DamageChannelId,
-                execution.CommittedIntent);
+                canonical.ResolvedDamage,
+                canonical.Descriptor.DamageChannelId,
+                canonical.CommittedIntent);
             EnemyPlayerDamagePortResultV1 result = downstream.PlayerDamage.Route(request)
                 ?? throw new InvalidOperationException("Player damage ports must return a result.");
             impactReplay.Add(hitEventStableId, new ImpactReplayRecord(signature, result));
@@ -483,11 +594,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                     });
                 actorState = stepped.State;
                 EnemyDestroyedNotification destroyed = FindDestroyed(stepped.Notifications);
-                EnemyDeathFactV1 death = null;
-                if (destroyed != null)
-                {
-                    death = PublishDeathOnce(command, destroyed);
-                }
+                EnemyDeathFactV1 death = destroyed == null ? null : PublishDeathOnce(command, destroyed);
                 result = new EnemyRuntimeDamageResultV1(
                     EnemyRuntimeOperationStatusV1.Applied,
                     EnemyRuntimeRejectionCodeV1.None,
@@ -499,8 +606,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             return result;
         }
 
-        public ReportRoomOccupantTerminalCommandV1 BuildTerminalCommand(
-            StableId operationStableId)
+        public ReportRoomOccupantTerminalCommandV1 BuildTerminalCommand(StableId operationStableId)
         {
             return new ReportRoomOccupantTerminalCommandV1(
                 Identity.RoomRuntimeInstanceStableId,
@@ -508,6 +614,31 @@ namespace ShooterMover.EnemyRuntimeComposition
                 Request.RoomLifecycleGeneration,
                 RoomStableId,
                 SpawnStableId);
+        }
+
+        private bool ExecutionMatchesAuthoritativeInputs(
+            EnemyAttackExecutionRequestV1 execution,
+            StableId operationStableId,
+            double occurredAtSeconds,
+            EnemyRuntimeAttackBindingV1 binding,
+            EnemyAttackIntent committed,
+            StableId itemInstance)
+        {
+            return execution != null
+                && execution.OperationStableId == operationStableId
+                && EnemyRuntimeAuthorityFingerprintV1.IdentityEquals(execution.Identity, Identity)
+                && execution.LifecycleGeneration == LifecycleGeneration
+                && execution.OccurredAtSeconds == occurredAtSeconds
+                && string.Equals(
+                    EnemyRuntimeAuthorityFingerprintV1.Descriptor(execution.Descriptor),
+                    EnemyRuntimeAuthorityFingerprintV1.Descriptor(binding.Descriptor),
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    EnemyRuntimeAuthorityFingerprintV1.AttackIntent(execution.CommittedIntent),
+                    EnemyRuntimeAuthorityFingerprintV1.AttackIntent(committed),
+                    StringComparison.Ordinal)
+                && execution.ItemInstanceStableId == itemInstance
+                && execution.ExecutionKind == binding.Capability.Configuration.ExecutionKind;
         }
 
         private StableId ResolveAttackItemInstance(StableId attackStableId)
@@ -554,42 +685,29 @@ namespace ShooterMover.EnemyRuntimeComposition
             return publishedDeath;
         }
 
-        private void ValidateDecision(EnemyPlacementDecisionV1 decision)
+        private IssuedDecisionRecord RequireIssuedDecision(EnemyPlacementDecisionV1 decision)
         {
-            EnemyRuntimeRejectionCodeV1 code = ValidateDecisionCode(decision);
+            IssuedDecisionRecord issued;
+            EnemyRuntimeRejectionCodeV1 code = ValidateDecisionCode(decision, out issued);
             if (code != EnemyRuntimeRejectionCodeV1.None)
-            {
                 throw new InvalidOperationException("Enemy decision is not valid for this runtime: " + code);
-            }
+            return issued;
         }
 
         private EnemyRuntimeRejectionCodeV1 ValidateDecisionCode(
-            EnemyPlacementDecisionV1 decision)
+            EnemyPlacementDecisionV1 decision,
+            out IssuedDecisionRecord issued)
         {
+            issued = null;
             if (decision == null) return EnemyRuntimeRejectionCodeV1.InvalidCommand;
             if (decision.EntityInstanceId != Identity.EntityInstanceId)
                 return EnemyRuntimeRejectionCodeV1.EntityMismatch;
             if (decision.LifecycleGeneration != LifecycleGeneration)
                 return EnemyRuntimeRejectionCodeV1.StaleLifecycle;
+            string fingerprint = EnemyRuntimeAuthorityFingerprintV1.Decision(decision);
+            if (!issuedDecisions.TryGetValue(fingerprint, out issued))
+                return EnemyRuntimeRejectionCodeV1.DecisionNotIssued;
             return EnemyRuntimeRejectionCodeV1.None;
-        }
-
-        private static string AttackSignature(
-            EnemyPlacementDecisionV1 decision,
-            EnemyTargetingAimContextV1 context,
-            double occurredAtSeconds)
-        {
-            if (decision == null) return "decision:null|" + occurredAtSeconds.ToString("R", CultureInfo.InvariantCulture);
-            EnemyAttackIntent requested = decision.Evaluation.Decision.RequestedAttack;
-            return decision.EntityInstanceId
-                + "|" + decision.LifecycleGeneration.ToString(CultureInfo.InvariantCulture)
-                + "|" + (requested == null ? "-" : requested.DecisionId.ToString())
-                + "|" + (requested == null ? "-" : requested.AttackId.ToString())
-                + "|" + decision.Perception.SimulationTick.ToString(CultureInfo.InvariantCulture)
-                + "|" + (context == null
-                    ? "-"
-                    : context.Perception.SimulationTick.ToString(CultureInfo.InvariantCulture))
-                + "|" + occurredAtSeconds.ToString("R", CultureInfo.InvariantCulture);
         }
 
         private static string DamageSignature(EnemyRuntimeDamageCommandV1 command)
@@ -608,14 +726,13 @@ namespace ShooterMover.EnemyRuntimeComposition
         {
             for (int index = 0; index < notifications.Count; index++)
             {
-                EnemyDestroyedNotification destroyed = notifications[index]
-                    as EnemyDestroyedNotification;
+                EnemyDestroyedNotification destroyed = notifications[index] as EnemyDestroyedNotification;
                 if (destroyed != null) return destroyed;
             }
             return null;
         }
 
-        private EnemyAttackExecutionResultV1 RejectedAttack(
+        private static EnemyAttackExecutionResultV1 RejectedAttack(
             EnemyRuntimeRejectionCodeV1 rejection)
         {
             return new EnemyAttackExecutionResultV1(
@@ -714,10 +831,7 @@ namespace ShooterMover.EnemyRuntimeComposition
         public IReadOnlyList<RoomOccupantRegistrationV1> Occupants { get { return occupants; } }
         public EnemyPlacementRuntimeFactoryRejectionV1 Rejection { get; }
         public string Diagnostic { get; }
-        public bool IsCreated
-        {
-            get { return Rejection == EnemyPlacementRuntimeFactoryRejectionV1.None; }
-        }
+        public bool IsCreated { get { return Rejection == EnemyPlacementRuntimeFactoryRejectionV1.None; } }
 
         public RegisterRoomOccupantsCommandV1 BuildRegistrationCommand(
             StableId roomRuntimeInstanceStableId,
@@ -806,8 +920,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             this.downstream = downstream ?? throw new ArgumentNullException(nameof(downstream));
         }
 
-        public EnemyPlacementRuntimeFactoryResultV1 Create(
-            EnemyPlacementRuntimeRequestV1 request)
+        public EnemyPlacementRuntimeFactoryResultV1 Create(EnemyPlacementRuntimeRequestV1 request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
@@ -835,7 +948,6 @@ namespace ShooterMover.EnemyRuntimeComposition
                     EnemyPlacementRuntimeFactoryRejectionV1.PresentationMismatch,
                     definition.DefinitionId);
             }
-
             if (definition.LevelScaling != null
                 && (request.Placement.Level < definition.LevelScaling.BaseLevel
                     || request.Placement.Level > definition.LevelScaling.MaximumLevel))
@@ -852,7 +964,6 @@ namespace ShooterMover.EnemyRuntimeComposition
                     EnemyPlacementRuntimeFactoryRejectionV1.MovementPolicyNotRegistered,
                     definition.MovementPolicyId);
             }
-
             EnemyDecisionPolicyRegistrationV1 decision;
             if (!policies.TryResolveDecision(definition.DecisionPolicyId, out decision))
             {
@@ -872,7 +983,6 @@ namespace ShooterMover.EnemyRuntimeComposition
                         EnemyPlacementRuntimeFactoryRejectionV1.AttackCapabilityNotRegistered,
                         descriptor.CapabilityId);
                 }
-
                 EnemyTargetingAimPolicyRegistrationV1 targetingAim;
                 if (!policies.TryResolveTargetingAim(
                     capability.Configuration.TargetingAimPolicyId,
@@ -1001,7 +1111,9 @@ namespace ShooterMover.EnemyRuntimeComposition
             }
 
             if (roomStableId == null)
-                throw new ArgumentException("A room composition requires at least one enemy placement.", nameof(requests));
+                throw new ArgumentException(
+                    "A room composition requires at least one enemy placement.",
+                    nameof(requests));
             runtimes.Sort((left, right) => left.SpawnStableId.CompareTo(right.SpawnStableId));
             occupants.Sort((left, right) => left.EntityStableId.CompareTo(right.EntityStableId));
             return EnemyRoomPlacementCompositionResultV1.Created(roomStableId, runtimes, occupants);
@@ -1016,8 +1128,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                 "enemy-factory:" + rejection + ":" + id);
         }
 
-        private static EnemyRoomClearRole MapRuntimeRoomRole(
-            EnemyCatalogRoomClearRoleV1 role)
+        private static EnemyRoomClearRole MapRuntimeRoomRole(EnemyCatalogRoomClearRoleV1 role)
         {
             EnemyRoomClearRole mapped;
             if (!RuntimeRoomRoles.TryGetValue(role, out mapped))
