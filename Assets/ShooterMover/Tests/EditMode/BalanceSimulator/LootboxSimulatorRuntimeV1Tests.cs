@@ -14,69 +14,98 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         {
             LootboxSimulatorRuntimeV1 runtime = CreateRuntime();
 
-            LootboxGeneratedItemV1 first = runtime.Generate(5, 30, 123456UL, 0);
-            LootboxGeneratedItemV1 replay = runtime.Generate(5, 30, 123456UL, 0);
-            LootboxGeneratedItemV1 second = runtime.Generate(5, 30, 123456UL, 1);
+            LootboxGeneratedItemV1 first =
+                runtime.Generate(5, 30, 123456UL, 0);
+            LootboxGeneratedItemV1 replay =
+                runtime.Generate(5, 30, 123456UL, 0);
+            LootboxGeneratedItemV1 second =
+                runtime.Generate(5, 30, 123456UL, 1);
 
-            Assert.That(replay.Fingerprint, Is.EqualTo(first.Fingerprint));
-            Assert.That(replay.Equipment.Fingerprint, Is.EqualTo(first.Equipment.Fingerprint));
-            Assert.That(replay.Equipment.InstanceId, Is.EqualTo(first.Equipment.InstanceId));
-            Assert.That(second.Equipment.InstanceId, Is.Not.EqualTo(first.Equipment.InstanceId));
-            Assert.That(first.Equipment.Augments.Count, Is.InRange(1, 3));
-            Assert.That(first.SourceDefinitionId, Does.StartWith("family_000.mk"));
+            Assert.That(
+                replay.Fingerprint,
+                Is.EqualTo(first.Fingerprint));
+            Assert.That(
+                replay.Equipment.Fingerprint,
+                Is.EqualTo(first.Equipment.Fingerprint));
+            Assert.That(
+                replay.Equipment.InstanceId,
+                Is.EqualTo(first.Equipment.InstanceId));
+            Assert.That(
+                second.Equipment.InstanceId,
+                Is.Not.EqualTo(first.Equipment.InstanceId));
+            Assert.That(first.Equipment.Augments.Count, Is.Zero);
+            Assert.That(
+                first.SourceDefinitionId,
+                Does.StartWith("family_000.mk"));
         }
 
         [Test]
         public void KeepAndSellAreExactlyOnceForTheConcreteEquipmentInstance()
         {
             LootboxSimulatorRuntimeV1 runtime = CreateRuntime();
-            LootboxGeneratedItemV1 kept = runtime.Generate(1, 30, 8765UL, 0);
-            LootboxGeneratedItemV1 sold = runtime.Generate(1, 30, 8765UL, 1);
+            LootboxGeneratedItemV1 kept =
+                runtime.Generate(1, 30, 8765UL, 0);
+            LootboxGeneratedItemV1 sold =
+                runtime.Generate(1, 30, 8765UL, 1);
 
             Assert.That(
                 runtime.Keep(kept),
-                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                Is.EqualTo(
+                    PlayerHoldingsMutationStatusV1.Applied));
             Assert.That(
                 runtime.Keep(kept),
-                Is.EqualTo(PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange));
+                Is.EqualTo(
+                    PlayerHoldingsMutationStatusV1
+                        .ExactDuplicateNoChange));
             Assert.That(runtime.Sell(kept), Is.False);
-            Assert.That(runtime.AcceptedInventory.Count, Is.EqualTo(1));
-            Assert.That(runtime.AcceptedInventory[0].InstanceId, Is.EqualTo(kept.Equipment.InstanceId));
+            Assert.That(
+                runtime.AcceptedInventory.Count,
+                Is.EqualTo(1));
+            Assert.That(
+                runtime.AcceptedInventory[0].InstanceId,
+                Is.EqualTo(kept.Equipment.InstanceId));
 
             Assert.That(runtime.Sell(sold), Is.True);
             Assert.That(runtime.Sell(sold), Is.False);
             Assert.That(runtime.Cash, Is.EqualTo(1000L));
-            Assert.That(runtime.AcceptedInventory.Count, Is.EqualTo(1));
+            Assert.That(
+                runtime.AcceptedInventory.Count,
+                Is.EqualTo(1));
         }
 
         [Test]
-        public void AntimatterOddsExposeThreeSlotsAndOneToTenAugmentLevelsDeterministically()
+        public void AntimatterOddsExposeZeroInstalledAugmentsDeterministically()
         {
             LootboxSimulatorRuntimeV1 runtime = CreateRuntime();
 
-            LootboxOddsReportV1 first = runtime.CalculateOdds(11, 30, 99UL, 64);
-            LootboxOddsReportV1 replay = runtime.CalculateOdds(11, 30, 99UL, 64);
+            LootboxOddsReportV1 first =
+                runtime.CalculateOdds(11, 30, 99UL, 64);
+            LootboxOddsReportV1 replay =
+                runtime.CalculateOdds(11, 30, 99UL, 64);
 
             Assert.That(first.RejectedRolls, Is.Zero);
-            Assert.That(first.SuccessfulOpenCount, Is.EqualTo(64));
+            Assert.That(
+                first.SuccessfulOpenCount,
+                Is.EqualTo(64));
             Assert.That(Sum(first.ItemOdds), Is.EqualTo(64L));
             Assert.That(Sum(first.QualityOdds), Is.EqualTo(64L));
             Assert.That(Sum(first.SlotOdds), Is.EqualTo(64L));
             Assert.That(first.SlotOdds.Count, Is.EqualTo(1));
-            Assert.That(first.SlotOdds[0].Key, Is.EqualTo("3"));
-            Assert.That(first.SlotOdds[0].Count, Is.EqualTo(64L));
-            Assert.That(Sum(first.AugmentTierOdds), Is.EqualTo(192L));
-            Assert.That(Sum(first.AugmentLevelOdds), Is.EqualTo(192L));
-            Assert.That(Sum(first.ItemLevelDeltaOdds), Is.EqualTo(64L));
-            for (int index = 0; index < first.AugmentLevelOdds.Count; index++)
-            {
-                int value = int.Parse(
-                    first.AugmentLevelOdds[index].Key,
-                    CultureInfo.InvariantCulture);
-                Assert.That(value, Is.InRange(1, 10));
-            }
-            Assert.That(replay.Fingerprint, Is.EqualTo(first.Fingerprint));
-            Assert.That(replay.ToCanonicalString(), Is.EqualTo(first.ToCanonicalString()));
+            Assert.That(first.SlotOdds[0].Key, Is.EqualTo("0"));
+            Assert.That(
+                first.SlotOdds[0].Count,
+                Is.EqualTo(64L));
+            Assert.That(first.AugmentTierOdds, Is.Empty);
+            Assert.That(first.AugmentLevelOdds, Is.Empty);
+            Assert.That(
+                Sum(first.ItemLevelDeltaOdds),
+                Is.EqualTo(64L));
+            Assert.That(
+                replay.Fingerprint,
+                Is.EqualTo(first.Fingerprint));
+            Assert.That(
+                replay.ToCanonicalString(),
+                Is.EqualTo(first.ToCanonicalString()));
         }
 
         [Test]
@@ -86,13 +115,17 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             string diagnostic;
 
             Assert.That(
-                LootboxSimulatorRuntimeV1.TryCreate("{}", out runtime, out diagnostic),
+                LootboxSimulatorRuntimeV1.TryCreate(
+                    "{}",
+                    out runtime,
+                    out diagnostic),
                 Is.False);
             Assert.That(runtime, Is.Null);
             Assert.That(diagnostic, Is.Not.Empty);
         }
 
-        private static long Sum(IReadOnlyList<LootboxOddsEntryV1> values)
+        private static long Sum(
+            IReadOnlyList<LootboxOddsEntryV1> values)
         {
             long result = 0L;
             for (int index = 0; index < values.Count; index++)
@@ -104,10 +137,16 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
 
         private static LootboxSimulatorRuntimeV1 CreateRuntime()
         {
+            return CreateRuntime(BuildCatalogJson());
+        }
+
+        private static LootboxSimulatorRuntimeV1 CreateRuntime(
+            string catalogJson)
+        {
             LootboxSimulatorRuntimeV1 runtime;
             string diagnostic;
             bool created = LootboxSimulatorRuntimeV1.TryCreate(
-                BuildCatalogJson(),
+                catalogJson,
                 out runtime,
                 out diagnostic);
             Assert.That(created, Is.True, diagnostic);
@@ -175,76 +214,200 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             AddString(json, "MK1Rarity", "Common", true);
             AddString(json, "MK2Rarity", "Common", true);
             AddString(json, "MK3Rarity", "Common", true);
-            AddNumber(json, "DefinitionWeightModifier", 1.0, true);
-            AddString(json, "AcquisitionClass", "Standard", true);
-            AddString(json, "PrimaryEffect", "Primary effect", true);
+            AddNumber(
+                json,
+                "DefinitionWeightModifier",
+                1.0,
+                true);
+            AddString(
+                json,
+                "AcquisitionClass",
+                "Standard",
+                true);
+            AddString(
+                json,
+                "PrimaryEffect",
+                "Primary effect",
+                true);
             AddString(json, "Notes", "Family notes", true);
             AddString(json, "Availability", "Live", true);
-            json.Append("\"SideProfileArtReference\":\"art/family_000.png\"");
+            json.Append(
+                "\"SideProfileArtReference\":\"art/family_000.png\"");
             json.Append("}],\"definitions\":[");
             for (int mark = 1; mark <= 3; mark++)
             {
-                if (mark > 1) json.Append(',');
+                if (mark > 1)
+                {
+                    json.Append(',');
+                }
                 WriteDefinition(json, mark);
             }
             json.Append("]}");
             return json.ToString();
         }
 
-        private static void WriteDefinition(StringBuilder json, int mark)
+        private static void WriteDefinition(
+            StringBuilder json,
+            int mark)
         {
             double powerIndex = PowerIndex(mark);
-            double targetDps = 12.0 * powerIndex / 100.0;
+            double targetDps =
+                12.0 * powerIndex / 100.0;
             const double fireRate = 2.0;
             json.Append('{');
-            AddString(json, "DefinitionId", "family_000.mk" + mark, true);
-            AddString(json, "DisplayName", "Family 000 MK" + mark, true);
-            AddString(json, "FamilyId", "family_000", true);
+            AddString(
+                json,
+                "DefinitionId",
+                "family_000.mk" + mark,
+                true);
+            AddString(
+                json,
+                "DisplayName",
+                "Family 000 MK" + mark,
+                true);
+            AddString(
+                json,
+                "FamilyId",
+                "family_000",
+                true);
             AddNumber(json, "Mark", mark, true);
-            AddString(json, "DamageType", "Kinetic", true);
+            AddString(
+                json,
+                "DamageType",
+                "Kinetic",
+                true);
             AddString(json, "Archetype", "Hybrid", true);
-            AddString(json, "BuildAffinity", "Universal", true);
-            AddNumber(json, "FirstAppearance", mark, true);
-            AddNumber(json, "PeakDropLevel", mark, true);
+            AddString(
+                json,
+                "BuildAffinity",
+                "Universal",
+                true);
+            AddNumber(
+                json,
+                "FirstAppearance",
+                mark,
+                true);
+            AddNumber(
+                json,
+                "PeakDropLevel",
+                mark,
+                true);
             AddNumber(json, "PowerAnchor", mark, true);
             AddString(json, "Rarity", "Common", true);
-            AddNumber(json, "RarityWeight", 1000.0, true);
-            AddNumber(json, "DefinitionWeightModifier", 1.0, true);
-            AddNumber(json, "FinalBaseWeight", 1000.0, true);
+            AddNumber(
+                json,
+                "RarityWeight",
+                1000.0,
+                true);
+            AddNumber(
+                json,
+                "DefinitionWeightModifier",
+                1.0,
+                true);
+            AddNumber(
+                json,
+                "FinalBaseWeight",
+                1000.0,
+                true);
             AddNumber(json, "EarlyTail", 4.0, true);
             AddNumber(json, "LateTail", 13.0, true);
-            AddString(json, "AcquisitionClass", "Standard", true);
+            AddString(
+                json,
+                "AcquisitionClass",
+                "Standard",
+                true);
             AddString(json, "TopBoxOnly", "No", true);
-            AddString(json, "CraftingRoute", "Standard equipment generation", true);
-            AddNumber(json, "ArchetypeDPSFactor", 1.0, true);
+            AddString(
+                json,
+                "CraftingRoute",
+                "Standard equipment generation",
+                true);
+            AddNumber(
+                json,
+                "ArchetypeDPSFactor",
+                1.0,
+                true);
             AddNumber(json, "PowerIndex", powerIndex, true);
             AddNumber(json, "TargetDPS", targetDps, true);
             AddNumber(json, "DirectShare", 0.2, true);
             AddNumber(json, "AreaShare", 0.3, true);
             AddNumber(json, "DoTShare", 0.5, true);
             AddNumber(json, "FireRate", fireRate, true);
-            AddNumber(json, "ProjectilesPerTrigger", 1, true);
+            AddNumber(
+                json,
+                "ProjectilesPerTrigger",
+                1,
+                true);
             AddNumber(json, "BurstCount", 1, true);
-            AddNumber(json, "DamagePerProjectile", targetDps * 0.2 / fireRate, true);
-            AddNumber(json, "SpreadDegrees", 1.25, true);
-            AddNumber(json, "ProjectileSpeed", 40.0, true);
+            AddNumber(
+                json,
+                "DamagePerProjectile",
+                targetDps * 0.2 / fireRate,
+                true);
+            AddNumber(
+                json,
+                "SpreadDegrees",
+                1.25,
+                true);
+            AddNumber(
+                json,
+                "ProjectileSpeed",
+                40.0,
+                true);
             AddNumber(json, "Range", 30.0, true);
             AddNumber(json, "Pierce", 1, true);
-            AddNumber(json, "ExplosionRadius", 2.0, true);
-            AddNumber(json, "AreaDamagePerTrigger", targetDps * 0.3 / fireRate, true);
-            AddNumber(json, "DoTDPS", targetDps * 0.5, true);
-            AddNumber(json, "DoTDuration", 3.0, true);
+            AddNumber(
+                json,
+                "ExplosionRadius",
+                2.0,
+                true);
+            AddNumber(
+                json,
+                "AreaDamagePerTrigger",
+                targetDps * 0.3 / fireRate,
+                true);
+            AddNumber(
+                json,
+                "DoTDPS",
+                targetDps * 0.5,
+                true);
+            AddNumber(
+                json,
+                "DoTDuration",
+                3.0,
+                true);
             AddNumber(json, "PoolRadius", 4.0, true);
-            AddNumber(json, "PoolDuration", 5.0, true);
-            AddNumber(json, "ChainTargets", 2, true);
+            AddNumber(
+                json,
+                "PoolDuration",
+                5.0,
+                true);
+            AddNumber(
+                json,
+                "ChainTargets",
+                2,
+                true);
             AddNumber(json, "ChainRange", 6.0, true);
             AddNumber(json, "Knockback", 0.7, true);
             AddNumber(json, "PowerCost", 1.5, true);
-            AddNumber(json, "HealingPerSecond", 2.5, true);
-            AddString(json, "PrimaryEffect", "Primary effect", true);
-            AddString(json, "Notes", "Definition notes", true);
+            AddNumber(
+                json,
+                "HealingPerSecond",
+                2.5,
+                true);
+            AddString(
+                json,
+                "PrimaryEffect",
+                "Primary effect",
+                true);
+            AddString(
+                json,
+                "Notes",
+                "Definition notes",
+                true);
             AddString(json, "Availability", "Live", true);
-            json.Append("\"SideProfileArtReferences\":[\"art/family_000-mk")
+            json.Append(
+                "\"SideProfileArtReferences\":[\"art/family_000-mk")
                 .Append(mark)
                 .Append(".png\"]");
             json.Append('}');
@@ -266,8 +429,15 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             string value,
             bool comma)
         {
-            json.Append('"').Append(name).Append("\":\"").Append(value).Append('"');
-            if (comma) json.Append(',');
+            json.Append('"')
+                .Append(name)
+                .Append("\":\"")
+                .Append(value)
+                .Append('"');
+            if (comma)
+            {
+                json.Append(',');
+            }
         }
 
         private static void AddNumber(
@@ -276,9 +446,17 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             double value,
             bool comma)
         {
-            json.Append('"').Append(name).Append("\":")
-                .Append(value.ToString("R", CultureInfo.InvariantCulture));
-            if (comma) json.Append(',');
+            json.Append('"')
+                .Append(name)
+                .Append("\":")
+                .Append(
+                    value.ToString(
+                        "R",
+                        CultureInfo.InvariantCulture));
+            if (comma)
+            {
+                json.Append(',');
+            }
         }
     }
 }

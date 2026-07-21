@@ -12,6 +12,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes
     /// Authored V1 balance for the eleven normal strongbox tiers. Negative level
     /// offsets are intentional: early boxes may feel below the player's current
     /// power, while late boxes establish a visibly stronger reward expectation.
+    /// Fresh strongbox equipment never materializes installed augments. The
+    /// historical slot fields remain part of the versioned tier contract but are
+    /// authored as zero; augment capacity is owned by EquipmentDefinition.
     /// </summary>
     public sealed class ProductionStrongboxTierV1
     {
@@ -35,7 +38,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         {
             if (tierNumber < 1) throw new ArgumentOutOfRangeException(nameof(tierNumber));
             if (string.IsNullOrWhiteSpace(slug)) throw new ArgumentException("Tier slug is required.", nameof(slug));
-            if (string.IsNullOrWhiteSpace(displayName)) throw new ArgumentException("Display name is required.", nameof(displayName));
+            if (string.IsNullOrWhiteSpace(displayName)) throw new ArgumentException("Tier display name is required.", nameof(displayName));
             if (itemLevelStandardDeviationMilli <= 0) throw new ArgumentOutOfRangeException(nameof(itemLevelStandardDeviationMilli));
             if (minimumAugmentSlots < 0 || maximumAugmentSlots < minimumAugmentSlots)
             {
@@ -148,17 +151,17 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             new ReadOnlyCollection<ProductionStrongboxTierV1>(
                 new List<ProductionStrongboxTierV1>
                 {
-                    Tier(1, "steel", "Steel", -6, 5200, 1, 2, 700, 5, 10, 82, 17, 1, 80, 800, 0),
-                    Tier(2, "copper", "Copper", -4, 5000, 1, 2, 650, 8, 16, 78, 20, 2, 90, 900, 5),
-                    Tier(3, "silver", "Silver", -2, 4700, 1, 2, 600, 12, 24, 72, 25, 3, 100, 1000, 10),
-                    Tier(4, "amethyst", "Amethyst", 0, 4400, 1, 3, 550, 18, 36, 64, 31, 5, 115, 1150, 20),
-                    Tier(5, "gold", "Gold", 2, 4100, 1, 3, 500, 25, 50, 55, 37, 8, 130, 1300, 35),
-                    Tier(6, "black-opal", "Black Opal", 4, 3800, 1, 3, 475, 35, 70, 46, 42, 12, 150, 1500, 55),
-                    Tier(7, "blue-sapphire", "Blue Sapphire", 6, 3500, 1, 3, 450, 50, 100, 37, 46, 17, 175, 1750, 80),
-                    Tier(8, "emerald", "Emerald", 8, 3200, 2, 3, 425, 70, 140, 29, 49, 22, 205, 2050, 115),
-                    Tier(9, "alexandrite", "Alexandrite", 10, 2900, 2, 3, 400, 100, 200, 21, 50, 29, 240, 2400, 160),
-                    Tier(10, "red-diamond", "Red Diamond", 12, 2600, 2, 3, 350, 150, 300, 14, 48, 38, 285, 2850, 225),
-                    Tier(11, "antimatter", "Antimatter", 14, 2200, 3, 3, 300, 250, 500, 7, 40, 53, 350, 3500, 320),
+                    Tier(1, "steel", "Steel", -6, 5200, 0, 0, 0, 5, 10, 82, 17, 1, 80, 800, 0),
+                    Tier(2, "copper", "Copper", -4, 5000, 0, 0, 0, 8, 16, 78, 20, 2, 90, 900, 5),
+                    Tier(3, "silver", "Silver", -2, 4700, 0, 0, 0, 12, 24, 72, 25, 3, 100, 1000, 10),
+                    Tier(4, "amethyst", "Amethyst", 0, 4400, 0, 0, 0, 18, 36, 64, 31, 5, 115, 1150, 20),
+                    Tier(5, "gold", "Gold", 2, 4100, 0, 0, 0, 25, 50, 55, 37, 8, 130, 1300, 35),
+                    Tier(6, "black-opal", "Black Opal", 4, 3800, 0, 0, 0, 35, 70, 46, 42, 12, 150, 1500, 55),
+                    Tier(7, "blue-sapphire", "Blue Sapphire", 6, 3500, 0, 0, 0, 50, 100, 37, 46, 17, 175, 1750, 80),
+                    Tier(8, "emerald", "Emerald", 8, 3200, 0, 0, 0, 70, 140, 29, 49, 22, 205, 2050, 115),
+                    Tier(9, "alexandrite", "Alexandrite", 10, 2900, 0, 0, 0, 100, 200, 21, 50, 29, 240, 2400, 160),
+                    Tier(10, "red-diamond", "Red Diamond", 12, 2600, 0, 0, 0, 150, 300, 14, 48, 38, 285, 2850, 225),
+                    Tier(11, "antimatter", "Antimatter", 14, 2200, 0, 0, 0, 250, 500, 7, 40, 53, 350, 3500, 320),
                 });
 
         public static IReadOnlyList<ProductionStrongboxTierV1> Tiers

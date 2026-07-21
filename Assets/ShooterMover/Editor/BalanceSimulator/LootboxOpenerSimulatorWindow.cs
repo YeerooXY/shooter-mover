@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Strongboxes;
 using UnityEditor;
@@ -36,6 +37,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         private int oddsTier = 1;
         private int oddsSamples = 10000;
         private Vector2 scroll;
+        private bool cardDiagnosticsExpanded;
         private string diagnostic =
             "Load weapon_baseline_v01.json to enable real-content box generation.";
 
@@ -51,22 +53,31 @@ namespace ShooterMover.Editor.BalanceSimulator
                 "Real-content Lootbox Opener Simulator",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Add boxes in any order, then open the frozen queue on the Results / Opening page. Rolls delegate to BOX/GEN. Keep writes the immutable item through PlayerHoldingsService; Sell adds the temporary 1,000 cash value.",
+                "BOX and GEN create exact empty equipment instances. The card resolves each result through EquipmentInstance -> EquipmentDefinition -> RuntimeWeaponReferenceId -> WeaponDefinitionData. Keep still writes through PlayerHoldingsService.",
                 MessageType.Info);
 
             DrawCatalogControls();
             using (new EditorGUI.DisabledScope(runtime == null))
             {
                 EditorGUILayout.BeginHorizontal();
-                if (GUILayout.Toggle(page == Page.LootQueue, "Loot Queue", "Button"))
+                if (GUILayout.Toggle(
+                        page == Page.LootQueue,
+                        "Loot Queue",
+                        "Button"))
                 {
                     page = Page.LootQueue;
                 }
-                if (GUILayout.Toggle(page == Page.ResultsOpening, "Results / Opening", "Button"))
+                if (GUILayout.Toggle(
+                        page == Page.ResultsOpening,
+                        "Results / Opening",
+                        "Button"))
                 {
                     page = Page.ResultsOpening;
                 }
-                if (GUILayout.Toggle(page == Page.Odds, "Odds", "Button"))
+                if (GUILayout.Toggle(
+                        page == Page.Odds,
+                        "Odds",
+                        "Button"))
                 {
                     page = Page.Odds;
                 }
@@ -117,7 +128,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                 EditorGUILayout.LabelField(
                     "Live weapons: "
                     + runtime.WeaponCatalog.GetDefinitions(
-                        ShooterMover.Domain.Weapons.Catalog.WeaponCatalogContentFilter.LiveOnly).Count
+                        ShooterMover.Domain.Weapons.Catalog
+                            .WeaponCatalogContentFilter.LiveOnly).Count
                     + " | Inventory: "
                     + runtime.AcceptedInventory.Count
                     + " | Cash: "
@@ -143,7 +155,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                     ProductionStrongboxTierV1 tier =
                         ProductionStrongboxCatalogV1.Tiers[index];
                     if (GUILayout.Button(
-                        "+ " + tier.TierNumber + " " + tier.DisplayName))
+                            "+ " + tier.TierNumber + " " + tier.DisplayName))
                     {
                         queue.Add(tier.TierNumber);
                     }
@@ -171,7 +183,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                     + tier.TierNumber
                     + " — "
                     + tier.DisplayName);
-                if (GUILayout.Button("Remove", GUILayout.Width(80)))
+                if (GUILayout.Button("Remove", GUILayout.Width(80f)))
                 {
                     queue.RemoveAt(index);
                     index--;
@@ -193,10 +205,11 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             EditorGUILayout.EndHorizontal();
 
-            if (openingQueue.Count > 0 && currentQueueIndex < openingQueue.Count)
+            if (openingQueue.Count > 0
+                && currentQueueIndex < openingQueue.Count)
             {
                 EditorGUILayout.HelpBox(
-                    "An opening session is already frozen. New selections stay in Currently Looted and will not alter the active opening order.",
+                    "An opening session is already frozen. New selections do not alter the active order.",
                     MessageType.Info);
             }
 
@@ -219,22 +232,27 @@ namespace ShooterMover.Editor.BalanceSimulator
                 + openingPlayerLevel.ToString(CultureInfo.InvariantCulture)
                 + " | seed "
                 + openingSeed.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Session fingerprint", openingFingerprint);
-            if (GUILayout.Button("Copy Frozen Queue"))
+            if (GUILayout.Button("Copy Frozen Queue Diagnostics"))
             {
                 EditorGUIUtility.systemCopyBuffer = BuildOpeningQueueExport();
-                diagnostic = "Copied the deterministic frozen queue description.";
+                diagnostic =
+                    "Copied the deterministic frozen queue diagnostics.";
             }
 
             if (currentQueueIndex >= openingQueue.Count)
             {
-                EditorGUILayout.LabelField("Opening complete", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField(
+                    "Opening complete",
+                    EditorStyles.boldLabel);
                 EditorGUILayout.LabelField(
                     "Kept items: "
-                    + runtime.AcceptedInventory.Count.ToString(CultureInfo.InvariantCulture));
+                    + runtime.AcceptedInventory.Count.ToString(
+                        CultureInfo.InvariantCulture));
                 EditorGUILayout.LabelField(
-                    "Cash: " + runtime.Cash.ToString(CultureInfo.InvariantCulture));
-                if (GUILayout.Button("Finish Session And Return To Loot Queue"))
+                    "Cash: "
+                    + runtime.Cash.ToString(CultureInfo.InvariantCulture));
+                if (GUILayout.Button(
+                        "Finish Session And Return To Loot Queue"))
                 {
                     openingQueue.Clear();
                     currentQueueIndex = 0;
@@ -245,6 +263,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 DrawInventory();
                 return;
             }
+
             if (current == null)
             {
                 RevealCurrent();
@@ -256,56 +275,75 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             EditorGUILayout.LabelField(
                 "Box "
-                + (currentQueueIndex + 1).ToString(CultureInfo.InvariantCulture)
+                + (currentQueueIndex + 1).ToString(
+                    CultureInfo.InvariantCulture)
                 + " / "
                 + openingQueue.Count.ToString(CultureInfo.InvariantCulture)
                 + " — "
                 + current.Tier.DisplayName,
                 EditorStyles.boldLabel);
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                current.DefinitionDisplayName,
-                EditorStyles.largeLabel);
-            EditorGUILayout.LabelField("Definition", current.SourceDefinitionId);
-            EditorGUILayout.LabelField("Family", current.FamilyId);
-            EditorGUILayout.LabelField(
-                "Mark",
-                current.Mark.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField(
-                "Item level",
-                current.Equipment.ItemLevel.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Quality", current.Equipment.QualityId.ToString());
-            EditorGUILayout.LabelField(
-                "Augment slots",
-                current.Equipment.Augments.Count.ToString(CultureInfo.InvariantCulture));
-            for (int index = 0; index < current.Equipment.Augments.Count; index++)
+
+            bool projected = WeaponLootCardEditorDrawerV1.Draw(
+                current.Equipment,
+                runtime.EquipmentCatalog,
+                runtime.WeaponCatalog,
+                ref cardDiagnosticsExpanded);
+            if (!projected)
             {
-                AugmentInstance augment = current.Equipment.Augments[index];
-                EditorGUILayout.LabelField(
-                    "  Slot "
-                    + (index + 1).ToString(CultureInfo.InvariantCulture)
-                    + ": "
-                    + augment.DefinitionId
-                    + " | Tier "
-                    + augment.Tier.ToString(CultureInfo.InvariantCulture)
-                    + " | Level "
-                    + augment.Level.ToString(CultureInfo.InvariantCulture));
+                EditorGUILayout.HelpBox(
+                    "The unresolved result is blocked from player-facing display. Inspect the diagnostic below.",
+                    MessageType.Error);
+                return;
             }
-            EditorGUILayout.LabelField(
-                "Instance ID",
-                current.Equipment.InstanceId.ToString());
-            EditorGUILayout.LabelField("Item fingerprint", current.Fingerprint);
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Copy Current Item"))
+            if (GUILayout.Button("Copy Card"))
             {
-                EditorGUIUtility.systemCopyBuffer = current.ToCanonicalString();
-                diagnostic = "Copied the current item's deterministic canonical text.";
+                WeaponLootCardProjectionV1 card;
+                string error;
+                if (WeaponLootCardProjectionV1.TryCreate(
+                        current.Equipment,
+                        runtime.EquipmentCatalog,
+                        runtime.WeaponCatalog,
+                        out card,
+                        out error))
+                {
+                    EditorGUIUtility.systemCopyBuffer =
+                        card.ToPrimaryCardText();
+                    diagnostic =
+                        "Copied the compact player-facing weapon card.";
+                }
+                else
+                {
+                    diagnostic = error;
+                }
+            }
+            if (GUILayout.Button("Copy Card Diagnostics"))
+            {
+                WeaponLootCardProjectionV1 card;
+                string error;
+                if (WeaponLootCardProjectionV1.TryCreate(
+                        current.Equipment,
+                        runtime.EquipmentCatalog,
+                        runtime.WeaponCatalog,
+                        out card,
+                        out error))
+                {
+                    EditorGUIUtility.systemCopyBuffer =
+                        card.ToCanonicalString();
+                    diagnostic =
+                        "Copied the deterministic card projection.";
+                }
+                else
+                {
+                    diagnostic = error;
+                }
             }
             if (GUILayout.Button(
-                "Calculate This Tier's Odds ("
-                + oddsSamples.ToString(CultureInfo.InvariantCulture)
-                + ")"))
+                    "Calculate Tier Odds ("
+                    + oddsSamples.ToString(CultureInfo.InvariantCulture)
+                    + ")"))
             {
                 CalculateOddsFor(
                     current.Tier.TierNumber,
@@ -317,19 +355,19 @@ namespace ShooterMover.Editor.BalanceSimulator
             if (OddsMatchCurrent())
             {
                 DrawCurrentItemOdds();
-                DrawOddsGroup("Slot odds", odds.SlotOdds);
-                DrawOddsGroup("Augment-tier odds", odds.AugmentTierOdds);
-                DrawOddsGroup("Augment-level odds", odds.AugmentLevelOdds);
             }
 
             EditorGUILayout.Space();
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Keep / Accept"))
             {
-                PlayerHoldingsMutationStatusV1 status = runtime.Keep(current);
+                PlayerHoldingsMutationStatusV1 status =
+                    runtime.Keep(current);
                 diagnostic = "Keep: " + status;
                 if (status == PlayerHoldingsMutationStatusV1.Applied
-                    || status == PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange)
+                    || status
+                        == PlayerHoldingsMutationStatusV1
+                            .ExactDuplicateNoChange)
                 {
                     Advance();
                 }
@@ -357,6 +395,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             EditorGUILayout.LabelField(
                 "Deterministic Odds Inspector",
                 EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Installed augment count, identity, tier, and level reports are retired. Fresh strongbox equipment is always empty; capacity remains definition-owned.",
+                MessageType.Info);
             oddsTier = EditorGUILayout.IntSlider(
                 "Strongbox Tier",
                 oddsTier,
@@ -381,34 +422,42 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             EditorGUILayout.LabelField(
                 "Successful opens: "
-                + odds.SuccessfulOpenCount.ToString(CultureInfo.InvariantCulture)
+                + odds.SuccessfulOpenCount.ToString(
+                    CultureInfo.InvariantCulture)
                 + " / "
                 + odds.SampleCount.ToString(CultureInfo.InvariantCulture));
             EditorGUILayout.LabelField(
                 "Rejected/impossible rolls: "
-                + odds.RejectedRolls.ToString(CultureInfo.InvariantCulture));
-            EditorGUILayout.LabelField("Report fingerprint", odds.Fingerprint);
-            if (GUILayout.Button("Copy Deterministic Odds Report"))
+                + odds.RejectedRolls.ToString(
+                    CultureInfo.InvariantCulture));
+            if (GUILayout.Button("Copy Deterministic Odds Diagnostics"))
             {
-                EditorGUIUtility.systemCopyBuffer = odds.ToCanonicalString();
-                diagnostic = "Copied byte-stable canonical odds report text.";
+                EditorGUIUtility.systemCopyBuffer =
+                    odds.ToCanonicalString();
+                diagnostic =
+                    "Copied byte-stable canonical odds diagnostics.";
             }
-            DrawOddsGroup("Item definition odds", odds.ItemOdds);
-            DrawOddsGroup("Quality odds", odds.QualityOdds);
-            DrawOddsGroup("Augment-slot odds (1 / 2 / 3)", odds.SlotOdds);
-            DrawOddsGroup("Augment-tier odds (1..3)", odds.AugmentTierOdds);
-            DrawOddsGroup("Augment-level odds (1..10)", odds.AugmentLevelOdds);
+            DrawOddsGroup(
+                "Item definition odds",
+                odds.ItemOdds,
+                null);
+            DrawOddsGroup(
+                "Quality odds",
+                odds.QualityOdds,
+                ResolveQualityLabel);
             DrawOddsGroup(
                 "Item-level delta versus player",
-                odds.ItemLevelDeltaOdds);
+                odds.ItemLevelDeltaOdds,
+                null);
         }
 
         private void DrawCurrentItemOdds()
         {
-            LootboxOddsEntryV1 itemOdds = odds.FindItemOdds(current.OddsKey);
+            LootboxOddsEntryV1 itemOdds =
+                odds.FindItemOdds(current.OddsKey);
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                "Observed odds for this exact definition",
+                "Observed odds for this weapon definition",
                 EditorStyles.boldLabel);
             if (itemOdds == null)
             {
@@ -416,13 +465,28 @@ namespace ShooterMover.Editor.BalanceSimulator
                     "This definition did not occur in the selected deterministic sample.");
                 return;
             }
+
+            WeaponLootCardProjectionV1 card;
+            string error;
+            string label = current.DefinitionDisplayName;
+            if (WeaponLootCardProjectionV1.TryCreate(
+                    current.Equipment,
+                    runtime.EquipmentCatalog,
+                    runtime.WeaponCatalog,
+                    out card,
+                    out error))
+            {
+                label = card.DisplayName;
+            }
             EditorGUILayout.LabelField(
-                itemOdds.Key,
+                label,
                 itemOdds.Count.ToString(CultureInfo.InvariantCulture)
                 + " / "
                 + itemOdds.Total.ToString(CultureInfo.InvariantCulture)
                 + " ("
-                + itemOdds.Percentage.ToString("F3", CultureInfo.InvariantCulture)
+                + itemOdds.Percentage.ToString(
+                    "F3",
+                    CultureInfo.InvariantCulture)
                 + "%)");
         }
 
@@ -435,49 +499,137 @@ namespace ShooterMover.Editor.BalanceSimulator
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
                 "Simulator Inventory — "
-                + runtime.AcceptedInventory.Count.ToString(CultureInfo.InvariantCulture),
+                + runtime.AcceptedInventory.Count.ToString(
+                    CultureInfo.InvariantCulture),
                 EditorStyles.boldLabel);
-            for (int index = 0; index < runtime.AcceptedInventory.Count; index++)
+            for (int index = 0;
+                index < runtime.AcceptedInventory.Count;
+                index++)
             {
-                EquipmentInstance item = runtime.AcceptedInventory[index];
+                EquipmentInstance item =
+                    runtime.AcceptedInventory[index];
+                WeaponLootCardProjectionV1 card;
+                string error;
+                if (!WeaponLootCardProjectionV1.TryCreate(
+                        item,
+                        runtime.EquipmentCatalog,
+                        runtime.WeaponCatalog,
+                        out card,
+                        out error))
+                {
+                    EditorGUILayout.HelpBox(
+                        "Inventory item "
+                        + (index + 1).ToString(
+                            CultureInfo.InvariantCulture)
+                        + " cannot be projected: "
+                        + error,
+                        MessageType.Error);
+                    continue;
+                }
+
                 EditorGUILayout.LabelField(
-                    (index + 1).ToString("D3", CultureInfo.InvariantCulture)
+                    (index + 1).ToString(
+                        "D3",
+                        CultureInfo.InvariantCulture)
                     + ". "
-                    + item.DefinitionId
+                    + card.DisplayName
+                    + " | "
+                    + card.QualityLabel
                     + " | L"
-                    + item.ItemLevel.ToString(CultureInfo.InvariantCulture)
+                    + card.ItemLevel.ToString(
+                        CultureInfo.InvariantCulture)
                     + " | "
-                    + item.QualityId
-                    + " | slots "
-                    + item.Augments.Count.ToString(CultureInfo.InvariantCulture)
-                    + " | "
-                    + item.InstanceId);
+                    + (card.AugmentCapacity == 0
+                        ? "no augment capacity"
+                        : card.AugmentSymbols));
             }
         }
 
         private static void DrawOddsGroup(
             string heading,
-            IReadOnlyList<LootboxOddsEntryV1> entries)
+            IReadOnlyList<LootboxOddsEntryV1> entries,
+            Func<string, string> labelResolver)
         {
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField(heading, EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                heading,
+                EditorStyles.boldLabel);
             if (entries.Count == 0)
             {
-                EditorGUILayout.LabelField("No successful observations.");
+                EditorGUILayout.LabelField(
+                    "No successful observations.");
                 return;
             }
             for (int index = 0; index < entries.Count; index++)
             {
                 LootboxOddsEntryV1 entry = entries[index];
+                string label = labelResolver == null
+                    ? entry.Key
+                    : labelResolver(entry.Key);
                 EditorGUILayout.LabelField(
-                    entry.Key,
+                    label,
                     entry.Count.ToString(CultureInfo.InvariantCulture)
                     + " / "
                     + entry.Total.ToString(CultureInfo.InvariantCulture)
                     + " ("
-                    + entry.Percentage.ToString("F3", CultureInfo.InvariantCulture)
+                    + entry.Percentage.ToString(
+                        "F3",
+                        CultureInfo.InvariantCulture)
                     + "%)");
             }
+        }
+
+        private string ResolveQualityLabel(string qualityIdText)
+        {
+            StableId qualityId;
+            try
+            {
+                qualityId = StableId.Parse(qualityIdText);
+            }
+            catch (Exception)
+            {
+                return "Unresolved quality";
+            }
+
+            string label = null;
+            int matches = 0;
+            for (int definitionIndex = 0;
+                definitionIndex
+                    < runtime.EquipmentCatalog
+                        .EquipmentDefinitions.Count;
+                definitionIndex++)
+            {
+                EquipmentDefinition definition =
+                    runtime.EquipmentCatalog
+                        .EquipmentDefinitions[definitionIndex];
+                for (int qualityIndex = 0;
+                    qualityIndex < definition.QualityTiers.Count;
+                    qualityIndex++)
+                {
+                    EquipmentQualityTier quality =
+                        definition.QualityTiers[qualityIndex];
+                    if (quality != null
+                        && quality.QualityId == qualityId)
+                    {
+                        if (label == null)
+                        {
+                            label = quality.Label;
+                            matches = 1;
+                        }
+                        else if (!string.Equals(
+                                     label,
+                                     quality.Label,
+                                     StringComparison.Ordinal))
+                        {
+                            matches++;
+                        }
+                    }
+                }
+            }
+            return matches == 1
+                && !string.IsNullOrWhiteSpace(label)
+                    ? label
+                    : "Unresolved quality";
         }
 
         private void LoadCatalog(string path)
@@ -488,9 +640,9 @@ namespace ShooterMover.Editor.BalanceSimulator
                 LootboxSimulatorRuntimeV1 created;
                 string error;
                 if (!LootboxSimulatorRuntimeV1.TryCreate(
-                    json,
-                    out created,
-                    out error))
+                        json,
+                        out created,
+                        out error))
                 {
                     runtime = null;
                     diagnostic = error;
@@ -532,6 +684,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             openingFingerprint = BuildOpeningFingerprint();
             currentQueueIndex = 0;
             current = null;
+            cardDiagnosticsExpanded = false;
             page = Page.ResultsOpening;
             RevealCurrent();
         }
@@ -551,10 +704,19 @@ namespace ShooterMover.Editor.BalanceSimulator
                     openingPlayerLevel,
                     openingSeed,
                     currentQueueIndex);
+                if (current.Equipment.Augments.Count != 0)
+                {
+                    current = null;
+                    diagnostic =
+                        "Strongbox generation failed closed: fresh equipment contained installed augments.";
+                    return;
+                }
                 diagnostic = "Generated and frozen box "
-                    + (currentQueueIndex + 1).ToString(CultureInfo.InvariantCulture)
+                    + (currentQueueIndex + 1).ToString(
+                        CultureInfo.InvariantCulture)
                     + " of "
-                    + openingQueue.Count.ToString(CultureInfo.InvariantCulture)
+                    + openingQueue.Count.ToString(
+                        CultureInfo.InvariantCulture)
                     + ".";
             }
             catch (Exception exception)
@@ -568,6 +730,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             currentQueueIndex++;
             current = null;
+            cardDiagnosticsExpanded = false;
             if (currentQueueIndex < openingQueue.Count)
             {
                 RevealCurrent();
@@ -610,7 +773,8 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private string BuildOpeningFingerprint()
         {
-            return StrongboxCanonicalV1.Fingerprint(BuildOpeningQueueExport());
+            return StrongboxCanonicalV1.Fingerprint(
+                BuildOpeningQueueExport());
         }
 
         private string BuildOpeningQueueExport()
@@ -623,7 +787,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             StrongboxCanonicalV1.AppendToken(
                 builder,
                 "player_level",
-                openingPlayerLevel.ToString(CultureInfo.InvariantCulture));
+                openingPlayerLevel.ToString(
+                    CultureInfo.InvariantCulture));
             StrongboxCanonicalV1.AppendToken(
                 builder,
                 "root_seed",
@@ -631,14 +796,21 @@ namespace ShooterMover.Editor.BalanceSimulator
             StrongboxCanonicalV1.AppendToken(
                 builder,
                 "box_count",
-                openingQueue.Count.ToString(CultureInfo.InvariantCulture));
-            for (int index = 0; index < openingQueue.Count; index++)
+                openingQueue.Count.ToString(
+                    CultureInfo.InvariantCulture));
+            for (int index = 0;
+                index < openingQueue.Count;
+                index++)
             {
                 ProductionStrongboxTierV1 tier =
-                    ProductionStrongboxCatalogV1.GetByNumber(openingQueue[index]);
+                    ProductionStrongboxCatalogV1.GetByNumber(
+                        openingQueue[index]);
                 StrongboxCanonicalV1.AppendToken(
                     builder,
-                    "box_" + index.ToString("D4", CultureInfo.InvariantCulture),
+                    "box_"
+                    + index.ToString(
+                        "D4",
+                        CultureInfo.InvariantCulture),
                     tier.TierStableId.ToString());
             }
             return builder.ToString();
@@ -647,12 +819,13 @@ namespace ShooterMover.Editor.BalanceSimulator
         private bool TrySeed(out ulong seed)
         {
             if (!ulong.TryParse(
-                seedText,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out seed))
+                    seedText,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out seed))
             {
-                diagnostic = "Seed must be an unsigned 64-bit integer.";
+                diagnostic =
+                    "Seed must be an unsigned 64-bit integer.";
                 return false;
             }
             return true;
