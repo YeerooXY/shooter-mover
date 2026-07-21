@@ -1,82 +1,197 @@
-# ENEMY-ATTACK-PATTERN-LIVE-001 — live scheduler boundary
+# ENEMY-ATTACK-PATTERN-LIVE-001 — production Unity integration
 
-## Ownership
+## Ownership boundary
 
-`EnemyAttackPatternLiveSchedulerV1` is the production-facing implementation of
-`IEnemyAttackPatternEffectPortV1`. The engine-neutral pattern authority continues to own sequence
-construction, immutable committed aim, stable sequence/emission identities, fingerprints and
+`EnemyAttackPatternAuthorityV1` remains the engine-neutral authority for deterministic schema-v2
+sequence construction, immutable committed aim, sequence/emission identity, fingerprints, replay and
 lifecycle cancellation facts.
 
-The live scheduler owns only downstream delivery state:
+`EnemyAttackPatternLiveSchedulerV1` is the production implementation of
+`IEnemyAttackPatternEffectPortV1`. It owns only downstream delivery state:
 
-- atomic acceptance of a complete immutable sequence;
-- pending emission ordering;
+- atomic acceptance of one complete immutable sequence;
+- deterministic pending-emission ordering;
 - exact-once emission delivery;
-- cancellation of not-yet-emitted work;
-- immutable/debug delivery records.
+- replay-safe cancellation of pending effects and open melee windows;
+- immutable delivery/debug records.
 
-It does not own enemy decisions, cooldowns, player health, projectile simulation, hit eligibility or
-Run Session time.
+It does not own enemy health, player health, Run Session identity, projectile collision, hit
+eligibility, XP, drops, room state or permanent character state.
 
-## Authoritative time
+`EnemyCommittedAttackPatternExecutorV1` is the narrow outer transaction between one catalog attack
+and the scheduler. Cooldown and outer replay are recorded only after the complete sequence has been
+accepted downstream. A transient dispatch failure therefore retries the same operation, committed aim,
+sequence and fingerprint without consuming cooldown.
 
-Unity may call `Tick()` from `Update`, a coroutine or another presentation wake-up mechanism. `Tick`
-never accumulates `Time.deltaTime`. It reads `IEnemyAttackPatternRunTimeV1.CurrentTimeSeconds`, which
-must be backed by the active Run Session clock. The same port validates that the immutable execution
-still belongs to the current run and lifecycle generation.
+## Authoritative Run Session time
 
-This keeps variable frame intervals presentation-only: a late frame emits every due fact once, sorted
-by `ScheduledAtSeconds` and then `EmissionStableId`.
+`RunSessionAggregateV1.AdvanceTime` advances one explicit monotonic authoritative tick through
+`AdvanceRunSessionTimeCommandV1`. It rejects wrong-run, stale/future-lifecycle, ended-run, tick
+regression and conflicting operation reuse without mutation.
 
-## Atomic dispatch and replay
+`RunSessionEnemyAttackPatternTimeV1` projects the accepted Run Session tick into seconds through an
+explicit ticks-per-second scale. Unity `FixedUpdate` wakes the production host, but neither Unity frame
+time nor a per-enemy wall clock becomes combat authority.
 
-Before queue mutation, every emission is passed to
-`IEnemyAttackPatternEmissionRealizerV1.CanRealize`. One rejection rejects the complete sequence and
-queues nothing. Accepted sequence IDs retain their canonical dispatch fingerprint:
+The Stage 1 host advances the Run Session clock once per accepted fixed simulation tick, then evaluates
+committed attacks and asks the scheduler to emit every due fact. Variable wake-up intervals produce the
+same ordering:
 
-- same ID and fingerprint: `ExactReplay`;
-- same ID and another fingerprint: `ConflictingDuplicate`;
-- wrong run or lifecycle: fail closed;
-- first valid delivery: `Applied`.
+1. `ScheduledAtSeconds`;
+2. `EmissionStableId`.
 
-Caller-owned collections are not retained. `EnemyAttackSequenceDispatchV1` already owns its immutable
-sorted copy, and the scheduler copies that read-only sequence into its private pending list.
+## Atomic sequence acceptance
 
-## Committed aim and projectile/melee realization
+Before queue mutation, every immutable emission is passed to
+`IEnemyAttackPatternEmissionRealizerV1.CanRealize`. One rejection rejects the whole dispatch and queues
+nothing. Accepted dispatch identities preserve their canonical fingerprint:
 
-The scheduler delivers the original `EnemyAttackEffectEmissionV1` unchanged. Realizers must consume:
+- first equivalent delivery: `Applied`;
+- same identity and fingerprint: `ExactReplay`;
+- same identity with another fingerprint: `ConflictingDuplicate`;
+- wrong run/source lifecycle or unsupported payload: fail closed.
 
-- `CommittedIntent.Origin` and `CommittedIntent.Direction`;
-- committed target identity;
-- projectile payload and schema-generated spread offset;
-- sequence and emission identities;
-- source participant and lifecycle generation;
-- scheduled and active-window timestamps;
+No caller-owned mutable collection is retained. The dispatch contract owns an immutable sorted copy and
+the scheduler creates its own private pending list.
+
+## Committed aim and physical realization
+
+The scheduler forwards the original `EnemyAttackEffectEmissionV1` unchanged. Unity realization consumes
+the facts frozen when the attack was committed:
+
+- committed origin, direction and optional target identity;
+- exact scheduled timestamp and melee active-window bounds;
+- sequence, emission and source participant identities;
+- source lifecycle generation;
+- schema-generated pellet spread;
+- projectile profile, speed, travel distance, collision radius and area payload;
 - resolved damage and damage channel.
 
-Realizers must not retarget delayed shots or reroll scatter. Projectile realizers adapt these facts to
-the existing reusable projectile runtime. Melee/pounce realizers use the same facts to open and close
-contact windows. Candidate contacts then route through the existing Combat Hit Policy and accepted
-damage through `PlayerActorAuthority`; Unity callbacks do not mutate health directly.
+Delayed shots never retarget to the player's newer position. Scatter directions are not rerolled in
+Unity.
 
-## Cancellation
+### Projectiles and area effects
 
-Cancellation facts are replay-protected by cancellation identity and fingerprint. Listed pending
-projectile and melee emission IDs are removed. Already emitted projectiles are not erased. If an
-already-open melee window is explicitly cancelled, the realizer receives `CancelActiveWindow` so its
-candidate-contact projection can close without direct combat mutation.
+`EnemyAttackPatternUnityEmissionRealizerV1` reuses `BoundedProjectile2D` and
+`CombatHit2DAdapter`. Projectile profile IDs resolve through the typed
+`EnemyAttackPatternProjectilePrefabRegistryV1`; there is no enemy-name or weapon-name switch.
 
-## Extension path
+The realizer preserves finite speed/range/lifetime, collision radius, source ownership, operation
+identity and committed direction. Instant area payloads evaluate explicitly registered targets in
+stable target-identity order and pass their authored maximum-target capacity into Combat Hit Policy.
 
-A future burst, shotgun, rocket, contact or pounce enemy should add or change its schema-v2 definition
-and presentation binding. Shared scheduling code does not branch on enemy name, attack name, weapon
-name, room or prefab.
+The retained bounded-projectile path currently terminates at the first physical impact, so authored
+non-area projectile pierce greater than zero fails closed instead of pretending to support pierce.
+Persistent area durations also fail closed; instantaneous rocket/explosion payloads are supported.
 
-## Current integration limit
+### Melee and pounce
 
-This change establishes and tests the production-safe scheduler/realizer seam. The repository still
-needs concrete Stage 1 typed composition bindings from Run Session time into
-`IEnemyAttackPatternRunTimeV1`, plus projectile/melee realizers that delegate to the existing
-projectile and Combat Hit Policy adapters. Production catalog migration must remain fail-closed until
-those typed bindings are available; this change intentionally does not translate schema-v2 content
-back into the historical one-call execution path or edit `Stage1VisibleSliceController.cs`.
+`EnemyAttackPatternMeleeContact2D` reports trigger/collision candidates only. It never evaluates
+eligibility or mutates health.
+
+The realizer opens and closes timed melee windows using authoritative scheduled bounds. It captures the
+target lifecycle at emission time, enforces the committed target where present, derives deterministic
+per-target hit ordinals, and respects authored `hits_per_target`.
+
+`RigidbodyEnemyAttackPatternPounceMotion2D` realizes lunge/ram motion from committed origin, direction,
+lunge distance and authoritative active-window time. It never accumulates Unity delta time.
+
+## Combat Hit Policy and player damage
+
+`EnemyAttackPatternHitRouterV1` owns only session-local policy/history and hit-event replay. It builds
+immutable source/effect/target snapshots and delegates final eligibility to the existing
+`CombatHitPolicyV1` with `enemy-normal` policy.
+
+Only an accepted policy result is translated through `CombatHitDamageCommandAdapterV1` and forwarded as
+an existing `PlayerDamageRequest`. `Level1PlayerRuntimeSceneAdapterV1` and `PlayerActorAuthority` remain
+the only player-health/death authorities.
+
+Preserved behavior includes:
+
+- source participant and faction attribution;
+- friendly-fire/self-hit decisions;
+- target lifecycle validation;
+- exact hit replay and conflicting duplicate rejection;
+- authored per-target hit counts and area capacity;
+- death emission exactly once through the existing player authority;
+- no direct health mutation from Unity collision callbacks or enemy controllers.
+
+## Cancellation and lifecycle end
+
+Cancellation facts are replay-protected by cancellation identity and fingerprint. Before mutation, the
+scheduler validates that every referenced pending or active effect belongs to the same source entity and
+lifecycle.
+
+Accepted cancellation:
+
+- removes all listed not-yet-emitted projectiles and melee strikes;
+- closes listed active melee/pounce windows;
+- prevents late projectile spawning;
+- leaves already emitted projectiles intact;
+- treats exact cancellation replay as idempotent;
+- rejects conflicting cancellation identity reuse.
+
+Retained Stage 1 enemy health authorities expose active/lifecycle state. A lethal transition makes the
+source non-current immediately, so the scheduler cannot emit later work. The generic production
+controller then consumes the schema-v2 lifecycle cancellation path on the next production simulation
+wake-up and closes pending/open windows.
+
+## Production catalog cutover
+
+The authoritative enemy catalog is now schema v2. The current live production definitions migrated are:
+
+- `enemy.mobile-blaster-droid`;
+- `enemy.blaster-turret`.
+
+The remaining catalog fixtures were also converted so production does not maintain a mixed-schema
+catalog. Existing gameplay cadence is represented as explicit wind-up plus recovery timing.
+
+Stage 1 imports the schema-v2 catalog from a build-safe Resources projection and rejects any malformed,
+unsupported or non-v2 production catalog. Production schema-v2 attacks never translate back to the
+historical one-call attack effect path.
+
+The retained moving-droid and turret packages continue to own their accepted movement, health and
+presentation. Their historical projectile execution adapters are retired only after the new Run Session,
+catalog, scheduler and realizer composition has succeeded. They cannot spawn duplicate gameplay
+projectiles afterward.
+
+## Composition and teardown
+
+The integration is an additive partial of `Stage1PlayableLoopCompositionV1`; it does not add another
+bootstrap or edit `Stage1VisibleSliceController.cs`.
+
+Production composition uses typed references already owned by Stage 1:
+
+- selected account-backed `ProductionCharacterRuntimeGraphV1`;
+- existing Level 1 player runtime;
+- existing inventory weapon effect emitter;
+- existing room runtime;
+- existing mission-result authority;
+- retained moving-droid and turret health/movement/presentation surfaces.
+
+Teardown disposes emitted projectiles, closes melee/pounce windows, unregisters collision relays, clears
+policy history and removes scheduler/source references. Re-entry or restart rebuilds one fresh run-local
+integration and leaves no orphan scheduler or duplicate subscription.
+
+## Adding future content
+
+A future burst, shotgun, scatter, rocket, contact or pounce enemy primarily requires:
+
+1. a schema-v2 enemy attack definition;
+2. a registered projectile presentation profile when applicable;
+3. a typed source/target presentation binding;
+4. a pounce motion port only when the definition authors a lunge;
+5. focused content and runtime tests.
+
+Shared scheduler, projectile, melee, policy and player-damage classes do not branch on enemy name,
+attack name, room, weapon name or prefab hierarchy.
+
+## Current limitations and verification boundary
+
+- Non-area physical projectile pierce is rejected because the retained `BoundedProjectile2D` path does
+  not support continuing after impact.
+- Persistent area fields are not implemented; instantaneous area payloads are supported.
+- The retained package wind-up animation may still run as presentation-only compatibility, but its old
+  projectile adapter is retired and cannot produce gameplay effects.
+- This connected environment has no Unity executable or C# compiler. Unity compilation, XML results and
+  PlayMode visual proof must be produced in a licensed Unity environment; none are claimed here.
