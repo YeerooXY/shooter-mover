@@ -223,11 +223,20 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         private void OnDestroy()
         {
-            if (sharedMaterial != null)
+            if (sharedMaterial == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
             {
                 Destroy(sharedMaterial);
-                sharedMaterial = null;
             }
+            else
+            {
+                DestroyImmediate(sharedMaterial);
+            }
+            sharedMaterial = null;
         }
 
         private static bool HasPhysics(LineRenderer line)
