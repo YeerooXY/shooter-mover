@@ -96,11 +96,13 @@ namespace ShooterMover.EnemyRuntimeComposition
 
         public static string Impact(
             string acceptedExecutionFingerprint,
-            StableId targetEntityStableId)
+            StableId targetEntityStableId,
+            long observedTargetLifecycleGeneration)
         {
             var builder = new StringBuilder("enemy-impact-v1");
             AppendText(builder, "execution", acceptedExecutionFingerprint);
             AppendId(builder, "target", targetEntityStableId);
+            AppendLong(builder, "observed-target-lifecycle", observedTargetLifecycleGeneration);
             return Hash(builder.ToString());
         }
 
