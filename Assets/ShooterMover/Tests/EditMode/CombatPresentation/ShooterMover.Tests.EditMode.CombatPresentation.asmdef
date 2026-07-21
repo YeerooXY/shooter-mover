@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.EditMode.CombatPresentation",
+  "rootNamespace": "ShooterMover.Tests.EditMode.CombatPresentation",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.PlayerRuntime",
+    "ShooterMover.CombatPresentation"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
