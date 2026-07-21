@@ -5,6 +5,7 @@ using ShooterMover.Combat.HitPolicy;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Modifiers;
 using ShooterMover.GameplayEntities;
 
 namespace ShooterMover.Tests.EditMode.CriticalHits
