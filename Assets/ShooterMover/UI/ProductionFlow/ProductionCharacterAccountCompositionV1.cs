@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Flow.Production;
@@ -16,14 +17,38 @@ using UnityEngine;
 namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
+    /// Account-backed profile lifecycle used by Character Select. PlayerPrefs may supply
+    /// the one-time migration input and thereafter receives only account projections.
+    /// </summary>
+    public interface IProductionCharacterProfileLifecycleV1
+    {
+        bool TryExportProfiles(
+            out IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
+            out string rejectionCode);
+
+        bool TryActivate(
+            int slotIndex,
+            ProductionFlowProfileRecordV1 requestedProfile,
+            out ProductionFlowProfileRecordV1 authoritativeProfile,
+            out string rejectionCode);
+
+        bool TryDelete(
+            int slotIndex,
+            ProductionFlowProfileRecordV1 requestedProfile,
+            out string rejectionCode);
+    }
+
+    /// <summary>
     /// Persistent Unity adapter between the six-slot account aggregate and the existing
-    /// production Hub graph. PlayerPrefs is read only as a legacy migration source. Once
-    /// migrated, the atomic account file and PlayerAccountSaveAuthorityV1 are the durable
-    /// truth; this component never owns XP, holdings, wallets, skills, loadout, or BOX.
+    /// production Hub graph. It composes existing authorities, merged save adapters, the
+    /// existing account save authority, and the atomic file store. It owns no subsystem
+    /// state and creates no replacement XP, holdings, wallet, skill, loadout, or BOX model.
     /// </summary>
     [DefaultExecutionOrder(-31950)]
     [DisallowMultipleComponent]
-    public sealed class ProductionCharacterAccountCompositionV1 : MonoBehaviour
+    public sealed class ProductionCharacterAccountCompositionV1 :
+        MonoBehaviour,
+        IProductionCharacterProfileLifecycleV1
     {
         private const string AccountFileName = "player-account-v1.save";
         private const string TemporarySuffix = ".tmp";
@@ -36,11 +61,13 @@ namespace ShooterMover.UI.ProductionFlow
         private PlayerPrefsProductionFlowProfileStoreV1 legacyStore;
         private AtomicPlayerAccountStoreV1 accountStore;
         private PlayerAccountSaveAuthorityV1 accountAuthority;
+        private ProductionCharacterRuntimeGraphFactoryV1 graphFactory;
         private CharacterCompositionCoordinatorV1 composition;
         private ProductionFlowProfileRecordV1 currentProfile;
         private string diagnostic = string.Empty;
         private bool initialized;
         private bool failed;
+        private bool quitting;
 
         public CharacterCompositionCoordinatorV1 Composition
         {
@@ -160,23 +187,27 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             legacyStore = new PlayerPrefsProductionFlowProfileStoreV1();
-            string active = Path.Combine(
+            string activePath = Path.Combine(
                 Application.persistentDataPath,
                 AccountFileName);
             accountStore = new AtomicPlayerAccountStoreV1(
                 new SystemIoAtomicSaveFilePortV1(),
-                active,
-                active + TemporarySuffix,
-                active + BackupSuffix,
+                activePath,
+                activePath + TemporarySuffix,
+                activePath + BackupSuffix,
                 PlayerAccountComponentSemanticsV1.Validate);
 
             PlayerAccountStoreResultV1 loaded = accountStore.Load();
+            bool firstAccount = loaded != null
+                && loaded.Status == PlayerAccountStoreStatusV1.NotFound;
             PlayerAccountSnapshotV1 account;
-            if (loaded.Status == PlayerAccountStoreStatusV1.NotFound)
+            if (firstAccount)
             {
                 account = PlayerAccountSnapshotV1.Empty(AccountStableId);
             }
-            else if (loaded.Succeeded && loaded.Snapshot != null)
+            else if (loaded != null
+                && loaded.Succeeded
+                && loaded.Snapshot != null)
             {
                 account = loaded.Snapshot;
                 if (loaded.Status
@@ -198,7 +229,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             accountAuthority = new PlayerAccountSaveAuthorityV1(account);
-            var graphFactory = ProductionCharacterRuntimeGraphFactoryV1
+            graphFactory = ProductionCharacterRuntimeGraphFactoryV1
                 .CreateVerticalSliceDefaults();
             composition = new CharacterCompositionCoordinatorV1(
                 accountAuthority,
@@ -206,36 +237,229 @@ namespace ShooterMover.UI.ProductionFlow
                 accountStore.Save,
                 PlayerAccountComponentSemanticsV1.Validate);
 
-            LegacyCharacterProfileMigrationResultV1 migration =
-                MigrateMissingLegacySlots(graphFactory);
-            if (migration != null && !migration.Succeeded)
+            if (firstAccount)
             {
-                Fail(
-                    "character-account-migration-rejected:"
-                        + migration.Diagnostic);
-                return;
-            }
-
-            if (loaded.Status == PlayerAccountStoreStatusV1.NotFound
-                && (migration == null
-                    || migration.Status
-                        == CharacterCompositionStatusV1.ExactNoChange))
-            {
-                PlayerAccountStoreResultV1 initialSave =
-                    accountStore.Save(accountAuthority.Current);
-                if (initialSave == null || !initialSave.Succeeded)
+                LegacyCharacterProfileMigrationResultV1 migration =
+                    MigrateLegacyAccountOnce();
+                if (migration == null || !migration.Succeeded)
                 {
                     Fail(
-                        "character-account-initial-save-rejected:"
-                            + (initialSave == null
+                        "character-account-migration-rejected:"
+                            + (migration == null
                                 ? "result-null"
-                                : initialSave.RejectionCode));
+                                : migration.Diagnostic));
                     return;
+                }
+                if (migration.Status
+                    == CharacterCompositionStatusV1.ExactNoChange)
+                {
+                    PlayerAccountStoreResultV1 initialSave =
+                        accountStore.Save(accountAuthority.Current);
+                    if (initialSave == null || !initialSave.Succeeded)
+                    {
+                        Fail(
+                            "character-account-initial-save-rejected:"
+                                + (initialSave == null
+                                    ? "result-null"
+                                    : initialSave.RejectionCode));
+                        return;
+                    }
                 }
             }
 
             initialized = true;
+            if (!flow.ConnectCharacterProfileLifecycle(this))
+            {
+                Fail("character-profile-lifecycle-connect-rejected");
+                return;
+            }
             SynchronizeNow();
+        }
+
+        public bool TryExportProfiles(
+            out IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
+            out string rejectionCode)
+        {
+            profiles = null;
+            rejectionCode = string.Empty;
+            if (!initialized || failed || accountAuthority == null)
+            {
+                rejectionCode = "character-account-not-ready";
+                return false;
+            }
+
+            var projection = new ProductionFlowProfileRecordV1[
+                PlayerAccountSnapshotV1.CharacterSlotCount];
+            for (int slotIndex = 0;
+                slotIndex < projection.Length;
+                slotIndex++)
+            {
+                CharacterInstanceSnapshotV1 character =
+                    accountAuthority.Current.CharacterAt(slotIndex);
+                if (character == null)
+                {
+                    continue;
+                }
+                if (!TryProject(character, out projection[slotIndex],
+                    out rejectionCode))
+                {
+                    return false;
+                }
+            }
+            profiles = projection;
+            return true;
+        }
+
+        public bool TryActivate(
+            int slotIndex,
+            ProductionFlowProfileRecordV1 requestedProfile,
+            out ProductionFlowProfileRecordV1 authoritativeProfile,
+            out string rejectionCode)
+        {
+            authoritativeProfile = null;
+            rejectionCode = string.Empty;
+            if (!initialized || failed || requestedProfile == null)
+            {
+                rejectionCode = "character-activation-request-invalid";
+                return false;
+            }
+            if (slotIndex < 0
+                || slotIndex >= PlayerAccountSnapshotV1.CharacterSlotCount)
+            {
+                rejectionCode = "character-activation-slot-invalid";
+                return false;
+            }
+
+            CharacterInstanceSnapshotV1 character =
+                accountAuthority.Current.CharacterAt(slotIndex);
+            if (character == null)
+            {
+                LegacyCharacterProfileMigrationResultV1 migration =
+                    new LegacyCharacterProfileMigrationV1(
+                        accountAuthority,
+                        graphFactory,
+                        accountStore.Save).Migrate(new[]
+                        {
+                            Legacy(slotIndex, requestedProfile),
+                        });
+                if (migration == null || !migration.Succeeded)
+                {
+                    rejectionCode = migration == null
+                        ? "character-create-migration-result-null"
+                        : migration.Diagnostic;
+                    return false;
+                }
+                character = accountAuthority.Current.CharacterAt(slotIndex);
+            }
+
+            if (!TryProject(
+                character,
+                out authoritativeProfile,
+                out rejectionCode))
+            {
+                return false;
+            }
+
+            CharacterCompositionResultV1 selected = composition.Select(slotIndex);
+            if (selected == null || !selected.Succeeded)
+            {
+                rejectionCode = selected == null
+                    ? "character-restore-result-null"
+                    : selected.Diagnostic;
+                authoritativeProfile = null;
+                return false;
+            }
+
+            currentProfile = authoritativeProfile;
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        public bool TryDelete(
+            int slotIndex,
+            ProductionFlowProfileRecordV1 requestedProfile,
+            out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            if (!initialized || failed || requestedProfile == null)
+            {
+                rejectionCode = "character-delete-request-invalid";
+                return false;
+            }
+            if (slotIndex < 0
+                || slotIndex >= PlayerAccountSnapshotV1.CharacterSlotCount)
+            {
+                rejectionCode = "character-delete-slot-invalid";
+                return false;
+            }
+
+            CharacterInstanceSnapshotV1 character =
+                accountAuthority.Current.CharacterAt(slotIndex);
+            if (character == null)
+            {
+                return true;
+            }
+            if (requestedProfile.Payload.SelectedCharacterStableId
+                    != character.CharacterInstanceStableId
+                || requestedProfile.Payload.LoadoutProfileStableId
+                    != character.ClassDefinitionStableId)
+            {
+                rejectionCode = "character-delete-identity-mismatch";
+                return false;
+            }
+
+            if (composition.ActiveSlotIndex == slotIndex)
+            {
+                CharacterCompositionResultV1 persisted =
+                    PersistCurrentState("character-delete");
+                if (persisted == null || !persisted.Succeeded)
+                {
+                    rejectionCode = persisted == null
+                        ? "character-delete-pre-save-result-null"
+                        : persisted.Diagnostic;
+                    return false;
+                }
+                composition.UnbindActive();
+                currentProfile = null;
+            }
+
+            PlayerAccountSaveAuthoritySnapshotV1 rollback =
+                accountAuthority.ExportSnapshot();
+            PlayerAccountSaveResultV1 deleted = accountAuthority.Apply(
+                PlayerAccountSaveCommandV1.DeleteCharacter(
+                    StableId.Parse(
+                        "operation.character-delete-"
+                            + Hash(character.Fingerprint)),
+                    accountAuthority.Current.Revision,
+                    slotIndex,
+                    character.CharacterInstanceStableId));
+            if (deleted == null
+                || (deleted.Status != PlayerAccountSaveStatusV1.Applied
+                    && deleted.Status
+                        != PlayerAccountSaveStatusV1.ExactDuplicateNoChange))
+            {
+                rejectionCode = deleted == null
+                    ? "character-delete-account-result-null"
+                    : deleted.RejectionCode;
+                return false;
+            }
+
+            PlayerAccountStoreResultV1 stored =
+                accountStore.Save(accountAuthority.Current);
+            if (stored == null || !stored.Succeeded)
+            {
+                string rollbackError;
+                accountAuthority.TryImport(rollback, out rollbackError);
+                rejectionCode = stored == null
+                    ? "character-delete-store-result-null"
+                    : stored.RejectionCode
+                        + (string.IsNullOrEmpty(rollbackError)
+                            ? string.Empty
+                            : ";rollback=" + rollbackError);
+                return false;
+            }
+            diagnostic = string.Empty;
+            return true;
         }
 
         private bool SynchronizeNow()
@@ -253,8 +477,8 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionFlowProfileRecordV1 legacyProfile = flow.Profile;
-            if (legacyProfile == null)
+            ProductionFlowProfileRecordV1 selectedProfile = flow.Profile;
+            if (selectedProfile == null)
             {
                 composition.UnbindActive();
                 currentProfile = null;
@@ -262,32 +486,12 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             int slotIndex = flow.ActiveProfileSlotIndex;
-            if (slotIndex < 0
-                || slotIndex >= PlayerAccountSnapshotV1.CharacterSlotCount)
-            {
-                Fail("character-composition-active-slot-invalid");
-                return false;
-            }
-
-            CharacterInstanceSnapshotV1 accountCharacter =
+            CharacterInstanceSnapshotV1 character =
                 accountAuthority.Current.CharacterAt(slotIndex);
-            if (accountCharacter == null)
+            if (character == null)
             {
-                var graphFactory = ProductionCharacterRuntimeGraphFactoryV1
-                    .CreateVerticalSliceDefaults();
-                LegacyCharacterProfileMigrationResultV1 migration =
-                    MigrateOne(slotIndex, legacyProfile, graphFactory);
-                if (migration == null || !migration.Succeeded)
-                {
-                    Fail(
-                        "character-composition-selected-slot-migration-failed:"
-                            + (migration == null
-                                ? "result-null"
-                                : migration.Diagnostic));
-                    return false;
-                }
-                accountCharacter =
-                    accountAuthority.Current.CharacterAt(slotIndex);
+                diagnostic = "character-composition-active-slot-empty";
+                return false;
             }
 
             bool alreadySelected = composition.ActiveRuntime != null
@@ -295,36 +499,68 @@ namespace ShooterMover.UI.ProductionFlow
                 && composition.ActiveSlotIndex == slotIndex
                 && composition.ActiveRuntime.Character
                     .CharacterInstanceStableId
-                    == accountCharacter.CharacterInstanceStableId;
+                    == character.CharacterInstanceStableId;
             if (!alreadySelected)
             {
+                if (composition.ActiveRuntime != null)
+                {
+                    CharacterCompositionResultV1 persisted =
+                        PersistCurrentState("character-slot-switch");
+                    if (persisted == null || !persisted.Succeeded)
+                    {
+                        diagnostic = persisted == null
+                            ? "character-slot-switch-save-result-null"
+                            : persisted.Diagnostic;
+                        return false;
+                    }
+                }
+
                 CharacterCompositionResultV1 selected =
                     composition.Select(slotIndex);
                 if (selected == null || !selected.Succeeded)
                 {
-                    diagnostic =
-                        "character-composition-restore-rejected:"
-                        + (selected == null
-                            ? "result-null"
-                            : selected.Diagnostic);
+                    diagnostic = selected == null
+                        ? "character-composition-restore-result-null"
+                        : selected.Diagnostic;
+                    currentProfile = null;
                     return false;
                 }
             }
 
-            ProductionCharacterRuntimeGraphV1 graph =
-                composition.ActiveRuntime
-                    as ProductionCharacterRuntimeGraphV1;
-            if (graph == null || graph.IsDisposed)
+            if (!TryProject(character, out currentProfile, out diagnostic))
             {
-                diagnostic =
-                    "character-composition-production-graph-unavailable";
                 return false;
             }
+            return composition.ActiveRuntime
+                is ProductionCharacterRuntimeGraphV1;
+        }
 
-            currentProfile = new ProductionFlowProfileRecordV1(
-                graph.Character.DisplayName,
-                BuildCurrentRoute(graph));
-            return true;
+        private CharacterCompositionResultV1 PersistCurrentState(string scope)
+        {
+            if (composition == null || composition.ActiveRuntime == null)
+            {
+                return null;
+            }
+            IReadOnlyList<SaveComponentSnapshotV1> components;
+            try
+            {
+                components = PlayerAccountRestoreCoordinatorV1.ExportComponents(
+                    composition.ActiveRuntime.SaveAdapters);
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "character-state-fingerprint-export-threw:"
+                    + exception.GetType().Name;
+                return null;
+            }
+
+            string fingerprint = string.Join(
+                "|",
+                components.OrderBy(
+                        item => item.ComponentStableId.ToString(),
+                        StringComparer.Ordinal)
+                    .Select(item => item.Fingerprint));
+            return Persist(scope, Hash(fingerprint));
         }
 
         private CharacterCompositionResultV1 Persist(
@@ -332,7 +568,8 @@ namespace ShooterMover.UI.ProductionFlow
             string immutableMutationFingerprint)
         {
             if (string.IsNullOrWhiteSpace(mutationScope)
-                || string.IsNullOrWhiteSpace(immutableMutationFingerprint))
+                || string.IsNullOrWhiteSpace(immutableMutationFingerprint)
+                || composition == null)
             {
                 return null;
             }
@@ -347,39 +584,30 @@ namespace ShooterMover.UI.ProductionFlow
                 composition.PersistActive(operationId);
             if (result == null || !result.Succeeded)
             {
-                diagnostic =
-                    "character-composition-save-rejected:"
-                    + (result == null
-                        ? "result-null"
-                        : result.Diagnostic);
+                diagnostic = result == null
+                    ? "character-composition-save-result-null"
+                    : result.Diagnostic;
                 return result;
             }
 
-            ProductionCharacterRuntimeGraphV1 graph =
-                composition.ActiveRuntime
-                    as ProductionCharacterRuntimeGraphV1;
-            if (graph != null && !graph.IsDisposed)
+            CharacterInstanceSnapshotV1 persisted = result.Character;
+            if (persisted != null)
             {
-                currentProfile = new ProductionFlowProfileRecordV1(
-                    graph.Character.DisplayName,
-                    BuildCurrentRoute(graph));
+                string ignored;
+                TryProject(persisted, out currentProfile, out ignored);
             }
+            diagnostic = string.Empty;
             return result;
         }
 
         private LegacyCharacterProfileMigrationResultV1
-            MigrateMissingLegacySlots(
-                ProductionCharacterRuntimeGraphFactoryV1 graphFactory)
+            MigrateLegacyAccountOnce()
         {
             var legacy = new List<LegacyCharacterProfileV1>();
             for (int slotIndex = 0;
                 slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
                 slotIndex++)
             {
-                if (accountAuthority.Current.CharacterAt(slotIndex) != null)
-                {
-                    continue;
-                }
                 ProductionFlowProfileRecordV1 record;
                 if (legacyStore.TryLoad(slotIndex, out record))
                 {
@@ -390,17 +618,6 @@ namespace ShooterMover.UI.ProductionFlow
                 accountAuthority,
                 graphFactory,
                 accountStore.Save).Migrate(legacy);
-        }
-
-        private LegacyCharacterProfileMigrationResultV1 MigrateOne(
-            int slotIndex,
-            ProductionFlowProfileRecordV1 record,
-            ProductionCharacterRuntimeGraphFactoryV1 graphFactory)
-        {
-            return new LegacyCharacterProfileMigrationV1(
-                accountAuthority,
-                graphFactory,
-                accountStore.Save).Migrate(new[] { Legacy(slotIndex, record) });
         }
 
         private static LegacyCharacterProfileV1 Legacy(
@@ -416,25 +633,94 @@ namespace ShooterMover.UI.ProductionFlow
                 record.Payload);
         }
 
-        private static PlayerRouteProfilePayloadV1 BuildCurrentRoute(
-            ProductionCharacterRuntimeGraphV1 graph)
+        private static bool TryProject(
+            CharacterInstanceSnapshotV1 character,
+            out ProductionFlowProfileRecordV1 profile,
+            out string rejectionCode)
         {
-            InventoryLoadoutAuthoritySnapshotV1 snapshot =
-                graph.LoadoutRuntime.LoadoutAuthority.ExportSnapshot();
+            profile = null;
+            rejectionCode = string.Empty;
+            SaveComponentSnapshotV1 component;
+            if (!character.TryGetComponent(
+                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
+                    .ComponentStableId,
+                out component))
+            {
+                rejectionCode = "character-projection-loadout-missing";
+                return false;
+            }
+
+            InventoryLoadoutAuthoritySnapshotV1 loadout;
+            if (!KnownSaveComponentCodecsV1.ExactInstanceLoadout.TryDecode(
+                component.CanonicalPayload,
+                out loadout,
+                out rejectionCode))
+            {
+                rejectionCode =
+                    "character-projection-loadout-invalid:" + rejectionCode;
+                return false;
+            }
+
             var instances = new List<StableId>(
                 PlayerRouteProfilePayloadV1.WeaponSlotCount);
             for (int index = 0;
                 index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
                 index++)
             {
-                instances.Add(snapshot.GetBinding(
+                instances.Add(loadout.GetBinding(
                     InventoryLoadoutSlotsV1.All[index].SlotStableId)
                     .EquipmentInstanceStableId);
             }
-            return PlayerRouteProfilePayloadV1.Create(
-                graph.Character.CharacterInstanceStableId,
-                graph.Character.ClassDefinitionStableId,
-                instances);
+
+            try
+            {
+                profile = new ProductionFlowProfileRecordV1(
+                    character.DisplayName,
+                    PlayerRouteProfilePayloadV1.Create(
+                        character.CharacterInstanceStableId,
+                        character.ClassDefinitionStableId,
+                        instances));
+                return true;
+            }
+            catch (Exception exception)
+            {
+                rejectionCode = "character-projection-threw:"
+                    + exception.GetType().Name;
+                return false;
+            }
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused && initialized && !failed)
+            {
+                PersistCurrentState("application-pause");
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            quitting = true;
+            if (initialized && !failed)
+            {
+                PersistCurrentState("application-quit");
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (!quitting && initialized && !failed)
+            {
+                PersistCurrentState("composition-destroy");
+            }
+            if (composition != null)
+            {
+                composition.Dispose();
+            }
+            if (instance == this)
+            {
+                instance = null;
+            }
         }
 
         private void Fail(string rejectionCode)
@@ -447,18 +733,6 @@ namespace ShooterMover.UI.ProductionFlow
                 composition.UnbindActive();
             }
             Debug.LogError(diagnostic, this);
-        }
-
-        private void OnDestroy()
-        {
-            if (composition != null)
-            {
-                composition.Dispose();
-            }
-            if (instance == this)
-            {
-                instance = null;
-            }
         }
 
         private static string Hash(string value)
