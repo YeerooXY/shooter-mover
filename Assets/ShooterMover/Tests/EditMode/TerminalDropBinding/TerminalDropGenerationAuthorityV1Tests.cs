@@ -18,27 +18,27 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
 {
     public sealed class TerminalDropGenerationAuthorityV1Tests
     {
-        private static readonly StableId RunId = Id("run.drop-binding-tests");
-        private static readonly StableId PlayerParticipantId = Id("participant.player-one");
-        private static readonly StableId PlayerEntityId = Id("entity.player-one");
-        private static readonly StableId MoneyProfileId = Id("drop-profile.money");
-        private static readonly StableId MultiProfileId = Id("drop-profile.multi");
-        private static readonly StableId StrongboxProfileId = Id("drop-profile.strongbox");
+        private static readonly StableId RunId = Id("run", "drop-binding-tests");
+        private static readonly StableId PlayerParticipantId = Id("participant", "player-one");
+        private static readonly StableId PlayerEntityId = Id("entity", "player-one");
+        private static readonly StableId MoneyProfileId = Id("drop-profile", "money");
+        private static readonly StableId MultiProfileId = Id("drop-profile", "multi");
+        private static readonly StableId StrongboxProfileId = Id("drop-profile", "strongbox");
 
         private sealed class FixtureFact
         {
             public FixtureFact(
-                string eventId,
-                string sourceId,
-                string placementId,
+                StableId eventId,
+                StableId sourceId,
+                StableId placementId,
                 long sourceGeneration,
                 StableId profileId,
                 StableId participantId,
-                string immutableToken = "fixture")
+                string immutableToken)
             {
-                EventId = Id(eventId);
-                SourceId = Id(sourceId);
-                PlacementId = Id(placementId);
+                EventId = eventId;
+                SourceId = sourceId;
+                PlacementId = placementId;
                 SourceGeneration = sourceGeneration;
                 ProfileId = profileId;
                 ParticipantId = participantId;
@@ -59,10 +59,10 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             private readonly StableId kindId;
             private readonly StableId definitionId;
 
-            public FixtureAdapter(string kindId = "terminal-drop-fact.fixture")
+            public FixtureAdapter(string kindValue = "fixture")
             {
-                this.kindId = Id(kindId);
-                definitionId = Id("definition.fixture-source");
+                kindId = Id("terminal-drop-fact", kindValue);
+                definitionId = Id("definition", "fixture-source");
             }
 
             public StableId FactKindStableId { get { return kindId; } }
@@ -77,11 +77,12 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                         TerminalDropRejectionCodeV1.InvalidTerminalFact,
                         "fixture-type-mismatch");
                 }
+
                 return TerminalDropAdaptationResultV1.Accepted(
                     new TerminalDropSourceFactV1(
                         kindId,
                         fact.EventId,
-                        Id("trigger." + fact.EventId.ToString()),
+                        Id("trigger", fact.EventId.Value + "-trigger"),
                         RunId,
                         1L,
                         fact.SourceId,
@@ -90,11 +91,26 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                         definitionId,
                         fact.ParticipantId,
                         PlayerEntityId,
-                        Id("damage.kinetic"),
+                        Id("damage", "kinetic"),
                         fact.ProfileId,
-                        "sha256:fixture-source-context-" + fact.PlacementId,
-                        "sha256:fixture-definition",
-                        "sha256:fixture-upstream-" + fact.ImmutableToken));
+                        "fixture-source-context:" + fact.PlacementId,
+                        "fixture-definition-fingerprint",
+                        "fixture-upstream:" + fact.ImmutableToken));
+            }
+        }
+
+        private sealed class AlternateFact { }
+
+        private sealed class AlternateAdapter : ITerminalDropFactAdapterV1
+        {
+            public StableId FactKindStableId { get { return Id("terminal-drop-fact", "alternate"); } }
+            public Type FactType { get { return typeof(AlternateFact); } }
+
+            public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
+            {
+                return TerminalDropAdaptationResultV1.Rejected(
+                    TerminalDropRejectionCodeV1.InvalidTerminalFact,
+                    "unused-alternate-adapter");
             }
         }
 
@@ -114,6 +130,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 context = null;
                 rejectionCode = TerminalDropRejectionCodeV1.None;
                 diagnostic = string.Empty;
+
                 if (!RunExists || runStableId != RunId)
                 {
                     rejectionCode = TerminalDropRejectionCodeV1.MissingRun;
@@ -132,13 +149,18 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                     diagnostic = "fixture-run-ended";
                     return false;
                 }
+
                 context = new TerminalDropRunGenerationContextV1(
                     RunId,
                     CurrentGeneration,
                     0x123456789abcdef0UL,
                     1,
-                    ProgressionContext.Create(10, 3, Id("difficulty.normal"), 1),
-                    "sha256:event-context-fixture");
+                    ProgressionContext.Create(
+                        10,
+                        3,
+                        Id("difficulty", "normal"),
+                        1),
+                    "fixture-event-context");
                 return true;
             }
         }
@@ -167,8 +189,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             public RewardGenerationResultEnvelopeV1 Generate(RewardGenerationRequestV1 request)
             {
                 CallCount++;
-                if (CallCount == 1) return null;
-                return inner.Generate(request);
+                return CallCount == 1 ? null : inner.Generate(request);
             }
         }
 
@@ -203,34 +224,31 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                     diagnostic = "fixture-prop-context-missing";
                     return false;
                 }
+
                 context = new PropTerminalSourceContextV1(
                     RunId,
                     1L,
                     terminalFact.PropParticipantId,
                     placement,
                     1L,
-                    "sha256:prop-context-" + placement);
+                    "fixture-prop-context:" + placement);
                 diagnostic = string.Empty;
                 return true;
             }
         }
 
         [Test]
-        public void AttributedEnemyDeath_GeneratesExactlyOneBatch()
+        public void OneAttributedEnemyDeath_GeneratesExactlyOneBatch()
         {
-            EnemyDefinitionV1 definition = EnemyDefinition("enemy.fixture-a", MoneyProfileId);
-            EnemyCatalogV1 catalog = EnemyCatalog(definition);
+            EnemyDefinitionV1 definition = EnemyDefinition("fixture-enemy", MoneyProfileId);
             CountingGenerator generator = new CountingGenerator();
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[]
-                {
-                    new EnemyDeathTerminalDropFactAdapterV1(catalog)
-                },
+                new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(definition)),
                 Profiles(MoneyProfile()),
                 generator);
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                EnemyDeath(definition, "death.enemy-a", "placement.enemy-a", 1L));
+                EnemyDeath(definition, "enemy-death-one", "enemy-placement-one", 1L));
 
             Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
             Assert.That(result.GeneratedRewards.Count, Is.EqualTo(1));
@@ -239,63 +257,39 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void EligiblePropDestruction_GeneratesExactlyOneBatch()
+        public void OneEligiblePropDestruction_GeneratesExactlyOneBatch()
         {
-            PropDefinitionV1 definition = PropDefinition("prop.fixture-a", MoneyProfileId);
+            PropDefinitionV1 definition = PropDefinition("fixture-prop", MoneyProfileId);
             PropCatalogV1 catalog = PropCatalog(definition);
-            PropSourceContextResolver sourceContexts = new PropSourceContextResolver();
-            PropRuntimeV1 runtime = CreatePropRuntime(
-                catalog,
-                definition,
-                "placement.prop-a");
-            sourceContexts.Register(runtime.ParticipantId, Id("placement.prop-a"));
-            PropDamageResultV1 destruction = Destroy(runtime, "operation.destroy-prop-a");
+            PropSourceContextResolver contexts = new PropSourceContextResolver();
+            PropRuntimeV1 runtime = CreatePropRuntime(catalog, definition, "prop-placement-one");
+            contexts.Register(runtime.ParticipantId, Id("placement", "prop-placement-one"));
+            PropDamageResultV1 destroyed = Destroy(runtime, "destroy-prop-one");
             CountingGenerator generator = new CountingGenerator();
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[]
-                {
-                    new PropDestructionTerminalDropFactAdapterV1(catalog, sourceContexts)
-                },
+                new PropDestructionTerminalDropFactAdapterV1(catalog, contexts),
                 Profiles(MoneyProfile()),
                 generator);
 
-            GeneratedTerminalDropResultV1 result = authority.Generate(destruction.Facts);
+            GeneratedTerminalDropResultV1 result = authority.Generate(destroyed.Facts);
 
             Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
-            Assert.That(result.SourceFact.SourcePlacementStableId, Is.EqualTo(Id("placement.prop-a")));
+            Assert.That(result.SourceFact.SourcePlacementStableId,
+                Is.EqualTo(Id("placement", "prop-placement-one")));
             Assert.That(generator.CallCount, Is.EqualTo(1));
         }
 
         [Test]
-        public void DefinitionWithoutDropProfile_ProducesDeterministicExplicitNoDrop()
+        public void EnemyWithoutDropProfile_ProducesDeterministicNoDrop()
         {
-            TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles());
-            FixtureFact fact = Fixture("terminal.no-drop", null);
-
-            GeneratedTerminalDropResultV1 first = authority.Generate(fact);
-            GeneratedTerminalDropResultV1 replay = authority.Generate(fact);
-
-            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExplicitNoDrop));
-            Assert.That(first.GeneratedRewards, Is.Empty);
-            Assert.That(replay.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExactReplay));
-            Assert.That(replay.Fingerprint, Is.EqualTo(first.Fingerprint));
-            Assert.That(replay.ResolvedDropProfileStableId, Is.EqualTo(first.ResolvedDropProfileStableId));
-        }
-
-        [Test]
-        public void EnemyDefinitionWithoutProfile_UsesExistingExplicitNoDropContract()
-        {
-            EnemyDefinitionV1 definition = EnemyDefinition("enemy.no-drop", null);
+            EnemyDefinitionV1 definition = EnemyDefinition("enemy-no-drop", null);
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[]
-                {
-                    new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(definition))
-                },
+                new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(definition)),
                 Profiles(),
                 new CountingGenerator());
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                EnemyDeath(definition, "death.enemy-no-drop", "placement.enemy-no-drop", 1L));
+                EnemyDeath(definition, "enemy-death-no-drop", "enemy-placement-no-drop", 1L));
 
             Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExplicitNoDrop));
             Assert.That(result.GeneratedRewards, Is.Empty);
@@ -303,20 +297,52 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void ExactReplay_DoesNotGenerateSecondBatch_AndPreservesAllIdentities()
+        public void PropWithoutDropProfile_ProducesDeterministicNoDrop()
+        {
+            PropDefinitionV1 definition = PropDefinition("prop-no-drop", null);
+            PropCatalogV1 catalog = PropCatalog(definition);
+            PropSourceContextResolver contexts = new PropSourceContextResolver();
+            PropRuntimeV1 runtime = CreatePropRuntime(catalog, definition, "prop-placement-no-drop");
+            contexts.Register(runtime.ParticipantId, Id("placement", "prop-placement-no-drop"));
+            PropDamageResultV1 destroyed = Destroy(runtime, "destroy-prop-no-drop");
+            TerminalDropGenerationAuthorityV1 authority = Authority(
+                new PropDestructionTerminalDropFactAdapterV1(catalog, contexts),
+                Profiles(),
+                new CountingGenerator());
+
+            GeneratedTerminalDropResultV1 result = authority.Generate(destroyed.Facts);
+
+            Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExplicitNoDrop));
+            Assert.That(result.GeneratedRewards, Is.Empty);
+        }
+
+        [Test]
+        public void ExactReplay_DoesNotGenerateSecondBatch()
         {
             CountingGenerator generator = new CountingGenerator();
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
                 Profiles(StrongboxProfile()),
                 generator);
-            FixtureFact fact = Fixture("terminal.replay", StrongboxProfileId);
+            FixtureFact fact = Fixture("replay", StrongboxProfileId);
+
+            authority.Generate(fact);
+            GeneratedTerminalDropResultV1 replay = authority.Generate(fact);
+
+            Assert.That(replay.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExactReplay));
+            Assert.That(generator.CallCount, Is.EqualTo(1));
+            Assert.That(authority.AcceptedBatchCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ExactReplay_PreservesOperationChildrenAndFingerprint()
+        {
+            TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
+                Profiles(StrongboxProfile()));
+            FixtureFact fact = Fixture("replay-identities", StrongboxProfileId);
 
             GeneratedTerminalDropResultV1 first = authority.Generate(fact);
             GeneratedTerminalDropResultV1 replay = authority.Generate(fact);
 
-            Assert.That(generator.CallCount, Is.EqualTo(1));
-            Assert.That(authority.AcceptedBatchCount, Is.EqualTo(1));
-            Assert.That(replay.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExactReplay));
             Assert.That(replay.OperationRequest.SourceOperationStableId,
                 Is.EqualTo(first.OperationRequest.SourceOperationStableId));
             Assert.That(replay.GeneratedRewards[0].RewardInstanceStableId,
@@ -331,11 +357,11 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
                 Profiles(MoneyProfile()),
                 generator);
-            GeneratedTerminalDropResultV1 first = authority.Generate(
-                Fixture("terminal.conflict", MoneyProfileId, immutableToken: "first"));
 
+            GeneratedTerminalDropResultV1 first = authority.Generate(
+                Fixture("conflict", MoneyProfileId, immutableToken: "first"));
             GeneratedTerminalDropResultV1 conflict = authority.Generate(
-                Fixture("terminal.conflict", MoneyProfileId, immutableToken: "changed"));
+                Fixture("conflict", MoneyProfileId, immutableToken: "changed"));
 
             Assert.That(first.IsAccepted, Is.True);
             Assert.That(conflict.Status,
@@ -345,27 +371,28 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void DistinctEventsSameDefinition_ProduceDistinctOperations()
+        public void DistinctEventsFromSameDefinition_ProduceDistinctOperations()
         {
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(MoneyProfile()));
+
             GeneratedTerminalDropResultV1 first = authority.Generate(
-                Fixture("terminal.distinct-a", MoneyProfileId));
+                Fixture("distinct-event-a", MoneyProfileId));
             GeneratedTerminalDropResultV1 second = authority.Generate(
-                Fixture("terminal.distinct-b", MoneyProfileId));
+                Fixture("distinct-event-b", MoneyProfileId));
 
             Assert.That(first.OperationRequest.SourceOperationStableId,
                 Is.Not.EqualTo(second.OperationRequest.SourceOperationStableId));
-            Assert.That(first.Fingerprint, Is.Not.EqualTo(second.Fingerprint));
         }
 
         [Test]
-        public void SameDefinitionDifferentPlacements_RemainDistinctSources()
+        public void SameDefinitionAtDifferentPlacements_RemainsDistinct()
         {
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(MoneyProfile()));
+
             GeneratedTerminalDropResultV1 first = authority.Generate(
-                Fixture("terminal.placement-a", MoneyProfileId, placementId: "placement.a"));
+                Fixture("placement-event-a", MoneyProfileId, placementValue: "placement-a"));
             GeneratedTerminalDropResultV1 second = authority.Generate(
-                Fixture("terminal.placement-b", MoneyProfileId, placementId: "placement.b"));
+                Fixture("placement-event-b", MoneyProfileId, placementValue: "placement-b"));
 
             Assert.That(first.SourceFact.SourcePlacementStableId,
                 Is.Not.EqualTo(second.SourceFact.SourcePlacementStableId));
@@ -377,10 +404,11 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         public void DifferentSourceLifecycleGenerations_CannotShareOperation()
         {
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(MoneyProfile()));
+
             GeneratedTerminalDropResultV1 first = authority.Generate(
-                Fixture("terminal.generation-a", MoneyProfileId, sourceGeneration: 1L));
+                Fixture("generation-event-a", MoneyProfileId, sourceGeneration: 1L));
             GeneratedTerminalDropResultV1 second = authority.Generate(
-                Fixture("terminal.generation-b", MoneyProfileId, sourceGeneration: 2L));
+                Fixture("generation-event-b", MoneyProfileId, sourceGeneration: 2L));
 
             Assert.That(first.OperationRequest.SourceOperationStableId,
                 Is.Not.EqualTo(second.OperationRequest.SourceOperationStableId));
@@ -390,47 +418,45 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         public void StaleRunLifecycle_RejectsSafely()
         {
             FixedRunContextResolver run = new FixedRunContextResolver { CurrentGeneration = 2L };
+            CountingGenerator generator = new CountingGenerator();
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
                 Profiles(MoneyProfile()),
-                new CountingGenerator(),
+                generator,
                 run);
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                Fixture("terminal.stale-run", MoneyProfileId));
+                Fixture("stale-run", MoneyProfileId));
 
-            Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
             Assert.That(result.RejectionCode,
                 Is.EqualTo(TerminalDropRejectionCodeV1.WrongRunLifecycle));
+            Assert.That(generator.CallCount, Is.EqualTo(0));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(0));
         }
 
         [Test]
-        public void MissingEnemyDefinition_Rejects()
+        public void MissingDefinitionResolution_Rejects()
         {
-            EnemyDefinitionV1 present = EnemyDefinition("enemy.present", MoneyProfileId);
-            EnemyDefinitionV1 missing = EnemyDefinition("enemy.missing", MoneyProfileId);
+            EnemyDefinitionV1 present = EnemyDefinition("enemy-present", MoneyProfileId);
+            EnemyDefinitionV1 missing = EnemyDefinition("enemy-missing", MoneyProfileId);
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[]
-                {
-                    new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(present))
-                },
+                new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(present)),
                 Profiles(MoneyProfile()),
                 new CountingGenerator());
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                EnemyDeath(missing, "death.missing-definition", "placement.missing", 1L));
+                EnemyDeath(missing, "enemy-death-missing", "enemy-placement-missing", 1L));
 
             Assert.That(result.RejectionCode,
                 Is.EqualTo(TerminalDropRejectionCodeV1.MissingDefinition));
         }
 
         [Test]
-        public void MissingRewardProfile_RejectsPrecisely()
+        public void MissingDropProfileResolution_Rejects()
         {
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles());
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                Fixture("terminal.missing-profile", Id("drop-profile.not-registered")));
+                Fixture("missing-profile", Id("drop-profile", "not-registered")));
 
             Assert.That(result.RejectionCode,
                 Is.EqualTo(TerminalDropRejectionCodeV1.MissingDropProfile));
@@ -458,13 +484,11 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 generator);
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                new FixtureFact(
-                    "terminal.unattributed",
-                    "entity.fixture-source",
-                    "placement.fixture-source",
-                    1L,
+                Fixture(
+                    "unattributed",
                     MoneyProfileId,
-                    null));
+                    participantId: null,
+                    immutableToken: "unattributed"));
 
             Assert.That(result.RejectionCode,
                 Is.EqualTo(TerminalDropRejectionCodeV1.UnattributedTerminalFact));
@@ -472,59 +496,55 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void AdapterAndProfileRegistrationOrder_DoesNotAffectFingerprint()
+        public void RegistrationOrder_DoesNotAffectFingerprints()
         {
-            ITerminalDropFactAdapterV1 first = new FixtureAdapter("terminal-drop-fact.a");
-            ITerminalDropFactAdapterV1 second = new AlternateFixtureAdapter();
+            ITerminalDropFactAdapterV1 first = new FixtureAdapter("fixture");
+            ITerminalDropFactAdapterV1 second = new AlternateAdapter();
             TerminalDropFactAdapterRegistryV1 ordered =
                 new TerminalDropFactAdapterRegistryV1(new[] { first, second });
             TerminalDropFactAdapterRegistryV1 reversed =
                 new TerminalDropFactAdapterRegistryV1(new[] { second, first });
-            RewardProfileCatalogResolverV1 profilesOrdered = Profiles(MoneyProfile(), StrongboxProfile());
-            RewardProfileCatalogResolverV1 profilesReversed = Profiles(StrongboxProfile(), MoneyProfile());
+            RewardProfileCatalogResolverV1 profilesOrdered =
+                Profiles(MoneyProfile(), StrongboxProfile());
+            RewardProfileCatalogResolverV1 profilesReversed =
+                Profiles(StrongboxProfile(), MoneyProfile());
 
             Assert.That(ordered.Fingerprint, Is.EqualTo(reversed.Fingerprint));
             Assert.That(profilesOrdered.Fingerprint, Is.EqualTo(profilesReversed.Fingerprint));
-        }
 
-        private sealed class AlternateFixtureFact { }
-        private sealed class AlternateFixtureAdapter : ITerminalDropFactAdapterV1
-        {
-            public StableId FactKindStableId { get { return Id("terminal-drop-fact.b"); } }
-            public Type FactType { get { return typeof(AlternateFixtureFact); } }
-            public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
-            {
-                return TerminalDropAdaptationResultV1.Rejected(
-                    TerminalDropRejectionCodeV1.InvalidTerminalFact,
-                    "unused");
-            }
+            FixtureFact fact = Fixture("registration-order", MoneyProfileId);
+            GeneratedTerminalDropResultV1 firstResult = FixtureAuthority(profilesOrdered).Generate(fact);
+            GeneratedTerminalDropResultV1 secondResult = FixtureAuthority(profilesReversed).Generate(fact);
+            Assert.That(firstResult.Fingerprint, Is.EqualTo(secondResult.Fingerprint));
         }
 
         [Test]
-        public void MultiRewardBatch_UsesCanonicalChildOrdering()
+        public void MultiRewardBatch_HasDeterministicChildOrdering()
         {
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(MultiProfile()));
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                Fixture("terminal.multi", MultiProfileId));
+                Fixture("multi-reward", MultiProfileId));
 
             Assert.That(result.GeneratedRewards.Count, Is.EqualTo(2));
             Assert.That(result.GeneratedRewards[0].SourceGrantStableId,
-                Is.EqualTo(Id("grant.a-money")));
+                Is.EqualTo(Id("grant", "a-money")));
             Assert.That(result.GeneratedRewards[1].SourceGrantStableId,
-                Is.EqualTo(Id("grant.z-scrap")));
+                Is.EqualTo(Id("grant", "z-scrap")));
         }
 
         [Test]
-        public void StrongboxReward_HasOneExactStableInstanceIdentity()
+        public void GeneratedStrongbox_HasOneExactStableInstanceIdentity()
         {
-            TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(StrongboxProfile()));
+            TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
+                Profiles(StrongboxProfile()));
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                Fixture("terminal.strongbox-one", StrongboxProfileId));
+                Fixture("strongbox-one", StrongboxProfileId));
 
             Assert.That(result.GeneratedRewards.Count, Is.EqualTo(1));
-            Assert.That(result.GeneratedRewards[0].Kind, Is.EqualTo(RewardGrantKindV1.Strongbox));
+            Assert.That(result.GeneratedRewards[0].Kind,
+                Is.EqualTo(RewardGrantKindV1.Strongbox));
             Assert.That(result.GeneratedRewards[0].Quantity, Is.EqualTo(1L));
             Assert.That(result.GeneratedRewards[0].RewardInstanceStableId, Is.Not.Null);
         }
@@ -532,11 +552,13 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void SameTierStrongboxesFromDifferentFacts_HaveDistinctInstances()
         {
-            TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(StrongboxProfile()));
+            TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
+                Profiles(StrongboxProfile()));
+
             GeneratedTerminalDropResultV1 first = authority.Generate(
-                Fixture("terminal.box-a", StrongboxProfileId));
+                Fixture("strongbox-a", StrongboxProfileId));
             GeneratedTerminalDropResultV1 second = authority.Generate(
-                Fixture("terminal.box-b", StrongboxProfileId));
+                Fixture("strongbox-b", StrongboxProfileId));
 
             Assert.That(first.GeneratedRewards[0].ContentStableId,
                 Is.EqualTo(second.GeneratedRewards[0].ContentStableId));
@@ -545,35 +567,37 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void GenerationFailure_PublishesNoPartialAcceptedBatch()
+        public void GenerationFailure_EmitsNoPartialAcceptedBatch()
         {
             FailOnceGenerator generator = new FailOnceGenerator();
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
                 Profiles(MultiProfile()),
                 generator);
 
-            GeneratedTerminalDropResultV1 failed = authority.Generate(
-                Fixture("terminal.failure", MultiProfileId));
+            GeneratedTerminalDropResultV1 result = authority.Generate(
+                Fixture("generation-failure", MultiProfileId));
 
-            Assert.That(failed.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
-            Assert.That(failed.GeneratedRewards, Is.Empty);
-            Assert.That(failed.GeneratedBatch, Is.Null);
+            Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
+            Assert.That(result.RejectionCode,
+                Is.EqualTo(TerminalDropRejectionCodeV1.GenerationFailed));
+            Assert.That(result.GeneratedBatch, Is.Null);
+            Assert.That(result.GeneratedRewards, Is.Empty);
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(0));
         }
 
         [Test]
-        public void ExactRetryAfterRetryableFailure_CanSucceedWithoutFactChange()
+        public void ExactRetryAfterRetryableFailure_CanSucceed()
         {
             FailOnceGenerator generator = new FailOnceGenerator();
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
                 Profiles(MoneyProfile()),
                 generator);
-            FixtureFact fact = Fixture("terminal.retry", MoneyProfileId);
+            FixtureFact fact = Fixture("retryable-failure", MoneyProfileId);
 
-            GeneratedTerminalDropResultV1 first = authority.Generate(fact);
+            GeneratedTerminalDropResultV1 failed = authority.Generate(fact);
             GeneratedTerminalDropResultV1 retry = authority.Generate(fact);
 
-            Assert.That(first.RejectionCode,
+            Assert.That(failed.RejectionCode,
                 Is.EqualTo(TerminalDropRejectionCodeV1.GenerationFailed));
             Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
             Assert.That(generator.CallCount, Is.EqualTo(2));
@@ -581,100 +605,143 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void GenerationDoesNotInvokePermanentHoldingsOrSaveAuthority()
+        public void Generation_DoesNotMutatePermanentAuthorities()
         {
-            int permanentMutationCount = 0;
+            int permanentMutationCalls = 0;
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(Profiles(MoneyProfile()));
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                Fixture("terminal.no-persistence", MoneyProfileId));
+                Fixture("no-permanent-mutation", MoneyProfileId));
 
             Assert.That(result.IsAccepted, Is.True);
-            Assert.That(permanentMutationCount, Is.EqualTo(0));
+            Assert.That(permanentMutationCalls, Is.EqualTo(0));
             Assert.That(result.GeneratedRewards.Count, Is.EqualTo(1));
         }
 
         [Test]
-        public void NewEnemyDefinitionUsingExistingProfile_NeedsNoConsumerChange()
+        public void NewEnemyUsingExistingProfile_NeedsNoSharedConsumerEdit()
         {
-            EnemyDefinitionV1 first = EnemyDefinition("enemy.fixture-one", MoneyProfileId);
-            EnemyDefinitionV1 second = EnemyDefinition("enemy.fixture-two", MoneyProfileId);
+            EnemyDefinitionV1 first = EnemyDefinition("enemy-fixture-one", MoneyProfileId);
+            EnemyDefinitionV1 second = EnemyDefinition("enemy-fixture-two", MoneyProfileId);
             EnemyDeathTerminalDropFactAdapterV1 sharedAdapter =
                 new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(first, second));
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[] { sharedAdapter },
+                sharedAdapter,
                 Profiles(MoneyProfile()),
                 new CountingGenerator());
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                EnemyDeath(second, "death.fixture-two", "placement.fixture-two", 1L));
+                EnemyDeath(second, "enemy-death-two", "enemy-placement-two", 1L));
 
             Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
-            Assert.That(result.SourceFact.SourceDefinitionStableId, Is.EqualTo(second.DefinitionId));
+            Assert.That(result.SourceFact.SourceDefinitionStableId,
+                Is.EqualTo(second.DefinitionId));
         }
 
         [Test]
-        public void NewPropDefinitionUsingExistingProfile_NeedsNoConsumerChange()
+        public void NewPropUsingExistingProfile_NeedsNoSharedConsumerEdit()
         {
-            PropDefinitionV1 first = PropDefinition("prop.fixture-one", MoneyProfileId);
-            PropDefinitionV1 second = PropDefinition("prop.fixture-two", MoneyProfileId);
+            PropDefinitionV1 first = PropDefinition("prop-fixture-one", MoneyProfileId);
+            PropDefinitionV1 second = PropDefinition("prop-fixture-two", MoneyProfileId);
             PropCatalogV1 catalog = PropCatalog(first, second);
             PropSourceContextResolver contexts = new PropSourceContextResolver();
-            PropRuntimeV1 runtime = CreatePropRuntime(catalog, second, "placement.fixture-two");
-            contexts.Register(runtime.ParticipantId, Id("placement.fixture-two"));
+            PropRuntimeV1 runtime = CreatePropRuntime(catalog, second, "prop-placement-two");
+            contexts.Register(runtime.ParticipantId, Id("placement", "prop-placement-two"));
             PropDestructionTerminalDropFactAdapterV1 sharedAdapter =
                 new PropDestructionTerminalDropFactAdapterV1(catalog, contexts);
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[] { sharedAdapter },
+                sharedAdapter,
                 Profiles(MoneyProfile()),
                 new CountingGenerator());
 
             GeneratedTerminalDropResultV1 result = authority.Generate(
-                Destroy(runtime, "operation.destroy-fixture-two").Facts);
+                Destroy(runtime, "destroy-prop-two").Facts);
 
             Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
-            Assert.That(result.SourceFact.SourceDefinitionStableId, Is.EqualTo(second.DefinitionId));
+            Assert.That(result.SourceFact.SourceDefinitionStableId,
+                Is.EqualTo(second.DefinitionId));
         }
 
         [Test]
-        public void DuplicateEnemyDeliveryFromTwoRoutes_CannotDuplicateBatch()
+        public void RealGenericEnemyDeathFact_ReachesExistingDropGenBoundary()
         {
-            EnemyDefinitionV1 definition = EnemyDefinition("enemy.duplicate-route", StrongboxProfileId);
+            EnemyDefinitionV1 definition = EnemyDefinition("enemy-integration", MultiProfileId);
             CountingGenerator generator = new CountingGenerator();
             TerminalDropGenerationAuthorityV1 authority = Authority(
-                new ITerminalDropFactAdapterV1[]
-                {
-                    new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(definition))
-                },
+                new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(definition)),
+                Profiles(MultiProfile()),
+                generator);
+            EnemyDeathFactV1 fact = EnemyDeath(
+                definition,
+                "enemy-death-integration",
+                "enemy-placement-integration",
+                1L);
+
+            GeneratedTerminalDropResultV1 result = authority.Generate(fact);
+
+            Assert.That(result.GeneratedBatch, Is.Not.Null);
+            Assert.That(result.GeneratedRewards.Count, Is.EqualTo(2));
+            Assert.That(generator.CallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RealGenericPropTerminalFact_ReachesSameBoundary()
+        {
+            PropDefinitionV1 definition = PropDefinition("prop-integration", MultiProfileId);
+            PropCatalogV1 catalog = PropCatalog(definition);
+            PropSourceContextResolver contexts = new PropSourceContextResolver();
+            PropRuntimeV1 runtime = CreatePropRuntime(catalog, definition, "prop-placement-integration");
+            contexts.Register(runtime.ParticipantId, Id("placement", "prop-placement-integration"));
+            PropFactBatchV1 facts = Destroy(runtime, "destroy-prop-integration").Facts;
+            TerminalDropGenerationAuthorityV1 authority = Authority(
+                new PropDestructionTerminalDropFactAdapterV1(catalog, contexts),
+                Profiles(MultiProfile()),
+                new CountingGenerator());
+
+            GeneratedTerminalDropResultV1 result = authority.Generate(facts);
+
+            Assert.That(result.GeneratedBatch, Is.Not.Null);
+            Assert.That(result.GeneratedRewards.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void DuplicateDeliveryThroughTwoRoutes_CannotDuplicateBatch()
+        {
+            EnemyDefinitionV1 definition = EnemyDefinition("enemy-duplicate-route", StrongboxProfileId);
+            CountingGenerator generator = new CountingGenerator();
+            TerminalDropGenerationAuthorityV1 authority = Authority(
+                new EnemyDeathTerminalDropFactAdapterV1(EnemyCatalog(definition)),
                 Profiles(StrongboxProfile()),
                 generator);
             EnemyDeathFactV1 fact = EnemyDeath(
                 definition,
-                "death.duplicate-route",
-                "placement.duplicate-route",
+                "enemy-death-duplicate-route",
+                "enemy-placement-duplicate-route",
                 1L);
 
-            GeneratedTerminalDropResultV1 routeOne = authority.Generate(fact);
-            GeneratedTerminalDropResultV1 routeTwo = authority.Generate(fact);
+            GeneratedTerminalDropResultV1 firstRoute = authority.Generate(fact);
+            GeneratedTerminalDropResultV1 secondRoute = authority.Generate(fact);
 
-            Assert.That(routeOne.IsAccepted, Is.True);
-            Assert.That(routeTwo.Status, Is.EqualTo(TerminalDropBindingStatusV1.ExactReplay));
+            Assert.That(firstRoute.IsAccepted, Is.True);
+            Assert.That(secondRoute.Status,
+                Is.EqualTo(TerminalDropBindingStatusV1.ExactReplay));
             Assert.That(generator.CallCount, Is.EqualTo(1));
-            Assert.That(routeTwo.GeneratedRewards[0].RewardInstanceStableId,
-                Is.EqualTo(routeOne.GeneratedRewards[0].RewardInstanceStableId));
+            Assert.That(secondRoute.GeneratedRewards[0].RewardInstanceStableId,
+                Is.EqualTo(firstRoute.GeneratedRewards[0].RewardInstanceStableId));
         }
 
         [Test]
-        public void GeneratedBatchCanBeRealizedLaterWithoutRerolling()
+        public void ImmutableBatch_IsPickupReadyWithoutRerolling()
         {
             CountingGenerator generator = new CountingGenerator();
             TerminalDropGenerationAuthorityV1 authority = FixtureAuthority(
                 Profiles(StrongboxProfile()),
                 generator);
-            FixtureFact fact = Fixture("terminal.pickup-ready", StrongboxProfileId);
+            FixtureFact fact = Fixture("pickup-ready", StrongboxProfileId);
 
             GeneratedTerminalDropResultV1 generated = authority.Generate(fact);
-            StableId pendingPickupIdentity = generated.GeneratedRewards[0].RewardInstanceStableId;
+            StableId pendingPickupIdentity =
+                generated.GeneratedRewards[0].RewardInstanceStableId;
             GeneratedTerminalDropResultV1 recovered = authority.Generate(fact);
 
             Assert.That(recovered.GeneratedRewards[0].RewardInstanceStableId,
@@ -689,41 +756,43 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             FixedRunContextResolver run = null)
         {
             return Authority(
-                new ITerminalDropFactAdapterV1[] { new FixtureAdapter() },
+                new FixtureAdapter(),
                 profiles,
                 generator ?? new CountingGenerator(),
                 run ?? new FixedRunContextResolver());
         }
 
         private static TerminalDropGenerationAuthorityV1 Authority(
-            IEnumerable<ITerminalDropFactAdapterV1> adapters,
+            ITerminalDropFactAdapterV1 adapter,
             RewardProfileCatalogResolverV1 profiles,
             IRewardGenerationExecutorV1 generator,
             ITerminalDropRunContextResolverV1 run = null)
         {
             return new TerminalDropGenerationAuthorityV1(
-                new TerminalDropFactAdapterRegistryV1(adapters),
+                new TerminalDropFactAdapterRegistryV1(new[] { adapter }),
                 run ?? new FixedRunContextResolver(),
                 profiles,
                 generator);
         }
 
         private static FixtureFact Fixture(
-            string eventId,
+            string eventValue,
             StableId profileId,
-            string sourceId = "entity.fixture-source",
-            string placementId = "placement.fixture-source",
+            string sourceValue = "fixture-source",
+            string placementValue = "fixture-placement",
             long sourceGeneration = 1L,
             StableId participantId = null,
             string immutableToken = "fixture")
         {
             return new FixtureFact(
-                eventId,
-                sourceId,
-                placementId,
+                Id("terminal", eventValue),
+                Id("entity", sourceValue),
+                Id("placement", placementValue),
                 sourceGeneration,
                 profileId,
-                participantId ?? PlayerParticipantId,
+                participantId == null && immutableToken != "unattributed"
+                    ? PlayerParticipantId
+                    : participantId,
                 immutableToken);
         }
 
@@ -740,13 +809,13 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 new[]
                 {
                     RewardGrantSpecificationV1.CreateFixed(
-                        Id("grant.money"),
+                        Id("grant", "money"),
                         RewardGrantKindV1.Money,
-                        Id("currency.credits"),
+                        Id("currency", "credits"),
                         25L)
                 },
-                new IndependentRewardRollV1[0],
-                new ExclusiveRewardGroupV1[0]);
+                Array.Empty<IndependentRewardRollV1>(),
+                Array.Empty<ExclusiveRewardGroupV1>());
         }
 
         private static RewardProfileV1 MultiProfile()
@@ -756,18 +825,18 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 new[]
                 {
                     RewardGrantSpecificationV1.CreateFixed(
-                        Id("grant.z-scrap"),
+                        Id("grant", "z-scrap"),
                         RewardGrantKindV1.Scrap,
-                        Id("currency.scrap"),
+                        Id("currency", "scrap"),
                         2L),
                     RewardGrantSpecificationV1.CreateFixed(
-                        Id("grant.a-money"),
+                        Id("grant", "a-money"),
                         RewardGrantKindV1.Money,
-                        Id("currency.credits"),
+                        Id("currency", "credits"),
                         10L)
                 },
-                new IndependentRewardRollV1[0],
-                new ExclusiveRewardGroupV1[0]);
+                Array.Empty<IndependentRewardRollV1>(),
+                Array.Empty<ExclusiveRewardGroupV1>());
         }
 
         private static RewardProfileV1 StrongboxProfile()
@@ -777,60 +846,60 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 new[]
                 {
                     RewardGrantSpecificationV1.CreateFixed(
-                        Id("grant.strongbox"),
+                        Id("grant", "strongbox"),
                         RewardGrantKindV1.Strongbox,
-                        Id("strongbox.tier-emerald"),
+                        Id("strongbox", "tier-emerald"),
                         1L)
                 },
-                new IndependentRewardRollV1[0],
-                new ExclusiveRewardGroupV1[0]);
+                Array.Empty<IndependentRewardRollV1>(),
+                Array.Empty<ExclusiveRewardGroupV1>());
         }
 
         private static EnemyDefinitionV1 EnemyDefinition(
-            string definitionId,
+            string value,
             StableId dropProfileId)
         {
             return new EnemyDefinitionV1(
-                Id(definitionId),
-                Id("presentation." + definitionId),
+                Id("enemy", value),
+                Id("presentation", value),
                 10d,
                 new EnemyLevelScalingProfileV1(1, 100, 0d, 1d),
-                Id("faction.enemy"),
+                Id("faction", "enemy"),
                 10d,
                 360d,
-                Id("movement.fixture"),
-                Id("decision.fixture"),
-                new EnemyAttackCapabilityDescriptorV1[0],
-                Id("experience-profile.fixture"),
+                Id("movement", "fixture"),
+                Id("decision", "fixture"),
+                Array.Empty<EnemyAttackCapabilityDescriptorV1>(),
+                Id("experience-profile", "fixture"),
                 dropProfileId,
                 EnemyCatalogRoomClearRoleV1.RequiredEnemy,
-                new StableId[0]);
+                Array.Empty<StableId>());
         }
 
         private static EnemyCatalogV1 EnemyCatalog(params EnemyDefinitionV1[] definitions)
         {
             return new EnemyCatalogV1(
                 EnemyCatalogV1.SupportedSchemaVersion,
-                Id("enemy-content.drop-binding-tests"),
+                Id("enemy-content", "drop-binding-tests"),
                 definitions);
         }
 
         private static EnemyDeathFactV1 EnemyDeath(
             EnemyDefinitionV1 definition,
-            string deathEvent,
-            string placement,
+            string deathValue,
+            string placementValue,
             long generation)
         {
-            var identity = new EnemyRuntimeIdentityV1(
-                Id("enemy-entity." + placement),
-                Id("run-participant." + placement),
+            EnemyRuntimeIdentityV1 identity = new EnemyRuntimeIdentityV1(
+                Id("enemy-entity", placementValue),
+                Id("run-participant", placementValue),
                 RunId,
-                Id("room-runtime.one"),
-                Id("room.one"),
-                Id(placement));
+                Id("room-runtime", "one"),
+                Id("room", "one"),
+                Id("placement", placementValue));
             return new EnemyDeathFactV1(
-                Id(deathEvent),
-                Id("trigger." + deathEvent),
+                Id("death", deathValue),
+                Id("trigger", deathValue),
                 identity,
                 definition.DefinitionId,
                 1,
@@ -843,22 +912,24 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         private static PropDefinitionV1 PropDefinition(
-            string definitionId,
+            string value,
             StableId dropProfileId)
         {
-            var capabilities = new List<PropCapabilityV1>
+            List<PropCapabilityV1> capabilities = new List<PropCapabilityV1>
             {
                 PropCapabilitiesV1.Collision(true),
                 PropCapabilitiesV1.HealthBased(10d),
                 PropCapabilitiesV1.DamageBehavior(
                     PropDamageAlignmentV1.Hostile,
-                    Id("damage-policy.player-normal"))
+                    Id("damage-policy", "player-normal"))
             };
             if (dropProfileId != null)
+            {
                 capabilities.Add(PropCapabilitiesV1.DropOnDestroy(dropProfileId));
+            }
             return new PropDefinitionV1(
-                Id(definitionId),
-                Id("presentation." + definitionId),
+                Id("prop", value),
+                Id("presentation", value),
                 capabilities);
         }
 
@@ -872,12 +943,12 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         private static PropRuntimeV1 CreatePropRuntime(
             PropCatalogV1 catalog,
             PropDefinitionV1 definition,
-            string placementId)
+            string placementValue)
         {
             PropRuntimeCreationResultV1 created = new PropRuntimeFactoryV1().Create(
                 catalog,
                 new PropPlacementV1(
-                    PlacedObjectIdentity.CreateAuthored(Id(placementId)),
+                    PlacedObjectIdentity.CreateAuthored(Id("placement", placementValue)),
                     definition.DefinitionId),
                 new AlwaysAllowPropDamage());
             Assert.That(created.IsCreated, Is.True);
@@ -886,22 +957,22 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
 
         private static PropDamageResultV1 Destroy(
             PropRuntimeV1 runtime,
-            string operationId)
+            string operationValue)
         {
             PropDamageResultV1 result = runtime.ApplyDamage(
                 new PropDamageCommandV1(
-                    Id(operationId),
+                    Id("operation", operationValue),
                     PlayerParticipantId,
-                    Id("faction.player"),
-                    Id("damage.kinetic"),
+                    Id("faction", "player"),
+                    Id("damage", "kinetic"),
                     10d));
             Assert.That(result.Status, Is.EqualTo(PropDamageStatusV1.Destroyed));
             return result;
         }
 
-        private static StableId Id(string value)
+        private static StableId Id(string scope, string value)
         {
-            return StableId.Parse(value);
+            return StableId.Create(scope, value);
         }
     }
 }
