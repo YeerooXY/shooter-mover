@@ -82,8 +82,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                     new ScalarEnemyDifficultyScalingPolicyV1()),
                 new EnemyPerceptionRuntimeRegistrationV1(
                     new EnemyPerceptionPolicyConfigurationV1(
-                        StableId.Parse("enemy-perception.validated-standard"),
-                        false),
+                        StableId.Parse("enemy-perception.validated-standard")),
                     new ValidatedEnemyPerceptionRuntimeAdapterV1()),
                 downstream ?? EnemyRuntimeDownstreamPortsV1.None());
         }
