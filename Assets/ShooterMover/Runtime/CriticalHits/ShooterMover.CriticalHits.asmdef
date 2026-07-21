@@ -1,0 +1,19 @@
+{
+  "name": "ShooterMover.CriticalHits",
+  "rootNamespace": "ShooterMover.Combat.CriticalHits",
+  "references": [
+    "ShooterMover.CombatHitPolicy",
+    "ShooterMover.Domain",
+    "ShooterMover.Contracts",
+    "ShooterMover.GameplayEntities"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}
