@@ -31,11 +31,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 InstallCombatPresentation();
             }
 
-            long generation = controller.RestartGeneration;
             foreach (EnemyCombatPresentationBindingV1 binding in
                 combatPresentationByActor.Values)
             {
-                binding.SynchronizeLifecycle(generation);
+                binding.SynchronizeLifecycle();
             }
         }
 
@@ -43,6 +42,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             EnemyBinding target,
             EnemyDestroyedNotification destruction)
         {
+            if (!combatPresentationInstalled
+                && initialized
+                && controller != null)
+            {
+                InstallCombatPresentation();
+            }
             if (!combatPresentationInstalled
                 || target == null
                 || destruction == null)
@@ -58,9 +63,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            binding.PresentAcceptedTerminal(
-                destruction,
-                controller.RestartGeneration);
+            binding.PresentAcceptedTerminal(destruction);
         }
 
         private void InstallCombatPresentation()
@@ -76,17 +79,20 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             combatPresentationByActor.Clear();
             BindEnemyCombatPresentation(
                 controller.MobileBlasterDroid.gameObject,
-                controller.MobileBlasterDroid);
+                controller.MobileBlasterDroid,
+                () => controller.MobileBlasterDroid.Generation);
             BindEnemyCombatPresentation(
                 controller.TurretPackage.gameObject,
-                controller.TurretPackage.Authority);
+                controller.TurretPackage.Authority,
+                () => controller.TurretPackage.Generation);
             BindAuthoritativePlayerHud();
             combatPresentationInstalled = true;
         }
 
         private void BindEnemyCombatPresentation(
             GameObject presentationRoot,
-            IEnemyActor2DAuthority authority)
+            IEnemyActor2DAuthority authority,
+            Func<long> readLifecycleGeneration)
         {
             if (presentationRoot == null || authority == null)
             {
@@ -94,6 +100,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     presentationRoot == null
                         ? nameof(presentationRoot)
                         : nameof(authority));
+            }
+            if (readLifecycleGeneration == null)
+            {
+                throw new ArgumentNullException(nameof(readLifecycleGeneration));
             }
 
             EnemyActorState initialState;
@@ -103,11 +113,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 throw new InvalidOperationException(
                     "Enemy combat presentation requires an immutable initial actor state.");
             }
+            long initialLifecycleGeneration = readLifecycleGeneration();
+            if (initialLifecycleGeneration < 0L)
+            {
+                throw new InvalidOperationException(
+                    "Enemy combat presentation requires a valid lifecycle generation.");
+            }
 
             StableId actorId = initialState.ActorId;
             var source = new EnemyActorCombatHealthSnapshotSourceV1(
                 actorId,
-                () => controller.RestartGeneration,
+                readLifecycleGeneration,
                 authority.TryReadState,
                 new CombatPresentationAnchorFactsV1(
                     actorId,
@@ -134,7 +150,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             deathVfx.Configure(
                 actorId,
-                controller.RestartGeneration,
+                initialLifecycleGeneration,
                 healthBar,
                 defaultCombatExplosionPool,
                 new EnemyDeathVfxScaleConfigurationV1(
@@ -147,6 +163,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 new EnemyCombatPresentationBindingV1(
                     actorId,
                     presentationRoot.transform,
+                    readLifecycleGeneration,
                     healthBar,
                     deathVfx));
         }
@@ -178,24 +195,29 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         {
             private readonly StableId actorId;
             private readonly Transform presentationRoot;
+            private readonly Func<long> readLifecycleGeneration;
             private readonly CombatHealthBarPresenter2D healthBar;
             private readonly EnemyDeathVfxPresenter2D deathVfx;
 
             public EnemyCombatPresentationBindingV1(
                 StableId actorId,
                 Transform presentationRoot,
+                Func<long> readLifecycleGeneration,
                 CombatHealthBarPresenter2D healthBar,
                 EnemyDeathVfxPresenter2D deathVfx)
             {
                 this.actorId = actorId ?? throw new ArgumentNullException(nameof(actorId));
                 this.presentationRoot = presentationRoot
                     ?? throw new ArgumentNullException(nameof(presentationRoot));
+                this.readLifecycleGeneration = readLifecycleGeneration
+                    ?? throw new ArgumentNullException(nameof(readLifecycleGeneration));
                 this.healthBar = healthBar ?? throw new ArgumentNullException(nameof(healthBar));
                 this.deathVfx = deathVfx ?? throw new ArgumentNullException(nameof(deathVfx));
             }
 
-            public void SynchronizeLifecycle(long generation)
+            public void SynchronizeLifecycle()
             {
+                long generation = readLifecycleGeneration();
                 if (generation > deathVfx.LifecycleGeneration)
                 {
                     deathVfx.AdvanceLifecycle(generation);
@@ -204,8 +226,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
 
             public void PresentAcceptedTerminal(
-                EnemyDestroyedNotification destruction,
-                long lifecycleGeneration)
+                EnemyDestroyedNotification destruction)
             {
                 if (destruction == null
                     || destruction.TargetId != actorId)
@@ -217,7 +238,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     new EnemyTerminalPresentationFactV1(
                         destruction.EventId,
                         actorId,
-                        lifecycleGeneration,
+                        readLifecycleGeneration(),
                         presentationRoot.position,
                         EnemyPresentationBounds2D.MeasureLargestDimension(
                             presentationRoot)));
