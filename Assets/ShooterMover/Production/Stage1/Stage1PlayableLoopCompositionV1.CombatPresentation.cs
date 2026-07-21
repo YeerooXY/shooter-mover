@@ -37,27 +37,30 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 binding.SynchronizeLifecycle(generation);
             }
+        }
 
-            for (int index = 0; index < pendingEnemyRewards.Count; index++)
+        private void PresentAcceptedEnemyTerminal(
+            EnemyBinding target,
+            EnemyDestroyedNotification destruction)
+        {
+            if (!combatPresentationInstalled
+                || target == null
+                || destruction == null)
             {
-                PendingEnemyReward pending = pendingEnemyRewards[index];
-                if (pending == null || pending.Destruction == null)
-                {
-                    continue;
-                }
-
-                EnemyCombatPresentationBindingV1 binding;
-                if (!combatPresentationByActor.TryGetValue(
-                        pending.Destruction.TargetId,
-                        out binding))
-                {
-                    continue;
-                }
-
-                binding.PresentAcceptedTerminal(
-                    pending.Destruction,
-                    generation);
+                return;
             }
+
+            EnemyCombatPresentationBindingV1 binding;
+            if (!combatPresentationByActor.TryGetValue(
+                    destruction.TargetId,
+                    out binding))
+            {
+                return;
+            }
+
+            binding.PresentAcceptedTerminal(
+                destruction,
+                controller.RestartGeneration);
         }
 
         private void InstallCombatPresentation()
