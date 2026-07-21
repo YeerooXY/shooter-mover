@@ -1,4 +1,4 @@
-name: RUN-SESSION-001 diagnose staged publication
+name: RUN-SESSION-001 publication repair
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  diagnose:
+  repair:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,62 +18,37 @@ jobs:
           ref: agent/run-session-001-character-to-mission
           fetch-depth: 0
 
-      - name: Diagnose payload reconstruction
+      - name: Materialize final source tree
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY' > .run-session-repair-diagnostic.txt 2>&1
-          from pathlib import Path
-          import base64
-          import hashlib
-          import io
-          import tarfile
+          cat .run-session-payload/part* \
+            | base64 --decode \
+            > /tmp/run-session.tar.gz
 
-          paths = sorted(Path('.run-session-payload').glob('part*'))
-          parts = [path.read_bytes().strip() for path in paths]
-          print('part_count', len(parts))
-          for path, raw in zip(paths, parts):
-              print(path.name, 'len', len(raw), 'sha256', hashlib.sha256(raw).hexdigest(), 'prefix', raw[:24])
+          tar -tzf /tmp/run-session.tar.gz
+          tar -xzf /tmp/run-session.tar.gz
 
-          def inspect(label, encoded):
-              print('\nCANDIDATE', label, 'encoded_len', len(encoded))
-              try:
-                  archive = base64.b64decode(encoded, validate=True)
-              except Exception as exc:
-                  print('archive_base64_error', repr(exc))
-                  return False
-              print('archive_len', len(archive), 'magic', archive[:16])
-              try:
-                  with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as handle:
-                      names = handle.getnames()
-                  print('tar_ok', len(names), names)
-                  return True
-              except Exception as exc:
-                  print('tar_error', repr(exc))
-                  return False
+          rm -rf .run-session-payload
+          rm -f .github/workflows/run-session-materialize.yml
+          rm -f .run-session-repair-diagnostic.txt
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
 
-          inspect('all-direct', b''.join(parts))
-          for split in range(len(parts) + 1):
-              prefix = b''.join(parts[:split])
-              suffix = b''.join(parts[split:])
-              try:
-                  decoded_suffix = base64.b64decode(suffix, validate=True)
-                  inspect(f'suffix-double-{split:02d}', prefix + decoded_suffix)
-              except Exception as exc:
-                  print('\nCANDIDATE', f'suffix-double-{split:02d}', 'outer_decode_error', repr(exc))
-              try:
-                  decoded_prefix = base64.b64decode(prefix, validate=True)
-                  inspect(f'prefix-double-{split:02d}', decoded_prefix + suffix)
-              except Exception as exc:
-                  print('\nCANDIDATE', f'prefix-double-{split:02d}', 'outer_decode_error', repr(exc))
-          PY
+          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionAuthorityV1.cs
+          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionPortsV1.cs
+          test -f Assets/ShooterMover/Runtime/Application/Runs/Session/RunSessionSnapshotsV1.cs
+          test -f Assets/ShooterMover/Tests/EditMode/RunSessions/RunSessionAuthorityV1Tests.cs
 
-      - name: Commit diagnostic
+          test ! -e .run-session-payload
+          test ! -e .github/workflows/run-session-materialize.yml
+
+      - name: Commit final source tree
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .run-session-repair-diagnostic.txt
-          git commit -m "RUN-SESSION-001: record publication repair diagnostic"
+          git add -A
+          git commit -m "RUN-SESSION-001: materialize final source tree"
           git push origin HEAD:agent/run-session-001-character-to-mission
