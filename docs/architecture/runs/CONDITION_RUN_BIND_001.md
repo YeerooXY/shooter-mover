@@ -15,6 +15,9 @@
 selected account-backed character
         |
         v
+ProductionConditionBoundRunSessionStartSourceV1
+        |
+        v
 FrozenCharacterRunInputsV1  (immutable permanent inputs)
         |
         v
@@ -37,6 +40,8 @@ RunSessionAggregateV1  ---- authoritative run ID / generation / tick / terminal 
 ```
 
 There is one active temporary-effect owner per participant: the `StatusEffectAuthorityV1` constructed inside `ConditionRuntimeAuthorityV1`. The Run Session status-effect port is a projection/lifecycle participant over that same state and never constructs another status-effect authority.
+
+`ProductionConditionBoundRunSessionStartSourceV1` is the canonical account-backed production entry point. It delegates permanent character freezing to the existing production source, composes the real condition-bound runtime factory, and fails closed if the condition port is not authoritative or the status-effect projection does not reference that exact condition runtime.
 
 ## Gameplay-fact flow
 
@@ -92,15 +97,15 @@ The default provider maps the exact selected player runtime snapshot and frozen 
 
 1. `RunSessionAggregateV1` validates run identity, current generation, replacement generation and tick.
 2. Every lifecycle port prevalidates before any port mutates.
-3. The condition port resolves every replacement participant and definition into a complete `ConditionRunDefinitionV1`.
+3. The condition port resolves every replacement participant and definition into one complete `ConditionRunDefinitionV1` and retains that exact immutable graph for commit.
 4. Existing player/weapon ports restart according to their established order.
-5. The status-effect projection performs no independent mutation.
-6. The condition port projects the pending replacement lifecycle to the merged lifecycle adapter and calls `ConditionRuntimeAuthorityV1.Reconstruct`.
+5. The status-effect projection performs no independent mutation and confirms the same prevalidated condition transition.
+6. The condition port projects the pending replacement lifecycle to the merged lifecycle adapter and calls `ConditionRuntimeAuthorityV1.Reconstruct` with the exact graph prepared during prevalidation; it does not resolve content again after other ports have moved.
 7. Reconstruction rebuilds participant windows/effect authorities and clears retired delivery and advance replay state.
 8. The aggregate commits the replacement generation and tick exactly once.
 9. Frozen permanent inputs and ranked-skill allocation remain unchanged.
 
-A failed definition/participant prevalidation leaves all condition participants untouched and the operation retryable according to the existing Run Session restart contract.
+A failed definition/participant prevalidation leaves every lifecycle port and all condition/effect state untouched. The rejected operation remains deterministically replayable, and a new operation can retry after the underlying definition source becomes valid.
 
 ## Modifier projection boundary
 
@@ -121,7 +126,7 @@ A failed definition/participant prevalidation leaves all condition participants 
 - accepted source-fact count;
 - complete condition runtime fingerprint.
 
-The normal Run Session debug/recovery/checkpoint snapshot already records every lifecycle-port fingerprint; the real condition port fingerprint therefore becomes part of those transient diagnostics. No durable checkpoint persistence is introduced, and checkpoint data remains non-permanent truth.
+The normal Run Session debug/recovery/checkpoint snapshot records every lifecycle-port fingerprint, so the real condition port fingerprint is present in the standard transient diagnostics. `RunSessionAggregateV1.ExportConditionCheckpoint()` additionally combines that ordinary `RunCheckpointV1` with the full immutable condition/effect/modifier projection in `RunConditionCheckpointV1`, validating exact run and lifecycle identity. No durable checkpoint persistence is introduced, and neither checkpoint form is permanent character truth.
 
 ## Replay and fingerprint boundaries
 
@@ -155,10 +160,10 @@ No active window or temporary effect is written to account/character saves.
 
 Intended production changes are limited to:
 
-- Run Session condition contracts and aggregate binding methods;
+- Run Session condition contracts, aggregate admission methods, and condition checkpoint projection;
 - one `partial` declaration and constructor bind in `RunSessionAggregateV1`;
-- the condition/run integration assembly;
-- focused engine-neutral EditMode tests;
+- the condition/run integration assembly and canonical account-backed start source;
+- focused engine-neutral EditMode and production-composition tests;
 - this architecture document and Unity metadata.
 
 ## Duplicate-authority proof
