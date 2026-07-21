@@ -8,7 +8,6 @@
     "ShooterMover.Content.Definitions",
     "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
-    "ShooterMover.CombatHitPolicy",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
