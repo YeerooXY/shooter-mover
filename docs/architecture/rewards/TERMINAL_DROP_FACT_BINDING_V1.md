@@ -2,7 +2,7 @@
 
 ## Ownership boundary
 
-`DROP-FACT-BIND-001` introduces one engine-neutral boundary from an already accepted terminal gameplay fact to one immutable generated reward batch.
+`DROP-FACT-BIND-001` introduces one engine-neutral boundary from an already accepted terminal gameplay fact to one immutable generated reward batch and one separate idempotent admission boundary for pending, uncollected batches.
 
 The source authorities remain unchanged:
 
@@ -11,9 +11,10 @@ The source authorities remain unchanged:
 - enemy and prop definitions own the configured drop-profile reference;
 - Run Session owns the active run identity, lifecycle generation and frozen deterministic seed context;
 - DROP owns the canonical `RewardOperationRequestV1` identity contract;
-- GEN owns reward selection, quantities, ordering and explicit no-drop behavior.
+- GEN owns reward selection, quantities, ordering and explicit no-drop behavior;
+- `PendingTerminalDropAdmissionAuthorityV1` owns only pending-batch admission identity.
 
-`TerminalDropGenerationAuthorityV1` owns only terminal-event replay records and the immutable binding result. It does not own health, definitions, inventories, strongboxes, mission results, pickups or persistence.
+`TerminalDropGenerationAuthorityV1` owns terminal-event replay records and the immutable binding result. Neither authority owns health, definitions, inventories, strongboxes, mission results, physical pickups or persistence.
 
 ## Authoritative flow
 
@@ -25,6 +26,7 @@ accepted EnemyDeathFactV1 or PropFactBatchV1
     -> canonical RewardOperationRequestV1
     -> existing RewardGenerationServiceV1
     -> immutable GeneratedTerminalDropResultV1
+    -> idempotent pending-batch admission by DROP operation ID
 ```
 
 The generated result remains a pending, uncollected run-local fact. It is not a physical pickup and it is not a permanent reward grant.
@@ -33,10 +35,12 @@ The generated result remains a pending, uncollected run-local fact. It is not a 
 
 `TerminalDropFactAdapterRegistryV1` is keyed by the exact terminal fact CLR type and carries an explicit stable fact-kind identity. Registrations are sorted before the registry fingerprint is calculated, so input order cannot change canonical behavior.
 
-The production adapters are:
+The built-in complete adapters are:
 
-- `ContextResolvedEnemyDeathTerminalDropFactAdapterV1` for `EnemyDeathFactV1`, delegating definition/profile validation to `EnemyDeathTerminalDropFactAdapterV1` while resolving the separate Run Session lifecycle through `IEnemyTerminalSourceContextResolverV1`;
+- `ContextResolvedEnemyDeathTerminalDropFactAdapterV1` for `EnemyDeathFactV1`;
 - `PropDestructionTerminalDropFactAdapterV1` for `PropFactBatchV1`.
+
+Enemy definition/profile validation lives in the internal `EnemyDeathTerminalDropDefinitionProjectorV1`. It is not an `ITerminalDropFactAdapterV1` and cannot construct a `TerminalDropSourceFactV1`; only the context-resolved enemy adapter can combine catalog facts with production-owned Run Session lifecycle context.
 
 Adding another source that uses the same DROP/GEN mechanics normally requires one adapter registration, definition/profile data and focused tests. The shared generation authority contains no enemy-ID, prop-ID or drop-profile-ID switch.
 
@@ -44,9 +48,11 @@ Unknown terminal fact types fail closed with `UnsupportedFactType` and generate 
 
 ## Definition and profile resolution
 
-The enemy adapter resolves the exact `EnemyDefinitionV1` from `EnemyCatalogV1`. The definition's `DropProfileId` is authoritative. A profile identity already present on the death fact may confirm the definition but may not override or conflict with it.
+The enemy projector resolves the exact `EnemyDefinitionV1` from `EnemyCatalogV1`. The definition's `DropProfileId` is authoritative. A profile identity already present on the death fact may confirm the definition but may not override or conflict with it.
 
 The prop adapter resolves the exact `PropDefinitionV1` from `PropCatalogV1` and reads the `DropOnDestroy` capability's `profile-id`. A runtime `DropRequest` fact, when present, must belong to the same prop/source and match the definition-owned profile.
+
+`PropTerminalFactV1.PropParticipantId` is the authoritative prop source entity. Resolver-provided source context is rejected if its `SourceEntityStableId` identifies a different prop, and accepted source facts always use the terminal fact's participant identity.
 
 A definition with no drop profile is converted to a deterministic synthetic `RewardProfileV1.CreateExplicitNoDrop` profile. This keeps no-drop inside the existing DROP/GEN contract instead of treating an absent profile as accidental success or inventing a fallback table.
 
@@ -54,7 +60,9 @@ A configured but missing profile rejects with `MissingDropProfile`. Invalid or i
 
 ## Source and Run Session context
 
-Enemy death facts preserve run identity, room, placement, entity, enemy lifecycle and attribution, but they do not own the Run Session lifecycle generation. `IEnemyTerminalSourceContextResolverV1` supplies that exact run lifecycle while validating the source entity, placement and enemy lifecycle against the death fact. Prop terminal facts do not contain run/placement lifecycle data, so `IPropTerminalSourceContextResolverV1` projects those facts from the existing production prop composition.
+Enemy death facts preserve run, room, placement, entity, enemy lifecycle and attribution facts, but they do not own the Run Session lifecycle generation. `IEnemyTerminalSourceContextResolverV1` supplies that separate production fact and validates the entity, placement and enemy source generation against the death fact.
+
+Prop terminal facts do not contain run/placement lifecycle data, so `IPropTerminalSourceContextResolverV1` is the narrow typed lookup port that projects those facts from the existing production prop composition.
 
 `ITerminalDropRunContextResolverV1` validates the exact run and expected lifecycle. `RunSessionTerminalDropContextResolverV1` is the read-only bridge to `RunSessionAuthorityV1`; it rejects missing, stale/future or ended runs and exposes the frozen run seed plus progression/event context through a dedicated provider. It performs no Run Session mutation.
 
@@ -65,7 +73,7 @@ The explicit unattributed policy in v1 is fail-closed: a terminal fact without a
 The DROP operation ID is derived with the existing `RewardApplicationCanonicalV1.DeriveStableId` convention from immutable authoritative material including:
 
 - terminal event identity;
-- run identity and lifecycle generation;
+- run identity and Run Session lifecycle generation;
 - source entity and placement identity;
 - source lifecycle generation;
 - source definition identity;
@@ -76,16 +84,29 @@ The DROP operation ID is derived with the existing `RewardApplicationCanonicalV1
 
 The GEN root seed is derived deterministically from the frozen Run Session root seed, the canonical DROP request fingerprint and the immutable source-fact fingerprint. No wall clock, Unity frame count, object hash code, collection order or global random state participates.
 
-## Replay, conflict and atomicity
+## Generation replay, exception containment and atomicity
 
-Replay is keyed by the exact terminal event identity.
+Generation replay is keyed by the exact terminal event identity.
 
-- First successful delivery stores one immutable accepted/no-drop result.
+- First successful delivery stores one immutable accepted/no-drop generation result.
 - Exact replay returns `ExactReplay` with the same operation identity, generation seed, generated batch, child identities and canonical batch fingerprint.
 - A reused terminal event identity with different immutable source facts returns `ConflictingDuplicate` and mutates nothing.
-- A rejected or retryable generation failure is not cached as success or no-drop, so an exact retry can safely resolve the same immutable source fact again.
+- A rejected or retryable failure is not cached as success or no-drop, so an exact retry can safely resolve the same immutable source fact again.
 
-The authority holds one atomic transaction boundary across validation, DROP request construction, GEN execution and child materialization. A failure publishes no partial accepted batch and creates no replay record.
+The complete uncommitted pipeline is exception-contained. Adapter/source-context, Run Session resolution, profile resolution, operation construction, generation-request construction, GEN execution and batch finalization exceptions return immutable stage-diagnostic rejections. No exception path creates a replay record or partial accepted batch.
+
+## Pending-batch admission and lost-response recovery
+
+Generation idempotency and downstream admission idempotency are separate responsibilities.
+
+`PendingTerminalDropAdmissionAuthorityV1` keys pending entries by the canonical `RewardOperationRequestV1.SourceOperationStableId` and returns:
+
+- `Accepted` when the operation is first admitted;
+- `ExactReplay` when the same operation and batch fingerprint are redelivered;
+- `ConflictingDuplicate` when an operation ID is reused with a different batch fingerprint;
+- `Rejected` for null, rejected or incomplete generation results.
+
+Typed enemy and prop consumers always redeliver generation results to this admission boundary, including `ExactReplay`. This allows recovery when the first publication failed, while the pending authority guarantees that two routes, two deliveries or a rebuilt generation authority cannot create two pending entries.
 
 ## Generated batch contract
 
@@ -107,9 +128,9 @@ Stackable grants remain one ordered child with their generated quantity. Strongb
 
 ## Physical pickup and persistence boundary
 
-This task deliberately stops at the immutable generated batch.
+This task deliberately stops at the immutable pending batch.
 
-`PICKUP-LIVE-001` may later realize each child identity as a physical pickup without rerolling. `DROP-PERSIST-PROOF-001` may later prove collection, mission-result transfer and permanent persistence.
+`PICKUP-LIVE-001` may later realize each admitted child identity as a physical pickup without rerolling. `DROP-PERSIST-PROOF-001` may later prove collection, mission-result transfer and permanent persistence.
 
 This implementation does not:
 
