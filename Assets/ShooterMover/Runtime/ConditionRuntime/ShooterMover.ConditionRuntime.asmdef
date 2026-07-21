@@ -1,0 +1,18 @@
+{
+  "name": "ShooterMover.ConditionRuntime",
+  "rootNamespace": "ShooterMover.ConditionRuntime",
+  "references": [
+    "ShooterMover.Domain",
+    "ShooterMover.Application",
+    "ShooterMover.EnemyRuntimeComposition"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}
