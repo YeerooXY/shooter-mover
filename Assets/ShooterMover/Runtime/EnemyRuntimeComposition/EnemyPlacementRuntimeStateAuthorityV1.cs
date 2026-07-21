@@ -10,6 +10,10 @@ namespace ShooterMover.EnemyRuntimeComposition
 {
     public sealed partial class EnemyPlacementRuntimeInstanceV1
     {
+        private StableId pendingTerminalDamageOperationStableId;
+        private string pendingTerminalDamageSignature;
+        private double pendingTerminalOccurredAtSeconds;
+
         public EnemyMovementRealizationV1 RealizeMovement(
             EnemyPlacementDecisionV1 decision,
             EnemyMovementRealizationContextV1 context)
@@ -53,8 +57,26 @@ namespace ShooterMover.EnemyRuntimeComposition
 
         public EnemyRuntimeDamageResultV1 ApplyDamage(EnemyRuntimeDamageCommandV1 command)
         {
+            return ApplyDamage(command, 0d);
+        }
+
+        /// <summary>
+        /// Applies damage at an authoritative run time. The timestamp is used only to determine
+        /// which already-dispatched attack emissions remain live when this damage terminalizes
+        /// the enemy. Existing callers use the compatibility overload and conservatively cancel
+        /// every not-yet-processed scheduled emission from time zero.
+        /// </summary>
+        public EnemyRuntimeDamageResultV1 ApplyDamage(
+            EnemyRuntimeDamageCommandV1 command,
+            double occurredAtSeconds)
+        {
             if (command == null) throw new ArgumentNullException(nameof(command));
-            string signature = DamageSignature(command);
+            if (double.IsNaN(occurredAtSeconds)
+                || double.IsInfinity(occurredAtSeconds)
+                || occurredAtSeconds < 0d)
+                throw new ArgumentOutOfRangeException(nameof(occurredAtSeconds));
+
+            string signature = DamageSignature(command, occurredAtSeconds);
             DamageReplayRecord replay;
             if (damageReplay.TryGetValue(command.OperationStableId, out replay))
             {
@@ -71,6 +93,30 @@ namespace ShooterMover.EnemyRuntimeComposition
                     replay.Result.Rejection,
                     Runtime,
                     replay.Result.DeathFact);
+            }
+
+            if (pendingTerminalDamageOperationStableId != null)
+            {
+                if (command.OperationStableId != pendingTerminalDamageOperationStableId)
+                    return RejectedDamage(EnemyRuntimeRejectionCodeV1.ActorTerminal);
+                if (!string.Equals(
+                    signature,
+                    pendingTerminalDamageSignature,
+                    StringComparison.Ordinal))
+                {
+                    return RejectedDamage(
+                        EnemyRuntimeRejectionCodeV1.ConflictingDuplicate);
+                }
+
+                EnemyRuntimeDamageResultV1 pending = CompletePendingTerminalTransition();
+                if (pending.Status == EnemyRuntimeOperationStatusV1.Applied)
+                {
+                    damageReplay.Add(
+                        command.OperationStableId,
+                        new DamageReplayRecord(signature, pending));
+                    ClearPendingTerminalTransition();
+                }
+                return pending;
             }
 
             EnemyRuntimeDamageResultV1 result;
@@ -101,15 +147,32 @@ namespace ShooterMover.EnemyRuntimeComposition
                     });
                 actorState = stepped.State;
                 EnemyDestroyedNotification destroyed = FindDestroyed(stepped.Notifications);
-                EnemyDeathFactV1 death = destroyed == null ? null : PublishDeathOnce(command, destroyed);
-                result = new EnemyRuntimeDamageResultV1(
-                    EnemyRuntimeOperationStatusV1.Applied,
-                    EnemyRuntimeRejectionCodeV1.None,
-                    Runtime,
-                    death);
+                if (destroyed == null)
+                {
+                    result = new EnemyRuntimeDamageResultV1(
+                        EnemyRuntimeOperationStatusV1.Applied,
+                        EnemyRuntimeRejectionCodeV1.None,
+                        Runtime,
+                        null);
+                }
+                else
+                {
+                    CreateDeathFactOnce(command, destroyed);
+                    pendingTerminalDamageOperationStableId = command.OperationStableId;
+                    pendingTerminalDamageSignature = signature;
+                    pendingTerminalOccurredAtSeconds = occurredAtSeconds;
+                    result = CompletePendingTerminalTransition();
+                    if (result.Status == EnemyRuntimeOperationStatusV1.Applied)
+                        ClearPendingTerminalTransition();
+                }
             }
 
-            damageReplay.Add(command.OperationStableId, new DamageReplayRecord(signature, result));
+            if (result.Status != EnemyRuntimeOperationStatusV1.Rejected)
+            {
+                damageReplay.Add(
+                    command.OperationStableId,
+                    new DamageReplayRecord(signature, result));
+            }
             return result;
         }
 
@@ -121,6 +184,63 @@ namespace ShooterMover.EnemyRuntimeComposition
                 Request.RoomLifecycleGeneration,
                 RoomStableId,
                 SpawnStableId);
+        }
+
+        private EnemyRuntimeDamageResultV1 CompletePendingTerminalTransition()
+        {
+            if (publishedDeath == null
+                || pendingTerminalDamageOperationStableId == null
+                || string.IsNullOrWhiteSpace(pendingTerminalDamageSignature))
+            {
+                throw new InvalidOperationException(
+                    "A pending terminal transition requires one canonical death fact.");
+            }
+
+            StableId cancellationOperation = StableId.Create(
+                "enemy-pattern-operation",
+                "terminal-" + DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
+                    Identity.EntityInstanceId
+                    + "|"
+                    + LifecycleGeneration.ToString(CultureInfo.InvariantCulture)
+                    + "|"
+                    + publishedDeath.DeathEventStableId));
+            var cancellationCommand = new EnemyAttackLifecycleCancellationCommandV1(
+                cancellationOperation,
+                Identity.EntityInstanceId,
+                LifecycleGeneration,
+                pendingTerminalOccurredAtSeconds);
+            EnemyAttackPatternCancellationResultV1 cancellation =
+                CancelAttackPatterns(cancellationCommand);
+            if (!cancellation.IsAccepted)
+                return RejectedDamage(EnemyRuntimeRejectionCodeV1.InvalidCommand);
+
+            downstream.TerminalCollision.SetTerminal(
+                new EnemyTerminalCollisionFactV1(
+                    Identity.EntityInstanceId,
+                    publishedDeath.DeathEventStableId,
+                    LifecycleGeneration));
+            StableId roomOperation = StableId.Create(
+                "room-operation",
+                "enemy-terminal-" + DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
+                    Identity.EntityInstanceId + "|" + publishedDeath.DeathEventStableId));
+            downstream.RoomTerminal.Report(
+                BuildTerminalCommand(roomOperation),
+                publishedDeath);
+            downstream.Experience.Consume(publishedDeath);
+            downstream.Drops.Consume(publishedDeath);
+            downstream.KillStats.Consume(publishedDeath);
+            return new EnemyRuntimeDamageResultV1(
+                EnemyRuntimeOperationStatusV1.Applied,
+                EnemyRuntimeRejectionCodeV1.None,
+                Runtime,
+                publishedDeath);
+        }
+
+        private void ClearPendingTerminalTransition()
+        {
+            pendingTerminalDamageOperationStableId = null;
+            pendingTerminalDamageSignature = null;
+            pendingTerminalOccurredAtSeconds = 0d;
         }
 
         private EnemyRuntimeRejectionCodeV1 ValidateDecisionCode(
@@ -148,7 +268,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                     Identity.EntityInstanceId + "|" + attackStableId));
         }
 
-        private EnemyDeathFactV1 PublishDeathOnce(
+        private EnemyDeathFactV1 CreateDeathFactOnce(
             EnemyRuntimeDamageCommandV1 command,
             EnemyDestroyedNotification destroyed)
         {
@@ -165,24 +285,12 @@ namespace ShooterMover.EnemyRuntimeComposition
                 Definition.ExperienceProfileId,
                 Definition.DropProfileId,
                 destroyed.DeathCause);
-
-            downstream.TerminalCollision.SetTerminal(
-                new EnemyTerminalCollisionFactV1(
-                    Identity.EntityInstanceId,
-                    destroyed.EventId,
-                    LifecycleGeneration));
-            StableId roomOperation = StableId.Create(
-                "room-operation",
-                "enemy-terminal-" + DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
-                    Identity.EntityInstanceId + "|" + destroyed.EventId));
-            downstream.RoomTerminal.Report(BuildTerminalCommand(roomOperation), publishedDeath);
-            downstream.Experience.Consume(publishedDeath);
-            downstream.Drops.Consume(publishedDeath);
-            downstream.KillStats.Consume(publishedDeath);
             return publishedDeath;
         }
 
-        private static string DamageSignature(EnemyRuntimeDamageCommandV1 command)
+        private static string DamageSignature(
+            EnemyRuntimeDamageCommandV1 command,
+            double occurredAtSeconds)
         {
             return command.SourceEntityStableId
                 + "|" + command.SourceRunParticipantStableId
@@ -190,7 +298,8 @@ namespace ShooterMover.EnemyRuntimeComposition
                 + "|" + command.TargetLifecycleGeneration.ToString(CultureInfo.InvariantCulture)
                 + "|" + command.Order.ToString(CultureInfo.InvariantCulture)
                 + "|" + command.ChannelValue.ToString(CultureInfo.InvariantCulture)
-                + "|" + command.Amount.ToString("R", CultureInfo.InvariantCulture);
+                + "|" + command.Amount.ToString("R", CultureInfo.InvariantCulture)
+                + "|" + occurredAtSeconds.ToString("R", CultureInfo.InvariantCulture);
         }
 
         private static EnemyDestroyedNotification FindDestroyed(
