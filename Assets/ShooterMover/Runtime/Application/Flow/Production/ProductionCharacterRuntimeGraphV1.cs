@@ -10,23 +10,31 @@ using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
+using ShooterMover.Application.Rewards.Application;
+using ShooterMover.Application.Rewards.Generation;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Progression.Experience;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Economy.Scrap;
+using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Curves;
 using ShooterMover.Domain.Progression.Experience;
 using ShooterMover.Domain.Progression.Skills;
+using ShooterMover.Domain.Rewards.Generation;
+using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
     /// One selected-character graph over the existing production authorities. The graph
     /// coordinates lifecycle only; every subsystem remains authoritative for its own state.
+    /// BOX is character-owned and shares this graph's real holdings, money and scrap
+    /// authorities so opening replay and persistence cannot drift from inventory truth.
     /// </summary>
     public sealed class ProductionCharacterRuntimeGraphV1 :
         ICharacterRuntimeGraphV1
@@ -42,6 +50,8 @@ namespace ShooterMover.Application.Flow.Production
             ScrapWalletServiceV1 scrapWallet,
             RankedSkillAllocationAuthorityV2 skillAuthority,
             string skillProfileId,
+            StrongboxDefinitionCatalogV1 strongboxCatalog,
+            StrongboxOpeningServiceV1 strongboxAuthority,
             IEnumerable<ISaveComponentAdapterV1> saveAdapters)
         {
             this.character = character
@@ -58,6 +68,10 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(scrapWallet));
             SkillAuthority = skillAuthority
                 ?? throw new ArgumentNullException(nameof(skillAuthority));
+            StrongboxCatalog = strongboxCatalog
+                ?? throw new ArgumentNullException(nameof(strongboxCatalog));
+            StrongboxAuthority = strongboxAuthority
+                ?? throw new ArgumentNullException(nameof(strongboxAuthority));
             if (string.IsNullOrWhiteSpace(skillProfileId))
             {
                 throw new ArgumentException(
@@ -97,6 +111,10 @@ namespace ShooterMover.Application.Flow.Production
 
         public string SkillProfileId { get; }
 
+        public StrongboxDefinitionCatalogV1 StrongboxCatalog { get; }
+
+        public StrongboxOpeningServiceV1 StrongboxAuthority { get; }
+
         public IReadOnlyList<ISaveComponentAdapterV1> SaveAdapters { get; }
 
         public bool IsDisposed { get; private set; }
@@ -128,16 +146,35 @@ namespace ShooterMover.Application.Flow.Production
         }
     }
 
+    internal sealed class ProductionCharacterStrongboxRuntimeV1
+    {
+        public ProductionCharacterStrongboxRuntimeV1(
+            StrongboxDefinitionCatalogV1 catalog,
+            StrongboxOpeningServiceV1 authority)
+        {
+            Catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            Authority = authority ?? throw new ArgumentNullException(nameof(authority));
+        }
+
+        public StrongboxDefinitionCatalogV1 Catalog { get; }
+
+        public StrongboxOpeningServiceV1 Authority { get; }
+    }
+
     /// <summary>
-    /// Creates fresh instances of the merged XP, holdings, money, scrap, ranked-skill and
-    /// exact-loadout authorities and binds their SAVE-ADAPTERS-001 adapters. Optional
-    /// authorities such as BOX may append their real adapter through the injected callback;
-    /// no placeholder or duplicate authority is created here.
+    /// Creates fresh instances of the merged XP, holdings, money, scrap, ranked-skill,
+    /// exact-loadout and BOX authorities and binds their SAVE-ADAPTERS-001 adapters.
+    /// No subsystem state is reimplemented by this factory.
     /// </summary>
     public sealed class ProductionCharacterRuntimeGraphFactoryV1 :
         ICharacterRuntimeGraphFactoryV1,
         IStarterCharacterRuntimeGraphFactoryV1
     {
+        private static readonly StableId RewardApplicationAuthorityId =
+            StableId.Parse("authority.production-character-reward-application");
+        private static readonly StableId StrongboxGenerationPolicyId =
+            StableId.Parse("generation-policy.production-character-strongbox");
+
         private readonly PlayerExperienceCurveV1 experienceCurve;
         private readonly ProgressionContext progressionContext;
         private readonly RankedSkillCatalogV2 skillCatalog;
@@ -296,6 +333,8 @@ namespace ShooterMover.Application.Flow.Production
                 skillProfileId,
                 skillClassId,
                 skillCatalog));
+            ProductionCharacterStrongboxRuntimeV1 strongboxes =
+                CreateStrongboxRuntime(loadout, money, scrap);
 
             var adapters = new List<ISaveComponentAdapterV1>
             {
@@ -305,6 +344,7 @@ namespace ShooterMover.Application.Flow.Production
                 ScrapAdapter(scrap, scrapAuthorityId, scrapCurrencyId),
                 SkillAdapter(skills, skillProfileId),
                 LoadoutAdapter(loadout),
+                StrongboxAdapter(strongboxes),
             };
             var core = new ProductionCharacterRuntimeGraphV1(
                 character,
@@ -315,6 +355,8 @@ namespace ShooterMover.Application.Flow.Production
                 scrap,
                 skills,
                 skillProfileId,
+                strongboxes.Catalog,
+                strongboxes.Authority,
                 adapters);
             if (additionalAdapterFactory == null)
             {
@@ -337,7 +379,119 @@ namespace ShooterMover.Application.Flow.Production
                 scrap,
                 skills,
                 skillProfileId,
+                strongboxes.Catalog,
+                strongboxes.Authority,
                 adapters);
+        }
+
+        private static ProductionCharacterStrongboxRuntimeV1
+            CreateStrongboxRuntime(
+                ProductionPlayerLoadoutRuntimeV1 loadout,
+                MoneyWalletService money,
+                ScrapWalletServiceV1 scrap)
+        {
+            EquipmentGenerationPolicyV1 policy =
+                CreateStrongboxGenerationPolicy(loadout.EquipmentCatalog);
+            var definitions = new List<StrongboxDefinitionV1>();
+            var bindings = new List<
+                StrongboxEquipmentGenerationDefinitionV1>();
+            for (int index = 0;
+                index < ProductionStrongboxCatalogV1.Tiers.Count;
+                index++)
+            {
+                ProductionStrongboxTierV1 tier =
+                    ProductionStrongboxCatalogV1.Tiers[index];
+                definitions.Add(tier.CreateDefinition(policy.PolicyId));
+                bindings.Add(
+                    new StrongboxEquipmentGenerationDefinitionV1(
+                        tier.TierStableId,
+                        tier.CreatePowerBudgetPolicy(),
+                        policy,
+                        loadout.EquipmentCatalog));
+            }
+
+            var catalog = new StrongboxDefinitionCatalogV1(definitions);
+            var generationService = new RewardGenerationServiceV1();
+            var equipmentResolver =
+                new StrongboxEquipmentGenerationResolverV1(
+                    generationService,
+                    new StrongboxEquipmentGenerationDefinitionCatalogV1(
+                        bindings));
+            var rewardApplication = new RewardApplicationServiceV1(
+                RewardApplicationAuthorityId,
+                new MoneyRewardChildAuthorityV1(money),
+                new ScrapRewardChildAuthorityV1(scrap),
+                new PlayerHoldingsRewardChildAuthorityV1(
+                    loadout.Holdings,
+                    loadout.CatalogAdapter));
+            var authority = new StrongboxOpeningServiceV1(
+                catalog,
+                new SharedStrongboxRewardGeneratorV1(generationService),
+                loadout.Holdings,
+                rewardApplication,
+                new DeterministicStrongboxGrantPayloadResolverV1(
+                    equipmentResolver));
+            return new ProductionCharacterStrongboxRuntimeV1(
+                catalog,
+                authority);
+        }
+
+        private static EquipmentGenerationPolicyV1
+            CreateStrongboxGenerationPolicy(EquipmentCatalog catalog)
+        {
+            var equipment = new List<EquipmentGenerationCandidateV1>();
+            var qualityById = new SortedDictionary<
+                string,
+                EquipmentQualityTier>(StringComparer.Ordinal);
+            for (int index = 0;
+                index < catalog.EquipmentDefinitions.Count;
+                index++)
+            {
+                EquipmentDefinition definition =
+                    catalog.EquipmentDefinitions[index];
+                if (definition.CategoryId != EquipmentCategoryIds.Weapon)
+                {
+                    continue;
+                }
+                equipment.Add(EquipmentGenerationCandidateV1.Create(
+                    definition.DefinitionId,
+                    0,
+                    100,
+                    0,
+                    100,
+                    Array.Empty<StableId>(),
+                    1L,
+                    definition.ItemLevelRange,
+                    1d,
+                    1d));
+                for (int qualityIndex = 0;
+                    qualityIndex < definition.QualityTiers.Count;
+                    qualityIndex++)
+                {
+                    EquipmentQualityTier quality =
+                        definition.QualityTiers[qualityIndex];
+                    qualityById[quality.QualityId.ToString()] = quality;
+                }
+            }
+
+            var qualities = new List<EquipmentQualityCandidateV1>();
+            foreach (EquipmentQualityTier quality in qualityById.Values)
+            {
+                qualities.Add(EquipmentQualityCandidateV1.Create(
+                    quality.QualityId,
+                    0L,
+                    1UL));
+            }
+            return EquipmentGenerationPolicyV1.Create(
+                StrongboxGenerationPolicyId,
+                equipment,
+                qualities,
+                Array.Empty<AugmentGenerationCandidateV1>(),
+                0,
+                0,
+                true,
+                new SoftActivationCurveParameters(0.1, 10L, 10L),
+                new ObsolescenceCurveParameters(100L, 100d, 1d));
         }
 
         private ISaveComponentAdapterV1 ExperienceAdapter(
@@ -489,6 +643,39 @@ namespace ShooterMover.Application.Flow.Production
                 });
         }
 
+        private static ISaveComponentAdapterV1 StrongboxAdapter(
+            ProductionCharacterStrongboxRuntimeV1 runtime)
+        {
+            return KnownSaveComponentAdaptersV1.StrongboxState(
+                runtime.Authority.ExportSnapshot,
+                snapshot =>
+                {
+                    SaveComponentValidationResultV1 validation =
+                        KnownSaveComponentCodecsV1.StrongboxState.Validate(
+                            snapshot);
+                    if (!validation.Succeeded)
+                    {
+                        return validation;
+                    }
+                    return string.Equals(
+                            snapshot.DefinitionCatalogFingerprint,
+                            runtime.Catalog.Fingerprint,
+                            StringComparison.Ordinal)
+                        ? SaveComponentValidationResultV1.Accept()
+                        : SaveComponentValidationResultV1.Reject(
+                            "strongbox-snapshot-catalog-mismatch");
+                },
+                snapshot =>
+                {
+                    StrongboxOpeningImportResultV1 result =
+                        runtime.Authority.ImportSnapshot(snapshot);
+                    return result.Succeeded
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
+        }
+
         private static TSnapshot DecodeRequired<TSnapshot>(
             CharacterInstanceSnapshotV1 character,
             SaveComponentDefinitionV1 definition,
@@ -552,7 +739,9 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return "combat_medic";
             }
-            if (value.IndexOf("defensive", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (value.IndexOf(
+                "defensive",
+                StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "juggernaut";
             }
