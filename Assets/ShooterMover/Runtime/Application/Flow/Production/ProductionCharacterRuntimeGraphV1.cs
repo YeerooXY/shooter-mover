@@ -4,11 +4,14 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
+using ShooterMover.Application.Holdings;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Progression.Experience;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
@@ -22,8 +25,8 @@ using ShooterMover.Domain.Progression.Skills;
 namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
-    /// Selected-character graph over existing authorities. This type is a composition
-    /// object only: each public authority remains the sole owner of its subsystem state.
+    /// Selected-character graph over existing authorities. This is a composition object
+    /// only; each referenced authority remains the sole owner of its subsystem state.
     /// </summary>
     public sealed class ProductionCharacterRuntimeGraphV1 :
         ICharacterRuntimeGraphV1
@@ -125,10 +128,10 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Creates a fresh set of the existing character authorities and exposes only their
-    /// SAVE-ADAPTERS-001 bindings. Optional integrations such as BOX may append their real
-    /// authority adapter through additionalAdapterFactory; unknown optional components
-    /// remain retained by the account aggregate until that authority is available.
+    /// Builds fresh instances of the merged XP, holdings, money, scrap, ranked-skill and
+    /// exact-loadout authorities, then exposes only their SAVE-ADAPTERS-001 bindings.
+    /// A real optional authority such as BOX may append its adapter through the injected
+    /// callback; this factory never substitutes an optional authority with local state.
     /// </summary>
     public sealed class ProductionCharacterRuntimeGraphFactoryV1 :
         ICharacterRuntimeGraphFactoryV1,
@@ -182,17 +185,16 @@ namespace ShooterMover.Application.Flow.Production
                 KnownSaveComponentDefinitionsV1.ScrapWallet(),
                 KnownSaveComponentCodecsV1.ScrapWallet);
 
-            PlayerRouteProfilePayloadV1 route = RouteFromLoadout(
-                character.CharacterInstanceStableId,
-                character.ClassDefinitionStableId,
-                loadout);
             return CreateGraph(
                 character,
-                route,
+                RouteFromLoadout(
+                    character.CharacterInstanceStableId,
+                    character.ClassDefinitionStableId,
+                    loadout),
                 skill.ProfileId,
                 skill.ClassId,
-                scrap.AuthorityStableId,
-                scrap.CurrencyStableId);
+                StableId.Parse(scrap.AuthorityStableId),
+                StableId.Parse(scrap.CurrencyStableId));
         }
 
         public ICharacterRuntimeGraphV1 CreateStarter(
@@ -218,6 +220,7 @@ namespace ShooterMover.Application.Flow.Production
                     "A starter character display name is required.",
                     nameof(displayName));
             }
+
             PlayerRouteProfilePayloadV1 legacyRoute =
                 legacyContext as PlayerRouteProfilePayloadV1;
             if (legacyRoute == null || !legacyRoute.HasValidFingerprint())
@@ -302,7 +305,7 @@ namespace ShooterMover.Application.Flow.Production
                 SkillAdapter(skills, skillProfileId),
                 LoadoutAdapter(loadout),
             };
-            var graph = new ProductionCharacterRuntimeGraphV1(
+            var coreGraph = new ProductionCharacterRuntimeGraphV1(
                 character,
                 route,
                 loadout,
@@ -315,23 +318,24 @@ namespace ShooterMover.Application.Flow.Production
             if (additionalAdapterFactory != null)
             {
                 IEnumerable<ISaveComponentAdapterV1> additional =
-                    additionalAdapterFactory(graph);
+                    additionalAdapterFactory(coreGraph);
                 if (additional != null)
                 {
                     adapters.AddRange(additional);
-                    graph = new ProductionCharacterRuntimeGraphV1(
-                        character,
-                        route,
-                        loadout,
-                        experience,
-                        money,
-                        scrap,
-                        skills,
-                        skillProfileId,
-                        adapters);
                 }
             }
-            return graph;
+            return adapters.Count == coreGraph.SaveAdapters.Count
+                ? coreGraph
+                : new ProductionCharacterRuntimeGraphV1(
+                    character,
+                    route,
+                    loadout,
+                    experience,
+                    money,
+                    scrap,
+                    skills,
+                    skillProfileId,
+                    adapters);
         }
 
         private ISaveComponentAdapterV1 ExperienceAdapter(
@@ -472,7 +476,15 @@ namespace ShooterMover.Application.Flow.Production
                 runtime.LoadoutAuthority.ExportSnapshot,
                 snapshot => KnownSaveComponentCodecsV1.ExactInstanceLoadout
                     .Validate(snapshot),
-                snapshot => runtime.LoadoutAuthority.ImportSnapshot(snapshot));
+                snapshot =>
+                {
+                    ProductionInventoryLoadoutImportResultV1 result =
+                        runtime.LoadoutAuthority.ImportSnapshot(snapshot);
+                    return result.Succeeded
+                        ? SaveComponentApplyResultV1.Applied()
+                        : SaveComponentApplyResultV1.Rejected(
+                            result.RejectionCode);
+                });
         }
 
         private static TSnapshot DecodeRequired<TSnapshot>(
