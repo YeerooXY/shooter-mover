@@ -63,6 +63,16 @@ namespace ShooterMover.UI.ProductionFlow
             get { return profile; }
         }
 
+        /// <summary>
+        /// Exact six-slot selection fact consumed by the account composition. The flow
+        /// coordinator still owns UI selection; no persistence or subsystem state is
+        /// exposed through this property.
+        /// </summary>
+        public int ActiveProfileSlotIndex
+        {
+            get { return activeProfileSlot; }
+        }
+
         public static bool HasInstance { get { return instance != null; } }
 
         [RuntimeInitializeOnLoadMethod(
