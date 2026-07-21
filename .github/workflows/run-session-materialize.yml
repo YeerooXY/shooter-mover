@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - agent/run-session-001-character-to-mission
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
