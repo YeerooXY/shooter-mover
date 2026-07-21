@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Persistence.Accounts;
@@ -80,10 +82,11 @@ namespace ShooterMover.Application.Persistence.Composition
     }
 
     /// <summary>
-    /// Account-to-Hub composition boundary. Selection first durably persists any active
-    /// graph, then disposes it, restores only the exact target slot through
-    /// SAVE-ADAPTERS-001, and keeps every other slot opaque. A failed pre-switch save
-    /// rejects selection without unbinding the current graph.
+    /// Account-to-Hub composition boundary. Existing-slot selection durably persists the
+    /// active graph before disposal. Empty-slot creation is a separate transaction:
+    /// persist active, stage and restore the starter graph, durably commit the aggregate,
+    /// then publish the new graph. Failures keep the old graph active and remove the staged
+    /// character from both the authority and, where possible, durable storage.
     /// </summary>
     public sealed class CharacterCompositionCoordinatorV1 : IDisposable
     {
@@ -104,6 +107,13 @@ namespace ShooterMover.Application.Persistence.Composition
                     KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
                         .ComponentStableId,
                 });
+        private static readonly ConditionalWeakTable<
+            PlayerAccountSaveAuthorityV1,
+            CharacterCompositionCoordinatorV1> coordinators =
+                new ConditionalWeakTable<
+                    PlayerAccountSaveAuthorityV1,
+                    CharacterCompositionCoordinatorV1>();
+        private static readonly object coordinatorGate = new object();
 
         private readonly PlayerAccountSaveAuthorityV1 accountAuthority;
         private readonly ICharacterRuntimeGraphFactoryV1 runtimeFactory;
@@ -130,6 +140,12 @@ namespace ShooterMover.Application.Persistence.Composition
             restoreCoordinator = new PlayerAccountRestoreCoordinatorV1(
                 validateAggregate: validateAggregate
                     ?? PlayerAccountComponentSemanticsV1.Validate);
+
+            lock (coordinatorGate)
+            {
+                coordinators.Remove(accountAuthority);
+                coordinators.Add(accountAuthority, this);
+            }
         }
 
         public PlayerAccountSnapshotV1 Account
@@ -152,6 +168,32 @@ namespace ShooterMover.Application.Persistence.Composition
             get { return requiredCharacterComponentIds; }
         }
 
+        internal static bool TryResolveActive(
+            PlayerAccountSaveAuthorityV1 authority,
+            out CharacterCompositionCoordinatorV1 coordinator)
+        {
+            coordinator = null;
+            if (authority == null)
+            {
+                return false;
+            }
+
+            lock (coordinatorGate)
+            {
+                CharacterCompositionCoordinatorV1 resolved;
+                if (!coordinators.TryGetValue(authority, out resolved)
+                    || resolved == null
+                    || resolved.disposed
+                    || resolved.activeRuntime == null
+                    || resolved.activeRuntime.IsDisposed)
+                {
+                    return false;
+                }
+                coordinator = resolved;
+                return true;
+            }
+        }
+
         public CharacterCompositionResultV1 Select(int slotIndex)
         {
             ThrowIfDisposed();
@@ -165,6 +207,20 @@ namespace ShooterMover.Application.Persistence.Composition
             if (selected == null)
             {
                 return Reject("character-selection-slot-empty", null);
+            }
+
+            if (activeRuntime != null
+                && !activeRuntime.IsDisposed
+                && activeSlotIndex == slotIndex
+                && activeRuntime.Character != null
+                && activeRuntime.Character.CharacterInstanceStableId
+                    == selected.CharacterInstanceStableId)
+            {
+                return new CharacterCompositionResultV1(
+                    CharacterCompositionStatusV1.Selected,
+                    string.Empty,
+                    account,
+                    selected);
             }
 
             if (activeRuntime != null && !activeRuntime.IsDisposed)
@@ -236,6 +292,201 @@ namespace ShooterMover.Application.Persistence.Composition
                     "character-restore-threw:"
                         + exception.GetType().Name,
                     selected);
+            }
+        }
+
+        public CharacterCompositionResultV1 CreateAndSelect(
+            LegacyCharacterProfileV1 profile)
+        {
+            ThrowIfDisposed();
+            if (profile == null)
+            {
+                return Reject("character-create-profile-null", null);
+            }
+            if (accountAuthority.Current.CharacterAt(profile.SlotIndex) != null)
+            {
+                return Reject(
+                    "character-create-target-slot-occupied:"
+                        + profile.SlotIndex.ToString(CultureInfo.InvariantCulture),
+                    accountAuthority.Current.CharacterAt(profile.SlotIndex));
+            }
+
+            IStarterCharacterRuntimeGraphFactoryV1 starterFactory =
+                runtimeFactory as IStarterCharacterRuntimeGraphFactoryV1;
+            if (starterFactory == null)
+            {
+                return Reject("character-create-starter-factory-missing", null);
+            }
+
+            if (activeRuntime != null && !activeRuntime.IsDisposed)
+            {
+                CharacterCompositionResultV1 persisted = PersistActive(
+                    CreateSaveOperationId(profile));
+                if (persisted == null || !persisted.Succeeded)
+                {
+                    return Reject(
+                        persisted == null
+                            ? "character-create-pre-save-result-null"
+                            : "character-create-pre-save-rejected:"
+                                + persisted.Diagnostic,
+                        null);
+                }
+            }
+
+            PlayerAccountSaveAuthoritySnapshotV1 rollback =
+                accountAuthority.ExportSnapshot();
+            ICharacterRuntimeGraphV1 candidate = null;
+            CharacterInstanceSnapshotV1 createdCharacter = null;
+            bool creationStoreInvoked = false;
+            try
+            {
+                StableId exactCharacterId =
+                    LegacyCharacterProfileMigrationV1.ExactCharacterId(
+                        accountAuthority.Current.AccountStableId,
+                        profile);
+                candidate = starterFactory.CreateStarter(
+                    profile.SlotIndex,
+                    exactCharacterId,
+                    profile.ClassDefinitionStableId,
+                    profile.DisplayName,
+                    profile.LegacyContext);
+
+                IReadOnlyList<SaveComponentSnapshotV1> components =
+                    PlayerAccountRestoreCoordinatorV1.ExportComponents(
+                        candidate.SaveAdapters);
+                createdCharacter = new CharacterInstanceSnapshotV1(
+                    exactCharacterId,
+                    profile.ClassDefinitionStableId,
+                    profile.SlotIndex,
+                    profile.DisplayName,
+                    0L,
+                    components);
+
+                string graphError;
+                if (!TryValidateGraph(
+                    candidate,
+                    createdCharacter,
+                    out graphError))
+                {
+                    RollBackAuthority(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-" + graphError,
+                        createdCharacter);
+                }
+
+                PlayerAccountSaveResultV1 created = accountAuthority.Apply(
+                    PlayerAccountSaveCommandV1.CreateCharacter(
+                        CreateCharacterOperationId(profile, exactCharacterId),
+                        accountAuthority.Current.Revision,
+                        createdCharacter));
+                if (created == null
+                    || (created.Status != PlayerAccountSaveStatusV1.Applied
+                        && created.Status
+                            != PlayerAccountSaveStatusV1.ExactDuplicateNoChange))
+                {
+                    string rollbackError = RollBackAuthority(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        created == null
+                            ? "character-create-account-result-null"
+                            : "character-create-account-rejected:"
+                                + created.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                PlayerAccountSnapshotV1 stagedAccount = accountAuthority.Current;
+                CharacterInstanceSnapshotV1 stagedCharacter =
+                    stagedAccount.CharacterAt(profile.SlotIndex);
+                PlayerAccountRestoreResultV1 restored =
+                    restoreCoordinator.Restore(
+                        stagedAccount,
+                        BuildBindings(
+                            stagedAccount,
+                            profile.SlotIndex,
+                            candidate));
+                if (restored == null || !restored.Succeeded)
+                {
+                    string rollbackError = RollBackAuthority(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        restored == null
+                            ? "character-create-restore-result-null"
+                            : "character-create-restore-rejected:"
+                                + restored.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                candidate.MarkPersisted(stagedCharacter);
+
+                PlayerAccountStoreResultV1 stored;
+                try
+                {
+                    creationStoreInvoked = true;
+                    stored = saveAccount(stagedAccount);
+                }
+                catch (Exception exception)
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-store-threw:"
+                            + exception.GetType().Name
+                            + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                if (stored == null || !stored.Succeeded || stored.Snapshot == null)
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        stored == null
+                            ? "character-create-store-result-null"
+                            : "character-create-store-rejected:"
+                                + stored.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                CharacterInstanceSnapshotV1 persistedCharacter =
+                    stored.Snapshot.CharacterAt(profile.SlotIndex);
+                if (!SameCharacterIdentity(
+                    persistedCharacter,
+                    createdCharacter))
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-store-snapshot-mismatch"
+                            + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                ICharacterRuntimeGraphV1 previous = activeRuntime;
+                activeRuntime = candidate;
+                activeSlotIndex = profile.SlotIndex;
+                candidate = null;
+                DisposeGraph(previous);
+                return new CharacterCompositionResultV1(
+                    CharacterCompositionStatusV1.Selected,
+                    string.Empty,
+                    stored.Snapshot,
+                    persistedCharacter);
+            }
+            catch (Exception exception)
+            {
+                string rollbackError = creationStoreInvoked
+                    ? RollBackCreationDurably(rollback)
+                    : RollBackAuthority(rollback);
+                DisposeGraph(candidate);
+                return Reject(
+                    "character-create-threw:"
+                        + exception.GetType().Name
+                        + SuffixRollback(rollbackError),
+                    createdCharacter);
             }
         }
 
@@ -400,6 +651,15 @@ namespace ShooterMover.Application.Persistence.Composition
             }
             UnbindActive();
             disposed = true;
+            lock (coordinatorGate)
+            {
+                CharacterCompositionCoordinatorV1 registered;
+                if (coordinators.TryGetValue(accountAuthority, out registered)
+                    && ReferenceEquals(registered, this))
+                {
+                    coordinators.Remove(accountAuthority);
+                }
+            }
         }
 
         private CharacterCompositionResultV1 Reject(
@@ -522,6 +782,35 @@ namespace ShooterMover.Application.Persistence.Composition
                 material);
         }
 
+        private StableId CreateSaveOperationId(
+            LegacyCharacterProfileV1 profile)
+        {
+            return DerivedOperationId(
+                "operation.character-create-pre-save-",
+                activeSlotIndex
+                    + "|"
+                    + (activeRuntime == null
+                        ? string.Empty
+                        : activeRuntime.Character.CharacterInstanceStableId.ToString())
+                    + "|"
+                    + profile.SlotIndex.ToString(CultureInfo.InvariantCulture)
+                    + "|"
+                    + profile.SourceFingerprint);
+        }
+
+        private static StableId CreateCharacterOperationId(
+            LegacyCharacterProfileV1 profile,
+            StableId exactCharacterId)
+        {
+            return DerivedOperationId(
+                "operation.character-create-",
+                profile.SlotIndex.ToString(CultureInfo.InvariantCulture)
+                    + "|"
+                    + exactCharacterId
+                    + "|"
+                    + profile.SourceFingerprint);
+        }
+
         private static StableId ComponentOperationId(
             StableId saveOperationStableId,
             SaveComponentSnapshotV1 component,
@@ -553,6 +842,58 @@ namespace ShooterMover.Application.Persistence.Composition
                 }
                 return StableId.Parse(prefix + builder);
             }
+        }
+
+        private string RollBackCreationDurably(
+            PlayerAccountSaveAuthoritySnapshotV1 rollback)
+        {
+            string rollbackError = RollBackAuthority(rollback);
+            if (!string.IsNullOrEmpty(rollbackError))
+            {
+                return rollbackError;
+            }
+
+            try
+            {
+                PlayerAccountStoreResultV1 restored =
+                    saveAccount(accountAuthority.Current);
+                if (restored == null)
+                {
+                    return "durable-rollback-result-null";
+                }
+                if (!restored.Succeeded || restored.Snapshot == null)
+                {
+                    return "durable-rollback-rejected:"
+                        + restored.RejectionCode;
+                }
+                return string.Empty;
+            }
+            catch (Exception exception)
+            {
+                return "durable-rollback-threw:"
+                    + exception.GetType().Name;
+            }
+        }
+
+        private string RollBackAuthority(
+            PlayerAccountSaveAuthoritySnapshotV1 rollback)
+        {
+            string rollbackError;
+            accountAuthority.TryImport(rollback, out rollbackError);
+            return rollbackError;
+        }
+
+        private static bool SameCharacterIdentity(
+            CharacterInstanceSnapshotV1 left,
+            CharacterInstanceSnapshotV1 right)
+        {
+            return left != null
+                && right != null
+                && left.SlotIndex == right.SlotIndex
+                && left.CharacterInstanceStableId
+                    == right.CharacterInstanceStableId
+                && left.ClassDefinitionStableId
+                    == right.ClassDefinitionStableId;
         }
 
         private static string SuffixRollback(string rollbackError)
