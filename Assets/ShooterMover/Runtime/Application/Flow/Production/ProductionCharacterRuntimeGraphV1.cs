@@ -25,8 +25,8 @@ using ShooterMover.Domain.Progression.Skills;
 namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
-    /// Selected-character graph over existing authorities. This is a composition object
-    /// only; each referenced authority remains the sole owner of its subsystem state.
+    /// One selected-character graph over the existing production authorities. The graph
+    /// coordinates lifecycle only; every subsystem remains authoritative for its own state.
     /// </summary>
     public sealed class ProductionCharacterRuntimeGraphV1 :
         ICharacterRuntimeGraphV1
@@ -64,6 +64,7 @@ namespace ShooterMover.Application.Flow.Production
                     "A ranked-skill profile identity is required.",
                     nameof(skillProfileId));
             }
+
             SkillProfileId = skillProfileId.Trim();
             SaveAdapters = new ReadOnlyCollection<ISaveComponentAdapterV1>(
                 new List<ISaveComponentAdapterV1>(
@@ -128,10 +129,10 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Builds fresh instances of the merged XP, holdings, money, scrap, ranked-skill and
-    /// exact-loadout authorities, then exposes only their SAVE-ADAPTERS-001 bindings.
-    /// A real optional authority such as BOX may append its adapter through the injected
-    /// callback; this factory never substitutes an optional authority with local state.
+    /// Creates fresh instances of the merged XP, holdings, money, scrap, ranked-skill and
+    /// exact-loadout authorities and binds their SAVE-ADAPTERS-001 adapters. Optional
+    /// authorities such as BOX may append their real adapter through the injected callback;
+    /// no placeholder or duplicate authority is created here.
     /// </summary>
     public sealed class ProductionCharacterRuntimeGraphFactoryV1 :
         ICharacterRuntimeGraphFactoryV1,
@@ -230,7 +231,7 @@ namespace ShooterMover.Application.Flow.Production
                     nameof(legacyContext));
             }
 
-            PlayerRouteProfilePayloadV1 route =
+            PlayerRouteProfilePayloadV1 exactRoute =
                 PlayerRouteProfilePayloadV1.Create(
                     exactCharacterInstanceStableId,
                     classDefinitionStableId,
@@ -245,7 +246,7 @@ namespace ShooterMover.Application.Flow.Production
                 null);
             return CreateGraph(
                 shell,
-                route,
+                exactRoute,
                 exactCharacterInstanceStableId.ToString(),
                 skillClassIdResolver(classDefinitionStableId),
                 StableId.Parse("authority.production-scrap-wallet"),
@@ -262,7 +263,7 @@ namespace ShooterMover.Application.Flow.Production
                 new PlayerExperienceCurveV1(
                     100L,
                     100L,
-                    100,
+                    50,
                     new SoftActivationCurveParameters(0.1, 10L, 10L)),
                 ProgressionContext.Create(
                     1,
@@ -305,7 +306,7 @@ namespace ShooterMover.Application.Flow.Production
                 SkillAdapter(skills, skillProfileId),
                 LoadoutAdapter(loadout),
             };
-            var coreGraph = new ProductionCharacterRuntimeGraphV1(
+            var core = new ProductionCharacterRuntimeGraphV1(
                 character,
                 route,
                 loadout,
@@ -315,27 +316,28 @@ namespace ShooterMover.Application.Flow.Production
                 skills,
                 skillProfileId,
                 adapters);
-            if (additionalAdapterFactory != null)
+            if (additionalAdapterFactory == null)
             {
-                IEnumerable<ISaveComponentAdapterV1> additional =
-                    additionalAdapterFactory(coreGraph);
-                if (additional != null)
-                {
-                    adapters.AddRange(additional);
-                }
+                return core;
             }
-            return adapters.Count == coreGraph.SaveAdapters.Count
-                ? coreGraph
-                : new ProductionCharacterRuntimeGraphV1(
-                    character,
-                    route,
-                    loadout,
-                    experience,
-                    money,
-                    scrap,
-                    skills,
-                    skillProfileId,
-                    adapters);
+
+            IEnumerable<ISaveComponentAdapterV1> additional =
+                additionalAdapterFactory(core);
+            if (additional == null)
+            {
+                return core;
+            }
+            adapters.AddRange(additional);
+            return new ProductionCharacterRuntimeGraphV1(
+                character,
+                route,
+                loadout,
+                experience,
+                money,
+                scrap,
+                skills,
+                skillProfileId,
+                adapters);
         }
 
         private ISaveComponentAdapterV1 ExperienceAdapter(
@@ -345,11 +347,11 @@ namespace ShooterMover.Application.Flow.Production
                 authority.ExportSnapshot,
                 snapshot =>
                 {
-                    var validator = new PlayerExperienceAuthorityV1(
+                    var verifier = new PlayerExperienceAuthorityV1(
                         experienceCurve,
                         progressionContext);
                     PlayerExperienceImportResultV1 result =
-                        validator.TryImport(snapshot);
+                        verifier.TryImport(snapshot);
                     return result.Status
                             == PlayerExperienceImportStatusV1.Imported
                         ? SaveComponentValidationResultV1.Accept()
@@ -375,12 +377,12 @@ namespace ShooterMover.Application.Flow.Production
                 runtime.Holdings.ExportSnapshot,
                 snapshot =>
                 {
-                    var validator = new PlayerHoldingsService(
+                    var verifier = new PlayerHoldingsService(
                         runtime.Holdings.AuthorityStableId,
                         999L,
                         runtime.CatalogAdapter);
                     PlayerHoldingsImportResultV1 result =
-                        validator.ImportSnapshot(snapshot);
+                        verifier.ImportSnapshot(snapshot);
                     return result.Succeeded
                         ? SaveComponentValidationResultV1.Accept()
                         : SaveComponentValidationResultV1.Reject(
@@ -502,6 +504,7 @@ namespace ShooterMover.Application.Flow.Production
                     "Required character component is missing: "
                         + definition.ComponentStableId);
             }
+
             TSnapshot snapshot;
             string rejectionCode;
             if (!codec.TryDecode(
