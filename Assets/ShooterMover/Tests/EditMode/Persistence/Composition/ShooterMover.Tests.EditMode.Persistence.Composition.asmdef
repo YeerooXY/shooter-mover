@@ -5,7 +5,8 @@
     "ShooterMover.Application",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
-    "ShooterMover.Content.Definitions"
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.RunConditionIntegration"
   ],
   "includePlatforms": [
     "Editor"

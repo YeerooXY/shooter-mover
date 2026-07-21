@@ -388,10 +388,22 @@ namespace ShooterMover.UI.ProductionFlow
                     Find<StrongboxOpeningController>(scene);
                 if (controller != null && strongboxBinding != null)
                 {
-                    controller.BindRuntime(
-                        strongboxBinding.OpeningService,
-                        strongboxBinding.Command,
-                        strongboxBinding.EquipmentCatalog);
+                    if (strongboxBinding.DurableOpeningExecutor != null)
+                    {
+                        controller.BindDurableRuntime(
+                            strongboxBinding.OpeningService,
+                            strongboxBinding.Command,
+                            strongboxBinding.EquipmentCatalog,
+                            strongboxBinding.SelectedStrongbox,
+                            strongboxBinding.DurableOpeningExecutor);
+                    }
+                    else
+                    {
+                        controller.BindRuntime(
+                            strongboxBinding.OpeningService,
+                            strongboxBinding.Command,
+                            strongboxBinding.EquipmentCatalog);
+                    }
                     controller.ContinueOrBackRequested -=
                         ReturnFromStrongboxOpening;
                     controller.ContinueOrBackRequested +=
@@ -607,7 +619,8 @@ namespace ShooterMover.UI.ProductionFlow
 
             resultsContext = resultsContext.RefreshAfterExactOpening(
                 strongboxBinding.SelectedStrongbox,
-                openingSucceeded);
+                openingSucceeded,
+                strongboxBinding.DurableOpeningExecutor != null);
             pendingResultsContext = resultsContext;
             strongboxBinding = null;
             transitions.TryLoadSubflow(

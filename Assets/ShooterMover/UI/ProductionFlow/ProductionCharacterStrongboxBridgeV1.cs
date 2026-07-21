@@ -1,6 +1,7 @@
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using UnityEngine;
 
 namespace ShooterMover.UI.ProductionFlow
@@ -111,6 +112,31 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
+            rejectionCode = string.Empty;
+            return true;
+        }
+
+        public bool TryResolveDurableOpeningExecutor(
+            out IStrongboxDurableOpeningExecutorV1 executor,
+            out string rejectionCode)
+        {
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 profile;
+            CharacterCompositionCoordinatorV1 composition;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out profile,
+                    out composition)
+                || graph == null
+                || graph.IsDisposed
+                || composition == null)
+            {
+                executor = null;
+                rejectionCode = "selected-character-durable-opening-unavailable";
+                return false;
+            }
+
+            executor = new StrongboxDurableOpeningCoordinatorV1(composition);
             rejectionCode = string.Empty;
             return true;
         }

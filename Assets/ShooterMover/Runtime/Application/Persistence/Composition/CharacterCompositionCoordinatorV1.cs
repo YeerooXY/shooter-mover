@@ -139,7 +139,8 @@ namespace ShooterMover.Application.Persistence.Composition
                 ?? throw new ArgumentNullException(nameof(saveAccount));
             restoreCoordinator = new PlayerAccountRestoreCoordinatorV1(
                 validateAggregate: validateAggregate
-                    ?? PlayerAccountComponentSemanticsV1.Validate);
+                    ?? (snapshot =>
+                        PlayerAccountComponentSemanticsV1.Validate(snapshot)));
 
             lock (coordinatorGate)
             {

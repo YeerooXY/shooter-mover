@@ -1,5 +1,6 @@
 using System;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 
 namespace ShooterMover.Application.Flow.Production
 {
@@ -12,6 +13,10 @@ namespace ShooterMover.Application.Flow.Production
     {
         bool TryResolve(
             out StrongboxOpeningServiceV1 authority,
+            out string rejectionCode);
+
+        bool TryResolveDurableOpeningExecutor(
+            out IStrongboxDurableOpeningExecutorV1 executor,
             out string rejectionCode);
 
         bool TryPersist(
@@ -72,6 +77,24 @@ namespace ShooterMover.Application.Flow.Production
             return current.TryPersist(
                 strongboxSnapshotFingerprint,
                 out rejectionCode);
+        }
+
+        public static bool TryResolveDurableOpeningExecutor(
+            out IStrongboxDurableOpeningExecutorV1 executor,
+            out string rejectionCode)
+        {
+            executor = null;
+            rejectionCode = string.Empty;
+            if (current == null)
+            {
+                rejectionCode = "character-strongbox-bridge-unavailable";
+                return false;
+            }
+
+            return current.TryResolveDurableOpeningExecutor(
+                out executor,
+                out rejectionCode)
+                && executor != null;
         }
     }
 }
