@@ -23,6 +23,11 @@ namespace ShooterMover.Application.Flow.Production
     {
         private static IProductionCharacterStrongboxBridgeV1 current;
 
+        public static bool IsConfigured
+        {
+            get { return current != null; }
+        }
+
         public static void Configure(
             IProductionCharacterStrongboxBridgeV1 bridge)
         {
