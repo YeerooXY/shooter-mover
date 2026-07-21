@@ -11,7 +11,8 @@ namespace ShooterMover.RunConditionIntegration
     /// <summary>
     /// Canonical production entry point for freezing one selected account-backed
     /// character into a run whose conditional lifecycle is backed by the merged
-    /// ConditionRuntimeAuthorityV1.
+    /// ConditionRuntimeAuthorityV1. Terminal mission results are decorated downstream
+    /// so accepted unopened strongboxes are durable before Run Session reports Ended.
     /// </summary>
     public sealed class ProductionConditionBoundRunSessionStartSourceV1 :
         IRunSessionStartSourceV1
@@ -27,13 +28,21 @@ namespace ShooterMover.RunConditionIntegration
             IEnumerable<IAcceptedGameplayFactAdapterV1> adapters = null,
             IDerivedCharacterStatComposerV1 statComposer = null)
         {
+            if (composition == null)
+            {
+                throw new ArgumentNullException(nameof(composition));
+            }
             if (baseRuntimeFactory == null)
             {
                 throw new ArgumentNullException(nameof(baseRuntimeFactory));
             }
+            var persistentFactory =
+                new StrongboxPersistentNonConditionRuntimePortFactoryV1(
+                    composition,
+                    baseRuntimeFactory);
             var conditionFactory =
                 new ProductionConditionBoundRunSessionRuntimePortFactoryV1(
-                    baseRuntimeFactory,
+                    persistentFactory,
                     definitionProvider,
                     participantProvider,
                     adapters);
