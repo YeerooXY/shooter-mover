@@ -10,7 +10,8 @@ namespace ShooterMover.Domain.Enemies.Catalog
             List<EnemyCatalogIssueV1> issues,
             string path,
             EnemyDefinitionV1 definition,
-            IEnemyCatalogRegistryV1 registry)
+            IEnemyCatalogRegistryV1 registry,
+            int schemaVersion)
         {
             if (definition.Attacks.Count == 0
                 || definition.Attacks.Count > MaximumAttacksPerDefinition)
@@ -94,18 +95,6 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     }
                 }
 
-                if (!IsFiniteInRange(
-                    attack.CooldownSeconds,
-                    0d,
-                    MaximumCooldownSeconds,
-                    false))
-                {
-                    Add(
-                        issues,
-                        "enemy-catalog-attack-invalid",
-                        attackPath + ".cooldown_seconds",
-                        "Cooldown must be finite, positive, and bounded.");
-                }
                 if (!IsFiniteInRange(attack.Damage, 0d, MaximumDamage, false))
                 {
                     Add(
@@ -125,9 +114,272 @@ namespace ShooterMover.Domain.Enemies.Catalog
                         "Damage channel is not registered: " + Value(attack.DamageChannelId));
                 }
 
-                ValidateProjectile(issues, attackPath, attack, registry);
-                ValidateArea(issues, attackPath, attack.Area);
-                ValidateMelee(issues, attackPath, attack);
+                if (schemaVersion <= 1)
+                {
+                    ValidateLegacyAttack(issues, attackPath, attack, registry);
+                }
+                else
+                {
+                    ValidatePatternAttack(issues, attackPath, attack, registry);
+                }
+            }
+        }
+
+        private static void ValidateLegacyAttack(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyAttackCapabilityDescriptorV1 attack,
+            IEnemyCatalogRegistryV1 registry)
+        {
+            if (!IsFiniteInRange(
+                attack.CooldownSeconds,
+                0d,
+                MaximumCooldownSeconds,
+                false))
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-attack-invalid",
+                    path + ".cooldown_seconds",
+                    "Cooldown must be finite, positive, and bounded.");
+            }
+            ValidateLegacyProjectile(issues, path, attack, registry);
+            ValidateLegacyArea(issues, path, attack.Area);
+            ValidateLegacyMelee(issues, path, attack);
+        }
+
+        private static void ValidatePatternAttack(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyAttackCapabilityDescriptorV1 attack,
+            IEnemyCatalogRegistryV1 registry)
+        {
+            bool shooting = attack.ShootingPattern != null;
+            bool melee = attack.MeleePattern != null;
+            if (shooting == melee)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-attack-pattern-invalid",
+                    path,
+                    "Exactly one shooting_pattern or melee_pattern is required.");
+                return;
+            }
+
+            if (shooting)
+            {
+                ValidateShootingPattern(issues, path, attack.ShootingPattern);
+                ValidateProjectilePayload(issues, path, attack, registry);
+            }
+            else
+            {
+                if (attack.ProjectilePayload != null)
+                {
+                    Add(
+                        issues,
+                        "enemy-catalog-projectile-payload-unexpected",
+                        path + ".projectile_payload",
+                        "Melee attacks cannot author a projectile_payload.");
+                }
+                ValidateMeleePattern(issues, path, attack);
+            }
+
+            if (!IsFiniteInRange(
+                attack.CooldownSeconds,
+                0d,
+                MaximumCooldownSeconds,
+                false))
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-attack-pattern-timing-invalid",
+                    shooting ? path + ".shooting_pattern" : path + ".melee_pattern",
+                    "Wind-up, intervals, active windows, and recovery must form a positive bounded sequence.");
+            }
+        }
+
+        private static void ValidateShootingPattern(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyShootingPatternV1 pattern)
+        {
+            bool valid = pattern.ShotsPerSequence >= 1
+                && pattern.ShotsPerSequence <= 1024
+                && IsFiniteInRange(
+                    pattern.IntervalBetweenShotsSeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    true)
+                && pattern.ProjectilesPerShot >= 1
+                && pattern.ProjectilesPerShot <= 256
+                && IsFiniteInRange(pattern.PerShotSpreadDegrees, 0d, 360d, true)
+                && IsFiniteInRange(
+                    pattern.WindUpSeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    true)
+                && IsFiniteInRange(
+                    pattern.PostSequenceRecoverySeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    true)
+                && Enum.IsDefined(typeof(EnemySequenceAimPolicyV1), pattern.SequenceAimPolicy)
+                && Enum.IsDefined(
+                    typeof(EnemyAttackInterruptionPolicyV1),
+                    pattern.InterruptionPolicy);
+            if (!valid)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-shooting-pattern-invalid",
+                    path + ".shooting_pattern",
+                    "Shot count, interval, pellet count, spread, aim, wind-up, recovery, or interruption is invalid.");
+            }
+        }
+
+        private static void ValidateProjectilePayload(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyAttackCapabilityDescriptorV1 attack,
+            IEnemyCatalogRegistryV1 registry)
+        {
+            EnemyProjectilePayloadV1 payload = attack.ProjectilePayload;
+            if (payload == null)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-projectile-payload-missing",
+                    path + ".projectile_payload",
+                    "Shooting attacks require a projectile_payload.");
+                return;
+            }
+
+            if (payload.ProjectileProfileId == null
+                || registry == null
+                || !registry.IsProjectileProfileRegistered(payload.ProjectileProfileId))
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-projectile-profile-unknown",
+                    path + ".projectile_payload.profile",
+                    "Projectile profile is not registered: "
+                    + Value(payload.ProjectileProfileId));
+            }
+
+            bool physicalValuesValid =
+                IsFiniteInRange(payload.Speed, 0d, MaximumDistance, false)
+                && IsFiniteInRange(
+                    payload.MaximumTravelDistance,
+                    0d,
+                    MaximumDistance,
+                    false)
+                && IsFiniteInRange(payload.CollisionRadius, 0d, 1000d, false)
+                && payload.PierceCount >= 0
+                && payload.PierceCount <= 1024;
+            if (!physicalValuesValid)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-projectile-payload-invalid",
+                    path + ".projectile_payload",
+                    "Projectile speed, travel, radius, or pierce is invalid.");
+            }
+            if (IsFiniteInRange(
+                    payload.MaximumTravelDistance,
+                    0d,
+                    MaximumDistance,
+                    false)
+                && payload.MaximumTravelDistance < attack.MaximumAttackRange)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-projectile-range-invalid",
+                    path + ".projectile_payload.maximum_travel_distance",
+                    "Projectile travel distance must support this attack's maximum range.");
+            }
+            ValidateAreaPayload(issues, path, payload.AreaPayload);
+        }
+
+        private static void ValidateAreaPayload(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyAreaPayloadV1 area)
+        {
+            if (area == null) return;
+            bool valid = IsFiniteInRange(area.Radius, 0d, MaximumDistance, false)
+                && IsFiniteInRange(area.DurationSeconds, 0d, MaximumCooldownSeconds, true)
+                && area.MaximumTargets >= 1
+                && area.MaximumTargets <= 4096;
+            if (!valid)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-area-payload-invalid",
+                    path + ".projectile_payload.area_payload",
+                    "Area radius, duration, or target limit is invalid.");
+            }
+        }
+
+        private static void ValidateMeleePattern(
+            List<EnemyCatalogIssueV1> issues,
+            string path,
+            EnemyAttackCapabilityDescriptorV1 attack)
+        {
+            EnemyMeleePatternV1 pattern = attack.MeleePattern;
+            bool valid = pattern != null
+                && IsFiniteInRange(
+                    pattern.WindUpSeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    true)
+                && IsFiniteInRange(
+                    pattern.ActiveWindowSeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    false)
+                && pattern.StrikeCount >= 1
+                && pattern.StrikeCount <= 1024
+                && IsFiniteInRange(
+                    pattern.IntervalBetweenStrikesSeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    true)
+                && IsFiniteInRange(pattern.ContactRadius, 0d, MaximumDistance, false)
+                && IsFiniteInRange(pattern.LungeDistance, 0d, MaximumDistance, true)
+                && IsFiniteInRange(
+                    pattern.RecoverySeconds,
+                    0d,
+                    MaximumCooldownSeconds,
+                    true)
+                && pattern.HitsPerTarget >= 1
+                && pattern.HitsPerTarget <= 1024
+                && Enum.IsDefined(
+                    typeof(EnemyMeleeAimCommitPolicyV1),
+                    pattern.AimCommitPolicy)
+                && Enum.IsDefined(
+                    typeof(EnemyMeleeTerminalOnImpactPolicyV1),
+                    pattern.TerminalOnImpactPolicy)
+                && Enum.IsDefined(
+                    typeof(EnemyAttackInterruptionPolicyV1),
+                    pattern.InterruptionPolicy);
+            if (!valid)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-melee-pattern-invalid",
+                    path + ".melee_pattern",
+                    "Melee wind-up, active window, strikes, interval, reach, aim, recovery, hit limit, terminal, or interruption is invalid.");
+                return;
+            }
+
+            double supportedRange = pattern.ContactRadius + pattern.LungeDistance;
+            if (attack.MaximumAttackRange > supportedRange)
+            {
+                Add(
+                    issues,
+                    "enemy-catalog-melee-range-incompatible",
+                    path + ".maximum_range",
+                    "Melee contact radius and lunge distance must support this attack's maximum range.");
             }
         }
 
@@ -184,7 +436,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
             }
         }
 
-        private static void ValidateProjectile(
+        private static void ValidateLegacyProjectile(
             List<EnemyCatalogIssueV1> issues,
             string path,
             EnemyAttackCapabilityDescriptorV1 attack,
@@ -240,7 +492,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
             }
         }
 
-        private static void ValidateArea(
+        private static void ValidateLegacyArea(
             List<EnemyCatalogIssueV1> issues,
             string path,
             EnemyAreaAttackParametersV1 area)
@@ -260,7 +512,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
             }
         }
 
-        private static void ValidateMelee(
+        private static void ValidateLegacyMelee(
             List<EnemyCatalogIssueV1> issues,
             string path,
             EnemyAttackCapabilityDescriptorV1 attack)

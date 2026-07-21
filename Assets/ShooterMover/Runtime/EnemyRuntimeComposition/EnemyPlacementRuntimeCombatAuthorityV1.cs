@@ -98,6 +98,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             }
 
             EnemyAttackExecutionResultV1 result;
+            bool recordReplay = true;
             if (validation != EnemyRuntimeRejectionCodeV1.None)
             {
                 result = RejectedAttack(validation);
@@ -172,28 +173,92 @@ namespace ShooterMover.EnemyRuntimeComposition
                         }
                         else
                         {
-                            string executionFingerprint = EnemyRuntimeAuthorityFingerprintV1.Execution(
-                                execution,
-                                issued.Fingerprint);
-                            acceptedExecutions.Add(
-                                operationStableId,
-                                new AcceptedExecutionRecord(
-                                    executionFingerprint,
-                                    issued.Fingerprint,
-                                    execution));
-                            downstream.AttackEffects.Emit(execution);
-                            nextReadyAtByAttack[requested.AttackId] =
-                                occurredAtSeconds + execution.ResolvedCooldownSeconds;
-                            result = new EnemyAttackExecutionResultV1(
-                                EnemyRuntimeOperationStatusV1.Applied,
-                                EnemyRuntimeRejectionCodeV1.None,
-                                execution);
+                            EnemyAttackPatternDispatchResultV1 dispatch;
+                            if (EnemyAttackEffectEmissionDispatchV1
+                                .IsLegacyCompatibilityExecution(execution))
+                            {
+                                // Schema-v1 production content intentionally retains the historical
+                                // one-call effect boundary and does not enter pattern authority.
+                                dispatch = EnemyAttackEffectEmissionDispatchV1.DispatchLegacy(
+                                    downstream.AttackEffects,
+                                    execution);
+                            }
+                            else
+                            {
+                                EnemyAttackPatternStartResultV1 pattern =
+                                    StartAttackPattern(execution);
+                                dispatch = pattern.IsAccepted
+                                    ? DispatchAttackPattern(execution, pattern)
+                                    : null;
+                            }
+
+                            if (dispatch == null || !dispatch.IsAccepted)
+                            {
+                                // Only an explicit downstream failure is transient. Contract,
+                                // capability, or fingerprint rejections are deterministic and may
+                                // enter the outer replay ledger.
+                                recordReplay = dispatch == null
+                                    || dispatch.Rejection
+                                        != EnemyAttackPatternDispatchRejectionCodeV1
+                                            .DownstreamFailure;
+                                result = RejectedAttack(
+                                    EnemyRuntimeRejectionCodeV1.InvalidCommand);
+                            }
+                            else
+                            {
+                                string executionFingerprint =
+                                    EnemyRuntimeAuthorityFingerprintV1.Execution(
+                                        execution,
+                                        issued.Fingerprint);
+                                AcceptedExecutionRecord existing;
+                                if (acceptedExecutions.TryGetValue(
+                                    operationStableId,
+                                    out existing))
+                                {
+                                    if (!string.Equals(
+                                        existing.Fingerprint,
+                                        executionFingerprint,
+                                        StringComparison.Ordinal))
+                                    {
+                                        result = RejectedAttack(
+                                            EnemyRuntimeRejectionCodeV1
+                                                .ConflictingDuplicate);
+                                    }
+                                    else
+                                    {
+                                        nextReadyAtByAttack[requested.AttackId] =
+                                            occurredAtSeconds
+                                            + execution.ResolvedCooldownSeconds;
+                                        result = new EnemyAttackExecutionResultV1(
+                                            EnemyRuntimeOperationStatusV1.Applied,
+                                            EnemyRuntimeRejectionCodeV1.None,
+                                            existing.Execution);
+                                    }
+                                }
+                                else
+                                {
+                                    acceptedExecutions.Add(
+                                        operationStableId,
+                                        new AcceptedExecutionRecord(
+                                            executionFingerprint,
+                                            issued.Fingerprint,
+                                            execution));
+                                    nextReadyAtByAttack[requested.AttackId] =
+                                        occurredAtSeconds
+                                        + execution.ResolvedCooldownSeconds;
+                                    result = new EnemyAttackExecutionResultV1(
+                                        EnemyRuntimeOperationStatusV1.Applied,
+                                        EnemyRuntimeRejectionCodeV1.None,
+                                        execution);
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            attackReplay.Add(operationStableId, new AttackReplayRecord(signature, result));
+            if (recordReplay)
+                attackReplay.Add(operationStableId, new AttackReplayRecord(signature, result));
             return result;
         }
 
@@ -290,6 +355,10 @@ namespace ShooterMover.EnemyRuntimeComposition
                     EnemyRuntimeAuthorityFingerprintV1.Descriptor(execution.Descriptor),
                     EnemyRuntimeAuthorityFingerprintV1.Descriptor(binding.Descriptor),
                     StringComparison.Ordinal)
+                && EnemyAttackDescriptorCompatibilityV1.IsLegacyCompatibility(
+                    execution.Descriptor)
+                    == EnemyAttackDescriptorCompatibilityV1.IsLegacyCompatibility(
+                        binding.Descriptor)
                 && string.Equals(
                     EnemyRuntimeAuthorityFingerprintV1.AttackIntent(execution.CommittedIntent),
                     EnemyRuntimeAuthorityFingerprintV1.AttackIntent(committed),

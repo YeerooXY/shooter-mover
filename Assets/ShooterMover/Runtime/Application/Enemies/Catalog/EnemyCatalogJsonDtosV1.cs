@@ -16,7 +16,6 @@ namespace ShooterMover.Application.Enemies.Catalog
             }
 
             public string Code { get; }
-
             public string Path { get; }
         }
 
@@ -126,23 +125,120 @@ namespace ShooterMover.Application.Enemies.Catalog
             [DataMember(Name = "maximum_range", IsRequired = true, Order = 6)]
             public double MaximumRange;
 
-            [DataMember(Name = "cooldown_seconds", IsRequired = true, Order = 7)]
-            public double CooldownSeconds;
-
-            [DataMember(Name = "damage", IsRequired = true, Order = 8)]
+            [DataMember(Name = "damage", IsRequired = true, Order = 7)]
             public double Damage;
 
-            [DataMember(Name = "damage_channel", IsRequired = true, Order = 9)]
+            [DataMember(Name = "damage_channel", IsRequired = true, Order = 8)]
             public string DamageChannel;
 
-            [DataMember(Name = "projectile", EmitDefaultValue = false, Order = 10)]
+            [DataMember(Name = "shooting_pattern", EmitDefaultValue = false, Order = 9)]
+            public ShootingPatternDtoV1 ShootingPattern;
+
+            [DataMember(Name = "projectile_payload", EmitDefaultValue = false, Order = 10)]
+            public ProjectilePayloadDtoV1 ProjectilePayload;
+
+            [DataMember(Name = "melee_pattern", EmitDefaultValue = false, Order = 11)]
+            public MeleePatternDtoV1 MeleePattern;
+
+            // Schema-v1 migration fields. Schema-v2 content must not author these.
+            [DataMember(Name = "cooldown_seconds", EmitDefaultValue = false, Order = 20)]
+            public double? CooldownSeconds;
+
+            [DataMember(Name = "projectile", EmitDefaultValue = false, Order = 21)]
             public ProjectileDtoV1 Projectile;
 
-            [DataMember(Name = "area", EmitDefaultValue = false, Order = 11)]
+            [DataMember(Name = "area", EmitDefaultValue = false, Order = 22)]
             public AreaDtoV1 Area;
 
-            [DataMember(Name = "melee", EmitDefaultValue = false, Order = 12)]
+            [DataMember(Name = "melee", EmitDefaultValue = false, Order = 23)]
             public MeleeDtoV1 Melee;
+        }
+
+        [DataContract]
+        private sealed class ShootingPatternDtoV1
+        {
+            [DataMember(Name = "shots_per_sequence", IsRequired = true, Order = 0)]
+            public int ShotsPerSequence;
+
+            [DataMember(Name = "interval_between_shots_seconds", IsRequired = true, Order = 1)]
+            public double IntervalBetweenShotsSeconds;
+
+            [DataMember(Name = "projectiles_per_shot", IsRequired = true, Order = 2)]
+            public int ProjectilesPerShot;
+
+            [DataMember(Name = "per_shot_spread_degrees", IsRequired = true, Order = 3)]
+            public double PerShotSpreadDegrees;
+
+            [DataMember(Name = "sequence_aim_policy", IsRequired = true, Order = 4)]
+            public string SequenceAimPolicy;
+
+            [DataMember(Name = "wind_up_seconds", IsRequired = true, Order = 5)]
+            public double WindUpSeconds;
+
+            [DataMember(Name = "post_sequence_recovery_seconds", IsRequired = true, Order = 6)]
+            public double PostSequenceRecoverySeconds;
+
+            [DataMember(Name = "interruption_policy", IsRequired = true, Order = 7)]
+            public string InterruptionPolicy;
+        }
+
+        [DataContract]
+        private sealed class ProjectilePayloadDtoV1
+        {
+            [DataMember(Name = "profile", IsRequired = true, Order = 0)]
+            public string Profile;
+
+            [DataMember(Name = "speed", IsRequired = true, Order = 1)]
+            public double Speed;
+
+            [DataMember(Name = "maximum_travel_distance", IsRequired = true, Order = 2)]
+            public double MaximumTravelDistance;
+
+            [DataMember(Name = "collision_radius", IsRequired = true, Order = 3)]
+            public double CollisionRadius;
+
+            [DataMember(Name = "pierce", IsRequired = true, Order = 4)]
+            public int Pierce;
+
+            [DataMember(Name = "area_payload", EmitDefaultValue = false, Order = 5)]
+            public AreaDtoV1 AreaPayload;
+        }
+
+        [DataContract]
+        private sealed class MeleePatternDtoV1
+        {
+            [DataMember(Name = "wind_up_seconds", IsRequired = true, Order = 0)]
+            public double WindUpSeconds;
+
+            [DataMember(Name = "active_window_seconds", IsRequired = true, Order = 1)]
+            public double ActiveWindowSeconds;
+
+            [DataMember(Name = "strike_count", IsRequired = true, Order = 2)]
+            public int StrikeCount;
+
+            [DataMember(Name = "interval_between_strikes_seconds", IsRequired = true, Order = 3)]
+            public double IntervalBetweenStrikesSeconds;
+
+            [DataMember(Name = "contact_radius", IsRequired = true, Order = 4)]
+            public double ContactRadius;
+
+            [DataMember(Name = "lunge_distance", IsRequired = true, Order = 5)]
+            public double LungeDistance;
+
+            [DataMember(Name = "aim_commit_policy", IsRequired = true, Order = 6)]
+            public string AimCommitPolicy;
+
+            [DataMember(Name = "recovery_seconds", IsRequired = true, Order = 7)]
+            public double RecoverySeconds;
+
+            [DataMember(Name = "hits_per_target", IsRequired = true, Order = 8)]
+            public int HitsPerTarget;
+
+            [DataMember(Name = "terminal_on_impact_policy", IsRequired = true, Order = 9)]
+            public string TerminalOnImpactPolicy;
+
+            [DataMember(Name = "interruption_policy", IsRequired = true, Order = 10)]
+            public string InterruptionPolicy;
         }
 
         [DataContract]

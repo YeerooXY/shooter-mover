@@ -23,13 +23,16 @@ namespace ShooterMover.Domain.Enemies.Catalog
             IEnemyCatalogRegistryV1 registry)
         {
             var issues = new List<EnemyCatalogIssueV1>();
-            if (schemaVersion != EnemyCatalogV1.SupportedSchemaVersion)
+            if (schemaVersion < EnemyCatalogV1.MinimumSupportedSchemaVersion
+                || schemaVersion > EnemyCatalogV1.SupportedSchemaVersion)
             {
                 Add(
                     issues,
                     "enemy-catalog-schema-unsupported",
                     "$.schema_version",
-                    "Schema version must be " + EnemyCatalogV1.SupportedSchemaVersion + ".");
+                    "Schema version must be between "
+                    + EnemyCatalogV1.MinimumSupportedSchemaVersion
+                    + " and " + EnemyCatalogV1.SupportedSchemaVersion + ".");
             }
             if (contentVersion == null)
             {
@@ -58,10 +61,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
             }
 
             var values = new List<EnemyDefinitionV1>();
-            foreach (EnemyDefinitionV1 definition in definitions)
-            {
-                values.Add(definition);
-            }
+            foreach (EnemyDefinitionV1 definition in definitions) values.Add(definition);
             if (values.Count == 0 || values.Count > MaximumDefinitions)
             {
                 Add(
@@ -102,7 +102,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
                         "Enemy definition ID is duplicated: " + definition.DefinitionId);
                 }
 
-                ValidateDefinition(issues, path, definition, registry);
+                ValidateDefinition(issues, path, definition, registry, schemaVersion);
             }
             return new EnemyCatalogValidationResultV1(issues);
         }
@@ -111,7 +111,8 @@ namespace ShooterMover.Domain.Enemies.Catalog
             List<EnemyCatalogIssueV1> issues,
             string path,
             EnemyDefinitionV1 definition,
-            IEnemyCatalogRegistryV1 registry)
+            IEnemyCatalogRegistryV1 registry,
+            int schemaVersion)
         {
             if (definition.PresentationId == null
                 || registry == null
@@ -127,8 +128,6 @@ namespace ShooterMover.Domain.Enemies.Catalog
 
             ValidateHealth(issues, path, definition);
 
-            // Faction IDs remain intentionally open stable identities because the repository
-            // does not currently expose one canonical faction registry at this boundary.
             if (definition.FactionId == null)
             {
                 Add(
@@ -172,7 +171,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     "Decision policy is not registered: " + Value(definition.DecisionPolicyId));
             }
 
-            ValidateAttacks(issues, path, definition, registry);
+            ValidateAttacks(issues, path, definition, registry, schemaVersion);
 
             if (definition.ExperienceProfileId == null
                 || registry == null
@@ -195,9 +194,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     path + ".drop_profile",
                     "Drop profile is not registered: " + Value(definition.DropProfileId));
             }
-            if (!Enum.IsDefined(
-                typeof(EnemyCatalogRoomClearRoleV1),
-                definition.RoomClearRole))
+            if (!Enum.IsDefined(typeof(EnemyCatalogRoomClearRoleV1), definition.RoomClearRole))
             {
                 Add(
                     issues,
@@ -206,8 +203,7 @@ namespace ShooterMover.Domain.Enemies.Catalog
                     "Room-clear role is not supported.");
             }
 
-            if (definition.SpecialCapabilityIds.Count
-                > MaximumSpecialCapabilitiesPerDefinition)
+            if (definition.SpecialCapabilityIds.Count > MaximumSpecialCapabilitiesPerDefinition)
             {
                 Add(
                     issues,
