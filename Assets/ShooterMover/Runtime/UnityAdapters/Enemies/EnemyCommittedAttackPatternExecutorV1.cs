@@ -63,9 +63,9 @@ namespace ShooterMover.UnityAdapters.Enemies
     }
 
     /// <summary>
-    /// Binds one catalog attack descriptor to one source lifecycle. It owns only schema-v2 attack
-    /// pattern replay/cooldown state and atomically dispatches immutable sequences to the live
-    /// scheduler. Enemy health, movement, targeting, projectiles and player damage remain external.
+    /// Binds one schema-v2 attack descriptor to one source lifecycle. Sequence authority and
+    /// dispatch are committed as one outer operation: transient downstream failure is retryable,
+    /// and cooldown/replay state is recorded only after atomic dispatch acceptance.
     /// </summary>
     public sealed class EnemyCommittedAttackPatternExecutorV1 :
         IEnemyCommittedAttackPatternPortV1
@@ -142,29 +142,27 @@ namespace ShooterMover.UnityAdapters.Enemies
             EnemyAttackIntent committedIntent)
         {
             string fingerprint = Fingerprint(operationStableId, committedIntent);
-            if (operationStableId != null)
+            CommitReplay replay;
+            if (operationStableId != null
+                && commitReplay.TryGetValue(operationStableId, out replay))
             {
-                CommitReplay replay;
-                if (commitReplay.TryGetValue(operationStableId, out replay))
+                if (!string.Equals(
+                        replay.Fingerprint,
+                        fingerprint,
+                        StringComparison.Ordinal))
                 {
-                    if (string.Equals(
-                            replay.Fingerprint,
-                            fingerprint,
-                            StringComparison.Ordinal))
-                    {
-                        return new EnemyCommittedAttackPatternResultV1(
-                            EnemyCommittedAttackPatternStatusV1.ExactReplay,
-                            operationStableId,
-                            replay.Result.Execution,
-                            replay.Result.Sequence,
-                            replay.Result.Dispatch,
-                            string.Empty);
-                    }
                     return Rejected(
                         EnemyCommittedAttackPatternStatusV1.ConflictingDuplicate,
                         operationStableId,
                         "enemy-pattern-commit-operation-conflict");
                 }
+                return new EnemyCommittedAttackPatternResultV1(
+                    EnemyCommittedAttackPatternStatusV1.ExactReplay,
+                    operationStableId,
+                    replay.Result.Execution,
+                    replay.Result.Sequence,
+                    replay.Result.Dispatch,
+                    string.Empty);
             }
 
             EnsureAuthority();
@@ -185,13 +183,12 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
             if (runTime.CurrentTimeSeconds < nextAvailableAtSeconds)
             {
-                return Remember(
+                // Cooldown observation is not terminal operation history. The caller may retry the
+                // same immutable operation after authoritative Run Session time advances.
+                return Rejected(
+                    EnemyCommittedAttackPatternStatusV1.CooldownActive,
                     operationStableId,
-                    fingerprint,
-                    Rejected(
-                        EnemyCommittedAttackPatternStatusV1.CooldownActive,
-                        operationStableId,
-                        "enemy-pattern-cooldown-active"));
+                    "enemy-pattern-cooldown-active");
             }
 
             EnemyAttackIntent rebound = new EnemyAttackIntent(
@@ -238,18 +235,22 @@ namespace ShooterMover.UnityAdapters.Enemies
                 effectPort.Dispatch(dispatch);
             if (dispatched == null || !dispatched.IsAccepted)
             {
-                return Remember(
+                var rejected = new EnemyCommittedAttackPatternResultV1(
+                    EnemyCommittedAttackPatternStatusV1.Rejected,
                     operationStableId,
-                    fingerprint,
-                    new EnemyCommittedAttackPatternResultV1(
-                        EnemyCommittedAttackPatternStatusV1.Rejected,
-                        operationStableId,
-                        execution,
-                        start.Sequence,
-                        dispatched,
-                        dispatched == null
-                            ? "enemy-pattern-dispatch-null"
-                            : "enemy-pattern-dispatch-" + dispatched.Rejection));
+                    execution,
+                    start.Sequence,
+                    dispatched,
+                    dispatched == null
+                        ? "enemy-pattern-dispatch-null"
+                        : "enemy-pattern-dispatch-" + dispatched.Rejection);
+                bool terminalConflict = dispatched != null
+                    && dispatched.Rejection
+                        == EnemyAttackPatternDispatchRejectionCodeV1
+                            .ConflictingDuplicate;
+                return terminalConflict
+                    ? Remember(operationStableId, fingerprint, rejected)
+                    : rejected;
             }
 
             nextAvailableAtSeconds = Math.Max(
