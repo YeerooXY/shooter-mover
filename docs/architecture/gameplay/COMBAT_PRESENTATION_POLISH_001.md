@@ -43,10 +43,9 @@ Typed read-only adapters project:
 - binds one exact entity identity;
 - rejects another identity and stale lifecycle snapshots;
 - accepts a newer lifecycle as a presentation reset;
-- changes line-renderer geometry only when its immutable snapshot changes;
+- changes fill presentation only when its immutable snapshot changes;
+- follows the bound transform while keeping world-space horizontal geometry upright;
 - hides on terminal state and restores on a newer alive lifecycle;
-- uses world-space horizontal line geometry, so it follows the enemy position without inheriting
-  enemy rotation;
 - creates no canvas, raycast owner, collider, or rigidbody.
 
 The Mobile Blaster Droid and Blaster Turret are registered through the same private production
@@ -69,9 +68,10 @@ presentation-only fact produced from an accepted `EnemyDestroyedNotification`. I
 entity identity and lifecycle, ledgers the terminal event identity, hides the bound health bar, and
 spawns one shared default explosion from `DefaultCombatExplosionPool2D`.
 
-The production integration observes accepted immutable destruction notifications already retained
-for downstream reward processing. It does not infer death from renderer disappearance or missing
-GameObjects.
+The production damage adapter forwards the accepted immutable destruction notification to the
+presentation composition immediately before the independent kill/reward consumer runs. The VFX
+therefore does not poll renderer disappearance, missing GameObjects, reward staging, XP state, or
+room state.
 
 `DefaultCombatExplosionPool2D` reuses the current default orange 24-point ring presentation and
 `0.18 s` lifetime behavior in a bounded reusable pool. Pool recycle/deactivation has no gameplay
