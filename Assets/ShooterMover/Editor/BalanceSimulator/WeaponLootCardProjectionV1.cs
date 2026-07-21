@@ -325,7 +325,6 @@ namespace ShooterMover.Editor.BalanceSimulator
             return builder.ToString();
         }
 
-
         private static bool TryResolveWeaponDefinition(
             StableId runtimeWeaponReferenceId,
             WeaponCatalog weaponCatalog,
@@ -343,9 +342,10 @@ namespace ShooterMover.Editor.BalanceSimulator
                 return true;
             }
 
-            // SIM-002 predates that production convention and stores a deterministic
-            // runtime-reference projection. Resolve it uniquely instead of bypassing
-            // EquipmentDefinition.RuntimeWeaponReferenceId.
+            // Imported catalog definitions use a deterministic canonical weapon.*
+            // runtime reference because their string definition IDs are not necessarily
+            // StableIds in the production runtime-reference shape. Resolve that reference
+            // uniquely instead of bypassing EquipmentDefinition.RuntimeWeaponReferenceId.
             int matches = 0;
             IReadOnlyList<WeaponDefinitionData> candidates =
                 weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.All);
@@ -353,7 +353,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             {
                 WeaponDefinitionData candidate = candidates[index];
                 StableId projectedReference = StrongboxCanonicalV1.DeriveId(
-                    "weaponruntime",
+                    "weapon",
                     candidate.DefinitionId);
                 if (projectedReference == runtimeWeaponReferenceId)
                 {
