@@ -13,9 +13,12 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons.Execution;
+using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.TestSupport.VisibleSlice;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using ShooterMover.UnityAdapters.Missions.Rooms;
+using ShooterMover.UnityAdapters.Weapons.Live;
+using ShooterMover.Application.Weapons.Execution;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1

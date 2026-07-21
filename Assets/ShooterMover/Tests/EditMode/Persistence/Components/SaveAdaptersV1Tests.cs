@@ -392,7 +392,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
             ISaveComponentAdapterV1 adapter)
         {
             return new PlayerAccountRestoreCoordinatorV1(
-                validateAggregate: PlayerAccountComponentSemanticsV1.Validate)
+                validateAggregate: snapshot =>
+                    PlayerAccountComponentSemanticsV1.Validate(snapshot))
                 .Restore(
                     account,
                     new[]

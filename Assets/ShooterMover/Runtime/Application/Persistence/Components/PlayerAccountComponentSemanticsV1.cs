@@ -8,6 +8,8 @@ using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Rewards.Strongboxes;
+using ShooterMover.Domain.Holdings;
 
 namespace ShooterMover.Application.Persistence.Components
 {

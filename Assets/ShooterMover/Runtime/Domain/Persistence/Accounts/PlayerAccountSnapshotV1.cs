@@ -448,9 +448,9 @@ namespace ShooterMover.Domain.Persistence.Accounts
         }
     }
 
-    internal static class PlayerAccountSnapshotFingerprintV1
+    public static class PlayerAccountSnapshotFingerprintV1
     {
-        internal static string Hash(string value)
+        public static string Hash(string value)
         {
             using (SHA256 sha = SHA256.Create())
             {
