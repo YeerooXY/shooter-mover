@@ -67,11 +67,18 @@ jobs:
               if fragment not in authority:
                   raise SystemExit(f"required repaired declaration missing: {fragment!r}")
 
-          forbidden = ["string rCode", "us    System", "      }\n\n            string"]
+          forbidden = [
+              "string rCode",
+              "us    System",
+              "RestartRunSessionCommandV1 command,      }",
+              "RunLocalStateSnapshotV1 state,\n                    string rCode)",
+              "IDictionary<string, long> target,\n                   key,",
+          ]
           for token in forbidden:
               for path in expected:
                   if token in Path(path).read_text(encoding="utf-8"):
-                      raise SystemExit(f"materialization damage token {token!r} in {path}")
+                      raise SystemExit(
+                          f"materialization damage token {token!r} in {path}")
           PY
 
       - name: Remove repair staging and commit
