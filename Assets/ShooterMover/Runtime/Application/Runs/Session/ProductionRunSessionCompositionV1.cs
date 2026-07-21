@@ -10,6 +10,7 @@ using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.Domain.Rewards.Model;

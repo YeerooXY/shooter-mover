@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;

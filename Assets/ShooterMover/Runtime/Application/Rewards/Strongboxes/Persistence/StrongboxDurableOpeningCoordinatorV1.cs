@@ -27,62 +27,54 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                 .StrongboxOpeningServiceV1 openingService,
             StrongboxOpenCommandV1 command)
         {
-            var graph = composition.ActiveRuntime
-                as ProductionCharacterRuntimeGraphV1;
-            PlayerAccountSnapshotV1 beforeAccount = composition.Account;
-            if (selectedStrongbox == null || !selectedStrongbox.IsUnopened)
-            {
-                return Rejected(command, "durable-opening-selection-invalid");
-            }
-            if (graph == null || graph.IsDisposed || beforeAccount == null)
-            {
-                return Rejected(command, "durable-opening-character-unavailable");
-            }
-            if (!ReferenceEquals(openingService, graph.StrongboxAuthority))
-            {
-                return Rejected(command, "durable-opening-stale-box-authority");
-            }
-            if (command == null
-                || command.StrongboxInstanceStableId
-                    != selectedStrongbox.InstanceStableId
-                || command.ClaimantStableId
-                    != graph.Character.CharacterInstanceStableId
-                || command.HoldingsAuthorityStableId
-                    != graph.LoadoutRuntime.Holdings.AuthorityStableId
-                || command.ScrapAuthorityStableId
-                    != graph.ScrapWallet.AuthorityStableId
-                || command.MoneyAuthorityStableId
-                    != MoneyWalletIdsV1.AuthorityStableId)
-            {
-                return Rejected(command, "durable-opening-command-context-mismatch");
-            }
-
-            string validation = ValidateExactUnopenedState(
-                graph,
-                selectedStrongbox,
-                command);
-            if (!string.IsNullOrEmpty(validation))
-            {
-                return Rejected(command, validation);
-            }
-
-            CharacterInstanceSnapshotV1 beforeCharacter = graph.Character;
-            string beforeComponentFingerprint;
-            try
-            {
-                beforeComponentFingerprint = ExportComponentFingerprint(graph);
-            }
-            catch (Exception exception)
-            {
-                return Rejected(
-                    command,
-                    "durable-opening-preflight-exception-"
-                        + exception.GetType().Name.ToLowerInvariant());
-            }
-
+            ProductionCharacterRuntimeGraphV1 graph = null;
+            PlayerAccountSnapshotV1 beforeAccount = null;
+            CharacterInstanceSnapshotV1 beforeCharacter = null;
+            string beforeComponentFingerprint = null;
             StrongboxOpeningResultRuntimeV1 result = null;
             try
             {
+                graph = composition.ActiveRuntime
+                    as ProductionCharacterRuntimeGraphV1;
+                beforeAccount = composition.Account;
+                if (selectedStrongbox == null || !selectedStrongbox.IsUnopened)
+                {
+                    return Rejected(command, "durable-opening-selection-invalid");
+                }
+                if (graph == null || graph.IsDisposed || beforeAccount == null)
+                {
+                    return Rejected(command, "durable-opening-character-unavailable");
+                }
+                if (!ReferenceEquals(openingService, graph.StrongboxAuthority))
+                {
+                    return Rejected(command, "durable-opening-stale-box-authority");
+                }
+                if (command == null
+                    || command.StrongboxInstanceStableId
+                        != selectedStrongbox.InstanceStableId
+                    || command.ClaimantStableId
+                        != graph.Character.CharacterInstanceStableId
+                    || command.HoldingsAuthorityStableId
+                        != graph.LoadoutRuntime.Holdings.AuthorityStableId
+                    || command.ScrapAuthorityStableId
+                        != graph.ScrapWallet.AuthorityStableId
+                    || command.MoneyAuthorityStableId
+                        != MoneyWalletIdsV1.AuthorityStableId)
+                {
+                    return Rejected(command, "durable-opening-command-context-mismatch");
+                }
+
+                string validation = ValidateExactUnopenedState(
+                    graph,
+                    selectedStrongbox,
+                    command);
+                if (!string.IsNullOrEmpty(validation))
+                {
+                    return Rejected(command, validation);
+                }
+
+                beforeCharacter = graph.Character;
+                beforeComponentFingerprint = ExportComponentFingerprint(graph);
                 string recoveryError;
                 if (!TryRehydrateRewardApplication(
                     graph.StrongboxRecovery,
@@ -181,7 +173,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             }
             catch (Exception exception)
             {
-                string restore = Restore(
+                string restore = RestoreIfCaptured(
                     beforeAccount,
                     graph,
                     beforeCharacter,

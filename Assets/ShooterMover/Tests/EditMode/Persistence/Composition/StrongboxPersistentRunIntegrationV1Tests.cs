@@ -6,6 +6,7 @@ using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Missions.Results;
 using ShooterMover.Application.Persistence.Accounts;
+using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Contracts.Missions.Results;

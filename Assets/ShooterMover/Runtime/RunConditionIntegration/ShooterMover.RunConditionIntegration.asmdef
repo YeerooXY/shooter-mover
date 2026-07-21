@@ -3,6 +3,7 @@
   "rootNamespace": "ShooterMover.RunConditionIntegration",
   "references": [
     "ShooterMover.Application",
+    "ShooterMover.Contracts",
     "ShooterMover.Domain",
     "ShooterMover.ConditionRuntime",
     "ShooterMover.EnemyRuntimeComposition"

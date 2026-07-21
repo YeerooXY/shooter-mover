@@ -5,6 +5,7 @@ using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
+using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.ConditionRuntime;

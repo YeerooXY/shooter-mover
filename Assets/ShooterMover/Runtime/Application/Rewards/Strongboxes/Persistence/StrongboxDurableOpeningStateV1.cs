@@ -10,6 +10,7 @@ using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
@@ -79,48 +80,83 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             CharacterInstanceSnapshotV1 beforeCharacter,
             string expectedFingerprint)
         {
-            if (string.Equals(
-                ExportComponentFingerprint(graph),
-                expectedFingerprint,
-                StringComparison.Ordinal))
+            try
             {
-                return string.Empty;
-            }
-
-            var bindings = new List<CharacterSaveRestoreBindingV1>();
-            for (int slotIndex = 0;
-                slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
-                slotIndex++)
-            {
-                CharacterInstanceSnapshotV1 character =
-                    beforeAccount.CharacterAt(slotIndex);
-                if (character == null)
+                if (beforeAccount == null
+                    || graph == null
+                    || beforeCharacter == null
+                    || string.IsNullOrWhiteSpace(expectedFingerprint))
                 {
-                    continue;
+                    return "restore-precondition-missing";
                 }
-                bindings.Add(new CharacterSaveRestoreBindingV1(
-                    slotIndex,
-                    character.CharacterInstanceStableId,
-                    slotIndex == beforeCharacter.SlotIndex
-                        ? graph.SaveAdapters
-                        : Array.Empty<ISaveComponentAdapterV1>()));
-            }
 
-            var restore = new PlayerAccountRestoreCoordinatorV1(
-                validateAggregate: PlayerAccountComponentSemanticsV1.Validate);
-            PlayerAccountRestoreResultV1 restored = restore.Restore(
-                beforeAccount,
-                bindings);
-            if (restored == null || !restored.Succeeded)
-            {
-                return restored == null
-                    ? "restore-result-null"
-                    : restored.Status + ":" + restored.RejectionCode;
+                if (string.Equals(
+                    ExportComponentFingerprint(graph),
+                    expectedFingerprint,
+                    StringComparison.Ordinal))
+                {
+                    return string.Empty;
+                }
+
+                var bindings = new List<CharacterSaveRestoreBindingV1>();
+                for (int slotIndex = 0;
+                    slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
+                    slotIndex++)
+                {
+                    CharacterInstanceSnapshotV1 character =
+                        beforeAccount.CharacterAt(slotIndex);
+                    if (character == null)
+                    {
+                        continue;
+                    }
+                    bindings.Add(new CharacterSaveRestoreBindingV1(
+                        slotIndex,
+                        character.CharacterInstanceStableId,
+                        slotIndex == beforeCharacter.SlotIndex
+                            ? graph.SaveAdapters
+                            : Array.Empty<ISaveComponentAdapterV1>()));
+                }
+
+                var restore = new PlayerAccountRestoreCoordinatorV1(
+                    validateAggregate: snapshot =>
+                        PlayerAccountComponentSemanticsV1.Validate(snapshot));
+                PlayerAccountRestoreResultV1 restored = restore.Restore(
+                    beforeAccount,
+                    bindings);
+                if (restored == null || !restored.Succeeded)
+                {
+                    return restored == null
+                        ? "restore-result-null"
+                        : restored.Status + ":" + restored.RejectionCode;
+                }
+                string actual = ExportComponentFingerprint(graph);
+                return string.Equals(actual, expectedFingerprint, StringComparison.Ordinal)
+                    ? string.Empty
+                    : "restore-fingerprint-mismatch";
             }
-            string actual = ExportComponentFingerprint(graph);
-            return string.Equals(actual, expectedFingerprint, StringComparison.Ordinal)
+            catch (Exception exception)
+            {
+                return "restore-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+            }
+        }
+
+        private static string RestoreIfCaptured(
+            PlayerAccountSnapshotV1 beforeAccount,
+            ProductionCharacterRuntimeGraphV1 graph,
+            CharacterInstanceSnapshotV1 beforeCharacter,
+            string expectedFingerprint)
+        {
+            return beforeAccount == null
+                || graph == null
+                || beforeCharacter == null
+                || string.IsNullOrWhiteSpace(expectedFingerprint)
                 ? string.Empty
-                : "restore-fingerprint-mismatch";
+                : Restore(
+                    beforeAccount,
+                    graph,
+                    beforeCharacter,
+                    expectedFingerprint);
         }
 
         private static bool ComponentsMatchGraph(

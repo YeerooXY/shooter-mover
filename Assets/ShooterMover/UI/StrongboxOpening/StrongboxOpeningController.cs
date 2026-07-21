@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Rewards.Application;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Model;
 using UnityEngine;
@@ -630,6 +632,44 @@ namespace ShooterMover.UI.StrongboxOpening
             session = new StrongboxOpeningSceneSessionV1(
                 BuildConfiguration(),
                 delegate { return StrongboxRewardRevealProjectorV1.Project(runtimePort.OpenOrContinue(), equipmentCatalog); });
+        }
+
+        /// <summary>
+        /// Binds the canonical opening screen to the selected character's durable BOX
+        /// executor. The UI remains a presentation adapter and never owns persistence.
+        /// </summary>
+        public void BindDurableRuntime(
+            StrongboxOpeningServiceV1 service,
+            StrongboxOpenCommandV1 command,
+            EquipmentCatalog catalog,
+            MissionRunStrongboxResultV1 selectedStrongbox,
+            IStrongboxDurableOpeningExecutorV1 durableExecutor)
+        {
+            if (service == null) throw new ArgumentNullException(nameof(service));
+            if (command == null) throw new ArgumentNullException(nameof(command));
+            if (selectedStrongbox == null)
+            {
+                throw new ArgumentNullException(nameof(selectedStrongbox));
+            }
+            if (durableExecutor == null)
+            {
+                throw new ArgumentNullException(nameof(durableExecutor));
+            }
+
+            runtimePort = null;
+            equipmentCatalog = catalog;
+            previewOnly = false;
+            session = new StrongboxOpeningSceneSessionV1(
+                BuildConfiguration(),
+                delegate
+                {
+                    return StrongboxRewardRevealProjectorV1.Project(
+                        durableExecutor.OpenAndPersist(
+                            selectedStrongbox,
+                            service,
+                            command),
+                        equipmentCatalog);
+                });
         }
 
         public void ConfigureForTests(

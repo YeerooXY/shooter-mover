@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards.Application;
@@ -386,7 +387,8 @@ namespace ShooterMover.Application.Flow.Production
             MissionRunStrongboxResultV1 selectedStrongbox,
             StrongboxOpeningServiceV1 openingService,
             StrongboxOpenCommandV1 command,
-            EquipmentCatalog equipmentCatalog)
+            EquipmentCatalog equipmentCatalog,
+            IStrongboxDurableOpeningExecutorV1 durableOpeningExecutor = null)
         {
             SelectedStrongbox = selectedStrongbox
                 ?? throw new ArgumentNullException(nameof(selectedStrongbox));
@@ -400,6 +402,7 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(openingService));
             Command = command ?? throw new ArgumentNullException(nameof(command));
             EquipmentCatalog = equipmentCatalog;
+            DurableOpeningExecutor = durableOpeningExecutor;
         }
 
         public MissionRunStrongboxResultV1 SelectedStrongbox { get; }
@@ -409,6 +412,8 @@ namespace ShooterMover.Application.Flow.Production
         public StrongboxOpenCommandV1 Command { get; }
 
         public EquipmentCatalog EquipmentCatalog { get; }
+
+        public IStrongboxDurableOpeningExecutorV1 DurableOpeningExecutor { get; }
     }
 
     /// <summary>
@@ -451,19 +456,34 @@ namespace ShooterMover.Application.Flow.Production
             MissionRunStrongboxResultV1 selected)
         {
             RequireExactUnopenedSelection(selected);
+            StrongboxOpeningServiceV1 authority = ResolveOpeningService();
+            IStrongboxDurableOpeningExecutorV1 durableOpeningExecutor = null;
+            if (ProductionCharacterStrongboxBridgeRegistryV1.IsConfigured
+                && !ProductionCharacterStrongboxBridgeRegistryV1
+                    .TryResolveDurableOpeningExecutor(
+                        out durableOpeningExecutor,
+                        out string rejectionCode))
+            {
+                throw new InvalidOperationException(
+                    "The selected-character durable BOX executor is unavailable: "
+                    + rejectionCode);
+            }
             return new ProductionStrongboxOpeningBindingV1(
                 selected,
-                ResolveOpeningService(),
+                authority,
                 commandFactory(selected),
-                EquipmentCatalog);
+                EquipmentCatalog,
+                durableOpeningExecutor);
         }
 
         public ProductionResultsContextV1 RefreshAfterExactOpening(
             MissionRunStrongboxResultV1 selected,
-            bool openingSucceeded)
+            bool openingSucceeded,
+            bool durablePersistenceAlreadyCompleted = false)
         {
             RequireExactUnopenedSelection(selected);
             if (openingSucceeded
+                && !durablePersistenceAlreadyCompleted
                 && ProductionCharacterStrongboxBridgeRegistryV1.IsConfigured)
             {
                 PersistCharacterOpeningAndSynchronizeRunScope();

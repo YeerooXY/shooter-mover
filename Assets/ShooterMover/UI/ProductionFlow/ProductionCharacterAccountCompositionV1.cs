@@ -93,18 +93,35 @@ namespace ShooterMover.UI.ProductionFlow
             out ProductionCharacterRuntimeGraphV1 graph,
             out ProductionFlowProfileRecordV1 profile)
         {
+            CharacterCompositionCoordinatorV1 ignored;
+            return TryResolveCurrent(
+                out graph,
+                out profile,
+                out ignored);
+        }
+
+        public static bool TryResolveCurrent(
+            out ProductionCharacterRuntimeGraphV1 graph,
+            out ProductionFlowProfileRecordV1 profile,
+            out CharacterCompositionCoordinatorV1 currentComposition)
+        {
             EnsureInstalled();
             if (instance == null || !instance.SynchronizeNow())
             {
                 graph = null;
                 profile = null;
+                currentComposition = null;
                 return false;
             }
 
             graph = instance.composition.ActiveRuntime
                 as ProductionCharacterRuntimeGraphV1;
             profile = instance.currentProfile;
-            return graph != null && profile != null && !graph.IsDisposed;
+            currentComposition = instance.composition;
+            return graph != null
+                && profile != null
+                && currentComposition != null
+                && !graph.IsDisposed;
         }
 
         public static CharacterCompositionResultV1 PersistCurrent(
@@ -188,14 +205,14 @@ namespace ShooterMover.UI.ProductionFlow
 
             legacyStore = new PlayerPrefsProductionFlowProfileStoreV1();
             string activePath = Path.Combine(
-                Application.persistentDataPath,
+                UnityEngine.Application.persistentDataPath,
                 AccountFileName);
             accountStore = new AtomicPlayerAccountStoreV1(
                 new SystemIoAtomicSaveFilePortV1(),
                 activePath,
                 activePath + TemporarySuffix,
                 activePath + BackupSuffix,
-                PlayerAccountComponentSemanticsV1.Validate);
+                snapshot => PlayerAccountComponentSemanticsV1.Validate(snapshot));
 
             PlayerAccountStoreResultV1 loaded = accountStore.Load();
             bool firstAccount = loaded != null
@@ -235,7 +252,7 @@ namespace ShooterMover.UI.ProductionFlow
                 accountAuthority,
                 graphFactory,
                 accountStore.Save,
-                PlayerAccountComponentSemanticsV1.Validate);
+                snapshot => PlayerAccountComponentSemanticsV1.Validate(snapshot));
 
             if (firstAccount)
             {

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
@@ -277,7 +278,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Is.False);
         }
 
-        private enum ThrowPointV1
+        public enum ThrowPointV1
         {
             HoldingsAfterMutation = 1,
             RegistrationAfterMutation = 2,

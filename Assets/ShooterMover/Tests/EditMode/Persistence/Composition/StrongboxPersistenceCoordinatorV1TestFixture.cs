@@ -60,7 +60,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 MissionRunCompletionStateV1.Completed,
                 boxes,
                 boxes.Length,
-                holdings.Sequence,
+                holdings.LedgerSnapshot.Sequence,
                 holdings.Fingerprint,
                 strongboxes.Sequence,
                 strongboxes.Fingerprint);
@@ -112,7 +112,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 grantId,
                 sourceId,
                 Id("operation.collect." + suffix),
-                holdings.Sequence,
+                holdings.LedgerSnapshot.Sequence,
                 holdings.Fingerprint);
             var result = new MissionRunStrongboxResultV1(
                 collection,
