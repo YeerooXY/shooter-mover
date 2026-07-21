@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using ShooterMover.Application.Modifiers;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Modifiers;

@@ -13,6 +13,7 @@ using ShooterMover.Contracts.Progression.Experience;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Economy.Scrap;
+using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Curves;
 using ShooterMover.Domain.Progression.Experience;

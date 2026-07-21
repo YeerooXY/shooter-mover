@@ -161,12 +161,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            Stage1VisibleSliceController visibleSlice =
+            Stage1VisibleSliceController fallbackVisibleSlice =
                 FindInScene<Stage1VisibleSliceController>(scene);
-            if (visibleSlice != null
-                && visibleSlice.GetComponent<Stage1PlayableLoopCompositionV1>() == null)
+            if (fallbackVisibleSlice != null
+                && fallbackVisibleSlice.GetComponent<Stage1PlayableLoopCompositionV1>() == null)
             {
-                visibleSlice.gameObject.AddComponent<Stage1PlayableLoopCompositionV1>();
+                fallbackVisibleSlice.gameObject.AddComponent<Stage1PlayableLoopCompositionV1>();
             }
         }
 
