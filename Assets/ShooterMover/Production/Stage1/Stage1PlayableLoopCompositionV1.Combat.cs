@@ -414,6 +414,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
             if (destroyed != null)
             {
+                PresentAcceptedEnemyTerminal(target, destroyed);
                 HandleEnemyDestroyed(target, identity.ParticipantId.Value, destroyed);
             }
 
