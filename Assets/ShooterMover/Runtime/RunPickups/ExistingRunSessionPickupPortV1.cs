@@ -6,14 +6,15 @@ namespace ShooterMover.RunPickups
 {
     /// <summary>
     /// Narrow adapter to the existing Run Session aggregate. The aggregate remains the
-    /// lifecycle/participant/fact-admission authority. The exact typed reward child and
-    /// collection journal remain owned by RunLocalPickupAuthorityV1.
+    /// lifecycle, participant, fact-admission, and exact collected-reward journal authority.
+    /// The pickup authority retains its own immutable projection for world reconstruction.
     /// </summary>
     public sealed class ExistingRunSessionPickupPortV1 : IRunPickupRunSessionPortV1
     {
-        private readonly RunSessionAggregateV1 aggregate;
+        private readonly IRunSessionCollectedRewardAuthorityV1 aggregate;
 
-        public ExistingRunSessionPickupPortV1(RunSessionAggregateV1 aggregate)
+        public ExistingRunSessionPickupPortV1(
+            IRunSessionCollectedRewardAuthorityV1 aggregate)
         {
             this.aggregate = aggregate
                 ?? throw new ArgumentNullException(nameof(aggregate));
@@ -22,23 +23,11 @@ namespace ShooterMover.RunPickups
         public StableId RunStableId { get { return aggregate.RunStableId; } }
         public long LifecycleGeneration { get { return aggregate.LifecycleGeneration; } }
         public long AuthoritativeTick { get { return aggregate.AuthoritativeTick; } }
-        public bool IsActive
-        {
-            get
-            {
-                return aggregate.LifecycleState
-                    == RunSessionLifecycleStateV1.Active;
-            }
-        }
-
-        public StableId PlayerActorStableId
-        {
-            get { return ExportPlayerSnapshot().ActorInstanceStableId; }
-        }
-
+        public bool IsActive { get { return aggregate.IsActive; } }
+        public StableId PlayerActorStableId { get { return aggregate.PlayerActorStableId; } }
         public StableId PlayerParticipantStableId
         {
-            get { return ExportPlayerSnapshot().ParticipantStableId; }
+            get { return aggregate.PlayerParticipantStableId; }
         }
 
         public RunPickupSessionRecordResultV1 RecordCollection(
@@ -52,108 +41,106 @@ namespace ShooterMover.RunPickups
                     "run-pickup-session-fact-null");
             }
 
+            RunPickupSnapshotV1 pickup = fact.AvailablePickup;
             RunPickupCollectionCommandV1 command = fact.Command;
-            if (command.RunStableId != aggregate.RunStableId)
-            {
-                return new RunPickupSessionRecordResultV1(
-                    RunPickupSessionRecordStatusV1.WrongRun,
-                    fact,
-                    "run-pickup-session-wrong-run");
-            }
-            if (command.RunLifecycleGeneration != aggregate.LifecycleGeneration)
-            {
-                return new RunPickupSessionRecordResultV1(
-                    RunPickupSessionRecordStatusV1.StaleLifecycle,
-                    fact,
-                    "run-pickup-session-lifecycle-mismatch");
-            }
-            if (!IsActive)
-            {
-                return new RunPickupSessionRecordResultV1(
-                    RunPickupSessionRecordStatusV1.RunEnded,
-                    fact,
-                    "run-pickup-session-run-ended");
-            }
-
-            RunPlayerRuntimeSnapshotV1 player = ExportPlayerSnapshot();
-            if (command.CollectorEntityStableId == null
-                || command.CollectorParticipantStableId == null
-                || command.CollectorEntityStableId
-                    != player.ActorInstanceStableId
-                || command.CollectorParticipantStableId
-                    != player.ParticipantStableId)
-            {
-                return new RunPickupSessionRecordResultV1(
-                    RunPickupSessionRecordStatusV1.UnauthorizedCollector,
-                    fact,
-                    "run-pickup-session-collector-unauthorized");
-            }
-
-            RunSessionFactAdmissionResultV1 admission = aggregate.AdmitFact(
-                new RunSessionFactEnvelopeV1(
-                    command.CollectionOperationStableId,
-                    command.RunStableId,
-                    command.RunLifecycleGeneration,
-                    RunSessionFactKindV1.Contact,
-                    fact.Fingerprint));
-            if (admission == null)
+            RunPickupWorldSpawnContextV1 world = pickup.WorldSpawnContext;
+            if (world == null)
             {
                 return new RunPickupSessionRecordResultV1(
                     RunPickupSessionRecordStatusV1.Rejected,
                     fact,
-                    "run-pickup-session-admission-null");
+                    "run-pickup-session-world-context-missing");
             }
 
-            switch (admission.Status)
+            RunSessionCollectedRewardV1 exactReward;
+            try
             {
-                case RunSessionFactAdmissionStatusV1.Accepted:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.Accepted,
-                        fact,
-                        string.Empty);
-                case RunSessionFactAdmissionStatusV1.ExactReplay:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.ExactReplay,
-                        fact,
-                        string.Empty);
-                case RunSessionFactAdmissionStatusV1.WrongRun:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.WrongRun,
-                        fact,
-                        admission.RejectionCode);
-                case RunSessionFactAdmissionStatusV1.StaleLifecycle:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.StaleLifecycle,
-                        fact,
-                        admission.RejectionCode);
-                case RunSessionFactAdmissionStatusV1.RunEnded:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.RunEnded,
-                        fact,
-                        admission.RejectionCode);
-                case RunSessionFactAdmissionStatusV1.ConflictingDuplicate:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.ConflictingDuplicate,
-                        fact,
-                        admission.RejectionCode);
-                default:
-                    return new RunPickupSessionRecordResultV1(
-                        RunPickupSessionRecordStatusV1.Rejected,
-                        fact,
-                        "run-pickup-session-admission-status-invalid");
+                exactReward = new RunSessionCollectedRewardV1(
+                    pickup.PickupStableId,
+                    pickup.Reward.RewardInstanceStableId,
+                    pickup.Reward.SourceGrantStableId,
+                    pickup.Batch.DropOperationStableId,
+                    pickup.Batch.TerminalEventStableId,
+                    pickup.Batch.TriggeringEventStableId,
+                    pickup.Batch.RunStableId,
+                    pickup.Batch.RunLifecycleGeneration,
+                    pickup.Batch.SourceEntityStableId,
+                    pickup.Batch.SourcePlacementStableId,
+                    pickup.Batch.SourceLifecycleGeneration,
+                    pickup.Batch.SourceDefinitionStableId,
+                    pickup.Batch.AttributedParticipantStableId,
+                    pickup.Reward.Kind,
+                    pickup.Reward.ContentStableId,
+                    pickup.Reward.Quantity,
+                    pickup.Batch.BatchFingerprint,
+                    pickup.Reward.GeneratedRewardFingerprint,
+                    world.RoomStableId,
+                    world.PositionX,
+                    world.PositionY,
+                    world.Fingerprint,
+                    pickup.Fingerprint,
+                    command.CollectorEntityStableId,
+                    command.CollectorParticipantStableId,
+                    command.CollectionOperationStableId,
+                    fact.CollectionOrder,
+                    fact.AuthoritativeTick);
             }
+            catch (Exception exception)
+            {
+                return new RunPickupSessionRecordResultV1(
+                    RunPickupSessionRecordStatusV1.Rejected,
+                    fact,
+                    "run-pickup-session-exact-record-invalid:" + exception.Message);
+            }
+
+            RunSessionRewardCollectionResultV1 result;
+            try
+            {
+                result = aggregate.RecordCollectedRunReward(exactReward);
+            }
+            catch (Exception exception)
+            {
+                return new RunPickupSessionRecordResultV1(
+                    RunPickupSessionRecordStatusV1.Rejected,
+                    fact,
+                    "run-pickup-session-exact-record-exception:" + exception.Message);
+            }
+            if (result == null)
+            {
+                return new RunPickupSessionRecordResultV1(
+                    RunPickupSessionRecordStatusV1.Rejected,
+                    fact,
+                    "run-pickup-session-exact-record-null");
+            }
+
+            return new RunPickupSessionRecordResultV1(
+                MapStatus(result.Status),
+                fact,
+                result.RejectionCode);
         }
 
-        private RunPlayerRuntimeSnapshotV1 ExportPlayerSnapshot()
+        private static RunPickupSessionRecordStatusV1 MapStatus(
+            RunSessionRewardCollectionStatusV1 status)
         {
-            RunPlayerRuntimeSnapshotV1 snapshot =
-                aggregate.RuntimePorts.Player.ExportSnapshot();
-            if (snapshot == null)
+            switch (status)
             {
-                throw new InvalidOperationException(
-                    "The Run Session player port returned no snapshot.");
+                case RunSessionRewardCollectionStatusV1.Collected:
+                    return RunPickupSessionRecordStatusV1.Accepted;
+                case RunSessionRewardCollectionStatusV1.ExactReplay:
+                    return RunPickupSessionRecordStatusV1.ExactReplay;
+                case RunSessionRewardCollectionStatusV1.ConflictingDuplicate:
+                    return RunPickupSessionRecordStatusV1.ConflictingDuplicate;
+                case RunSessionRewardCollectionStatusV1.WrongRun:
+                    return RunPickupSessionRecordStatusV1.WrongRun;
+                case RunSessionRewardCollectionStatusV1.StaleLifecycle:
+                    return RunPickupSessionRecordStatusV1.StaleLifecycle;
+                case RunSessionRewardCollectionStatusV1.RunEnded:
+                    return RunPickupSessionRecordStatusV1.RunEnded;
+                case RunSessionRewardCollectionStatusV1.UnauthorizedCollector:
+                    return RunPickupSessionRecordStatusV1.UnauthorizedCollector;
+                default:
+                    return RunPickupSessionRecordStatusV1.Rejected;
             }
-            return snapshot;
         }
     }
 

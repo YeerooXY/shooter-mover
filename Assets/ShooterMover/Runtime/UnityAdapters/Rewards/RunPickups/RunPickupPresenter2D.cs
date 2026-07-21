@@ -228,6 +228,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 
         private void OnDestroy()
         {
+            foreach (RunRewardPickup2D view in views.Values)
+            {
+                if (view != null)
+                    Destroy(view.gameObject);
+            }
             views.Clear();
         }
     }

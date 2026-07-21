@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using ShooterMover.Domain.Common;
 
 namespace ShooterMover.RunPickups
 {
@@ -22,6 +19,24 @@ namespace ShooterMover.RunPickups
 
             lock (gate)
             {
+                if (command.RunStableId != runSession.RunStableId)
+                {
+                    return RejectedCollection(
+                        RunPickupCollectionStatusV1.WrongRun,
+                        command,
+                        null,
+                        "run-pickup-collection-wrong-run");
+                }
+                if (command.RunLifecycleGeneration != runSession.LifecycleGeneration)
+                {
+                    return RejectedCollection(
+                        RunPickupCollectionStatusV1.StaleLifecycle,
+                        command,
+                        null,
+                        command.RunLifecycleGeneration < runSession.LifecycleGeneration
+                            ? "run-pickup-collection-stale-generation"
+                            : "run-pickup-collection-future-generation");
+                }
                 CollectionReplayRecord replay;
                 if (collectionReplay.TryGetValue(
                     command.CollectionOperationStableId,
@@ -47,24 +62,6 @@ namespace ShooterMover.RunPickups
                         "run-pickup-collection-operation-conflict");
                 }
 
-                if (command.RunStableId != runSession.RunStableId)
-                {
-                    return RejectedCollection(
-                        RunPickupCollectionStatusV1.WrongRun,
-                        command,
-                        null,
-                        "run-pickup-collection-wrong-run");
-                }
-                if (command.RunLifecycleGeneration != runSession.LifecycleGeneration)
-                {
-                    return RejectedCollection(
-                        RunPickupCollectionStatusV1.StaleLifecycle,
-                        command,
-                        null,
-                        command.RunLifecycleGeneration < runSession.LifecycleGeneration
-                            ? "run-pickup-collection-stale-generation"
-                            : "run-pickup-collection-future-generation");
-                }
                 if (!runSession.IsActive)
                 {
                     return RejectedCollection(

@@ -89,6 +89,24 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         }
 
         [Test]
+        public void ExactReplayAfterLifecycleAdvance_RejectsStale()
+        {
+            Fixture fixture = CreateFixture();
+            RunPickupSnapshotV1 pickup = RealizeOne(fixture);
+            RunPickupCollectionCommandV1 command = Command(pickup);
+            Assert.That(fixture.Authority.Collect(command).Status,
+                Is.EqualTo(RunPickupCollectionStatusV1.Collected));
+            fixture.Session.LifecycleGeneration = 2L;
+
+            RunPickupCollectionResultV1 staleReplay =
+                fixture.Authority.Collect(command);
+
+            Assert.That(staleReplay.Status,
+                Is.EqualTo(RunPickupCollectionStatusV1.StaleLifecycle));
+            Assert.That(fixture.Session.RecordCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
         public void WrongChildPickupPairing_Rejects()
         {
             Fixture fixture = CreateFixture();
@@ -283,7 +301,6 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(retry.Status, Is.EqualTo(RunPickupCollectionStatusV1.Collected));
             Assert.That(fixture.Authority.CollectedPickupCount, Is.EqualTo(1));
         }
-
     }
 }
 #endif
