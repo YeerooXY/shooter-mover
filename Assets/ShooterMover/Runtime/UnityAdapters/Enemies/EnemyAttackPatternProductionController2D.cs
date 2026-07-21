@@ -109,6 +109,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         private readonly Func<Vector2> sourceOriginExporter;
         private readonly Func<Vector2> sourceFacingExporter;
         private readonly Func<Vector2> targetPositionExporter;
+        private readonly IEnemyAttackPatternRunTimeV1 runTime;
         private readonly IEnemyAttackPatternLineOfSightV1 lineOfSight;
         private readonly EnemyCommittedAttackPatternExecutorV1 executor;
         private long observedLifecycle;
@@ -123,6 +124,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             Func<Vector2> sourceOriginExporter,
             Func<Vector2> sourceFacingExporter,
             Func<Vector2> targetPositionExporter,
+            IEnemyAttackPatternRunTimeV1 runTime,
             IEnemyAttackPatternLineOfSightV1 lineOfSight,
             EnemyCommittedAttackPatternExecutorV1 executor)
         {
@@ -137,6 +139,8 @@ namespace ShooterMover.UnityAdapters.Enemies
                 ?? throw new ArgumentNullException(nameof(sourceFacingExporter));
             this.targetPositionExporter = targetPositionExporter
                 ?? throw new ArgumentNullException(nameof(targetPositionExporter));
+            this.runTime = runTime
+                ?? throw new ArgumentNullException(nameof(runTime));
             this.lineOfSight = lineOfSight
                 ?? throw new ArgumentNullException(nameof(lineOfSight));
             this.executor = executor
@@ -170,7 +174,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             lifecycleCancelled = false;
             if (!target.IsActive
                 || executor.NextAvailableAtSeconds
-                    > CurrentTimeSeconds())
+                    > runTime.CurrentTimeSeconds)
             {
                 return null;
             }
@@ -259,16 +263,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                             CultureInfo.InvariantCulture)));
             executor.CancelLifecycle(
                 operationStableId,
-                CurrentTimeSeconds());
-        }
-
-        private double CurrentTimeSeconds()
-        {
-            return executor.NextAvailableAtSeconds <= 0d
-                ? 0d
-                : Math.Min(
-                    executor.NextAvailableAtSeconds,
-                    executor.NextAvailableAtSeconds);
+                runTime.CurrentTimeSeconds);
         }
 
         private static bool WithinArc(
