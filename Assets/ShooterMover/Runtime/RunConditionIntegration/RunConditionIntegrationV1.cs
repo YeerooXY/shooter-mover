@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.ConditionRuntime;
@@ -312,6 +311,9 @@ namespace ShooterMover.RunConditionIntegration
         private ConditionRuntimeAuthorityV1 authority;
         private ConditionRunDefinitionV1 definition;
         private ConditionRunDefinitionV1 prevalidatedReplacement;
+        private long? prevalidatedRetiringGeneration;
+        private long? prevalidatedReplacementGeneration;
+        private long? prevalidatedAuthoritativeTick;
         private long bootstrapTick;
         private long bootstrapGeneration;
         private long? projectedTickOverride;
@@ -408,6 +410,19 @@ namespace ShooterMover.RunConditionIntegration
             }
         }
 
+        internal bool HasPrevalidatedRestart(
+            long retiringLifecycleGeneration,
+            long replacementLifecycleGeneration,
+            long authoritativeTick)
+        {
+            return prevalidatedReplacement != null
+                && prevalidatedRetiringGeneration
+                    == retiringLifecycleGeneration
+                && prevalidatedReplacementGeneration
+                    == replacementLifecycleGeneration
+                && prevalidatedAuthoritativeTick == authoritativeTick;
+        }
+
         public void Bind(RunSessionAggregateV1 aggregate)
         {
             if (aggregate == null)
@@ -470,7 +485,9 @@ namespace ShooterMover.RunConditionIntegration
             }
 
             long previousTick = ProjectedTick;
-            projectedTickOverride = Math.Max(previousTick, command.AuthoritativeTick);
+            projectedTickOverride = Math.Max(
+                previousTick,
+                command.AuthoritativeTick);
             ConditionFactIngestionResultV1 result = authority.Ingest(
                 new AcceptedGameplayFactDeliveryV1(
                     command.OperationStableId.ToString(),
@@ -604,6 +621,7 @@ namespace ShooterMover.RunConditionIntegration
         {
             if (retiringLifecycleGeneration != LifecycleGeneration)
             {
+                ClearPrevalidatedRestart();
                 return retiringLifecycleGeneration < LifecycleGeneration
                     ? "condition-runtime-stale-generation"
                     : "condition-runtime-future-generation";
@@ -611,20 +629,34 @@ namespace ShooterMover.RunConditionIntegration
             if (replacementLifecycleGeneration
                 != retiringLifecycleGeneration + 1L)
             {
+                ClearPrevalidatedRestart();
                 return "condition-runtime-generation-invalid";
             }
             if (authoritativeTick < ProjectedTick)
             {
+                ClearPrevalidatedRestart();
                 return "condition-runtime-tick-regression";
+            }
+            if (HasPrevalidatedRestart(
+                retiringLifecycleGeneration,
+                replacementLifecycleGeneration,
+                authoritativeTick))
+            {
+                return string.Empty;
             }
             try
             {
                 prevalidatedReplacement = BuildDefinition(
                     replacementLifecycleGeneration);
+                prevalidatedRetiringGeneration =
+                    retiringLifecycleGeneration;
+                prevalidatedReplacementGeneration =
+                    replacementLifecycleGeneration;
+                prevalidatedAuthoritativeTick = authoritativeTick;
             }
             catch (Exception exception)
             {
-                prevalidatedReplacement = null;
+                ClearPrevalidatedRestart();
                 return "condition-runtime-reconstruction-prevalidation-failed:"
                     + exception.GetType().Name;
             }
@@ -637,10 +669,17 @@ namespace ShooterMover.RunConditionIntegration
             long replacementLifecycleGeneration,
             long authoritativeTick)
         {
-            string rejection = ValidateRestart(
+            string rejection = string.Empty;
+            if (!HasPrevalidatedRestart(
                 retiringLifecycleGeneration,
                 replacementLifecycleGeneration,
-                authoritativeTick);
+                authoritativeTick))
+            {
+                rejection = ValidateRestart(
+                    retiringLifecycleGeneration,
+                    replacementLifecycleGeneration,
+                    authoritativeTick);
+            }
             if (!string.IsNullOrEmpty(rejection))
             {
                 return new RunRuntimePortRestartResultV1(
@@ -650,6 +689,7 @@ namespace ShooterMover.RunConditionIntegration
                     SnapshotFingerprint);
             }
 
+            ConditionRunDefinitionV1 replacement = prevalidatedReplacement;
             projectedGenerationOverride = replacementLifecycleGeneration;
             projectedTickOverride = authoritativeTick;
             ConditionRunReconstructionResultV1 result = authority.Reconstruct(
@@ -657,7 +697,7 @@ namespace ShooterMover.RunConditionIntegration
                     operationStableId + ":condition-reconstruct",
                     runStableId,
                     retiringLifecycleGeneration,
-                    prevalidatedReplacement));
+                    replacement));
             bool succeeded = result.Status
                     == ConditionFactIngestionStatusV1.Applied
                 || result.Status
@@ -666,7 +706,7 @@ namespace ShooterMover.RunConditionIntegration
             {
                 projectedGenerationOverride = null;
                 projectedTickOverride = null;
-                prevalidatedReplacement = null;
+                ClearPrevalidatedRestart();
                 return new RunRuntimePortRestartResultV1(
                     false,
                     result.DiagnosticCode,
@@ -674,11 +714,11 @@ namespace ShooterMover.RunConditionIntegration
                     SnapshotFingerprint);
             }
 
-            definition = prevalidatedReplacement;
-            prevalidatedReplacement = null;
+            definition = replacement;
             bootstrapGeneration = replacementLifecycleGeneration;
             bootstrapTick = authoritativeTick;
             advancePresentationReplay.Clear();
+            ClearPrevalidatedRestart();
             return new RunRuntimePortRestartResultV1(
                 true,
                 string.Empty,
@@ -700,7 +740,8 @@ namespace ShooterMover.RunConditionIntegration
                 throw new InvalidOperationException(
                     "Condition participants were not resolved.");
             }
-            var participants = new List<ConditionRuntimeParticipantDefinitionV1>();
+            var participants =
+                new List<ConditionRuntimeParticipantDefinitionV1>();
             foreach (RunConditionParticipantSeedV1 seed in seeds)
             {
                 ConditionEffectRuntimeDefinitionV1 runtimeDefinition =
@@ -776,6 +817,14 @@ namespace ShooterMover.RunConditionIntegration
                 command,
                 diagnostic,
                 ExportConditionSnapshot());
+        }
+
+        private void ClearPrevalidatedRestart()
+        {
+            prevalidatedReplacement = null;
+            prevalidatedRetiringGeneration = null;
+            prevalidatedReplacementGeneration = null;
+            prevalidatedAuthoritativeTick = null;
         }
 
         private static RunConditionDeliveryStatusV1 Map(
@@ -858,10 +907,17 @@ namespace ShooterMover.RunConditionIntegration
             long replacementLifecycleGeneration,
             long authoritativeTick)
         {
-            string rejection = ValidateRestart(
+            string rejection = string.Empty;
+            if (!conditionRuntime.HasPrevalidatedRestart(
                 retiringLifecycleGeneration,
                 replacementLifecycleGeneration,
-                authoritativeTick);
+                authoritativeTick))
+            {
+                rejection = conditionRuntime.ValidateRestart(
+                    retiringLifecycleGeneration,
+                    replacementLifecycleGeneration,
+                    authoritativeTick);
+            }
             return new RunRuntimePortRestartResultV1(
                 string.IsNullOrEmpty(rejection),
                 rejection,
