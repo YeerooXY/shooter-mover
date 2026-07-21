@@ -1,15 +1,15 @@
-us    System;
-us    System.Collections.Generic;
-us    System.Linq;
-us    NUnit.Framework;
-us    ShooterMover.Application.Runs.Session;
-us    ShooterMover.Contracts.Flow.Session;
-us    ShooterMover.Contracts.Missions.Results;
-us    ShooterMover.Domain.Characters.Stats;
-us    ShooterMover.Domain.Common;
-us    ShooterMover.Domain.Equipment;
-us    ShooterMover.Domain.Persistence.Accounts;
-us    ShooterMover.Domain.Progression.Skills;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using ShooterMover.Application.Runs.Session;
+using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Missions.Results;
+using ShooterMover.Domain.Characters.Stats;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Persistence.Accounts;
+using ShooterMover.Domain.Progression.Skills;
 
 namespace ShooterMover.Tests.EditMode.RunSessions
 {
