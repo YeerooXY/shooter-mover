@@ -160,9 +160,7 @@ namespace ShooterMover.Tests.EditMode.Architecture
             Assert.That(
                 unknownCapability.Issues.Any(issue =>
                     issue.Code == "enemy-catalog-attack-capability-unknown"
-                    && issue.Path.EndsWith(
-                        ".attacks[0].capability",
-                        StringComparison.Ordinal)),
+                    && issue.Path == "$.definitions[0].attacks[0].capability"),
                 Is.True,
                 FirstEnemyIssue(unknownCapability));
         }
@@ -253,6 +251,9 @@ namespace ShooterMover.Tests.EditMode.Architecture
                 references);
             Assert.That(unknownKey.IsValid, Is.False);
             Assert.That(unknownKey.Definition, Is.Null);
+            Assert.That(
+                unknownKey.Issues[0].Code,
+                Is.EqualTo("room-access-holding-reference-unknown"));
             Assert.That(unknownKey.Issues[0].Path, Is.EqualTo("$.conditions[0].subject"));
         }
 
