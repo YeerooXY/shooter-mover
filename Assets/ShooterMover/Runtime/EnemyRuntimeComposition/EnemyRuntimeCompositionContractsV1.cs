@@ -381,6 +381,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             StableId sourceEntityStableId,
             StableId sourceRunParticipantStableId,
             StableId targetEntityStableId,
+            long observedTargetLifecycleGeneration,
             long sourceLifecycleGeneration,
             double damage,
             StableId damageChannelStableId,
@@ -395,6 +396,8 @@ namespace ShooterMover.EnemyRuntimeComposition
                 ?? throw new ArgumentNullException(nameof(sourceRunParticipantStableId));
             TargetEntityStableId = targetEntityStableId
                 ?? throw new ArgumentNullException(nameof(targetEntityStableId));
+            if (observedTargetLifecycleGeneration <= 0L)
+                throw new ArgumentOutOfRangeException(nameof(observedTargetLifecycleGeneration));
             if (sourceLifecycleGeneration <= 0L)
                 throw new ArgumentOutOfRangeException(nameof(sourceLifecycleGeneration));
             if (double.IsNaN(damage) || double.IsInfinity(damage) || damage <= 0d)
@@ -402,6 +405,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             DamageChannelStableId = damageChannelStableId
                 ?? throw new ArgumentNullException(nameof(damageChannelStableId));
             CommittedIntent = committedIntent ?? throw new ArgumentNullException(nameof(committedIntent));
+            ObservedTargetLifecycleGeneration = observedTargetLifecycleGeneration;
             SourceLifecycleGeneration = sourceLifecycleGeneration;
             Damage = damage;
         }
@@ -411,6 +415,7 @@ namespace ShooterMover.EnemyRuntimeComposition
         public StableId SourceEntityStableId { get; }
         public StableId SourceRunParticipantStableId { get; }
         public StableId TargetEntityStableId { get; }
+        public long ObservedTargetLifecycleGeneration { get; }
         public long SourceLifecycleGeneration { get; }
         public double Damage { get; }
         public StableId DamageChannelStableId { get; }
