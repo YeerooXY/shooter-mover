@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Strongboxes;
