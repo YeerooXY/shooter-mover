@@ -80,9 +80,10 @@ namespace ShooterMover.Application.Persistence.Composition
     }
 
     /// <summary>
-    /// Account-to-Hub composition boundary. It restores only the selected exact account
-    /// slot through SAVE-ADAPTERS-001, keeps all other slots opaque, and persists confirmed
-    /// mutations through PlayerAccountSaveAuthorityV1 plus the injected atomic store.
+    /// Account-to-Hub composition boundary. Selection first durably persists any active
+    /// graph, then disposes it, restores only the exact target slot through
+    /// SAVE-ADAPTERS-001, and keeps every other slot opaque. A failed pre-switch save
+    /// rejects selection without unbinding the current graph.
     /// </summary>
     public sealed class CharacterCompositionCoordinatorV1 : IDisposable
     {
@@ -166,8 +167,31 @@ namespace ShooterMover.Application.Persistence.Composition
                 return Reject("character-selection-slot-empty", null);
             }
 
-            // A previous graph may contain subscriptions, transient command replay state,
-            // and scene bindings. It must be fully gone before a new graph is constructed.
+            if (activeRuntime != null && !activeRuntime.IsDisposed)
+            {
+                CharacterCompositionResultV1 persisted = PersistActive(
+                    SwitchSaveOperationId(slotIndex, selected));
+                if (persisted == null || !persisted.Succeeded)
+                {
+                    return Reject(
+                        persisted == null
+                            ? "character-switch-save-result-null"
+                            : "character-switch-save-rejected:"
+                                + persisted.Diagnostic,
+                        selected);
+                }
+                account = accountAuthority.Current;
+                selected = account.CharacterAt(slotIndex);
+                if (selected == null)
+                {
+                    return Reject(
+                        "character-selection-slot-disappeared-after-save",
+                        null);
+                }
+            }
+
+            // The old graph is disposed only after persistence succeeded. It is fully gone
+            // before the target graph factory can construct subscriptions or scene bindings.
             UnbindActive();
 
             ICharacterRuntimeGraphV1 candidate = null;
@@ -482,29 +506,52 @@ namespace ShooterMover.Application.Persistence.Composition
             return bindings;
         }
 
+        private StableId SwitchSaveOperationId(
+            int targetSlotIndex,
+            CharacterInstanceSnapshotV1 target)
+        {
+            string material = activeSlotIndex
+                + "|"
+                + activeRuntime.Character.CharacterInstanceStableId
+                + "|"
+                + targetSlotIndex
+                + "|"
+                + target.CharacterInstanceStableId;
+            return DerivedOperationId(
+                "operation.character-switch-save-",
+                material);
+        }
+
         private static StableId ComponentOperationId(
             StableId saveOperationStableId,
             SaveComponentSnapshotV1 component,
             int index)
         {
-            string material = saveOperationStableId
-                + "|"
-                + component.ComponentStableId
-                + "|"
-                + component.Fingerprint
-                + "|"
-                + index;
+            return DerivedOperationId(
+                "operation.character-component-save-",
+                saveOperationStableId
+                    + "|"
+                    + component.ComponentStableId
+                    + "|"
+                    + component.Fingerprint
+                    + "|"
+                    + index);
+        }
+
+        private static StableId DerivedOperationId(
+            string prefix,
+            string material)
+        {
             using (SHA256 sha = SHA256.Create())
             {
                 byte[] digest = sha.ComputeHash(
-                    Encoding.UTF8.GetBytes(material));
+                    Encoding.UTF8.GetBytes(material ?? string.Empty));
                 var builder = new StringBuilder(32);
                 for (int offset = 0; offset < 16; offset++)
                 {
                     builder.Append(digest[offset].ToString("x2"));
                 }
-                return StableId.Parse(
-                    "operation.character-component-save-" + builder);
+                return StableId.Parse(prefix + builder);
             }
         }
 
