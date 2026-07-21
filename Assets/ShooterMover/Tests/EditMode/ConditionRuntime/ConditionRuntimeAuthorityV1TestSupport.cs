@@ -35,8 +35,10 @@ namespace ShooterMover.Tests.EditMode.ConditionRuntime
 
             ConditionFactIngestionResultV1 result = runtime.Ingest(unsupported);
 
-            Assert.That(result.Status, Is.EqualTo(ConditionFactIngestionStatusV1.Rejected));
-            Assert.That(result.DiagnosticCode, Is.EqualTo("condition-fact-type-unsupported"));
+            Assert.That(result.Status,
+                Is.EqualTo(ConditionFactIngestionStatusV1.Rejected));
+            Assert.That(result.DiagnosticCode,
+                Is.EqualTo("condition-fact-type-unsupported"));
             Assert.That(result.Snapshot.AcceptedFacts, Is.Empty);
         }
 
@@ -111,12 +113,22 @@ namespace ShooterMover.Tests.EditMode.ConditionRuntime
             EnemyDeathFactV1 third = Death("run.alpha", "a", 3, 1L);
             firstPorts.CurrentTick = 6L;
             ConditionFactIngestionResultV1 replay = first.Ingest(
-                Delivery("delivery.a.3", third, "run.alpha", "a", 1L, 6L));
+                Delivery(
+                    "delivery.a.3",
+                    third,
+                    "run.alpha",
+                    "a",
+                    1L,
+                    6L));
 
-            Assert.That(first.Snapshot.Fingerprint, Is.EqualTo(second.Snapshot.Fingerprint));
+            Assert.That(first.Snapshot.Fingerprint,
+                Is.EqualTo(second.Snapshot.Fingerprint));
             Assert.That(replay.Snapshot.Fingerprint, Is.EqualTo(beforeDuplicate));
-            Assert.That(first.Snapshot.AcceptedFacts.Select(item => item.Fingerprint),
-                Is.EqualTo(second.Snapshot.AcceptedFacts.Select(item => item.Fingerprint)));
+            Assert.That(
+                first.Snapshot.AcceptedFacts.Select(item => item.Fingerprint),
+                Is.EqualTo(
+                    second.Snapshot.AcceptedFacts.Select(
+                        item => item.Fingerprint)));
         }
 
         private static ConditionRuntimeAuthorityV1 CreateRuntime(
@@ -317,7 +329,9 @@ namespace ShooterMover.Tests.EditMode.ConditionRuntime
             public StableId ObjectiveId { get; }
         }
 
-        private sealed class ObjectiveFactAdapter : IAcceptedGameplayFactAdapterV1
+        private sealed class ObjectiveFactAdapter :
+            IAcceptedGameplayFactAdapterV1,
+            IAcceptedGameplayFactSourceFingerprintV1
         {
             public Type SourceFactRuntimeType
             {
@@ -327,6 +341,16 @@ namespace ShooterMover.Tests.EditMode.ConditionRuntime
             public string SourceFactTypeId
             {
                 get { return "objective-runtime.collected-v1"; }
+            }
+
+            public string ComputeSourceFactFingerprint(object sourceFact)
+            {
+                ObjectiveFact fact = sourceFact as ObjectiveFact;
+                if (fact == null)
+                    throw new ArgumentException(
+                        "The objective adapter can fingerprint only ObjectiveFact values.",
+                        nameof(sourceFact));
+                return ConditionSourceFactFingerprintV1.Compute(fact);
             }
 
             public bool TryAdapt(

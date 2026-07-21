@@ -12,9 +12,11 @@ namespace ShooterMover.ConditionRuntime
     {
         private sealed class ParticipantRuntime
         {
-            public ParticipantRuntime(ConditionRuntimeParticipantDefinitionV1 definition)
+            public ParticipantRuntime(
+                ConditionRuntimeParticipantDefinitionV1 definition)
             {
-                Definition = definition;
+                Definition = definition
+                    ?? throw new ArgumentNullException(nameof(definition));
                 Conditions = new FactWindowConditionAuthorityV1(
                     definition.ParticipantId.ToString(),
                     definition.RuntimeDefinition.Conditions);
@@ -34,7 +36,9 @@ namespace ShooterMover.ConditionRuntime
 
         private sealed class DeliveryReplayRecord
         {
-            public DeliveryReplayRecord(string fingerprint, ConditionFactIngestionResultV1 result)
+            public DeliveryReplayRecord(
+                string fingerprint,
+                ConditionFactIngestionResultV1 result)
             {
                 Fingerprint = fingerprint;
                 Result = result;
@@ -44,9 +48,25 @@ namespace ShooterMover.ConditionRuntime
             public ConditionFactIngestionResultV1 Result { get; }
         }
 
+        private sealed class AdvanceReplayRecord
+        {
+            public AdvanceReplayRecord(
+                string fingerprint,
+                ConditionRuntimeSnapshotV1 snapshot)
+            {
+                Fingerprint = fingerprint;
+                Snapshot = snapshot;
+            }
+
+            public string Fingerprint { get; }
+            public ConditionRuntimeSnapshotV1 Snapshot { get; }
+        }
+
         private sealed class ReconstructionReplayRecord
         {
-            public ReconstructionReplayRecord(string fingerprint, ConditionRunReconstructionResultV1 result)
+            public ReconstructionReplayRecord(
+                string fingerprint,
+                ConditionRunReconstructionResultV1 result)
             {
                 Fingerprint = fingerprint;
                 Result = result;
@@ -61,24 +81,22 @@ namespace ShooterMover.ConditionRuntime
         private readonly AcceptedGameplayFactAdapterRegistryV1 adapters;
         private readonly Dictionary<string, DeliveryReplayRecord> deliveryReplay =
             new Dictionary<string, DeliveryReplayRecord>(StringComparer.Ordinal);
-        private readonly Dictionary<string, ConditionObservedGameplayFactV1> acceptedBySourceFact =
-            new Dictionary<string, ConditionObservedGameplayFactV1>(StringComparer.Ordinal);
-        private sealed class AdvanceReplayRecord
-        {
-            public AdvanceReplayRecord(string fingerprint, ConditionRuntimeSnapshotV1 snapshot)
-            {
-                Fingerprint = fingerprint;
-                Snapshot = snapshot;
-            }
-
-            public string Fingerprint { get; }
-            public ConditionRuntimeSnapshotV1 Snapshot { get; }
-        }
-
+        private readonly Dictionary<string, ConditionObservedGameplayFactV1>
+            acceptedBySourceFact = new Dictionary<
+                string,
+                ConditionObservedGameplayFactV1>(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> acceptedSourceFingerprints =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly Dictionary<string, ConditionFactIngestionResultV1>
+            acceptedResultBySourceFact = new Dictionary<
+                string,
+                ConditionFactIngestionResultV1>(StringComparer.Ordinal);
         private readonly Dictionary<string, AdvanceReplayRecord> advanceReplay =
             new Dictionary<string, AdvanceReplayRecord>(StringComparer.Ordinal);
-        private readonly Dictionary<string, ReconstructionReplayRecord> reconstructionReplay =
-            new Dictionary<string, ReconstructionReplayRecord>(StringComparer.Ordinal);
+        private readonly Dictionary<string, ReconstructionReplayRecord>
+            reconstructionReplay = new Dictionary<
+                string,
+                ReconstructionReplayRecord>(StringComparer.Ordinal);
         private Dictionary<string, ParticipantRuntime> participants;
         private ConditionRunDefinitionV1 definition;
 
@@ -89,13 +107,20 @@ namespace ShooterMover.ConditionRuntime
             ConditionRunDefinitionV1 definition)
         {
             this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
-            this.lifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
-            this.adapters = adapters ?? throw new ArgumentNullException(nameof(adapters));
-            this.definition = definition ?? throw new ArgumentNullException(nameof(definition));
+            this.lifecycle = lifecycle
+                ?? throw new ArgumentNullException(nameof(lifecycle));
+            this.adapters = adapters
+                ?? throw new ArgumentNullException(nameof(adapters));
+            this.definition = definition
+                ?? throw new ArgumentNullException(nameof(definition));
             if (clock.CurrentTick < 0L)
-                throw new ArgumentException("The authoritative run tick cannot be negative.", nameof(clock));
+                throw new ArgumentException(
+                    "The authoritative run tick cannot be negative.",
+                    nameof(clock));
             if (!MatchesLifecycle(definition.Lifecycle, lifecycle.Current))
-                throw new ArgumentException("The condition runtime definition must match the current run lifecycle.", nameof(definition));
+                throw new ArgumentException(
+                    "The condition runtime definition must match the current run lifecycle.",
+                    nameof(definition));
             participants = BuildParticipants(definition);
         }
 
@@ -104,99 +129,152 @@ namespace ShooterMover.ConditionRuntime
             get { return BuildSnapshot(); }
         }
 
-        public ConditionFactIngestionResultV1 Ingest(AcceptedGameplayFactDeliveryV1 delivery)
+        public ConditionFactIngestionResultV1 Ingest(
+            AcceptedGameplayFactDeliveryV1 delivery)
         {
             if (delivery == null)
-                return Rejected("condition-fact-delivery-null", null, null);
+                return Rejected(
+                    "condition-fact-delivery-null",
+                    null,
+                    null);
 
+            string genericSourceFingerprint =
+                ConditionSourceFactFingerprintV1.Compute(delivery.SourceFact);
             IAcceptedGameplayFactAdapterV1 adapter;
             if (!adapters.TryResolve(delivery.SourceFact.GetType(), out adapter))
             {
-                string unsupportedFingerprint = DeliveryEnvelopeFingerprint(
-                    delivery,
-                    "unsupported|" + delivery.SourceFact.GetType().FullName);
                 return ResolveOrStoreRejectedDelivery(
                     delivery.DeliveryOperationId,
-                    unsupportedFingerprint,
+                    DeliveryReplayFingerprint(
+                        delivery,
+                        genericSourceFingerprint,
+                        "unsupported|"
+                        + (delivery.SourceFact.GetType().FullName
+                            ?? delivery.SourceFact.GetType().Name)),
                     "condition-fact-type-unsupported",
                     null);
             }
 
-            ConditionObservedGameplayFactV1 observed;
-            string adapterDiagnostic;
-            if (!adapter.TryAdapt(delivery, out observed, out adapterDiagnostic))
+            IAcceptedGameplayFactSourceFingerprintV1 fingerprintAdapter =
+                adapter as IAcceptedGameplayFactSourceFingerprintV1;
+            if (fingerprintAdapter == null)
             {
-                string rejectedFingerprint = DeliveryEnvelopeFingerprint(
-                    delivery,
-                    "adapter-rejected|" + adapter.SourceFactTypeId + "|"
-                    + (adapterDiagnostic ?? string.Empty));
                 return ResolveOrStoreRejectedDelivery(
                     delivery.DeliveryOperationId,
-                    rejectedFingerprint,
+                    DeliveryReplayFingerprint(
+                        delivery,
+                        genericSourceFingerprint,
+                        "adapter-fingerprint-missing|"
+                        + adapter.SourceFactTypeId),
+                    "condition-fact-adapter-source-fingerprint-missing",
+                    null);
+            }
+            string sourceFactFingerprint =
+                fingerprintAdapter.ComputeSourceFactFingerprint(
+                    delivery.SourceFact);
+            if (string.IsNullOrWhiteSpace(sourceFactFingerprint))
+            {
+                return ResolveOrStoreRejectedDelivery(
+                    delivery.DeliveryOperationId,
+                    DeliveryReplayFingerprint(
+                        delivery,
+                        genericSourceFingerprint,
+                        "adapter-fingerprint-invalid|"
+                        + adapter.SourceFactTypeId),
+                    "condition-fact-adapter-source-fingerprint-invalid",
+                    null);
+            }
+            sourceFactFingerprint = sourceFactFingerprint.Trim();
+
+            ConditionObservedGameplayFactV1 observed;
+            string adapterDiagnostic;
+            if (!adapter.TryAdapt(
+                delivery,
+                out observed,
+                out adapterDiagnostic))
+            {
+                return ResolveOrStoreRejectedDelivery(
+                    delivery.DeliveryOperationId,
+                    DeliveryReplayFingerprint(
+                        delivery,
+                        sourceFactFingerprint,
+                        "adapter-rejected|" + adapter.SourceFactTypeId + "|"
+                        + (adapterDiagnostic ?? string.Empty)),
                     string.IsNullOrWhiteSpace(adapterDiagnostic)
                         ? "condition-fact-adapter-rejected"
                         : adapterDiagnostic,
                     observed);
             }
 
-            string deliveryFingerprint = ConditionRuntimeHashV1.Hash(
-                delivery.DeliveryOperationId + "|" + observed.Fingerprint);
+            string deliveryFingerprint = DeliveryReplayFingerprint(
+                delivery,
+                sourceFactFingerprint,
+                "accepted|" + adapter.SourceFactTypeId + "|"
+                + observed.Fingerprint);
             DeliveryReplayRecord priorDelivery;
-            if (deliveryReplay.TryGetValue(delivery.DeliveryOperationId, out priorDelivery))
+            if (deliveryReplay.TryGetValue(
+                delivery.DeliveryOperationId,
+                out priorDelivery))
             {
-                if (!string.Equals(priorDelivery.Fingerprint, deliveryFingerprint, StringComparison.Ordinal))
+                if (!string.Equals(
+                    priorDelivery.Fingerprint,
+                    deliveryFingerprint,
+                    StringComparison.Ordinal))
                 {
-                    return new ConditionFactIngestionResultV1(
-                        ConditionFactIngestionStatusV1.ConflictingDuplicate,
+                    return Conflict(
                         "condition-delivery-operation-conflicting-duplicate",
                         observed,
-                        null,
-                        null,
-                        BuildSnapshot());
+                        priorDelivery.Result.Snapshot);
                 }
-                return Duplicate(priorDelivery.Result, observed);
+                return Duplicate(priorDelivery.Result);
             }
 
-            ConditionFactIngestionResultV1 validationFailure = ValidateObserved(observed);
+            ConditionFactIngestionResultV1 validationFailure =
+                ValidateObserved(observed);
             if (validationFailure != null)
             {
-                deliveryReplay.Add(
+                StoreDeliveryReplay(
                     delivery.DeliveryOperationId,
-                    new DeliveryReplayRecord(deliveryFingerprint, validationFailure));
+                    deliveryFingerprint,
+                    validationFailure);
                 return validationFailure;
             }
 
             ConditionObservedGameplayFactV1 priorSource;
-            if (acceptedBySourceFact.TryGetValue(observed.SourceFactId, out priorSource))
+            if (acceptedBySourceFact.TryGetValue(
+                observed.SourceFactId,
+                out priorSource))
             {
+                ConditionFactIngestionResultV1 priorSourceResult =
+                    acceptedResultBySourceFact[observed.SourceFactId];
                 ConditionFactIngestionResultV1 duplicate;
-                if (!string.Equals(priorSource.Fingerprint, observed.Fingerprint, StringComparison.Ordinal))
+                if (!string.Equals(
+                        acceptedSourceFingerprints[observed.SourceFactId],
+                        sourceFactFingerprint,
+                        StringComparison.Ordinal)
+                    || !string.Equals(
+                        priorSource.Fingerprint,
+                        observed.Fingerprint,
+                        StringComparison.Ordinal))
                 {
-                    duplicate = new ConditionFactIngestionResultV1(
-                        ConditionFactIngestionStatusV1.ConflictingDuplicate,
+                    duplicate = Conflict(
                         "condition-source-fact-conflicting-duplicate",
                         observed,
-                        null,
-                        null,
-                        BuildSnapshot());
+                        priorSourceResult.Snapshot);
                 }
                 else
                 {
-                    duplicate = new ConditionFactIngestionResultV1(
-                        ConditionFactIngestionStatusV1.ExactDuplicateNoChange,
-                        string.Empty,
-                        priorSource,
-                        null,
-                        null,
-                        BuildSnapshot());
+                    duplicate = Duplicate(priorSourceResult);
                 }
-                deliveryReplay.Add(
+                StoreDeliveryReplay(
                     delivery.DeliveryOperationId,
-                    new DeliveryReplayRecord(deliveryFingerprint, duplicate));
+                    deliveryFingerprint,
+                    duplicate);
                 return duplicate;
             }
 
-            ParticipantRuntime participant = participants[observed.SubjectParticipantId.ToString()];
+            ParticipantRuntime participant =
+                participants[observed.SubjectParticipantId.ToString()];
             RuntimeObservedFactResultV1 conditionResult =
                 participant.Conditions.Apply(observed.ToObservedFact());
             if (conditionResult.Status != RuntimeObservedFactStatusV1.Applied)
@@ -210,18 +288,21 @@ namespace ShooterMover.ConditionRuntime
                     conditionResult,
                     null,
                     BuildSnapshot());
-                deliveryReplay.Add(
+                StoreDeliveryReplay(
                     delivery.DeliveryOperationId,
-                    new DeliveryReplayRecord(deliveryFingerprint, rejected));
+                    deliveryFingerprint,
+                    rejected);
                 return rejected;
             }
 
             var effectResults = new List<StatusEffectCommandResultV1>();
-            foreach (RuntimeConditionActivationFactV1 activation in conditionResult.Activations)
+            foreach (RuntimeConditionActivationFactV1 activation in
+                conditionResult.Activations)
             {
                 ApplyStatusEffectCommandV1 command;
                 string effectOperationId = "condition-effect:"
-                    + observed.SourceFactId + ":" + activation.ConditionId + ":" + activation.Fingerprint;
+                    + observed.SourceFactId + ":" + activation.ConditionId + ":"
+                    + activation.Fingerprint;
                 if (!participant.Bridge.TryCreateApplyCommand(
                     activation,
                     effectOperationId,
@@ -235,13 +316,15 @@ namespace ShooterMover.ConditionRuntime
                         conditionResult,
                         effectResults,
                         BuildSnapshot());
-                    deliveryReplay.Add(
+                    StoreDeliveryReplay(
                         delivery.DeliveryOperationId,
-                        new DeliveryReplayRecord(deliveryFingerprint, bridgeRejected));
+                        deliveryFingerprint,
+                        bridgeRejected);
                     return bridgeRejected;
                 }
 
-                StatusEffectCommandResultV1 effectResult = participant.StatusEffects.Apply(command);
+                StatusEffectCommandResultV1 effectResult =
+                    participant.StatusEffects.Apply(command);
                 effectResults.Add(effectResult);
                 if (!effectResult.IsAccepted)
                 {
@@ -254,14 +337,18 @@ namespace ShooterMover.ConditionRuntime
                         conditionResult,
                         effectResults,
                         BuildSnapshot());
-                    deliveryReplay.Add(
+                    StoreDeliveryReplay(
                         delivery.DeliveryOperationId,
-                        new DeliveryReplayRecord(deliveryFingerprint, effectRejected));
+                        deliveryFingerprint,
+                        effectRejected);
                     return effectRejected;
                 }
             }
 
             acceptedBySourceFact.Add(observed.SourceFactId, observed);
+            acceptedSourceFingerprints.Add(
+                observed.SourceFactId,
+                sourceFactFingerprint);
             var applied = new ConditionFactIngestionResultV1(
                 ConditionFactIngestionStatusV1.Applied,
                 string.Empty,
@@ -269,42 +356,75 @@ namespace ShooterMover.ConditionRuntime
                 conditionResult,
                 effectResults,
                 BuildSnapshot());
-            deliveryReplay.Add(
+            acceptedResultBySourceFact.Add(observed.SourceFactId, applied);
+            StoreDeliveryReplay(
                 delivery.DeliveryOperationId,
-                new DeliveryReplayRecord(deliveryFingerprint, applied));
+                deliveryFingerprint,
+                applied);
             return applied;
         }
 
         public ConditionRuntimeSnapshotV1 Advance(string operationId)
         {
             if (string.IsNullOrWhiteSpace(operationId))
-                throw new ArgumentException("A condition-runtime advance operation identity is required.", nameof(operationId));
+                throw new ArgumentException(
+                    "A condition-runtime advance operation identity is required.",
+                    nameof(operationId));
             EnsureLifecycleCurrent();
             long tick = clock.CurrentTick;
-            if (tick < 0L) throw new InvalidOperationException("The authoritative run tick cannot be negative.");
+            if (tick < 0L)
+                throw new InvalidOperationException(
+                    "The authoritative run tick cannot be negative.");
 
-            string fingerprint = ConditionRuntimeHashV1.Hash(operationId.Trim() + "|" + tick.ToString(CultureInfo.InvariantCulture));
+            string normalizedOperationId = operationId.Trim();
+            string fingerprint = ConditionRuntimeHashV1.Hash(
+                normalizedOperationId + "|"
+                + tick.ToString(CultureInfo.InvariantCulture));
             AdvanceReplayRecord prior;
-            if (advanceReplay.TryGetValue(operationId.Trim(), out prior))
+            if (advanceReplay.TryGetValue(normalizedOperationId, out prior))
             {
-                if (!string.Equals(prior.Fingerprint, fingerprint, StringComparison.Ordinal))
-                    throw new InvalidOperationException("A condition-runtime advance operation was reused with conflicting facts.");
+                if (!string.Equals(
+                    prior.Fingerprint,
+                    fingerprint,
+                    StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "A condition-runtime advance operation was reused with conflicting facts.");
+                }
                 return prior.Snapshot;
             }
 
-            foreach (ParticipantRuntime participant in participants.Values
-                .OrderBy(item => item.Definition.ParticipantId.ToString(), StringComparer.Ordinal))
+            List<ParticipantRuntime> ordered = participants.Values
+                .OrderBy(
+                    item => item.Definition.ParticipantId.ToString(),
+                    StringComparer.Ordinal)
+                .ToList();
+            PrevalidateAdvance(ordered, tick);
+
+            foreach (ParticipantRuntime participant in ordered)
             {
-                participant.StatusEffects.Advance(
-                    new AdvanceStatusEffectTickCommandV1(
-                        operationId.Trim() + ":" + participant.Definition.ParticipantId,
-                        participant.Definition.ParticipantId.ToString(),
-                        checked((int)participant.Definition.ActorLifecycleGeneration),
-                        tick));
+                StatusEffectCommandResultV1 result =
+                    participant.StatusEffects.Advance(
+                        new AdvanceStatusEffectTickCommandV1(
+                            normalizedOperationId + ":"
+                            + participant.Definition.ParticipantId,
+                            participant.Definition.ParticipantId.ToString(),
+                            checked((int)participant.Definition
+                                .ActorLifecycleGeneration),
+                            tick));
+                if (!result.IsAccepted)
+                {
+                    throw new InvalidOperationException(
+                        "condition-runtime-advance-downstream-rejected:"
+                        + (string.IsNullOrEmpty(result.RejectionCode)
+                            ? "unknown"
+                            : result.RejectionCode));
+                }
             }
+
             ConditionRuntimeSnapshotV1 snapshot = BuildSnapshot();
             advanceReplay.Add(
-                operationId.Trim(),
+                normalizedOperationId,
                 new AdvanceReplayRecord(fingerprint, snapshot));
             return snapshot;
         }
@@ -313,20 +433,25 @@ namespace ShooterMover.ConditionRuntime
             ConditionRunReconstructionCommandV1 command)
         {
             if (command == null)
+            {
                 return new ConditionRunReconstructionResultV1(
                     ConditionFactIngestionStatusV1.Rejected,
                     "condition-run-reconstruction-null",
                     BuildSnapshot());
+            }
 
             ReconstructionReplayRecord replay;
             if (reconstructionReplay.TryGetValue(command.OperationId, out replay))
             {
-                if (!string.Equals(replay.Fingerprint, command.Fingerprint, StringComparison.Ordinal))
+                if (!string.Equals(
+                    replay.Fingerprint,
+                    command.Fingerprint,
+                    StringComparison.Ordinal))
                 {
                     return new ConditionRunReconstructionResultV1(
                         ConditionFactIngestionStatusV1.ConflictingDuplicate,
                         "condition-run-reconstruction-conflicting-duplicate",
-                        BuildSnapshot());
+                        replay.Result.Snapshot);
                 }
                 return new ConditionRunReconstructionResultV1(
                     ConditionFactIngestionStatusV1.ExactDuplicateNoChange,
@@ -335,15 +460,20 @@ namespace ShooterMover.ConditionRuntime
             }
 
             ConditionRunReconstructionResultV1 result;
-            if (!ConditionRuntimeHashV1.SameId(command.ExpectedRunId, definition.Lifecycle.RunId)
-                || command.ExpectedRunGeneration != definition.Lifecycle.Generation)
+            if (!ConditionRuntimeHashV1.SameId(
+                    command.ExpectedRunId,
+                    definition.Lifecycle.RunId)
+                || command.ExpectedRunGeneration
+                    != definition.Lifecycle.Generation)
             {
                 result = new ConditionRunReconstructionResultV1(
                     ConditionFactIngestionStatusV1.Rejected,
                     "condition-run-reconstruction-current-mismatch",
                     BuildSnapshot());
             }
-            else if (!MatchesLifecycle(command.NextRun.Lifecycle, lifecycle.Current))
+            else if (!MatchesLifecycle(
+                command.NextRun.Lifecycle,
+                lifecycle.Current))
             {
                 result = new ConditionRunReconstructionResultV1(
                     ConditionFactIngestionStatusV1.Rejected,
@@ -355,6 +485,8 @@ namespace ShooterMover.ConditionRuntime
                 definition = command.NextRun;
                 participants = BuildParticipants(definition);
                 acceptedBySourceFact.Clear();
+                acceptedSourceFingerprints.Clear();
+                acceptedResultBySourceFact.Clear();
                 deliveryReplay.Clear();
                 advanceReplay.Clear();
                 result = new ConditionRunReconstructionResultV1(
@@ -373,44 +505,87 @@ namespace ShooterMover.ConditionRuntime
             ConditionObservedGameplayFactV1 observed)
         {
             if (!MatchesLifecycle(definition.Lifecycle, lifecycle.Current))
-                return Rejected("condition-run-lifecycle-not-reconstructed", observed, null);
-            if (!ConditionRuntimeHashV1.SameId(observed.RunId, definition.Lifecycle.RunId))
-                return Rejected("condition-fact-run-mismatch", observed, null);
-            if (observed.RunLifecycleGeneration != definition.Lifecycle.Generation)
-                return Rejected("condition-fact-run-lifecycle-stale", observed, null);
+                return Rejected(
+                    "condition-run-lifecycle-not-reconstructed",
+                    observed,
+                    null);
+            if (!ConditionRuntimeHashV1.SameId(
+                observed.RunId,
+                definition.Lifecycle.RunId))
+                return Rejected(
+                    "condition-fact-run-mismatch",
+                    observed,
+                    null);
+            if (observed.RunLifecycleGeneration
+                != definition.Lifecycle.Generation)
+                return Rejected(
+                    "condition-fact-run-lifecycle-stale",
+                    observed,
+                    null);
             if (observed.AuthoritativeTick > clock.CurrentTick)
-                return Rejected("condition-fact-tick-future", observed, null);
+                return Rejected(
+                    "condition-fact-tick-future",
+                    observed,
+                    null);
 
             ParticipantRuntime participant;
-            if (!participants.TryGetValue(observed.SubjectParticipantId.ToString(), out participant))
-                return Rejected("condition-fact-participant-unknown", observed, null);
-            if (!ConditionRuntimeHashV1.SameId(observed.SourceCharacterId, participant.Definition.CharacterId))
-                return Rejected("condition-fact-source-character-mismatch", observed, null);
-            if (!ConditionRuntimeHashV1.SameId(observed.SourceActorId, participant.Definition.ActorId))
-                return Rejected("condition-fact-source-actor-mismatch", observed, null);
-            if (observed.AuthoritativeTick < participant.Conditions.LatestAcceptedTick
-                || observed.AuthoritativeTick < participant.StatusEffects.LatestAcceptedTick)
-                return Rejected("condition-fact-tick-stale", observed, null);
+            if (!participants.TryGetValue(
+                observed.SubjectParticipantId.ToString(),
+                out participant))
+                return Rejected(
+                    "condition-fact-participant-unknown",
+                    observed,
+                    null);
+            if (!ConditionRuntimeHashV1.SameId(
+                observed.SourceCharacterId,
+                participant.Definition.CharacterId))
+                return Rejected(
+                    "condition-fact-source-character-mismatch",
+                    observed,
+                    null);
+            if (!ConditionRuntimeHashV1.SameId(
+                observed.SourceActorId,
+                participant.Definition.ActorId))
+                return Rejected(
+                    "condition-fact-source-actor-mismatch",
+                    observed,
+                    null);
+            if (observed.AuthoritativeTick
+                    < participant.Conditions.LatestAcceptedTick
+                || observed.AuthoritativeTick
+                    < participant.StatusEffects.LatestAcceptedTick)
+                return Rejected(
+                    "condition-fact-tick-stale",
+                    observed,
+                    null);
             if (observed.SourceActorLifecycleGeneration
                 != participant.Definition.ActorLifecycleGeneration)
-                return Rejected("condition-fact-source-lifecycle-stale", observed, null);
+                return Rejected(
+                    "condition-fact-source-lifecycle-stale",
+                    observed,
+                    null);
             return null;
         }
 
-        private static string DeliveryEnvelopeFingerprint(
+        private static string DeliveryReplayFingerprint(
             AcceptedGameplayFactDeliveryV1 delivery,
+            string sourceFactFingerprint,
             string adaptationState)
         {
             return ConditionRuntimeHashV1.Hash(
                 delivery.DeliveryOperationId + "|"
-                + delivery.SourceFact.GetType().FullName + "|"
-                + delivery.RunId + "|"
-                + delivery.RunLifecycleGeneration.ToString(CultureInfo.InvariantCulture) + "|"
+                + (delivery.SourceFact.GetType().FullName
+                    ?? delivery.SourceFact.GetType().Name) + "|"
+                + sourceFactFingerprint + "|" + delivery.RunId + "|"
+                + delivery.RunLifecycleGeneration.ToString(
+                    CultureInfo.InvariantCulture) + "|"
                 + delivery.SourceActorId + "|"
                 + delivery.SubjectParticipantId + "|"
                 + delivery.SourceCharacterId + "|"
-                + delivery.SourceActorLifecycleGeneration.ToString(CultureInfo.InvariantCulture) + "|"
-                + delivery.AuthoritativeTick.ToString(CultureInfo.InvariantCulture) + "|"
+                + delivery.SourceActorLifecycleGeneration.ToString(
+                    CultureInfo.InvariantCulture) + "|"
+                + delivery.AuthoritativeTick.ToString(
+                    CultureInfo.InvariantCulture) + "|"
                 + (adaptationState ?? string.Empty));
         }
 
@@ -423,22 +598,57 @@ namespace ShooterMover.ConditionRuntime
             DeliveryReplayRecord prior;
             if (deliveryReplay.TryGetValue(operationId, out prior))
             {
-                if (!string.Equals(prior.Fingerprint, fingerprint, StringComparison.Ordinal))
+                if (!string.Equals(
+                    prior.Fingerprint,
+                    fingerprint,
+                    StringComparison.Ordinal))
                 {
-                    return new ConditionFactIngestionResultV1(
-                        ConditionFactIngestionStatusV1.ConflictingDuplicate,
+                    return Conflict(
                         "condition-delivery-operation-conflicting-duplicate",
                         observed,
-                        null,
-                        null,
-                        BuildSnapshot());
+                        prior.Result.Snapshot);
                 }
-                return Duplicate(prior.Result, observed);
+                return Duplicate(prior.Result);
             }
 
-            ConditionFactIngestionResultV1 result = Rejected(diagnostic, observed, null);
-            deliveryReplay.Add(operationId, new DeliveryReplayRecord(fingerprint, result));
+            ConditionFactIngestionResultV1 result = Rejected(
+                diagnostic,
+                observed,
+                null);
+            StoreDeliveryReplay(operationId, fingerprint, result);
             return result;
+        }
+
+        private void PrevalidateAdvance(
+            IEnumerable<ParticipantRuntime> orderedParticipants,
+            long tick)
+        {
+            foreach (ParticipantRuntime participant in orderedParticipants)
+            {
+                string participantId =
+                    participant.Definition.ParticipantId.ToString();
+                if (!string.Equals(
+                    participant.StatusEffects.SubjectId,
+                    participantId,
+                    StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "condition-runtime-advance-subject-mismatch");
+                }
+                if (participant.StatusEffects.LifecycleGeneration
+                    != checked((int)participant.Definition
+                        .ActorLifecycleGeneration))
+                {
+                    throw new InvalidOperationException(
+                        "condition-runtime-advance-lifecycle-mismatch");
+                }
+                if (tick < participant.Conditions.LatestAcceptedTick
+                    || tick < participant.StatusEffects.LatestAcceptedTick)
+                {
+                    throw new InvalidOperationException(
+                        "condition-runtime-advance-tick-stale:" + participantId);
+                }
+            }
         }
 
         private ConditionFactIngestionResultV1 Rejected(
@@ -455,30 +665,55 @@ namespace ShooterMover.ConditionRuntime
                 BuildSnapshot());
         }
 
-        private ConditionFactIngestionResultV1 Duplicate(
-            ConditionFactIngestionResultV1 prior,
-            ConditionObservedGameplayFactV1 observed)
+        private static ConditionFactIngestionResultV1 Conflict(
+            string diagnostic,
+            ConditionObservedGameplayFactV1 observed,
+            ConditionRuntimeSnapshotV1 stableSnapshot)
+        {
+            return new ConditionFactIngestionResultV1(
+                ConditionFactIngestionStatusV1.ConflictingDuplicate,
+                diagnostic,
+                observed,
+                null,
+                null,
+                stableSnapshot);
+        }
+
+        private static ConditionFactIngestionResultV1 Duplicate(
+            ConditionFactIngestionResultV1 prior)
         {
             return new ConditionFactIngestionResultV1(
                 ConditionFactIngestionStatusV1.ExactDuplicateNoChange,
                 prior.DiagnosticCode,
-                observed ?? prior.ObservedFact,
+                prior.ObservedFact,
                 prior.ConditionResult,
                 prior.EffectResults,
-                BuildSnapshot());
+                prior.Snapshot);
+        }
+
+        private void StoreDeliveryReplay(
+            string operationId,
+            string fingerprint,
+            ConditionFactIngestionResultV1 result)
+        {
+            deliveryReplay.Add(
+                operationId,
+                new DeliveryReplayRecord(fingerprint, result));
         }
 
         private ConditionRuntimeSnapshotV1 BuildSnapshot()
         {
             long tick = clock.CurrentTick;
             if (tick < 0L)
-                throw new InvalidOperationException("The authoritative run tick cannot be negative.");
-            var snapshots = participants.Values.Select(
-                participant => new ConditionParticipantSnapshotV1(
-                    participant.Definition,
-                    participant.Conditions.LatestAcceptedTick,
-                    participant.Conditions.ActiveConditionIdsAt(tick),
-                    participant.StatusEffects.Snapshot));
+                throw new InvalidOperationException(
+                    "The authoritative run tick cannot be negative.");
+            IEnumerable<ConditionParticipantSnapshotV1> snapshots =
+                participants.Values.Select(
+                    participant => new ConditionParticipantSnapshotV1(
+                        participant.Definition,
+                        participant.Conditions.LatestAcceptedTick,
+                        participant.Conditions.ActiveConditionIdsAt(tick),
+                        participant.StatusEffects.Snapshot));
             return new ConditionRuntimeSnapshotV1(
                 definition,
                 tick,
@@ -489,7 +724,8 @@ namespace ShooterMover.ConditionRuntime
         private void EnsureLifecycleCurrent()
         {
             if (!MatchesLifecycle(definition.Lifecycle, lifecycle.Current))
-                throw new InvalidOperationException("The condition runtime must be reconstructed for the current run lifecycle.");
+                throw new InvalidOperationException(
+                    "The condition runtime must be reconstructed for the current run lifecycle.");
         }
 
         private static Dictionary<string, ParticipantRuntime> BuildParticipants(

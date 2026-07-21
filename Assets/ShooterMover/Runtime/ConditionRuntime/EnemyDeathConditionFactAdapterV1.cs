@@ -3,7 +3,9 @@ using ShooterMover.EnemyRuntimeComposition;
 
 namespace ShooterMover.ConditionRuntime
 {
-    public sealed class EnemyDeathConditionFactAdapterV1 : IAcceptedGameplayFactAdapterV1
+    public sealed class EnemyDeathConditionFactAdapterV1 :
+        IAcceptedGameplayFactAdapterV1,
+        IAcceptedGameplayFactSourceFingerprintV1
     {
         public Type SourceFactRuntimeType
         {
@@ -13,6 +15,16 @@ namespace ShooterMover.ConditionRuntime
         public string SourceFactTypeId
         {
             get { return "enemy-runtime.death-v1"; }
+        }
+
+        public string ComputeSourceFactFingerprint(object sourceFact)
+        {
+            EnemyDeathFactV1 death = sourceFact as EnemyDeathFactV1;
+            if (death == null)
+                throw new ArgumentException(
+                    "The enemy-death adapter can fingerprint only EnemyDeathFactV1 values.",
+                    nameof(sourceFact));
+            return ConditionSourceFactFingerprintV1.Compute(death);
         }
 
         public bool TryAdapt(
@@ -40,12 +52,16 @@ namespace ShooterMover.ConditionRuntime
                 diagnosticCode = "condition-enemy-death-killer-unattributed";
                 return false;
             }
-            if (!ConditionRuntimeHashV1.SameId(delivery.RunId, death.Identity.RunStableId))
+            if (!ConditionRuntimeHashV1.SameId(
+                delivery.RunId,
+                death.Identity.RunStableId))
             {
                 diagnosticCode = "condition-enemy-death-run-mismatch";
                 return false;
             }
-            if (!ConditionRuntimeHashV1.SameId(delivery.SourceActorId, death.KillerEntityStableId))
+            if (!ConditionRuntimeHashV1.SameId(
+                delivery.SourceActorId,
+                death.KillerEntityStableId))
             {
                 diagnosticCode = "condition-enemy-death-source-actor-mismatch";
                 return false;
@@ -54,7 +70,8 @@ namespace ShooterMover.ConditionRuntime
                 delivery.SubjectParticipantId,
                 death.KillerRunParticipantStableId))
             {
-                diagnosticCode = "condition-enemy-death-killer-participant-mismatch";
+                diagnosticCode =
+                    "condition-enemy-death-killer-participant-mismatch";
                 return false;
             }
 
