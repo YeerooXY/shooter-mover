@@ -218,6 +218,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             {
                 Renderer renderer = renderers[index];
                 if (renderer == null
+                    || renderer is LineRenderer
                     || renderer.GetComponentInParent<CombatPresentationGeneratedVisual2D>() != null)
                 {
                     continue;
