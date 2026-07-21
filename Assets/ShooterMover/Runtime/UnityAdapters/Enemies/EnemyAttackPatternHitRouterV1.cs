@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Combat.HitPolicy;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.EnemyRuntimeComposition;
-using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Players;
 
 namespace ShooterMover.UnityAdapters.Enemies
@@ -129,9 +129,9 @@ namespace ShooterMover.UnityAdapters.Enemies
     }
 
     /// <summary>
-    /// Session-local policy and replay ledger for schema-v2 enemy emissions. This class never
-    /// mutates health. Only an accepted Combat Hit Policy result is translated into the existing
-    /// PlayerDamageRequest and forwarded to the injected player runtime authority.
+    /// Session-local policy/replay ledger for immutable schema-v2 enemy emissions. This adapter
+    /// never mutates health. Only a Combat Hit Policy acceptance is forwarded to the existing
+    /// PlayerRuntimeComposition through PlayerDamageRequest.
     /// </summary>
     public sealed class EnemyAttackPatternHitRouterV1
     {
@@ -166,7 +166,8 @@ namespace ShooterMover.UnityAdapters.Enemies
             this.channelMap = channelMap
                 ?? new BuiltInEnemyAttackPatternDamageChannelMapV1();
             this.policy = policy
-                ?? new CombatHitPolicyV1(CombatHitPolicyRegistryV1.CreateDefault());
+                ?? new CombatHitPolicyV1(
+                    CombatHitPolicyRegistryV1.CreateDefault());
         }
 
         public EnemyAttackPatternHitRouteResultV1 RouteActorContact(
@@ -182,26 +183,23 @@ namespace ShooterMover.UnityAdapters.Enemies
                 targetEntityStableId,
                 observedTargetLifecycleGeneration,
                 distanceSquared);
-            if (hitEventStableId != null)
+            ReplayRecord replay;
+            if (hitEventStableId != null
+                && replayByHitEvent.TryGetValue(hitEventStableId, out replay))
             {
-                ReplayRecord replay;
-                if (replayByHitEvent.TryGetValue(hitEventStableId, out replay))
-                {
-                    if (string.Equals(
-                            replay.Fingerprint,
-                            fingerprint,
-                            StringComparison.Ordinal))
-                    {
-                        return new EnemyAttackPatternHitRouteResultV1(
-                            EnemyAttackPatternHitRouteStatusV1.ExactReplay,
-                            emission,
-                            hitEventStableId,
-                            targetEntityStableId,
-                            replay.Result.PolicyResult,
-                            replay.Result.DamageResult,
-                            string.Empty);
-                    }
-                    return Result(
+                return string.Equals(
+                        replay.Fingerprint,
+                        fingerprint,
+                        StringComparison.Ordinal)
+                    ? Result(
+                        EnemyAttackPatternHitRouteStatusV1.ExactReplay,
+                        emission,
+                        hitEventStableId,
+                        targetEntityStableId,
+                        replay.Result.PolicyResult,
+                        replay.Result.DamageResult,
+                        string.Empty)
+                    : Result(
                         EnemyAttackPatternHitRouteStatusV1.ConflictingDuplicate,
                         emission,
                         hitEventStableId,
@@ -209,7 +207,6 @@ namespace ShooterMover.UnityAdapters.Enemies
                         null,
                         null,
                         "enemy-pattern-hit-event-conflict");
-                }
             }
 
             string invalid = Validate(
@@ -376,10 +373,14 @@ namespace ShooterMover.UnityAdapters.Enemies
         {
             int pierce = emission.Projectile == null
                 ? 0
-                : Math.Max(0, emission.Projectile.Payload.Pierce);
+                : Math.Max(
+                    0,
+                    emission.Projectile.Payload.PierceCount);
             int maximumHitsPerTarget = emission.MeleeStrike == null
                 ? 1
-                : Math.Max(1, emission.MeleeStrike.Pattern.HitsPerTarget);
+                : Math.Max(
+                    1,
+                    emission.MeleeStrike.Pattern.HitsPerTarget);
             CombatEffectGeometryKindV1 geometry =
                 emission.Kind == EnemyAttackEffectEmissionKindV1.Projectile
                     ? CombatEffectGeometryKindV1.Projectile
@@ -406,7 +407,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             long observedTargetLifecycleGeneration,
             double distanceSquared)
         {
-            if (emission == null
+            return emission == null
                 || emission.Execution == null
                 || emission.Execution.Descriptor == null
                 || hitEventStableId == null
@@ -414,11 +415,9 @@ namespace ShooterMover.UnityAdapters.Enemies
                 || observedTargetLifecycleGeneration < 0L
                 || double.IsNaN(distanceSquared)
                 || double.IsInfinity(distanceSquared)
-                || distanceSquared < 0d)
-            {
-                return "enemy-pattern-hit-input-invalid";
-            }
-            return string.Empty;
+                || distanceSquared < 0d
+                ? "enemy-pattern-hit-input-invalid"
+                : string.Empty;
         }
 
         private static string Fingerprint(
@@ -430,15 +429,20 @@ namespace ShooterMover.UnityAdapters.Enemies
         {
             return (emission == null ? "-" : emission.Fingerprint)
                 + "|"
-                + (hitEventStableId == null ? "-" : hitEventStableId.ToString())
+                + (hitEventStableId == null
+                    ? "-"
+                    : hitEventStableId.ToString())
                 + "|"
                 + (targetEntityStableId == null
                     ? "-"
                     : targetEntityStableId.ToString())
                 + "|"
-                + observedTargetLifecycleGeneration
+                + observedTargetLifecycleGeneration.ToString(
+                    CultureInfo.InvariantCulture)
                 + "|"
-                + distanceSquared.ToString("R");
+                + distanceSquared.ToString(
+                    "R",
+                    CultureInfo.InvariantCulture);
         }
 
         private static EnemyAttackPatternHitRouteResultV1 Result(
