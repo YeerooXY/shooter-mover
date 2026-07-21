@@ -419,7 +419,9 @@ namespace ShooterMover.Application.Persistence.Components
                     return componentValidation;
                 }
             }
-            return SaveComponentValidationResultV1.Accept();
+
+            return KnownSaveComponentVersionGuardV1
+                .ValidateKnownComponents(account);
         }
 
         private static SaveComponentValidationResultV1 ValidateComponent(
