@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Combat.HitPolicy;
@@ -11,6 +13,274 @@ using ShooterMover.GameplayEntities;
 
 namespace ShooterMover.Combat.CriticalHits
 {
+    public static class CriticalHitPolicyIdsV1
+    {
+        public static readonly StableId Normal =
+            StableId.Parse("critical-hit-policy.normal-v1");
+        public static readonly StableId CannotCrit =
+            StableId.Parse("critical-hit-policy.cannot-crit-v1");
+        public static readonly StableId Guaranteed =
+            StableId.Parse("critical-hit-policy.guaranteed-v1");
+        public static readonly StableId ModifiedChance =
+            StableId.Parse("critical-hit-policy.modified-chance-v1");
+        public static readonly StableId ModifiedMultiplier =
+            StableId.Parse("critical-hit-policy.modified-multiplier-v1");
+    }
+
+    /// <summary>
+    /// Immutable critical rules authored by a weapon, attack, or effect definition.
+    /// Geometry is intentionally absent: a projectile, field, contact attack, or any
+    /// future geometry may select any policy through its execution facts.
+    /// </summary>
+    public sealed class CriticalHitPolicyDefinitionV1
+    {
+        public CriticalHitPolicyDefinitionV1(
+            StableId policyId,
+            bool canCrit,
+            decimal? criticalChanceOverride = null,
+            decimal criticalChanceFlatModifier = 0m,
+            decimal criticalChanceMultiplier = 1m,
+            decimal? criticalMultiplierOverride = null,
+            decimal criticalMultiplierFlatModifier = 0m,
+            decimal criticalMultiplierMultiplier = 1m)
+        {
+            PolicyId = policyId ?? throw new ArgumentNullException(nameof(policyId));
+            if (criticalChanceOverride.HasValue
+                && (criticalChanceOverride.Value < 0m
+                    || criticalChanceOverride.Value > 1m))
+            {
+                throw new ArgumentOutOfRangeException(nameof(criticalChanceOverride));
+            }
+            if (criticalChanceMultiplier < 0m)
+            {
+                throw new ArgumentOutOfRangeException(nameof(criticalChanceMultiplier));
+            }
+            if (criticalMultiplierOverride.HasValue
+                && criticalMultiplierOverride.Value < 1m)
+            {
+                throw new ArgumentOutOfRangeException(nameof(criticalMultiplierOverride));
+            }
+            if (criticalMultiplierMultiplier <= 0m)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(criticalMultiplierMultiplier));
+            }
+
+            CanCrit = canCrit;
+            CriticalChanceOverride = criticalChanceOverride;
+            CriticalChanceFlatModifier = criticalChanceFlatModifier;
+            CriticalChanceMultiplier = criticalChanceMultiplier;
+            CriticalMultiplierOverride = criticalMultiplierOverride;
+            CriticalMultiplierFlatModifier = criticalMultiplierFlatModifier;
+            CriticalMultiplierMultiplier = criticalMultiplierMultiplier;
+            Fingerprint = CriticalHitFingerprintV1.Hash(ToCanonicalString());
+        }
+
+        public StableId PolicyId { get; }
+        public bool CanCrit { get; }
+        public decimal? CriticalChanceOverride { get; }
+        public decimal CriticalChanceFlatModifier { get; }
+        public decimal CriticalChanceMultiplier { get; }
+        public decimal? CriticalMultiplierOverride { get; }
+        public decimal CriticalMultiplierFlatModifier { get; }
+        public decimal CriticalMultiplierMultiplier { get; }
+        public string Fingerprint { get; }
+
+        public decimal ResolveCriticalChance(decimal profileChance)
+        {
+            if (!CanCrit)
+            {
+                return 0m;
+            }
+
+            decimal value = CriticalChanceOverride
+                ?? checked(
+                    checked(profileChance + CriticalChanceFlatModifier)
+                        * CriticalChanceMultiplier);
+            if (value < 0m)
+            {
+                return 0m;
+            }
+            return value > 1m ? 1m : value;
+        }
+
+        public decimal ResolveCriticalMultiplier(decimal profileMultiplier)
+        {
+            if (!CanCrit)
+            {
+                return 1m;
+            }
+
+            decimal value = CriticalMultiplierOverride
+                ?? checked(
+                    checked(profileMultiplier + CriticalMultiplierFlatModifier)
+                        * CriticalMultiplierMultiplier);
+            return value < 1m ? 1m : value;
+        }
+
+        public string ToCanonicalString()
+        {
+            var builder = new StringBuilder();
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "schema",
+                "critical-hit-policy-definition.v1");
+            CriticalHitFingerprintV1.AppendId(builder, "policy", PolicyId);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "can-crit",
+                CanCrit ? "1" : "0");
+            CriticalHitFingerprintV1.AppendNullableDecimal(
+                builder,
+                "chance-override",
+                CriticalChanceOverride);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "chance-flat",
+                CriticalChanceFlatModifier);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "chance-multiplier",
+                CriticalChanceMultiplier);
+            CriticalHitFingerprintV1.AppendNullableDecimal(
+                builder,
+                "multiplier-override",
+                CriticalMultiplierOverride);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "multiplier-flat",
+                CriticalMultiplierFlatModifier);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "multiplier-multiplier",
+                CriticalMultiplierMultiplier);
+            return builder.ToString();
+        }
+    }
+
+    public sealed class CriticalHitPolicyRegistryV1
+    {
+        private readonly IReadOnlyDictionary<StableId, CriticalHitPolicyDefinitionV1>
+            definitionsById;
+
+        public CriticalHitPolicyRegistryV1(
+            IEnumerable<CriticalHitPolicyDefinitionV1> definitions)
+        {
+            List<CriticalHitPolicyDefinitionV1> items = (definitions
+                ?? throw new ArgumentNullException(nameof(definitions))).ToList();
+            if (items.Count == 0 || items.Any(item => item == null))
+            {
+                throw new ArgumentException(
+                    "At least one non-null critical-hit policy is required.",
+                    nameof(definitions));
+            }
+            if (items.Select(item => item.PolicyId).Distinct().Count()
+                != items.Count)
+            {
+                throw new ArgumentException(
+                    "Critical-hit policy identities must be unique.",
+                    nameof(definitions));
+            }
+
+            Definitions = new ReadOnlyCollection<CriticalHitPolicyDefinitionV1>(
+                items.OrderBy(item => item.PolicyId).ToList());
+            definitionsById = new ReadOnlyDictionary<
+                StableId,
+                CriticalHitPolicyDefinitionV1>(
+                    Definitions.ToDictionary(item => item.PolicyId));
+            Fingerprint = CriticalHitFingerprintV1.Hash(
+                string.Join(";", Definitions.Select(item => item.Fingerprint)));
+        }
+
+        public IReadOnlyList<CriticalHitPolicyDefinitionV1> Definitions { get; }
+        public string Fingerprint { get; }
+
+        public bool TryResolve(
+            StableId policyId,
+            out CriticalHitPolicyDefinitionV1 definition)
+        {
+            if (policyId == null)
+            {
+                definition = null;
+                return false;
+            }
+            return definitionsById.TryGetValue(policyId, out definition);
+        }
+
+        public static CriticalHitPolicyRegistryV1 CreateDefault()
+        {
+            return new CriticalHitPolicyRegistryV1(
+                new[]
+                {
+                    new CriticalHitPolicyDefinitionV1(
+                        CriticalHitPolicyIdsV1.Normal,
+                        true),
+                    new CriticalHitPolicyDefinitionV1(
+                        CriticalHitPolicyIdsV1.CannotCrit,
+                        false),
+                    new CriticalHitPolicyDefinitionV1(
+                        CriticalHitPolicyIdsV1.Guaranteed,
+                        true,
+                        criticalChanceOverride: 1m),
+                    new CriticalHitPolicyDefinitionV1(
+                        CriticalHitPolicyIdsV1.ModifiedChance,
+                        true,
+                        criticalChanceMultiplier: 0.5m),
+                    new CriticalHitPolicyDefinitionV1(
+                        CriticalHitPolicyIdsV1.ModifiedMultiplier,
+                        true,
+                        criticalMultiplierMultiplier: 1.5m),
+                });
+        }
+    }
+
+    /// <summary>
+    /// Immutable execution facts projected from the concrete weapon/attack/effect
+    /// definition. EquipmentInstanceId is optional for attacks that are not equipment
+    /// backed; EffectDefinitionId and CriticalPolicyId are always required at resolution.
+    /// </summary>
+    public sealed class CriticalHitEffectFactsV1
+    {
+        public CriticalHitEffectFactsV1(
+            StableId effectDefinitionId,
+            StableId criticalPolicyId,
+            StableId equipmentInstanceId = null)
+        {
+            EffectDefinitionId = effectDefinitionId;
+            CriticalPolicyId = criticalPolicyId;
+            EquipmentInstanceId = equipmentInstanceId;
+            Fingerprint = CriticalHitFingerprintV1.Hash(ToCanonicalString());
+        }
+
+        public StableId EffectDefinitionId { get; }
+        public StableId CriticalPolicyId { get; }
+        public StableId EquipmentInstanceId { get; }
+        public bool HasEquipmentInstance { get { return EquipmentInstanceId != null; } }
+        public string Fingerprint { get; }
+
+        public string ToCanonicalString()
+        {
+            var builder = new StringBuilder();
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "schema",
+                "critical-hit-effect-facts.v1");
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "effect-definition",
+                EffectDefinitionId);
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "critical-policy",
+                CriticalPolicyId);
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "equipment-instance",
+                EquipmentInstanceId);
+            return builder.ToString();
+        }
+    }
+
     public enum CriticalHitResolutionStatusV1
     {
         Applied = 1,
@@ -34,13 +304,12 @@ namespace ShooterMover.Combat.CriticalHits
         InvalidAcceptedHitFacts = 10,
         ResolvedDamageOverflow = 11,
         ConflictingDuplicate = 12,
+        MissingEffectFacts = 13,
+        MissingEffectDefinitionId = 14,
+        MissingCriticalPolicyId = 15,
+        UnknownCriticalPolicy = 16,
     }
 
-    /// <summary>
-    /// Immutable input to the critical-hit boundary. The accepted hit-policy result is
-    /// deliberately retained so source, target, effect, geometry, and attribution facts
-    /// cannot drift between hit eligibility and damage-command creation.
-    /// </summary>
     public sealed class CriticalHitResolutionCommandV1
     {
         public CriticalHitResolutionCommandV1(
@@ -50,6 +319,7 @@ namespace ShooterMover.Combat.CriticalHits
             decimal baseDamage,
             CombatChannel channel,
             RunCombatProfileV1 runCombatProfile,
+            CriticalHitEffectFactsV1 effectFacts,
             CombatHitPolicyResultV1 acceptedHit)
         {
             OperationId = operationId;
@@ -60,30 +330,28 @@ namespace ShooterMover.Combat.CriticalHits
             BaseDamage = baseDamage;
             Channel = channel;
             RunCombatProfile = runCombatProfile;
+            EffectFacts = effectFacts;
             AcceptedHit = acceptedHit;
             Fingerprint = CriticalHitFingerprintV1.Hash(ToCanonicalString());
         }
 
         public StableId OperationId { get; }
-
         public string DeterministicSeed { get; }
-
         public long HitSequence { get; }
-
         public decimal BaseDamage { get; }
-
         public CombatChannel Channel { get; }
-
         public RunCombatProfileV1 RunCombatProfile { get; }
-
+        public CriticalHitEffectFactsV1 EffectFacts { get; }
         public CombatHitPolicyResultV1 AcceptedHit { get; }
-
         public string Fingerprint { get; }
 
         public string ToCanonicalString()
         {
             var builder = new StringBuilder();
-            CriticalHitFingerprintV1.Append(builder, "schema", "critical-hit-command.v1");
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "schema",
+                "critical-hit-command.v1");
             CriticalHitFingerprintV1.AppendId(builder, "operation", OperationId);
             CriticalHitFingerprintV1.Append(
                 builder,
@@ -100,39 +368,108 @@ namespace ShooterMover.Combat.CriticalHits
                 ((int)Channel).ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.Append(
                 builder,
+                "run-id",
+                RunCombatProfile == null ? string.Empty : RunCombatProfile.RunId);
+            CriticalHitFingerprintV1.Append(
+                builder,
                 "run-profile",
                 RunCombatProfile == null
                     ? string.Empty
                     : RunCombatProfile.Fingerprint);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "effect-facts",
+                EffectFacts == null ? string.Empty : EffectFacts.Fingerprint);
             CriticalHitFingerprintV1.AppendAcceptedHit(builder, AcceptedHit);
             return builder.ToString();
         }
     }
 
-    /// <summary>
-    /// Exact immutable hash domain for one critical roll. The SHA-256 digest is both
-    /// the domain fingerprint and the source of the unit-interval sample, so no mutable
-    /// RNG state or frame timing can affect the result.
-    /// </summary>
+    public sealed class CriticalHitPolicyApplicationV1
+    {
+        internal CriticalHitPolicyApplicationV1(
+            CriticalHitPolicyDefinitionV1 definition,
+            RunCombatProfileV1 profile)
+        {
+            PolicyId = definition.PolicyId;
+            PolicyFingerprint = definition.Fingerprint;
+            CanCrit = definition.CanCrit;
+            ProfileCriticalChance = profile.CriticalChance;
+            ProfileCriticalMultiplier = profile.CriticalMultiplier;
+            EffectiveCriticalChance = definition.ResolveCriticalChance(
+                profile.CriticalChance);
+            EffectiveCriticalMultiplier = definition.ResolveCriticalMultiplier(
+                profile.CriticalMultiplier);
+            Fingerprint = CriticalHitFingerprintV1.Hash(ToCanonicalString());
+        }
+
+        public StableId PolicyId { get; }
+        public string PolicyFingerprint { get; }
+        public bool CanCrit { get; }
+        public decimal ProfileCriticalChance { get; }
+        public decimal ProfileCriticalMultiplier { get; }
+        public decimal EffectiveCriticalChance { get; }
+        public decimal EffectiveCriticalMultiplier { get; }
+        public string Fingerprint { get; }
+
+        public string ToCanonicalString()
+        {
+            var builder = new StringBuilder();
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "schema",
+                "critical-hit-policy-application.v1");
+            CriticalHitFingerprintV1.AppendId(builder, "policy", PolicyId);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "policy-fingerprint",
+                PolicyFingerprint);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "can-crit",
+                CanCrit ? "1" : "0");
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "profile-chance",
+                ProfileCriticalChance);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "profile-multiplier",
+                ProfileCriticalMultiplier);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "effective-chance",
+                EffectiveCriticalChance);
+            CriticalHitFingerprintV1.AppendDecimal(
+                builder,
+                "effective-multiplier",
+                EffectiveCriticalMultiplier);
+            return builder.ToString();
+        }
+    }
+
     public sealed class CriticalHitRollDomainV1
     {
-        internal CriticalHitRollDomainV1(CriticalHitResolutionCommandV1 command)
+        internal CriticalHitRollDomainV1(
+            CriticalHitResolutionCommandV1 command,
+            CriticalHitPolicyApplicationV1 policyApplication)
         {
             CommandFingerprint = command.Fingerprint;
-            string canonical = BuildCanonicalString(command);
+            PolicyApplicationFingerprint = policyApplication.Fingerprint;
+            string canonical = BuildCanonicalString(command, policyApplication);
             byte[] digest = CriticalHitFingerprintV1.HashBytes(canonical);
             Fingerprint = CriticalHitFingerprintV1.ToHex(digest);
             RollSample = CriticalHitFingerprintV1.ToUnitInterval(digest);
         }
 
         public string CommandFingerprint { get; }
-
+        public string PolicyApplicationFingerprint { get; }
         public string Fingerprint { get; }
-
         public decimal RollSample { get; }
 
         private static string BuildCanonicalString(
-            CriticalHitResolutionCommandV1 command)
+            CriticalHitResolutionCommandV1 command,
+            CriticalHitPolicyApplicationV1 policyApplication)
         {
             CombatHitPolicyInputV1 input = command.AcceptedHit.Input;
             CombatActorSnapshotV1 source = input.SourceActor;
@@ -153,6 +490,34 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "hit-sequence",
                 command.HitSequence.ToString(CultureInfo.InvariantCulture));
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "run-id",
+                command.RunCombatProfile.RunId);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "run-context",
+                command.RunCombatProfile.RunContextFingerprint);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "run-profile",
+                command.RunCombatProfile.Fingerprint);
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "equipment-instance",
+                command.EffectFacts.EquipmentInstanceId);
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "effect-definition",
+                command.EffectFacts.EffectDefinitionId);
+            CriticalHitFingerprintV1.AppendId(
+                builder,
+                "critical-policy",
+                command.EffectFacts.CriticalPolicyId);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "critical-policy-application",
+                policyApplication.Fingerprint);
             CriticalHitFingerprintV1.AppendId(
                 builder,
                 "source-actor",
@@ -160,8 +525,7 @@ namespace ShooterMover.Combat.CriticalHits
             CriticalHitFingerprintV1.Append(
                 builder,
                 "source-generation",
-                source.LifecycleGeneration.ToString(
-                    CultureInfo.InvariantCulture));
+                source.LifecycleGeneration.ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.AppendId(
                 builder,
                 "source-participant",
@@ -181,8 +545,7 @@ namespace ShooterMover.Combat.CriticalHits
             CriticalHitFingerprintV1.Append(
                 builder,
                 "target-generation",
-                target.LifecycleGeneration.ToString(
-                    CultureInfo.InvariantCulture));
+                target.LifecycleGeneration.ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.AppendId(
                 builder,
                 "target-participant",
@@ -195,23 +558,15 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "target-faction",
                 target.FactionId);
+            CriticalHitFingerprintV1.AppendId(builder, "effect-instance", effect.EffectId);
             CriticalHitFingerprintV1.AppendId(
                 builder,
-                "effect",
-                effect.EffectId);
-            CriticalHitFingerprintV1.AppendId(
-                builder,
-                "policy",
+                "hit-policy",
                 effect.PolicyId);
             CriticalHitFingerprintV1.Append(
                 builder,
                 "geometry",
-                ((int)effect.GeometryKind).ToString(
-                    CultureInfo.InvariantCulture));
-            CriticalHitFingerprintV1.Append(
-                builder,
-                "run-profile",
-                command.RunCombatProfile.Fingerprint);
+                ((int)effect.GeometryKind).ToString(CultureInfo.InvariantCulture));
             CriticalHitFingerprintV1.AppendDecimal(
                 builder,
                 "base-damage",
@@ -219,8 +574,7 @@ namespace ShooterMover.Combat.CriticalHits
             CriticalHitFingerprintV1.Append(
                 builder,
                 "channel",
-                ((int)command.Channel).ToString(
-                    CultureInfo.InvariantCulture));
+                ((int)command.Channel).ToString(CultureInfo.InvariantCulture));
             return builder.ToString();
         }
     }
@@ -229,54 +583,50 @@ namespace ShooterMover.Combat.CriticalHits
     {
         internal CriticalHitResolvedDamageV1(
             CriticalHitResolutionCommandV1 command,
+            CriticalHitPolicyApplicationV1 policyApplication,
             CriticalHitRollDomainV1 rollDomain,
             bool isCritical,
             decimal ordinaryDamage,
             decimal finalDamage)
         {
             CommandFingerprint = command.Fingerprint;
+            RunId = command.RunCombatProfile.RunId;
             RunCombatProfileFingerprint = command.RunCombatProfile.Fingerprint;
+            EffectFactsFingerprint = command.EffectFacts.Fingerprint;
+            PolicyApplication = policyApplication;
             RollDomainFingerprint = rollDomain.Fingerprint;
             RollSample = rollDomain.RollSample;
             IsCritical = isCritical;
             BaseDamage = command.BaseDamage;
             OutgoingDamageMultiplier =
                 command.RunCombatProfile.OutgoingDamageMultiplier;
-            CriticalChance = command.RunCombatProfile.CriticalChance;
-            CriticalMultiplier = command.RunCombatProfile.CriticalMultiplier;
             OrdinaryDamage = ordinaryDamage;
             FinalDamage = finalDamage;
             Fingerprint = CriticalHitFingerprintV1.Hash(ToCanonicalString());
         }
 
         public string CommandFingerprint { get; }
-
+        public string RunId { get; }
         public string RunCombatProfileFingerprint { get; }
-
+        public string EffectFactsFingerprint { get; }
+        public CriticalHitPolicyApplicationV1 PolicyApplication { get; }
         public string RollDomainFingerprint { get; }
-
         public decimal RollSample { get; }
-
         public bool IsCritical { get; }
-
         public decimal BaseDamage { get; }
-
         public decimal OutgoingDamageMultiplier { get; }
-
-        public decimal CriticalChance { get; }
-
-        public decimal CriticalMultiplier { get; }
-
-        public decimal OrdinaryDamage { get; }
-
-        public decimal FinalDamage { get; }
-
-        public string Fingerprint { get; }
-
-        public bool HasPositiveDamage
+        public decimal CriticalChance
         {
-            get { return FinalDamage > 0m; }
+            get { return PolicyApplication.EffectiveCriticalChance; }
         }
+        public decimal CriticalMultiplier
+        {
+            get { return PolicyApplication.EffectiveCriticalMultiplier; }
+        }
+        public decimal OrdinaryDamage { get; }
+        public decimal FinalDamage { get; }
+        public string Fingerprint { get; }
+        public bool HasPositiveDamage { get { return FinalDamage > 0m; } }
 
         public string ToCanonicalString()
         {
@@ -285,14 +635,20 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "schema",
                 "critical-hit-resolved-damage.v1");
-            CriticalHitFingerprintV1.Append(
-                builder,
-                "command",
-                CommandFingerprint);
+            CriticalHitFingerprintV1.Append(builder, "command", CommandFingerprint);
+            CriticalHitFingerprintV1.Append(builder, "run-id", RunId);
             CriticalHitFingerprintV1.Append(
                 builder,
                 "run-profile",
                 RunCombatProfileFingerprint);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "effect-facts",
+                EffectFactsFingerprint);
+            CriticalHitFingerprintV1.Append(
+                builder,
+                "policy-application",
+                PolicyApplication.Fingerprint);
             CriticalHitFingerprintV1.Append(
                 builder,
                 "roll-domain",
@@ -313,14 +669,6 @@ namespace ShooterMover.Combat.CriticalHits
                 builder,
                 "outgoing-multiplier",
                 OutgoingDamageMultiplier);
-            CriticalHitFingerprintV1.AppendDecimal(
-                builder,
-                "critical-chance",
-                CriticalChance);
-            CriticalHitFingerprintV1.AppendDecimal(
-                builder,
-                "critical-multiplier",
-                CriticalMultiplier);
             CriticalHitFingerprintV1.AppendDecimal(
                 builder,
                 "ordinary-damage",
@@ -349,25 +697,15 @@ namespace ShooterMover.Combat.CriticalHits
         }
 
         public CriticalHitResolutionStatusV1 Status { get; }
-
         public CriticalHitRejectionCodeV1 RejectionCode { get; }
-
         public CriticalHitResolutionCommandV1 Command { get; }
-
         public CriticalHitResolvedDamageV1 ResolvedDamage { get; }
-
         public string Fingerprint { get; }
-
-        public bool HasResolvedDamage
-        {
-            get { return ResolvedDamage != null; }
-        }
-
+        public bool HasResolvedDamage { get { return ResolvedDamage != null; } }
         public bool IsReplay
         {
             get { return Status == CriticalHitResolutionStatusV1.Duplicate; }
         }
-
         public bool CanDispatchDamageCommand
         {
             get
@@ -414,10 +752,6 @@ namespace ShooterMover.Combat.CriticalHits
             CriticalHitResolutionCommandV1 command);
     }
 
-    /// <summary>
-    /// Run-local deterministic authority. It owns only operation replay state and
-    /// immutable critical-hit outcomes; health mutation remains downstream.
-    /// </summary>
     public sealed class CriticalHitResolutionAuthorityV1 :
         ICriticalHitResolutionAuthorityV1
     {
@@ -432,14 +766,26 @@ namespace ShooterMover.Combat.CriticalHits
             }
 
             internal string CommandFingerprint { get; }
-
             internal CriticalHitResolvedDamageV1 ResolvedDamage { get; }
         }
 
         private readonly object gate = new object();
         private readonly Dictionary<StableId, LedgerEntry> ledger =
             new Dictionary<StableId, LedgerEntry>();
+        private readonly CriticalHitPolicyRegistryV1 policyRegistry;
         private int appliedResolutionCount;
+
+        public CriticalHitResolutionAuthorityV1()
+            : this(CriticalHitPolicyRegistryV1.CreateDefault())
+        {
+        }
+
+        public CriticalHitResolutionAuthorityV1(
+            CriticalHitPolicyRegistryV1 policyRegistry)
+        {
+            this.policyRegistry = policyRegistry
+                ?? throw new ArgumentNullException(nameof(policyRegistry));
+        }
 
         public int AppliedResolutionCount
         {
@@ -487,31 +833,40 @@ namespace ShooterMover.Combat.CriticalHits
                         null);
                 }
 
-                CriticalHitRejectionCodeV1 rejection = Validate(command);
+                CriticalHitPolicyDefinitionV1 definition;
+                CriticalHitRejectionCodeV1 rejection = Validate(
+                    command,
+                    out definition);
                 if (rejection != CriticalHitRejectionCodeV1.None)
                 {
                     return Rejected(command, rejection);
                 }
 
-                CriticalHitRollDomainV1 domain =
-                    new CriticalHitRollDomainV1(command);
-                decimal chance = command.RunCombatProfile.CriticalChance;
-                bool isCritical = chance >= 1m
-                    || (chance > 0m && domain.RollSample < chance);
-
+                CriticalHitPolicyApplicationV1 policyApplication;
+                CriticalHitRollDomainV1 domain;
                 decimal ordinaryDamage;
                 decimal finalDamage;
+                bool isCritical;
                 try
                 {
+                    policyApplication = new CriticalHitPolicyApplicationV1(
+                        definition,
+                        command.RunCombatProfile);
+                    domain = new CriticalHitRollDomainV1(
+                        command,
+                        policyApplication);
+                    decimal chance = policyApplication.EffectiveCriticalChance;
+                    isCritical = policyApplication.CanCrit
+                        && (chance >= 1m
+                            || (chance > 0m && domain.RollSample < chance));
                     ordinaryDamage = checked(
                         command.BaseDamage
-                            * command.RunCombatProfile
-                                .OutgoingDamageMultiplier);
+                            * command.RunCombatProfile.OutgoingDamageMultiplier);
                     finalDamage = isCritical
                         ? checked(
                             ordinaryDamage
-                                * command.RunCombatProfile
-                                    .CriticalMultiplier)
+                                * policyApplication
+                                    .EffectiveCriticalMultiplier)
                         : ordinaryDamage;
                 }
                 catch (OverflowException)
@@ -524,6 +879,7 @@ namespace ShooterMover.Combat.CriticalHits
                 CriticalHitResolvedDamageV1 resolved =
                     new CriticalHitResolvedDamageV1(
                         command,
+                        policyApplication,
                         domain,
                         isCritical,
                         ordinaryDamage,
@@ -541,9 +897,11 @@ namespace ShooterMover.Combat.CriticalHits
             }
         }
 
-        private static CriticalHitRejectionCodeV1 Validate(
-            CriticalHitResolutionCommandV1 command)
+        private CriticalHitRejectionCodeV1 Validate(
+            CriticalHitResolutionCommandV1 command,
+            out CriticalHitPolicyDefinitionV1 definition)
         {
+            definition = null;
             if (command.OperationId == null)
             {
                 return CriticalHitRejectionCodeV1.MissingOperationId;
@@ -573,10 +931,31 @@ namespace ShooterMover.Combat.CriticalHits
                 || command.RunCombatProfile.CriticalChance > 1m
                 || command.RunCombatProfile.CriticalMultiplier < 1m
                 || command.RunCombatProfile.OutgoingDamageMultiplier < 0m
+                || string.IsNullOrWhiteSpace(command.RunCombatProfile.RunId)
+                || string.IsNullOrWhiteSpace(
+                    command.RunCombatProfile.RunContextFingerprint)
                 || string.IsNullOrWhiteSpace(
                     command.RunCombatProfile.Fingerprint))
             {
                 return CriticalHitRejectionCodeV1.InvalidRunCombatProfile;
+            }
+            if (command.EffectFacts == null)
+            {
+                return CriticalHitRejectionCodeV1.MissingEffectFacts;
+            }
+            if (command.EffectFacts.EffectDefinitionId == null)
+            {
+                return CriticalHitRejectionCodeV1.MissingEffectDefinitionId;
+            }
+            if (command.EffectFacts.CriticalPolicyId == null)
+            {
+                return CriticalHitRejectionCodeV1.MissingCriticalPolicyId;
+            }
+            if (!policyRegistry.TryResolve(
+                command.EffectFacts.CriticalPolicyId,
+                out definition))
+            {
+                return CriticalHitRejectionCodeV1.UnknownCriticalPolicy;
             }
             if (command.AcceptedHit == null
                 || !command.AcceptedHit.DamageEligible)
@@ -626,11 +1005,6 @@ namespace ShooterMover.Combat.CriticalHits
         }
     }
 
-    /// <summary>
-    /// Final projection into the existing health authority contract. The critical
-    /// operation ID becomes the damage event ID, so exact re-dispatch is idempotent
-    /// at the receiving health authority as well.
-    /// </summary>
     public static class CriticalHitDamageCommandAdapterV1
     {
         public static bool TryCreate(
@@ -701,6 +1075,19 @@ namespace ShooterMover.Combat.CriticalHits
                 value.ToString("G29", CultureInfo.InvariantCulture));
         }
 
+        internal static void AppendNullableDecimal(
+            StringBuilder builder,
+            string key,
+            decimal? value)
+        {
+            Append(
+                builder,
+                key,
+                value.HasValue
+                    ? value.Value.ToString("G29", CultureInfo.InvariantCulture)
+                    : string.Empty);
+        }
+
         internal static void AppendAcceptedHit(
             StringBuilder builder,
             CombatHitPolicyResultV1 acceptedHit)
@@ -730,10 +1117,7 @@ namespace ShooterMover.Combat.CriticalHits
             }
 
             CombatActorSnapshotV1 source = input.SourceActor;
-            AppendId(
-                builder,
-                "hit-source",
-                source == null ? null : source.ActorId);
+            AppendId(builder, "hit-source", source == null ? null : source.ActorId);
             Append(
                 builder,
                 "hit-source-generation",
@@ -763,10 +1147,7 @@ namespace ShooterMover.Combat.CriticalHits
                 source == null ? null : source.FactionId);
 
             CombatEffectSnapshotV1 effect = input.Effect;
-            AppendId(
-                builder,
-                "hit-effect",
-                effect == null ? null : effect.EffectId);
+            AppendId(builder, "hit-effect", effect == null ? null : effect.EffectId);
             AppendId(
                 builder,
                 "hit-policy",
@@ -790,10 +1171,7 @@ namespace ShooterMover.Combat.CriticalHits
             CombatActorSnapshotV1 target = contact == null
                 ? null
                 : contact.TargetActor;
-            AppendId(
-                builder,
-                "hit-target",
-                target == null ? null : target.ActorId);
+            AppendId(builder, "hit-target", target == null ? null : target.ActorId);
             Append(
                 builder,
                 "hit-target-generation",
@@ -828,7 +1206,6 @@ namespace ShooterMover.Combat.CriticalHits
                     ? string.Empty
                     : contact.ObservedTargetGeneration.ToString(
                         CultureInfo.InvariantCulture));
-
             Append(
                 builder,
                 "history-accepted-count",
@@ -868,13 +1245,12 @@ namespace ShooterMover.Combat.CriticalHits
 
         internal static decimal ToUnitInterval(byte[] digest)
         {
-            ulong numerator = 0UL;
-            for (int index = 0; index < 6; index++)
+            ulong value = 0UL;
+            for (int index = 0; index < 8; index++)
             {
-                numerator = (numerator << 8) | digest[index];
+                value = (value << 8) | digest[index];
             }
-
-            return numerator / 281474976710656m;
+            return value / 18446744073709551616m;
         }
     }
 }
