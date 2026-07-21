@@ -6,6 +6,9 @@
     "ShooterMover.Contracts",
     "ShooterMover.Application",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.CombatHitPolicy",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
