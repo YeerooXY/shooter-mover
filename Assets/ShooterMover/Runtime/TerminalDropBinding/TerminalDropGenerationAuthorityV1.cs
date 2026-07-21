@@ -63,7 +63,20 @@ namespace ShooterMover.TerminalDropBinding
 
         public GeneratedTerminalDropResultV1 Generate(object terminalFact)
         {
-            TerminalDropAdaptationResultV1 adaptation = adapters.Adapt(terminalFact);
+            TerminalDropAdaptationResultV1 adaptation;
+            try
+            {
+                adaptation = adapters.Adapt(terminalFact);
+            }
+            catch (Exception exception)
+            {
+                return RejectException(
+                    TerminalDropRejectionCodeV1.InvalidTerminalFact,
+                    null,
+                    "adaptation",
+                    exception);
+            }
+
             if (adaptation == null || !adaptation.Succeeded)
             {
                 return GeneratedTerminalDropResultV1.Rejected(
@@ -72,7 +85,7 @@ namespace ShooterMover.TerminalDropBinding
                         : adaptation.RejectionCode,
                     null,
                     adaptation == null
-                        ? "terminal-drop-adaptation-returned-null"
+                        ? "terminal-drop-stage-adaptation-returned-null"
                         : adaptation.Diagnostic);
             }
 
@@ -89,6 +102,7 @@ namespace ShooterMover.TerminalDropBinding
                     {
                         return existing.Result.AsExactReplay();
                     }
+
                     return GeneratedTerminalDropResultV1.Rejected(
                         TerminalDropRejectionCodeV1.InvalidTerminalFact,
                         source,
@@ -107,13 +121,26 @@ namespace ShooterMover.TerminalDropBinding
                 TerminalDropRunGenerationContextV1 runContext;
                 TerminalDropRejectionCodeV1 runRejection;
                 string runDiagnostic;
-                if (!runContexts.TryResolve(
-                    source.RunStableId,
-                    source.RunLifecycleGeneration,
-                    out runContext,
-                    out runRejection,
-                    out runDiagnostic)
-                    || runContext == null)
+                bool runResolved;
+                try
+                {
+                    runResolved = runContexts.TryResolve(
+                        source.RunStableId,
+                        source.RunLifecycleGeneration,
+                        out runContext,
+                        out runRejection,
+                        out runDiagnostic);
+                }
+                catch (Exception exception)
+                {
+                    return RejectException(
+                        TerminalDropRejectionCodeV1.MissingRun,
+                        source,
+                        "run-context-resolution",
+                        exception);
+                }
+
+                if (!runResolved || runContext == null)
                 {
                     return GeneratedTerminalDropResultV1.Rejected(
                         runRejection == TerminalDropRejectionCodeV1.None
@@ -121,39 +148,75 @@ namespace ShooterMover.TerminalDropBinding
                             : runRejection,
                         source,
                         string.IsNullOrWhiteSpace(runDiagnostic)
-                            ? "terminal-drop-run-context-resolution-failed"
+                            ? "terminal-drop-stage-run-context-resolution-failed"
                             : runDiagnostic);
                 }
 
                 RewardProfileV1 profile;
-                if (source.DeclaredDropProfileStableId == null)
+                try
                 {
-                    StableId noDropProfileId = RewardApplicationCanonicalV1.DeriveStableId(
-                        "terminaldropnoprofile",
-                        source.FactKindStableId.ToString(),
-                        source.SourceDefinitionStableId.ToString());
-                    profile = RewardProfileV1.CreateExplicitNoDrop(noDropProfileId);
+                    if (source.DeclaredDropProfileStableId == null)
+                    {
+                        StableId noDropProfileId = RewardApplicationCanonicalV1.DeriveStableId(
+                            "terminaldropnoprofile",
+                            source.FactKindStableId.ToString(),
+                            source.SourceDefinitionStableId.ToString());
+                        profile = RewardProfileV1.CreateExplicitNoDrop(noDropProfileId);
+                    }
+                    else if (!profiles.TryResolve(source.DeclaredDropProfileStableId, out profile)
+                        || profile == null)
+                    {
+                        return GeneratedTerminalDropResultV1.Rejected(
+                            TerminalDropRejectionCodeV1.MissingDropProfile,
+                            source,
+                            "terminal-drop-profile-missing:" + source.DeclaredDropProfileStableId);
+                    }
                 }
-                else if (!profiles.TryResolve(source.DeclaredDropProfileStableId, out profile)
-                    || profile == null)
+                catch (Exception exception)
                 {
-                    return GeneratedTerminalDropResultV1.Rejected(
+                    return RejectException(
                         TerminalDropRejectionCodeV1.MissingDropProfile,
                         source,
-                        "terminal-drop-profile-missing:" + source.DeclaredDropProfileStableId);
+                        "profile-resolution",
+                        exception);
                 }
 
-                RewardOperationRequestV1 operation = BuildOperation(source, runContext, profile);
-                ulong generationSeed = TerminalDropCanonicalV1.DeriveSeed(
-                    runContext.RootSeed,
-                    operation.Fingerprint + "|" + source.Fingerprint);
-                RewardGenerationRequestV1 generationRequest =
-                    RewardGenerationRequestV1.Create(
+                RewardOperationRequestV1 operation;
+                ulong generationSeed;
+                try
+                {
+                    operation = BuildOperation(source, runContext, profile);
+                    generationSeed = TerminalDropCanonicalV1.DeriveSeed(
+                        runContext.RootSeed,
+                        operation.Fingerprint + "|" + source.Fingerprint);
+                }
+                catch (Exception exception)
+                {
+                    return RejectException(
+                        TerminalDropRejectionCodeV1.InvalidGeneratedBatch,
+                        source,
+                        "operation-construction",
+                        exception);
+                }
+
+                RewardGenerationRequestV1 generationRequest;
+                try
+                {
+                    generationRequest = RewardGenerationRequestV1.Create(
                         operation,
                         profile,
                         runContext.ProgressionContext,
                         generationSeed,
                         runContext.GenerationAlgorithmVersion);
+                }
+                catch (Exception exception)
+                {
+                    return RejectException(
+                        TerminalDropRejectionCodeV1.GenerationFailed,
+                        source,
+                        "generation-request-construction",
+                        exception);
+                }
 
                 RewardGenerationResultEnvelopeV1 envelope;
                 try
@@ -162,63 +225,84 @@ namespace ShooterMover.TerminalDropBinding
                 }
                 catch (Exception exception)
                 {
-                    return GeneratedTerminalDropResultV1.Rejected(
+                    return RejectException(
                         TerminalDropRejectionCodeV1.GenerationFailed,
                         source,
-                        "terminal-drop-generation-exception:" + exception.Message);
+                        "generation-execution",
+                        exception);
                 }
+
                 if (envelope == null || !envelope.IsSuccess || envelope.Result == null)
                 {
                     return GeneratedTerminalDropResultV1.Rejected(
                         TerminalDropRejectionCodeV1.GenerationFailed,
                         source,
                         envelope == null
-                            ? "terminal-drop-generation-returned-null"
-                            : "terminal-drop-generation-rejected:" + envelope.FailureReason);
+                            ? "terminal-drop-stage-generation-returned-null"
+                            : "terminal-drop-stage-generation-rejected:" + envelope.FailureReason);
                 }
 
-                List<GeneratedTerminalDropRewardV1> children;
                 try
                 {
-                    children = BuildChildren(operation, envelope.Result);
+                    List<GeneratedTerminalDropRewardV1> children =
+                        BuildChildren(operation, envelope.Result);
+                    TerminalDropBindingStatusV1 status = envelope.Status
+                        == RewardGenerationStatusV1.ExplicitNoDrop
+                        ? TerminalDropBindingStatusV1.ExplicitNoDrop
+                        : TerminalDropBindingStatusV1.Accepted;
+                    string fingerprint = BuildBatchFingerprint(
+                        source,
+                        runContext,
+                        profile,
+                        operation,
+                        generationSeed,
+                        envelope,
+                        children);
+                    var accepted = new GeneratedTerminalDropResultV1(
+                        status,
+                        TerminalDropRejectionCodeV1.None,
+                        source,
+                        profile.ProfileStableId,
+                        operation,
+                        generationSeed,
+                        envelope,
+                        children,
+                        fingerprint,
+                        string.Empty);
+
+                    replay.Add(
+                        source.TerminalEventStableId,
+                        new ReplayRecord(source.Fingerprint, accepted));
+                    return accepted;
                 }
                 catch (Exception exception)
                 {
-                    return GeneratedTerminalDropResultV1.Rejected(
+                    return RejectException(
                         TerminalDropRejectionCodeV1.InvalidGeneratedBatch,
                         source,
-                        "terminal-drop-child-materialization-failed:" + exception.Message);
+                        "batch-finalization",
+                        exception);
                 }
-
-                TerminalDropBindingStatusV1 status = envelope.Status
-                    == RewardGenerationStatusV1.ExplicitNoDrop
-                    ? TerminalDropBindingStatusV1.ExplicitNoDrop
-                    : TerminalDropBindingStatusV1.Accepted;
-                string fingerprint = BuildBatchFingerprint(
-                    source,
-                    runContext,
-                    profile,
-                    operation,
-                    generationSeed,
-                    envelope,
-                    children);
-                var accepted = new GeneratedTerminalDropResultV1(
-                    status,
-                    TerminalDropRejectionCodeV1.None,
-                    source,
-                    profile.ProfileStableId,
-                    operation,
-                    generationSeed,
-                    envelope,
-                    children,
-                    fingerprint,
-                    string.Empty);
-
-                replay.Add(
-                    source.TerminalEventStableId,
-                    new ReplayRecord(source.Fingerprint, accepted));
-                return accepted;
             }
+        }
+
+        private static GeneratedTerminalDropResultV1 RejectException(
+            TerminalDropRejectionCodeV1 code,
+            TerminalDropSourceFactV1 source,
+            string stage,
+            Exception exception)
+        {
+            string typeName = exception == null
+                ? "unknown"
+                : exception.GetType().Name;
+            string message = exception == null || string.IsNullOrWhiteSpace(exception.Message)
+                ? "no-message"
+                : exception.Message.Trim();
+            return GeneratedTerminalDropResultV1.Rejected(
+                code,
+                source,
+                "terminal-drop-stage-" + stage + "-exception:"
+                    + typeName + ":" + message);
         }
 
         private static RewardOperationRequestV1 BuildOperation(
