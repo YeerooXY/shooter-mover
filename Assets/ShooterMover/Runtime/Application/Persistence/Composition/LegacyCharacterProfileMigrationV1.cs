@@ -148,14 +148,14 @@ namespace ShooterMover.Application.Persistence.Composition
                     Array.Empty<int>());
             }
 
-            // Startup migration has no active graph and follows the normal batch path below.
-            // A single empty-slot request while a graph is active is real character creation
-            // and must use the coordinator's persist-create-restore-save-publish transaction.
+            // A single empty-slot request is a character-creation transaction, including
+            // first-character creation. Batch PlayerPrefs migration remains on the deterministic
+            // migration path below so all legacy slots can be imported in one aggregate save.
             CharacterCompositionCoordinatorV1 activeComposition;
             if (profiles.Count == 1
                 && accountAuthority.Current.CharacterAt(
                     profiles[0].SlotIndex) == null
-                && CharacterCompositionCoordinatorV1.TryResolveActive(
+                && CharacterCompositionCoordinatorV1.TryResolve(
                     accountAuthority,
                     out activeComposition))
             {
