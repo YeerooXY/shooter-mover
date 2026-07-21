@@ -33,9 +33,9 @@ The generated result remains a pending, uncollected run-local fact. It is not a 
 
 `TerminalDropFactAdapterRegistryV1` is keyed by the exact terminal fact CLR type and carries an explicit stable fact-kind identity. Registrations are sorted before the registry fingerprint is calculated, so input order cannot change canonical behavior.
 
-The built-in adapters are:
+The production adapters are:
 
-- `EnemyDeathTerminalDropFactAdapterV1` for `EnemyDeathFactV1`;
+- `ContextResolvedEnemyDeathTerminalDropFactAdapterV1` for `EnemyDeathFactV1`, delegating definition/profile validation to `EnemyDeathTerminalDropFactAdapterV1` while resolving the separate Run Session lifecycle through `IEnemyTerminalSourceContextResolverV1`;
 - `PropDestructionTerminalDropFactAdapterV1` for `PropFactBatchV1`.
 
 Adding another source that uses the same DROP/GEN mechanics normally requires one adapter registration, definition/profile data and focused tests. The shared generation authority contains no enemy-ID, prop-ID or drop-profile-ID switch.
@@ -54,7 +54,7 @@ A configured but missing profile rejects with `MissingDropProfile`. Invalid or i
 
 ## Source and Run Session context
 
-Enemy death facts already preserve run, room, placement, entity, lifecycle and attribution facts. Prop terminal facts do not contain run/placement lifecycle data, so `IPropTerminalSourceContextResolverV1` is the narrow typed lookup port that projects those facts from the existing production prop composition.
+Enemy death facts preserve run identity, room, placement, entity, enemy lifecycle and attribution, but they do not own the Run Session lifecycle generation. `IEnemyTerminalSourceContextResolverV1` supplies that exact run lifecycle while validating the source entity, placement and enemy lifecycle against the death fact. Prop terminal facts do not contain run/placement lifecycle data, so `IPropTerminalSourceContextResolverV1` projects those facts from the existing production prop composition.
 
 `ITerminalDropRunContextResolverV1` validates the exact run and expected lifecycle. `RunSessionTerminalDropContextResolverV1` is the read-only bridge to `RunSessionAuthorityV1`; it rejects missing, stale/future or ended runs and exposes the frozen run seed plus progression/event context through a dedicated provider. It performs no Run Session mutation.
 
