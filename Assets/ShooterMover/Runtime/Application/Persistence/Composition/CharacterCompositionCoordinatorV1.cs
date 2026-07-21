@@ -12,9 +12,8 @@ using ShooterMover.Domain.Persistence.Accounts;
 namespace ShooterMover.Application.Persistence.Composition
 {
     /// <summary>
-    /// One selected-character runtime graph. The graph only composes existing subsystem
-    /// authorities and their merged save-component adapters; it does not own replacement
-    /// XP, holdings, wallet, skill, loadout, strongbox, or account truth.
+    /// One selected-character runtime graph. It composes existing subsystem authorities
+    /// and their merged save-component adapters; it owns no replacement subsystem truth.
     /// </summary>
     public interface ICharacterRuntimeGraphV1 : IDisposable
     {
@@ -76,20 +75,14 @@ namespace ShooterMover.Application.Persistence.Composition
 
         public bool Succeeded
         {
-            get
-            {
-                return Status != CharacterCompositionStatusV1.Rejected;
-            }
+            get { return Status != CharacterCompositionStatusV1.Rejected; }
         }
     }
 
     /// <summary>
-    /// Account-to-Hub composition boundary. It selects one exact account slot, creates a
-    /// fresh graph of the already-existing subsystem authorities, restores that graph
-    /// through SAVE-ADAPTERS-001, and keeps every other slot opaque and untouched.
-    /// Confirmed mutations are exported through the same adapters, installed through the
-    /// existing PlayerAccountSaveAuthorityV1, and durably committed by the injected
-    /// account-store save delegate.
+    /// Account-to-Hub composition boundary. It restores only the selected exact account
+    /// slot through SAVE-ADAPTERS-001, keeps all other slots opaque, and persists confirmed
+    /// mutations through PlayerAccountSaveAuthorityV1 plus the injected atomic store.
     /// </summary>
     public sealed class CharacterCompositionCoordinatorV1 : IDisposable
     {
@@ -153,6 +146,11 @@ namespace ShooterMover.Application.Persistence.Composition
             get { return activeSlotIndex; }
         }
 
+        public static IReadOnlyList<StableId> RequiredCharacterComponentIds
+        {
+            get { return requiredCharacterComponentIds; }
+        }
+
         public CharacterCompositionResultV1 Select(int slotIndex)
         {
             ThrowIfDisposed();
@@ -167,6 +165,10 @@ namespace ShooterMover.Application.Persistence.Composition
             {
                 return Reject("character-selection-slot-empty", null);
             }
+
+            // A previous graph may contain subscriptions, transient command replay state,
+            // and scene bindings. It must be fully gone before a new graph is constructed.
+            UnbindActive();
 
             ICharacterRuntimeGraphV1 candidate = null;
             try
@@ -193,12 +195,6 @@ namespace ShooterMover.Application.Persistence.Composition
                                 + restored.RejectionCode,
                         selected);
                 }
-
-                // The new graph is fully restored before it can become active. The old
-                // graph is then unbound/disposed before the new graph is published.
-                DisposeGraph(activeRuntime);
-                activeRuntime = null;
-                activeSlotIndex = -1;
 
                 candidate.MarkPersisted(selected);
                 activeRuntime = candidate;
@@ -382,11 +378,6 @@ namespace ShooterMover.Application.Persistence.Composition
             disposed = true;
         }
 
-        public static IReadOnlyList<StableId> RequiredCharacterComponentIds
-        {
-            get { return requiredCharacterComponentIds; }
-        }
-
         private CharacterCompositionResultV1 Reject(
             string diagnostic,
             CharacterInstanceSnapshotV1 character)
@@ -505,7 +496,8 @@ namespace ShooterMover.Application.Persistence.Composition
                 + index;
             using (SHA256 sha = SHA256.Create())
             {
-                byte[] digest = sha.ComputeHash(Encoding.UTF8.GetBytes(material));
+                byte[] digest = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(material));
                 var builder = new StringBuilder(32);
                 for (int offset = 0; offset < 16; offset++)
                 {
@@ -525,11 +517,10 @@ namespace ShooterMover.Application.Persistence.Composition
 
         private static void DisposeGraph(ICharacterRuntimeGraphV1 graph)
         {
-            if (graph == null || graph.IsDisposed)
+            if (graph != null && !graph.IsDisposed)
             {
-                return;
+                graph.Dispose();
             }
-            graph.Dispose();
         }
 
         private static bool IsSlotIndexValid(int slotIndex)
