@@ -271,6 +271,8 @@ namespace ShooterMover.Application.Persistence.Components
     /// Engine-neutral two-phase file protocol. It writes only a temporary candidate,
     /// decodes and validates the exact read-back bytes, then asks the filesystem port
     /// for one atomic active/backup replacement. It never uses PlayerPrefs.
+    /// Aggregate integrity and known component versions are always validated before
+    /// optional product-specific semantics.
     /// </summary>
     public sealed class AtomicPlayerAccountStoreV1
     {
@@ -279,7 +281,7 @@ namespace ShooterMover.Application.Persistence.Components
         private readonly string temporaryPath;
         private readonly string backupPath;
         private readonly Func<PlayerAccountSnapshotV1,
-            SaveComponentValidationResultV1> validateAccount;
+            SaveComponentValidationResultV1> validateAdditionalSemantics;
 
         public AtomicPlayerAccountStoreV1(
             IAtomicSaveFilePortV1 files,
@@ -311,22 +313,20 @@ namespace ShooterMover.Application.Persistence.Components
                 throw new ArgumentException(
                     "Active, temporary, and backup paths must be distinct.");
             }
-            this.validateAccount = validateAccount
-                ?? PlayerAccountAggregateCodecV1.Validate;
+            validateAdditionalSemantics = validateAccount;
         }
 
         public PlayerAccountStoreResultV1 Save(
             PlayerAccountSnapshotV1 account)
         {
-            SaveComponentValidationResultV1 validation =
-                account == null ? null : validateAccount(account);
-            if (validation == null || !validation.Succeeded)
+            SaveComponentValidationResultV1 validation = ValidateForUse(
+                account,
+                "account-save-validation-result-null");
+            if (!validation.Succeeded)
             {
                 return new PlayerAccountStoreResultV1(
                     PlayerAccountStoreStatusV1.ValidationRejected,
-                    validation == null
-                        ? "account-save-validation-result-null"
-                        : validation.RejectionCode,
+                    validation.RejectionCode,
                     null);
             }
 
@@ -368,8 +368,10 @@ namespace ShooterMover.Application.Persistence.Components
                         null);
                 }
 
-                validation = validateAccount(readBack);
-                if (validation == null || !validation.Succeeded
+                validation = ValidateForUse(
+                    readBack,
+                    "temporary-readback-validation-result-null");
+                if (!validation.Succeeded
                     || !string.Equals(
                         readBack.Fingerprint,
                         account.Fingerprint,
@@ -378,11 +380,9 @@ namespace ShooterMover.Application.Persistence.Components
                     SafeDeleteTemporary();
                     return new PlayerAccountStoreResultV1(
                         PlayerAccountStoreStatusV1.ValidationRejected,
-                        validation == null
-                            ? "temporary-readback-validation-result-null"
-                            : !validation.Succeeded
-                                ? validation.RejectionCode
-                                : "temporary-readback-account-mismatch",
+                        !validation.Succeeded
+                            ? validation.RejectionCode
+                            : "temporary-readback-account-mismatch",
                         null);
                 }
 
@@ -409,6 +409,18 @@ namespace ShooterMover.Application.Persistence.Components
                         PlayerAccountStoreStatusV1.IoFailure,
                         "active-readback-invalid-after-atomic-replace:"
                             + rejectionCode,
+                        null);
+                }
+
+                validation = ValidateForUse(
+                    active,
+                    "active-readback-validation-result-null");
+                if (!validation.Succeeded)
+                {
+                    return new PlayerAccountStoreResultV1(
+                        PlayerAccountStoreStatusV1.IoFailure,
+                        "active-readback-validation-failed-after-atomic-replace:"
+                            + validation.RejectionCode,
                         null);
                 }
 
@@ -493,14 +505,13 @@ namespace ShooterMover.Application.Persistence.Components
                 {
                     return false;
                 }
-                SaveComponentValidationResultV1 validation =
-                    validateAccount(snapshot);
-                if (validation == null || !validation.Succeeded)
+                SaveComponentValidationResultV1 validation = ValidateForUse(
+                    snapshot,
+                    "account-load-validation-result-null");
+                if (!validation.Succeeded)
                 {
                     snapshot = null;
-                    rejectionCode = validation == null
-                        ? "account-load-validation-result-null"
-                        : validation.RejectionCode;
+                    rejectionCode = validation.RejectionCode;
                     return false;
                 }
                 return true;
@@ -512,6 +523,30 @@ namespace ShooterMover.Application.Persistence.Components
                     + exception.GetType().Name;
                 return false;
             }
+        }
+
+        private SaveComponentValidationResultV1 ValidateForUse(
+            PlayerAccountSnapshotV1 account,
+            string additionalNullCode)
+        {
+            SaveComponentValidationResultV1 mandatory =
+                KnownSaveComponentVersionGuardV1.Validate(account);
+            if (mandatory == null || !mandatory.Succeeded)
+            {
+                return mandatory
+                    ?? SaveComponentValidationResultV1.Reject(
+                        "mandatory-account-validation-result-null");
+            }
+
+            if (validateAdditionalSemantics == null)
+            {
+                return SaveComponentValidationResultV1.Accept();
+            }
+
+            SaveComponentValidationResultV1 additional =
+                validateAdditionalSemantics(account);
+            return additional
+                ?? SaveComponentValidationResultV1.Reject(additionalNullCode);
         }
 
         private void SafeDeleteTemporary()
