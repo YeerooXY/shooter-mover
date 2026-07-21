@@ -212,6 +212,25 @@ namespace ShooterMover.Application.Flow.Production
         }
     }
 
+    public sealed class ProductionInventoryLoadoutImportResultV1
+    {
+        public ProductionInventoryLoadoutImportResultV1(
+            bool succeeded,
+            string rejectionCode,
+            InventoryLoadoutAuthoritySnapshotV1 snapshot)
+        {
+            Succeeded = succeeded;
+            RejectionCode = rejectionCode ?? string.Empty;
+            Snapshot = snapshot;
+        }
+
+        public bool Succeeded { get; }
+
+        public string RejectionCode { get; }
+
+        public InventoryLoadoutAuthoritySnapshotV1 Snapshot { get; }
+    }
+
     /// <summary>
     /// Exact-instance equipped truth for one profile. The class mount layout determines
     /// which weapon positions are required; unavailable positions must remain unbound.
@@ -289,6 +308,43 @@ namespace ShooterMover.Application.Flow.Production
             return snapshot;
         }
 
+        /// <summary>
+        /// Restore-only snapshot import used by the merged save-component adapter. It
+        /// validates the exact bindings against the already-restored holdings authority,
+        /// preserves the durable sequence, and does not replay a user equip command.
+        /// </summary>
+        public ProductionInventoryLoadoutImportResultV1 ImportSnapshot(
+            InventoryLoadoutAuthoritySnapshotV1 imported)
+        {
+            if (imported == null)
+            {
+                return ImportRejected("production-loadout-import-null");
+            }
+            if (!imported.HasValidFingerprint())
+            {
+                return ImportRejected(
+                    "production-loadout-import-fingerprint-invalid");
+            }
+
+            PlayerHoldingsSnapshotV1 holdingsSnapshot =
+                holdings.ExportSnapshot();
+            string rejectionCode;
+            if (!ValidateBindings(
+                imported.Bindings,
+                holdingsSnapshot,
+                out rejectionCode))
+            {
+                return ImportRejected(rejectionCode);
+            }
+
+            snapshot = imported;
+            lastAcceptedCommandFingerprint = string.Empty;
+            return new ProductionInventoryLoadoutImportResultV1(
+                true,
+                string.Empty,
+                snapshot);
+        }
+
         public InventoryLoadoutAuthorityResultV1 Apply(
             InventoryLoadoutAuthorityCommandV1 command)
         {
@@ -356,6 +412,15 @@ namespace ShooterMover.Application.Flow.Production
             return new InventoryLoadoutAuthorityResultV1(
                 InventoryLoadoutAuthorityMutationStatusV1.Applied,
                 string.Empty,
+                snapshot);
+        }
+
+        private ProductionInventoryLoadoutImportResultV1 ImportRejected(
+            string rejectionCode)
+        {
+            return new ProductionInventoryLoadoutImportResultV1(
+                false,
+                rejectionCode,
                 snapshot);
         }
 

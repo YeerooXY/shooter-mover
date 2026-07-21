@@ -1,42 +1,69 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards.Application;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.Application.Flow.Production
 {
     public static class ProductionFlowScenePathsV1
     {
-        public const string Bootstrap = "Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity";
-        public const string MainMenu = "Assets/ShooterMover/Scenes/Menu/MainMenu.unity";
-        public const string CharacterSelection = "Assets/ShooterMover/Scenes/Flow/CharacterSelect/CharacterSelect.unity";
-        public const string Hub = "Assets/ShooterMover/Scenes/Flow/Hub/HubFlow.unity";
-        public const string PlaySelection = "Assets/ShooterMover/Scenes/Flow/PlaySelection/PlaySelection.unity";
-        public const string LevelSelection = "Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity";
-        public const string Inventory = "Assets/ShooterMover/Scenes/Flow/InventoryLoadout/InventoryLoadout.unity";
-        public const string Skills = "Assets/ShooterMover/Scenes/Flow/Skills/Skills.unity";
-        public const string Shop = "Assets/ShooterMover/Scenes/Flow/Shop/Shop.unity";
-        public const string Crafting = "Assets/ShooterMover/Scenes/Flow/Crafting/Crafting.unity";
-        public const string Results = "Assets/ShooterMover/Scenes/Flow/Results/Results.unity";
-        public const string StrongboxOpening = "Assets/ShooterMover/Scenes/StrongboxOpening/StrongboxOpening.unity";
+        public const string Bootstrap =
+            "Assets/ShooterMover/Scenes/Bootstrap/Bootstrap.unity";
+        public const string MainMenu =
+            "Assets/ShooterMover/Scenes/Menu/MainMenu.unity";
+        public const string CharacterSelection =
+            "Assets/ShooterMover/Scenes/Flow/CharacterSelect/CharacterSelect.unity";
+        public const string Hub =
+            "Assets/ShooterMover/Scenes/Flow/Hub/HubFlow.unity";
+        public const string PlaySelection =
+            "Assets/ShooterMover/Scenes/Flow/PlaySelection/PlaySelection.unity";
+        public const string LevelSelection =
+            "Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity";
+        public const string Inventory =
+            "Assets/ShooterMover/Scenes/Flow/InventoryLoadout/InventoryLoadout.unity";
+        public const string Skills =
+            "Assets/ShooterMover/Scenes/Flow/Skills/Skills.unity";
+        public const string Shop =
+            "Assets/ShooterMover/Scenes/Flow/Shop/Shop.unity";
+        public const string Crafting =
+            "Assets/ShooterMover/Scenes/Flow/Crafting/Crafting.unity";
+        public const string Results =
+            "Assets/ShooterMover/Scenes/Flow/Results/Results.unity";
+        public const string StrongboxOpening =
+            "Assets/ShooterMover/Scenes/StrongboxOpening/StrongboxOpening.unity";
 
         public static string ForHubRoute(HubRouteV1 route)
         {
             switch (route)
             {
-                case HubRouteV1.MainMenu: return MainMenu;
-                case HubRouteV1.CharacterSelect: return CharacterSelection;
-                case HubRouteV1.InventoryLoadoutHub: return Hub;
-                case HubRouteV1.Inventory: return Inventory;
-                case HubRouteV1.Skills: return Skills;
-                case HubRouteV1.Shop: return Shop;
-                case HubRouteV1.Crafting: return Crafting;
-                case HubRouteV1.Play: return PlaySelection;
+                case HubRouteV1.MainMenu:
+                    return MainMenu;
+                case HubRouteV1.CharacterSelect:
+                    return CharacterSelection;
+                case HubRouteV1.InventoryLoadoutHub:
+                    return Hub;
+                case HubRouteV1.Inventory:
+                    return Inventory;
+                case HubRouteV1.Skills:
+                    return Skills;
+                case HubRouteV1.Shop:
+                    return Shop;
+                case HubRouteV1.Crafting:
+                    return Crafting;
+                case HubRouteV1.Play:
+                    return PlaySelection;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(route), route, "No production scene is registered for the route.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(route),
+                        route,
+                        "No production scene is registered for the route.");
             }
         }
     }
@@ -49,14 +76,17 @@ namespace ShooterMover.Application.Flow.Production
         {
             if (string.IsNullOrWhiteSpace(displayName))
             {
-                throw new ArgumentException("A character display name is required.", nameof(displayName));
+                throw new ArgumentException(
+                    "A character display name is required.",
+                    nameof(displayName));
             }
-
             DisplayName = displayName.Trim();
             Payload = payload ?? throw new ArgumentNullException(nameof(payload));
             if (!payload.HasValidFingerprint())
             {
-                throw new ArgumentException("The route payload fingerprint is invalid.", nameof(payload));
+                throw new ArgumentException(
+                    "The route payload fingerprint is invalid.",
+                    nameof(payload));
             }
         }
 
@@ -180,7 +210,6 @@ namespace ShooterMover.Application.Flow.Production
                 RejectedWhilePendingCount++;
                 return false;
             }
-
             if (!navigation.CanNavigateTo(route))
             {
                 return false;
@@ -199,7 +228,6 @@ namespace ShooterMover.Application.Flow.Production
                 throw new InvalidOperationException(
                     "The route changed between validation and accepted scene loading.");
             }
-
             return true;
         }
 
@@ -216,9 +244,7 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return false;
             }
-
-            string scenePath = ProductionFlowScenePathsV1.ForHubRoute(target);
-            if (!TryBegin(scenePath))
+            if (!TryBegin(ProductionFlowScenePathsV1.ForHubRoute(target)))
             {
                 return false;
             }
@@ -230,7 +256,6 @@ namespace ShooterMover.Application.Flow.Production
                 throw new InvalidOperationException(
                     "The back route changed between validation and accepted scene loading.");
             }
-
             return true;
         }
 
@@ -238,15 +263,15 @@ namespace ShooterMover.Application.Flow.Production
         {
             if (string.IsNullOrWhiteSpace(scenePath))
             {
-                throw new ArgumentException("A destination scene path is required.", nameof(scenePath));
+                throw new ArgumentException(
+                    "A destination scene path is required.",
+                    nameof(scenePath));
             }
-
             if (IsTransitionPending)
             {
                 RejectedWhilePendingCount++;
                 return false;
             }
-
             return TryBegin(scenePath);
         }
 
@@ -256,18 +281,17 @@ namespace ShooterMover.Application.Flow.Production
             {
                 throw new ArgumentNullException(nameof(payload));
             }
-
             if (!payload.HasValidFingerprint())
             {
-                throw new ArgumentException("The returned route payload is invalid.", nameof(payload));
+                throw new ArgumentException(
+                    "The returned route payload is invalid.",
+                    nameof(payload));
             }
-
             if (IsTransitionPending)
             {
                 RejectedWhilePendingCount++;
                 return false;
             }
-
             if (!TryBegin(ProductionFlowScenePathsV1.Hub))
             {
                 return false;
@@ -278,7 +302,8 @@ namespace ShooterMover.Application.Flow.Production
             {
                 HubNavigationResultV1 back = navigation.NavigateBack();
                 if (back.Changed
-                    && navigation.CurrentRoute == HubRouteV1.InventoryLoadoutHub)
+                    && navigation.CurrentRoute
+                        == HubRouteV1.InventoryLoadoutHub)
                 {
                     return true;
                 }
@@ -295,7 +320,6 @@ namespace ShooterMover.Application.Flow.Production
                 throw new InvalidOperationException(
                     "Navigation cannot be replaced while a scene transition is pending.");
             }
-
             navigation = new HubNavigationServiceV1(
                 payload ?? throw new ArgumentNullException(nameof(payload)));
         }
@@ -306,7 +330,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return true;
             }
-
             if (string.Equals(
                 loadedScenePath,
                 pendingScenePath,
@@ -322,7 +345,6 @@ namespace ShooterMover.Application.Flow.Production
                 throw new InvalidOperationException(
                     "The loaded scene did not match the accepted route and reconciliation failed.");
             }
-
             AcceptedLoadCount++;
             return false;
         }
@@ -335,7 +357,6 @@ namespace ShooterMover.Application.Flow.Production
                 pendingScenePath = null;
                 return false;
             }
-
             AcceptedLoadCount++;
             return true;
         }
@@ -355,7 +376,6 @@ namespace ShooterMover.Application.Flow.Production
                 throw new InvalidOperationException(
                     "Unable to rebuild the canonical route at Hub.");
             }
-
             navigation = replacement;
         }
     }
@@ -376,7 +396,6 @@ namespace ShooterMover.Application.Flow.Production
                     "Only an unopened exact strongbox result may be bound.",
                     nameof(selectedStrongbox));
             }
-
             OpeningService = openingService
                 ?? throw new ArgumentNullException(nameof(openingService));
             Command = command ?? throw new ArgumentNullException(nameof(command));
@@ -393,9 +412,10 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Immutable composition context. The result payload and exact strongbox objects
-    /// remain RUN-001 facts; BOX owns opening. Refresh is supplied by the authoritative
-    /// run/results composition after BOX completes.
+    /// Immutable run/results context. Exact run facts remain RUN-owned. With the Unity
+    /// character bridge installed, opening is executed by the selected character's BOX
+    /// authority and durably persisted before Results refresh. Engine-neutral callers
+    /// without that bridge retain the original supplied BOX service behavior.
     /// </summary>
     public sealed class ProductionResultsContextV1
     {
@@ -406,7 +426,8 @@ namespace ShooterMover.Application.Flow.Production
         public ProductionResultsContextV1(
             MissionResultPayloadV1 result,
             StrongboxOpeningServiceV1 openingService,
-            Func<MissionRunStrongboxResultV1, StrongboxOpenCommandV1> commandFactory,
+            Func<MissionRunStrongboxResultV1, StrongboxOpenCommandV1>
+                commandFactory,
             EquipmentCatalog equipmentCatalog,
             Func<MissionResultPayloadV1> refreshResult)
         {
@@ -429,28 +450,11 @@ namespace ShooterMover.Application.Flow.Production
         public ProductionStrongboxOpeningBindingV1 BindExact(
             MissionRunStrongboxResultV1 selected)
         {
-            bool exactReference = false;
-            for (int index = 0; index < Result.UnopenedStrongboxes.Count; index++)
-            {
-                if (ReferenceEquals(Result.UnopenedStrongboxes[index], selected))
-                {
-                    exactReference = true;
-                    break;
-                }
-            }
-
-            if (!exactReference)
-            {
-                throw new ArgumentException(
-                    "The selected strongbox must be the exact unopened result object.",
-                    nameof(selected));
-            }
-
-            StrongboxOpenCommandV1 command = commandFactory(selected);
+            RequireExactUnopenedSelection(selected);
             return new ProductionStrongboxOpeningBindingV1(
                 selected,
-                OpeningService,
-                command,
+                ResolveOpeningService(),
+                commandFactory(selected),
                 EquipmentCatalog);
         }
 
@@ -458,21 +462,11 @@ namespace ShooterMover.Application.Flow.Production
             MissionRunStrongboxResultV1 selected,
             bool openingSucceeded)
         {
-            bool exactSelection = false;
-            for (int index = 0; index < Result.UnopenedStrongboxes.Count; index++)
+            RequireExactUnopenedSelection(selected);
+            if (openingSucceeded
+                && ProductionCharacterStrongboxBridgeRegistryV1.IsConfigured)
             {
-                if (ReferenceEquals(Result.UnopenedStrongboxes[index], selected))
-                {
-                    exactSelection = true;
-                    break;
-                }
-            }
-
-            if (!exactSelection)
-            {
-                throw new ArgumentException(
-                    "The refreshed opening must reference the exact previously selected strongbox.",
-                    nameof(selected));
+                PersistCharacterOpeningAndSynchronizeRunScope();
             }
 
             MissionResultPayloadV1 refreshed = refreshResult();
@@ -481,7 +475,6 @@ namespace ShooterMover.Application.Flow.Production
                 throw new InvalidOperationException(
                     "The authoritative Results refresh returned no payload.");
             }
-
             if (refreshed.RunStableId != Result.RunStableId
                 || !refreshed.RoutePayload.Equals(Result.RoutePayload)
                 || refreshed.Strongboxes.Count != Result.Strongboxes.Count)
@@ -500,7 +493,6 @@ namespace ShooterMover.Application.Flow.Production
                     throw new InvalidOperationException(
                         "The refreshed Results payload lost a strongbox instance.");
                 }
-
                 if (ReferenceEquals(before, selected))
                 {
                     if (openingSucceeded && after.IsUnopened)
@@ -508,16 +500,13 @@ namespace ShooterMover.Application.Flow.Production
                         throw new InvalidOperationException(
                             "A successful opening did not mark the exact selected strongbox opened.");
                     }
-
                     if (!openingSucceeded && !after.Equals(before))
                     {
                         throw new InvalidOperationException(
                             "A rejected opening changed the selected strongbox result.");
                     }
-
                     continue;
                 }
-
                 if (!after.Equals(before))
                 {
                     throw new InvalidOperationException(
@@ -533,9 +522,232 @@ namespace ShooterMover.Application.Flow.Production
                 refreshResult);
         }
 
+        private StrongboxOpeningServiceV1 ResolveOpeningService()
+        {
+            if (!ProductionCharacterStrongboxBridgeRegistryV1.IsConfigured)
+            {
+                return OpeningService;
+            }
+
+            StrongboxOpeningServiceV1 characterAuthority;
+            string rejectionCode;
+            if (!ProductionCharacterStrongboxBridgeRegistryV1.TryResolve(
+                out characterAuthority,
+                out rejectionCode))
+            {
+                throw new InvalidOperationException(
+                    "The selected-character BOX authority is unavailable: "
+                        + rejectionCode);
+            }
+            if (ReferenceEquals(characterAuthority, OpeningService))
+            {
+                return characterAuthority;
+            }
+
+            ImportOrThrow(
+                characterAuthority,
+                MergeSnapshots(
+                    characterAuthority.ExportSnapshot(),
+                    OpeningService.ExportSnapshot()),
+                "character-strongbox-handoff-import-rejected");
+            return characterAuthority;
+        }
+
+        private void PersistCharacterOpeningAndSynchronizeRunScope()
+        {
+            StrongboxOpeningServiceV1 characterAuthority;
+            string rejectionCode;
+            if (!ProductionCharacterStrongboxBridgeRegistryV1.TryResolve(
+                out characterAuthority,
+                out rejectionCode))
+            {
+                throw new InvalidOperationException(
+                    "The confirmed opening has no selected-character BOX authority: "
+                        + rejectionCode);
+            }
+
+            StrongboxOpeningSnapshotV1 characterSnapshot =
+                characterAuthority.ExportSnapshot();
+            if (!ProductionCharacterStrongboxBridgeRegistryV1.TryPersist(
+                characterSnapshot.Fingerprint,
+                out rejectionCode))
+            {
+                throw new InvalidOperationException(
+                    "The confirmed opening could not be persisted: "
+                        + rejectionCode);
+            }
+
+            if (!ReferenceEquals(characterAuthority, OpeningService))
+            {
+                ImportOrThrow(
+                    OpeningService,
+                    ProjectRunScope(
+                        characterSnapshot,
+                        OpeningService.ExportSnapshot()),
+                    "run-strongbox-refresh-import-rejected");
+            }
+        }
+
+        private void RequireExactUnopenedSelection(
+            MissionRunStrongboxResultV1 selected)
+        {
+            for (int index = 0;
+                index < Result.UnopenedStrongboxes.Count;
+                index++)
+            {
+                if (ReferenceEquals(Result.UnopenedStrongboxes[index], selected))
+                {
+                    return;
+                }
+            }
+            throw new ArgumentException(
+                "The selected strongbox must be the exact unopened result object.",
+                nameof(selected));
+        }
+
+        private static StrongboxOpeningSnapshotV1 MergeSnapshots(
+            StrongboxOpeningSnapshotV1 character,
+            StrongboxOpeningSnapshotV1 run)
+        {
+            RequireCompatibleCatalogs(character, run);
+            var contexts = new Dictionary<StableId, StrongboxInstanceContextV1>();
+            AddContexts(contexts, character.Contexts);
+            AddContexts(contexts, run.Contexts);
+            var openings = new Dictionary<
+                StableId,
+                StrongboxOpeningRecordSnapshotV1>();
+            AddOpenings(openings, character.Openings);
+            AddOpenings(openings, run.Openings);
+            return StrongboxOpeningSnapshotV1.CreateCanonical(
+                character.DefinitionCatalogFingerprint,
+                CountOpened(openings.Values),
+                contexts.Values,
+                openings.Values);
+        }
+
+        private static StrongboxOpeningSnapshotV1 ProjectRunScope(
+            StrongboxOpeningSnapshotV1 character,
+            StrongboxOpeningSnapshotV1 runScope)
+        {
+            RequireCompatibleCatalogs(character, runScope);
+            var scopeIds = new HashSet<StableId>(
+                runScope.Contexts.Select(item => item.InstanceStableId));
+            var contexts = new List<StrongboxInstanceContextV1>();
+            for (int index = 0; index < runScope.Contexts.Count; index++)
+            {
+                StableId instanceId = runScope.Contexts[index].InstanceStableId;
+                StrongboxInstanceContextV1 current = character.Contexts
+                    .FirstOrDefault(item => item.InstanceStableId == instanceId);
+                if (current == null)
+                {
+                    throw new InvalidOperationException(
+                        "The character BOX snapshot lost run context "
+                            + instanceId + ".");
+                }
+                contexts.Add(current);
+            }
+            List<StrongboxOpeningRecordSnapshotV1> openings = character.Openings
+                .Where(item => scopeIds.Contains(
+                    item.Command.StrongboxInstanceStableId))
+                .ToList();
+            return StrongboxOpeningSnapshotV1.CreateCanonical(
+                runScope.DefinitionCatalogFingerprint,
+                CountOpened(openings),
+                contexts,
+                openings);
+        }
+
+        private static void AddContexts(
+            IDictionary<StableId, StrongboxInstanceContextV1> output,
+            IEnumerable<StrongboxInstanceContextV1> source)
+        {
+            foreach (StrongboxInstanceContextV1 item in source)
+            {
+                StrongboxInstanceContextV1 existing;
+                if (output.TryGetValue(item.InstanceStableId, out existing))
+                {
+                    if (!string.Equals(
+                        existing.Fingerprint,
+                        item.Fingerprint,
+                        StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            "Strongbox context identity conflict: "
+                                + item.InstanceStableId);
+                    }
+                    continue;
+                }
+                output.Add(item.InstanceStableId, item);
+            }
+        }
+
+        private static void AddOpenings(
+            IDictionary<StableId, StrongboxOpeningRecordSnapshotV1> output,
+            IEnumerable<StrongboxOpeningRecordSnapshotV1> source)
+        {
+            foreach (StrongboxOpeningRecordSnapshotV1 item in source)
+            {
+                StableId openingId = item.Command.OpeningStableId;
+                StrongboxOpeningRecordSnapshotV1 existing;
+                if (output.TryGetValue(openingId, out existing))
+                {
+                    if (!string.Equals(
+                        existing.Fingerprint,
+                        item.Fingerprint,
+                        StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            "Strongbox opening identity conflict: " + openingId);
+                    }
+                    continue;
+                }
+                output.Add(openingId, item);
+            }
+        }
+
+        private static long CountOpened(
+            IEnumerable<StrongboxOpeningRecordSnapshotV1> openings)
+        {
+            return openings.LongCount(item =>
+                item.Stage == StrongboxOpeningStageV1.Opened);
+        }
+
+        private static void RequireCompatibleCatalogs(
+            StrongboxOpeningSnapshotV1 left,
+            StrongboxOpeningSnapshotV1 right)
+        {
+            if (left == null || right == null)
+            {
+                throw new ArgumentNullException(
+                    left == null ? nameof(left) : nameof(right));
+            }
+            if (!string.Equals(
+                left.DefinitionCatalogFingerprint,
+                right.DefinitionCatalogFingerprint,
+                StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Strongbox catalog fingerprints do not match across the character/run handoff.");
+            }
+        }
+
+        private static void ImportOrThrow(
+            StrongboxOpeningServiceV1 authority,
+            StrongboxOpeningSnapshotV1 snapshot,
+            string rejectionPrefix)
+        {
+            StrongboxOpeningImportResultV1 imported =
+                authority.ImportSnapshot(snapshot);
+            if (!imported.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    rejectionPrefix + ":" + imported.RejectionCode);
+            }
+        }
+
         private static MissionRunStrongboxResultV1 FindByInstance(
             MissionResultPayloadV1 result,
-            ShooterMover.Domain.Common.StableId instanceStableId)
+            StableId instanceStableId)
         {
             for (int index = 0; index < result.Strongboxes.Count; index++)
             {
@@ -545,7 +757,6 @@ namespace ShooterMover.Application.Flow.Production
                     return result.Strongboxes[index];
                 }
             }
-
             return null;
         }
     }

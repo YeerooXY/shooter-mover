@@ -24,13 +24,11 @@ using ShooterMover.UI.StrongboxOpening;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-
 namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
-    /// Persistent Unity composition adapter. It owns scene-transition state, profile
-    /// persistence and one UI camera, while delegating route truth to
-    /// HubNavigationServiceV1 and strongbox opening to StrongboxOpeningServiceV1.
+    /// Persistent Unity flow adapter. Character slot lifecycle delegates to the connected
+    /// account composition; PlayerPrefs is retained only as migration input and a UI cache.
     /// </summary>
     [DefaultExecutionOrder(-32000)]
     [DisallowMultipleComponent]
@@ -52,6 +50,7 @@ namespace ShooterMover.UI.ProductionFlow
         private StableId selectedModeStableId;
         private ProductionResultsContextV1 resultsContext;
         private ProductionStrongboxOpeningBindingV1 strongboxBinding;
+        private IProductionCharacterProfileLifecycleV1 profileLifecycle;
 
         public ProductionSceneTransitionCoordinatorV1 Transitions
         {
@@ -63,7 +62,68 @@ namespace ShooterMover.UI.ProductionFlow
             get { return profile; }
         }
 
+        public int ActiveProfileSlotIndex
+        {
+            get { return activeProfileSlot; }
+        }
+
         public static bool HasInstance { get { return instance != null; } }
+
+        public bool ConnectCharacterProfileLifecycle(
+            IProductionCharacterProfileLifecycleV1 lifecycle)
+        {
+            if (lifecycle == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<ProductionFlowProfileRecordV1> projection;
+            string rejectionCode;
+            if (!lifecycle.TryExportProfiles(
+                out projection,
+                out rejectionCode)
+                || projection == null
+                || projection.Count != ProfileSlotCount)
+            {
+                Debug.LogError(
+                    "Character profile projection rejected: "
+                        + rejectionCode,
+                    this);
+                return false;
+            }
+
+            profileLifecycle = lifecycle;
+            for (int slotIndex = 0;
+                slotIndex < ProfileSlotCount;
+                slotIndex++)
+            {
+                profiles[slotIndex] = projection[slotIndex];
+                if (profiles[slotIndex] == null)
+                {
+                    profileStore.Clear(slotIndex);
+                }
+                else
+                {
+                    profileStore.Save(slotIndex, profiles[slotIndex]);
+                }
+            }
+
+            if (!IsValidSlot(activeProfileSlot)
+                || profiles[activeProfileSlot] == null)
+            {
+                activeProfileSlot = FindFirstOccupiedSlot();
+            }
+            profile = profiles[activeProfileSlot];
+            draftPayload = CreateDraftPayload();
+            if (transitions != null
+                && !transitions.IsTransitionPending
+                && transitions.Navigation.CurrentRoute == HubRouteV1.MainMenu)
+            {
+                transitions.ReplaceAtMainMenu(
+                    profile == null ? draftPayload : profile.Payload);
+            }
+            return true;
+        }
 
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -72,7 +132,6 @@ namespace ShooterMover.UI.ProductionFlow
             instance = null;
             pendingResultsContext = null;
         }
-
 
         public static bool PresentResults(
             ProductionResultsContextV1 context)
@@ -357,9 +416,30 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
+            ProductionFlowProfileRecordV1 selected = profiles[slotIndex];
+            if (profileLifecycle != null)
+            {
+                string rejectionCode;
+                ProductionFlowProfileRecordV1 authoritative;
+                if (!profileLifecycle.TryActivate(
+                    slotIndex,
+                    selected,
+                    out authoritative,
+                    out rejectionCode))
+                {
+                    Debug.LogError(
+                        "Character activation rejected: " + rejectionCode,
+                        this);
+                    return false;
+                }
+                selected = authoritative;
+                profiles[slotIndex] = selected;
+                profileStore.Save(slotIndex, selected);
+            }
+
             activeProfileSlot = slotIndex;
-            profile = profiles[slotIndex];
-            return transitions.TryReturnToHub(payload);
+            profile = selected;
+            return transitions.TryReturnToHub(selected.Payload);
         }
 
         private bool CreateProfile(
@@ -382,6 +462,24 @@ namespace ShooterMover.UI.ProductionFlow
                 new ProductionFlowProfileRecordV1(
                     displayName,
                     result.Payload);
+            if (profileLifecycle != null)
+            {
+                string rejectionCode;
+                ProductionFlowProfileRecordV1 authoritative;
+                if (!profileLifecycle.TryActivate(
+                    slotIndex,
+                    candidate,
+                    out authoritative,
+                    out rejectionCode))
+                {
+                    Debug.LogError(
+                        "Character creation rejected: " + rejectionCode,
+                        this);
+                    return false;
+                }
+                candidate = authoritative;
+            }
+
             if (!transitions.TryReturnToHub(candidate.Payload))
             {
                 return false;
@@ -401,6 +499,22 @@ namespace ShooterMover.UI.ProductionFlow
                 || transitions.IsTransitionPending)
             {
                 return false;
+            }
+
+            ProductionFlowProfileRecordV1 deleting = profiles[slotIndex];
+            if (profileLifecycle != null)
+            {
+                string rejectionCode;
+                if (!profileLifecycle.TryDelete(
+                    slotIndex,
+                    deleting,
+                    out rejectionCode))
+                {
+                    Debug.LogError(
+                        "Character deletion rejected: " + rejectionCode,
+                        this);
+                    return false;
+                }
             }
 
             if (!transitions.TryLoadSubflow(
@@ -443,7 +557,6 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 if (profiles[index] != null) return index;
             }
-
             return 0;
         }
 
