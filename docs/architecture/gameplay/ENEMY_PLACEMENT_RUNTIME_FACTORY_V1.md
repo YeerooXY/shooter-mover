@@ -62,7 +62,7 @@ A successful first attack execution records a canonical accepted-execution entry
 - execution kind, resolved damage, and resolved cooldown;
 - the issued-decision fingerprint that authorized the attack.
 
-`RoutePlayerImpact` requires that ledger entry and an exact execution fingerprint. A caller-created request with matching IDs but altered damage, cooldown, descriptor, intent, source, or lifecycle cannot reach the player-damage port.
+`RoutePlayerImpact` requires that ledger entry and an exact execution fingerprint. It also requires the target lifecycle generation observed by the projectile/contact. That generation is part of impact replay identity and is forwarded unchanged to the player-damage port, allowing the eventual PlayerActorAuthority adapter to reject an impact observed against an earlier player generation. A caller-created request with matching IDs but altered damage, cooldown, descriptor, intent, source, or lifecycle cannot reach the player-damage port.
 
 ## Replay, death, and multi-hit behavior
 
@@ -73,6 +73,8 @@ A successful first attack execution records a canonical accepted-execution entry
 - Death does not authorize new attacks: a new execution operation attempted after terminal state rejects.
 - Recomposition creates a fresh runtime ledger. Old decisions and old projectiles reject through lifecycle generation.
 - Impact idempotency remains keyed by the distinct hit-event operation ID. Exact hit replay routes damage once, conflicting reuse rejects, and multiple distinct hit IDs can reference one accepted execution for projectile count, pierce, area, chain, or damage-over-time behavior.
+- Impact replay identity includes the target entity and observed target lifecycle generation, so one hit-event ID cannot be reused across player generations.
+- Terminal enemies may still be evaluated for immutable state/debug projection, but `RealizeMovement` rejects before invoking movement policy or movement realization once canonical actor state is terminal.
 
 ## Perception configuration
 
@@ -86,7 +88,7 @@ Incoming enemy damage mutates only canonical `EnemyActorState` through `EnemyAct
 
 ## Focused EditMode coverage
 
-The existing `EnemyPlacementRuntimeFactoryV1Tests` suite retains its 10 composition tests. The prefixed authority-boundary fixture adds 20 focused tests covering fabricated and altered decisions, exact decision copies, attack replay conflicts, fabricated and altered executions, post-death projectiles, lifecycle restart rejection, terminal attack rejection, exact/conflicting hit replay, multi-hit execution, and the removed perception option.
+The existing `EnemyPlacementRuntimeFactoryV1Tests` suite retains its 10 composition tests. The prefixed authority-boundary fixture adds 22 focused tests covering fabricated and altered decisions, exact decision copies, attack replay conflicts, fabricated and altered executions, observed player-lifecycle forwarding and restart rejection, post-death projectiles, enemy lifecycle restart rejection, terminal attack and movement rejection, exact/conflicting hit replay, multi-hit execution, and the removed perception option.
 
 ## Unity proof commands
 
