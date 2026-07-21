@@ -20,13 +20,13 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
 
             WeaponLootCardProjectionV1 card =
                 Project(runtime, generated.Equipment);
+            EquipmentDefinition equipmentDefinition =
+                runtime.EquipmentCatalog.FindEquipmentDefinition(
+                    generated.Equipment.DefinitionId);
 
             Assert.That(
                 card.EquipmentDefinitionId,
                 Is.EqualTo(generated.Equipment.DefinitionId));
-            EquipmentDefinition equipmentDefinition =
-                runtime.EquipmentCatalog.FindEquipmentDefinition(
-                    generated.Equipment.DefinitionId);
             Assert.That(equipmentDefinition, Is.Not.Null);
             Assert.That(
                 card.RuntimeWeaponReferenceId,
@@ -99,20 +99,26 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         [Test]
         public void MultiProjectileDamageShowsMultiplierAndProjectileRow()
         {
-            string json = BuildCatalogJson().Replace(
-                "\"ProjectilesPerTrigger\":1",
-                "\"ProjectilesPerTrigger\":7");
-            LootboxSimulatorRuntimeV1 runtime =
-                CreateRuntime(json);
-            EquipmentInstance item = CreateImportedFixtureItem(
-                "family_000.mk1",
-                "equipment-instance.card-multi",
-                1);
+            EquipmentCatalog equipmentCatalog =
+                ProductionStarterWeaponCatalogV1
+                    .BuildEquipmentCatalog();
+            WeaponCatalog weaponCatalog =
+                ProductionStarterWeaponCatalogV1
+                    .BuildWeaponCatalog();
+            EquipmentInstance item = EquipmentInstance.Create(
+                StableId.Parse("equipment-instance.card-multi"),
+                ProductionStarterWeaponCatalogV1
+                    .ShotgunEquipmentDefinitionStableId,
+                1,
+                StableId.Parse("equipment-quality.common"),
+                Array.Empty<AugmentInstance>());
 
-            WeaponLootCardProjectionV1 card =
-                Project(runtime, item);
+            WeaponLootCardProjectionV1 card = Project(
+                equipmentCatalog,
+                weaponCatalog,
+                item);
 
-            Assert.That(card.DamageText, Does.EndWith("× 7"));
+            Assert.That(card.DamageText, Is.EqualTo("3 × 7"));
             Assert.That(card.ShowsProjectileCount, Is.True);
             Assert.That(card.ProjectileCountText, Is.EqualTo("7"));
             Assert.That(
@@ -125,20 +131,31 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         {
             LootboxSimulatorRuntimeV1 withPierce =
                 CreateRuntime();
-            EquipmentInstance item = CreateImportedFixtureItem(
+            EquipmentInstance importedItem = CreateImportedFixtureItem(
                 "family_000.mk1",
                 "equipment-instance.card-pierce",
                 1);
             WeaponLootCardProjectionV1 shown =
-                Project(withPierce, item);
+                Project(withPierce, importedItem);
 
-            string noPierceJson = BuildCatalogJson().Replace(
-                "\"Pierce\":1",
-                "\"Pierce\":0");
-            LootboxSimulatorRuntimeV1 withoutPierce =
-                CreateRuntime(noPierceJson);
-            WeaponLootCardProjectionV1 hidden =
-                Project(withoutPierce, item);
+            EquipmentCatalog starterEquipmentCatalog =
+                ProductionStarterWeaponCatalogV1
+                    .BuildEquipmentCatalog();
+            WeaponCatalog starterWeaponCatalog =
+                ProductionStarterWeaponCatalogV1
+                    .BuildWeaponCatalog();
+            EquipmentInstance shotgun = EquipmentInstance.Create(
+                StableId.Parse(
+                    "equipment-instance.card-no-pierce"),
+                ProductionStarterWeaponCatalogV1
+                    .ShotgunEquipmentDefinitionStableId,
+                1,
+                StableId.Parse("equipment-quality.common"),
+                Array.Empty<AugmentInstance>());
+            WeaponLootCardProjectionV1 hidden = Project(
+                starterEquipmentCatalog,
+                starterWeaponCatalog,
+                shotgun);
 
             Assert.That(shown.ShowsPierce, Is.True);
             Assert.That(shown.PierceText, Is.EqualTo("1"));
@@ -195,6 +212,7 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             Assert.That(
                 generated.Equipment.Augments.Count,
                 Is.Zero);
+            Assert.That(definition, Is.Not.Null);
             Assert.That(
                 card.AugmentCapacity,
                 Is.EqualTo(definition.MaximumAugmentSlots));
@@ -222,17 +240,11 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
                 StableId.Parse("equipment-quality.common"),
                 Array.Empty<AugmentInstance>());
 
-            WeaponLootCardProjectionV1 card;
-            string diagnostic;
-            Assert.That(
-                WeaponLootCardProjectionV1.TryCreate(
-                    item,
-                    equipmentCatalog,
-                    weaponCatalog,
-                    out card,
-                    out diagnostic),
-                Is.True,
-                diagnostic);
+            WeaponLootCardProjectionV1 card = Project(
+                equipmentCatalog,
+                weaponCatalog,
+                item);
+
             Assert.That(card.AugmentCapacity, Is.Zero);
             Assert.That(card.AugmentSymbols, Is.Empty);
             Assert.That(
@@ -332,12 +344,12 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
                     30,
                     71006UL)[0];
 
-            var result = runtime.OpenOrRetry(box);
+            StrongboxOpeningResultRuntimeV1 result =
+                runtime.OpenOrRetry(box);
             Assert.That(
                 result.Status,
                 Is.EqualTo(
-                    ShooterMover.Application.Rewards.Strongboxes
-                        .StrongboxOpeningRuntimeStatusV1.Opened));
+                    StrongboxOpeningRuntimeStatusV1.Opened));
             EquipmentInstance equipment =
                 runtime.EquipmentFrom(result)[0];
             Assert.That(equipment.Augments.Count, Is.Zero);
@@ -414,13 +426,24 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             LootboxSimulatorRuntimeV1 runtime,
             EquipmentInstance equipment)
         {
+            return Project(
+                runtime.EquipmentCatalog,
+                runtime.WeaponCatalog,
+                equipment);
+        }
+
+        private static WeaponLootCardProjectionV1 Project(
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            EquipmentInstance equipment)
+        {
             WeaponLootCardProjectionV1 card;
             string diagnostic;
             Assert.That(
                 WeaponLootCardProjectionV1.TryCreate(
                     equipment,
-                    runtime.EquipmentCatalog,
-                    runtime.WeaponCatalog,
+                    equipmentCatalog,
+                    weaponCatalog,
                     out card,
                     out diagnostic),
                 Is.True,
