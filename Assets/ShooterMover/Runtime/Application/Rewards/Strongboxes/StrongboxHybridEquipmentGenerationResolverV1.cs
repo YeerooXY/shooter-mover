@@ -111,13 +111,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 return false;
             }
 
-            var generated = new List<EquipmentInstance>(
-                checked((int)equipmentGrant.Quantity));
+            int quantity = checked((int)equipmentGrant.Quantity);
+            var generated = new List<EquipmentInstance>(quantity);
             var signatures = new List<GeneratedEquipmentAugmentSignatureV1>(
-                checked((int)equipmentGrant.Quantity));
-            for (int slotIndex = 0;
-                 slotIndex < checked((int)equipmentGrant.Quantity);
-                 slotIndex++)
+                quantity);
+            for (int slotIndex = 0; slotIndex < quantity; slotIndex++)
             {
                 ulong slotOrdinal = (ulong)slotIndex;
                 StrongboxTargetLevelRollV1 target;
@@ -272,9 +270,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 WeaponDefinitionData weapon;
-                if (!weaponCatalog.TryGetDefinition(
-                        equipment.RuntimeWeaponReferenceId.ToString(),
-                        out weapon)
+                if (!TryResolveWeapon(equipment, out weapon)
                     || weapon == null
                     || weapon.Availability != WeaponCatalogAvailability.Live
                     || (weapon.TopBoxOnly && !topTier))
@@ -297,10 +293,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         rarityId);
                 }
                 catch (ArgumentException)
-                {
-                    continue;
-                }
-                catch (ArgumentOutOfRangeException)
                 {
                     continue;
                 }
@@ -354,6 +346,45 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             return true;
         }
 
+        private bool TryResolveWeapon(
+            EquipmentDefinition equipment,
+            out WeaponDefinitionData weapon)
+        {
+            weapon = null;
+            if (equipment == null
+                || equipment.RuntimeWeaponReferenceId == null)
+            {
+                return false;
+            }
+
+            string reference = equipment.RuntimeWeaponReferenceId.ToString();
+            if (weaponCatalog.TryGetDefinition(reference, out weapon)
+                && weapon != null)
+            {
+                return true;
+            }
+
+            IReadOnlyList<WeaponDefinitionData> live =
+                weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.LiveOnly);
+            for (int index = 0; index < live.Count; index++)
+            {
+                WeaponDefinitionData candidate = live[index];
+                StableId raw;
+                if ((StableId.TryParse(candidate.DefinitionId, out raw)
+                        && raw == equipment.RuntimeWeaponReferenceId)
+                    || StrongboxCanonicalV1.DeriveId(
+                            "weapon",
+                            candidate.DefinitionId)
+                        == equipment.RuntimeWeaponReferenceId)
+                {
+                    weapon = candidate;
+                    return true;
+                }
+            }
+            weapon = null;
+            return false;
+        }
+
         private static bool TrySelectQuality(
             EquipmentDefinition equipment,
             StrongboxInstanceContextV1 boxContext,
@@ -385,10 +416,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             string rarity,
             out StableId rarityId)
         {
-            string value = string.IsNullOrWhiteSpace(rarity)
-                ? string.Empty
-                : rarity.Trim().ToLowerInvariant();
-            switch (value)
+            switch ((rarity ?? string.Empty).Trim().ToLowerInvariant())
             {
                 case "common":
                     rarityId = StrongboxDefinitionRarityIdsV1.Common;
