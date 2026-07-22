@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Domain.Common;
@@ -128,26 +129,33 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StableId placementStableId = StableId.Create(
                 "reward-placement",
                 "stage1-run-minimum-g"
-                    + run.LifecycleGeneration);
+                    + run.LifecycleGeneration.ToString(
+                        CultureInfo.InvariantCulture));
             StableId terminalEventStableId = StableId.Create(
                 "terminal-event",
                 "stage1-run-minimum-g"
-                    + run.LifecycleGeneration);
+                    + run.LifecycleGeneration.ToString(
+                        CultureInfo.InvariantCulture));
             Vector2 position =
                 stage1.RunPickupController.PlayerTransform.position;
             string positionFingerprint =
                 RewardGenerationFingerprintV1.Compute(
                     run.RunStableId
                     + "|"
-                    + run.LifecycleGeneration
+                    + run.LifecycleGeneration.ToString(
+                        CultureInfo.InvariantCulture)
                     + "|"
                     + roomStableId
                     + "|"
                     + placementStableId
                     + "|"
-                    + position.x.ToString("R")
+                    + position.x.ToString(
+                        "R",
+                        CultureInfo.InvariantCulture)
                     + "|"
-                    + position.y.ToString("R"));
+                    + position.y.ToString(
+                        "R",
+                        CultureInfo.InvariantCulture));
             var placement = new TerminalRewardPlacementContextV1(
                 terminalEventStableId,
                 roomStableId,
