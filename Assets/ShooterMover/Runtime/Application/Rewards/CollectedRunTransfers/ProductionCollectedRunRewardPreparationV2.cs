@@ -7,6 +7,7 @@ using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Application.Runs.Session;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
@@ -39,11 +40,25 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             EventModifierFingerprint = eventModifierFingerprint.Trim();
             var builder = new StringBuilder(
                 "schema=collected-run-reward-generation-context-v2");
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "root-seed", RootSeed);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "algorithm", AlgorithmVersion);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "progression", ProgressionContext.Fingerprint);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "event-modifiers", EventModifierFingerprint);
-            Fingerprint = CollectedRunRewardTransferCanonicalV1.Hash(builder.ToString());
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "root-seed",
+                RootSeed);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "algorithm",
+                AlgorithmVersion);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "progression",
+                ProgressionContext.Fingerprint);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "event-modifiers",
+                EventModifierFingerprint);
+            Fingerprint =
+                CollectedRunRewardTransferCanonicalV1.Hash(
+                    builder.ToString());
         }
 
         public ulong RootSeed { get; }
@@ -85,8 +100,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             StableId.Parse("reward-profile.collected-run-transfer");
 
         /// <summary>
-        /// Freezes every fact that can be known before Run End. This is the pre-End
-        /// construction proof and crash-recovery custody; it performs no permanent grant.
+        /// Freezes every fact available before Run End. This proves that all exact payloads
+        /// and unopened BOX contexts are constructible before completion is accepted.
         /// </summary>
         public static bool TryCreateAwaitingAcceptedEnd(
             EndRunSessionCommandV1 endCommand,
@@ -110,32 +125,40 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 || preparedTransfers == null
                 || generationContext == null)
             {
-                diagnostic = "collected-run-transfer-preparation-context-missing";
+                diagnostic =
+                    "collected-run-transfer-preparation-context-missing";
                 return false;
             }
             CharacterInstanceSnapshotV1 character = graph.Character;
-            if (character == null
-                || character.CharacterInstanceStableId
-                    != endCommand.RunStableId && false)
+            if (character == null)
             {
-                diagnostic = "collected-run-transfer-preparation-character-missing";
+                diagnostic =
+                    "collected-run-transfer-preparation-character-missing";
                 return false;
             }
 
             var journal = new List<RunSessionCollectedRewardV1>(
-                collectedRewards ?? Array.Empty<RunSessionCollectedRewardV1>());
+                collectedRewards
+                ?? Array.Empty<RunSessionCollectedRewardV1>());
             journal.Sort((left, right) =>
             {
                 if (left == null || right == null)
-                    return ReferenceEquals(left, right) ? 0 : (left == null ? -1 : 1);
+                {
+                    return ReferenceEquals(left, right)
+                        ? 0
+                        : (left == null ? -1 : 1);
+                }
                 int identity = left.GeneratedRewardChildStableId.CompareTo(
                     right.GeneratedRewardChildStableId);
                 return identity != 0
                     ? identity
-                    : string.CompareOrdinal(left.Fingerprint, right.Fingerprint);
+                    : string.CompareOrdinal(
+                        left.Fingerprint,
+                        right.Fingerprint);
             });
 
-            var items = new List<CollectedRunRewardTransferItemV1>(journal.Count);
+            var items = new List<CollectedRunRewardTransferItemV1>(
+                journal.Count);
             var equipment = new List<EquipmentInstance>();
             var boxes = new List<StrongboxInstanceContextV1>();
             ICollectedRunEquipmentPayloadSourceV2 equipmentSource =
@@ -154,7 +177,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         "collected-run-transfer-preparation-journal-run-or-lifecycle-mismatch";
                     return false;
                 }
-                CollectedRunRewardTransferItemV1 item = ToTransferItem(reward);
+                CollectedRunRewardTransferItemV1 item =
+                    ToTransferItem(reward);
                 items.Add(item);
                 switch (item.RewardKind)
                 {
@@ -176,13 +200,17 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                                 out exactEquipment,
                                 out diagnostic)
                             || exactEquipment == null
-                            || exactEquipment.InstanceId != item.RewardInstanceStableId
-                            || exactEquipment.DefinitionId != item.ContentStableId)
+                            || exactEquipment.InstanceId
+                                != item.RewardInstanceStableId
+                            || exactEquipment.DefinitionId
+                                != item.ContentStableId)
                         {
                             if (string.IsNullOrWhiteSpace(diagnostic))
+                            {
                                 diagnostic =
                                     "collected-run-transfer-exact-equipment-payload-invalid:"
                                     + item.RewardInstanceStableId;
+                            }
                             return false;
                         }
                         equipment.Add(exactEquipment);
@@ -208,11 +236,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         boxes.Add(StrongboxInstanceContextV1.Create(
                             item.RewardInstanceStableId,
                             item.ContentStableId,
-                            DeriveStrongboxSeed(generationContext, item),
+                            DeriveStrongboxSeed(
+                                generationContext,
+                                item),
                             generationContext.AlgorithmVersion,
                             generationContext.ProgressionContext,
                             item.DropOperationStableId,
-                            item.SourceGrantStableId,
+                            item.CollectionOperationStableId,
                             definition.Fingerprint));
                         break;
                     default:
@@ -242,15 +272,27 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     "collected-run-prepare",
                     custodyStableId + "|" + endCommand.Fingerprint);
 
-            var authorityFingerprints = new Dictionary<string, string>(
-                StringComparer.Ordinal)
+            var authorityFingerprints =
+                new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 { "money", graph.MoneyWallet.CurrentSnapshot.Fingerprint },
                 { "scrap", graph.ScrapWallet.ExportSnapshot().Fingerprint },
-                { "holdings", graph.LoadoutRuntime.Holdings.ExportSnapshot().Fingerprint },
-                { "reward-application", rewardApplication.ExportSnapshot().Fingerprint },
-                { "strongboxes", graph.StrongboxAuthority.ExportSnapshot().Fingerprint },
-                { "transfer-receipts", receipts.ExportSnapshot().Fingerprint },
+                {
+                    "holdings",
+                    graph.LoadoutRuntime.Holdings.ExportSnapshot().Fingerprint
+                },
+                {
+                    "reward-application",
+                    rewardApplication.ExportSnapshot().Fingerprint
+                },
+                {
+                    "strongboxes",
+                    graph.StrongboxAuthority.ExportSnapshot().Fingerprint
+                },
+                {
+                    "transfer-receipts",
+                    receipts.ExportSnapshot().Fingerprint
+                },
             };
             awaiting =
                 CollectedRunRewardPreparedTransferV1.AwaitingAcceptedEnd(
@@ -278,8 +320,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         }
 
         /// <summary>
-        /// Promotes pre-End custody using only the accepted immutable End result, then
-        /// builds the exact whole-batch RAP/BOX plan. No mutable drop/profile lookup occurs.
+        /// Promotes pre-End custody with the accepted End receipt, then builds the exact
+        /// RAP/BOX batch without mutable content or run-local payload lookup.
         /// </summary>
         public static bool TryAcceptEndAndBuildPlan(
             RunSessionEndResultV1 acceptedEnd,
@@ -298,15 +340,19 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 || acceptedEnd.Receipt == null
                 || acceptedEnd.Command == null
                 || awaiting == null
+                || graph == null
+                || rewardApplication == null
                 || awaiting.State
-                    != CollectedRunRewardPreparedTransferStateV1.AwaitingAcceptedEnd)
+                    != CollectedRunRewardPreparedTransferStateV1
+                        .AwaitingAcceptedEnd)
             {
-                diagnostic = "collected-run-transfer-end-receipt-not-accepted";
+                diagnostic =
+                    "collected-run-transfer-end-receipt-not-accepted";
                 return false;
             }
             if (acceptedEnd.Receipt.MissionResult == null
                 || acceptedEnd.Receipt.MissionResult.CompletionState
-                    != Contracts.Missions.Results.MissionRunCompletionStateV1.Completed
+                    != MissionRunCompletionStateV1.Completed
                 || acceptedEnd.Receipt.RunStableId != awaiting.RunStableId
                 || acceptedEnd.Command.LifecycleGeneration
                     != awaiting.LifecycleGeneration
@@ -317,9 +363,11 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     awaiting.EndCommandFingerprint,
                     StringComparison.Ordinal))
             {
-                diagnostic = "collected-run-transfer-accepted-end-conflict";
+                diagnostic =
+                    "collected-run-transfer-accepted-end-conflict";
                 return false;
             }
+
             StableId transferOperationStableId =
                 CollectedRunRewardTransferCanonicalV1.DeriveStableId(
                     "operation",
@@ -402,14 +450,16 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             diagnostic = string.Empty;
             if (prepared == null
                 || prepared.State
-                    == CollectedRunRewardPreparedTransferStateV1.AwaitingAcceptedEnd
+                    == CollectedRunRewardPreparedTransferStateV1
+                        .AwaitingAcceptedEnd
                 || graph == null
                 || graph.IsDisposed
                 || rewardApplication == null
                 || graph.Character.CharacterInstanceStableId
                     != prepared.SelectedCharacterStableId)
             {
-                diagnostic = "collected-run-transfer-recovery-context-invalid";
+                diagnostic =
+                    "collected-run-transfer-recovery-context-invalid";
                 return false;
             }
             RewardCommitCommandV1 commit;
@@ -465,17 +515,20 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 || string.IsNullOrWhiteSpace(batchFingerprint)
                 || graph == null)
             {
-                diagnostic = "collected-run-transfer-rap-plan-context-invalid";
+                diagnostic =
+                    "collected-run-transfer-rap-plan-context-invalid";
                 return false;
             }
 
             var equipmentById = prepared.Equipment.ToDictionary(
                 item => item.InstanceId,
                 item => item);
-            var grants = new List<RewardGrantV1>(prepared.Rewards.Count);
+            var grants = new List<RewardGrantV1>(
+                prepared.Rewards.Count);
             for (int index = 0; index < prepared.Rewards.Count; index++)
             {
-                CollectedRunRewardTransferItemV1 item = prepared.Rewards[index];
+                CollectedRunRewardTransferItemV1 item =
+                    prepared.Rewards[index];
                 var grant = RewardGrantV1.Create(
                     item.RewardInstanceStableId,
                     item.RewardKind,
@@ -486,28 +539,33 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 {
                     case RewardGrantKindV1.Money:
                     case RewardGrantKindV1.Scrap:
-                        payloads.Add(RewardGrantApplicationPayloadV1.ForValue(grant));
+                        payloads.Add(
+                            RewardGrantApplicationPayloadV1.ForValue(
+                                grant));
                         break;
                     case RewardGrantKindV1.Strongbox:
-                        payloads.Add(RewardGrantApplicationPayloadV1.ForStrongboxes(
-                            grant,
-                            new[] { item.RewardInstanceStableId }));
+                        payloads.Add(
+                            RewardGrantApplicationPayloadV1.ForStrongboxes(
+                                grant,
+                                new[] { item.RewardInstanceStableId }));
                         break;
                     case RewardGrantKindV1.EquipmentReference:
                         EquipmentInstance equipment;
                         if (!equipmentById.TryGetValue(
                             item.RewardInstanceStableId,
                             out equipment)
-                            || equipment.DefinitionId != item.ContentStableId)
+                            || equipment.DefinitionId
+                                != item.ContentStableId)
                         {
                             diagnostic =
                                 "collected-run-transfer-recovery-equipment-payload-missing:"
                                 + item.RewardInstanceStableId;
                             return false;
                         }
-                        payloads.Add(RewardGrantApplicationPayloadV1.ForEquipment(
-                            grant,
-                            new[] { equipment }));
+                        payloads.Add(
+                            RewardGrantApplicationPayloadV1.ForEquipment(
+                                grant,
+                                new[] { equipment }));
                         break;
                     default:
                         diagnostic =
@@ -530,13 +588,14 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     commitmentStableId,
                     transferOperationStableId,
                     grants);
-            RewardOperationRequestV1 operation = RewardOperationRequestV1.Create(
-                prepared.RunStableId,
-                prepared.RunStableId,
-                transferOperationStableId,
-                commitmentStableId,
-                TransferProfileStableId,
-                batchFingerprint);
+            RewardOperationRequestV1 operation =
+                RewardOperationRequestV1.Create(
+                    prepared.RunStableId,
+                    prepared.RunStableId,
+                    transferOperationStableId,
+                    commitmentStableId,
+                    TransferProfileStableId,
+                    batchFingerprint);
             commit = RewardCommitCommandV1.Create(
                 operation,
                 generatedReward,
@@ -597,12 +656,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             CollectedRunRewardGenerationContextV2 context,
             CollectedRunRewardTransferItemV1 item)
         {
-            string fingerprint = CollectedRunRewardTransferCanonicalV1.Hash(
-                context.Fingerprint
-                + "|"
-                + item.GeneratedRewardFingerprint
-                + "|"
-                + item.RewardInstanceStableId);
+            string fingerprint =
+                CollectedRunRewardTransferCanonicalV1.Hash(
+                    context.Fingerprint
+                    + "|"
+                    + item.GeneratedRewardFingerprint
+                    + "|"
+                    + item.RewardInstanceStableId);
             return ulong.Parse(
                 fingerprint.Substring("sha256:".Length, 16),
                 NumberStyles.HexNumber,
@@ -612,13 +672,16 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         private static string FingerprintItems(
             IReadOnlyList<CollectedRunRewardTransferItemV1> items)
         {
-            var builder = new StringBuilder("schema=collected-run-reward-custody-items-v2");
+            var builder = new StringBuilder(
+                "schema=collected-run-reward-custody-items-v2");
             for (int index = 0; index < items.Count; index++)
                 CollectedRunRewardTransferCanonicalV1.Append(
                     builder,
-                    "reward:" + index.ToString(CultureInfo.InvariantCulture),
+                    "reward:"
+                        + index.ToString(CultureInfo.InvariantCulture),
                     items[index].Fingerprint);
-            return CollectedRunRewardTransferCanonicalV1.Hash(builder.ToString());
+            return CollectedRunRewardTransferCanonicalV1.Hash(
+                builder.ToString());
         }
 
         private static string GenerationFingerprint(
@@ -627,17 +690,34 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             var builder = new StringBuilder(
                 "schema=collected-run-transfer-generation-proof-v2");
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "batch", batchFingerprint);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "seed", prepared.GenerationRootSeed);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "algorithm", prepared.GenerationAlgorithmVersion);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "progression", prepared.ProgressionContext.Fingerprint);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "event-modifiers", prepared.EventModifierFingerprint);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "batch",
+                batchFingerprint);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "seed",
+                prepared.GenerationRootSeed);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "algorithm",
+                prepared.GenerationAlgorithmVersion);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "progression",
+                prepared.ProgressionContext.Fingerprint);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "event-modifiers",
+                prepared.EventModifierFingerprint);
             for (int index = 0; index < prepared.Rewards.Count; index++)
                 CollectedRunRewardTransferCanonicalV1.Append(
                     builder,
-                    "generated-reward:" + index.ToString(CultureInfo.InvariantCulture),
+                    "generated-reward:"
+                        + index.ToString(CultureInfo.InvariantCulture),
                     prepared.Rewards[index].GeneratedRewardFingerprint);
-            return CollectedRunRewardTransferCanonicalV1.Hash(builder.ToString());
+            return CollectedRunRewardTransferCanonicalV1.Hash(
+                builder.ToString());
         }
     }
 }
