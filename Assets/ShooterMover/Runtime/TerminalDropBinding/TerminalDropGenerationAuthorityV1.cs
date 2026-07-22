@@ -22,9 +22,24 @@ namespace ShooterMover.TerminalDropBinding
 
         public TerminalDropGenerationAuthorityV1(
             TerminalDropFactAdapterRegistryV1 adapters,
-            IRewardProfileResolverV1 legacyProfiles,
             ITerminalDropRunContextResolverV1 runContexts,
+            IRewardProfileResolverV1 legacyProfiles,
             IRewardGenerationExecutorV1 legacyGenerator)
+            : this(
+                adapters,
+                runContexts,
+                legacyProfiles,
+                legacyGenerator,
+                null)
+        {
+        }
+
+        public TerminalDropGenerationAuthorityV1(
+            TerminalDropFactAdapterRegistryV1 adapters,
+            ITerminalDropRunContextResolverV1 runContexts,
+            IRewardProfileResolverV1 legacyProfiles,
+            IRewardGenerationExecutorV1 legacyGenerator,
+            PersonalRewardGenerationServiceV1 personalGenerationService)
         {
             this.adapters = adapters
                 ?? throw new ArgumentNullException(nameof(adapters));
@@ -38,7 +53,10 @@ namespace ShooterMover.TerminalDropBinding
             _ = legacyProfiles;
             _ = legacyGenerator;
 
-            var pacing = new ParticipantDropPacingAuthorityV1();
+            PersonalRewardGenerationServiceV1 generation =
+                personalGenerationService
+                ?? new PersonalRewardGenerationServiceV1(
+                    new ParticipantDropPacingAuthorityV1());
             personal = new TerminalPersonalRewardGenerationAuthorityV1(
                 adapters,
                 runContexts,
@@ -46,7 +64,7 @@ namespace ShooterMover.TerminalDropBinding
                 new DefaultTerminalRewardEnvironmentResolverV1(),
                 new EmptyTerminalRewardOverrideResolverV1(),
                 new RewardProfileResolverV1(),
-                new PersonalRewardGenerationServiceV1(pacing));
+                generation);
         }
 
         public int AcceptedBatchCount
