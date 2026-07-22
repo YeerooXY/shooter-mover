@@ -17,19 +17,34 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 {
     public sealed partial class Stage1PlayableLoopCompositionV1
     {
+        private const float DurableEndRetryInitialDelaySeconds = 1f;
+        private const float DurableEndRetryMaximumDelaySeconds = 15f;
+
         private bool collectedRunTransferExitHookInstalled;
         private MissionResultPayloadV1 pendingCollectedRunMissionResult;
         private ProductionResultsSummaryV1 pendingCollectedRunSummary;
+        private Action pendingDurableEndRetry;
+        private float pendingDurableEndRetryAt;
+        private int pendingDurableEndRetryAttempt;
 
         /// <summary>
         /// Replaces only this composition's retained direct mission-result callback. Before
-        /// accepted End, rejection re-arms the exit. After accepted End, this update loop
-        /// retains the immutable Results handoff until the scene transition accepts it.
+        /// the mission-result authority accepts, a safe rejection may re-arm the exit. After
+        /// terminal result creation, the exact durable End candidate is frozen and retried;
+        /// gameplay is never reopened around a terminal mission-result transaction.
         /// </summary>
         private void LateUpdate()
         {
             if (pendingCollectedRunMissionResult != null)
                 TryPresentPendingCollectedRunResults();
+
+            if (pendingDurableEndRetry != null
+                && Time.unscaledTime >= pendingDurableEndRetryAt)
+            {
+                Action retry = pendingDurableEndRetry;
+                pendingDurableEndRetry = null;
+                retry();
+            }
 
             if (!initialized
                 || rooms == null
@@ -180,96 +195,199 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 persistence.PersistPreparedCustody(awaiting);
             if (awaitingSaved == null || !awaitingSaved.Succeeded)
             {
-                RejectBeforeAcceptedEnd(
-                    awaitingSaved == null
-                        ? "The pre-End transfer custody save returned no result."
-                        : awaitingSaved.Diagnostic);
+                if (awaitingSaved == null
+                    || awaitingSaved.DurableStateUncertain)
+                {
+                    FreezeForDurableEndRecovery(
+                        awaitingSaved == null
+                            ? "The pre-End custody save returned no result; durable state is uncertain."
+                            : awaitingSaved.Diagnostic);
+                    ProductionCollectedRunRewardResultsBridge.Clear();
+                    ProductionCollectedRunRewardResultsBridge
+                        .PublishPreparationFailure(
+                            awaiting,
+                            awaitingSaved == null
+                                ? "Pre-End custody durability is uncertain."
+                                : awaitingSaved.Diagnostic);
+                    ConfigureTransferOverlay();
+                    return;
+                }
+                RejectBeforeAcceptedEnd(awaitingSaved.Diagnostic);
                 return;
             }
 
-            CollectedRunRewardPreparedTransferV1 prepared = null;
-            CollectedRunRewardAtomicPlanV2 plan = null;
-            RunSessionEndResultV1 acceptedEnd =
-                sharedRun.EndWithDurableAcceptance(
-                    endCommand,
-                    candidateEnd =>
-                    {
-                        if (candidateEnd == null
-                            || candidateEnd.Receipt == null
-                            || candidateEnd.Receipt.SelectedCharacterStableId
-                                != awaiting.SelectedCharacterStableId
-                            || candidateEnd.Receipt.ExpectedCharacterRevision
-                                != awaiting.ExpectedCharacterRevision
-                            || !string.Equals(
-                                candidateEnd.Receipt
-                                    .ExpectedCharacterFingerprint,
-                                awaiting.ExpectedCharacterFingerprint,
-                                StringComparison.Ordinal))
-                        {
-                            return RunSessionDurableAcceptanceResultV1
-                                .Rejected(
-                                    "The accepted mission result does not match the exact character frozen into transfer custody.");
-                        }
-
-                        CollectedRunRewardPreparedTransferV1 candidatePrepared;
-                        CollectedRunRewardAtomicPlanV2 candidatePlan;
-                        string planDiagnostic;
-                        if (!CollectedRunRewardTransferPreparationFactoryV2
-                            .TryAcceptEndAndBuildPlan(
-                                candidateEnd,
-                                awaiting,
-                                graph,
-                                rewardApplication,
-                                out candidatePrepared,
-                                out candidatePlan,
-                                out planDiagnostic)
-                            || candidatePrepared == null
-                            || candidatePlan == null)
-                        {
-                            return RunSessionDurableAcceptanceResultV1
-                                .Rejected(
-                                    string.IsNullOrWhiteSpace(planDiagnostic)
-                                        ? "The immutable transfer plan could not be constructed before End acceptance."
-                                        : planDiagnostic);
-                        }
-
-                        CollectedRunRewardTransferPersistenceResultV1
-                            preparedSaved =
-                                persistence.PersistPreparedCustody(
-                                    candidatePrepared);
-                        if (preparedSaved == null
-                            || !preparedSaved.Succeeded)
-                        {
-                            return RunSessionDurableAcceptanceResultV1
-                                .Rejected(
-                                    preparedSaved == null
-                                        ? "The Prepared transfer custody save returned no result."
-                                        : preparedSaved.Diagnostic);
-                        }
-                        prepared = candidatePrepared;
-                        plan = candidatePlan;
-                        return RunSessionDurableAcceptanceResultV1
-                            .Accepted();
-                    });
-            if (acceptedEnd == null
-                || !acceptedEnd.Succeeded
-                || acceptedEnd.Receipt == null
-                || acceptedEnd.Receipt.MissionResult == null)
+            Action attemptDurableEnd = null;
+            attemptDurableEnd = () =>
             {
+                CollectedRunRewardPreparedTransferV1 prepared = null;
+                CollectedRunRewardAtomicPlanV2 plan = null;
+                CollectedRunRewardTransferPersistenceResultV1 preparedSaved =
+                    null;
+                RunSessionDurableAcceptanceResultV1 acceptance = null;
+
+                RunSessionEndResultV1 acceptedEnd =
+                    sharedRun.EndWithDurableAcceptance(
+                        endCommand,
+                        candidateEnd =>
+                        {
+                            if (candidateEnd == null
+                                || candidateEnd.Receipt == null
+                                || candidateEnd.Receipt
+                                    .SelectedCharacterStableId
+                                    != awaiting.SelectedCharacterStableId
+                                || candidateEnd.Receipt
+                                    .ExpectedCharacterRevision
+                                    != awaiting.ExpectedCharacterRevision
+                                || !string.Equals(
+                                    candidateEnd.Receipt
+                                        .ExpectedCharacterFingerprint,
+                                    awaiting.ExpectedCharacterFingerprint,
+                                    StringComparison.Ordinal))
+                            {
+                                acceptance =
+                                    RunSessionDurableAcceptanceResultV1
+                                        .RejectedBeforeDurability(
+                                            "The terminal mission result does not match the exact character frozen into transfer custody.");
+                                return acceptance;
+                            }
+
+                            string planDiagnostic;
+                            if (!CollectedRunRewardTransferPreparationFactoryV2
+                                .TryAcceptEndAndBuildPlan(
+                                    candidateEnd,
+                                    awaiting,
+                                    graph,
+                                    rewardApplication,
+                                    out prepared,
+                                    out plan,
+                                    out planDiagnostic)
+                                || prepared == null
+                                || plan == null)
+                            {
+                                acceptance =
+                                    RunSessionDurableAcceptanceResultV1
+                                        .RejectedBeforeDurability(
+                                            string.IsNullOrWhiteSpace(
+                                                    planDiagnostic)
+                                                ? "The immutable transfer plan could not be constructed before End acceptance."
+                                                : planDiagnostic);
+                                return acceptance;
+                            }
+
+                            preparedSaved =
+                                persistence.PersistPreparedCustody(prepared);
+                            if (preparedSaved == null)
+                            {
+                                acceptance =
+                                    RunSessionDurableAcceptanceResultV1
+                                        .Uncertain(
+                                            "The Prepared custody save returned no result.");
+                                return acceptance;
+                            }
+                            if (!preparedSaved.Succeeded)
+                            {
+                                acceptance = preparedSaved
+                                    .DurableStateUncertain
+                                    ? RunSessionDurableAcceptanceResultV1
+                                        .Uncertain(preparedSaved.Diagnostic)
+                                    : RunSessionDurableAcceptanceResultV1
+                                        .RejectedBeforeDurability(
+                                            preparedSaved.Diagnostic);
+                                return acceptance;
+                            }
+
+                            acceptance =
+                                RunSessionDurableAcceptanceResultV1.Accepted();
+                            return acceptance;
+                        });
+
+                if (acceptedEnd != null
+                    && acceptedEnd.Succeeded
+                    && acceptedEnd.Receipt != null
+                    && acceptedEnd.Receipt.MissionResult != null)
+                {
+                    pendingDurableEndRetry = null;
+                    pendingDurableEndRetryAttempt = 0;
+                    CompleteAcceptedCollectedRunTransfer(
+                        acceptedEnd,
+                        prepared,
+                        plan,
+                        graph,
+                        rewardApplication,
+                        preparedAuthority,
+                        receipts,
+                        persistence,
+                        currentProfile,
+                        moneyEarned,
+                        scrapEarned);
+                    return;
+                }
+
+                if (sharedRun.DurableEndState
+                    == RunSessionDurableEndStateV1.PendingExactRetry)
+                {
+                    FreezeForDurableEndRecovery(
+                        acceptedEnd == null
+                            ? "The exact terminal transaction returned no result and remains pending."
+                            : acceptedEnd.RejectionCode);
+                    ScheduleDurableEndRetry(
+                        attemptDurableEnd,
+                        acceptedEnd == null
+                            ? "run-end-result-null"
+                            : acceptedEnd.RejectionCode);
+                    return;
+                }
+
+                if (sharedRun.DurableEndState
+                    == RunSessionDurableEndStateV1.DurableStateUncertain
+                    || (acceptance != null
+                        && acceptance.DurableStateUncertain))
+                {
+                    FreezeForDurableEndRecovery(
+                        acceptedEnd == null
+                            ? "The terminal durability result is unavailable."
+                            : acceptedEnd.RejectionCode);
+                    PublishDurableEndUncertainty(
+                        awaiting,
+                        prepared,
+                        preparedSaved,
+                        acceptedEnd,
+                        currentProfile,
+                        moneyEarned,
+                        scrapEarned);
+                    return;
+                }
+
                 RejectBeforeAcceptedEnd(
                     acceptedEnd == null
                         ? "The Run Session durable End authority returned no result."
                         : acceptedEnd.RejectionCode);
-                return;
-            }
+            };
 
+            attemptDurableEnd();
+        }
+
+        private void CompleteAcceptedCollectedRunTransfer(
+            RunSessionEndResultV1 acceptedEnd,
+            CollectedRunRewardPreparedTransferV1 prepared,
+            CollectedRunRewardAtomicPlanV2 plan,
+            ProductionCharacterRuntimeGraphV1 graph,
+            RewardApplicationServiceV1 rewardApplication,
+            CollectedRunRewardPreparedTransferAuthorityV1 preparedAuthority,
+            CollectedRunRewardTransferReceiptAuthorityV1 receipts,
+            ProductionCollectedRunRewardPersistenceV2 persistence,
+            ProductionFlowProfileRecordV1 currentProfile,
+            long moneyEarned,
+            long scrapEarned)
+        {
             if (prepared == null || plan == null)
             {
                 ProductionCollectedRunRewardResultsBridge.Clear();
                 ProductionCollectedRunRewardResultsBridge
                     .PublishPreparationFailure(
-                        awaiting,
-                        "Durable End succeeded without the exact Prepared transfer plan.");
+                        prepared ?? throw new InvalidOperationException(
+                            "Accepted durable End requires Prepared custody."),
+                        "Durable End succeeded without the exact transfer plan.");
                 ConfigureTransferOverlay();
                 QueueAcceptedResults(
                     acceptedEnd.Receipt.MissionResult,
@@ -321,6 +439,106 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     currentProfile,
                     moneyEarned,
                     scrapEarned));
+        }
+
+        private void PublishDurableEndUncertainty(
+            CollectedRunRewardPreparedTransferV1 awaiting,
+            CollectedRunRewardPreparedTransferV1 prepared,
+            CollectedRunRewardTransferPersistenceResultV1 persistence,
+            RunSessionEndResultV1 candidateEnd,
+            ProductionFlowProfileRecordV1 currentProfile,
+            long moneyEarned,
+            long scrapEarned)
+        {
+            ProductionCollectedRunRewardResultsBridge.Clear();
+            string diagnostic = candidateEnd == null
+                ? "The exact terminal transaction has uncertain durable state."
+                : candidateEnd.RejectionCode;
+
+            if (prepared != null)
+            {
+                CollectedRunRewardTransferPersistenceResultV1 exactPersistence =
+                    persistence
+                    ?? new CollectedRunRewardTransferPersistenceResultV1(
+                        CollectedRunRewardTransferPersistenceStatusV1
+                            .DurableStateUncertain,
+                        0L,
+                        string.Empty,
+                        0L,
+                        string.Empty,
+                        diagnostic);
+                var fatal = new CollectedRunRewardTransferResultV1(
+                    CollectedRunRewardTransferStatusV1
+                        .FatalCompensationFailure,
+                    prepared.TransferOperationStableId,
+                    prepared.BatchFingerprint,
+                    prepared.RunStableId,
+                    prepared.SelectedCharacterStableId,
+                    null,
+                    null,
+                    exactPersistence,
+                    diagnostic,
+                    "Durable End acceptance cannot prove whether Prepared custody replaced the active account file.",
+                    false);
+                ProductionCollectedRunRewardResultsBridge.Publish(
+                    prepared,
+                    fatal);
+            }
+            else
+            {
+                ProductionCollectedRunRewardResultsBridge
+                    .PublishPreparationFailure(awaiting, diagnostic);
+            }
+
+            ConfigureTransferOverlay();
+            if (candidateEnd != null
+                && candidateEnd.Receipt != null
+                && candidateEnd.Receipt.MissionResult != null)
+            {
+                QueueAcceptedResults(
+                    candidateEnd.Receipt.MissionResult,
+                    BuildTransferSummary(
+                        currentProfile,
+                        moneyEarned,
+                        scrapEarned));
+            }
+        }
+
+        private void ScheduleDurableEndRetry(
+            Action retry,
+            string retryDiagnostic)
+        {
+            pendingDurableEndRetry = retry
+                ?? throw new ArgumentNullException(nameof(retry));
+            int exponent = Math.Min(pendingDurableEndRetryAttempt, 4);
+            float delay = Mathf.Min(
+                DurableEndRetryMaximumDelaySeconds,
+                DurableEndRetryInitialDelaySeconds * (1 << exponent));
+            pendingDurableEndRetryAttempt++;
+            pendingDurableEndRetryAt = Time.unscaledTime + delay;
+            diagnostic =
+                "The exact terminal transaction is frozen and will retry in "
+                + delay.ToString("0", CultureInfo.InvariantCulture)
+                + "s: "
+                + retryDiagnostic;
+        }
+
+        private void FreezeForDurableEndRecovery(string message)
+        {
+            ending = true;
+            diagnostic = string.IsNullOrWhiteSpace(message)
+                ? "The terminal transaction is frozen for durable recovery."
+                : message;
+            DisableGameplayBehaviour(controller);
+            DisableGameplayBehaviour(rooms);
+            DisableGameplayBehaviour(weapons);
+            DisableGameplayBehaviour(effectEmitter);
+        }
+
+        private static void DisableGameplayBehaviour(object candidate)
+        {
+            Behaviour behaviour = candidate as Behaviour;
+            if (behaviour != null) behaviour.enabled = false;
         }
 
         private ProductionResultsSummaryV1 BuildTransferSummary(
