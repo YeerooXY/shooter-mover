@@ -14,6 +14,11 @@ namespace ShooterMover.Application.Rewards.Drops
             out PersonalRewardDeliveryEnvelopeV1 envelope,
             out string diagnostic);
 
+        bool TryGet(
+            StableId operationStableId,
+            StableId participantStableId,
+            out PersonalRewardDeliveryEnvelopeV1 envelope);
+
         bool TryMarkDelivered(
             StableId operationStableId,
             StableId participantStableId,
