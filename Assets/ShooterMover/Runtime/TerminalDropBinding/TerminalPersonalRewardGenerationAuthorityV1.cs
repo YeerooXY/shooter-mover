@@ -9,8 +9,8 @@ namespace ShooterMover.TerminalDropBinding
     /// <summary>
     /// Authoritative engine-neutral cutover from one shared terminal event to one
     /// independent deterministic personal reward batch per eligible participant.
-    /// Probability, pacing, tier and profile resolution are delegated to the same
-    /// production services consumed by simulation.
+    /// Generation is recorded in the run outbox before transport projection, so remote
+    /// participant results cannot be discarded by a local pickup consumer.
     /// </summary>
     public sealed class TerminalPersonalRewardGenerationAuthorityV1
     {
@@ -21,6 +21,7 @@ namespace ShooterMover.TerminalDropBinding
         private readonly ITerminalRewardOverrideResolverV1 overrides;
         private readonly RewardProfileResolverV1 profileResolver;
         private readonly PersonalRewardGenerationServiceV1 generation;
+        private readonly IPersonalRewardDeliveryOutboxV1 deliveryOutbox;
 
         public TerminalPersonalRewardGenerationAuthorityV1(
             TerminalDropFactAdapterRegistryV1 adapters,
@@ -29,7 +30,8 @@ namespace ShooterMover.TerminalDropBinding
             ITerminalRewardEnvironmentResolverV1 environments,
             ITerminalRewardOverrideResolverV1 overrides,
             RewardProfileResolverV1 profileResolver,
-            PersonalRewardGenerationServiceV1 generation)
+            PersonalRewardGenerationServiceV1 generation,
+            IPersonalRewardDeliveryOutboxV1 deliveryOutbox = null)
         {
             this.adapters = adapters
                 ?? throw new ArgumentNullException(nameof(adapters));
@@ -45,6 +47,7 @@ namespace ShooterMover.TerminalDropBinding
                 ?? throw new ArgumentNullException(nameof(profileResolver));
             this.generation = generation
                 ?? throw new ArgumentNullException(nameof(generation));
+            this.deliveryOutbox = deliveryOutbox;
         }
 
         public TerminalPersonalRewardBatchV1 GenerateForEligibleParticipants(
@@ -63,12 +66,8 @@ namespace ShooterMover.TerminalDropBinding
             }
             catch (Exception exception)
             {
-                return Reject(
-                    null,
-                    "terminal-personal-adaptation-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message);
+                return Reject(null, "terminal-personal-adaptation-exception:"
+                    + exception.GetType().Name + ":" + exception.Message);
             }
             if (adaptation == null || !adaptation.Succeeded)
             {
@@ -85,73 +84,68 @@ namespace ShooterMover.TerminalDropBinding
                 || placementContext.PlacementStableId
                     != source.SourcePlacementStableId)
             {
-                return Reject(
-                    source,
-                    "terminal-personal-placement-context-mismatch");
+                return Reject(source, "terminal-personal-placement-context-mismatch");
             }
 
             TerminalDropRunGenerationContextV1 runContext;
             TerminalDropRejectionCodeV1 runRejection;
-            string runDiagnostic;
+            string diagnostic;
             if (!runContexts.TryResolve(
                     source.RunStableId,
                     source.RunLifecycleGeneration,
                     out runContext,
                     out runRejection,
-                    out runDiagnostic)
+                    out diagnostic)
                 || runContext == null)
             {
                 return Reject(
                     source,
-                    string.IsNullOrWhiteSpace(runDiagnostic)
+                    string.IsNullOrWhiteSpace(diagnostic)
                         ? "terminal-personal-run-context-missing"
-                        : runDiagnostic);
+                        : diagnostic);
             }
 
             TerminalRewardEnvironmentV1 environment;
-            string environmentDiagnostic;
             if (!environments.TryResolve(
                     source,
                     runContext,
                     out environment,
-                    out environmentDiagnostic)
+                    out diagnostic)
                 || environment == null)
             {
                 return Reject(
                     source,
-                    string.IsNullOrWhiteSpace(environmentDiagnostic)
+                    string.IsNullOrWhiteSpace(diagnostic)
                         ? "terminal-personal-environment-missing"
-                        : environmentDiagnostic);
+                        : diagnostic);
             }
 
             RewardSourceProfileV1 sourceProfile;
             StableId declaredReferenceId;
-            string profileDiagnostic;
             if (!TryResolveSourceProfile(
                     source,
                     out declaredReferenceId,
                     out sourceProfile,
-                    out profileDiagnostic))
+                    out diagnostic))
             {
-                return Reject(source, profileDiagnostic);
+                return Reject(source, diagnostic);
             }
 
             TerminalRewardOverrideSetV1 overrideSet;
-            string overrideDiagnostic;
             if (!overrides.TryResolve(
                     source,
                     runContext,
                     environment,
                     placementContext,
                     out overrideSet,
-                    out overrideDiagnostic)
+                    out diagnostic)
                 || overrideSet == null)
             {
                 return Reject(
                     source,
-                    string.IsNullOrWhiteSpace(overrideDiagnostic)
+                    string.IsNullOrWhiteSpace(diagnostic)
                         ? "terminal-personal-overrides-missing"
-                        : overrideDiagnostic);
+                        : diagnostic);
             }
 
             RewardProfileResolutionV1 resolution;
@@ -171,39 +165,34 @@ namespace ShooterMover.TerminalDropBinding
                 return Reject(
                     source,
                     "terminal-personal-profile-resolution-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message);
+                        + exception.GetType().Name + ":" + exception.Message);
             }
 
             IReadOnlyList<TerminalRewardParticipantV1> resolvedParticipants;
             TerminalRewardEligibilityPolicyV1 eligibilityPolicy;
-            string participantDiagnostic;
             if (!participants.TryResolve(
                     source,
                     runContext,
                     placementContext,
                     out resolvedParticipants,
                     out eligibilityPolicy,
-                    out participantDiagnostic)
+                    out diagnostic)
                 || resolvedParticipants == null
                 || eligibilityPolicy == null)
             {
                 return Reject(
                     source,
-                    string.IsNullOrWhiteSpace(participantDiagnostic)
+                    string.IsNullOrWhiteSpace(diagnostic)
                         ? "terminal-personal-participants-missing"
-                        : participantDiagnostic);
+                        : diagnostic);
             }
 
             var eligible = new List<TerminalRewardParticipantV1>();
             for (int index = 0; index < resolvedParticipants.Count; index++)
             {
-                TerminalRewardParticipantV1 participant =
-                    resolvedParticipants[index];
-                if (eligibilityPolicy.IsEligible(participant))
+                if (eligibilityPolicy.IsEligible(resolvedParticipants[index]))
                 {
-                    eligible.Add(participant);
+                    eligible.Add(resolvedParticipants[index]);
                 }
             }
             eligible.Sort();
@@ -218,20 +207,15 @@ namespace ShooterMover.TerminalDropBinding
 
             var contexts = new List<PersonalRewardRollContextV1>(eligible.Count);
             string terminalFingerprint = TerminalDropCanonicalV1.Hash(
-                source.Fingerprint
-                + "|"
-                + placementContext.Fingerprint
-                + "|"
-                + runContext.Fingerprint);
+                source.Fingerprint + "|" + placementContext.Fingerprint
+                + "|" + runContext.Fingerprint);
             for (int index = 0; index < eligible.Count; index++)
             {
                 TerminalRewardParticipantV1 participant = eligible[index];
                 ulong participantSeed = TerminalDropCanonicalV1.DeriveSeed(
                     runContext.RootSeed,
-                    terminalFingerprint
-                        + "|"
-                        + participant.ParticipantStableId
-                        + "|"
+                    terminalFingerprint + "|"
+                        + participant.ParticipantStableId + "|"
                         + resolution.Fingerprint);
                 contexts.Add(new PersonalRewardRollContextV1(
                     source.RunStableId,
@@ -264,12 +248,27 @@ namespace ShooterMover.TerminalDropBinding
             }
             catch (Exception exception)
             {
-                return Reject(
-                    source,
-                    "terminal-personal-generation-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message);
+                return Reject(source, "terminal-personal-generation-exception:"
+                    + exception.GetType().Name + ":" + exception.Message);
+            }
+
+            if (deliveryOutbox != null)
+            {
+                for (int index = 0; index < personalResults.Count; index++)
+                {
+                    PersonalRewardDeliveryEnvelopeV1 envelope;
+                    if (!deliveryOutbox.TryEnqueue(
+                            personalResults[index],
+                            out envelope,
+                            out diagnostic))
+                    {
+                        return Reject(
+                            source,
+                            string.IsNullOrWhiteSpace(diagnostic)
+                                ? "terminal-personal-outbox-rejected"
+                                : diagnostic);
+                    }
+                }
             }
 
             var results = new List<GeneratedTerminalDropResultV1>(
