@@ -66,6 +66,9 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
     public sealed class ProductionCollectedRunRewardAtomicAuthorityV2 :
         ICollectedRunRewardAtomicBatchAuthorityPortV1
     {
+        private const string PreparedTransfersAuthorityKey =
+            "prepared-transfers";
+
         private readonly ProductionCharacterRuntimeGraphV1 graph;
         private readonly RewardApplicationServiceV1 rewardApplication;
         private readonly CollectedRunRewardPreparedTransferAuthorityV1 prepared;
@@ -87,8 +90,6 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         public PermanentRewardTransferStateV1 ExportState()
         {
             CharacterInstanceSnapshotV1 character = graph.Character;
-            IDictionary<string, string> fingerprints =
-                ExportAuthorityFingerprints();
             return new PermanentRewardTransferStateV1(
                 character.CharacterInstanceStableId,
                 character.Revision,
@@ -96,7 +97,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 0L,
                 CollectedRunRewardTransferCanonicalV1.Hash(
                     "runtime-account-unavailable|" + character.Fingerprint),
-                fingerprints);
+                ExportAuthorityFingerprints());
         }
 
         public bool TryGetDurableReceipt(
@@ -112,9 +113,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             StableId rewardInstanceStableId,
             out CollectedRunRewardTransferReceiptV1 receipt)
         {
-            return receipts.TryGetByReward(
-                rewardInstanceStableId,
-                out receipt);
+            return receipts.TryGetByReward(rewardInstanceStableId, out receipt);
         }
 
         public CollectedRunRewardTransferPreflightResultV1 Preflight(
@@ -122,8 +121,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             if (plan == null)
                 return Reject("collected-run-transfer-plan-null");
-            CollectedRunRewardPreparedTransferV1 custody =
-                plan.PreparedTransfer;
+
+            CollectedRunRewardPreparedTransferV1 custody = plan.PreparedTransfer;
             if (graph.IsDisposed
                 || graph.Character.CharacterInstanceStableId
                     != custody.SelectedCharacterStableId)
@@ -134,15 +133,25 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             if (custody.State
                 != CollectedRunRewardPreparedTransferStateV1.Prepared)
             {
-                return Reject(
-                    "collected-run-transfer-custody-not-prepared");
+                return Reject("collected-run-transfer-custody-not-prepared");
             }
 
-            IDictionary<string, string> current =
-                ExportAuthorityFingerprints();
+            // The prepared-transfer authority necessarily changes from the pre-End frozen
+            // snapshot when Awaiting/Prepared custody is recorded. Comparing that old aggregate
+            // fingerprint here would make every valid first application and restart recovery
+            // reject itself. The exact current custody row is verified separately below.
+            IDictionary<string, string> current = ExportAuthorityFingerprints();
             foreach (KeyValuePair<string, string> pair in
                 custody.FrozenAuthorityFingerprints)
             {
+                if (string.Equals(
+                    pair.Key,
+                    PreparedTransfersAuthorityKey,
+                    StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
                 string value;
                 if (!current.TryGetValue(pair.Key, out value)
                     || !string.Equals(
@@ -155,10 +164,24 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         + pair.Key);
                 }
             }
-            if (graph.MoneyWallet.Sequence
-                    != custody.ExpectedMoneySequence
-                || graph.ScrapWallet.Sequence
-                    != custody.ExpectedScrapSequence
+
+            CollectedRunRewardPreparedTransferV1 exactCustody;
+            if (!prepared.TryGetByCustody(
+                    custody.CustodyStableId,
+                    out exactCustody)
+                || exactCustody == null
+                || !string.Equals(
+                    exactCustody.Fingerprint,
+                    custody.Fingerprint,
+                    StringComparison.Ordinal))
+            {
+                return Reject(
+                    "collected-run-transfer-prepared-custody-mismatch:"
+                    + custody.CustodyStableId);
+            }
+
+            if (graph.MoneyWallet.Sequence != custody.ExpectedMoneySequence
+                || graph.ScrapWallet.Sequence != custody.ExpectedScrapSequence
                 || graph.LoadoutRuntime.Holdings.Sequence
                     != custody.ExpectedHoldingsSequence)
             {
@@ -172,8 +195,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             return DryRunRap(plan);
         }
 
-        public ICollectedRunRewardTransferCompensationV1
-            CaptureCompensation()
+        public ICollectedRunRewardTransferCompensationV1 CaptureCompensation()
         {
             return new ProductionCollectedRunRewardCompensationV2(
                 graph.MoneyWallet.CurrentSnapshot,
@@ -200,6 +222,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     "collected-run-transfer-rap-commit-rejected:"
                     + ResultCode(committed));
             }
+
             RewardApplicationResultV1 claimed =
                 rewardApplication.Claim(plan.ClaimCommand);
             if (!ClaimAccepted(claimed))
@@ -233,8 +256,10 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
 
             var rewardIds = new List<StableId>(plan.Rewards.Count);
             for (int index = 0; index < plan.Rewards.Count; index++)
+            {
                 rewardIds.Add(
                     plan.Rewards[index].RewardInstanceStableId);
+            }
             return new CollectedRunRewardAtomicApplyResultV1(
                 CollectedRunRewardTransferAuthorityStatusV1.Applied,
                 rewardIds,
@@ -242,8 +267,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 string.Empty);
         }
 
-        public CollectedRunRewardTransferReceiptRecordResultV1
-            RecordReceipt(CollectedRunRewardTransferReceiptV1 receipt)
+        public CollectedRunRewardTransferReceiptRecordResultV1 RecordReceipt(
+            CollectedRunRewardTransferReceiptV1 receipt)
         {
             return receipts.Record(receipt);
         }
@@ -265,39 +290,46 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 graph.MoneyWallet.ImportSnapshot(typed.Money);
             if (money.Status != MoneyWalletImportStatus.Imported)
                 diagnostics.Add("money:" + money.RejectionCode);
+
             ScrapSnapshotImportResultV1 scrap =
                 graph.ScrapWallet.ImportSnapshot(typed.Scrap);
             if (!scrap.Succeeded)
                 diagnostics.Add("scrap:" + scrap.RejectionCode);
+
             PlayerHoldingsImportResultV1 holdings =
-                graph.LoadoutRuntime.Holdings.ImportSnapshot(
-                    typed.Holdings);
+                graph.LoadoutRuntime.Holdings.ImportSnapshot(typed.Holdings);
             if (!holdings.Succeeded)
                 diagnostics.Add("holdings:" + holdings.RejectionCode);
+
             RewardApplicationImportResultV1 rap =
-                rewardApplication.ImportSnapshot(
-                    typed.RewardApplication);
-            if (rap.Status
-                != RewardApplicationImportStatusV1.Imported)
+                rewardApplication.ImportSnapshot(typed.RewardApplication);
+            if (rap.Status != RewardApplicationImportStatusV1.Imported)
             {
                 diagnostics.Add(
                     "reward-application:" + rap.RejectionCode);
             }
+
             StrongboxOpeningImportResultV1 boxes =
-                graph.StrongboxAuthority.ImportSnapshot(
-                    typed.Strongboxes);
+                graph.StrongboxAuthority.ImportSnapshot(typed.Strongboxes);
             if (!boxes.Succeeded)
                 diagnostics.Add("strongboxes:" + boxes.RejectionCode);
+
             SaveComponentApplyResultV1 receiptRestore =
                 receipts.ImportSnapshot(typed.Receipts);
             if (!receiptRestore.Succeeded)
+            {
                 diagnostics.Add(
                     "receipts:" + receiptRestore.RejectionCode);
+            }
+
             SaveComponentApplyResultV1 preparedRestore =
                 prepared.ImportSnapshot(typed.Prepared);
             if (!preparedRestore.Succeeded)
+            {
                 diagnostics.Add(
                     "prepared:" + preparedRestore.RejectionCode);
+            }
+
             return new CollectedRunRewardTransferRestoreResultV1(
                 diagnostics.Count == 0,
                 string.Join("|", diagnostics));
@@ -312,8 +344,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 MoneyWalletImportResult moneyImport =
                     dryMoney.ImportSnapshot(
                         graph.MoneyWallet.CurrentSnapshot);
-                if (moneyImport.Status
-                    != MoneyWalletImportStatus.Imported)
+                if (moneyImport.Status != MoneyWalletImportStatus.Imported)
                 {
                     return Reject(
                         "dry-money:" + moneyImport.RejectionCode);
@@ -326,8 +357,10 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     dryScrap.ImportSnapshot(
                         graph.ScrapWallet.ExportSnapshot());
                 if (!scrapImport.Succeeded)
+                {
                     return Reject(
                         "dry-scrap:" + scrapImport.RejectionCode);
+                }
 
                 var dryHoldings = new PlayerHoldingsService(
                     graph.LoadoutRuntime.Holdings.AuthorityStableId,
@@ -358,18 +391,24 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     return Reject(
                         "dry-rap-import:" + rapImport.RejectionCode);
                 }
+
                 RewardApplicationResultV1 commit =
                     dryRap.Commit(plan.CommitCommand);
                 if (!CommitAccepted(commit))
+                {
                     return Reject(
                         "dry-rap-commit:" + ResultCode(commit));
+                }
+
                 RewardApplicationResultV1 claim =
                     dryRap.Claim(plan.ClaimCommand);
                 if (!ClaimAccepted(claim))
+                {
                     return Reject(
                         "dry-rap-claim:" + ResultCode(claim));
-                return CollectedRunRewardTransferPreflightResultV1
-                    .Accepted();
+                }
+
+                return CollectedRunRewardTransferPreflightResultV1.Accepted();
             }
             catch (Exception exception)
             {
@@ -392,6 +431,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     snapshot.Contexts[index].InstanceStableId,
                     snapshot.Contexts[index]);
             }
+
             for (int index = 0;
                 index < plan.StrongboxContexts.Count;
                 index++)
@@ -416,10 +456,11 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         "strongbox-definition-fingerprint-conflict:"
                         + context.InstanceStableId);
                 }
+
                 StrongboxInstanceContextV1 prior;
                 if (existing.TryGetValue(
-                    context.InstanceStableId,
-                    out prior)
+                        context.InstanceStableId,
+                        out prior)
                     && !string.Equals(
                         prior.Fingerprint,
                         context.Fingerprint,
@@ -456,7 +497,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     receipts.ExportSnapshot().Fingerprint
                 },
                 {
-                    "prepared-transfers",
+                    PreparedTransfersAuthorityKey,
                     prepared.ExportSnapshot().Fingerprint
                 },
             };
