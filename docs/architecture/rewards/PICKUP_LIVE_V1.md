@@ -28,6 +28,11 @@ deterministic GEN execution, child ordering, exact generated child identity, and
 fingerprint. `TerminalDropRunPickupAdapterV1` only copies those immutable facts into the
 pickup boundary. It performs no profile lookup and has no DROP or GEN dependency.
 
+`EnemyTerminalDropFactConsumerV1` and `PropTerminalDropFactConsumerV1` may publish the
+accepted pending-admission result to one downstream
+`IPendingTerminalDropAdmissionConsumerV1`. Exact redelivery still crosses the idempotent
+pending-admission and pickup realization boundaries; it never invokes DROP or GEN again.
+
 ### Physical pickup
 
 `RunLocalPickupAuthorityV1` owns run-local pickup truth:
@@ -58,6 +63,11 @@ player actor/participant, admits the typed record fingerprint through the existi
 Session fact replay boundary, and stores the exact immutable record in a lifecycle-filtered
 run-local journal. The pickup authority also retains its immutable world projection so
 presentation can be reconstructed without querying Unity objects.
+
+The Run Session journal is the sole collection-order authority. Its
+`NextCollectedRewardOrder` is derived from records in the current lifecycle. The pickup
+authority does not retain a global or cross-lifecycle collection counter. After lifecycle
+restart, the first accepted collection is order `1` even when older lifecycle records exist.
 
 The adapter does not call `RecordCollectedStrongbox`, the mission-result port, RAP, wallet,
 holdings, inventory, save, or Results transfer.
@@ -91,12 +101,18 @@ lifecycle, source entity, optional authored placement, room, committed world pos
 source-position fingerprint.
 
 Pickup realization never uses random nearby coordinates, the current player position,
-object names, `FindObjectOfType`, or Stage 1 constants.
+object names, `FindObjectOfType`, or Stage 1 position constants.
 
 When source position is unavailable, the authority creates a recoverable
 `PendingSourcePosition` record with the already-derived pickup identity. Exact retry after
 the position becomes available promotes that same record to `Available`; it does not
 reroll or replace the reward.
+
+Production Stage 1 enemy integration captures the terminal enemy transform when the existing
+enemy authority becomes destroyed. Production destructible-prop integration subscribes the
+existing typed `DestructibleProp2D.Destroyed` event and captures the authored collider centre
+or transform. Both routes register exact run, lifecycle, source entity, placement, room, and
+position facts before forwarding the accepted #277 admission to pickup realization.
 
 ## Stackable and unique rewards
 
@@ -120,6 +136,10 @@ than another pickup controller.
 A view may configure a prefab, sprite, scale, trigger radius, and label. A missing registry
 route, invalid style, null instantiation, or prefab exception is diagnostic and retryable.
 It does not collect, cancel, or discard the authoritative pickup.
+
+The production player receives `RunPickupCollector2D` identities directly from the active
+Run Session player snapshot. Tags, hierarchy names, collider instance IDs, and GameObject
+names are not collector authority.
 
 ## Collection semantics
 
@@ -148,6 +168,22 @@ Collection means only:
 
 > The player picked this exact reward up during this exact run.
 
+## Lifecycle restart
+
+Stage 1 already increments the live player lifecycle generation when a mission attempt is
+restarted. `Stage1RunPickupBootstrap2D` observes that generation. A run-ID or lifecycle
+change tears down the old transient pickup projection and composes the same production route
+for the current generation:
+
+- a current-lifecycle Run Session journal;
+- a current-lifecycle source-position registry;
+- current-lifecycle enemy/prop terminal bindings;
+- current player actor and participant collector identities;
+- a current-room presenter projection.
+
+The retired lifecycle cannot realize or collect new pickups. The new lifecycle begins with
+`NextCollectedRewardOrder == 1`. No permanent holding is rebuilt or mutated.
+
 ## Room re-entry and reconstruction
 
 Presentation lifetime is separate from authority lifetime.
@@ -164,23 +200,29 @@ No disk checkpoint or account persistence is added here.
 
 | Failure | Authoritative result | Retry behavior |
 |---|---|---|
-| Source position unresolved | Exact child retained as `PendingSourcePosition` | Same child and pickup ID are retried |
+| Run Session/player context unavailable or throws | Structured rejection; no pickup mutation | Same realization or collection command may retry |
+| Source position unresolved or throws | Exact child retained or rejected without replacement identity | Same child and pickup ID are retried |
 | Presentation mapping missing | Pickup remains `Available` | Registry may be fixed and synchronized again |
 | Prefab instantiation throws | Pickup remains `Available` | Synchronization retries without new identity |
-| Run Session record rejects | Pickup remains `Available` | Same collection command may be retried |
+| Run Session record rejects or throws | Pickup remains `Available` | Same collection command may be retried |
 | Conflicting identity reuse | No mutation | Producer/context must be corrected |
 | Stale lifecycle | No mutation | Only current Run Session generation is eligible |
 
-## Composition and parallel-work boundary
+## Production composition
 
-`RunPickupLiveCompositionV1.Create` is a pickup-specific seam accepting the existing
-`RunSessionAggregateV1` and one `IRunPickupSourcePositionPortV1`. It avoids edits to shared
-production composition while PR #278 owns enemy attack scheduling, projectile/melee
-realization, Combat Hit Policy routing, player-damage adapters, and enemy catalog migration.
+`RunPickupLiveCompositionV1.Create` remains the narrow pickup seam accepting one existing
+`RunSessionAggregateV1` and one `IRunPickupSourcePositionPortV1`.
 
-No file from those paths and no `Stage1VisibleSliceController.cs` behavior is changed.
-Production Bootstrap/room wiring can inject this seam after the parallel composition work is
-settled without changing pickup authority semantics.
+`Stage1RunPickupBootstrap2D` connects the production Stage 1 player, rooms, enemy authorities,
+#277 terminal-drop composition, source positions, pickup authority, presenter, and collector.
+`Stage1RunPickupPropBootstrap2D` adds the existing destructible-prop terminal event route to
+the same pickup authority. Both components are installed when the accepted Stage 1 scene is
+loaded through the production flow. `Stage1VisibleSliceController.cs` remains unchanged.
+
+The production bridge PlayMode fixture covers exact accepted #277 admission, committed
+terminal position, physical pickup creation, real 2D trigger collection, exact single Run
+Session record, and view retirement. The repository still requires Unity execution of this
+fixture and the production Bootstrap -> Hub -> Level 1 route before merge.
 
 ## Validation commands
 
@@ -204,3 +246,6 @@ Unity -batchmode -nographics -projectPath . \
   -testResults artifacts/test-results/pickup-live-001-playmode.xml \
   -logFile artifacts/test-results/pickup-live-001-playmode.log
 ```
+
+These commands and output paths are the required merge proof. They have not been executed in
+the connector-only environment used to author this patch; no XML pass counts are claimed.
