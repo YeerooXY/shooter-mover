@@ -6,8 +6,8 @@ namespace ShooterMover.RunPickups
 {
     /// <summary>
     /// Narrow adapter to the existing Run Session aggregate. The aggregate remains the
-    /// lifecycle, participant, fact-admission, and exact collected-reward journal authority.
-    /// The pickup authority retains its own immutable projection for world reconstruction.
+    /// lifecycle, participant, fact-admission, collection-order, and exact collected-reward
+    /// journal authority. The pickup authority retains only its immutable world projection.
     /// </summary>
     public sealed class ExistingRunSessionPickupPortV1 : IRunPickupRunSessionPortV1
     {
@@ -28,6 +28,34 @@ namespace ShooterMover.RunPickups
         public StableId PlayerParticipantStableId
         {
             get { return aggregate.PlayerParticipantStableId; }
+        }
+
+        public bool TryReadContext(
+            out RunPickupRunSessionContextV1 context,
+            out string diagnostic)
+        {
+            context = null;
+            diagnostic = string.Empty;
+            try
+            {
+                context = new RunPickupRunSessionContextV1(
+                    aggregate.RunStableId,
+                    aggregate.LifecycleGeneration,
+                    aggregate.AuthoritativeTick,
+                    aggregate.IsActive,
+                    aggregate.PlayerActorStableId,
+                    aggregate.PlayerParticipantStableId,
+                    aggregate.NextCollectedRewardOrder);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "run-pickup-session-context-unavailable:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
+                return false;
+            }
         }
 
         public RunPickupSessionRecordResultV1 RecordCollection(
@@ -145,8 +173,8 @@ namespace ShooterMover.RunPickups
     }
 
     /// <summary>
-    /// Pickup-specific composition seam that avoids editing shared production composition
-    /// while enemy attack work is active in parallel.
+    /// Pickup-specific composition seam over the exact production Run Session and exact
+    /// committed terminal-source positions.
     /// </summary>
     public sealed class RunPickupLiveCompositionV1
     {
