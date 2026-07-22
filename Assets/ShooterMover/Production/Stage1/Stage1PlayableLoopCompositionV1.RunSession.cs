@@ -229,11 +229,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 + "|"
                 + sharedRunSessionSimulationTick.ToString(
                     CultureInfo.InvariantCulture));
-            RunSessionTimeAdvanceResultV1 result =
-                sharedRunSession.AdvanceTime(
-                    new AdvanceRunSessionTimeCommandV1(
+            RunConditionAdvanceResultV1 result =
+                sharedRunSession.AdvanceConditionRuntime(
+                    new RunConditionAdvanceCommandV1(
                         StableId.Create(
-                            "run-time-advance",
+                            "run-condition-advance",
                             "stage1-" + fingerprint.Substring(0, 24)),
                         sharedRunSession.RunStableId,
                         sharedRunSession.LifecycleGeneration,
@@ -244,7 +244,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "The shared Run Session rejected authoritative time: "
                     + (result == null
                         ? "result-null"
-                        : result.RejectionCode));
+                        : result.DiagnosticCode));
             }
         }
 
