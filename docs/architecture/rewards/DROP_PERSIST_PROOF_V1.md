@@ -7,11 +7,14 @@ The implementation is integrated with merged `PICKUP-LIVE-001` / PR #279 and inc
 - exact collected-reward journal transfer;
 - exact equipment and unopened strongbox payload custody;
 - durable `AwaitingAcceptedEnd -> Prepared -> Persisted` records;
+- explicit persistence certainty;
 - a typed durable Run End acceptance boundary;
 - one honest whole-batch RAP/BOX operation;
 - exact durable receipts and replay detection;
 - bounded restart recovery with a persistent exact-retry surface;
-- immutable Results projections for success, retryable rejection, conflict, and fatal uncertainty.
+- sticky terminal preparation failures with no automatic retry;
+- flow-level fatal notices that are visible outside the Results scene;
+- immutable Results projections for success, retryable rejection, conflict, terminal preparation failure, and durable uncertainty.
 
 Tests and Unity execution proof are intentionally deferred to the next iteration.
 
@@ -117,7 +120,7 @@ PreparedAndVerified / PersistedAndVerified / AlreadyPersisted
 DurableStateUncertain
 ```
 
-`RejectedBeforeReplacement` is produced only before `CharacterCompositionCoordinatorV1.PersistActive(...)` is invoked, such as invalid transfer context or an invalid in-memory custody transition.
+`RejectedBeforeReplacement` is produced only before `CharacterCompositionCoordinatorV1.PersistActive(...)` is invoked, such as an invalid context, invalid custody transition, or authority conflict.
 
 Once `PersistActive(...)` has been invoked, the transfer layer never infers certainty from diagnostic text. A thrown callback, null result, rejected result, or exact component mismatch is classified as `DurableStateUncertain` unless the save protocol explicitly proves replacement did not occur.
 
@@ -129,7 +132,7 @@ account-save-io-failure
 character-save-store-threw
 ```
 
-The generic transfer coordinator is conservative as well: a persistence-port throw or null result becomes fatal durable uncertainty, even if a future persistence adapter does not implement the production wrapper correctly.
+The generic transfer coordinator is conservative too: a persistence-port throw or null result becomes fatal durable uncertainty.
 
 ## Atomic store verification
 
@@ -172,29 +175,31 @@ DurableStateUncertain
 
 Rolling live authorities back in this state could create disk-with-rewards / memory-without-rewards divergence. The implementation therefore fails closed.
 
-Only a typed `RejectedBeforeReplacement` outcome may enter the ordinary compensation-and-retry path.
+## Durable Run End classification
 
-## Durable Run End state machine
-
-`RunSessionAggregateV1.EndWithDurableAcceptance(...)` has a typed acceptance result:
+`RunSessionAggregateV1.EndWithDurableAcceptance(...)` has four typed outcomes:
 
 ```text
 Accepted
-SafelyRejectedBeforeDurability
+RetryableBeforeDurability
+TerminalPreparationFailure
 DurableStateUncertain
 ```
 
-The aggregate also exposes:
+The aggregate exposes the corresponding retained state:
 
 ```text
 None
 PendingExactRetry
+TerminalPreparationFailure
 DurableStateUncertain
 ```
 
 ### Before mission-result acceptance
 
-Validation, journal freezing, payload resolution, or `AwaitingAcceptedEnd` setup can reject before the mission-result authority is invoked. These failures may re-arm the final-exit callback because no terminal mission-result transaction exists.
+Validation, journal freezing, payload resolution, or initial `AwaitingAcceptedEnd` setup can reject before the mission-result authority is invoked. Ordinary deterministic failures at this boundary may re-arm final exit because no terminal mission-result transaction exists.
+
+Initial custody save uncertainty is different: replacement may already have occurred. Stage 1 freezes gameplay, publishes a non-retryable projection, and displays a flow-level fatal notice directly in Level 1. It does not depend on the Results overlay becoming visible.
 
 ### After mission-result acceptance
 
@@ -205,26 +210,72 @@ After the mission-result authority succeeds, the aggregate retains the exact imm
 - candidate Run Session receipt;
 - frozen run-local state.
 
-A safely rejected `Prepared` save does **not** reopen ordinary gameplay and does not call the mission-result authority again. The exact candidate becomes `PendingExactRetry` and is retried with capped exponential backoff.
+The candidate remains available through `PendingDurableEndCandidate` until durable acceptance succeeds. The aggregate also retains the typed state and diagnostic.
 
-A thrown/null/uncertain durable callback changes the aggregate to `DurableStateUncertain`. Ordinary End retries are rejected, gameplay remains frozen, and a fatal non-retryable transfer projection is published.
+Only an explicitly proven `RetryableBeforeDurability` result may become `PendingExactRetry`. Retrying invokes the durable callback for the same retained candidate; it does not construct another mission result.
 
-Only `Accepted` marks the aggregate `Ended` and records normal End replay.
+Deterministic failures become `TerminalPreparationFailure`, including:
+
+- the accepted mission result no longer matching the frozen character;
+- failure to construct the immutable transfer plan;
+- invalid or conflicting Prepared custody transitions before save invocation;
+- any other current production `RejectedBeforeReplacement` outcome.
+
+A terminal preparation failure is sticky:
+
+- gameplay remains frozen;
+- the final-exit callback is not re-subscribed;
+- automatic retry stops;
+- ordinary End calls do not re-enter the mission-result or durability callback;
+- the terminal candidate and diagnostic remain available;
+- a non-retryable preparation projection is published;
+- the accepted mission result is queued to Results;
+- a flow-level notice remains visible until Results accepts the handoff.
+
+A thrown, null, or uncertain durable callback becomes `DurableStateUncertain`. It is also sticky and non-retryable.
+
+Only `Accepted` marks the Run Session `Ended` and records normal End replay.
+
+## Retry policy
+
+Retryability is a typed fact, not an inference from a generic safe rejection.
+
+The current production persistence adapter does not claim a transient pre-replacement storage failure. Its pre-invocation rejections are deterministic context, transition, or authority failures, so Stage 1 maps them to `TerminalPreparationFailure`.
+
+The contract retains `RetryableBeforeDurability` for a persistence implementation that can explicitly prove both:
+
+1. active-file replacement did not occur;
+2. the failure is transient and may heal without changing the immutable candidate.
+
+Even typed transient retries are bounded to five automatic attempts with capped exponential backoff. Exhaustion converts the retained transaction into `TerminalPreparationFailure` and publishes a visible non-retryable result.
 
 ## Stage 1 terminal route
 
-The final-exit route behaves as follows:
-
 | Boundary | Outcome |
 | --- | --- |
-| Failure before terminal mission-result creation | re-arm final exit |
-| Terminal candidate exists and durability is safely rejected | freeze gameplay and retry the same exact candidate |
-| Terminal durability is uncertain | freeze gameplay, no ordinary retry, publish fatal recovery Results |
-| Durable acceptance succeeds | apply or replay the exact transfer, then enter Results |
+| Deterministic failure before mission-result creation | re-arm final exit |
+| Initial custody save durability uncertain | freeze; flow-level fatal notice; no retry |
+| Explicit transient failure after terminal candidate creation | freeze; retry same candidate, at most five attempts |
+| Character/plan/Prepared deterministic conflict | freeze; terminal non-retryable projection; queue Results |
+| Terminal durability uncertain | freeze; fatal non-retryable projection; queue Results when candidate exists |
+| Durable acceptance succeeds | apply or replay exact transfer, then enter Results |
 
-While an exact terminal retry is pending, player movement, room progression, weapon execution, and effect emission are disabled. The final-exit callback is not re-subscribed.
+While any terminal transaction is unresolved, player movement, room progression, weapon execution, and effect emission are disabled.
 
-The retry delay is capped; it retries the same retained transaction rather than constructing a new mission result or transfer plan.
+## Flow-level terminal notice
+
+`ProductionCollectedRunRewardTerminalNoticeV1` is attached to the persistent production flow object.
+
+It renders independently of the active scene and contains:
+
+- the exact custody ID;
+- terminal or uncertainty diagnostic;
+- explicit non-retryable guidance;
+- confirmation that the retained terminal transaction remains available for diagnostics.
+
+It owns no reward payload and exposes no retry button.
+
+For terminal failures with an accepted mission result, the notice remains visible while the Results transition is pending and removes itself once Results is active. For initial pre-End uncertainty, where no accepted mission result exists to route, the notice remains visible in the current scene.
 
 ## Whole-batch permanent application
 
@@ -258,15 +309,7 @@ Before live mutation, the transfer verifies:
 5. every exact BOX context and definition fingerprint;
 6. a full RAP commit and claim against cloned authority snapshots.
 
-Compensation includes:
-
-- money;
-- scrap;
-- holdings;
-- RAP commitment, claim, and child history;
-- BOX state;
-- receipt history;
-- prepared custody.
+Compensation includes money, scrap, holdings, RAP history, BOX state, receipt history, and prepared custody.
 
 Compensation is allowed only before durable state becomes uncertain. Failed compensation is fatal.
 
@@ -297,104 +340,83 @@ Replay rules:
 | Matching operation, batch, and plan | `ExactReplay`, no mutation |
 | Same operation with different batch or plan | conflicting duplicate |
 | Reward ID belongs to another receipt | partial/cross-operation overlap rejection |
-| `Prepared` custody without receipt | rebuild the same whole plan |
+| `Prepared` custody without receipt | rebuild same whole plan |
 | Matching `Persisted` custody and receipt | complete |
 
 ## Restart recovery
 
 `ProductionCollectedRunRewardRecoveryV2` scans only durable `Prepared` custody. `AwaitingAcceptedEnd` is never eligible for permanent grants.
 
-For each recoverable custody record it:
-
-1. rebuilds the exact plan from restored equipment and BOX payloads;
-2. verifies the stored plan fingerprint;
-3. invokes the normal atomic coordinator;
-4. classifies success, retryable failure, or fatal uncertainty.
+For each recoverable custody record it rebuilds the exact plan, verifies its fingerprint, invokes the normal coordinator, and classifies success, recoverable failure, or fatal uncertainty.
 
 Recoverable failures receive up to five automatic attempts with capped exponential backoff from one to thirty seconds. Transactions remain serialized to one permanent-state attempt per probe.
 
-After retries are exhausted, a persistent flow-level recovery notice remains visible in Bootstrap, Hub, or Results. It contains the exact custody identity and an explicit `RETRY EXACT RECOVERY NOW` action.
+After retries are exhausted, a persistent flow-level recovery notice remains visible in Bootstrap, Hub, or Results with an exact custody retry action. Fatal or durable-uncertain outcomes stop automatic retries and do not expose a retry button.
 
-The manual action addresses durable custody and plan fingerprints; it owns no payload and cannot substitute a new reward list.
-
-Fatal or durable-uncertain outcomes:
-
-- stop automatic retries;
-- render a persistent fatal notice;
-- do not expose a retry button.
-
-A recoverable failure therefore cannot disappear into a console warning or require another application restart.
+Restart recovery is separate from the in-run terminal state machine: a deterministic terminal preparation failure never enters restart recovery because no valid durable `Prepared` plan exists.
 
 ## Results guarantee
 
-After a terminal candidate exists, no path merely sets a diagnostic and resumes gameplay.
+After a terminal candidate exists, no path merely writes a diagnostic and resumes gameplay.
 
 Every terminal outcome is represented by immutable state:
 
 - applied;
 - exact replay;
-- retryable rejection;
+- explicitly retryable transient rejection;
 - conflicting duplicate;
-- preparation inconsistency;
+- terminal preparation failure;
 - fatal durable uncertainty.
 
 The Stage 1 composition retains the immutable mission result and summary until the production flow accepts the Results handoff.
 
-The Results projection exposes:
+The Results projection exposes custody, operation, batch and plan identity, transfer and persistence status, applied reward IDs, receipt and state fingerprints, revisions, diagnostics, and retry eligibility.
 
-- custody, operation, batch, and plan identity;
-- transfer and persistence status;
-- applied reward IDs;
-- receipt and resulting-state fingerprints;
-- account and character revisions/fingerprints;
-- diagnostics and compensation diagnostics;
-- exact retry eligibility.
-
-A null transfer-service result after accepted End is itself projected as durable uncertainty with retry disabled.
+Terminal preparation and durability-uncertain projections set retry eligibility to false.
 
 ## Production sequence
 
 ```mermaid
 sequenceDiagram
-    participant DROP as DROP / GEN
-    participant Pickup as Pickup authority
     participant Run as RunSessionAggregateV1
+    participant Result as Mission result authority
     participant Custody as Prepared custody
-    participant RAP as Character RAP
-    participant BOX as BOX authority
-    participant Receipt as Transfer receipt
+    participant Notice as Flow-level notice
+    participant RAP as Character RAP / BOX
     participant Save as Atomic account store
-    participant Recovery as Recovery UI
     participant Results as Results
 
-    DROP->>DROP: retain exact equipment payload
-    DROP->>Pickup: admit generated children
-    Pickup->>Run: append exact collection records
     Run->>Custody: persist AwaitingAcceptedEnd
-    Run->>Run: obtain immutable terminal mission result
-    Run->>Custody: build and persist exact Prepared plan
-    alt Prepared verified
-        Custody-->>Run: Accepted
-        Run->>Run: mark Ended
-        Run->>RAP: dry-run and apply whole batch
-        Run->>BOX: register exact unopened contexts
-        Run->>Receipt: record exact receipt
-        Run->>Save: persist rewards + Persisted custody + receipt
-        Save-->>Run: committed and verified
-        Run-->>Results: immutable projection
-    else Safely rejected before replacement
-        Custody-->>Run: PendingExactRetry
-        Run->>Run: retain exact candidate and freeze gameplay
-        Run->>Custody: retry same terminal transaction
-    else Durable state uncertain
+    alt initial save uncertain
         Custody-->>Run: DurableStateUncertain
-        Run->>Run: freeze; disable ordinary retry
-        Run-->>Results: fatal non-retryable projection
+        Run->>Run: freeze gameplay
+        Run-->>Notice: visible fatal notice in current scene
+    else initial custody verified
+        Run->>Result: create immutable terminal result
+        Result-->>Run: accepted terminal candidate
+        Run->>Custody: construct and persist Prepared plan
+        alt character or plan conflict
+            Custody-->>Run: TerminalPreparationFailure
+            Run->>Run: retain candidate; stop retries
+            Run-->>Notice: non-retryable diagnostic
+            Run-->>Results: queued immutable result
+        else explicitly transient before durability
+            Custody-->>Run: RetryableBeforeDurability
+            Run->>Run: retry same candidate, bounded to five
+        else durability uncertain
+            Custody-->>Run: DurableStateUncertain
+            Run->>Run: retain candidate; stop retries
+            Run-->>Notice: fatal diagnostic
+            Run-->>Results: queued immutable result
+        else Prepared verified
+            Custody-->>Run: Accepted
+            Run->>Run: mark Ended
+            Run->>RAP: preflight and apply whole batch
+            Run->>Save: persist rewards + custody + receipt
+            Save-->>Run: committed and verified
+            Run-->>Results: immutable projection
+        end
     end
-
-    Recovery->>Custody: scan durable Prepared records
-    Recovery->>RAP: bounded exact recovery attempts
-    Recovery-->>Recovery: persistent manual action or fatal notice
 ```
 
 ## Verification boundary
