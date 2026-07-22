@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
@@ -14,18 +15,13 @@ namespace ShooterMover.TerminalDropBinding
 
     /// <summary>
     /// Downstream observer of the exact pending-admission result. Observers receive the
-    /// admitted batch itself; they never trigger DROP or GEN again.
+    /// admitted batch itself; they never trigger reward generation again.
     /// </summary>
     public interface IPendingTerminalDropAdmissionConsumerV1
     {
         void Consume(PendingTerminalDropAdmissionResultV1 admission);
     }
 
-    /// <summary>
-    /// Typed bridge for the existing generic enemy terminal consequence port. Every
-    /// delivery reaches the idempotent pending admission boundary, including exact replay,
-    /// so a lost first publication can be recovered without creating a second entry.
-    /// </summary>
     public sealed class EnemyTerminalDropFactConsumerV1 : IEnemyDropFactConsumerV1
     {
         private readonly TerminalDropGenerationAuthorityV1 authority;
@@ -37,7 +33,8 @@ namespace ShooterMover.TerminalDropBinding
             IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
             IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
         {
-            this.authority = authority ?? throw new ArgumentNullException(nameof(authority));
+            this.authority = authority
+                ?? throw new ArgumentNullException(nameof(authority));
             this.pendingAdmission = pendingAdmission
                 ?? throw new ArgumentNullException(nameof(pendingAdmission));
             this.admissionConsumer = admissionConsumer;
@@ -49,7 +46,9 @@ namespace ShooterMover.TerminalDropBinding
         {
             LastAdmission = pendingAdmission.Admit(authority.Generate(fact));
             if (admissionConsumer != null && LastAdmission != null)
+            {
                 admissionConsumer.Consume(LastAdmission);
+            }
         }
     }
 
@@ -64,7 +63,8 @@ namespace ShooterMover.TerminalDropBinding
             IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
             IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
         {
-            this.authority = authority ?? throw new ArgumentNullException(nameof(authority));
+            this.authority = authority
+                ?? throw new ArgumentNullException(nameof(authority));
             this.pendingAdmission = pendingAdmission
                 ?? throw new ArgumentNullException(nameof(pendingAdmission));
             this.admissionConsumer = admissionConsumer;
@@ -76,13 +76,16 @@ namespace ShooterMover.TerminalDropBinding
         {
             LastAdmission = pendingAdmission.Admit(authority.Generate(fact));
             if (admissionConsumer != null && LastAdmission != null)
+            {
                 admissionConsumer.Consume(LastAdmission);
+            }
         }
     }
 
     /// <summary>
-    /// Additive typed composition. It reuses existing catalogs and GEN and does not
-    /// create a runtime bootstrap or mutate Run Session/permanent state.
+    /// Typed terminal-to-pickup composition. Legacy REW-001 inputs remain optional
+    /// migration parameters, but every live roll is owned by one shared personal
+    /// generation service and one pending-admission authority.
     /// </summary>
     public sealed class TerminalDropBindingCompositionV1
     {
@@ -109,24 +112,37 @@ namespace ShooterMover.TerminalDropBinding
             PropCatalogV1 propCatalog,
             IPropTerminalSourceContextResolverV1 propSourceContexts,
             ITerminalDropRunContextResolverV1 runContexts,
-            IRewardProfileResolverV1 rewardProfiles,
-            RewardGenerationServiceV1 rewardGenerationService,
+            IRewardProfileResolverV1 legacyRewardProfiles,
+            RewardGenerationServiceV1 legacyRewardGenerationService,
             IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
             IEnumerable<ITerminalDropFactAdapterV1> additionalAdapters = null,
-            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
+            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null,
+            PersonalRewardGenerationServiceV1 personalGenerationService = null)
         {
-            if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
+            if (enemyCatalog == null)
+            {
+                throw new ArgumentNullException(nameof(enemyCatalog));
+            }
             if (enemySourceContexts == null)
+            {
                 throw new ArgumentNullException(nameof(enemySourceContexts));
-            if (propCatalog == null) throw new ArgumentNullException(nameof(propCatalog));
+            }
+            if (propCatalog == null)
+            {
+                throw new ArgumentNullException(nameof(propCatalog));
+            }
             if (propSourceContexts == null)
+            {
                 throw new ArgumentNullException(nameof(propSourceContexts));
-            if (runContexts == null) throw new ArgumentNullException(nameof(runContexts));
-            if (rewardProfiles == null) throw new ArgumentNullException(nameof(rewardProfiles));
-            if (rewardGenerationService == null)
-                throw new ArgumentNullException(nameof(rewardGenerationService));
+            }
+            if (runContexts == null)
+            {
+                throw new ArgumentNullException(nameof(runContexts));
+            }
             if (pendingAdmission == null)
+            {
                 throw new ArgumentNullException(nameof(pendingAdmission));
+            }
 
             var adapters = new List<ITerminalDropFactAdapterV1>
             {
@@ -135,25 +151,33 @@ namespace ShooterMover.TerminalDropBinding
                     enemySourceContexts),
                 new PropDestructionTerminalDropFactAdapterV1(
                     propCatalog,
-                    propSourceContexts)
+                    propSourceContexts),
             };
             if (additionalAdapters != null)
             {
                 foreach (ITerminalDropFactAdapterV1 adapter in additionalAdapters)
                 {
                     if (adapter == null)
+                    {
                         throw new ArgumentException(
                             "Additional terminal-drop adapters cannot contain null.",
                             nameof(additionalAdapters));
+                    }
                     adapters.Add(adapter);
                 }
             }
 
+            IRewardGenerationExecutorV1 legacyExecutor =
+                legacyRewardGenerationService == null
+                    ? null
+                    : new ExistingRewardGenerationExecutorV1(
+                        legacyRewardGenerationService);
             var authority = new TerminalDropGenerationAuthorityV1(
                 new TerminalDropFactAdapterRegistryV1(adapters),
                 runContexts,
-                rewardProfiles,
-                new ExistingRewardGenerationExecutorV1(rewardGenerationService));
+                legacyRewardProfiles,
+                legacyExecutor,
+                personalGenerationService);
             return new TerminalDropBindingCompositionV1(
                 authority,
                 pendingAdmission,
