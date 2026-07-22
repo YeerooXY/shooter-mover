@@ -7,6 +7,7 @@ using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Progression.Experience;
@@ -48,6 +49,9 @@ namespace ShooterMover.Application.Flow.Production
                 Skills(skills, skillProfileId),
                 Loadout(loadout),
                 Strongboxes(strongboxes),
+                ProductionCollectedRunRewardTransferRuntimeRegistry
+                    .CreateReceiptSaveAdapter(
+                        loadout.RoutePayload.SelectedCharacterStableId),
             };
         }
 
