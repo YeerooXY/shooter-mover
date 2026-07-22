@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Runs.Session;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Persistence.Accounts;
