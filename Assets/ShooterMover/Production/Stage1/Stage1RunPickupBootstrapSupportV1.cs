@@ -49,8 +49,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     + "|"
                     + terminalFact.Identity.EntityInstanceId
                     + "|"
-                    + terminalFact.Identity.ParticipantStableId
-                    + "|"
                     + terminalFact.Identity.PlacementStableId));
             return true;
         }
