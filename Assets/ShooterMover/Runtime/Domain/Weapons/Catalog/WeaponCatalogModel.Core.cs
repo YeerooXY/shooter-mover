@@ -20,6 +20,11 @@ namespace ShooterMover.Domain.Weapons.Catalog
         All = 2,
     }
 
+    /// <summary>
+    /// Catalog-wide weapon invariants. Every weapon definition contains its final base
+    /// statistics. Equipping the same weapon on a different character never recalculates
+    /// those statistics from the character's current level.
+    /// </summary>
     public sealed class WeaponCatalogRules
     {
         private readonly ReadOnlyCollection<int> _apexPowerAnchors;
@@ -27,7 +32,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
 
         public WeaponCatalogRules(
             bool fixedStatsPerDefinition,
-            bool runtimeLevelScaling,
             string ordinaryMarkGap,
             IEnumerable<int> apexPowerAnchors,
             IEnumerable<string> damageTypes,
@@ -37,7 +41,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
             bool noHeatGeneration)
         {
             FixedStatsPerDefinition = fixedStatsPerDefinition;
-            RuntimeLevelScaling = runtimeLevelScaling;
             OrdinaryMarkGap = ordinaryMarkGap ?? string.Empty;
             _apexPowerAnchors = Copy(apexPowerAnchors);
             _damageTypes = Copy(damageTypes);
@@ -48,7 +51,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
         }
 
         public bool FixedStatsPerDefinition { get; private set; }
-        public bool RuntimeLevelScaling { get; private set; }
         public string OrdinaryMarkGap { get; private set; }
         public IReadOnlyList<int> ApexPowerAnchors { get { return _apexPowerAnchors; } }
         public IReadOnlyList<string> DamageTypes { get { return _damageTypes; } }

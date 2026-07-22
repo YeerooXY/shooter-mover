@@ -53,7 +53,6 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             writer.BeginObject();
             writer.Property("fixed_stats_per_definition", value.FixedStatsPerDefinition);
-            writer.Property("runtime_level_scaling", value.RuntimeLevelScaling);
             writer.Property("ordinary_mark_gap", value.OrdinaryMarkGap);
             writer.Name("apex_power_anchors");
             writer.BeginArray();

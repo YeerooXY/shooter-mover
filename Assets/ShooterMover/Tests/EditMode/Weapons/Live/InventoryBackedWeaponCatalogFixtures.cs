@@ -21,7 +21,6 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         {
             var rules = new WeaponCatalogRules(
                 true,
-                false,
                 "20-25",
                 new[] { 75, 105, 135 },
                 new[] { "Kinetic", "Thermal" },
