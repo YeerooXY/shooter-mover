@@ -7,15 +7,17 @@ namespace ShooterMover.Application.Runs.Session
     public enum RunSessionDurableAcceptanceStatusV1
     {
         Accepted = 1,
-        SafelyRejectedBeforeDurability = 2,
-        DurableStateUncertain = 3,
+        RetryableBeforeDurability = 2,
+        TerminalPreparationFailure = 3,
+        DurableStateUncertain = 4,
     }
 
     public enum RunSessionDurableEndStateV1
     {
         None = 1,
         PendingExactRetry = 2,
-        DurableStateUncertain = 3,
+        TerminalPreparationFailure = 3,
+        DurableStateUncertain = 4,
     }
 
     public sealed class RunSessionDurableAcceptanceResultV1
@@ -45,6 +47,26 @@ namespace ShooterMover.Application.Runs.Session
             }
         }
 
+        public bool RetryableBeforeDurability
+        {
+            get
+            {
+                return Status
+                    == RunSessionDurableAcceptanceStatusV1
+                        .RetryableBeforeDurability;
+            }
+        }
+
+        public bool TerminalPreparationFailure
+        {
+            get
+            {
+                return Status
+                    == RunSessionDurableAcceptanceStatusV1
+                        .TerminalPreparationFailure;
+            }
+        }
+
         public bool DurableStateUncertain
         {
             get
@@ -65,13 +87,24 @@ namespace ShooterMover.Application.Runs.Session
         }
 
         public static RunSessionDurableAcceptanceResultV1
-            RejectedBeforeDurability(string rejectionCode)
+            Retryable(string rejectionCode)
         {
             return new RunSessionDurableAcceptanceResultV1(
                 RunSessionDurableAcceptanceStatusV1
-                    .SafelyRejectedBeforeDurability,
+                    .RetryableBeforeDurability,
                 string.IsNullOrWhiteSpace(rejectionCode)
-                    ? "run-end-durable-acceptance-safely-rejected"
+                    ? "run-end-durable-acceptance-retryable"
+                    : rejectionCode.Trim());
+        }
+
+        public static RunSessionDurableAcceptanceResultV1
+            Terminal(string rejectionCode)
+        {
+            return new RunSessionDurableAcceptanceResultV1(
+                RunSessionDurableAcceptanceStatusV1
+                    .TerminalPreparationFailure,
+                string.IsNullOrWhiteSpace(rejectionCode)
+                    ? "run-end-terminal-preparation-failure"
                     : rejectionCode.Trim());
         }
 
@@ -85,13 +118,6 @@ namespace ShooterMover.Application.Runs.Session
                     ? "run-end-durable-state-uncertain"
                     : rejectionCode.Trim());
         }
-
-        // Retained compatibility for callers that explicitly mean a safe rejection.
-        public static RunSessionDurableAcceptanceResultV1 Rejected(
-            string rejectionCode)
-        {
-            return RejectedBeforeDurability(rejectionCode);
-        }
     }
 
     public sealed partial class RunSessionAggregateV1
@@ -99,27 +125,41 @@ namespace ShooterMover.Application.Runs.Session
         private RunSessionEndResultV1 pendingDurableEndCandidateV1;
         private StableId pendingDurableEndOperationStableIdV1;
         private string pendingDurableEndCommandFingerprintV1 = string.Empty;
-        private bool durableEndStateUncertainV1;
+        private RunSessionDurableEndStateV1 durableEndStateV1 =
+            RunSessionDurableEndStateV1.None;
+        private string durableEndDiagnosticV1 = string.Empty;
 
         public RunSessionDurableEndStateV1 DurableEndState
         {
             get
             {
-                if (durableEndStateUncertainV1)
-                    return RunSessionDurableEndStateV1
-                        .DurableStateUncertain;
                 return pendingDurableEndCandidateV1 == null
                     ? RunSessionDurableEndStateV1.None
-                    : RunSessionDurableEndStateV1.PendingExactRetry;
+                    : durableEndStateV1;
             }
         }
 
         /// <summary>
-        /// Ends a run only after the accepted mission result has crossed a caller-supplied
-        /// durable acceptance boundary. Once the mission-result authority accepts, the exact
-        /// candidate transaction is retained. A safe durability rejection can only retry that
-        /// candidate; it never reopens normal mission-result construction. An uncertain
-        /// durability outcome freezes the transaction permanently for external recovery.
+        /// Retains the immutable terminal candidate whenever the mission-result authority has
+        /// accepted it but durable transfer acceptance has not completed. This is diagnostic
+        /// evidence only; callers cannot mutate or replace the candidate through this property.
+        /// </summary>
+        public RunSessionEndResultV1 PendingDurableEndCandidate
+        {
+            get { return pendingDurableEndCandidateV1; }
+        }
+
+        public string DurableEndDiagnostic
+        {
+            get { return durableEndDiagnosticV1; }
+        }
+
+        /// <summary>
+        /// Ends a run only after the accepted mission result crosses a caller-supplied durable
+        /// acceptance boundary. Retryable failures may invoke the callback again for this exact
+        /// candidate. Deterministic preparation failures and uncertain durability are sticky:
+        /// they preserve the candidate and reject every ordinary End retry without re-entering
+        /// mission-result or durable-acceptance logic.
         /// </summary>
         public RunSessionEndResultV1 EndWithDurableAcceptance(
             EndRunSessionCommandV1 command,
@@ -170,13 +210,28 @@ namespace ShooterMover.Application.Runs.Session
                         candidate.Receipt,
                         "run-end-pending-durable-operation-conflict");
                 }
-                if (durableEndStateUncertainV1)
+                if (durableEndStateV1
+                    == RunSessionDurableEndStateV1
+                        .TerminalPreparationFailure)
                 {
                     return new RunSessionEndResultV1(
                         RunSessionEndStatusV1.Rejected,
                         command,
                         candidate.Receipt,
-                        "run-end-durable-state-uncertain");
+                        string.IsNullOrWhiteSpace(durableEndDiagnosticV1)
+                            ? "run-end-terminal-preparation-failure"
+                            : durableEndDiagnosticV1);
+                }
+                if (durableEndStateV1
+                    == RunSessionDurableEndStateV1.DurableStateUncertain)
+                {
+                    return new RunSessionEndResultV1(
+                        RunSessionEndStatusV1.Rejected,
+                        command,
+                        candidate.Receipt,
+                        string.IsNullOrWhiteSpace(durableEndDiagnosticV1)
+                            ? "run-end-durable-state-uncertain"
+                            : durableEndDiagnosticV1);
                 }
             }
             else
@@ -255,6 +310,9 @@ namespace ShooterMover.Application.Runs.Session
                     command.OperationStableId;
                 pendingDurableEndCommandFingerprintV1 =
                     command.Fingerprint;
+                durableEndStateV1 =
+                    RunSessionDurableEndStateV1.PendingExactRetry;
+                durableEndDiagnosticV1 = string.Empty;
             }
 
             RunSessionDurableAcceptanceResultV1 durable;
@@ -264,46 +322,72 @@ namespace ShooterMover.Application.Runs.Session
             }
             catch (Exception exception)
             {
-                durableEndStateUncertainV1 = true;
+                durableEndStateV1 =
+                    RunSessionDurableEndStateV1.DurableStateUncertain;
+                durableEndDiagnosticV1 =
+                    "run-end-durable-acceptance-threw:"
+                    + exception.GetType().Name;
                 return new RunSessionEndResultV1(
                     RunSessionEndStatusV1.Rejected,
                     command,
                     candidate.Receipt,
-                    "run-end-durable-acceptance-threw:"
-                    + exception.GetType().Name);
+                    durableEndDiagnosticV1);
             }
 
             if (durable == null)
             {
-                durableEndStateUncertainV1 = true;
+                durableEndStateV1 =
+                    RunSessionDurableEndStateV1.DurableStateUncertain;
+                durableEndDiagnosticV1 =
+                    "run-end-durable-acceptance-result-null";
                 return new RunSessionEndResultV1(
                     RunSessionEndStatusV1.Rejected,
                     command,
                     candidate.Receipt,
-                    "run-end-durable-acceptance-result-null");
+                    durableEndDiagnosticV1);
             }
 
             if (durable.Status
                 == RunSessionDurableAcceptanceStatusV1
                     .DurableStateUncertain)
             {
-                durableEndStateUncertainV1 = true;
+                durableEndStateV1 =
+                    RunSessionDurableEndStateV1.DurableStateUncertain;
+                durableEndDiagnosticV1 = durable.RejectionCode;
                 return new RunSessionEndResultV1(
                     RunSessionEndStatusV1.Rejected,
                     command,
                     candidate.Receipt,
-                    durable.RejectionCode);
+                    durableEndDiagnosticV1);
             }
 
             if (durable.Status
                 == RunSessionDurableAcceptanceStatusV1
-                    .SafelyRejectedBeforeDurability)
+                    .TerminalPreparationFailure)
             {
+                durableEndStateV1 =
+                    RunSessionDurableEndStateV1
+                        .TerminalPreparationFailure;
+                durableEndDiagnosticV1 = durable.RejectionCode;
                 return new RunSessionEndResultV1(
                     RunSessionEndStatusV1.Rejected,
                     command,
                     candidate.Receipt,
-                    durable.RejectionCode);
+                    durableEndDiagnosticV1);
+            }
+
+            if (durable.Status
+                == RunSessionDurableAcceptanceStatusV1
+                    .RetryableBeforeDurability)
+            {
+                durableEndStateV1 =
+                    RunSessionDurableEndStateV1.PendingExactRetry;
+                durableEndDiagnosticV1 = durable.RejectionCode;
+                return new RunSessionEndResultV1(
+                    RunSessionEndStatusV1.Rejected,
+                    command,
+                    candidate.Receipt,
+                    durableEndDiagnosticV1);
             }
 
             authoritativeTick = command.AuthoritativeTick;
@@ -312,7 +396,8 @@ namespace ShooterMover.Application.Runs.Session
             pendingDurableEndCandidateV1 = null;
             pendingDurableEndOperationStableIdV1 = null;
             pendingDurableEndCommandFingerprintV1 = string.Empty;
-            durableEndStateUncertainV1 = false;
+            durableEndStateV1 = RunSessionDurableEndStateV1.None;
+            durableEndDiagnosticV1 = string.Empty;
             endReplay.Add(
                 command.OperationStableId,
                 new EndReplayRecord(command.Fingerprint, candidate));
