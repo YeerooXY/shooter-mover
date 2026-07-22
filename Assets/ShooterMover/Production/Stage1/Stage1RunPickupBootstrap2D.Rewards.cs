@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
@@ -6,6 +7,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
 using ShooterMover.Domain.Rewards.Generation;
+using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using UnityEngine;
 
@@ -50,6 +52,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             var overrides =
                 new RunSessionTerminalRewardOverrideResolverV1(
                     () => run);
+            var deliveryOutbox =
+                new RunSessionPersonalRewardDeliveryOutboxV1(run);
 
             terminalDrops = TerminalDropBindingCompositionV1.Create(
                 enemyCatalog,
@@ -68,10 +72,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 generation,
                 participants,
                 environment,
-                overrides);
+                overrides,
+                deliveryOutbox);
+            RunPlayerRuntimeSnapshotV1 player =
+                run.RuntimePorts.Player.ExportSnapshot();
             batchDelivery = new Stage1PersonalRewardBatchDeliveryV1(
                 terminalDrops,
-                admissionBridge);
+                admissionBridge,
+                player.ParticipantStableId,
+                deliveryOutbox);
             completedMinimumLifecycle = -1L;
         }
 
@@ -101,9 +110,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
 
         /// <summary>
-        /// Called synchronously before the existing final-exit handler. The result is
-        /// delivered through the same exact pending-pickup transport as every other
-        /// personal reward and exact replay is harmless.
+        /// Called synchronously before the existing final-exit handler. The guaranteed
+        /// local minimum is realized through the normal pickup authority and immediately
+        /// collected through its exact collection command, preventing exit timing from
+        /// leaving the promised reward behind. Remote participant minimums remain in the
+        /// run outbox for their participant-specific transport.
         /// </summary>
         internal bool TryGenerateRunMinimum(out string resultDiagnostic)
         {
@@ -111,6 +122,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             if (run == null
                 || terminalDrops == null
                 || batchDelivery == null
+                || pickups == null
                 || stage1 == null
                 || stage1.RunPickupRooms == null
                 || stage1.RunPickupController == null
@@ -190,8 +202,75 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 resultDiagnostic = delivery.Diagnostic;
                 return false;
             }
+            if (!TryCollectLocalRunMinimum(batch, out resultDiagnostic))
+            {
+                return false;
+            }
             completedMinimumLifecycle = run.LifecycleGeneration;
-            resultDiagnostic = delivery.Diagnostic;
+            return true;
+        }
+
+        private bool TryCollectLocalRunMinimum(
+            TerminalPersonalRewardBatchV1 batch,
+            out string resultDiagnostic)
+        {
+            resultDiagnostic = string.Empty;
+            RunPlayerRuntimeSnapshotV1 player =
+                run.RuntimePorts.Player.ExportSnapshot();
+            var localOperations = new HashSet<StableId>();
+            for (int index = 0; index < batch.Results.Count; index++)
+            {
+                GeneratedTerminalDropResultV1 result = batch.Results[index];
+                if (result != null
+                    && result.IsAccepted
+                    && result.SourceFact.AttributedParticipantStableId
+                        == player.ParticipantStableId)
+                {
+                    localOperations.Add(
+                        result.OperationRequest.SourceOperationStableId);
+                }
+            }
+            if (localOperations.Count == 0)
+            {
+                return true;
+            }
+
+            IReadOnlyList<RunPickupSnapshotV1> available =
+                pickups.Authority.ExportAvailablePickups();
+            for (int index = 0; index < available.Count; index++)
+            {
+                RunPickupSnapshotV1 pickup = available[index];
+                if (!localOperations.Contains(
+                        pickup.Batch.DropOperationStableId))
+                {
+                    continue;
+                }
+                StableId collectionOperation =
+                    RewardGenerationFingerprintV1.DeriveStableId(
+                        "runminimumcollection",
+                        run.RunStableId.ToString(),
+                        run.LifecycleGeneration.ToString(
+                            CultureInfo.InvariantCulture),
+                        pickup.PickupStableId.ToString());
+                RunPickupCollectionResultV1 collected =
+                    pickups.Authority.Collect(
+                        new RunPickupCollectionCommandV1(
+                            collectionOperation,
+                            pickup.PickupStableId,
+                            pickup.Reward.RewardInstanceStableId,
+                            run.RunStableId,
+                            run.LifecycleGeneration,
+                            player.ActorInstanceStableId,
+                            player.ParticipantStableId,
+                            pickup.Fingerprint));
+                if (collected == null || !collected.IsCollected)
+                {
+                    resultDiagnostic = collected == null
+                        ? "stage1-run-minimum-collection-null"
+                        : collected.Diagnostic;
+                    return false;
+                }
+            }
             return true;
         }
 
