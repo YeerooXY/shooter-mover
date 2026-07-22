@@ -5,9 +5,9 @@ using ShooterMover.Domain.Common;
 namespace ShooterMover.Application.Rewards.CollectedRunTransfers
 {
     /// <summary>
-    /// Exactly-once coordinator for one honest atomic RAP/BOX plan. Durable prepared
-    /// custody is confirmed before mutation. A post-replacement persistence uncertainty
-    /// is fatal and is never disguised as a compensated retry.
+    /// Exactly-once coordinator for one honest atomic RAP/BOX plan. Durable Prepared
+    /// custody is confirmed before mutation. Post-replacement uncertainty is fatal and
+    /// never disguised as a compensated retry.
     /// </summary>
     public sealed class CollectedRunRewardTransferCoordinatorV2
     {
@@ -21,15 +21,18 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             ICollectedRunRewardAtomicBatchAuthorityPortV1 authority,
             ICollectedRunRewardTransferPersistencePortV1 persistence)
         {
-            this.authority = authority ?? throw new ArgumentNullException(nameof(authority));
-            this.persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
+            this.authority = authority
+                ?? throw new ArgumentNullException(nameof(authority));
+            this.persistence = persistence
+                ?? throw new ArgumentNullException(nameof(persistence));
         }
 
         public CollectedRunRewardTransferResultV1 Apply(
             CollectedRunRewardAtomicPlanV2 plan)
         {
             if (plan == null) throw new ArgumentNullException(nameof(plan));
-            CollectedRunRewardPreparedTransferV1 prepared = plan.PreparedTransfer;
+            CollectedRunRewardPreparedTransferV1 prepared =
+                plan.PreparedTransfer;
             PermanentRewardTransferStateV1 before = TryExportState();
 
             CollectedRunRewardTransferReceiptV1 existing;
@@ -55,7 +58,6 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             CollectedRunRewardTransferResultV1 overlap =
                 ValidateNoDurableOverlap(plan, before);
             if (overlap != null) return overlap;
-
             if (!persistence.IsAvailable)
             {
                 return Reject(
@@ -95,7 +97,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     + custody.Diagnostic,
                     string.Empty,
                     custody,
-                    before);
+                    before,
+                    null);
             }
             if (!custody.Succeeded)
             {
@@ -177,9 +180,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         custody);
                 }
 
-                var authorityFingerprints = new Dictionary<string, string>(
-                    applied.AuthorityFingerprints,
-                    StringComparer.Ordinal);
+                var authorityFingerprints =
+                    new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (KeyValuePair<string, string> pair in
+                    applied.AuthorityFingerprints)
+                {
+                    authorityFingerprints.Add(pair.Key, pair.Value);
+                }
                 authorityFingerprints[ApplicationPlanAuthorityKey] =
                     plan.Fingerprint;
                 var receipt = new CollectedRunRewardTransferReceiptV1(
@@ -213,11 +220,9 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         custody);
                 }
 
-                CollectedRunRewardPreparedTransferV1 persistedPrepared =
-                    prepared.MarkPersisted(receipt.Fingerprint);
                 CollectedRunRewardTransferPersistenceResultV1 persisted =
                     persistence.PersistAppliedAndVerify(
-                        persistedPrepared,
+                        prepared.MarkPersisted(receipt.Fingerprint),
                         receipt);
                 if (persisted == null)
                 {
@@ -232,10 +237,11 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     return Fatal(
                         plan,
                         "collected-run-transfer-final-save-durable-state-uncertain:"
-                            + persisted.Diagnostic,
+                        + persisted.Diagnostic,
                         "live-compensation-intentionally-not-attempted",
                         persisted,
-                        TryExportState());
+                        TryExportState(),
+                        receipt);
                 }
                 if (!persisted.Succeeded)
                 {
@@ -243,7 +249,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         plan,
                         compensation,
                         "collected-run-transfer-final-save-rejected:"
-                            + persisted.Diagnostic,
+                        + persisted.Diagnostic,
                         persisted);
                 }
 
@@ -278,13 +284,20 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             string recordedPlan;
             bool matches = receipt != null
-                && string.Equals(receipt.BatchFingerprint, plan.BatchFingerprint, StringComparison.Ordinal)
+                && string.Equals(
+                    receipt.BatchFingerprint,
+                    plan.BatchFingerprint,
+                    StringComparison.Ordinal)
                 && receipt.RunStableId == plan.RunStableId
-                && receipt.SelectedCharacterStableId == plan.SelectedCharacterStableId
+                && receipt.SelectedCharacterStableId
+                    == plan.SelectedCharacterStableId
                 && receipt.AuthorityFingerprints.TryGetValue(
                     ApplicationPlanAuthorityKey,
                     out recordedPlan)
-                && string.Equals(recordedPlan, plan.Fingerprint, StringComparison.Ordinal);
+                && string.Equals(
+                    recordedPlan,
+                    plan.Fingerprint,
+                    StringComparison.Ordinal);
             if (!matches)
             {
                 return Conflict(
@@ -302,20 +315,26 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 receipt,
                 state,
                 new CollectedRunRewardTransferPersistenceResultV1(
-                    CollectedRunRewardTransferPersistenceStatusV1.AlreadyPersisted,
+                    CollectedRunRewardTransferPersistenceStatusV1
+                        .AlreadyPersisted,
                     state == null ? 0L : state.AccountRevision,
-                    state == null ? string.Empty : state.AccountFingerprint,
+                    state == null
+                        ? string.Empty
+                        : state.AccountFingerprint,
                     state == null ? 0L : state.CharacterRevision,
-                    state == null ? string.Empty : state.CharacterFingerprint,
+                    state == null
+                        ? string.Empty
+                        : state.CharacterFingerprint,
                     string.Empty),
                 string.Empty,
                 string.Empty,
                 false);
         }
 
-        private CollectedRunRewardTransferResultV1 ValidateNoDurableOverlap(
-            CollectedRunRewardAtomicPlanV2 plan,
-            PermanentRewardTransferStateV1 before)
+        private CollectedRunRewardTransferResultV1
+            ValidateNoDurableOverlap(
+                CollectedRunRewardAtomicPlanV2 plan,
+                PermanentRewardTransferStateV1 before)
         {
             for (int index = 0; index < plan.Rewards.Count; index++)
             {
@@ -367,7 +386,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     "collected-run-transfer-restore-threw:"
                     + exception.GetType().Name,
                     persistenceResult,
-                    TryExportState());
+                    TryExportState(),
+                    null);
             }
             if (restored == null || !restored.Restored)
             {
@@ -378,7 +398,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         ? "collected-run-transfer-restore-result-null"
                         : restored.Diagnostic,
                     persistenceResult,
-                    TryExportState());
+                    TryExportState(),
+                    null);
             }
             return Reject(
                 plan,
@@ -406,7 +427,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 null,
                 state,
                 persistenceResult
-                    ?? CollectedRunRewardTransferPersistenceResultV1.NotAttempted(string.Empty),
+                    ?? CollectedRunRewardTransferPersistenceResultV1
+                        .NotAttempted(string.Empty),
                 string.IsNullOrWhiteSpace(diagnostic)
                     ? "collected-run-transfer-rejected"
                     : diagnostic,
@@ -428,7 +450,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 plan.SelectedCharacterStableId,
                 receipt,
                 state,
-                CollectedRunRewardTransferPersistenceResultV1.NotAttempted(string.Empty),
+                CollectedRunRewardTransferPersistenceResultV1
+                    .NotAttempted(string.Empty),
                 diagnostic,
                 string.Empty,
                 false);
@@ -439,18 +462,21 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             string diagnostic,
             string compensationDiagnostic,
             CollectedRunRewardTransferPersistenceResultV1 persistenceResult,
-            PermanentRewardTransferStateV1 state)
+            PermanentRewardTransferStateV1 state,
+            CollectedRunRewardTransferReceiptV1 receipt)
         {
             return new CollectedRunRewardTransferResultV1(
-                CollectedRunRewardTransferStatusV1.FatalCompensationFailure,
+                CollectedRunRewardTransferStatusV1
+                    .FatalCompensationFailure,
                 plan.TransferOperationStableId,
                 plan.BatchFingerprint,
                 plan.RunStableId,
                 plan.SelectedCharacterStableId,
-                null,
+                receipt,
                 state,
                 persistenceResult
-                    ?? CollectedRunRewardTransferPersistenceResultV1.NotAttempted(string.Empty),
+                    ?? CollectedRunRewardTransferPersistenceResultV1
+                        .NotAttempted(string.Empty),
                 diagnostic,
                 compensationDiagnostic,
                 false);
