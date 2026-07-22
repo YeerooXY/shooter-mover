@@ -50,6 +50,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// </summary>
     [DefaultExecutionOrder(20000)]
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(Stage1RunPickupBootstrap2D))]
+    [RequireComponent(typeof(Stage1RunPickupPropBootstrap2D))]
     public sealed partial class Stage1PlayableLoopCompositionV1 : MonoBehaviour
     {
         private const int SimulationTicksPerSecond = 60;
@@ -337,6 +339,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 runtimeObject.transform);
             rooms.BuildSession(
                 StableId.Parse("room-runtime-instance.demo-cutover-level1"));
+            rooms.FinalExitReached += HandleRewardMinimumFinalExitReached;
             rooms.FinalExitReached += HandleFinalExitReached;
         }
 
