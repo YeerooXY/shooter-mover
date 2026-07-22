@@ -14,25 +14,19 @@ namespace ShooterMover.TerminalDropBinding
         void Consume(PropFactBatchV1 fact);
     }
 
-    /// <summary>
-    /// Downstream observer of the exact pending-admission result. Observers receive the
-    /// admitted batch itself; they never trigger reward generation again.
-    /// </summary>
     public interface IPendingTerminalDropAdmissionConsumerV1
     {
         void Consume(PendingTerminalDropAdmissionResultV1 admission);
     }
 
-    public sealed class EnemyTerminalDropFactConsumerV1 :
-        IEnemyDropFactConsumerV1
+    public sealed class EnemyTerminalDropFactConsumerV1 : IEnemyDropFactConsumerV1
     {
         private readonly TerminalDropGenerationAuthorityV1 authority;
         private readonly IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission;
         private readonly IPendingTerminalDropAdmissionConsumerV1 admissionConsumer;
-        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>
-            lastAdmissions =
-                new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
-                    new List<PendingTerminalDropAdmissionResultV1>());
+        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> lastAdmissions =
+            new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
+                new List<PendingTerminalDropAdmissionResultV1>());
 
         public EnemyTerminalDropFactConsumerV1(
             TerminalDropGenerationAuthorityV1 authority,
@@ -66,8 +60,8 @@ namespace ShooterMover.TerminalDropBinding
             lastAdmissions = AdmitBatch(authority.GenerateBatch(fact));
         }
 
-        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>
-            AdmitBatch(TerminalPersonalRewardBatchV1 batch)
+        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> AdmitBatch(
+            TerminalPersonalRewardBatchV1 batch)
         {
             var values = new List<PendingTerminalDropAdmissionResultV1>();
             if (batch != null && batch.IsAccepted)
@@ -83,21 +77,18 @@ namespace ShooterMover.TerminalDropBinding
                     }
                 }
             }
-            return new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
-                values);
+            return new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(values);
         }
     }
 
-    public sealed class PropTerminalDropFactConsumerV1 :
-        IPropTerminalDropFactConsumerV1
+    public sealed class PropTerminalDropFactConsumerV1 : IPropTerminalDropFactConsumerV1
     {
         private readonly TerminalDropGenerationAuthorityV1 authority;
         private readonly IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission;
         private readonly IPendingTerminalDropAdmissionConsumerV1 admissionConsumer;
-        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>
-            lastAdmissions =
-                new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
-                    new List<PendingTerminalDropAdmissionResultV1>());
+        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> lastAdmissions =
+            new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
+                new List<PendingTerminalDropAdmissionResultV1>());
 
         public PropTerminalDropFactConsumerV1(
             TerminalDropGenerationAuthorityV1 authority,
@@ -131,8 +122,8 @@ namespace ShooterMover.TerminalDropBinding
             lastAdmissions = AdmitBatch(authority.GenerateBatch(fact));
         }
 
-        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>
-            AdmitBatch(TerminalPersonalRewardBatchV1 batch)
+        private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> AdmitBatch(
+            TerminalPersonalRewardBatchV1 batch)
         {
             var values = new List<PendingTerminalDropAdmissionResultV1>();
             if (batch != null && batch.IsAccepted)
@@ -148,16 +139,10 @@ namespace ShooterMover.TerminalDropBinding
                     }
                 }
             }
-            return new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
-                values);
+            return new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(values);
         }
     }
 
-    /// <summary>
-    /// Typed terminal-to-pickup composition. Production injects run-backed participant,
-    /// environment, override and pacing authorities. Legacy REW-001 inputs remain
-    /// compatibility parameters only and never execute reward formulas.
-    /// </summary>
     public sealed class TerminalDropBindingCompositionV1
     {
         private TerminalDropBindingCompositionV1(
@@ -194,32 +179,21 @@ namespace ShooterMover.TerminalDropBinding
             PersonalRewardGenerationServiceV1 personalGenerationService = null,
             ITerminalRewardParticipantResolverV1 participantResolver = null,
             ITerminalRewardEnvironmentResolverV1 environmentResolver = null,
-            ITerminalRewardOverrideResolverV1 overrideResolver = null)
+            ITerminalRewardOverrideResolverV1 overrideResolver = null,
+            IPersonalRewardDeliveryOutboxV1 deliveryOutbox = null)
         {
             if (enemyCatalog == null)
-            {
                 throw new ArgumentNullException(nameof(enemyCatalog));
-            }
             if (enemySourceContexts == null)
-            {
                 throw new ArgumentNullException(nameof(enemySourceContexts));
-            }
             if (propCatalog == null)
-            {
                 throw new ArgumentNullException(nameof(propCatalog));
-            }
             if (propSourceContexts == null)
-            {
                 throw new ArgumentNullException(nameof(propSourceContexts));
-            }
             if (runContexts == null)
-            {
                 throw new ArgumentNullException(nameof(runContexts));
-            }
             if (pendingAdmission == null)
-            {
                 throw new ArgumentNullException(nameof(pendingAdmission));
-            }
 
             var adapters = new List<ITerminalDropFactAdapterV1>
             {
@@ -268,16 +242,16 @@ namespace ShooterMover.TerminalDropBinding
                 resolvedEnvironment,
                 resolvedOverrides,
                 profileResolver,
-                generation);
-            var authority = new TerminalDropGenerationAuthorityV1(
-                registry,
-                personal);
+                generation,
+                deliveryOutbox);
+            var authority = new TerminalDropGenerationAuthorityV1(registry, personal);
             var runMinimum = new TerminalRunMinimumGenerationAuthorityV1(
                 runContexts,
                 resolvedParticipants,
                 resolvedEnvironment,
                 profileResolver,
-                generation);
+                generation,
+                deliveryOutbox);
             return new TerminalDropBindingCompositionV1(
                 authority,
                 runMinimum,
