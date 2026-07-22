@@ -20,7 +20,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         PreparedAndVerified = 2,
         PersistedAndVerified = 3,
         AlreadyPersisted = 4,
-        Rejected = 5,
+        RejectedBeforeReplacement = 5,
+        Rejected = RejectedBeforeReplacement,
         DurableStateUncertain = 6,
     }
 
@@ -49,37 +50,72 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             SelectedCharacterStableId = selectedCharacterStableId
                 ?? throw new ArgumentNullException(nameof(selectedCharacterStableId));
-            if (characterRevision < 0L) throw new ArgumentOutOfRangeException(nameof(characterRevision));
-            if (accountRevision < 0L) throw new ArgumentOutOfRangeException(nameof(accountRevision));
+            if (characterRevision < 0L)
+                throw new ArgumentOutOfRangeException(nameof(characterRevision));
+            if (accountRevision < 0L)
+                throw new ArgumentOutOfRangeException(nameof(accountRevision));
             if (string.IsNullOrWhiteSpace(characterFingerprint))
-                throw new ArgumentException("A character fingerprint is required.", nameof(characterFingerprint));
+                throw new ArgumentException(
+                    "A character fingerprint is required.",
+                    nameof(characterFingerprint));
             if (string.IsNullOrWhiteSpace(accountFingerprint))
-                throw new ArgumentException("An account fingerprint is required.", nameof(accountFingerprint));
+                throw new ArgumentException(
+                    "An account fingerprint is required.",
+                    nameof(accountFingerprint));
 
             var copy = new SortedDictionary<string, string>(StringComparer.Ordinal);
             foreach (KeyValuePair<string, string> pair in authorityFingerprints
                 ?? throw new ArgumentNullException(nameof(authorityFingerprints)))
             {
-                if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
-                    throw new ArgumentException("Authority keys and fingerprints must be non-empty.", nameof(authorityFingerprints));
+                if (string.IsNullOrWhiteSpace(pair.Key)
+                    || string.IsNullOrWhiteSpace(pair.Value))
+                {
+                    throw new ArgumentException(
+                        "Authority keys and fingerprints must be non-empty.",
+                        nameof(authorityFingerprints));
+                }
                 copy.Add(pair.Key.Trim(), pair.Value.Trim());
             }
             CharacterRevision = characterRevision;
             CharacterFingerprint = characterFingerprint.Trim();
             AccountRevision = accountRevision;
             AccountFingerprint = accountFingerprint.Trim();
-            this.authorityFingerprints = new ReadOnlyDictionary<string, string>(copy);
+            this.authorityFingerprints =
+                new ReadOnlyDictionary<string, string>(copy);
 
-            var builder = new StringBuilder("schema=permanent-reward-transfer-state-v1");
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "character", SelectedCharacterStableId);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "character-revision", CharacterRevision);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "character-fingerprint", CharacterFingerprint);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "account-revision", AccountRevision);
-            CollectedRunRewardTransferCanonicalV1.Append(builder, "account-fingerprint", AccountFingerprint);
-            foreach (KeyValuePair<string, string> pair in this.authorityFingerprints)
-                CollectedRunRewardTransferCanonicalV1.Append(builder, "authority:" + pair.Key, pair.Value);
+            var builder = new StringBuilder(
+                "schema=permanent-reward-transfer-state-v1");
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "character",
+                SelectedCharacterStableId);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "character-revision",
+                CharacterRevision);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "character-fingerprint",
+                CharacterFingerprint);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "account-revision",
+                AccountRevision);
+            CollectedRunRewardTransferCanonicalV1.Append(
+                builder,
+                "account-fingerprint",
+                AccountFingerprint);
+            foreach (KeyValuePair<string, string> pair in
+                this.authorityFingerprints)
+            {
+                CollectedRunRewardTransferCanonicalV1.Append(
+                    builder,
+                    "authority:" + pair.Key,
+                    pair.Value);
+            }
             canonicalText = builder.ToString();
-            Fingerprint = CollectedRunRewardTransferCanonicalV1.Hash(canonicalText);
+            Fingerprint =
+                CollectedRunRewardTransferCanonicalV1.Hash(canonicalText);
         }
 
         public StableId SelectedCharacterStableId { get; }
@@ -87,14 +123,19 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         public string CharacterFingerprint { get; }
         public long AccountRevision { get; }
         public string AccountFingerprint { get; }
-        public IReadOnlyDictionary<string, string> AuthorityFingerprints { get { return authorityFingerprints; } }
+        public IReadOnlyDictionary<string, string> AuthorityFingerprints
+        {
+            get { return authorityFingerprints; }
+        }
         public string Fingerprint { get; }
         public string ToCanonicalString() { return canonicalText; }
     }
 
     public sealed class CollectedRunRewardTransferPreflightResultV1
     {
-        private CollectedRunRewardTransferPreflightResultV1(bool succeeded, string diagnostic)
+        private CollectedRunRewardTransferPreflightResultV1(
+            bool succeeded,
+            string diagnostic)
         {
             Succeeded = succeeded;
             Diagnostic = diagnostic ?? string.Empty;
@@ -103,9 +144,12 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         public string Diagnostic { get; }
         public static CollectedRunRewardTransferPreflightResultV1 Accepted()
         {
-            return new CollectedRunRewardTransferPreflightResultV1(true, string.Empty);
+            return new CollectedRunRewardTransferPreflightResultV1(
+                true,
+                string.Empty);
         }
-        public static CollectedRunRewardTransferPreflightResultV1 Rejected(string diagnostic)
+        public static CollectedRunRewardTransferPreflightResultV1 Rejected(
+            string diagnostic)
         {
             return new CollectedRunRewardTransferPreflightResultV1(
                 false,
@@ -131,41 +175,71 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             IDictionary<string, string> authorityFingerprints,
             string diagnostic)
         {
-            if (!Enum.IsDefined(typeof(CollectedRunRewardTransferAuthorityStatusV1), status))
+            if (!Enum.IsDefined(
+                typeof(CollectedRunRewardTransferAuthorityStatusV1),
+                status))
+            {
                 throw new ArgumentOutOfRangeException(nameof(status));
-            var ids = new List<StableId>(appliedRewardStableIds ?? Array.Empty<StableId>());
+            }
+            var ids = new List<StableId>(
+                appliedRewardStableIds ?? Array.Empty<StableId>());
             if (ids.Exists(item => item == null))
-                throw new ArgumentException("Applied reward identities cannot contain null.", nameof(appliedRewardStableIds));
+            {
+                throw new ArgumentException(
+                    "Applied reward identities cannot contain null.",
+                    nameof(appliedRewardStableIds));
+            }
             ids.Sort();
             for (int index = 1; index < ids.Count; index++)
             {
                 if (ids[index - 1] == ids[index])
-                    throw new ArgumentException("Applied reward identities must be unique.", nameof(appliedRewardStableIds));
+                {
+                    throw new ArgumentException(
+                        "Applied reward identities must be unique.",
+                        nameof(appliedRewardStableIds));
+                }
             }
-            var fingerprints = new SortedDictionary<string, string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, string> pair in authorityFingerprints
-                ?? new Dictionary<string, string>())
+            var fingerprints = new SortedDictionary<string, string>(
+                StringComparer.Ordinal);
+            foreach (KeyValuePair<string, string> pair in
+                authorityFingerprints ?? new Dictionary<string, string>())
             {
-                if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
-                    throw new ArgumentException("Authority fingerprints must be non-empty.", nameof(authorityFingerprints));
+                if (string.IsNullOrWhiteSpace(pair.Key)
+                    || string.IsNullOrWhiteSpace(pair.Value))
+                {
+                    throw new ArgumentException(
+                        "Authority fingerprints must be non-empty.",
+                        nameof(authorityFingerprints));
+                }
                 fingerprints.Add(pair.Key.Trim(), pair.Value.Trim());
             }
             Status = status;
-            this.appliedRewardStableIds = new ReadOnlyCollection<StableId>(ids);
-            this.authorityFingerprints = new ReadOnlyDictionary<string, string>(fingerprints);
+            this.appliedRewardStableIds =
+                new ReadOnlyCollection<StableId>(ids);
+            this.authorityFingerprints =
+                new ReadOnlyDictionary<string, string>(fingerprints);
             Diagnostic = diagnostic ?? string.Empty;
         }
 
         public CollectedRunRewardTransferAuthorityStatusV1 Status { get; }
-        public IReadOnlyList<StableId> AppliedRewardStableIds { get { return appliedRewardStableIds; } }
-        public IReadOnlyDictionary<string, string> AuthorityFingerprints { get { return authorityFingerprints; } }
+        public IReadOnlyList<StableId> AppliedRewardStableIds
+        {
+            get { return appliedRewardStableIds; }
+        }
+        public IReadOnlyDictionary<string, string> AuthorityFingerprints
+        {
+            get { return authorityFingerprints; }
+        }
         public string Diagnostic { get; }
         public bool Succeeded
         {
             get
             {
-                return Status == CollectedRunRewardTransferAuthorityStatusV1.Applied
-                    || Status == CollectedRunRewardTransferAuthorityStatusV1.ExactReplay;
+                return Status
+                        == CollectedRunRewardTransferAuthorityStatusV1.Applied
+                    || Status
+                        == CollectedRunRewardTransferAuthorityStatusV1
+                            .ExactReplay;
             }
         }
     }
@@ -177,8 +251,12 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             CollectedRunRewardTransferReceiptV1 receipt,
             string diagnostic)
         {
-            if (!Enum.IsDefined(typeof(CollectedRunRewardTransferAuthorityStatusV1), status))
+            if (!Enum.IsDefined(
+                typeof(CollectedRunRewardTransferAuthorityStatusV1),
+                status))
+            {
                 throw new ArgumentOutOfRangeException(nameof(status));
+            }
             Status = status;
             Receipt = receipt;
             Diagnostic = diagnostic ?? string.Empty;
@@ -190,15 +268,20 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             get
             {
-                return Status == CollectedRunRewardTransferAuthorityStatusV1.Applied
-                    || Status == CollectedRunRewardTransferAuthorityStatusV1.ExactReplay;
+                return Status
+                        == CollectedRunRewardTransferAuthorityStatusV1.Applied
+                    || Status
+                        == CollectedRunRewardTransferAuthorityStatusV1
+                            .ExactReplay;
             }
         }
     }
 
     public sealed class CollectedRunRewardTransferRestoreResultV1
     {
-        public CollectedRunRewardTransferRestoreResultV1(bool restored, string diagnostic)
+        public CollectedRunRewardTransferRestoreResultV1(
+            bool restored,
+            string diagnostic)
         {
             Restored = restored;
             Diagnostic = diagnostic ?? string.Empty;
@@ -217,10 +300,16 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             string characterFingerprint,
             string diagnostic)
         {
-            if (!Enum.IsDefined(typeof(CollectedRunRewardTransferPersistenceStatusV1), status))
+            if (!Enum.IsDefined(
+                typeof(CollectedRunRewardTransferPersistenceStatusV1),
+                status))
+            {
                 throw new ArgumentOutOfRangeException(nameof(status));
-            if (accountRevision < 0L) throw new ArgumentOutOfRangeException(nameof(accountRevision));
-            if (characterRevision < 0L) throw new ArgumentOutOfRangeException(nameof(characterRevision));
+            }
+            if (accountRevision < 0L)
+                throw new ArgumentOutOfRangeException(nameof(accountRevision));
+            if (characterRevision < 0L)
+                throw new ArgumentOutOfRangeException(nameof(characterRevision));
             Status = status;
             AccountRevision = accountRevision;
             AccountFingerprint = accountFingerprint ?? string.Empty;
@@ -239,20 +328,45 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             get
             {
-                return Status == CollectedRunRewardTransferPersistenceStatusV1.PreparedAndVerified
-                    || Status == CollectedRunRewardTransferPersistenceStatusV1.PersistedAndVerified
-                    || Status == CollectedRunRewardTransferPersistenceStatusV1.AlreadyPersisted;
+                return Status
+                        == CollectedRunRewardTransferPersistenceStatusV1
+                            .PreparedAndVerified
+                    || Status
+                        == CollectedRunRewardTransferPersistenceStatusV1
+                            .PersistedAndVerified
+                    || Status
+                        == CollectedRunRewardTransferPersistenceStatusV1
+                            .AlreadyPersisted;
+            }
+        }
+        public bool RejectedBeforeReplacement
+        {
+            get
+            {
+                return Status
+                    == CollectedRunRewardTransferPersistenceStatusV1
+                        .RejectedBeforeReplacement;
             }
         }
         public bool DurableStateUncertain
         {
-            get { return Status == CollectedRunRewardTransferPersistenceStatusV1.DurableStateUncertain; }
+            get
+            {
+                return Status
+                    == CollectedRunRewardTransferPersistenceStatusV1
+                        .DurableStateUncertain;
+            }
         }
-        public static CollectedRunRewardTransferPersistenceResultV1 NotAttempted(string diagnostic)
+        public static CollectedRunRewardTransferPersistenceResultV1
+            NotAttempted(string diagnostic)
         {
             return new CollectedRunRewardTransferPersistenceResultV1(
                 CollectedRunRewardTransferPersistenceStatusV1.NotAttempted,
-                0L, string.Empty, 0L, string.Empty, diagnostic);
+                0L,
+                string.Empty,
+                0L,
+                string.Empty,
+                diagnostic);
         }
     }
 
@@ -306,8 +420,12 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             string compensationDiagnostic,
             bool exactRetryAllowed)
         {
-            if (!Enum.IsDefined(typeof(CollectedRunRewardTransferStatusV1), status))
+            if (!Enum.IsDefined(
+                typeof(CollectedRunRewardTransferStatusV1),
+                status))
+            {
                 throw new ArgumentOutOfRangeException(nameof(status));
+            }
             Status = status;
             OperationStableId = operationStableId;
             BatchFingerprint = batchFingerprint ?? string.Empty;
@@ -315,7 +433,9 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             SelectedCharacterStableId = selectedCharacterStableId;
             Receipt = receipt;
             ResultingState = resultingState;
-            Persistence = persistence ?? CollectedRunRewardTransferPersistenceResultV1.NotAttempted(string.Empty);
+            Persistence = persistence
+                ?? CollectedRunRewardTransferPersistenceResultV1
+                    .NotAttempted(string.Empty);
             Diagnostic = diagnostic ?? string.Empty;
             CompensationDiagnostic = compensationDiagnostic ?? string.Empty;
             ExactRetryAllowed = exactRetryAllowed;
@@ -337,7 +457,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             get
             {
                 return Status == CollectedRunRewardTransferStatusV1.Applied
-                    || Status == CollectedRunRewardTransferStatusV1.ExactReplay;
+                    || Status
+                        == CollectedRunRewardTransferStatusV1.ExactReplay;
             }
         }
     }
