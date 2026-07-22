@@ -20,6 +20,9 @@ namespace ShooterMover.Tests.EditMode.Enemies
             string shared = File.ReadAllText(Path.Combine(
                 production,
                 "Stage1PlayableLoopCompositionV1.RunSession.cs"));
+            string combat = File.ReadAllText(Path.Combine(
+                production,
+                "Stage1PlayableLoopCompositionV1.Combat.cs"));
             string factory = File.ReadAllText(Path.Combine(
                 production,
                 "Stage1SharedRunCompositionPortsV1.cs"));
@@ -39,6 +42,20 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Does.Contain("ProductionConditionBoundRunSessionStartSourceV1"));
             Assert.That(shared, Does.Contain("AdvanceConditionRuntime"));
             Assert.That(shared, Does.Contain("TickEnemyAttackPatterns"));
+            Assert.That(shared, Does.Contain("sharedRunSession.Restart(command)"));
+            Assert.That(shared,
+                Does.Contain("RunRestartPolicyV1.FullTransientReset()"));
+            Assert.That(shared,
+                Does.Contain("ReferenceEquals(originalAggregate, sharedRunSession)"));
+            Assert.That(shared,
+                Does.Contain("The player lifecycle advanced outside the authoritative shared Run Session."));
+            Assert.That(shared,
+                Does.Not.Contain("sharedRunSessionObservedPlayerGeneration != playerGeneration"));
+
+            Assert.That(combat, Does.Contain("RestartSharedRunSession()"));
+            Assert.That(combat, Does.Not.Contain("controller.QuickRestart()"));
+            Assert.That(combat, Does.Not.Contain("rooms.Restart("));
+            Assert.That(combat, Does.Not.Contain("BeginRun();"));
 
             Assert.That(factory,
                 Does.Contain("IRunSessionNonConditionRuntimePortFactoryV1"));
