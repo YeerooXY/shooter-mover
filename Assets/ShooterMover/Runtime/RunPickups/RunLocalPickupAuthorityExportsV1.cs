@@ -59,20 +59,52 @@ namespace ShooterMover.RunPickups
             }
         }
 
-        private string ValidateBatchContext(RunPickupGeneratedBatchV1 batch)
+        private bool TryReadRunSessionContext(
+            out RunPickupRunSessionContextV1 context,
+            out string diagnostic)
         {
-            if (batch.RunStableId != runSession.RunStableId)
-                return "run-pickup-realization-wrong-run";
-            if (batch.RunLifecycleGeneration != runSession.LifecycleGeneration)
+            context = null;
+            diagnostic = string.Empty;
+            try
             {
-                return batch.RunLifecycleGeneration < runSession.LifecycleGeneration
+                if (!runSession.TryReadContext(out context, out diagnostic)
+                    || context == null)
+                {
+                    diagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                        ? "run-pickup-session-context-unavailable"
+                        : diagnostic;
+                    context = null;
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception exception)
+            {
+                context = null;
+                diagnostic = "run-pickup-session-context-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
+                return false;
+            }
+        }
+
+        private static string ValidateBatchContext(
+            RunPickupGeneratedBatchV1 batch,
+            RunPickupRunSessionContextV1 sessionContext)
+        {
+            if (batch.RunStableId != sessionContext.RunStableId)
+                return "run-pickup-realization-wrong-run";
+            if (batch.RunLifecycleGeneration != sessionContext.LifecycleGeneration)
+            {
+                return batch.RunLifecycleGeneration < sessionContext.LifecycleGeneration
                     ? "run-pickup-realization-stale-generation"
                     : "run-pickup-realization-future-generation";
             }
-            if (!runSession.IsActive)
+            if (!sessionContext.IsActive)
                 return "run-pickup-realization-run-ended";
             if (batch.AttributedParticipantStableId
-                != runSession.PlayerParticipantStableId)
+                != sessionContext.PlayerParticipantStableId)
             {
                 return "run-pickup-realization-participant-mismatch";
             }
@@ -117,17 +149,26 @@ namespace ShooterMover.RunPickups
 
         private bool IsCurrentLifecycle(RunPickupSnapshotV1 pickup)
         {
-            return pickup.Batch.RunStableId == runSession.RunStableId
-                && pickup.Batch.RunLifecycleGeneration
-                    == runSession.LifecycleGeneration;
+            RunPickupRunSessionContextV1 context;
+            string ignored;
+            return pickup != null
+                && TryReadRunSessionContext(out context, out ignored)
+                && pickup.Batch.RunStableId == context.RunStableId
+                && pickup.Batch.RunLifecycleGeneration == context.LifecycleGeneration;
         }
 
         private int CountCurrentLifecycle(RunPickupStateV1? state)
         {
+            RunPickupRunSessionContextV1 context;
+            string ignored;
+            if (!TryReadRunSessionContext(out context, out ignored))
+                return 0;
+
             int count = 0;
             foreach (RunPickupSnapshotV1 pickup in byPickup.Values)
             {
-                if (IsCurrentLifecycle(pickup)
+                if (pickup.Batch.RunStableId == context.RunStableId
+                    && pickup.Batch.RunLifecycleGeneration == context.LifecycleGeneration
                     && (!state.HasValue || pickup.State == state.Value))
                 {
                     count++;
