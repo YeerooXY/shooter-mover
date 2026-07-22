@@ -32,6 +32,34 @@ namespace ShooterMover.Application.Runs.Session
                 out diagnostic);
         }
 
+        public bool TryGet(
+            StableId operationStableId,
+            StableId participantStableId,
+            out PersonalRewardDeliveryEnvelopeV1 envelope)
+        {
+            envelope = null;
+            if (operationStableId == null || participantStableId == null)
+            {
+                return false;
+            }
+            RunRewardRuntimeSnapshotV1 snapshot =
+                run.ExportRewardRuntimeSnapshot();
+            for (int index = 0; index < snapshot.Deliveries.Count; index++)
+            {
+                PersonalRewardDeliveryEnvelopeV1 value =
+                    snapshot.Deliveries[index];
+                if (value.Result.Context.OperationStableId
+                        == operationStableId
+                    && value.Result.Context.ParticipantStableId
+                        == participantStableId)
+                {
+                    envelope = value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public bool TryMarkDelivered(
             StableId operationStableId,
             StableId participantStableId,
