@@ -42,7 +42,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Does.Contain("ProductionConditionBoundRunSessionStartSourceV1"));
             Assert.That(shared, Does.Contain("AdvanceConditionRuntime"));
             Assert.That(shared, Does.Contain("TickEnemyAttackPatterns"));
-            Assert.That(shared, Does.Contain("sharedRunSession.Restart(command)"));
+            Assert.That(shared, Does.Contain("run.Restart(command)"));
             Assert.That(shared,
                 Does.Contain("RunRestartPolicyV1.FullTransientReset()"));
             Assert.That(shared,
