@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Domain.Common;
@@ -94,13 +95,14 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     expected))
                 {
                     persisted = composition.PersistActive(
-                        preparedTransfer.PreparationOperationStableId);
+                        CustodySaveOperation(preparedTransfer));
                 }
             }
             catch (Exception exception)
             {
                 // This phase has not mutated permanent reward authorities. Even if the
-                // custody component reached disk, an exact repeat is safe and monotonic.
+                // custody component reached disk, the same state/fingerprint operation can
+                // be retried without applying loot.
                 prepared.ImportSnapshot(rollback);
                 return Rejected(
                     "collected-run-transfer-custody-persist-threw:"
@@ -213,9 +215,6 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             }
             catch (Exception exception)
             {
-                // The exception may have happened after active-file replacement. Disk
-                // state is not provably old, so the coordinator must return fatal and must
-                // not roll live reward authorities back.
                 return Uncertain(
                     null,
                     "final-persist-threw-"
@@ -246,6 +245,18 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         .AlreadyPersisted
                     : CollectedRunRewardTransferPersistenceStatusV1
                         .PersistedAndVerified);
+        }
+
+        private static StableId CustodySaveOperation(
+            CollectedRunRewardPreparedTransferV1 transfer)
+        {
+            return CollectedRunRewardTransferCanonicalV1.DeriveStableId(
+                "operation",
+                "collected-run-custody-save",
+                transfer.CustodyStableId.ToString(),
+                ((int)transfer.State).ToString(
+                    CultureInfo.InvariantCulture),
+                transfer.Fingerprint);
         }
 
         private static SaveComponentSnapshotV1 PreparedComponent(
