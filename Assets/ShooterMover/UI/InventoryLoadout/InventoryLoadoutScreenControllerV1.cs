@@ -2,6 +2,7 @@ using System;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Weapons.Presentation;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -9,6 +10,8 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.UnityAdapters.Presentation.Weapons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -22,6 +25,15 @@ namespace ShooterMover.UI.InventoryLoadout
         private IPlayerHoldingsAuthorityV1 holdingsAuthority;
         private IEquipmentCatalogProvider equipmentCatalogProvider;
         private IInventoryLoadoutAuthorityPortV1 loadoutAuthority;
+        private EquipmentCatalog presentationEquipmentCatalog;
+        private WeaponCatalog presentationWeaponCatalog;
+        private readonly System.Collections.Generic.Dictionary<
+            string,
+            WeaponArtSpriteResolutionV1> weaponArtCache =
+                new System.Collections.Generic.Dictionary<
+                    string,
+                    WeaponArtSpriteResolutionV1>(
+                        StringComparer.Ordinal);
         private Action<PlayerRouteProfilePayloadV1> returnToHub;
         private InventoryLoadoutScreenServiceV1 service;
         private PlayerRouteProfilePayloadV1 incomingPayload;
@@ -110,6 +122,15 @@ namespace ShooterMover.UI.InventoryLoadout
             {
                 BuildService(incomingPayload);
             }
+        }
+
+        public void ConfigureWeaponPresentation(
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog)
+        {
+            presentationEquipmentCatalog = equipmentCatalog;
+            presentationWeaponCatalog = weaponCatalog;
+            weaponArtCache.Clear();
         }
 
         public void ConfigureDisconnected(
@@ -502,6 +523,7 @@ namespace ShooterMover.UI.InventoryLoadout
                 holdingsSnapshot,
                 equipment.InstanceStableId);
             GUILayout.BeginVertical(GUI.skin.box);
+            DrawWeaponArt(instance);
             GUILayout.Label(equipment.DisplayName, headingStyle);
             GUILayout.Label(
                 "Level " + equipment.ItemLevel
@@ -528,6 +550,49 @@ namespace ShooterMover.UI.InventoryLoadout
             GUI.enabled = true;
             GUILayout.EndVertical();
             GUILayout.Space(4f);
+        }
+
+        private void DrawWeaponArt(EquipmentInstance instance)
+        {
+            WeaponArtReferenceProjectionV1 artProjection;
+            string rejectionCode;
+            if (!WeaponArtReferenceResolverV1.TryResolve(
+                instance,
+                presentationEquipmentCatalog,
+                presentationWeaponCatalog,
+                out artProjection,
+                out rejectionCode))
+            {
+                return;
+            }
+
+            WeaponArtSpriteResolutionV1 resolution;
+            if (!weaponArtCache.TryGetValue(
+                artProjection.ArtReferenceId,
+                out resolution))
+            {
+                resolution = WeaponArtSpriteRegistryV1.Preload(
+                    artProjection.ArtReferenceId);
+                weaponArtCache.Add(
+                    artProjection.ArtReferenceId,
+                    resolution);
+            }
+            if (resolution.Sprite == null
+                || resolution.Sprite.texture == null)
+            {
+                return;
+            }
+
+            Rect artRect = GUILayoutUtility.GetRect(
+                280f,
+                104f,
+                GUILayout.ExpandWidth(true),
+                GUILayout.Height(104f));
+            GUI.DrawTexture(
+                artRect,
+                resolution.Sprite.texture,
+                ScaleMode.ScaleToFit,
+                true);
         }
 
         private static EquipmentInstance FindOwnedEquipment(

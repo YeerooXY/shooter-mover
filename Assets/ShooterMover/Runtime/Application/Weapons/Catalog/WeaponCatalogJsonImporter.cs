@@ -109,7 +109,6 @@ namespace ShooterMover.Application.Weapons.Catalog
             Require(dto, "$.rules");
             return new WeaponCatalogRules(
                 dto.FixedStatsPerDefinition,
-                dto.RuntimeLevelScaling,
                 dto.OrdinaryMarkGap,
                 Require(dto.ApexPowerAnchors, "$.rules.apex_power_anchors"),
                 Require(dto.DamageTypes, "$.rules.damage_types"),

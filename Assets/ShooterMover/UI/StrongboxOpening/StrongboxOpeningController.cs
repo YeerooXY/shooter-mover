@@ -4,10 +4,13 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
+using ShooterMover.Application.Weapons.Presentation;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.UnityAdapters.Presentation.Weapons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -105,6 +108,25 @@ namespace ShooterMover.UI.StrongboxOpening
             string instanceStableId,
             long quantity,
             string detail)
+            : this(
+                kind,
+                title,
+                contentStableId,
+                instanceStableId,
+                quantity,
+                detail,
+                null)
+        {
+        }
+
+        public StrongboxRewardRevealItemV1(
+            StrongboxRewardPresentationKindV1 kind,
+            string title,
+            string contentStableId,
+            string instanceStableId,
+            long quantity,
+            string detail,
+            string weaponArtReferenceId)
         {
             if (!Enum.IsDefined(typeof(StrongboxRewardPresentationKindV1), kind))
             {
@@ -125,6 +147,7 @@ namespace ShooterMover.UI.StrongboxOpening
             InstanceStableId = instanceStableId ?? string.Empty;
             Quantity = quantity;
             Detail = detail ?? string.Empty;
+            WeaponArtReferenceId = weaponArtReferenceId ?? string.Empty;
         }
 
         public StrongboxRewardPresentationKindV1 Kind { get; }
@@ -133,7 +156,12 @@ namespace ShooterMover.UI.StrongboxOpening
         public string InstanceStableId { get; }
         public long Quantity { get; }
         public string Detail { get; }
+        public string WeaponArtReferenceId { get; }
         public bool IsUniqueInstance { get { return InstanceStableId.Length > 0; } }
+        public bool HasWeaponArtReference
+        {
+            get { return WeaponArtReferenceId.Length > 0; }
+        }
     }
 
     public sealed class StrongboxOpeningPresentationResultV1
@@ -248,6 +276,14 @@ namespace ShooterMover.UI.StrongboxOpening
             StrongboxOpeningResultRuntimeV1 result,
             EquipmentCatalog equipmentCatalog)
         {
+            return Project(result, equipmentCatalog, null);
+        }
+
+        public static StrongboxOpeningPresentationResultV1 Project(
+            StrongboxOpeningResultRuntimeV1 result,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog)
+        {
             if (result == null)
             {
                 return StrongboxOpeningPresentationResultV1.Rejected(
@@ -274,7 +310,8 @@ namespace ShooterMover.UI.StrongboxOpening
 
             IReadOnlyList<StrongboxRewardRevealItemV1> items = ProjectPayloads(
                 result.GeneratedOutcome.Payloads,
-                equipmentCatalog);
+                equipmentCatalog,
+                weaponCatalog);
             return StrongboxOpeningPresentationResultV1.Success(
                 items,
                 result.Status == StrongboxOpeningRuntimeStatusV1.ExactDuplicateNoChange,
@@ -287,6 +324,14 @@ namespace ShooterMover.UI.StrongboxOpening
         public static IReadOnlyList<StrongboxRewardRevealItemV1> ProjectPayloads(
             IEnumerable<RewardGrantApplicationPayloadV1> payloads,
             EquipmentCatalog equipmentCatalog)
+        {
+            return ProjectPayloads(payloads, equipmentCatalog, null);
+        }
+
+        public static IReadOnlyList<StrongboxRewardRevealItemV1> ProjectPayloads(
+            IEnumerable<RewardGrantApplicationPayloadV1> payloads,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog)
         {
             if (payloads == null)
             {
@@ -310,7 +355,11 @@ namespace ShooterMover.UI.StrongboxOpening
                         items.Add(ValueItem(StrongboxRewardPresentationKindV1.Scrap, "SCRAP", payload));
                         break;
                     case RewardGrantKindV1.EquipmentReference:
-                        AddEquipment(items, payload, equipmentCatalog);
+                        AddEquipment(
+                            items,
+                            payload,
+                            equipmentCatalog,
+                            weaponCatalog);
                         break;
                     case RewardGrantKindV1.PremiumAmmo:
                         items.Add(ValueItem(StrongboxRewardPresentationKindV1.Miscellaneous, "PREMIUM AMMUNITION", payload));
@@ -356,7 +405,8 @@ namespace ShooterMover.UI.StrongboxOpening
         private static void AddEquipment(
             ICollection<StrongboxRewardRevealItemV1> items,
             RewardGrantApplicationPayloadV1 payload,
-            EquipmentCatalog equipmentCatalog)
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog)
         {
             for (int index = 0; index < payload.EquipmentInstances.Count; index++)
             {
@@ -369,13 +419,25 @@ namespace ShooterMover.UI.StrongboxOpening
                 string detail = "Item level " + instance.ItemLevel.ToString(CultureInfo.InvariantCulture)
                     + "  |  Quality " + instance.QualityId
                     + "  |  Augments " + instance.Augments.Count.ToString(CultureInfo.InvariantCulture);
+                WeaponArtReferenceProjectionV1 artProjection;
+                string artRejection;
+                string artReferenceId =
+                    WeaponArtReferenceResolverV1.TryResolve(
+                        instance,
+                        equipmentCatalog,
+                        weaponCatalog,
+                        out artProjection,
+                        out artRejection)
+                        ? artProjection.ArtReferenceId
+                        : string.Empty;
                 items.Add(new StrongboxRewardRevealItemV1(
                     armor ? StrongboxRewardPresentationKindV1.Armor : StrongboxRewardPresentationKindV1.Equipment,
                     title,
                     instance.DefinitionId.ToString(),
                     instance.InstanceId.ToString(),
                     1L,
-                    detail));
+                    detail,
+                    artReferenceId));
             }
         }
     }
@@ -523,6 +585,11 @@ namespace ShooterMover.UI.StrongboxOpening
         private StrongboxOpeningSceneSessionV1 session;
         private StrongboxOpeningRuntimePortV1 runtimePort;
         private EquipmentCatalog equipmentCatalog;
+        private WeaponCatalog weaponCatalog;
+        private readonly Dictionary<string, WeaponArtSpriteResolutionV1>
+            preloadedWeaponArt =
+                new Dictionary<string, WeaponArtSpriteResolutionV1>(
+                    StringComparer.Ordinal);
         private bool previewOnly;
         private Vector2 scroll;
         private GUIStyle titleStyle;
@@ -624,14 +691,25 @@ namespace ShooterMover.UI.StrongboxOpening
             StrongboxOpenCommandV1 command,
             EquipmentCatalog catalog)
         {
+            BindRuntime(service, command, catalog, null);
+        }
+
+        public void BindRuntime(
+            StrongboxOpeningServiceV1 service,
+            StrongboxOpenCommandV1 command,
+            EquipmentCatalog catalog,
+            WeaponCatalog weapons)
+        {
             runtimePort = new StrongboxOpeningRuntimePortV1(
                 service ?? throw new ArgumentNullException(nameof(service)),
                 command ?? throw new ArgumentNullException(nameof(command)));
             equipmentCatalog = catalog;
+            weaponCatalog = weapons;
+            preloadedWeaponArt.Clear();
             previewOnly = false;
             session = new StrongboxOpeningSceneSessionV1(
                 BuildConfiguration(),
-                delegate { return StrongboxRewardRevealProjectorV1.Project(runtimePort.OpenOrContinue(), equipmentCatalog); });
+                ProjectAndPreloadRuntimeResult);
         }
 
         /// <summary>
@@ -642,6 +720,23 @@ namespace ShooterMover.UI.StrongboxOpening
             StrongboxOpeningServiceV1 service,
             StrongboxOpenCommandV1 command,
             EquipmentCatalog catalog,
+            MissionRunStrongboxResultV1 selectedStrongbox,
+            IStrongboxDurableOpeningExecutorV1 durableExecutor)
+        {
+            BindDurableRuntime(
+                service,
+                command,
+                catalog,
+                null,
+                selectedStrongbox,
+                durableExecutor);
+        }
+
+        public void BindDurableRuntime(
+            StrongboxOpeningServiceV1 service,
+            StrongboxOpenCommandV1 command,
+            EquipmentCatalog catalog,
+            WeaponCatalog weapons,
             MissionRunStrongboxResultV1 selectedStrongbox,
             IStrongboxDurableOpeningExecutorV1 durableExecutor)
         {
@@ -658,17 +753,23 @@ namespace ShooterMover.UI.StrongboxOpening
 
             runtimePort = null;
             equipmentCatalog = catalog;
+            weaponCatalog = weapons;
+            preloadedWeaponArt.Clear();
             previewOnly = false;
             session = new StrongboxOpeningSceneSessionV1(
                 BuildConfiguration(),
                 delegate
                 {
-                    return StrongboxRewardRevealProjectorV1.Project(
+                    StrongboxOpeningPresentationResultV1 presentation =
+                        StrongboxRewardRevealProjectorV1.Project(
                         durableExecutor.OpenAndPersist(
                             selectedStrongbox,
                             service,
                             command),
-                        equipmentCatalog);
+                        equipmentCatalog,
+                        weaponCatalog);
+                    PreloadWeaponArt(presentation);
+                    return presentation;
                 });
         }
 
@@ -679,6 +780,8 @@ namespace ShooterMover.UI.StrongboxOpening
         {
             runtimePort = null;
             equipmentCatalog = null;
+            weaponCatalog = null;
+            preloadedWeaponArt.Clear();
             previewOnly = isPreviewOnly;
             session = new StrongboxOpeningSceneSessionV1(
                 configuration ?? throw new ArgumentNullException(nameof(configuration)),
@@ -826,6 +929,8 @@ namespace ShooterMover.UI.StrongboxOpening
             {
                 StrongboxRewardRevealItemV1 item = result.Items[index];
                 string identity = item.IsUniqueInstance ? "\nInstance: " + item.InstanceStableId : string.Empty;
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                DrawWeaponArt(item);
                 GUILayout.Label(
                     item.Kind + "  —  " + item.Title
                     + (item.Quantity == 1L ? string.Empty : "  x" + item.Quantity.ToString(CultureInfo.InvariantCulture))
@@ -833,6 +938,7 @@ namespace ShooterMover.UI.StrongboxOpening
                     + identity
                     + (item.Detail.Length == 0 ? string.Empty : "\n" + item.Detail),
                     rewardStyle);
+                GUILayout.EndHorizontal();
                 GUILayout.Space(6f);
             }
             GUILayout.EndScrollView();
@@ -864,6 +970,78 @@ namespace ShooterMover.UI.StrongboxOpening
                 }
                 GUILayout.Label("Enter / controller South: continue    Escape / controller East: back", bodyStyle);
             }
+        }
+
+        private StrongboxOpeningPresentationResultV1
+            ProjectAndPreloadRuntimeResult()
+        {
+            StrongboxOpeningPresentationResultV1 presentation =
+                StrongboxRewardRevealProjectorV1.Project(
+                    runtimePort.OpenOrContinue(),
+                    equipmentCatalog,
+                    weaponCatalog);
+            PreloadWeaponArt(presentation);
+            return presentation;
+        }
+
+        private void PreloadWeaponArt(
+            StrongboxOpeningPresentationResultV1 presentation)
+        {
+            if (presentation == null || !presentation.Succeeded)
+            {
+                return;
+            }
+
+            for (int index = 0; index < presentation.Items.Count; index++)
+            {
+                StrongboxRewardRevealItemV1 item =
+                    presentation.Items[index];
+                if (!item.HasWeaponArtReference
+                    || preloadedWeaponArt.ContainsKey(
+                        item.WeaponArtReferenceId))
+                {
+                    continue;
+                }
+
+                preloadedWeaponArt.Add(
+                    item.WeaponArtReferenceId,
+                    WeaponArtSpriteRegistryV1.Preload(
+                        item.WeaponArtReferenceId));
+            }
+        }
+
+        private void DrawWeaponArt(StrongboxRewardRevealItemV1 item)
+        {
+            if (item == null || !item.HasWeaponArtReference)
+            {
+                return;
+            }
+
+            WeaponArtSpriteResolutionV1 resolution;
+            if (!preloadedWeaponArt.TryGetValue(
+                item.WeaponArtReferenceId,
+                out resolution))
+            {
+                resolution = WeaponArtSpriteRegistryV1.Preload(
+                    item.WeaponArtReferenceId);
+                preloadedWeaponArt[item.WeaponArtReferenceId] = resolution;
+            }
+            if (resolution.Sprite == null
+                || resolution.Sprite.texture == null)
+            {
+                return;
+            }
+
+            Rect artRect = GUILayoutUtility.GetRect(
+                190f,
+                112f,
+                GUILayout.Width(190f),
+                GUILayout.Height(112f));
+            GUI.DrawTexture(
+                artRect,
+                resolution.Sprite.texture,
+                ScaleMode.ScaleToFit,
+                true);
         }
 
         private void EnsureStyles()

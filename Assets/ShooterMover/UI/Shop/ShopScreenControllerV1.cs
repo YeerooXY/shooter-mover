@@ -1,9 +1,13 @@
 using System;
 using System.Globalization;
 using ShooterMover.Application.Shops.Presentation;
+using ShooterMover.Application.Weapons.Presentation;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Shops;
+using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.UnityAdapters.Presentation.Weapons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -24,6 +28,15 @@ namespace ShooterMover.UI.Shop
         private int purchaseInputOrdinal;
         private bool explicitlyConfigured;
         private bool disconnectedReturnDispatched;
+        private EquipmentCatalog presentationEquipmentCatalog;
+        private WeaponCatalog presentationWeaponCatalog;
+        private readonly System.Collections.Generic.Dictionary<
+            string,
+            WeaponArtSpriteResolutionV1> weaponArtCache =
+                new System.Collections.Generic.Dictionary<
+                    string,
+                    WeaponArtSpriteResolutionV1>(
+                        StringComparer.Ordinal);
         private Vector2 stockScroll;
         private GUIStyle titleStyle;
         private GUIStyle balanceStyle;
@@ -141,6 +154,15 @@ namespace ShooterMover.UI.Shop
             lastAction = null;
             lastRoute = null;
             projection = session.Open();
+        }
+
+        public void ConfigureWeaponPresentation(
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog)
+        {
+            presentationEquipmentCatalog = equipmentCatalog;
+            presentationWeaponCatalog = weaponCatalog;
+            weaponArtCache.Clear();
         }
 
         public void ConfigureDisconnected(
@@ -267,12 +289,19 @@ namespace ShooterMover.UI.Shop
 
             ShopScreenSessionV1 handoffSession;
             IShopScreenRouteAdapterV1 handoffAdapter;
+            EquipmentCatalog handoffEquipmentCatalog;
+            WeaponCatalog handoffWeaponCatalog;
             if (ShopScreenRuntimeHandoffV1.TryConsume(
                 out handoffSession,
-                out handoffAdapter))
+                out handoffAdapter,
+                out handoffEquipmentCatalog,
+                out handoffWeaponCatalog))
             {
                 session = handoffSession;
                 routeAdapter = handoffAdapter;
+                ConfigureWeaponPresentation(
+                    handoffEquipmentCatalog,
+                    handoffWeaponCatalog);
                 projection = session.Open();
             }
         }
@@ -365,6 +394,7 @@ namespace ShooterMover.UI.Shop
                 GUI.skin.box,
                 GUILayout.MinWidth(260f),
                 GUILayout.ExpandWidth(true));
+            DrawWeaponArt(card);
             GUILayout.Label(card.DisplayName, cardTitleStyle);
             GUILayout.Label(
                 card.CategoryLabel
@@ -417,6 +447,58 @@ namespace ShooterMover.UI.Shop
             }
 
             GUILayout.EndVertical();
+        }
+
+        private void DrawWeaponArt(ShopScreenStockCardV1 card)
+        {
+            if (card == null
+                || !string.Equals(
+                    card.CategoryLabel,
+                    "WEAPON",
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            WeaponArtReferenceProjectionV1 artProjection;
+            string rejectionCode;
+            if (!WeaponArtReferenceResolverV1.TryResolve(
+                card.DefinitionStableId,
+                presentationEquipmentCatalog,
+                presentationWeaponCatalog,
+                out artProjection,
+                out rejectionCode))
+            {
+                return;
+            }
+
+            WeaponArtSpriteResolutionV1 resolution;
+            if (!weaponArtCache.TryGetValue(
+                artProjection.ArtReferenceId,
+                out resolution))
+            {
+                resolution = WeaponArtSpriteRegistryV1.Preload(
+                    artProjection.ArtReferenceId);
+                weaponArtCache.Add(
+                    artProjection.ArtReferenceId,
+                    resolution);
+            }
+            if (resolution.Sprite == null
+                || resolution.Sprite.texture == null)
+            {
+                return;
+            }
+
+            Rect artRect = GUILayoutUtility.GetRect(
+                250f,
+                96f,
+                GUILayout.ExpandWidth(true),
+                GUILayout.Height(96f));
+            GUI.DrawTexture(
+                artRect,
+                resolution.Sprite.texture,
+                ScaleMode.ScaleToFit,
+                true);
         }
 
         private void DrawBackplate()

@@ -4,7 +4,9 @@ using System.Globalization;
 using ShooterMover.Application.Shops.Presentation;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Shops;
+using ShooterMover.Domain.Weapons.Catalog;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -43,10 +45,21 @@ namespace ShooterMover.UI.Shop
         private static readonly object Sync = new object();
         private static ShopScreenSessionV1 pendingSession;
         private static IShopScreenRouteAdapterV1 pendingRouteAdapter;
+        private static EquipmentCatalog pendingEquipmentCatalog;
+        private static WeaponCatalog pendingWeaponCatalog;
 
         public static void Prepare(
             ShopScreenSessionV1 session,
             IShopScreenRouteAdapterV1 routeAdapter)
+        {
+            Prepare(session, routeAdapter, null, null);
+        }
+
+        public static void Prepare(
+            ShopScreenSessionV1 session,
+            IShopScreenRouteAdapterV1 routeAdapter,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog)
         {
             lock (Sync)
             {
@@ -54,6 +67,8 @@ namespace ShooterMover.UI.Shop
                     ?? throw new ArgumentNullException(nameof(session));
                 pendingRouteAdapter = routeAdapter
                     ?? throw new ArgumentNullException(nameof(routeAdapter));
+                pendingEquipmentCatalog = equipmentCatalog;
+                pendingWeaponCatalog = weaponCatalog;
             }
         }
 
@@ -61,12 +76,31 @@ namespace ShooterMover.UI.Shop
             out ShopScreenSessionV1 session,
             out IShopScreenRouteAdapterV1 routeAdapter)
         {
+            EquipmentCatalog equipmentCatalog;
+            WeaponCatalog weaponCatalog;
+            return TryConsume(
+                out session,
+                out routeAdapter,
+                out equipmentCatalog,
+                out weaponCatalog);
+        }
+
+        public static bool TryConsume(
+            out ShopScreenSessionV1 session,
+            out IShopScreenRouteAdapterV1 routeAdapter,
+            out EquipmentCatalog equipmentCatalog,
+            out WeaponCatalog weaponCatalog)
+        {
             lock (Sync)
             {
                 session = pendingSession;
                 routeAdapter = pendingRouteAdapter;
+                equipmentCatalog = pendingEquipmentCatalog;
+                weaponCatalog = pendingWeaponCatalog;
                 pendingSession = null;
                 pendingRouteAdapter = null;
+                pendingEquipmentCatalog = null;
+                pendingWeaponCatalog = null;
                 return session != null && routeAdapter != null;
             }
         }
@@ -77,6 +111,8 @@ namespace ShooterMover.UI.Shop
             {
                 pendingSession = null;
                 pendingRouteAdapter = null;
+                pendingEquipmentCatalog = null;
+                pendingWeaponCatalog = null;
             }
         }
     }
