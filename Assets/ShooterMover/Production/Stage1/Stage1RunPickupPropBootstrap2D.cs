@@ -1,13 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
-using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.ContentPackages.Props.DestructibleProps;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies.Catalog;
-using ShooterMover.Domain.Props;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
@@ -16,55 +12,11 @@ using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
-    internal sealed class Stage1CanonicalPropDestructionFactV1
-    {
-        public Stage1CanonicalPropDestructionFactV1(
-            DestructiblePropDestructionResult destruction,
-            Stage1CanonicalPropTerminalSourceV1 provenance,
-            StableId runStableId,
-            long lifecycleGeneration,
-            StableId attributedParticipantStableId,
-            Vector2 terminalPosition,
-            string positionFingerprint)
-        {
-            Destruction = destruction
-                ?? throw new ArgumentNullException(nameof(destruction));
-            Provenance = provenance
-                ?? throw new ArgumentNullException(nameof(provenance));
-            RunStableId = runStableId
-                ?? throw new ArgumentNullException(nameof(runStableId));
-            if (lifecycleGeneration <= 0L)
-                throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
-            LifecycleGeneration = lifecycleGeneration;
-            AttributedParticipantStableId = attributedParticipantStableId;
-            TerminalPosition = terminalPosition;
-            if (string.IsNullOrWhiteSpace(positionFingerprint))
-            {
-                throw new ArgumentException(
-                    "Prop terminal position fingerprint is required.",
-                    nameof(positionFingerprint));
-            }
-            PositionFingerprint = positionFingerprint.Trim();
-        }
-
-        public DestructiblePropDestructionResult Destruction { get; }
-        public Stage1CanonicalPropTerminalSourceV1 Provenance { get; }
-        public StableId RunStableId { get; }
-        public long LifecycleGeneration { get; }
-        public StableId RoomStableId { get { return Provenance.RoomStableId; } }
-        public StableId PlacementStableId
-        {
-            get { return Provenance.PlacementStableId; }
-        }
-        public StableId AttributedParticipantStableId { get; }
-        public Vector2 TerminalPosition { get; }
-        public string PositionFingerprint { get; }
-    }
-
     /// <summary>
-    /// Retained transactional adapter for Stage 1 destructible props. The one-shot Destroyed
-    /// callback captures an immutable canonical fact; generation/admission/realization retry from
-    /// that fact. Definition and drop provenance come from the production prop catalog.
+    /// Retained transactional adapter for Stage 1 destructible props. The one-shot
+    /// Destroyed callback captures an immutable canonical fact; the shared terminal
+    /// composition performs generation/admission, so prop and enemy rewards use the
+    /// same participant pacing and replay state.
     /// </summary>
     [DefaultExecutionOrder(21100)]
     [DisallowMultipleComponent]
@@ -96,7 +48,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private Stage1RunPickupBootstrap2D pickupBootstrap;
         private RunSessionAggregateV1 observedRun;
         private TerminalDropGenerationAuthorityV1 generation;
-        private PendingTerminalDropAdmissionAuthorityV1 pending;
+        private IGeneratedTerminalDropPendingAdmissionV1 pending;
         private readonly List<DestructibleProp2D> subscribedProps =
             new List<DestructibleProp2D>();
         private readonly Dictionary<StableId, PendingPropTerminal>
@@ -111,6 +63,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             get
             {
                 return generation != null
+                    && pending != null
                     && observedRun != null
                     && subscribedProps.Count > 0;
             }
@@ -218,7 +171,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             if (stage1 == null
                 || pickupBootstrap == null
                 || !pickupBootstrap.IsComposed
-                || pickupBootstrap.RunSession == null)
+                || pickupBootstrap.RunSession == null
+                || pickupBootstrap.TerminalDrops == null)
             {
                 throw new InvalidOperationException(
                     "The shared Stage 1 pickup composition is unavailable.");
@@ -232,40 +186,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 pendingTerminalByEvent.Clear();
                 quarantinedTerminalByEvent.Clear();
-                generation = null;
-                pending = null;
                 LastAdmission = null;
             }
             observedRun = nextRun;
-
-            EnemyCatalogV1 ignoredEnemies;
-            PropCatalogV1 ignoredProps;
-            IRewardProfileResolverV1 rewardProfiles;
-            string contentDiagnostic;
-            if (!stage1.TryResolveCanonicalTerminalDropContent(
-                    out ignoredEnemies,
-                    out ignoredProps,
-                    out rewardProfiles,
-                    out contentDiagnostic))
-            {
-                throw new InvalidOperationException(contentDiagnostic);
-            }
-
-            if (pending == null)
-                pending = new PendingTerminalDropAdmissionAuthorityV1();
-            if (generation == null)
-            {
-                generation = new TerminalDropGenerationAuthorityV1(
-                    new TerminalDropFactAdapterRegistryV1(
-                        new ITerminalDropFactAdapterV1[]
-                        {
-                            new Stage1CanonicalPropTerminalDropFactAdapterV1(),
-                        }),
-                    pickupBootstrap.DropRunContext,
-                    rewardProfiles,
-                    new ExistingRewardGenerationExecutorV1(
-                        new RewardGenerationServiceV1()));
-            }
+            generation = pickupBootstrap.TerminalDrops.Authority;
+            pending = pickupBootstrap.TerminalDrops.PendingAdmission;
 
             DestructibleProp2D[] props =
                 controller.GetComponentsInChildren<DestructibleProp2D>(true);
@@ -524,6 +449,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             subscribedProps.Clear();
             observedRun = null;
+            generation = null;
+            pending = null;
         }
 
         private void OnDestroy()
@@ -531,78 +458,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             ReleaseBindings();
             pendingTerminalByEvent.Clear();
             quarantinedTerminalByEvent.Clear();
-            generation = null;
-            pending = null;
             LastAdmission = null;
-        }
-    }
-
-    internal sealed class Stage1CanonicalPropTerminalDropFactAdapterV1 :
-        ITerminalDropFactAdapterV1
-    {
-        public StableId FactKindStableId
-        {
-            get { return TerminalDropFactKindIdsV1.PropDestruction; }
-        }
-        public Type FactType
-        {
-            get { return typeof(Stage1CanonicalPropDestructionFactV1); }
-        }
-
-        public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
-        {
-            var fact = terminalFact as Stage1CanonicalPropDestructionFactV1;
-            if (fact == null
-                || fact.Destruction == null
-                || fact.Provenance == null)
-            {
-                return TerminalDropAdaptationResultV1.Rejected(
-                    TerminalDropRejectionCodeV1.InvalidTerminalFact,
-                    "stage1-prop-terminal-canonical-fact-invalid");
-            }
-
-            DestructiblePropDestructionResult destruction = fact.Destruction;
-            string canonical = destruction.EventId
-                + "|"
-                + destruction.PropId
-                + "|"
-                + destruction.SourceId
-                + "|"
-                + fact.Provenance.Definition.DefinitionId
-                + "|"
-                + fact.Provenance.DropProfileStableId
-                + "|"
-                + fact.RoomStableId
-                + "|"
-                + fact.TerminalPosition.x.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture)
-                + "|"
-                + fact.TerminalPosition.y.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture);
-            return TerminalDropAdaptationResultV1.Accepted(
-                new TerminalDropSourceFactV1(
-                    TerminalDropFactKindIdsV1.PropDestruction,
-                    destruction.EventId,
-                    destruction.EventId,
-                    fact.RunStableId,
-                    fact.LifecycleGeneration,
-                    destruction.PropId,
-                    fact.PlacementStableId,
-                    fact.LifecycleGeneration,
-                    fact.Provenance.Definition.DefinitionId,
-                    fact.AttributedParticipantStableId,
-                    destruction.SourceId,
-                    StableId.Create(
-                        "damage",
-                        "combat-channel-"
-                            + ((int)destruction.Channel).ToString(
-                                CultureInfo.InvariantCulture)),
-                    fact.Provenance.DropProfileStableId,
-                    Stage1ProductionFingerprintV1.Hash("source|" + canonical),
-                    fact.Provenance.DefinitionFingerprint,
-                    Stage1ProductionFingerprintV1.Hash("upstream|" + canonical)));
         }
     }
 }
