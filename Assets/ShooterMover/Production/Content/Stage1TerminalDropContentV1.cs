@@ -7,9 +7,9 @@ using ShooterMover.Domain.Props;
 namespace ShooterMover.Content.Definitions.Rewards
 {
     /// <summary>
-    /// Canonical Stage 1 terminal-source content. This class owns only content-to-
-    /// profile references and bounded legacy authoring migration; reusable reward
-    /// probabilities and quantities live in ProductionRewardSourceCatalogV1.
+    /// Canonical Stage 1 terminal-source content. This class owns only explicit
+    /// content-to-profile references; reusable reward probabilities and quantities live
+    /// in ProductionRewardSourceCatalogV1. No object-name resolver exists here.
     /// </summary>
     public static class Stage1TerminalDropContentV1
     {
@@ -57,30 +57,6 @@ namespace ShooterMover.Content.Definitions.Rewards
             return CreatePropProvenance(
                 GenericLegacyDefinitionStableId,
                 GenericLegacyDropProfileStableId);
-        }
-
-        /// <summary>
-        /// Bounded migration for the two pre-definition Stage 1 marker keys. Unknown
-        /// markers become explicit no-drop content rather than being classified from
-        /// health, geometry, presentation, GameObject name or destruction behavior.
-        /// </summary>
-        public static DestructiblePropTerminalProvenanceV1
-            ResolveLegacyAuthoringKey(string authoringKey)
-        {
-            if (string.IsNullOrWhiteSpace(authoringKey))
-            {
-                return CreateGenericLegacyProvenance();
-            }
-            string value = authoringKey.Trim();
-            if (value.StartsWith("Crate_", StringComparison.Ordinal))
-            {
-                return CreateCrateProvenance();
-            }
-            if (value.StartsWith("Explosive_", StringComparison.Ordinal))
-            {
-                return CreateExplosiveProvenance();
-            }
-            return CreateGenericLegacyProvenance();
         }
 
         public static bool TryReadDropProfile(
