@@ -13,6 +13,15 @@ namespace ShooterMover.TerminalDropBinding
     }
 
     /// <summary>
+    /// Downstream observer of the exact pending-admission result. Observers receive the
+    /// admitted batch itself; they never trigger DROP or GEN again.
+    /// </summary>
+    public interface IPendingTerminalDropAdmissionConsumerV1
+    {
+        void Consume(PendingTerminalDropAdmissionResultV1 admission);
+    }
+
+    /// <summary>
     /// Typed bridge for the existing generic enemy terminal consequence port. Every
     /// delivery reaches the idempotent pending admission boundary, including exact replay,
     /// so a lost first publication can be recovered without creating a second entry.
@@ -21,14 +30,17 @@ namespace ShooterMover.TerminalDropBinding
     {
         private readonly TerminalDropGenerationAuthorityV1 authority;
         private readonly IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission;
+        private readonly IPendingTerminalDropAdmissionConsumerV1 admissionConsumer;
 
         public EnemyTerminalDropFactConsumerV1(
             TerminalDropGenerationAuthorityV1 authority,
-            IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission)
+            IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
+            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
         {
             this.authority = authority ?? throw new ArgumentNullException(nameof(authority));
             this.pendingAdmission = pendingAdmission
                 ?? throw new ArgumentNullException(nameof(pendingAdmission));
+            this.admissionConsumer = admissionConsumer;
         }
 
         public PendingTerminalDropAdmissionResultV1 LastAdmission { get; private set; }
@@ -36,6 +48,8 @@ namespace ShooterMover.TerminalDropBinding
         public void Consume(EnemyDeathFactV1 fact)
         {
             LastAdmission = pendingAdmission.Admit(authority.Generate(fact));
+            if (admissionConsumer != null && LastAdmission != null)
+                admissionConsumer.Consume(LastAdmission);
         }
     }
 
@@ -43,14 +57,17 @@ namespace ShooterMover.TerminalDropBinding
     {
         private readonly TerminalDropGenerationAuthorityV1 authority;
         private readonly IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission;
+        private readonly IPendingTerminalDropAdmissionConsumerV1 admissionConsumer;
 
         public PropTerminalDropFactConsumerV1(
             TerminalDropGenerationAuthorityV1 authority,
-            IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission)
+            IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
+            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
         {
             this.authority = authority ?? throw new ArgumentNullException(nameof(authority));
             this.pendingAdmission = pendingAdmission
                 ?? throw new ArgumentNullException(nameof(pendingAdmission));
+            this.admissionConsumer = admissionConsumer;
         }
 
         public PendingTerminalDropAdmissionResultV1 LastAdmission { get; private set; }
@@ -58,6 +75,8 @@ namespace ShooterMover.TerminalDropBinding
         public void Consume(PropFactBatchV1 fact)
         {
             LastAdmission = pendingAdmission.Admit(authority.Generate(fact));
+            if (admissionConsumer != null && LastAdmission != null)
+                admissionConsumer.Consume(LastAdmission);
         }
     }
 
@@ -93,7 +112,8 @@ namespace ShooterMover.TerminalDropBinding
             IRewardProfileResolverV1 rewardProfiles,
             RewardGenerationServiceV1 rewardGenerationService,
             IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
-            IEnumerable<ITerminalDropFactAdapterV1> additionalAdapters = null)
+            IEnumerable<ITerminalDropFactAdapterV1> additionalAdapters = null,
+            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
         {
             if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
             if (enemySourceContexts == null)
@@ -137,8 +157,14 @@ namespace ShooterMover.TerminalDropBinding
             return new TerminalDropBindingCompositionV1(
                 authority,
                 pendingAdmission,
-                new EnemyTerminalDropFactConsumerV1(authority, pendingAdmission),
-                new PropTerminalDropFactConsumerV1(authority, pendingAdmission));
+                new EnemyTerminalDropFactConsumerV1(
+                    authority,
+                    pendingAdmission,
+                    admissionConsumer),
+                new PropTerminalDropFactConsumerV1(
+                    authority,
+                    pendingAdmission,
+                    admissionConsumer));
         }
     }
 }
