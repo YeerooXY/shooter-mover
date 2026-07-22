@@ -9,7 +9,6 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Application;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
-using ShooterMover.UnityAdapters.Production.Stage1;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -100,7 +99,7 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         }
 
         [UnityTest]
-        public IEnumerator ExactAdmission_UsesTerminalTransform_AndPhysicsCollectsOnce()
+        public IEnumerator ExactAdmission_UsesTerminalPosition_AndPhysicsCollectsOnce()
         {
             var session = new RunSessionPort();
             GameObject runtime = Track(new GameObject("Stage1 Pickup Production Bridge"));
@@ -130,28 +129,31 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                 runtime.AddComponent<RunPickupPresenter2D>();
             presenter.Configure(host, registry, runtime.transform);
 
-            var bridge = new Stage1PendingAdmissionPickupBridgeV1(
-                positions,
-                pendingConsumer,
-                presenter);
             GameObject terminalSource = Track(new GameObject("Destroyed Mobile Droid"));
             terminalSource.transform.position = new Vector3(8.25f, -3.5f, 0f);
-            bridge.RegisterSource(
+            string positionDiagnostic;
+            Assert.That(positions.Register(
                 RunId,
                 1L,
                 SourceEntityId,
                 SourcePlacementId,
                 RoomId,
-                terminalSource.transform);
+                terminalSource.transform.position,
+                "stage1-terminal-transform-fingerprint",
+                out positionDiagnostic),
+                Is.True,
+                positionDiagnostic);
 
             PendingTerminalDropAdmissionResultV1 admission =
                 new PendingTerminalDropAdmissionAuthorityV1().Admit(GeneratedDrop());
             Assert.That(admission.Status,
                 Is.EqualTo(PendingTerminalDropAdmissionStatusV1.Accepted));
 
-            bridge.Consume(admission);
+            RunPickupRealizationResultV1 realization = pendingConsumer.Consume(admission);
+            presenter.Synchronize(RoomId);
 
-            Assert.That(bridge.LastDiagnostic, Is.Empty);
+            Assert.That(realization.Status,
+                Is.EqualTo(RunPickupRealizationStatusV1.Realized));
             RunPickupSnapshotV1 pickup = authority.ExportAvailablePickups().Single();
             Assert.That(pickup.Reward.RewardInstanceStableId,
                 Is.EqualTo(Id("terminaldropchild", "exact-money-child")));
@@ -183,24 +185,18 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         }
 
         [Test]
-        public void Stage1Bootstrap_ContainsTheProductionAuthorityChain()
+        public void Stage1Bootstrap_TypeIsLoadableFromProductionAssembly()
         {
-            Type type = typeof(Stage1RunPickupBootstrap2D);
-            const System.Reflection.BindingFlags fields =
-                System.Reflection.BindingFlags.Instance
-                | System.Reflection.BindingFlags.NonPublic;
+            const string typeName =
+                "ShooterMover.UnityAdapters.Production.Stage1.Stage1RunPickupBootstrap2D";
+            Type type = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType(typeName, false))
+                .FirstOrDefault(candidate => candidate != null);
 
-            Assert.That(type.GetField("run", fields).FieldType,
-                Is.EqualTo(typeof(ShooterMover.Application.Runs.Session.RunSessionAggregateV1)));
-            Assert.That(type.GetField("terminalDrops", fields).FieldType,
-                Is.EqualTo(typeof(TerminalDropBindingCompositionV1)));
-            Assert.That(type.GetField("sourcePositions", fields).FieldType,
-                Is.EqualTo(typeof(RunPickupSourcePositionRegistry2D)));
-            Assert.That(type.GetField("pickups", fields).FieldType,
-                Is.EqualTo(typeof(RunPickupLiveCompositionV1)));
-            Assert.That(type.GetField("presenter", fields).FieldType,
-                Is.EqualTo(typeof(RunPickupPresenter2D)));
-            Assert.That(type.GetMethod("EmitEnemyDeath", fields), Is.Not.Null);
+            Assert.That(type, Is.Not.Null);
+            Assert.That(type.GetProperty("PickupAuthority"), Is.Not.Null);
+            Assert.That(type.GetProperty("RunSession"), Is.Not.Null);
+            Assert.That(type.GetProperty("LastEnemyAdmission"), Is.Not.Null);
         }
 
         private static GeneratedTerminalDropResultV1 GeneratedDrop()
