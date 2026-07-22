@@ -56,6 +56,22 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             public int CollectionRecordCount { get; private set; }
             public int PermanentGrantCount { get; private set; }
 
+            public bool TryReadContext(
+                out RunPickupRunSessionContextV1 context,
+                out string diagnostic)
+            {
+                context = new RunPickupRunSessionContextV1(
+                    RunStableId,
+                    LifecycleGeneration,
+                    AuthoritativeTick,
+                    IsActive,
+                    PlayerActorStableId,
+                    PlayerParticipantStableId,
+                    checked(replay.Count + 1L));
+                diagnostic = string.Empty;
+                return true;
+            }
+
             public RunPickupSessionRecordResultV1 RecordCollection(
                 RunPickupCollectionFactV1 fact)
             {
