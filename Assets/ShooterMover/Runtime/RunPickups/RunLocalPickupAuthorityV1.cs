@@ -38,8 +38,6 @@ namespace ShooterMover.RunPickups
         private readonly Dictionary<StableId, CollectionReplayRecord> collectionReplay =
             new Dictionary<StableId, CollectionReplayRecord>();
 
-        private long collectionSequence;
-
         public RunLocalPickupAuthorityV1(
             IRunPickupRunSessionPortV1 runSession,
             IRunPickupSourcePositionPortV1 sourcePositions)
@@ -100,7 +98,22 @@ namespace ShooterMover.RunPickups
 
             lock (gate)
             {
-                string contextRejection = ValidateBatchContext(batch);
+                RunPickupRunSessionContextV1 sessionContext;
+                string sessionDiagnostic;
+                if (!TryReadRunSessionContext(
+                    out sessionContext,
+                    out sessionDiagnostic))
+                {
+                    return new RunPickupRealizationResultV1(
+                        RunPickupRealizationStatusV1.Rejected,
+                        batch,
+                        Array.Empty<RunPickupSnapshotV1>(),
+                        sessionDiagnostic);
+                }
+
+                string contextRejection = ValidateBatchContext(
+                    batch,
+                    sessionContext);
                 if (!string.IsNullOrEmpty(contextRejection))
                 {
                     return new RunPickupRealizationResultV1(
@@ -184,7 +197,10 @@ namespace ShooterMover.RunPickups
                     positionResolved = false;
                     worldSpawnContext = null;
                     positionDiagnostic =
-                        "run-pickup-source-position-exception:" + exception.Message;
+                        "run-pickup-source-position-exception:"
+                        + exception.GetType().Name
+                        + ":"
+                        + exception.Message;
                 }
 
                 if (!positionResolved || worldSpawnContext == null)
@@ -307,6 +323,5 @@ namespace ShooterMover.RunPickups
                     string.Empty);
             }
         }
-
     }
 }
