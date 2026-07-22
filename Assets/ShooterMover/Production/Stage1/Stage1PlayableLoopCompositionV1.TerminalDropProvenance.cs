@@ -1,114 +1,74 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Globalization;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Rewards;
-using ShooterMover.ContentPackages.Props.DestructibleProps;
+using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies;
 using ShooterMover.Domain.Enemies.Catalog;
-using ShooterMover.Domain.Props;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.TerminalDropBinding;
-using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
-    internal sealed class Stage1CanonicalEnemyTerminalFactV1
-    {
-        public Stage1CanonicalEnemyTerminalFactV1(
-            EnemyDeathFactV1 fact,
-            Vector2 terminalPosition,
-            string positionFingerprint,
-            StableId roomStableId,
-            StableId placementStableId,
-            EnemyDestroyedNotification notification)
-        {
-            Fact = fact ?? throw new ArgumentNullException(nameof(fact));
-            TerminalPosition = terminalPosition;
-            if (string.IsNullOrWhiteSpace(positionFingerprint))
-            {
-                throw new ArgumentException(
-                    "Enemy terminal position fingerprint is required.",
-                    nameof(positionFingerprint));
-            }
-            PositionFingerprint = positionFingerprint.Trim();
-            RoomStableId = roomStableId
-                ?? throw new ArgumentNullException(nameof(roomStableId));
-            PlacementStableId = placementStableId
-                ?? throw new ArgumentNullException(nameof(placementStableId));
-            Notification = notification
-                ?? throw new ArgumentNullException(nameof(notification));
-        }
-
-        public EnemyDeathFactV1 Fact { get; }
-        public Vector2 TerminalPosition { get; }
-        public string PositionFingerprint { get; }
-        public StableId RoomStableId { get; }
-        public StableId PlacementStableId { get; }
-        public EnemyDestroyedNotification Notification { get; }
-    }
-
-    internal sealed class Stage1CanonicalPropTerminalSourceV1
-    {
-        public Stage1CanonicalPropTerminalSourceV1(
-            PropDefinitionV1 definition,
-            StableId dropProfileStableId,
-            string definitionFingerprint,
-            StableId roomStableId,
-            StableId placementStableId)
-        {
-            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
-            DropProfileStableId = dropProfileStableId
-                ?? throw new ArgumentNullException(nameof(dropProfileStableId));
-            if (string.IsNullOrWhiteSpace(definitionFingerprint))
-            {
-                throw new ArgumentException(
-                    "A canonical prop-definition fingerprint is required.",
-                    nameof(definitionFingerprint));
-            }
-            DefinitionFingerprint = definitionFingerprint.Trim();
-            RoomStableId = roomStableId
-                ?? throw new ArgumentNullException(nameof(roomStableId));
-            PlacementStableId = placementStableId
-                ?? throw new ArgumentNullException(nameof(placementStableId));
-        }
-
-        public PropDefinitionV1 Definition { get; }
-        public StableId DropProfileStableId { get; }
-        public string DefinitionFingerprint { get; }
-        public StableId RoomStableId { get; }
-        public StableId PlacementStableId { get; }
-    }
-
     public sealed partial class Stage1PlayableLoopCompositionV1
     {
-        private EnemyCatalogV1 terminalEnemyCatalog;
+        private const string Stage1DropEventContext =
+            "stage1-drop-event-context-v1";
 
-        internal bool TryResolveCanonicalTerminalDropContent(
+        private static readonly string Stage1DropEventContextFingerprint =
+            TerminalDropCanonicalV1.Hash(Stage1DropEventContext);
+
+        private EnemyCatalogV1 canonicalEnemyTerminalCatalog;
+        private Stage1EnemyTerminalSourceContextResolverV1
+            canonicalEnemyTerminalSourceContexts;
+
+        private bool TryResolveCanonicalTerminalDropContent(
             out EnemyCatalogV1 enemyCatalog,
-            out PropCatalogV1 propCatalog,
             out IRewardProfileResolverV1 rewardProfiles,
+            out Stage1EnemyTerminalSourceContextResolverV1 enemySourceContexts,
             out string diagnostic)
         {
             enemyCatalog = null;
-            propCatalog = null;
             rewardProfiles = null;
-            diagnostic = string.Empty;
+            enemySourceContexts = null;
+
+            RunSessionAggregateV1 run;
+            if (!TryResolveSharedRunSession(out run, out diagnostic))
+            {
+                return false;
+            }
+
             try
             {
-                if (terminalEnemyCatalog == null)
-                    terminalEnemyCatalog = LoadProductionEnemyCatalog();
-                enemyCatalog = terminalEnemyCatalog;
-                propCatalog = Stage1TerminalDropContentV1.PropCatalog;
-                rewardProfiles = Stage1TerminalDropContentV1.RewardProfiles;
+                if (canonicalEnemyTerminalCatalog == null)
+                {
+                    canonicalEnemyTerminalCatalog =
+                        LoadProductionEnemyCatalog();
+                }
+                if (canonicalEnemyTerminalSourceContexts == null)
+                {
+                    canonicalEnemyTerminalSourceContexts =
+                        new Stage1EnemyTerminalSourceContextResolverV1(
+                            () => observedRunSession);
+                }
+
+                enemyCatalog = canonicalEnemyTerminalCatalog;
+                enemySourceContexts = canonicalEnemyTerminalSourceContexts;
+                if (enemyCatalog == null || enemySourceContexts == null)
+                {
+                    diagnostic = "stage1-terminal-content-missing";
+                    return false;
+                }
+                diagnostic = string.Empty;
                 return true;
             }
             catch (Exception exception)
             {
-                diagnostic = "stage1-terminal-content-unavailable:"
+                diagnostic = "stage1-terminal-content-exception:"
                     + exception.GetType().Name
                     + ":"
                     + exception.Message;
@@ -116,216 +76,281 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
         }
 
-        internal bool TryResolveTerminalParticipant(
-            StableId actorStableId,
-            out StableId participantStableId)
+        private bool TryComposeCanonicalEnemyTerminalFacts(
+            out string diagnostic)
         {
-            participantStableId = null;
-            if (actorStableId == null) return false;
-
-            RunSessionAggregateV1 run;
-            if (TryResolveSharedRunSession(out run) && run != null)
+            EnemyCatalogV1 enemyCatalog;
+            IRewardProfileResolverV1 ignoredProfiles;
+            Stage1EnemyTerminalSourceContextResolverV1 sourceContexts;
+            if (!TryResolveCanonicalTerminalDropContent(
+                    out enemyCatalog,
+                    out ignoredProfiles,
+                    out sourceContexts,
+                    out diagnostic))
             {
-                try
-                {
-                    RunPlayerRuntimeSnapshotV1 player =
-                        run.RuntimePorts.Player.ExportSnapshot();
-                    if (player != null
-                        && player.ActorInstanceStableId == actorStableId)
-                    {
-                        participantStableId = player.ParticipantStableId;
-                        return participantStableId != null;
-                    }
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
+                return false;
             }
 
-            EnemyAttackPatternUnitySourceBindingV1 enemySource;
-            if (enemyPatternSources != null
-                && enemyPatternSources.TryGet(actorStableId, out enemySource)
-                && enemySource != null)
+            Stage1EnemyTerminalFactBindingV1 binding;
+            if (!TryComposeCanonicalEnemyTerminalBinding(
+                    enemyCatalog,
+                    sourceContexts,
+                    out binding,
+                    out diagnostic))
             {
-                participantStableId = enemySource.SourceRunParticipantStableId;
-                return participantStableId != null;
+                return false;
             }
-            return false;
+            controller.ConfigureCanonicalEnemyTerminalFacts(binding);
+            diagnostic = string.Empty;
+            return true;
         }
 
-        internal bool TryExportCanonicalEnemyTerminalFacts(
+        private bool TryExportCanonicalEnemyTerminalFacts(
             out IReadOnlyList<Stage1CanonicalEnemyTerminalFactV1> facts,
             out string diagnostic)
         {
-            facts = Array.Empty<Stage1CanonicalEnemyTerminalFactV1>();
-            diagnostic = string.Empty;
-            RunSessionAggregateV1 run;
-            if (!TryResolveSharedRunSession(out run) || run == null)
-            {
-                diagnostic = "stage1-enemy-terminal-shared-run-unavailable";
-                return false;
-            }
-            if (enemyPatternSources == null)
-            {
-                diagnostic =
-                    "stage1-enemy-terminal-live-source-registry-unavailable";
-                return false;
-            }
-
             EnemyCatalogV1 enemyCatalog;
-            PropCatalogV1 ignoredProps;
             IRewardProfileResolverV1 ignoredProfiles;
+            Stage1EnemyTerminalSourceContextResolverV1 sourceContexts;
             if (!TryResolveCanonicalTerminalDropContent(
                     out enemyCatalog,
-                    out ignoredProps,
                     out ignoredProfiles,
+                    out sourceContexts,
                     out diagnostic))
             {
+                facts = Array.Empty<Stage1CanonicalEnemyTerminalFactV1>();
                 return false;
             }
 
-            var exported = new List<Stage1CanonicalEnemyTerminalFactV1>();
-            for (int index = 0; index < pendingEnemyRewards.Count; index++)
+            Stage1EnemyTerminalFactBindingV1 binding;
+            if (!TryComposeCanonicalEnemyTerminalBinding(
+                    enemyCatalog,
+                    sourceContexts,
+                    out binding,
+                    out diagnostic))
             {
-                PendingEnemyReward pending = pendingEnemyRewards[index];
-                if (pending == null || pending.Destruction == null) continue;
+                facts = Array.Empty<Stage1CanonicalEnemyTerminalFactV1>();
+                return false;
+            }
+            return binding.TryExport(out facts, out diagnostic);
+        }
 
-                EnemyDestroyedNotification notification = pending.Destruction;
-                EnemyAttackPatternUnitySourceBindingV1 liveSource;
-                if (!enemyPatternSources.TryGet(
-                        notification.TargetId,
-                        out liveSource)
-                    || liveSource == null
-                    || liveSource.SourceEntityStableId != notification.TargetId
-                    || !liveSource.HasCanonicalPlacementIdentity)
+        private bool TryComposeCanonicalEnemyTerminalBinding(
+            EnemyCatalogV1 enemyCatalog,
+            Stage1EnemyTerminalSourceContextResolverV1 sourceContexts,
+            out Stage1EnemyTerminalFactBindingV1 binding,
+            out string diagnostic)
+        {
+            binding = null;
+            if (enemyCatalog == null || sourceContexts == null)
+            {
+                diagnostic = "stage1-terminal-enemy-content-missing";
+                return false;
+            }
+            if (mobileEnemy == null || turretEnemy == null)
+            {
+                diagnostic = "stage1-terminal-live-enemies-missing";
+                return false;
+            }
+
+            try
+            {
+                binding = new Stage1EnemyTerminalFactBindingV1(
+                    enemyCatalog,
+                    sourceContexts,
+                    new[]
+                    {
+                        new Stage1EnemyTerminalSourceV1(
+                            mobileEnemy,
+                            Level1AuthorableRoomDefinitionV1.EntryRoomStableId,
+                            Level1AuthorableRoomDefinitionV1
+                                .MovingDroidInstanceStableId,
+                            MobileDefinitionStableId,
+                            () => (Vector2)controller.MobileBlasterDroid
+                                .transform.position),
+                        new Stage1EnemyTerminalSourceV1(
+                            turretEnemy,
+                            Level1AuthorableRoomDefinitionV1.TerminalRoomStableId,
+                            Level1AuthorableRoomDefinitionV1
+                                .TurretInstanceStableId,
+                            TurretDefinitionStableId,
+                            () => (Vector2)controller.TurretPackage
+                                .transform.position),
+                    });
+                diagnostic = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "stage1-terminal-enemy-binding-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
+                return false;
+            }
+        }
+
+        private sealed class Stage1EnemyTerminalSourceContextResolverV1 :
+            IEnemyTerminalSourceContextResolverV1
+        {
+            private readonly Func<RunSessionAggregateV1> runResolver;
+
+            public Stage1EnemyTerminalSourceContextResolverV1(
+                Func<RunSessionAggregateV1> runResolver)
+            {
+                this.runResolver = runResolver
+                    ?? throw new ArgumentNullException(nameof(runResolver));
+            }
+
+            public bool TryResolve(
+                EnemyDeathFactV1 fact,
+                out EnemyTerminalSourceContextV1 context,
+                out string diagnostic)
+            {
+                context = null;
+                if (fact == null || fact.Identity == null)
                 {
-                    diagnostic =
-                        "stage1-enemy-terminal-exact-live-source-unavailable:"
-                        + notification.TargetId;
+                    diagnostic = "stage1-enemy-terminal-fact-missing";
                     return false;
                 }
 
-                EnemyDefinitionV1 definition = enemyCatalog.GetDefinition(
-                    pending.EnemyDefinitionStableId);
-                var identity = new EnemyRuntimeIdentityV1(
-                    liveSource.SourceEntityStableId,
-                    liveSource.SourceRunParticipantStableId,
-                    run.RunStableId,
-                    liveSource.RoomRuntimeInstanceStableId,
-                    liveSource.RoomStableId,
-                    liveSource.PlacementStableId);
-                var fact = new EnemyDeathFactV1(
-                    notification.EventId,
-                    notification.EventId,
-                    identity,
-                    definition.DefinitionId,
-                    liveSource.SourceLevel,
-                    liveSource.LifecycleGeneration,
-                    notification.SourceId,
-                    pending.ParticipantStableId,
-                    definition.ExperienceProfileId,
-                    definition.DropProfileId,
-                    notification.DeathCause);
-                exported.Add(new Stage1CanonicalEnemyTerminalFactV1(
-                    fact,
-                    pending.TerminalPosition,
-                    pending.PositionFingerprint,
-                    liveSource.RoomStableId,
-                    liveSource.PlacementStableId,
-                    notification));
-            }
+                RunSessionAggregateV1 run = runResolver();
+                if (run == null || run.IsEnded)
+                {
+                    diagnostic = "stage1-enemy-terminal-run-missing-or-ended";
+                    return false;
+                }
+                if (run.RunStableId != fact.Identity.RunStableId
+                    || run.LifecycleGeneration != fact.LifecycleGeneration)
+                {
+                    diagnostic = "stage1-enemy-terminal-run-lifecycle-mismatch";
+                    return false;
+                }
 
-            exported.Sort((left, right) =>
-                left.Fact.DeathEventStableId.CompareTo(
-                    right.Fact.DeathEventStableId));
-            facts = new ReadOnlyCollection<Stage1CanonicalEnemyTerminalFactV1>(
-                exported);
-            return true;
+                RunPlayerRuntimeSnapshotV1 player =
+                    run.RuntimePorts.Player.ExportSnapshot();
+                if (player == null
+                    || player.ParticipantStableId
+                        != fact.KillerSourceParticipantStableId)
+                {
+                    diagnostic = "stage1-enemy-terminal-killer-not-run-player";
+                    return false;
+                }
+
+                context = new EnemyTerminalSourceContextV1(
+                    new ProgressionContext(
+                        run.FrozenInputs.Character.CharacterLevel,
+                        run.FrozenInputs.Mission.MissionLevel,
+                        run.FrozenInputs.Mission.DifficultyStableId,
+                        0),
+                    run.StartCommand.EventModifierContextFingerprint,
+                    Stage1DropEventContextFingerprint);
+                diagnostic = string.Empty;
+                return true;
+            }
         }
 
-        internal bool TryResolveCanonicalPropTerminalSource(
-            DestructibleProp2D prop,
-            out Stage1CanonicalPropTerminalSourceV1 source,
-            out string diagnostic)
+        private sealed class Stage1EnemyTerminalFactBindingV1
         {
-            source = null;
-            diagnostic = string.Empty;
-            if (prop == null || prop.PropId == null)
-            {
-                diagnostic = "stage1-prop-terminal-runtime-incomplete";
-                return false;
-            }
-            DestructiblePropTerminalProvenanceV1 provenance =
-                prop.TerminalProvenance;
-            return TryResolveCanonicalPropTerminalSource(
-                provenance,
-                prop.PropId,
-                out source,
-                out diagnostic);
-        }
+            private readonly EnemyCatalogV1 catalog;
+            private readonly ContextResolvedEnemyDeathTerminalDropFactAdapterV1
+                adapter;
+            private readonly Stage1EnemyTerminalSourceV1[] sources;
 
-        internal bool TryResolveCanonicalPropTerminalSource(
-            DestructiblePropTerminalProvenanceV1 provenance,
-            StableId sourceEntityStableId,
-            out Stage1CanonicalPropTerminalSourceV1 source,
-            out string diagnostic)
-        {
-            source = null;
-            diagnostic = string.Empty;
-            if (provenance == null)
+            public Stage1EnemyTerminalFactBindingV1(
+                EnemyCatalogV1 catalog,
+                IEnemyTerminalSourceContextResolverV1 sourceContexts,
+                IEnumerable<Stage1EnemyTerminalSourceV1> sources)
             {
-                diagnostic = "stage1-prop-terminal-provenance-missing";
-                return false;
-            }
-            if (!provenance.HasPlacementProvenance)
-            {
-                diagnostic =
-                    "stage1-prop-terminal-placement-provenance-missing:"
-                    + sourceEntityStableId;
-                return false;
+                this.catalog = catalog
+                    ?? throw new ArgumentNullException(nameof(catalog));
+                adapter = new ContextResolvedEnemyDeathTerminalDropFactAdapterV1(
+                    sourceContexts
+                        ?? throw new ArgumentNullException(nameof(sourceContexts)));
+                if (sources == null)
+                {
+                    throw new ArgumentNullException(nameof(sources));
+                }
+                var copy = new List<Stage1EnemyTerminalSourceV1>();
+                foreach (Stage1EnemyTerminalSourceV1 source in sources)
+                {
+                    if (source == null)
+                    {
+                        throw new ArgumentException(
+                            "Stage 1 enemy terminal sources must not contain null entries.",
+                            nameof(sources));
+                    }
+                    copy.Add(source);
+                }
+                this.sources = copy.ToArray();
             }
 
-            EnemyCatalogV1 ignoredEnemies;
-            PropCatalogV1 propCatalog;
-            IRewardProfileResolverV1 ignoredProfiles;
-            if (!TryResolveCanonicalTerminalDropContent(
-                    out ignoredEnemies,
-                    out propCatalog,
-                    out ignoredProfiles,
-                    out diagnostic))
+            public bool TryExport(
+                out IReadOnlyList<Stage1CanonicalEnemyTerminalFactV1> facts,
+                out string diagnostic)
             {
-                return false;
-            }
+                var output = new List<Stage1CanonicalEnemyTerminalFactV1>();
+                for (int index = 0; index < sources.Length; index++)
+                {
+                    Stage1EnemyTerminalSourceV1 source = sources[index];
+                    EnemyDefinitionV1 definition;
+                    if (!catalog.TryGet(source.DefinitionStableId, out definition)
+                        || definition == null)
+                    {
+                        facts = Array.Empty<Stage1CanonicalEnemyTerminalFactV1>();
+                        diagnostic = "stage1-enemy-terminal-definition-missing:"
+                            + source.DefinitionStableId;
+                        return false;
+                    }
 
-            PropDefinitionV1 definition;
-            StableId catalogDropProfile;
-            if (!propCatalog.TryGet(
-                    provenance.DefinitionStableId,
-                    out definition)
-                || definition == null
-                || !Stage1TerminalDropContentV1.TryReadDropProfile(
-                    definition,
-                    out catalogDropProfile)
-                || catalogDropProfile != provenance.DropProfileStableId
-                || !string.Equals(
-                    definition.Fingerprint,
-                    provenance.DefinitionFingerprint,
-                    StringComparison.Ordinal))
-            {
-                diagnostic =
-                    "stage1-prop-terminal-canonical-provenance-mismatch:"
-                    + provenance.DefinitionStableId;
-                return false;
-            }
+                    EnemyDeathFactV1 fact;
+                    string exportDiagnostic;
+                    if (!source.Authority.TryExportDeathFact(
+                            out fact,
+                            out exportDiagnostic))
+                    {
+                        continue;
+                    }
+                    if (fact == null
+                        || fact.Identity == null
+                        || fact.Identity.RoomStableId != source.RoomStableId
+                        || fact.Identity.PlacementStableId
+                            != source.PlacementStableId)
+                    {
+                        facts = Array.Empty<Stage1CanonicalEnemyTerminalFactV1>();
+                        diagnostic = "stage1-enemy-terminal-placement-mismatch";
+                        return false;
+                    }
 
-            source = new Stage1CanonicalPropTerminalSourceV1(
-                definition,
-                catalogDropProfile,
-                definition.Fingerprint,
-                provenance.RoomStableId,
-                provenance.PlacementStableId);
-            return true;
+                    TerminalDropAdaptationResultV1 adapted = adapter.Adapt(fact);
+                    if (adapted == null || !adapted.Succeeded)
+                    {
+                        facts = Array.Empty<Stage1CanonicalEnemyTerminalFactV1>();
+                        diagnostic = adapted == null
+                            ? "stage1-enemy-terminal-adaptation-null"
+                            : adapted.Diagnostic;
+                        return false;
+                    }
+
+                    Vector2 position = source.Position();
+                    output.Add(new Stage1CanonicalEnemyTerminalFactV1(
+                        fact,
+                        source.RoomStableId,
+                        source.PlacementStableId,
+                        position,
+                        TerminalDropCanonicalV1.Hash(
+                            source.RoomStableId
+                                + "|"
+                                + source.PlacementStableId
+                                + "|"
+                                + position.x.ToString("R", CultureInfo.InvariantCulture)
+                                + "|"
+                                + position.y.ToString("R", CultureInfo.InvariantCulture))));
+                }
+                facts = output.AsReadOnly();
+                diagnostic = string.Empty;
+                return true;
+            }
         }
     }
 }
