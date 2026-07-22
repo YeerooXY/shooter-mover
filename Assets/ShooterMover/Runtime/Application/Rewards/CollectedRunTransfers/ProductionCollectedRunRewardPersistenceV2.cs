@@ -12,6 +12,11 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
     /// Uses the existing CharacterCompositionCoordinator and atomic account store. Exact
     /// custody/receipt component fingerprints are installed as validator expectations before
     /// PersistActive, so verification occurs before replacement and during active read-back.
+    ///
+    /// Persistence certainty is explicit at this boundary. Rejected is returned only before
+    /// PersistActive is invoked. Once the account-save callback may have run, a throw, null
+    /// result, rejected result, or read-back mismatch is DurableStateUncertain. No diagnostic
+    /// substring is used to infer whether replacement happened.
     /// </summary>
     public sealed class ProductionCollectedRunRewardPersistenceV2 :
         ICollectedRunRewardTransferPersistencePortV1
@@ -95,6 +100,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     preparedComponent.Fingerprint
                 },
             };
+
             CharacterCompositionResultV1 persisted;
             try
             {
@@ -108,22 +114,15 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             }
             catch (Exception exception)
             {
-                prepared.ImportSnapshot(rollback);
-                return Rejected(
-                    "collected-run-transfer-custody-persist-threw:"
+                return Uncertain(
+                    null,
+                    "custody-persist-threw-"
                     + exception.GetType().Name);
             }
 
             if (persisted == null || !persisted.Succeeded)
             {
-                if (IsDurableStateUncertain(persisted))
-                    return Uncertain(persisted, "custody");
-                prepared.ImportSnapshot(rollback);
-                return Rejected(
-                    persisted == null
-                        ? "collected-run-transfer-custody-persist-result-null"
-                        : "collected-run-transfer-custody-persist-rejected:"
-                            + persisted.Diagnostic);
+                return Uncertain(persisted, "custody-persist-not-verified");
             }
             if (!HasExactComponent(
                 persisted.Character,
@@ -236,13 +235,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
 
             if (persisted == null || !persisted.Succeeded)
             {
-                return IsDurableStateUncertain(persisted)
-                    ? Uncertain(persisted, "final")
-                    : Rejected(
-                        persisted == null
-                            ? "collected-run-transfer-final-persist-result-null"
-                            : "collected-run-transfer-final-persist-rejected:"
-                                + persisted.Diagnostic);
+                return Uncertain(persisted, "final-persist-not-verified");
             }
             if (!HasExactComponent(persisted.Character, preparedComponent)
                 || !HasExactComponent(persisted.Character, receiptComponent))
@@ -387,19 +380,6 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     actual.Fingerprint,
                     expected.Fingerprint,
                     StringComparison.Ordinal);
-        }
-
-        private static bool IsDurableStateUncertain(
-            CharacterCompositionResultV1 result)
-        {
-            if (result == null || string.IsNullOrWhiteSpace(result.Diagnostic))
-                return false;
-            return result.Diagnostic.IndexOf(
-                    "active-readback-",
-                    StringComparison.Ordinal) >= 0
-                || result.Diagnostic.IndexOf(
-                    "account-save-io-failure",
-                    StringComparison.Ordinal) >= 0;
         }
 
         private static CollectedRunRewardTransferPersistenceResultV1 Success(
