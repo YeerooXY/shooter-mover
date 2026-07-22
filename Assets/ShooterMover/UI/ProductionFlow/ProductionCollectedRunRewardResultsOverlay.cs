@@ -7,8 +7,8 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
-    /// Additive Results projection for durable collected-run transfer proof. It owns no
-    /// reward state and can only issue the exact typed retry held by the Results bridge.
+    /// Additive Results projection for durable collected-run transfer proof. The retry
+    /// command addresses restored custody identity; UI owns no reward payload or delegate.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ProductionCollectedRunRewardResultsOverlay :
@@ -38,7 +38,6 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
             if (!hasSeenResults) return;
-
             ProductionCollectedRunRewardResultsBridge.Clear();
             Destroy(this);
         }
@@ -58,8 +57,12 @@ namespace ShooterMover.UI.ProductionFlow
                 ProductionCollectedRunRewardResultsBridge.Current;
             if (projection == null) return;
 
-            float width = Mathf.Min(1040f, Mathf.Max(480f, Screen.width - 64f));
-            float height = Mathf.Min(250f, Mathf.Max(170f, Screen.height * 0.30f));
+            float width = Mathf.Min(
+                1040f,
+                Mathf.Max(480f, Screen.width - 64f));
+            float height = Mathf.Min(
+                285f,
+                Mathf.Max(190f, Screen.height * 0.34f));
             GUILayout.BeginArea(
                 new Rect(
                     (Screen.width - width) * 0.5f,
@@ -76,8 +79,14 @@ namespace ShooterMover.UI.ProductionFlow
                 + projection.AppliedRewardStableIds.Count.ToString(
                     CultureInfo.InvariantCulture));
             GUILayout.Label(
-                "Operation: " + projection.TransferOperationStableId
+                "Custody: " + projection.CustodyStableId
+                + "\nOperation: " + projection.TransferOperationStableId
                 + "\nBatch: " + projection.BatchFingerprint
+                + "\nPlan: "
+                + (string.IsNullOrWhiteSpace(
+                        projection.ApplicationPlanFingerprint)
+                    ? "not constructed"
+                    : projection.ApplicationPlanFingerprint)
                 + "\nReceipt: "
                 + (string.IsNullOrWhiteSpace(projection.ReceiptFingerprint)
                     ? "not recorded"
@@ -89,7 +98,9 @@ namespace ShooterMover.UI.ProductionFlow
                 + projection.AccountRevision.ToString(
                     CultureInfo.InvariantCulture));
 
-            scroll = GUILayout.BeginScrollView(scroll, GUILayout.Height(65f));
+            scroll = GUILayout.BeginScrollView(
+                scroll,
+                GUILayout.Height(65f));
             for (int index = 0;
                 index < projection.AppliedRewardStableIds.Count;
                 index++)
@@ -116,8 +127,10 @@ namespace ShooterMover.UI.ProductionFlow
                 CollectedRunRewardTransferResultsProjectionV1 retried;
                 ProductionCollectedRunRewardResultsBridge.TryRetry(
                     new RetryCollectedRunRewardTransferCommandV1(
+                        projection.CustodyStableId,
                         projection.TransferOperationStableId,
-                        projection.BatchFingerprint),
+                        projection.BatchFingerprint,
+                        projection.ApplicationPlanFingerprint),
                     out retried);
             }
             GUI.enabled = true;
