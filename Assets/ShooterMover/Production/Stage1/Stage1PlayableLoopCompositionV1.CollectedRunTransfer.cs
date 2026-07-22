@@ -194,6 +194,23 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     endCommand,
                     candidateEnd =>
                     {
+                        if (candidateEnd == null
+                            || candidateEnd.Receipt == null
+                            || candidateEnd.Receipt.SelectedCharacterStableId
+                                != awaiting.SelectedCharacterStableId
+                            || candidateEnd.Receipt.ExpectedCharacterRevision
+                                != awaiting.ExpectedCharacterRevision
+                            || !string.Equals(
+                                candidateEnd.Receipt
+                                    .ExpectedCharacterFingerprint,
+                                awaiting.ExpectedCharacterFingerprint,
+                                StringComparison.Ordinal))
+                        {
+                            return RunSessionDurableAcceptanceResultV1
+                                .Rejected(
+                                    "The accepted mission result does not match the exact character frozen into transfer custody.");
+                        }
+
                         CollectedRunRewardPreparedTransferV1 candidatePrepared;
                         CollectedRunRewardAtomicPlanV2 candidatePlan;
                         string planDiagnostic;
