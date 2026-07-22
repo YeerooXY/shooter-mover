@@ -33,6 +33,11 @@ namespace ShooterMover.Application.Runs.Session
             get { return ExportPlayerSnapshot().ParticipantStableId; }
         }
 
+        public long NextCollectedRewardOrder
+        {
+            get { return checked(CurrentLifecycleCollectionCount() + 1L); }
+        }
+
         public RunSessionRewardCollectionResultV1 RecordCollectedRunReward(
             RunSessionCollectedRewardV1 reward)
         {
@@ -88,7 +93,7 @@ namespace ShooterMover.Application.Runs.Session
                     reward,
                     "run-session-collected-reward-collector-unauthorized");
             }
-            if (reward.CollectionOrder != CurrentLifecycleCollectionCount() + 1L)
+            if (reward.CollectionOrder != NextCollectedRewardOrder)
             {
                 return RewardCollectionResult(
                     RunSessionRewardCollectionStatusV1.ConflictingDuplicate,
