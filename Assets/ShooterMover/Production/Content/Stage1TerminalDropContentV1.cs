@@ -19,10 +19,14 @@ namespace ShooterMover.Content.Definitions.Rewards
             StableId.Parse("prop.stage1-crate");
         public static readonly StableId ExplosiveDefinitionStableId =
             StableId.Parse("prop.stage1-explosive");
+        public static readonly StableId GenericLegacyDefinitionStableId =
+            StableId.Parse("prop.legacy-unclassified");
         public static readonly StableId CrateDropProfileStableId =
             StableId.Parse("drop.prop-stage1-ordinary");
         public static readonly StableId ExplosiveDropProfileStableId =
             StableId.Parse("drop.prop-stage1-explosive");
+        public static readonly StableId GenericLegacyDropProfileStableId =
+            StableId.Parse("drop.prop-legacy-none");
 
         private static readonly PropCatalogV1 CanonicalPropCatalog =
             BuildPropCatalog();
@@ -55,26 +59,30 @@ namespace ShooterMover.Content.Definitions.Rewards
                 ExplosiveDropProfileStableId);
         }
 
+        public static DestructiblePropTerminalProvenanceV1
+            CreateGenericLegacyProvenance()
+        {
+            return CreatePropProvenance(
+                GenericLegacyDefinitionStableId,
+                GenericLegacyDropProfileStableId);
+        }
+
         /// <summary>
-        /// Bounded migration for the two pre-definition Stage 1 marker keys. Classification is
-        /// performed once at authoring time and converted immediately into canonical catalog
-        /// provenance; terminal/runtime code never reads this key or infers from health.
+        /// Bounded migration for the two pre-definition Stage 1 marker keys. Unknown reusable
+        /// legacy markers become an explicit no-drop definition rather than being guessed from
+        /// health, geometry, presentation, or destruction behavior.
         /// </summary>
         public static DestructiblePropTerminalProvenanceV1
             ResolveLegacyAuthoringKey(string authoringKey)
         {
             if (string.IsNullOrWhiteSpace(authoringKey))
-                throw new ArgumentException(
-                    "A legacy Stage 1 prop authoring key is required.",
-                    nameof(authoringKey));
+                return CreateGenericLegacyProvenance();
             string value = authoringKey.Trim();
             if (value.StartsWith("Crate_", StringComparison.Ordinal))
                 return CreateCrateProvenance();
             if (value.StartsWith("Explosive_", StringComparison.Ordinal))
                 return CreateExplosiveProvenance();
-            throw new InvalidOperationException(
-                "No canonical Stage 1 prop definition is bound to legacy authoring key '"
-                + value + "'.");
+            return CreateGenericLegacyProvenance();
         }
 
         public static bool TryReadDropProfile(
@@ -154,6 +162,17 @@ namespace ShooterMover.Content.Definitions.Rewards
                             PropCapabilitiesV1.DropOnDestroy(
                                 ExplosiveDropProfileStableId),
                         }),
+                    new PropDefinitionV1(
+                        GenericLegacyDefinitionStableId,
+                        StableId.Parse("presentation.prop.legacy-unclassified"),
+                        new[]
+                        {
+                            PropCapabilitiesV1.DamageBehavior(
+                                PropDamageAlignmentV1.Neutral,
+                                StableId.Parse("damage-policy.prop-stage1")),
+                            PropCapabilitiesV1.DropOnDestroy(
+                                GenericLegacyDropProfileStableId),
+                        }),
                 });
         }
 
@@ -229,6 +248,8 @@ namespace ShooterMover.Content.Definitions.Rewards
                 enemyTurret,
                 crate,
                 explosive,
+                RewardProfileV1.CreateExplicitNoDrop(
+                    GenericLegacyDropProfileStableId),
                 RewardProfileV1.CreateExplicitNoDrop(
                     StableId.Parse("drop.enemy-none")),
             });
