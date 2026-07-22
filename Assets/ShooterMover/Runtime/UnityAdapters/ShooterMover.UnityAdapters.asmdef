@@ -6,6 +6,10 @@
     "ShooterMover.Contracts",
     "ShooterMover.Application",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.TerminalDropBinding",
+    "ShooterMover.RunPickups",
+    "ShooterMover.RunPickupUnity",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
