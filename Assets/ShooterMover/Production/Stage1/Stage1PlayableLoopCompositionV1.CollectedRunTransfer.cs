@@ -58,7 +58,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     != RunSessionLifecycleStateV1.Active)
             {
                 RejectCollectedRunTransferExit(
-                    "The shared active Run Session is unavailable at final exit.");
+                    "The shared active Run Session is unavailable at final exit.",
+                    true);
                 return;
             }
 
@@ -80,7 +81,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     string.IsNullOrWhiteSpace(dropContextDiagnostic)
                         ? "The frozen terminal-drop run context is unavailable: "
                             + dropContextRejection
-                        : dropContextDiagnostic);
+                        : dropContextDiagnostic,
+                    true);
                 return;
             }
 
@@ -105,7 +107,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 || currentProfile == null)
             {
                 RejectCollectedRunTransferExit(
-                    "The selected account-backed character graph is unavailable.");
+                    "The selected account-backed character graph is unavailable.",
+                    true);
                 return;
             }
 
@@ -118,7 +121,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     out receipts))
             {
                 RejectCollectedRunTransferExit(
-                    "The selected character reward and receipt authorities are unavailable.");
+                    "The selected character reward and receipt authorities are unavailable.",
+                    true);
                 return;
             }
 
@@ -141,7 +145,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 RejectCollectedRunTransferExit(
                     acceptedEnd == null
                         ? "The Run Session end authority returned no result."
-                        : acceptedEnd.RejectionCode);
+                        : acceptedEnd.RejectionCode,
+                    true);
                 return;
             }
 
@@ -160,13 +165,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     generationContext,
                     graph,
                     rewardApplication,
-                    null,
+                    pickupBootstrap.EquipmentPayloadSource,
                     out plan,
                     out planDiagnostic)
                 || plan == null)
             {
-                // The run is ended, but Results is intentionally not entered without an
-                // immutable exact transfer plan. No permanent authority was mutated here.
                 diagnostic = string.IsNullOrWhiteSpace(planDiagnostic)
                     ? "The collected-run transfer plan was rejected."
                     : planDiagnostic;
@@ -211,6 +214,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 plan.Batch,
                 transferResult,
                 transfer.Apply);
+            ProductionCollectedRunRewardResultsOverlay overlay =
+                flow.GetComponent<
+                    ProductionCollectedRunRewardResultsOverlay>();
+            if (overlay == null)
+            {
+                overlay = flow.gameObject.AddComponent<
+                    ProductionCollectedRunRewardResultsOverlay>();
+            }
+            overlay.Configure();
 
             StableId participantId = controller.PlayerRunParticipantId;
             ParticipantRunStats stats;
@@ -232,18 +244,26 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 acceptedEnd.Receipt.MissionResult,
                 summary))
             {
-                ending = false;
                 diagnostic =
                     "The canonical Results handoff rejected the mission result.";
             }
         }
 
-        private void RejectCollectedRunTransferExit(string message)
+        private void RejectCollectedRunTransferExit(
+            string message,
+            bool rearmFinalExit)
         {
             ending = false;
             diagnostic = string.IsNullOrWhiteSpace(message)
                 ? "The collected-run transfer route was rejected."
                 : message;
+            if (rearmFinalExit && rooms != null)
+            {
+                rooms.FinalExitReached -=
+                    HandleFinalExitReachedWithCollectedRunTransfer;
+                rooms.FinalExitReached +=
+                    HandleFinalExitReachedWithCollectedRunTransfer;
+            }
         }
 
         private static long SumCollectedReward(
