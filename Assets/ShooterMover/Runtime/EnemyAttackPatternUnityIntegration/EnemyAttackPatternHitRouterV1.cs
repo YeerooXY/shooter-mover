@@ -14,11 +14,9 @@ namespace ShooterMover.UnityAdapters.Enemies
         bool TryReadSource(
             EnemyAttackEffectEmissionV1 emission,
             out CombatActorSnapshotV1 source);
-
         bool TryReadTarget(
             StableId targetEntityStableId,
             out CombatActorSnapshotV1 target);
-
         DamageReceiverResult ApplyPlayerDamage(PlayerDamageRequest request);
     }
 
@@ -30,20 +28,13 @@ namespace ShooterMover.UnityAdapters.Enemies
     public sealed class BuiltInEnemyAttackPatternDamageChannelMapV1 :
         IEnemyAttackPatternDamageChannelMapV1
     {
-        private static readonly StableId Kinetic =
-            StableId.Parse("damage.kinetic");
-        private static readonly StableId Impact =
-            StableId.Parse("damage.impact");
-        private static readonly StableId Thermal =
-            StableId.Parse("damage.thermal");
-        private static readonly StableId Electrical =
-            StableId.Parse("damage.electrical");
-        private static readonly StableId Explosive =
-            StableId.Parse("damage.explosive");
+        private static readonly StableId Kinetic = StableId.Parse("damage.kinetic");
+        private static readonly StableId Impact = StableId.Parse("damage.impact");
+        private static readonly StableId Thermal = StableId.Parse("damage.thermal");
+        private static readonly StableId Electrical = StableId.Parse("damage.electrical");
+        private static readonly StableId Explosive = StableId.Parse("damage.explosive");
 
-        public bool TryMap(
-            StableId damageChannelStableId,
-            out CombatChannel channel)
+        public bool TryMap(StableId damageChannelStableId, out CombatChannel channel)
         {
             channel = CombatChannel.System;
             if (damageChannelStableId == Kinetic)
@@ -78,11 +69,12 @@ namespace ShooterMover.UnityAdapters.Enemies
     public enum EnemyAttackPatternHitRouteStatusV1
     {
         Applied = 1,
-        ExactReplay = 2,
+        AppliedExactReplay = 2,
         RejectedByPolicy = 3,
         RejectedByDamageAuthority = 4,
         ConflictingDuplicate = 5,
         InvalidInput = 6,
+        RetryableFailure = 7,
     }
 
     public sealed class EnemyAttackPatternHitRouteResultV1
@@ -94,14 +86,11 @@ namespace ShooterMover.UnityAdapters.Enemies
             StableId targetEntityStableId,
             CombatHitPolicyResultV1 policyResult,
             DamageReceiverResult damageResult,
-            string rejectionCode)
+            string rejectionCode,
+            bool isReplay)
         {
-            if (!Enum.IsDefined(
-                    typeof(EnemyAttackPatternHitRouteStatusV1),
-                    status))
-            {
+            if (!Enum.IsDefined(typeof(EnemyAttackPatternHitRouteStatusV1), status))
                 throw new ArgumentOutOfRangeException(nameof(status));
-            }
             Status = status;
             Emission = emission;
             HitEventStableId = hitEventStableId;
@@ -109,6 +98,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             PolicyResult = policyResult;
             DamageResult = damageResult;
             RejectionCode = rejectionCode ?? string.Empty;
+            IsReplay = isReplay;
         }
 
         public EnemyAttackPatternHitRouteStatusV1 Status { get; }
@@ -118,33 +108,30 @@ namespace ShooterMover.UnityAdapters.Enemies
         public CombatHitPolicyResultV1 PolicyResult { get; }
         public DamageReceiverResult DamageResult { get; }
         public string RejectionCode { get; }
+        public bool IsReplay { get; }
         public bool IsAccepted
         {
             get
             {
                 return Status == EnemyAttackPatternHitRouteStatusV1.Applied
-                    || Status == EnemyAttackPatternHitRouteStatusV1.ExactReplay;
+                    || Status == EnemyAttackPatternHitRouteStatusV1.AppliedExactReplay;
             }
+        }
+        public bool IsRetryable
+        {
+            get { return Status == EnemyAttackPatternHitRouteStatusV1.RetryableFailure; }
         }
     }
 
-    /// <summary>
-    /// Session-local policy/replay ledger for immutable schema-v2 enemy emissions. This adapter
-    /// never mutates health. Only a Combat Hit Policy acceptance is forwarded to the existing
-    /// PlayerRuntimeComposition through PlayerDamageRequest.
-    /// </summary>
     public sealed class EnemyAttackPatternHitRouterV1
     {
         private sealed class ReplayRecord
         {
-            public ReplayRecord(
-                string fingerprint,
-                EnemyAttackPatternHitRouteResultV1 result)
+            public ReplayRecord(string fingerprint, EnemyAttackPatternHitRouteResultV1 result)
             {
                 Fingerprint = fingerprint;
                 Result = result;
             }
-
             public string Fingerprint { get; }
             public EnemyAttackPatternHitRouteResultV1 Result { get; }
         }
@@ -163,11 +150,9 @@ namespace ShooterMover.UnityAdapters.Enemies
             ICombatHitPolicyV1 policy = null)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
-            this.channelMap = channelMap
-                ?? new BuiltInEnemyAttackPatternDamageChannelMapV1();
+            this.channelMap = channelMap ?? new BuiltInEnemyAttackPatternDamageChannelMapV1();
             this.policy = policy
-                ?? new CombatHitPolicyV1(
-                    CombatHitPolicyRegistryV1.CreateDefault());
+                ?? new CombatHitPolicyV1(CombatHitPolicyRegistryV1.CreateDefault());
         }
 
         public EnemyAttackPatternHitRouteResultV1 RouteActorContact(
@@ -177,56 +162,41 @@ namespace ShooterMover.UnityAdapters.Enemies
             long observedTargetLifecycleGeneration,
             double distanceSquared)
         {
-            string fingerprint = Fingerprint(
-                emission,
-                hitEventStableId,
-                targetEntityStableId,
-                observedTargetLifecycleGeneration,
+            string fingerprint = Fingerprint(emission, hitEventStableId,
+                targetEntityStableId, observedTargetLifecycleGeneration,
                 distanceSquared);
             ReplayRecord replay;
             if (hitEventStableId != null
                 && replayByHitEvent.TryGetValue(hitEventStableId, out replay))
             {
-                return string.Equals(
-                        replay.Fingerprint,
-                        fingerprint,
-                        StringComparison.Ordinal)
-                    ? Result(
-                        EnemyAttackPatternHitRouteStatusV1.ExactReplay,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        replay.Result.PolicyResult,
-                        replay.Result.DamageResult,
-                        string.Empty)
-                    : Result(
+                if (!string.Equals(replay.Fingerprint, fingerprint,
+                        StringComparison.Ordinal))
+                {
+                    return Result(
                         EnemyAttackPatternHitRouteStatusV1.ConflictingDuplicate,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        null,
-                        null,
-                        "enemy-pattern-hit-event-conflict");
+                        emission, hitEventStableId, targetEntityStableId,
+                        null, null, "enemy-pattern-hit-event-conflict", false);
+                }
+
+                EnemyAttackPatternHitRouteResultV1 original = replay.Result;
+                return Result(
+                    original.IsAccepted
+                        ? EnemyAttackPatternHitRouteStatusV1.AppliedExactReplay
+                        : original.Status,
+                    emission, hitEventStableId, targetEntityStableId,
+                    original.PolicyResult, original.DamageResult,
+                    original.RejectionCode, true);
             }
 
-            string invalid = Validate(
-                emission,
-                hitEventStableId,
-                targetEntityStableId,
-                observedTargetLifecycleGeneration,
+            string invalid = Validate(emission, hitEventStableId,
+                targetEntityStableId, observedTargetLifecycleGeneration,
                 distanceSquared);
             if (!string.IsNullOrEmpty(invalid))
             {
-                return Remember(
-                    fingerprint,
-                    Result(
-                        EnemyAttackPatternHitRouteStatusV1.InvalidInput,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        null,
-                        null,
-                        invalid));
+                return Remember(fingerprint, Result(
+                    EnemyAttackPatternHitRouteStatusV1.InvalidInput,
+                    emission, hitEventStableId, targetEntityStableId,
+                    null, null, invalid, false));
             }
 
             CombatActorSnapshotV1 source;
@@ -237,51 +207,35 @@ namespace ShooterMover.UnityAdapters.Enemies
                 || !context.TryReadTarget(targetEntityStableId, out target)
                 || target == null
                 || !channelMap.TryMap(
-                    emission.Execution.Descriptor.DamageChannelId,
-                    out channel))
+                    emission.Execution.Descriptor.DamageChannelId, out channel))
             {
-                return Remember(
-                    fingerprint,
-                    Result(
-                        EnemyAttackPatternHitRouteStatusV1.InvalidInput,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        null,
-                        null,
-                        "enemy-pattern-hit-context-unavailable"));
+                return Result(
+                    EnemyAttackPatternHitRouteStatusV1.RetryableFailure,
+                    emission, hitEventStableId, targetEntityStableId,
+                    null, null, "enemy-pattern-hit-context-unavailable", false);
             }
 
             CombatEffectSnapshotV1 effect = BuildEffect(emission);
             CombatHitHistorySnapshotV1 history;
             if (!historyByEffect.TryGetValue(effect.EffectId, out history))
-            {
                 history = CombatHitHistorySnapshotV1.Empty(effect.EffectId);
-            }
             CombatHitPolicyResultV1 policyResult = policy.Evaluate(
                 new CombatHitPolicyInputV1(
                     source,
                     effect,
-                    CombatHitContactV1.Actor(
-                        target,
-                        observedTargetLifecycleGeneration,
-                        distanceSquared),
+                    CombatHitContactV1.Actor(target,
+                        observedTargetLifecycleGeneration, distanceSquared),
                     history));
             if (policyResult == null || !policyResult.DamageEligible)
             {
-                return Remember(
-                    fingerprint,
-                    Result(
-                        EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        policyResult,
-                        null,
-                        policyResult == null
-                            ? "enemy-pattern-hit-policy-null"
-                            : "enemy-pattern-hit-policy-"
-                                + policyResult.RejectionCode));
+                return Remember(fingerprint, Result(
+                    EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy,
+                    emission, hitEventStableId, targetEntityStableId,
+                    policyResult, null,
+                    policyResult == null
+                        ? "enemy-pattern-hit-policy-null"
+                        : "enemy-pattern-hit-policy-" + policyResult.RejectionCode,
+                    false));
             }
 
             DamageReceiverCommand command;
@@ -293,16 +247,11 @@ namespace ShooterMover.UnityAdapters.Enemies
                     out command)
                 || command == null)
             {
-                return Remember(
-                    fingerprint,
-                    Result(
-                        EnemyAttackPatternHitRouteStatusV1.InvalidInput,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        policyResult,
-                        null,
-                        "enemy-pattern-damage-command-unavailable"));
+                return Remember(fingerprint, Result(
+                    EnemyAttackPatternHitRouteStatusV1.InvalidInput,
+                    emission, hitEventStableId, targetEntityStableId,
+                    policyResult, null,
+                    "enemy-pattern-damage-command-unavailable", false));
             }
 
             DamageReceiverResult damageResult = context.ApplyPlayerDamage(
@@ -314,39 +263,35 @@ namespace ShooterMover.UnityAdapters.Enemies
                     command.Amount,
                     command.Channel,
                     command.LifecycleGeneration));
-            bool acceptedDamage = damageResult != null
-                && (damageResult.Status == DamageReceiverStatus.Applied
-                    || damageResult.Status == DamageReceiverStatus.Duplicate);
+            if (damageResult == null)
+            {
+                return Result(
+                    EnemyAttackPatternHitRouteStatusV1.RetryableFailure,
+                    emission, hitEventStableId, targetEntityStableId,
+                    policyResult, null,
+                    "enemy-pattern-player-damage-unavailable", false);
+            }
+
+            bool acceptedDamage = damageResult.Status == DamageReceiverStatus.Applied
+                || damageResult.Status == DamageReceiverStatus.Duplicate;
             if (!acceptedDamage)
             {
-                return Remember(
-                    fingerprint,
-                    Result(
-                        EnemyAttackPatternHitRouteStatusV1.RejectedByDamageAuthority,
-                        emission,
-                        hitEventStableId,
-                        targetEntityStableId,
-                        policyResult,
-                        damageResult,
-                        damageResult == null
-                            ? "enemy-pattern-player-damage-null"
-                            : "enemy-pattern-player-damage-"
-                                + damageResult.RejectionCode));
+                return Remember(fingerprint, Result(
+                    EnemyAttackPatternHitRouteStatusV1.RejectedByDamageAuthority,
+                    emission, hitEventStableId, targetEntityStableId,
+                    policyResult, damageResult,
+                    "enemy-pattern-player-damage-" + damageResult.RejectionCode,
+                    false));
             }
 
             historyByEffect[effect.EffectId] = policyResult.NextHistory;
-            return Remember(
-                fingerprint,
-                Result(
-                    damageResult.Status == DamageReceiverStatus.Duplicate
-                        ? EnemyAttackPatternHitRouteStatusV1.ExactReplay
-                        : EnemyAttackPatternHitRouteStatusV1.Applied,
-                    emission,
-                    hitEventStableId,
-                    targetEntityStableId,
-                    policyResult,
-                    damageResult,
-                    string.Empty));
+            return Remember(fingerprint, Result(
+                damageResult.Status == DamageReceiverStatus.Duplicate
+                    ? EnemyAttackPatternHitRouteStatusV1.AppliedExactReplay
+                    : EnemyAttackPatternHitRouteStatusV1.Applied,
+                emission, hitEventStableId, targetEntityStableId,
+                policyResult, damageResult, string.Empty,
+                damageResult.Status == DamageReceiverStatus.Duplicate));
         }
 
         public void Clear()
@@ -361,8 +306,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         {
             if (result != null && result.HitEventStableId != null)
             {
-                replayByHitEvent.Add(
-                    result.HitEventStableId,
+                replayByHitEvent.Add(result.HitEventStableId,
                     new ReplayRecord(fingerprint, result));
             }
             return result;
@@ -379,22 +323,18 @@ namespace ShooterMover.UnityAdapters.Enemies
                 if (emission.Projectile.Payload.AreaPayload != null)
                 {
                     geometry = CombatEffectGeometryKindV1.Explosion;
-                    pierce = Math.Max(
-                        0,
+                    pierce = Math.Max(0,
                         emission.Projectile.Payload.AreaPayload.MaximumTargets - 1);
                 }
                 else
                 {
                     geometry = CombatEffectGeometryKindV1.Projectile;
-                    pierce = Math.Max(
-                        0,
-                        emission.Projectile.Payload.PierceCount);
+                    pierce = Math.Max(0, emission.Projectile.Payload.PierceCount);
                 }
             }
             else
             {
-                maximumHitsPerTarget = Math.Max(
-                    1,
+                maximumHitsPerTarget = Math.Max(1,
                     emission.MeleeStrike.Pattern.HitsPerTarget);
                 geometry = emission.MeleeStrike.Pattern.LungeDistance > 0d
                     ? CombatEffectGeometryKindV1.ContactAttack
@@ -442,20 +382,14 @@ namespace ShooterMover.UnityAdapters.Enemies
         {
             return (emission == null ? "-" : emission.Fingerprint)
                 + "|"
-                + (hitEventStableId == null
-                    ? "-"
-                    : hitEventStableId.ToString())
+                + (hitEventStableId == null ? "-" : hitEventStableId.ToString())
                 + "|"
-                + (targetEntityStableId == null
-                    ? "-"
-                    : targetEntityStableId.ToString())
+                + (targetEntityStableId == null ? "-" : targetEntityStableId.ToString())
                 + "|"
                 + observedTargetLifecycleGeneration.ToString(
                     CultureInfo.InvariantCulture)
                 + "|"
-                + distanceSquared.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture);
+                + distanceSquared.ToString("R", CultureInfo.InvariantCulture);
         }
 
         private static EnemyAttackPatternHitRouteResultV1 Result(
@@ -465,16 +399,12 @@ namespace ShooterMover.UnityAdapters.Enemies
             StableId targetEntityStableId,
             CombatHitPolicyResultV1 policyResult,
             DamageReceiverResult damageResult,
-            string rejectionCode)
+            string rejectionCode,
+            bool isReplay)
         {
             return new EnemyAttackPatternHitRouteResultV1(
-                status,
-                emission,
-                hitEventStableId,
-                targetEntityStableId,
-                policyResult,
-                damageResult,
-                rejectionCode);
+                status, emission, hitEventStableId, targetEntityStableId,
+                policyResult, damageResult, rejectionCode, isReplay);
         }
     }
 }
