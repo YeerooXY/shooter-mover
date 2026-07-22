@@ -18,21 +18,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     public sealed partial class Stage1PlayableLoopCompositionV1
     {
         private bool collectedRunTransferExitHookInstalled;
+        private MissionResultPayloadV1 pendingCollectedRunMissionResult;
+        private ProductionResultsSummaryV1 pendingCollectedRunSummary;
 
         /// <summary>
-        /// Replaces only this composition's retained direct mission-result callback after
-        /// the room runtime has been built. The scene controller and collision callbacks
-        /// remain unaware of permanent rewards.
+        /// Replaces only this composition's retained direct mission-result callback. Before
+        /// accepted End, rejection re-arms the exit. After accepted End, this update loop
+        /// retains the immutable Results handoff until the scene transition accepts it.
         /// </summary>
         private void LateUpdate()
         {
+            if (pendingCollectedRunMissionResult != null)
+                TryPresentPendingCollectedRunResults();
+
             if (!initialized
                 || rooms == null
                 || collectedRunTransferExitHookInstalled)
             {
                 return;
             }
-
             rooms.FinalExitReached -= HandleFinalExitReached;
             rooms.FinalExitReached +=
                 HandleFinalExitReachedWithCollectedRunTransfer;
@@ -57,9 +61,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 || sharedRun.LifecycleState
                     != RunSessionLifecycleStateV1.Active)
             {
-                RejectCollectedRunTransferExit(
-                    "The shared active Run Session is unavailable at final exit.",
-                    true);
+                RejectBeforeAcceptedEnd(
+                    "The shared active Run Session is unavailable at final exit.");
                 return;
             }
 
@@ -77,12 +80,45 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     out dropContextDiagnostic)
                 || dropContext == null)
             {
-                RejectCollectedRunTransferExit(
+                RejectBeforeAcceptedEnd(
                     string.IsNullOrWhiteSpace(dropContextDiagnostic)
                         ? "The frozen terminal-drop run context is unavailable: "
                             + dropContextRejection
-                        : dropContextDiagnostic,
-                    true);
+                        : dropContextDiagnostic);
+                return;
+            }
+
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 currentProfile;
+            CharacterCompositionCoordinatorV1 composition;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out currentProfile,
+                    out composition)
+                || graph == null
+                || graph.IsDisposed
+                || composition == null
+                || currentProfile == null)
+            {
+                RejectBeforeAcceptedEnd(
+                    "The selected account-backed character graph is unavailable.");
+                return;
+            }
+            ProductionCollectedRunRewardRuntimeRegistryV2.BindRuntime(
+                graph,
+                composition);
+
+            RewardApplicationServiceV1 rewardApplication;
+            CollectedRunRewardPreparedTransferAuthorityV1 preparedAuthority;
+            CollectedRunRewardTransferReceiptAuthorityV1 receipts;
+            if (!ProductionCollectedRunRewardRuntimeRegistryV2.TryResolve(
+                    graph.Character.CharacterInstanceStableId,
+                    out rewardApplication,
+                    out preparedAuthority,
+                    out receipts))
+            {
+                RejectBeforeAcceptedEnd(
+                    "The selected character transfer authorities are unavailable.");
                 return;
             }
 
@@ -95,37 +131,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 collectedRewards,
                 RewardGrantKindV1.Scrap);
 
-            ProductionCharacterRuntimeGraphV1 graph;
-            ProductionFlowProfileRecordV1 currentProfile;
-            CharacterCompositionCoordinatorV1 composition;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
-                    out graph,
-                    out currentProfile,
-                    out composition)
-                || graph == null
-                || composition == null
-                || currentProfile == null)
-            {
-                RejectCollectedRunTransferExit(
-                    "The selected account-backed character graph is unavailable.",
-                    true);
-                return;
-            }
-
-            RewardApplicationServiceV1 rewardApplication;
-            CollectedRunRewardTransferReceiptAuthorityV1 receipts;
-            if (!ProductionCollectedRunRewardTransferRuntimeRegistry
-                .TryResolve(
-                    graph.Character.CharacterInstanceStableId,
-                    out rewardApplication,
-                    out receipts))
-            {
-                RejectCollectedRunTransferExit(
-                    "The selected character reward and receipt authorities are unavailable.",
-                    true);
-                return;
-            }
-
             var endCommand = new EndRunSessionCommandV1(
                 StableId.Create(
                     "operation",
@@ -136,100 +141,150 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 sharedRun.LifecycleGeneration,
                 MissionRunCompletionStateV1.Completed,
                 sharedRun.AuthoritativeTick + 1L);
-            RunSessionEndResultV1 acceptedEnd =
-                sharedRun.End(endCommand);
-            if (acceptedEnd == null
-                || !acceptedEnd.Succeeded
-                || acceptedEnd.Receipt == null)
-            {
-                RejectCollectedRunTransferExit(
-                    acceptedEnd == null
-                        ? "The Run Session end authority returned no result."
-                        : acceptedEnd.RejectionCode,
-                    true);
-                return;
-            }
-
             var generationContext =
-                new CollectedRunRewardGenerationContextV1(
+                new CollectedRunRewardGenerationContextV2(
                     dropContext.RootSeed,
                     dropContext.GenerationAlgorithmVersion,
                     dropContext.ProgressionContext,
                     dropContext.EventModifierContextFingerprint);
-            CollectedRunRewardApplicationPlanV1 plan;
-            string planDiagnostic;
-            if (!RunSessionCollectedRewardTransferPlanFactory.TryCreate(
-                    acceptedEnd,
+
+            CollectedRunRewardPreparedTransferV1 awaiting;
+            string preparationDiagnostic;
+            if (!CollectedRunRewardTransferPreparationFactoryV2
+                .TryCreateAwaitingAcceptedEnd(
+                    endCommand,
                     collectedRewards,
-                    graph.Character,
-                    generationContext,
                     graph,
                     rewardApplication,
+                    receipts,
+                    preparedAuthority,
+                    generationContext,
                     pickupBootstrap.EquipmentPayloadSource,
+                    out awaiting,
+                    out preparationDiagnostic)
+                || awaiting == null)
+            {
+                RejectBeforeAcceptedEnd(
+                    string.IsNullOrWhiteSpace(preparationDiagnostic)
+                        ? "The collected-run transfer could not be frozen before End."
+                        : preparationDiagnostic);
+                return;
+            }
+
+            var persistence = new ProductionCollectedRunRewardPersistenceV2(
+                composition,
+                preparedAuthority,
+                receipts,
+                graph.Character.CharacterInstanceStableId);
+            CollectedRunRewardTransferPersistenceResultV1 awaitingSaved =
+                persistence.PersistPreparedCustody(awaiting);
+            if (awaitingSaved == null || !awaitingSaved.Succeeded)
+            {
+                RejectBeforeAcceptedEnd(
+                    awaitingSaved == null
+                        ? "The pre-End transfer custody save returned no result."
+                        : awaitingSaved.Diagnostic);
+                return;
+            }
+
+            RunSessionEndResultV1 acceptedEnd = sharedRun.End(endCommand);
+            if (acceptedEnd == null
+                || !acceptedEnd.Succeeded
+                || acceptedEnd.Receipt == null
+                || acceptedEnd.Receipt.MissionResult == null)
+            {
+                RejectBeforeAcceptedEnd(
+                    acceptedEnd == null
+                        ? "The Run Session End authority returned no result."
+                        : acceptedEnd.RejectionCode);
+                return;
+            }
+
+            CollectedRunRewardPreparedTransferV1 prepared;
+            CollectedRunRewardAtomicPlanV2 plan;
+            string planDiagnostic;
+            if (!CollectedRunRewardTransferPreparationFactoryV2
+                .TryAcceptEndAndBuildPlan(
+                    acceptedEnd,
+                    awaiting,
+                    graph,
+                    rewardApplication,
+                    out prepared,
                     out plan,
                     out planDiagnostic)
+                || prepared == null
                 || plan == null)
             {
-                diagnostic = string.IsNullOrWhiteSpace(planDiagnostic)
-                    ? "The collected-run transfer plan was rejected."
-                    : planDiagnostic;
+                ProductionCollectedRunRewardResultsBridge.Clear();
+                ProductionCollectedRunRewardResultsBridge
+                    .PublishPreparationFailure(
+                        awaiting,
+                        string.IsNullOrWhiteSpace(planDiagnostic)
+                            ? "The accepted run could not construct its immutable transfer plan."
+                            : planDiagnostic);
+                ConfigureTransferOverlay();
+                QueueAcceptedResults(
+                    acceptedEnd.Receipt.MissionResult,
+                    BuildTransferSummary(
+                        currentProfile,
+                        moneyEarned,
+                        scrapEarned));
                 return;
             }
 
             var authority =
-                new ProductionCollectedRunRewardTransferAuthorityAdapter(
-                    graph,
-                    composition,
-                    rewardApplication,
-                    receipts,
-                    plan);
-            var preflightedAuthority =
-                new FullyPreflightedCollectedRunRewardTransferAuthorityAdapter(
+                new ProductionCollectedRunRewardAtomicAuthorityV2(
                     graph,
                     rewardApplication,
-                    plan,
-                    authority);
-            var persistence =
-                new ProductionCollectedRunRewardTransferPersistenceAdapter(
-                    composition,
-                    receipts,
-                    graph.Character.CharacterInstanceStableId);
+                    preparedAuthority,
+                    receipts);
             var transfer =
-                new FullyPreflightedCollectedRunRewardTransferService(
+                new ProductionCollectedRunRewardTransferServiceV2(
                     plan,
                     authority,
-                    preflightedAuthority,
                     persistence);
             CollectedRunRewardTransferResultV1 transferResult =
                 transfer.Apply();
             if (transferResult == null)
             {
-                diagnostic =
-                    "The collected-run transfer authority returned no result.";
-                return;
+                transferResult = new CollectedRunRewardTransferResultV1(
+                    CollectedRunRewardTransferStatusV1.PreparationFailed,
+                    prepared.TransferOperationStableId,
+                    prepared.BatchFingerprint,
+                    prepared.RunStableId,
+                    prepared.SelectedCharacterStableId,
+                    null,
+                    null,
+                    CollectedRunRewardTransferPersistenceResultV1
+                        .NotAttempted(string.Empty),
+                    "The collected-run transfer authority returned no result.",
+                    string.Empty,
+                    true);
             }
 
             ProductionCollectedRunRewardResultsBridge.Clear();
             ProductionCollectedRunRewardResultsBridge.Publish(
-                plan.Batch,
-                transferResult,
-                transfer.Apply);
-            ProductionCollectedRunRewardResultsOverlay overlay =
-                flow.GetComponent<
-                    ProductionCollectedRunRewardResultsOverlay>();
-            if (overlay == null)
-            {
-                overlay = flow.gameObject.AddComponent<
-                    ProductionCollectedRunRewardResultsOverlay>();
-            }
-            overlay.Configure();
+                prepared,
+                transferResult);
+            ConfigureTransferOverlay();
+            QueueAcceptedResults(
+                acceptedEnd.Receipt.MissionResult,
+                BuildTransferSummary(
+                    currentProfile,
+                    moneyEarned,
+                    scrapEarned));
+        }
 
+        private ProductionResultsSummaryV1 BuildTransferSummary(
+            ProductionFlowProfileRecordV1 currentProfile,
+            long moneyEarned,
+            long scrapEarned)
+        {
             StableId participantId = controller.PlayerRunParticipantId;
             ParticipantRunStats stats;
             if (!participantStats.TryGetValue(participantId, out stats))
                 stats = new ParticipantRunStats(participantId);
-
-            var summary = new ProductionResultsSummaryV1(
+            return new ProductionResultsSummaryV1(
                 currentProfile.DisplayName,
                 DisplayClass(
                     currentProfile.Payload.LoadoutProfileStableId),
@@ -239,25 +294,72 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 stats.Experience,
                 moneyEarned,
                 scrapEarned);
-            if (!ProductionReadOnlyResultsBridgeV1.Present(
-                flow,
-                acceptedEnd.Receipt.MissionResult,
-                summary))
+        }
+
+        private void ConfigureTransferOverlay()
+        {
+            ProductionCollectedRunRewardResultsOverlay overlay =
+                flow.GetComponent<
+                    ProductionCollectedRunRewardResultsOverlay>();
+            if (overlay == null)
+            {
+                overlay = flow.gameObject.AddComponent<
+                    ProductionCollectedRunRewardResultsOverlay>();
+            }
+            overlay.Configure();
+        }
+
+        private void QueueAcceptedResults(
+            MissionResultPayloadV1 missionResult,
+            ProductionResultsSummaryV1 summary)
+        {
+            pendingCollectedRunMissionResult = missionResult
+                ?? throw new ArgumentNullException(nameof(missionResult));
+            pendingCollectedRunSummary = summary
+                ?? throw new ArgumentNullException(nameof(summary));
+            TryPresentPendingCollectedRunResults();
+        }
+
+        private void TryPresentPendingCollectedRunResults()
+        {
+            if (pendingCollectedRunMissionResult == null
+                || pendingCollectedRunSummary == null
+                || flow == null)
+            {
+                return;
+            }
+            try
+            {
+                if (!ProductionReadOnlyResultsBridgeV1.Present(
+                    flow,
+                    pendingCollectedRunMissionResult,
+                    pendingCollectedRunSummary))
+                {
+                    diagnostic =
+                        "The accepted Results handoff is pending and will retry.";
+                    return;
+                }
+                pendingCollectedRunMissionResult = null;
+                pendingCollectedRunSummary = null;
+                diagnostic = string.Empty;
+            }
+            catch (Exception exception)
             {
                 diagnostic =
-                    "The canonical Results handoff rejected the mission result.";
+                    "The accepted Results handoff failed and remains pending: "
+                    + exception.GetType().Name
+                    + ": "
+                    + exception.Message;
             }
         }
 
-        private void RejectCollectedRunTransferExit(
-            string message,
-            bool rearmFinalExit)
+        private void RejectBeforeAcceptedEnd(string message)
         {
             ending = false;
             diagnostic = string.IsNullOrWhiteSpace(message)
-                ? "The collected-run transfer route was rejected."
+                ? "The collected-run transfer route was rejected before End."
                 : message;
-            if (rearmFinalExit && rooms != null)
+            if (rooms != null)
             {
                 rooms.FinalExitReached -=
                     HandleFinalExitReachedWithCollectedRunTransfer;
