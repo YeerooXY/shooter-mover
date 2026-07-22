@@ -72,6 +72,41 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             public int PermanentMutationCount { get; private set; }
             public RunPickupCollectionFactV1 LastFact { get; private set; }
             public RunPickupSessionRecordStatusV1? ForcedStatus { get; set; }
+            public bool ContextAvailable { get; set; } = true;
+            public bool ThrowOnContextRead { get; set; }
+
+            public bool TryReadContext(
+                out RunPickupRunSessionContextV1 context,
+                out string diagnostic)
+            {
+                if (ThrowOnContextRead)
+                    throw new InvalidOperationException("fake-session-context-failure");
+                if (!ContextAvailable)
+                {
+                    context = null;
+                    diagnostic = "fake-session-context-unavailable";
+                    return false;
+                }
+
+                long currentLifecycleCount;
+                lock (gate)
+                {
+                    currentLifecycleCount = records.Values.LongCount(record =>
+                        record.Fact.AvailablePickup.Batch.RunStableId == RunStableId
+                        && record.Fact.AvailablePickup.Batch.RunLifecycleGeneration
+                            == LifecycleGeneration);
+                }
+                context = new RunPickupRunSessionContextV1(
+                    RunStableId,
+                    LifecycleGeneration,
+                    AuthoritativeTick,
+                    IsActive,
+                    PlayerActorStableId,
+                    PlayerParticipantStableId,
+                    checked(currentLifecycleCount + 1L));
+                diagnostic = string.Empty;
+                return true;
+            }
 
             public RunPickupSessionRecordResultV1 RecordCollection(
                 RunPickupCollectionFactV1 fact)
@@ -246,7 +281,6 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                 Is.EqualTo(first.CollectionFact.Fingerprint));
             Assert.That(fixture.Session.RecordCallCount, Is.EqualTo(1));
         }
-
     }
 }
 #endif
