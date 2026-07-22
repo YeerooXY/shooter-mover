@@ -18,6 +18,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     {
         private RunSessionAuthorityV1 sharedRunSessionAuthority;
         private RunSessionAggregateV1 sharedRunSession;
+        private RunRewardRuntimeSnapshotV1 retainedRewardRuntimeSnapshot;
         private long sharedRunSessionSimulationTick;
         private StableId sharedRunSessionObservedStableId;
         private long sharedRunSessionObservedPlayerGeneration = -1L;
@@ -213,6 +214,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "The shared Run Session did not compose the canonical condition/effect owner.");
             }
 
+            RestoreRetainedRewardRuntimeIfCompatible(sharedRunSession);
             sharedRunSessionSimulationTick =
                 sharedRunSession.AuthoritativeTick;
             sharedRunSessionObservedStableId = runStableId;
@@ -274,6 +276,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "The shared Run Session restart replaced or corrupted mission identity.");
             }
 
+            retainedRewardRuntimeSnapshot = null;
             sharedRunSessionSimulationTick =
                 sharedRunSession.AuthoritativeTick;
             sharedRunSessionObservedPlayerGeneration = replacementGeneration;
@@ -333,11 +336,49 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         private void TeardownSharedRunSession()
         {
+            CaptureRewardRuntimeForReconnect();
             sharedRunSession = null;
             sharedRunSessionAuthority = null;
             sharedRunSessionSimulationTick = 0L;
             sharedRunSessionObservedStableId = null;
             sharedRunSessionObservedPlayerGeneration = -1L;
+        }
+
+        private void CaptureRewardRuntimeForReconnect()
+        {
+            if (sharedRunSession == null
+                || sharedRunSession.LifecycleState
+                    != RunSessionLifecycleStateV1.Active)
+            {
+                return;
+            }
+            try
+            {
+                retainedRewardRuntimeSnapshot =
+                    sharedRunSession.ExportRewardRuntimeSnapshot();
+            }
+            catch (InvalidOperationException)
+            {
+                // Reward composition may not have installed its environment yet.
+            }
+        }
+
+        private void RestoreRetainedRewardRuntimeIfCompatible(
+            RunSessionAggregateV1 run)
+        {
+            if (run == null || retainedRewardRuntimeSnapshot == null)
+            {
+                return;
+            }
+            if (retainedRewardRuntimeSnapshot.RunStableId != run.RunStableId
+                || retainedRewardRuntimeSnapshot.RunLifecycleGeneration
+                    != run.LifecycleGeneration)
+            {
+                retainedRewardRuntimeSnapshot = null;
+                return;
+            }
+            run.RestoreRewardRuntimeSnapshot(retainedRewardRuntimeSnapshot);
+            retainedRewardRuntimeSnapshot = null;
         }
     }
 }
