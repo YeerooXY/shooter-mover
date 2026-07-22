@@ -6,7 +6,9 @@
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
     "ShooterMover.RunPickups",
-    "ShooterMover.TerminalDropBinding"
+    "ShooterMover.TerminalDropBinding",
+    "ShooterMover.RunPickupUnity",
+    "ShooterMover.UnityAdapters"
   ],
   "includePlatforms": [
     "Editor"
