@@ -255,6 +255,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 pending = new PendingTerminalDropAdmissionAuthorityV1();
             if (generation == null)
             {
+                var retainedEquipment =
+                    pickupBootstrap.EquipmentPayloadSource
+                    as RetainedTerminalDropEquipmentPayloadAuthority;
+                if (retainedEquipment == null)
+                {
+                    throw new InvalidOperationException(
+                        "The shared exact equipment payload authority is unavailable for props.");
+                }
+                var rewardGeneration = new RewardGenerationServiceV1();
                 generation = new TerminalDropGenerationAuthorityV1(
                     new TerminalDropFactAdapterRegistryV1(
                         new ITerminalDropFactAdapterV1[]
@@ -263,8 +272,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         }),
                     pickupBootstrap.DropRunContext,
                     rewardProfiles,
-                    new ExistingRewardGenerationExecutorV1(
-                        new RewardGenerationServiceV1()));
+                    new RetainingTerminalDropRewardGenerationExecutor(
+                        rewardGeneration,
+                        retainedEquipment));
             }
 
             DestructibleProp2D[] props =
