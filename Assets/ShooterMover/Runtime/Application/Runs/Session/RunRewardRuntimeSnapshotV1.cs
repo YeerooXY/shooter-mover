@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
+using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
 
@@ -16,6 +17,7 @@ namespace ShooterMover.Application.Runs.Session
     {
         private readonly ReadOnlyCollection<RunRewardParticipantStateV1> participants;
         private readonly ReadOnlyCollection<ParticipantDropPacingStateV1> pacingStates;
+        private readonly ReadOnlyCollection<PersonalRewardDeliveryEnvelopeV1> deliveries;
         private readonly string canonicalText;
 
         public RunRewardRuntimeSnapshotV1(
@@ -23,7 +25,8 @@ namespace ShooterMover.Application.Runs.Session
             int runLifecycleGeneration,
             RunRewardEnvironmentSnapshotV1 environment,
             IEnumerable<RunRewardParticipantStateV1> participants,
-            IEnumerable<ParticipantDropPacingStateV1> pacingStates)
+            IEnumerable<ParticipantDropPacingStateV1> pacingStates,
+            IEnumerable<PersonalRewardDeliveryEnvelopeV1> deliveries = null)
         {
             RunStableId = runStableId
                 ?? throw new ArgumentNullException(nameof(runStableId));
@@ -38,6 +41,10 @@ namespace ShooterMover.Application.Runs.Session
             this.participants = CopyParticipants(participants);
             this.pacingStates = CopyPacing(
                 pacingStates,
+                RunStableId,
+                RunLifecycleGeneration);
+            this.deliveries = CopyDeliveries(
+                deliveries,
                 RunStableId,
                 RunLifecycleGeneration);
 
@@ -66,6 +73,15 @@ namespace ShooterMover.Application.Runs.Session
                     .Append(index.ToString("D4", CultureInfo.InvariantCulture))
                     .Append("=").Append(this.pacingStates[index].Fingerprint);
             }
+            builder.Append("\ndelivery_count=")
+                .Append(this.deliveries.Count.ToString(
+                    CultureInfo.InvariantCulture));
+            for (int index = 0; index < this.deliveries.Count; index++)
+            {
+                builder.Append("\ndelivery_")
+                    .Append(index.ToString("D4", CultureInfo.InvariantCulture))
+                    .Append("=").Append(this.deliveries[index].Fingerprint);
+            }
             canonicalText = builder.ToString();
             Fingerprint = RunSessionFingerprintV1.Hash(canonicalText);
         }
@@ -80,6 +96,10 @@ namespace ShooterMover.Application.Runs.Session
         public IReadOnlyList<ParticipantDropPacingStateV1> PacingStates
         {
             get { return pacingStates; }
+        }
+        public IReadOnlyList<PersonalRewardDeliveryEnvelopeV1> Deliveries
+        {
+            get { return deliveries; }
         }
         public string Fingerprint { get; }
 
@@ -149,6 +169,37 @@ namespace ShooterMover.Application.Runs.Session
                     right.ParticipantStableId);
             });
             return new ReadOnlyCollection<ParticipantDropPacingStateV1>(values);
+        }
+
+        private static ReadOnlyCollection<PersonalRewardDeliveryEnvelopeV1>
+            CopyDeliveries(
+                IEnumerable<PersonalRewardDeliveryEnvelopeV1> source,
+                StableId runStableId,
+                int runLifecycleGeneration)
+        {
+            var values = new List<PersonalRewardDeliveryEnvelopeV1>();
+            var operations = new HashSet<StableId>();
+            if (source != null)
+            {
+                foreach (PersonalRewardDeliveryEnvelopeV1 value in source)
+                {
+                    if (value == null
+                        || value.Result.Context.RunStableId != runStableId
+                        || value.Result.Context.RunLifecycleGeneration
+                            != runLifecycleGeneration
+                        || !operations.Add(
+                            value.Result.Context.OperationStableId))
+                    {
+                        throw new ArgumentException(
+                            "Personal reward deliveries must be unique and belong to the exact run lifecycle.",
+                            nameof(source));
+                    }
+                    values.Add(value);
+                }
+            }
+            values.Sort();
+            return new ReadOnlyCollection<PersonalRewardDeliveryEnvelopeV1>(
+                values);
         }
     }
 }
