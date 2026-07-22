@@ -24,7 +24,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StableId runStableId,
             long lifecycleGeneration,
             StableId attributedParticipantStableId,
-            Vector2 terminalPosition)
+            Vector2 terminalPosition,
+            string positionFingerprint)
         {
             Destruction = destruction
                 ?? throw new ArgumentNullException(nameof(destruction));
@@ -37,6 +38,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             LifecycleGeneration = lifecycleGeneration;
             AttributedParticipantStableId = attributedParticipantStableId;
             TerminalPosition = terminalPosition;
+            if (string.IsNullOrWhiteSpace(positionFingerprint))
+            {
+                throw new ArgumentException(
+                    "Prop terminal position fingerprint is required.",
+                    nameof(positionFingerprint));
+            }
+            PositionFingerprint = positionFingerprint.Trim();
         }
 
         public DestructiblePropDestructionResult Destruction { get; }
@@ -50,6 +58,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
         public StableId AttributedParticipantStableId { get; }
         public Vector2 TerminalPosition { get; }
+        public string PositionFingerprint { get; }
     }
 
     /// <summary>
@@ -64,12 +73,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     {
         private sealed class PendingPropTerminal
         {
-            public PendingPropTerminal(Stage1CanonicalPropDestructionFactV1 fact)
+            public PendingPropTerminal(DestructiblePropTerminalEvent2D terminal)
             {
-                Fact = fact ?? throw new ArgumentNullException(nameof(fact));
+                Terminal = terminal
+                    ?? throw new ArgumentNullException(nameof(terminal));
             }
 
-            public Stage1CanonicalPropDestructionFactV1 Fact { get; }
+            public DestructiblePropTerminalEvent2D Terminal { get; }
+            public Stage1CanonicalPropDestructionFactV1 Fact { get; private set; }
+
+            public void BindFact(Stage1CanonicalPropDestructionFactV1 fact)
+            {
+                if (Fact != null)
+                    throw new InvalidOperationException(
+                        "A pending prop terminal already has a canonical fact.");
+                Fact = fact ?? throw new ArgumentNullException(nameof(fact));
+            }
         }
 
         private Stage1VisibleSliceController controller;
@@ -255,7 +274,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 DestructibleProp2D prop = props[index];
                 if (prop == null || !prop.IsConfigured || prop.PropId == null)
                     continue;
-                prop.Destroyed += HandleDestroyed;
+                prop.TerminalDestroyed += HandleTerminalDestroyed;
                 subscribedProps.Add(prop);
             }
             if (subscribedProps.Count == 0)
@@ -263,68 +282,18 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "No configured Stage 1 destructible prop was available.");
         }
 
-        private void HandleDestroyed(
-            DestructiblePropDestructionResult destruction)
+        private void HandleTerminalDestroyed(
+            DestructiblePropTerminalEvent2D terminal)
         {
+            DestructiblePropDestructionResult destruction =
+                terminal == null ? null : terminal.Destruction;
             if (destruction == null || destruction.EventId == null) return;
-            RunSessionAggregateV1 current = observedRun
-                ?? (pickupBootstrap == null ? null : pickupBootstrap.RunSession);
-            if (current == null || stage1 == null)
-            {
-                diagnostic = "stage1-prop-terminal-shared-run-unavailable";
-                return;
-            }
-
-            DestructibleProp2D source = FindSource(destruction.PropId);
-            if (source == null)
-            {
-                diagnostic = "stage1-prop-terminal-source-unavailable";
-                return;
-            }
-            Stage1CanonicalPropTerminalSourceV1 provenance;
-            string provenanceDiagnostic;
-            if (!stage1.TryResolveCanonicalPropTerminalSource(
-                    source,
-                    out provenance,
-                    out provenanceDiagnostic))
-            {
-                Quarantine(destruction.EventId, provenanceDiagnostic);
-                return;
-            }
-
-            Vector2 position;
-            try
-            {
-                position = source.BlockingCollider == null
-                    ? (Vector2)source.transform.position
-                    : source.BlockingCollider.bounds.center;
-            }
-            catch (Exception exception)
-            {
-                diagnostic = "stage1-prop-position-exception:"
-                    + exception.GetType().Name
-                    + ":"
-                    + exception.Message;
-                return;
-            }
-
-            StableId attributedParticipant;
-            stage1.TryResolveTerminalParticipant(
-                destruction.SourceId,
-                out attributedParticipant);
             if (!pendingTerminalByEvent.ContainsKey(destruction.EventId)
                 && !quarantinedTerminalByEvent.ContainsKey(destruction.EventId))
             {
                 pendingTerminalByEvent.Add(
                     destruction.EventId,
-                    new PendingPropTerminal(
-                        new Stage1CanonicalPropDestructionFactV1(
-                            destruction,
-                            provenance,
-                            current.RunStableId,
-                            current.LifecycleGeneration,
-                            attributedParticipant,
-                            position)));
+                    new PendingPropTerminal(terminal));
             }
             ProcessPendingTerminals();
         }
@@ -350,11 +319,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             PendingPropTerminal record;
             if (!pendingTerminalByEvent.TryGetValue(eventId, out record)
                 || record == null
-                || record.Fact == null)
+                || record.Terminal == null
+                || record.Terminal.Destruction == null)
             {
                 Quarantine(eventId, "stage1-prop-terminal-record-invalid");
                 return;
             }
+
+            if (record.Fact == null && !TryBindCanonicalFact(record))
+                return;
 
             Stage1CanonicalPropDestructionFactV1 fact = record.Fact;
             if (fact.RunStableId != observedRun.RunStableId
@@ -421,16 +394,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
             TerminalDropSourceFactV1 sourceFact =
                 LastAdmission.PendingResult.SourceFact;
-            string positionFingerprint = Stage1ProductionFingerprintV1.Hash(
-                sourceFact.TerminalEventStableId
-                + "|"
-                + fact.TerminalPosition.x.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture)
-                + "|"
-                + fact.TerminalPosition.y.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture));
             try
             {
                 pickupBootstrap.RegisterFixedSource(
@@ -440,7 +403,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     sourceFact.SourcePlacementStableId,
                     fact.RoomStableId,
                     fact.TerminalPosition,
-                    positionFingerprint);
+                    fact.PositionFingerprint);
                 PickupDeliveryResultV1 queued =
                     pickupBootstrap.EnqueueAdmission(LastAdmission);
                 if (queued != null && queued.IsAcknowledged)
@@ -472,15 +435,58 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
         }
 
-        private DestructibleProp2D FindSource(StableId propId)
+        private bool TryBindCanonicalFact(PendingPropTerminal record)
         {
-            for (int index = 0; index < subscribedProps.Count; index++)
+            if (record == null
+                || record.Terminal == null
+                || record.Terminal.Destruction == null)
             {
-                DestructibleProp2D candidate = subscribedProps[index];
-                if (candidate != null && candidate.PropId == propId)
-                    return candidate;
+                return false;
             }
-            return null;
+            if (observedRun == null || stage1 == null)
+            {
+                diagnostic = "stage1-prop-terminal-shared-run-unavailable";
+                return false;
+            }
+
+            DestructiblePropTerminalEvent2D terminal = record.Terminal;
+            Stage1CanonicalPropTerminalSourceV1 provenance;
+            string provenanceDiagnostic;
+            if (!stage1.TryResolveCanonicalPropTerminalSource(
+                    terminal.Provenance,
+                    terminal.Destruction.PropId,
+                    out provenance,
+                    out provenanceDiagnostic))
+            {
+                if (provenanceDiagnostic.StartsWith(
+                    "stage1-terminal-content-unavailable",
+                    StringComparison.Ordinal))
+                {
+                    diagnostic = provenanceDiagnostic;
+                }
+                else
+                {
+                    Quarantine(
+                        terminal.Destruction.EventId,
+                        provenanceDiagnostic);
+                }
+                return false;
+            }
+
+            StableId attributedParticipant;
+            stage1.TryResolveTerminalParticipant(
+                terminal.Destruction.SourceId,
+                out attributedParticipant);
+            record.BindFact(
+                new Stage1CanonicalPropDestructionFactV1(
+                    terminal.Destruction,
+                    provenance,
+                    observedRun.RunStableId,
+                    observedRun.LifecycleGeneration,
+                    attributedParticipant,
+                    terminal.TerminalPosition,
+                    terminal.PositionFingerprint));
+            return true;
         }
 
         private void Quarantine(StableId eventId, string failure)
@@ -513,7 +519,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             for (int index = 0; index < subscribedProps.Count; index++)
             {
                 DestructibleProp2D prop = subscribedProps[index];
-                if (prop != null) prop.Destroyed -= HandleDestroyed;
+                if (prop != null)
+                    prop.TerminalDestroyed -= HandleTerminalDestroyed;
             }
             subscribedProps.Clear();
             observedRun = null;

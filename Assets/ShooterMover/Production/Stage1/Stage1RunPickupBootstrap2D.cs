@@ -373,14 +373,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            admissionBridge.RegisterTransformSource(
+            admissionBridge.RegisterFixedSource(
                 run.RunStableId,
                 run.LifecycleGeneration,
                 terminal.Fact.Identity.EntityInstanceId,
                 terminal.PlacementStableId,
                 terminal.RoomStableId,
-                terminal.SourceTransform,
-                terminal.Notification.EventId);
+                terminal.TerminalPosition,
+                terminal.PositionFingerprint);
 
             GeneratedTerminalDropResultV1 generated;
             try

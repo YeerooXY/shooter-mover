@@ -134,7 +134,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                 {
                     new PropDefinitionV1(
                         CrateDefinitionStableId,
-                        StableId.Parse("presentation.prop.stage1-crate"),
+                        StableId.Parse("presentation.prop-stage1-crate"),
                         new[]
                         {
                             PropCapabilitiesV1.HealthBased(
@@ -147,7 +147,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                         }),
                     new PropDefinitionV1(
                         ExplosiveDefinitionStableId,
-                        StableId.Parse("presentation.prop.stage1-explosive"),
+                        StableId.Parse("presentation.prop-stage1-explosive"),
                         new[]
                         {
                             PropCapabilitiesV1.HealthBased(
@@ -164,9 +164,12 @@ namespace ShooterMover.Content.Definitions.Rewards
                         }),
                     new PropDefinitionV1(
                         GenericLegacyDefinitionStableId,
-                        StableId.Parse("presentation.prop.legacy-unclassified"),
+                        StableId.Parse("presentation.prop-legacy-unclassified"),
                         new[]
                         {
+                            PropCapabilitiesV1.HealthBased(
+                                Stage1DestructiblePropIntegration
+                                    .CrateMaximumHealth),
                             PropCapabilitiesV1.DamageBehavior(
                                 PropDamageAlignmentV1.Neutral,
                                 StableId.Parse("damage-policy.prop-stage1")),

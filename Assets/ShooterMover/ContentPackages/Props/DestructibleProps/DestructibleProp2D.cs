@@ -1,10 +1,38 @@
 using System;
+using System.Globalization;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Props.DestructibleProps
 {
+    public sealed class DestructiblePropTerminalEvent2D
+    {
+        public DestructiblePropTerminalEvent2D(
+            DestructiblePropDestructionResult destruction,
+            DestructiblePropTerminalProvenanceV1 provenance,
+            Vector2 terminalPosition,
+            string positionFingerprint)
+        {
+            Destruction = destruction
+                ?? throw new ArgumentNullException(nameof(destruction));
+            Provenance = provenance;
+            TerminalPosition = terminalPosition;
+            if (string.IsNullOrWhiteSpace(positionFingerprint))
+            {
+                throw new ArgumentException(
+                    "A terminal-position fingerprint is required.",
+                    nameof(positionFingerprint));
+            }
+            PositionFingerprint = positionFingerprint.Trim();
+        }
+
+        public DestructiblePropDestructionResult Destruction { get; }
+        public DestructiblePropTerminalProvenanceV1 Provenance { get; }
+        public Vector2 TerminalPosition { get; }
+        public string PositionFingerprint { get; }
+    }
+
     /// <summary>
     /// Unity-facing destructible target. State mutates only from confirmed combat messages;
     /// collision and presentation references are supplied explicitly by the authoring boundary.
@@ -25,6 +53,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private int destructionNotificationCount;
 
         public event Action<DestructiblePropDestructionResult> Destroyed;
+        public event Action<DestructiblePropTerminalEvent2D> TerminalDestroyed;
         public event Action Restarted;
 
         public bool IsConfigured => configured;
@@ -162,8 +191,10 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 return result;
             }
 
+            DestructiblePropTerminalEvent2D terminal = CaptureTerminalEvent(
+                result.Destruction);
             ApplyDestroyedPresentation();
-            PublishDestroyed(result.Destruction);
+            PublishDestroyed(result.Destruction, terminal);
             return result;
         }
 
@@ -223,11 +254,31 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             }
         }
 
-        private void PublishDestroyed(DestructiblePropDestructionResult destruction)
+        private DestructiblePropTerminalEvent2D CaptureTerminalEvent(
+            DestructiblePropDestructionResult destruction)
+        {
+            Vector2 position = blockingCollider.bounds.center;
+            string fingerprint = "prop-terminal-position-v1|"
+                + destruction.EventId
+                + "|"
+                + position.x.ToString("R", CultureInfo.InvariantCulture)
+                + "|"
+                + position.y.ToString("R", CultureInfo.InvariantCulture);
+            return new DestructiblePropTerminalEvent2D(
+                destruction,
+                terminalProvenance,
+                position,
+                fingerprint);
+        }
+
+        private void PublishDestroyed(
+            DestructiblePropDestructionResult destruction,
+            DestructiblePropTerminalEvent2D terminal)
         {
             if (destructionNotificationPublished || destruction == null) return;
             destructionNotificationPublished = true;
             destructionNotificationCount++;
+            PublishTerminalDestroyed(terminal);
             Action<DestructiblePropDestructionResult> handler = Destroyed;
             if (handler == null) return;
 
@@ -236,6 +287,24 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 try
                 {
                     ((Action<DestructiblePropDestructionResult>)subscriber)(destruction);
+                }
+                catch (Exception)
+                {
+                    // Optional observers cannot replay or block authoritative destruction.
+                }
+            }
+        }
+
+        private void PublishTerminalDestroyed(
+            DestructiblePropTerminalEvent2D terminal)
+        {
+            Action<DestructiblePropTerminalEvent2D> handler = TerminalDestroyed;
+            if (handler == null || terminal == null) return;
+            foreach (Delegate subscriber in handler.GetInvocationList())
+            {
+                try
+                {
+                    ((Action<DestructiblePropTerminalEvent2D>)subscriber)(terminal);
                 }
                 catch (Exception)
                 {

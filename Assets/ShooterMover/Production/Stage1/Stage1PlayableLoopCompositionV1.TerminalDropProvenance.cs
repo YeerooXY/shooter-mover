@@ -20,14 +20,21 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     {
         public Stage1CanonicalEnemyTerminalFactV1(
             EnemyDeathFactV1 fact,
-            Transform sourceTransform,
+            Vector2 terminalPosition,
+            string positionFingerprint,
             StableId roomStableId,
             StableId placementStableId,
             EnemyDestroyedNotification notification)
         {
             Fact = fact ?? throw new ArgumentNullException(nameof(fact));
-            SourceTransform = sourceTransform
-                ?? throw new ArgumentNullException(nameof(sourceTransform));
+            TerminalPosition = terminalPosition;
+            if (string.IsNullOrWhiteSpace(positionFingerprint))
+            {
+                throw new ArgumentException(
+                    "Enemy terminal position fingerprint is required.",
+                    nameof(positionFingerprint));
+            }
+            PositionFingerprint = positionFingerprint.Trim();
             RoomStableId = roomStableId
                 ?? throw new ArgumentNullException(nameof(roomStableId));
             PlacementStableId = placementStableId
@@ -37,7 +44,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
 
         public EnemyDeathFactV1 Fact { get; }
-        public Transform SourceTransform { get; }
+        public Vector2 TerminalPosition { get; }
+        public string PositionFingerprint { get; }
         public StableId RoomStableId { get; }
         public StableId PlacementStableId { get; }
         public EnemyDestroyedNotification Notification { get; }
@@ -221,7 +229,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     notification.DeathCause);
                 exported.Add(new Stage1CanonicalEnemyTerminalFactV1(
                     fact,
-                    liveSource.SourceRoot.transform,
+                    pending.TerminalPosition,
+                    pending.PositionFingerprint,
                     liveSource.RoomStableId,
                     liveSource.PlacementStableId,
                     notification));
@@ -249,6 +258,21 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             DestructiblePropTerminalProvenanceV1 provenance =
                 prop.TerminalProvenance;
+            return TryResolveCanonicalPropTerminalSource(
+                provenance,
+                prop.PropId,
+                out source,
+                out diagnostic);
+        }
+
+        internal bool TryResolveCanonicalPropTerminalSource(
+            DestructiblePropTerminalProvenanceV1 provenance,
+            StableId sourceEntityStableId,
+            out Stage1CanonicalPropTerminalSourceV1 source,
+            out string diagnostic)
+        {
+            source = null;
+            diagnostic = string.Empty;
             if (provenance == null)
             {
                 diagnostic = "stage1-prop-terminal-provenance-missing";
@@ -257,7 +281,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             if (!provenance.HasPlacementProvenance)
             {
                 diagnostic =
-                    "stage1-prop-terminal-placement-provenance-missing:" + prop.PropId;
+                    "stage1-prop-terminal-placement-provenance-missing:"
+                    + sourceEntityStableId;
                 return false;
             }
 

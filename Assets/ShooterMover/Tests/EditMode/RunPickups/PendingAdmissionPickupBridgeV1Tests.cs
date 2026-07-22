@@ -71,6 +71,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             public int RealizeCalls;
             public int PresentationCalls;
             public int AcceptedRealizationCount;
+            public PickupSourcePositionV1 RegisteredPosition;
 
             public bool TryRegisterPosition(
                 TerminalDropSourceFactV1 source,
@@ -84,6 +85,16 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                     diagnostic = "fake-position-registration-unavailable";
                     return false;
                 }
+                if (RegisteredPosition != null
+                    && !string.Equals(
+                        RegisteredPosition.Fingerprint,
+                        position.Fingerprint,
+                        StringComparison.Ordinal))
+                {
+                    diagnostic = "fake-position-registration-conflict";
+                    return false;
+                }
+                RegisteredPosition = position;
                 diagnostic = string.Empty;
                 return true;
             }
@@ -204,6 +215,41 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         }
 
         [Test]
+        public void FrozenEnemyDeathPosition_SurvivesTransformMovementDuringRetry()
+        {
+            GameObject enemy = new GameObject("Enemy Position Source");
+            try
+            {
+                Vector2 deathPosition = new Vector2(4.5f, -2.25f);
+                enemy.transform.position = deathPosition;
+                var fixedPosition = new PickupSourcePositionV1(
+                    RoomId,
+                    enemy.transform.position,
+                    "enemy-terminal-position-at-death");
+                var runtime = new FakeRuntime { PresentationFailures = 1 };
+                PendingAdmissionPickupBridgeV1 queue = Queue(
+                    runtime,
+                    new FixedPickupSourcePositionResolverV1(fixedPosition));
+                queue.TryEnqueue(Admission());
+
+                Assert.That(queue.ProcessPending(), Is.Zero);
+                Assert.That(queue.PendingCount, Is.EqualTo(1));
+                enemy.transform.position = new Vector2(-50f, 75f);
+
+                Assert.That(queue.ProcessPending(), Is.EqualTo(1));
+                Assert.That(queue.QuarantinedCount, Is.Zero);
+                Assert.That(runtime.RegisteredPosition.Position,
+                    Is.EqualTo(deathPosition));
+                Assert.That(runtime.RegisterCalls, Is.EqualTo(2));
+                Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(enemy);
+            }
+        }
+
+        [Test]
         public void ExceptionDuringFirstDelivery_RetainsExactAdmissionForRetry()
         {
             var runtime = new FakeRuntime { RealizeThrows = 1 };
@@ -314,9 +360,25 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             string support = File.ReadAllText(Path.Combine(
                 stage1Path,
                 "Stage1RunPickupBootstrapSupportV1.cs"));
+            string genericPropAuthoring = File.ReadAllText(Path.Combine(
+                UnityEngine.Application.dataPath,
+                "ShooterMover",
+                "ContentPackages",
+                "Props",
+                "DestructibleProps",
+                "DestructiblePropAuthoring2D.cs"));
+            string retainedController = File.ReadAllText(Path.Combine(
+                UnityEngine.Application.dataPath,
+                "ShooterMover",
+                "TestSupport",
+                "VisibleSlice",
+                "Stage1VisibleSliceController.cs"));
 
             Assert.That(bootstrap, Does.Not.Contain(
                 "DeterministicEnemyRuntimeIdentityDeriverV1"));
+            Assert.That(bootstrap, Does.Not.Contain(
+                "RegisterTransformSource"));
+            Assert.That(bootstrap, Does.Contain("RegisterFixedSource"));
             Assert.That(bootstrap, Does.Not.Contain("BuildPickupEnemyCatalog"));
             Assert.That(bootstrap, Does.Not.Contain("BuildRewardProfiles"));
             Assert.That(bootstrap, Does.Not.Contain("new EnemyDeathFactV1"));
@@ -336,6 +398,10 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(provenance, Does.Contain(
                 "liveSource.SourceEntityStableId"));
             Assert.That(provenance, Does.Contain(
+                "pending.TerminalPosition"));
+            Assert.That(provenance, Does.Contain(
+                "pending.PositionFingerprint"));
+            Assert.That(provenance, Does.Contain(
                 "LoadProductionEnemyCatalog"));
 
             Assert.That(props, Does.Not.Contain(
@@ -346,6 +412,15 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(props, Does.Contain(
                 "TryResolveCanonicalPropTerminalSource"));
             Assert.That(props, Does.Contain("DefinitionFingerprint"));
+            Assert.That(props, Does.Contain("new PendingPropTerminal(terminal)"));
+            Assert.That(props, Does.Contain("TerminalDestroyed"));
+
+            Assert.That(genericPropAuthoring, Does.Not.Contain(
+                "Stage1TerminalDropContentV1"));
+            Assert.That(genericPropAuthoring, Does.Not.Contain(
+                "ResolveLegacyAuthoringKey"));
+            Assert.That(retainedController, Does.Not.Contain(
+                "Stage1TerminalDropContentV1"));
         }
 
         [Test]

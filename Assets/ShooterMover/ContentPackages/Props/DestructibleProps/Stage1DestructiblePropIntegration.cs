@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using ShooterMover.Content.Definitions.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring;
 using ShooterMover.UnityAdapters.Combat;
@@ -92,6 +93,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             GameObject owner,
             Transform presentationRoot,
             Transform colliderRoot,
+            StableId legacyRoomStableId,
             CombatHit2DAdapter hitAdapter,
             double confirmedHitDamage,
             Func<long> restartGenerationSource)
@@ -100,6 +102,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 owner,
                 presentationRoot,
                 colliderRoot,
+                legacyRoomStableId,
                 hitAdapter,
                 confirmedHitDamage,
                 restartGenerationSource);
@@ -123,6 +126,21 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             {
                 DestructiblePropAuthoring2D authoring = authored[index];
                 if (authoring == null) continue;
+
+                if (authoring.GetComponent<PlacedObjectAuthoring2D>() == null
+                    && authoring.GeneratedTerminalProvenance == null)
+                {
+                    authoring.ConfigureGenerated(
+                        authoring.MaximumHealth,
+                        authoring.ColliderSize,
+                        authoring.ColliderOffset,
+                        authoring.DestructionAnimation,
+                        Stage1TerminalDropContentV1
+                            .ResolveLegacyAuthoringKey(authoring.gameObject.name)
+                            .WithPlacement(
+                                legacyRoomStableId,
+                                CreateLegacyPlacementId(authoring)));
+                }
 
                 authoring.ApplyLegacyConfirmedHitDamage(confirmedHitDamage);
                 DestructiblePropConfigurationResult result =
@@ -328,6 +346,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             GameObject owner,
             Transform presentationRoot,
             Transform colliderRoot,
+            StableId legacyRoomStableId,
             CombatHit2DAdapter hitAdapter,
             double confirmedHitDamage,
             Func<long> restartGenerationSource)
@@ -337,6 +356,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 throw new ArgumentNullException(nameof(presentationRoot));
             if (colliderRoot == null)
                 throw new ArgumentNullException(nameof(colliderRoot));
+            if (legacyRoomStableId == null)
+                throw new ArgumentNullException(nameof(legacyRoomStableId));
             if (hitAdapter == null)
                 throw new ArgumentNullException(nameof(hitAdapter));
             if (double.IsNaN(confirmedHitDamage)
