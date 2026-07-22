@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Persistence.Accounts;
 
@@ -114,6 +115,7 @@ namespace ShooterMover.Application.Persistence.Components
                 KnownSaveComponentDefinitionsV1.RankedSkillAllocation(),
                 KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
                 KnownSaveComponentDefinitionsV1.StrongboxState(),
+                CollectedRunRewardTransferReceiptSaveComponentV1.Definition(),
             };
             for (int index = 0; index < known.Length; index++)
             {
