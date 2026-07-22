@@ -53,11 +53,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             RoomStableId = roomStableId
                 ?? throw new ArgumentNullException(nameof(roomStableId));
             if (string.IsNullOrWhiteSpace(fingerprint))
-            {
                 throw new ArgumentException(
                     "A source-position fingerprint is required.",
                     nameof(fingerprint));
-            }
             Position = position;
             Fingerprint = fingerprint.Trim();
         }
@@ -104,7 +102,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 diagnostic = "stage1-pickup-terminal-source-transform-missing";
                 return false;
             }
-
             try
             {
                 Vector2 value = sourceTransform.position;
@@ -193,10 +190,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             Stage1PickupSourcePositionV1 position,
             out string diagnostic)
         {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-            if (position == null)
-                throw new ArgumentNullException(nameof(position));
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (position == null) throw new ArgumentNullException(nameof(position));
             return sourcePositions.Register(
                 source.RunStableId,
                 source.RunLifecycleGeneration,
@@ -222,10 +217,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     }
 
     /// <summary>
-    /// Retained transactional delivery queue. Accepted #277 admissions are keyed by exact
-    /// DROP operation and batch fingerprint, then retried until source registration,
-    /// authoritative realization, and presentation synchronization all acknowledge them.
-    /// Releasing and reconfiguring Unity dependencies does not discard queued admissions.
+    /// Retained transactional delivery queue. Temporary context and presentation failures retry;
+    /// malformed, conflicting, stale or otherwise impossible facts are quarantined exactly once.
     /// </summary>
     public sealed class Stage1PendingAdmissionPickupBridgeV1 :
         IPendingTerminalDropAdmissionConsumerV1
@@ -250,6 +243,31 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             public PendingTerminalDropAdmissionResultV1 Admission { get; }
         }
 
+        private sealed class QuarantineRecord
+        {
+            public QuarantineRecord(
+                PendingTerminalDropAdmissionResultV1 admission,
+                string diagnostic)
+            {
+                Admission = admission;
+                Diagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                    ? "stage1-pickup-delivery-terminal-rejection"
+                    : diagnostic.Trim();
+            }
+
+            public PendingTerminalDropAdmissionResultV1 Admission { get; }
+            public string Diagnostic { get; }
+            public string Fingerprint
+            {
+                get
+                {
+                    return Admission == null
+                        ? string.Empty
+                        : Admission.BatchFingerprint;
+                }
+            }
+        }
+
         private readonly object gate = new object();
         private readonly Dictionary<string, SourceBinding> sources =
             new Dictionary<string, SourceBinding>(StringComparer.Ordinal);
@@ -257,16 +275,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             new Dictionary<StableId, DeliveryRecord>();
         private readonly Dictionary<StableId, string> completedByOperation =
             new Dictionary<StableId, string>();
+        private readonly Dictionary<StableId, QuarantineRecord>
+            quarantinedByOperation =
+                new Dictionary<StableId, QuarantineRecord>();
         private IStage1PickupAdmissionRuntimeV1 runtime;
 
         public int PendingCount
         {
             get
             {
-                lock (gate)
-                {
-                    return pendingByOperation.Count;
-                }
+                lock (gate) return pendingByOperation.Count;
             }
         }
 
@@ -274,10 +292,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         {
             get
             {
-                lock (gate)
-                {
-                    return completedByOperation.Count;
-                }
+                lock (gate) return completedByOperation.Count;
+            }
+        }
+
+        public int QuarantinedCount
+        {
+            get
+            {
+                lock (gate) return quarantinedByOperation.Count;
             }
         }
 
@@ -294,10 +317,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         public void ReleaseRuntime()
         {
-            lock (gate)
-            {
-                runtime = null;
-            }
+            lock (gate) runtime = null;
         }
 
         public void RegisterSource(
@@ -315,7 +335,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 throw new ArgumentException(
                     "A complete terminal source binding is required.");
             }
-
             lock (gate)
             {
                 sources[Key(
@@ -416,6 +435,27 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         LastDiagnostic);
                 }
 
+                QuarantineRecord quarantined;
+                if (quarantinedByOperation.TryGetValue(
+                    admission.OperationStableId,
+                    out quarantined))
+                {
+                    bool exact = quarantined != null
+                        && string.Equals(
+                            quarantined.Fingerprint,
+                            admission.BatchFingerprint,
+                            StringComparison.Ordinal);
+                    LastDiagnostic = exact
+                        ? quarantined.Diagnostic
+                        : "stage1-pickup-admission-quarantine-conflict";
+                    return Result(
+                        exact
+                            ? Stage1PickupDeliveryDispositionV1.Rejected
+                            : Stage1PickupDeliveryDispositionV1.ConflictingDuplicate,
+                        admission,
+                        LastDiagnostic);
+                }
+
                 DeliveryRecord existing;
                 if (pendingByOperation.TryGetValue(
                     admission.OperationStableId,
@@ -470,7 +510,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         || record.Admission.PendingResult == null
                         || record.Admission.PendingResult.SourceFact == null)
                     {
-                        LastDiagnostic = "stage1-pickup-delivery-record-invalid";
+                        Quarantine(
+                            operation,
+                            record == null ? null : record.Admission,
+                            "stage1-pickup-delivery-record-invalid");
                         continue;
                     }
 
@@ -512,9 +555,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     }
                     if (!resolved || position == null)
                     {
-                        LastDiagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                        diagnostic = string.IsNullOrWhiteSpace(diagnostic)
                             ? "stage1-pickup-source-position-unavailable"
                             : diagnostic;
+                        if (IsTerminalDiagnostic(diagnostic))
+                            Quarantine(operation, record.Admission, diagnostic);
+                        else
+                            LastDiagnostic = diagnostic;
                         continue;
                     }
 
@@ -536,9 +583,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     }
                     if (!registered)
                     {
-                        LastDiagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                        diagnostic = string.IsNullOrWhiteSpace(diagnostic)
                             ? "stage1-pickup-position-registration-rejected"
                             : diagnostic;
+                        if (IsTerminalDiagnostic(diagnostic))
+                            Quarantine(operation, record.Admission, diagnostic);
+                        else
+                            LastDiagnostic = diagnostic;
                         continue;
                     }
 
@@ -555,18 +606,36 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             + exception.Message;
                         continue;
                     }
-                    if (realization == null
-                        || (realization.Status
-                                != RunPickupRealizationStatusV1.Realized
-                            && realization.Status
-                                != RunPickupRealizationStatusV1.ExactReplay))
+
+                    if (realization == null)
                     {
-                        LastDiagnostic = realization == null
-                            ? "stage1-pickup-realization-null"
-                            : string.IsNullOrWhiteSpace(realization.Diagnostic)
-                                ? "stage1-pickup-realization-retryable:"
+                        LastDiagnostic = "stage1-pickup-realization-null";
+                        continue;
+                    }
+                    if (realization.Status
+                            == RunPickupRealizationStatusV1.ConflictingDuplicate
+                        || (realization.Status
+                                == RunPickupRealizationStatusV1.Rejected
+                            && !IsRetryableRealization(realization.Diagnostic)))
+                    {
+                        Quarantine(
+                            operation,
+                            record.Admission,
+                            string.IsNullOrWhiteSpace(realization.Diagnostic)
+                                ? "stage1-pickup-realization-terminal:"
                                     + realization.Status
-                                : realization.Diagnostic;
+                                : realization.Diagnostic);
+                        continue;
+                    }
+                    if (realization.Status
+                            != RunPickupRealizationStatusV1.Realized
+                        && realization.Status
+                            != RunPickupRealizationStatusV1.ExactReplay)
+                    {
+                        LastDiagnostic = string.IsNullOrWhiteSpace(realization.Diagnostic)
+                            ? "stage1-pickup-realization-retryable:"
+                                + realization.Status
+                            : realization.Diagnostic;
                         continue;
                     }
 
@@ -613,20 +682,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 var removePending = new List<StableId>();
                 foreach (KeyValuePair<StableId, DeliveryRecord> pair in pendingByOperation)
                 {
-                    TerminalDropSourceFactV1 source = pair.Value == null
-                        || pair.Value.Admission == null
-                        || pair.Value.Admission.PendingResult == null
-                            ? null
-                            : pair.Value.Admission.PendingResult.SourceFact;
-                    if (source == null
-                        || source.RunStableId != runStableId
-                        || source.RunLifecycleGeneration != lifecycleGeneration)
-                    {
+                    TerminalDropSourceFactV1 source = SourceOf(
+                        pair.Value == null ? null : pair.Value.Admission);
+                    if (!IsCurrent(source, runStableId, lifecycleGeneration))
                         removePending.Add(pair.Key);
-                    }
                 }
                 for (int index = 0; index < removePending.Count; index++)
                     pendingByOperation.Remove(removePending[index]);
+
+                var removeQuarantined = new List<StableId>();
+                foreach (KeyValuePair<StableId, QuarantineRecord> pair in
+                    quarantinedByOperation)
+                {
+                    TerminalDropSourceFactV1 source = SourceOf(
+                        pair.Value == null ? null : pair.Value.Admission);
+                    if (!IsCurrent(source, runStableId, lifecycleGeneration))
+                        removeQuarantined.Add(pair.Key);
+                }
+                for (int index = 0; index < removeQuarantined.Count; index++)
+                    quarantinedByOperation.Remove(removeQuarantined[index]);
 
                 string currentPrefix = runStableId
                     + "|"
@@ -649,10 +723,74 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 pendingByOperation.Clear();
                 completedByOperation.Clear();
+                quarantinedByOperation.Clear();
                 sources.Clear();
                 runtime = null;
                 LastDiagnostic = string.Empty;
             }
+        }
+
+        private void Quarantine(
+            StableId operation,
+            PendingTerminalDropAdmissionResultV1 admission,
+            string diagnostic)
+        {
+            if (operation == null) return;
+            pendingByOperation.Remove(operation);
+            if (!quarantinedByOperation.ContainsKey(operation))
+            {
+                quarantinedByOperation.Add(
+                    operation,
+                    new QuarantineRecord(admission, diagnostic));
+            }
+            LastDiagnostic = quarantinedByOperation[operation].Diagnostic;
+        }
+
+        private static bool IsRetryableRealization(string diagnostic)
+        {
+            if (string.IsNullOrWhiteSpace(diagnostic)) return false;
+            return diagnostic == "run-pickup-session-context-unavailable"
+                || diagnostic.StartsWith(
+                    "run-pickup-session-context-exception:",
+                    StringComparison.Ordinal)
+                || diagnostic == "run-pickup-source-position-unresolved"
+                || diagnostic.StartsWith(
+                    "run-pickup-source-position-exception:",
+                    StringComparison.Ordinal)
+                || diagnostic == "run-pickup-awaiting-source-position";
+        }
+
+        private static bool IsTerminalDiagnostic(string diagnostic)
+        {
+            if (string.IsNullOrWhiteSpace(diagnostic)) return false;
+            string value = diagnostic.ToLowerInvariant();
+            return value.Contains("conflict")
+                || value.Contains("invalid")
+                || value.Contains("impossible")
+                || value.Contains("mismatch")
+                || value.Contains("stale")
+                || value.Contains("future-generation")
+                || value.Contains("run-ended")
+                || value.Contains("wrong-run")
+                || value.Contains("participant-mismatch");
+        }
+
+        private static TerminalDropSourceFactV1 SourceOf(
+            PendingTerminalDropAdmissionResultV1 admission)
+        {
+            return admission == null || admission.PendingResult == null
+                ? null
+                : admission.PendingResult.SourceFact;
+        }
+
+        private static bool IsCurrent(
+            TerminalDropSourceFactV1 source,
+            StableId runStableId,
+            long lifecycleGeneration)
+        {
+            return source != null
+                && source.RunStableId == runStableId
+                && source.RunLifecycleGeneration == lifecycleGeneration;
         }
 
         private static Stage1PickupDeliveryResultV1 Result(
