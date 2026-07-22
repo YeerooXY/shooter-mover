@@ -8,10 +8,10 @@ using ShooterMover.EnemyRuntimeComposition;
 namespace ShooterMover.TerminalDropBinding
 {
     /// <summary>
-    /// Backward-shaped single-participant entry point over the production personal
-    /// reward authority. The legacy profile resolver and REW-001 executor parameters
-    /// are retained only so existing composition call sites can migrate atomically;
-    /// they are never used to select, roll, pace or construct rewards.
+    /// Compatibility-shaped facade over the production personal reward authority.
+    /// Live consumers must use GenerateBatch so every eligible participant result is
+    /// preserved. Generate remains for single-participant legacy callers and rejects
+    /// rather than silently discarding a multiplayer batch.
     /// </summary>
     public sealed class TerminalDropGenerationAuthorityV1
     {
@@ -20,6 +20,20 @@ namespace ShooterMover.TerminalDropBinding
         private readonly HashSet<StableId> acceptedOperations =
             new HashSet<StableId>();
 
+        public TerminalDropGenerationAuthorityV1(
+            TerminalDropFactAdapterRegistryV1 adapters,
+            TerminalPersonalRewardGenerationAuthorityV1 personal)
+        {
+            this.adapters = adapters
+                ?? throw new ArgumentNullException(nameof(adapters));
+            this.personal = personal
+                ?? throw new ArgumentNullException(nameof(personal));
+        }
+
+        /// <summary>
+        /// Retained constructor for older single-player fixtures. Production composition
+        /// injects run-backed participant, environment and override resolvers instead.
+        /// </summary>
         public TerminalDropGenerationAuthorityV1(
             TerminalDropFactAdapterRegistryV1 adapters,
             ITerminalDropRunContextResolverV1 runContexts,
@@ -34,6 +48,10 @@ namespace ShooterMover.TerminalDropBinding
         {
         }
 
+        /// <summary>
+        /// Retained constructor for compatibility tests. The legacy DROP/GEN arguments
+        /// do not execute reward logic.
+        /// </summary>
         public TerminalDropGenerationAuthorityV1(
             TerminalDropFactAdapterRegistryV1 adapters,
             ITerminalDropRunContextResolverV1 runContexts,
@@ -47,9 +65,6 @@ namespace ShooterMover.TerminalDropBinding
             {
                 throw new ArgumentNullException(nameof(runContexts));
             }
-
-            // Deliberately ignored. Keeping the constructor shape avoids a half-migrated
-            // Stage 1 composition while ensuring there is only one live reward authority.
             _ = legacyProfiles;
             _ = legacyGenerator;
 
@@ -72,7 +87,7 @@ namespace ShooterMover.TerminalDropBinding
             get { return acceptedOperations.Count; }
         }
 
-        public GeneratedTerminalDropResultV1 Generate(object terminalFact)
+        public TerminalPersonalRewardBatchV1 GenerateBatch(object terminalFact)
         {
             TerminalDropAdaptationResultV1 adaptation;
             try
@@ -81,8 +96,7 @@ namespace ShooterMover.TerminalDropBinding
             }
             catch (Exception exception)
             {
-                return GeneratedTerminalDropResultV1.Rejected(
-                    TerminalDropRejectionCodeV1.InvalidTerminalFact,
+                return RejectedBatch(
                     null,
                     "terminal-personal-facade-adaptation-exception:"
                         + exception.GetType().Name
@@ -91,10 +105,7 @@ namespace ShooterMover.TerminalDropBinding
             }
             if (adaptation == null || !adaptation.Succeeded)
             {
-                return GeneratedTerminalDropResultV1.Rejected(
-                    adaptation == null
-                        ? TerminalDropRejectionCodeV1.InvalidTerminalFact
-                        : adaptation.RejectionCode,
+                return RejectedBatch(
                     adaptation == null ? null : adaptation.SourceFact,
                     adaptation == null
                         ? "terminal-personal-facade-adaptation-null"
@@ -109,8 +120,7 @@ namespace ShooterMover.TerminalDropBinding
                     out placement,
                     out placementDiagnostic))
             {
-                return GeneratedTerminalDropResultV1.Rejected(
-                    TerminalDropRejectionCodeV1.MissingSourceContext,
+                return RejectedBatch(
                     adaptation.SourceFact,
                     placementDiagnostic);
             }
@@ -119,22 +129,60 @@ namespace ShooterMover.TerminalDropBinding
                 personal.GenerateForEligibleParticipants(
                     terminalFact,
                     placement);
+            if (batch == null)
+            {
+                return RejectedBatch(
+                    adaptation.SourceFact,
+                    "terminal-personal-facade-batch-null");
+            }
+            if (batch.IsAccepted)
+            {
+                for (int index = 0; index < batch.Results.Count; index++)
+                {
+                    GeneratedTerminalDropResultV1 result = batch.Results[index];
+                    if (result != null
+                        && result.IsAccepted
+                        && result.Operation != null)
+                    {
+                        acceptedOperations.Add(
+                            result.Operation.SourceOperationStableId);
+                    }
+                }
+            }
+            return batch;
+        }
+
+        public GeneratedTerminalDropResultV1 Generate(object terminalFact)
+        {
+            TerminalPersonalRewardBatchV1 batch = GenerateBatch(terminalFact);
             if (batch == null || !batch.IsAccepted || batch.Results.Count == 0)
             {
                 return GeneratedTerminalDropResultV1.Rejected(
                     TerminalDropRejectionCodeV1.GenerationFailed,
-                    adaptation.SourceFact,
+                    batch == null ? null : batch.Source,
                     batch == null
                         ? "terminal-personal-facade-batch-null"
                         : batch.Diagnostic);
             }
-
-            GeneratedTerminalDropResultV1 result = batch.Results[0];
-            if (result.IsAccepted && result.Operation != null)
+            if (batch.Results.Count != 1)
             {
-                acceptedOperations.Add(result.Operation.SourceOperationStableId);
+                return GeneratedTerminalDropResultV1.Rejected(
+                    TerminalDropRejectionCodeV1.InvalidGeneratedBatch,
+                    batch.Source,
+                    "terminal-personal-facade-requires-batch-consumer");
             }
-            return result;
+            return batch.Results[0];
+        }
+
+        private static TerminalPersonalRewardBatchV1 RejectedBatch(
+            TerminalDropSourceFactV1 source,
+            string diagnostic)
+        {
+            return new TerminalPersonalRewardBatchV1(
+                TerminalPersonalRewardBatchStatusV1.Rejected,
+                source,
+                Array.Empty<GeneratedTerminalDropResultV1>(),
+                diagnostic);
         }
 
         private static bool TryResolvePlacement(
