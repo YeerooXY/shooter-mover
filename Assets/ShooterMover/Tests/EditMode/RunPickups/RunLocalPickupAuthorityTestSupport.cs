@@ -90,7 +90,11 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         private static RunPickupGeneratedBatchV1 Batch(
             params RunPickupGeneratedRewardV1[] children)
         {
-            return Batch(children, "drop-operation-a", "batch-a");
+            return BatchForLifecycle(
+                1L,
+                children,
+                "drop-operation-a",
+                "batch-a");
         }
 
         private static RunPickupGeneratedBatchV1 Batch(
@@ -98,7 +102,11 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             string operation,
             string fingerprint)
         {
-            return Batch(new[] { child }, operation, fingerprint);
+            return BatchForLifecycle(
+                1L,
+                new[] { child },
+                operation,
+                fingerprint);
         }
 
         private static RunPickupGeneratedBatchV1 Batch(
@@ -106,12 +114,21 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             string operation,
             string fingerprint)
         {
+            return BatchForLifecycle(1L, children, operation, fingerprint);
+        }
+
+        private static RunPickupGeneratedBatchV1 BatchForLifecycle(
+            long lifecycleGeneration,
+            RunPickupGeneratedRewardV1[] children,
+            string operation,
+            string fingerprint)
+        {
             return new RunPickupGeneratedBatchV1(
                 Id("terminaldropoperation", operation),
-                Id("terminal", "event-a"),
-                Id("trigger", "event-a"),
+                Id("terminal", "event-" + operation),
+                Id("trigger", "event-" + operation),
                 RunId,
-                1L,
+                lifecycleGeneration,
                 SourceEntityId,
                 SourcePlacementId,
                 3L,
