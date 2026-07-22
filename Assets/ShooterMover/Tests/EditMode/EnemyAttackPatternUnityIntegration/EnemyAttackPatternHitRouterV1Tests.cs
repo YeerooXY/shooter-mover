@@ -5,7 +5,6 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.GameplayEntities;
-using ShooterMover.GameplayEntities.Enemies;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Players;
 
@@ -21,6 +20,8 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
             Id("player-entity.hit-router-target");
         private static readonly StableId PlayerParticipantId =
             Id("run-participant.hit-router-target");
+        private static readonly StableId PlayerCharacterId =
+            Id("character.hit-router-target");
         private static readonly StableId EnemyFactionId =
             Id("faction.hostile-machines");
         private static readonly StableId PlayerFactionId =
@@ -30,34 +31,30 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
             IEnemyAttackPatternCombatContextV1
         {
             private readonly PlayerActorAuthority player;
-            private readonly bool targetUsesEnemyFaction;
 
-            public AuthoritativeContext(
-                PlayerActorAuthority player,
-                bool targetUsesEnemyFaction = false)
+            public AuthoritativeContext(PlayerActorAuthority player)
             {
                 this.player = player;
-                this.targetUsesEnemyFaction = targetUsesEnemyFaction;
             }
 
             public int DamageCallCount { get; private set; }
+            public bool SourceAvailable { get; set; } = true;
+            public bool TargetAvailable { get; set; } = true;
+            public bool TargetUsesEnemyFaction { get; set; }
+            public int RemainingDamageFailures { get; set; }
 
             public bool TryReadSource(
                 EnemyAttackEffectEmissionV1 emission,
                 out CombatActorSnapshotV1 source)
             {
                 source = null;
-                if (emission == null)
-                {
+                if (!SourceAvailable || emission == null)
                     return false;
-                }
                 source = new CombatActorSnapshotV1(
                     SourceActorId,
                     new GameplayEntityIdentity(
                         SourceActorId,
-                        GameplayEntityOwnership.Create(
-                            SourceParticipantId,
-                            null),
+                        GameplayEntityOwnership.Create(SourceParticipantId, null),
                         EnemyFactionId),
                     emission.SourceLifecycleGeneration,
                     true,
@@ -71,29 +68,24 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                 out CombatActorSnapshotV1 target)
             {
                 target = null;
-                PlayerActorSnapshot snapshot = player.Snapshot;
-                if (snapshot == null
+                PlayerActorSnapshot snapshot = player.ExportSnapshot();
+                if (!TargetAvailable
+                    || snapshot == null
                     || targetEntityStableId != snapshot.ActorInstanceId)
-                {
                     return false;
-                }
+                GameplayEntityIdentity identity = TargetUsesEnemyFaction
+                    ? new GameplayEntityIdentity(
+                        snapshot.ActorInstanceId,
+                        snapshot.Identity.Ownership,
+                        EnemyFactionId)
+                    : snapshot.Identity;
                 target = new CombatActorSnapshotV1(
                     snapshot.ActorInstanceId,
-                    new GameplayEntityIdentity(
-                        snapshot.ActorInstanceId,
-                        GameplayEntityOwnership.Create(
-                            snapshot.RunParticipantId,
-                            null),
-                        targetUsesEnemyFaction
-                            ? EnemyFactionId
-                            : PlayerFactionId),
+                    identity,
                     snapshot.LifecycleGeneration,
                     true,
                     snapshot.IsAlive,
-                    new[]
-                    {
-                        CombatHitCapabilityIdsV1.DamageReceiver,
-                    });
+                    new[] { CombatHitCapabilityIdsV1.DamageReceiver });
                 return true;
             }
 
@@ -101,6 +93,11 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                 PlayerDamageRequest request)
             {
                 DamageCallCount++;
+                if (RemainingDamageFailures > 0)
+                {
+                    RemainingDamageFailures--;
+                    return null;
+                }
                 return player.ApplyDamage(
                     new DamageReceiverCommand(
                         request.EventId,
@@ -123,27 +120,19 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                 ProjectileEmission("accepted-projectile", 5d);
             StableId hitId = Id("combat-event.accepted-projectile");
 
-            EnemyAttackPatternHitRouteResultV1 first =
-                router.RouteActorContact(
-                    emission,
-                    hitId,
-                    PlayerActorId,
-                    1L,
-                    4d);
-            EnemyAttackPatternHitRouteResultV1 replay =
-                router.RouteActorContact(
-                    emission,
-                    hitId,
-                    PlayerActorId,
-                    1L,
-                    4d);
+            EnemyAttackPatternHitRouteResultV1 first = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 4d);
+            EnemyAttackPatternHitRouteResultV1 replay = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 4d);
 
             Assert.That(first.Status,
                 Is.EqualTo(EnemyAttackPatternHitRouteStatusV1.Applied));
             Assert.That(replay.Status,
-                Is.EqualTo(EnemyAttackPatternHitRouteStatusV1.ExactReplay));
+                Is.EqualTo(
+                    EnemyAttackPatternHitRouteStatusV1.AppliedExactReplay));
+            Assert.That(replay.IsReplay, Is.True);
             Assert.That(context.DamageCallCount, Is.EqualTo(1));
-            Assert.That(player.Snapshot.CurrentHealth, Is.EqualTo(95d));
+            Assert.That(player.ExportSnapshot().CurrentHealth, Is.EqualTo(95d));
         }
 
         [Test]
@@ -156,73 +145,131 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                 ProjectileEmission("conflicting-hit", 5d);
             StableId hitId = Id("combat-event.conflicting-hit");
             Assert.That(router.RouteActorContact(
-                    emission,
-                    hitId,
-                    PlayerActorId,
-                    1L,
-                    4d).IsAccepted,
+                    emission, hitId, PlayerActorId, 1L, 4d).IsAccepted,
                 Is.True);
 
             EnemyAttackPatternHitRouteResultV1 conflict =
                 router.RouteActorContact(
-                    emission,
-                    hitId,
-                    PlayerActorId,
-                    1L,
-                    9d);
+                    emission, hitId, PlayerActorId, 1L, 9d);
 
             Assert.That(conflict.Status,
                 Is.EqualTo(
-                    EnemyAttackPatternHitRouteStatusV1
-                        .ConflictingDuplicate));
+                    EnemyAttackPatternHitRouteStatusV1.ConflictingDuplicate));
             Assert.That(context.DamageCallCount, Is.EqualTo(1));
-            Assert.That(player.Snapshot.CurrentHealth, Is.EqualTo(95d));
+            Assert.That(player.ExportSnapshot().CurrentHealth, Is.EqualTo(95d));
         }
 
         [Test]
-        public void FriendlyFirePolicyRejectionDoesNotReachPlayerAuthority()
+        public void FriendlyFireRejectionReplayRemainsRejected()
         {
             PlayerActorAuthority player = Player(100d);
-            var context = new AuthoritativeContext(
-                player,
-                targetUsesEnemyFaction: true);
+            var context = new AuthoritativeContext(player)
+            {
+                TargetUsesEnemyFaction = true,
+            };
             var router = new EnemyAttackPatternHitRouterV1(context);
+            EnemyAttackEffectEmissionV1 emission =
+                ProjectileEmission("friendly-fire", 5d);
+            StableId hitId = Id("combat-event.friendly-fire");
 
-            EnemyAttackPatternHitRouteResultV1 result =
-                router.RouteActorContact(
-                    ProjectileEmission("friendly-fire", 5d),
-                    Id("combat-event.friendly-fire"),
-                    PlayerActorId,
-                    1L,
-                    1d);
+            EnemyAttackPatternHitRouteResultV1 first = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
+            EnemyAttackPatternHitRouteResultV1 replay = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
 
-            Assert.That(result.Status,
+            Assert.That(first.Status,
                 Is.EqualTo(
                     EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy));
+            Assert.That(replay.Status,
+                Is.EqualTo(
+                    EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy));
+            Assert.That(replay.IsReplay, Is.True);
+            Assert.That(replay.IsAccepted, Is.False);
             Assert.That(context.DamageCallCount, Is.Zero);
-            Assert.That(player.Snapshot.CurrentHealth, Is.EqualTo(100d));
+            Assert.That(player.ExportSnapshot().CurrentHealth, Is.EqualTo(100d));
         }
 
         [Test]
-        public void StaleTargetLifecycleRejectsWithoutDamage()
+        public void StaleLifecycleRejectionReplayRemainsRejected()
         {
             PlayerActorAuthority player = Player(100d);
             var context = new AuthoritativeContext(player);
             var router = new EnemyAttackPatternHitRouterV1(context);
+            EnemyAttackEffectEmissionV1 emission =
+                ProjectileEmission("stale-target", 5d);
+            StableId hitId = Id("combat-event.stale-target");
 
-            EnemyAttackPatternHitRouteResultV1 result =
-                router.RouteActorContact(
-                    ProjectileEmission("stale-target", 5d),
-                    Id("combat-event.stale-target"),
-                    PlayerActorId,
-                    2L,
-                    1d);
+            EnemyAttackPatternHitRouteResultV1 first = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 2L, 1d);
+            EnemyAttackPatternHitRouteResultV1 replay = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 2L, 1d);
 
-            Assert.That(result.Status,
+            Assert.That(first.Status,
                 Is.EqualTo(
                     EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy));
+            Assert.That(replay.Status,
+                Is.EqualTo(
+                    EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy));
+            Assert.That(replay.IsReplay, Is.True);
+            Assert.That(replay.IsAccepted, Is.False);
             Assert.That(context.DamageCallCount, Is.Zero);
-            Assert.That(player.Snapshot.CurrentHealth, Is.EqualTo(100d));
+        }
+
+        [Test]
+        public void TemporarilyUnavailableTargetContextRetriesSameHitEvent()
+        {
+            PlayerActorAuthority player = Player(100d);
+            var context = new AuthoritativeContext(player)
+            {
+                TargetAvailable = false,
+            };
+            var router = new EnemyAttackPatternHitRouterV1(context);
+            EnemyAttackEffectEmissionV1 emission =
+                ProjectileEmission("context-retry", 5d);
+            StableId hitId = Id("combat-event.context-retry");
+
+            EnemyAttackPatternHitRouteResultV1 failed = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
+            context.TargetAvailable = true;
+            EnemyAttackPatternHitRouteResultV1 applied = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
+
+            Assert.That(failed.Status,
+                Is.EqualTo(
+                    EnemyAttackPatternHitRouteStatusV1.RetryableFailure));
+            Assert.That(failed.IsAccepted, Is.False);
+            Assert.That(applied.Status,
+                Is.EqualTo(EnemyAttackPatternHitRouteStatusV1.Applied));
+            Assert.That(applied.IsReplay, Is.False);
+            Assert.That(context.DamageCallCount, Is.EqualTo(1));
+            Assert.That(player.ExportSnapshot().CurrentHealth, Is.EqualTo(95d));
+        }
+
+        [Test]
+        public void TemporarilyUnavailableDamageAuthorityRetriesSameHitEvent()
+        {
+            PlayerActorAuthority player = Player(100d);
+            var context = new AuthoritativeContext(player)
+            {
+                RemainingDamageFailures = 1,
+            };
+            var router = new EnemyAttackPatternHitRouterV1(context);
+            EnemyAttackEffectEmissionV1 emission =
+                ProjectileEmission("damage-retry", 5d);
+            StableId hitId = Id("combat-event.damage-retry");
+
+            EnemyAttackPatternHitRouteResultV1 failed = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
+            EnemyAttackPatternHitRouteResultV1 applied = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
+
+            Assert.That(failed.Status,
+                Is.EqualTo(
+                    EnemyAttackPatternHitRouteStatusV1.RetryableFailure));
+            Assert.That(applied.Status,
+                Is.EqualTo(EnemyAttackPatternHitRouteStatusV1.Applied));
+            Assert.That(context.DamageCallCount, Is.EqualTo(2));
+            Assert.That(player.ExportSnapshot().CurrentHealth, Is.EqualTo(95d));
         }
 
         [Test]
@@ -234,27 +281,15 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
             EnemyAttackEffectEmissionV1 emission =
                 MeleeEmission("multi-hit-melee", 3d, 2);
 
-            EnemyAttackPatternHitRouteResultV1 first =
-                router.RouteActorContact(
-                    emission,
-                    Id("combat-event.multi-hit-melee-0"),
-                    PlayerActorId,
-                    1L,
-                    0d);
-            EnemyAttackPatternHitRouteResultV1 second =
-                router.RouteActorContact(
-                    emission,
-                    Id("combat-event.multi-hit-melee-1"),
-                    PlayerActorId,
-                    1L,
-                    0d);
-            EnemyAttackPatternHitRouteResultV1 third =
-                router.RouteActorContact(
-                    emission,
-                    Id("combat-event.multi-hit-melee-2"),
-                    PlayerActorId,
-                    1L,
-                    0d);
+            EnemyAttackPatternHitRouteResultV1 first = router.RouteActorContact(
+                emission, Id("combat-event.multi-hit-melee-0"),
+                PlayerActorId, 1L, 0d);
+            EnemyAttackPatternHitRouteResultV1 second = router.RouteActorContact(
+                emission, Id("combat-event.multi-hit-melee-1"),
+                PlayerActorId, 1L, 0d);
+            EnemyAttackPatternHitRouteResultV1 third = router.RouteActorContact(
+                emission, Id("combat-event.multi-hit-melee-2"),
+                PlayerActorId, 1L, 0d);
 
             Assert.That(first.IsAccepted, Is.True);
             Assert.That(second.IsAccepted, Is.True);
@@ -262,11 +297,11 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                 Is.EqualTo(
                     EnemyAttackPatternHitRouteStatusV1.RejectedByPolicy));
             Assert.That(context.DamageCallCount, Is.EqualTo(2));
-            Assert.That(player.Snapshot.CurrentHealth, Is.EqualTo(94d));
+            Assert.That(player.ExportSnapshot().CurrentHealth, Is.EqualTo(94d));
         }
 
         [Test]
-        public void LethalHitAndExactReplayEmitOneCanonicalDeath()
+        public void LethalHitAndAcceptedReplayExposeOneCanonicalDeath()
         {
             PlayerActorAuthority player = Player(10d);
             var context = new AuthoritativeContext(player);
@@ -275,42 +310,33 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                 ProjectileEmission("lethal-hit", 10d);
             StableId hitId = Id("combat-event.lethal-hit");
 
-            EnemyAttackPatternHitRouteResultV1 first =
-                router.RouteActorContact(
-                    emission,
-                    hitId,
-                    PlayerActorId,
-                    1L,
-                    1d);
-            EnemyAttackPatternHitRouteResultV1 replay =
-                router.RouteActorContact(
-                    emission,
-                    hitId,
-                    PlayerActorId,
-                    1L,
-                    1d);
+            EnemyAttackPatternHitRouteResultV1 first = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
+            EnemyAttackPatternHitRouteResultV1 replay = router.RouteActorContact(
+                emission, hitId, PlayerActorId, 1L, 1d);
 
             Assert.That(first.DamageResult.DeathFact, Is.Not.Null);
             Assert.That(replay.Status,
-                Is.EqualTo(EnemyAttackPatternHitRouteStatusV1.ExactReplay));
+                Is.EqualTo(
+                    EnemyAttackPatternHitRouteStatusV1.AppliedExactReplay));
             Assert.That(replay.DamageResult.DeathFact,
                 Is.SameAs(first.DamageResult.DeathFact));
             Assert.That(context.DamageCallCount, Is.EqualTo(1));
-            Assert.That(player.Snapshot.IsDead, Is.True);
+            Assert.That(player.ExportSnapshot().IsDead, Is.True);
         }
 
         private static PlayerActorAuthority Player(double maximumHealth)
         {
-            PlayerActorConstructionResult constructed =
-                PlayerActorAuthority.TryCreate(
-                    new PlayerActorDefinition(
-                        PlayerActorId,
-                        PlayerParticipantId,
-                        PlayerFactionId,
-                        maximumHealth,
-                        1L));
-            Assert.That(constructed.Succeeded, Is.True);
-            return constructed.Authority;
+            PlayerActorCreationResult created = PlayerActorAuthority.TryCreate(
+                new PlayerActorDefinition(
+                    PlayerActorId,
+                    PlayerParticipantId,
+                    PlayerCharacterId,
+                    PlayerFactionId,
+                    maximumHealth,
+                    1L));
+            Assert.That(created.IsCreated, Is.True);
+            return created.Authority;
         }
 
         private static EnemyAttackEffectEmissionV1 ProjectileEmission(
@@ -346,9 +372,7 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                         0,
                         null),
                     null);
-            return Emission(
-                suffix,
-                descriptor,
+            return Emission(suffix, descriptor,
                 EnemyAttackExecutionKindV1.Projectile);
         }
 
@@ -380,13 +404,10 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
                         EnemyMeleeAimCommitPolicyV1.LockAtWindUp,
                         0.5d,
                         hitsPerTarget,
-                        EnemyMeleeTerminalOnImpactPolicyV1
-                            .ContinueSequence,
+                        EnemyMeleeTerminalOnImpactPolicyV1.ContinueSequence,
                         EnemyAttackInterruptionPolicyV1
                             .CancelPendingOnLifecycleEnd));
-            return Emission(
-                suffix,
-                descriptor,
+            return Emission(suffix, descriptor,
                 EnemyAttackExecutionKindV1.Contact);
         }
 
@@ -427,8 +448,7 @@ namespace ShooterMover.Tests.EditMode.EnemyAttackPatterns
             EnemyAttackSequenceV1 sequence =
                 EnemyAttackPatternSchedulerV1.Schedule(execution);
             return EnemyAttackEffectEmissionProjectorV1.Project(
-                execution,
-                sequence)[0];
+                execution, sequence)[0];
         }
 
         private static StableId Id(string value)
