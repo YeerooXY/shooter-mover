@@ -74,20 +74,30 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             }
             catch (Exception exception)
             {
-                return Reject(
+                CollectedRunRewardTransferPersistenceResultV1 uncertain =
+                    UncertainPersistence(
+                        "collected-run-transfer-custody-save-threw:"
+                        + exception.GetType().Name);
+                return Fatal(
                     plan,
-                    "collected-run-transfer-custody-save-threw:"
-                    + exception.GetType().Name,
-                    false,
-                    before);
+                    uncertain.Diagnostic,
+                    "live-compensation-intentionally-not-attempted",
+                    uncertain,
+                    before,
+                    null);
             }
             if (custody == null)
             {
-                return Reject(
+                CollectedRunRewardTransferPersistenceResultV1 uncertain =
+                    UncertainPersistence(
+                        "collected-run-transfer-custody-save-result-null");
+                return Fatal(
                     plan,
-                    "collected-run-transfer-custody-save-result-null",
-                    false,
-                    before);
+                    uncertain.Diagnostic,
+                    "live-compensation-intentionally-not-attempted",
+                    uncertain,
+                    before,
+                    null);
             }
             if (custody.DurableStateUncertain)
             {
@@ -95,7 +105,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     plan,
                     "collected-run-transfer-custody-durable-state-uncertain:"
                     + custody.Diagnostic,
-                    string.Empty,
+                    "live-compensation-intentionally-not-attempted",
                     custody,
                     before,
                     null);
@@ -104,7 +114,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             {
                 return Reject(
                     plan,
-                    "collected-run-transfer-custody-save-rejected:"
+                    "collected-run-transfer-custody-save-rejected-before-replacement:"
                     + custody.Diagnostic,
                     true,
                     before,
@@ -220,17 +230,39 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         custody);
                 }
 
-                CollectedRunRewardTransferPersistenceResultV1 persisted =
-                    persistence.PersistAppliedAndVerify(
+                CollectedRunRewardTransferPersistenceResultV1 persisted;
+                try
+                {
+                    persisted = persistence.PersistAppliedAndVerify(
                         prepared.MarkPersisted(receipt.Fingerprint),
                         receipt);
+                }
+                catch (Exception exception)
+                {
+                    CollectedRunRewardTransferPersistenceResultV1 uncertain =
+                        UncertainPersistence(
+                            "collected-run-transfer-final-save-threw:"
+                            + exception.GetType().Name);
+                    return Fatal(
+                        plan,
+                        uncertain.Diagnostic,
+                        "live-compensation-intentionally-not-attempted",
+                        uncertain,
+                        TryExportState(),
+                        receipt);
+                }
                 if (persisted == null)
                 {
-                    return RejectAfterCompensation(
+                    CollectedRunRewardTransferPersistenceResultV1 uncertain =
+                        UncertainPersistence(
+                            "collected-run-transfer-final-save-result-null");
+                    return Fatal(
                         plan,
-                        compensation,
-                        "collected-run-transfer-final-save-result-null",
-                        custody);
+                        uncertain.Diagnostic,
+                        "live-compensation-intentionally-not-attempted",
+                        uncertain,
+                        TryExportState(),
+                        receipt);
                 }
                 if (persisted.DurableStateUncertain)
                 {
@@ -248,7 +280,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     return RejectAfterCompensation(
                         plan,
                         compensation,
-                        "collected-run-transfer-final-save-rejected:"
+                        "collected-run-transfer-final-save-rejected-before-replacement:"
                         + persisted.Diagnostic,
                         persisted);
                 }
@@ -480,6 +512,21 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 diagnostic,
                 compensationDiagnostic,
                 false);
+        }
+
+        private static CollectedRunRewardTransferPersistenceResultV1
+            UncertainPersistence(string diagnostic)
+        {
+            return new CollectedRunRewardTransferPersistenceResultV1(
+                CollectedRunRewardTransferPersistenceStatusV1
+                    .DurableStateUncertain,
+                0L,
+                string.Empty,
+                0L,
+                string.Empty,
+                string.IsNullOrWhiteSpace(diagnostic)
+                    ? "collected-run-transfer-durable-state-uncertain"
+                    : diagnostic);
         }
 
         private PermanentRewardTransferStateV1 TryExportState()
