@@ -65,6 +65,8 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             public int RealizeFailures;
             public int PresentationFailures;
             public int RealizeThrows;
+            public int TerminalRejects;
+            public int ConflictingRejects;
             public int RegisterCalls;
             public int RealizeCalls;
             public int PresentationCalls;
@@ -102,7 +104,25 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                         RunPickupRealizationStatusV1.Rejected,
                         null,
                         Array.Empty<RunPickupSnapshotV1>(),
-                        "fake-run-session-context-unavailable");
+                        "run-pickup-session-context-unavailable");
+                }
+                if (TerminalRejects > 0)
+                {
+                    TerminalRejects--;
+                    return new RunPickupRealizationResultV1(
+                        RunPickupRealizationStatusV1.Rejected,
+                        null,
+                        Array.Empty<RunPickupSnapshotV1>(),
+                        "run-pickup-realization-participant-mismatch");
+                }
+                if (ConflictingRejects > 0)
+                {
+                    ConflictingRejects--;
+                    return new RunPickupRealizationResultV1(
+                        RunPickupRealizationStatusV1.ConflictingDuplicate,
+                        null,
+                        Array.Empty<RunPickupSnapshotV1>(),
+                        "run-pickup-drop-operation-conflict");
                 }
 
                 bool first = realizedOperations.Add(admission.OperationStableId);
@@ -124,22 +144,11 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                 {
                     PresentationFailures--;
                     return new RunPickupPresentationSyncResultV1(
-                        1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        1,
+                        1, 0, 0, 0, 0, 1,
                         "fake-presenter-unavailable");
                 }
                 return new RunPickupPresentationSyncResultV1(
-                    1,
-                    1,
-                    1,
-                    0,
-                    0,
-                    0,
-                    string.Empty);
+                    1, 1, 1, 0, 0, 0, string.Empty);
             }
         }
 
@@ -154,7 +163,6 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(queue.ProcessPending(), Is.EqualTo(0));
             Assert.That(queue.PendingCount, Is.EqualTo(1));
             Assert.That(queue.LastDiagnostic, Is.EqualTo("fake-source-unavailable"));
-
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
             Assert.That(queue.PendingCount, Is.Zero);
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
@@ -171,9 +179,9 @@ namespace ShooterMover.Tests.EditMode.RunPickups
 
             Assert.That(queue.ProcessPending(), Is.EqualTo(0));
             Assert.That(queue.PendingCount, Is.EqualTo(1));
+            Assert.That(queue.QuarantinedCount, Is.Zero);
             Assert.That(queue.LastDiagnostic,
-                Is.EqualTo("fake-run-session-context-unavailable"));
-
+                Is.EqualTo("run-pickup-session-context-unavailable"));
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
         }
@@ -190,11 +198,9 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(queue.ProcessPending(), Is.EqualTo(0));
             Assert.That(queue.PendingCount, Is.EqualTo(1));
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
-
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
             Assert.That(runtime.RealizeCalls, Is.EqualTo(2));
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
-            Assert.That(queue.PendingCount, Is.Zero);
         }
 
         [Test]
@@ -210,9 +216,44 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(queue.PendingCount, Is.EqualTo(1));
             Assert.That(queue.LastDiagnostic,
                 Does.StartWith("stage1-pickup-realization-exception:"));
-
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TerminalRejection_IsQuarantinedAndNeverRetried()
+        {
+            var runtime = new FakeRuntime { TerminalRejects = 1 };
+            PendingTerminalDropAdmissionResultV1 admission = Admission();
+            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+                runtime,
+                new FakeSourceResolver());
+            queue.TryEnqueue(admission);
+
+            Assert.That(queue.ProcessPending(), Is.Zero);
+            Assert.That(queue.PendingCount, Is.Zero);
+            Assert.That(queue.QuarantinedCount, Is.EqualTo(1));
+            Assert.That(runtime.RealizeCalls, Is.EqualTo(1));
+            Assert.That(queue.ProcessPending(), Is.Zero);
+            Assert.That(runtime.RealizeCalls, Is.EqualTo(1));
+            Assert.That(queue.TryEnqueue(admission).Disposition,
+                Is.EqualTo(Stage1PickupDeliveryDispositionV1.Rejected));
+        }
+
+        [Test]
+        public void ConflictingRealization_IsQuarantinedAndNeverRetried()
+        {
+            var runtime = new FakeRuntime { ConflictingRejects = 1 };
+            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+                runtime,
+                new FakeSourceResolver());
+            queue.TryEnqueue(Admission());
+
+            Assert.That(queue.ProcessPending(), Is.Zero);
+            Assert.That(queue.PendingCount, Is.Zero);
+            Assert.That(queue.QuarantinedCount, Is.EqualTo(1));
+            Assert.That(queue.ProcessPending(), Is.Zero);
+            Assert.That(runtime.RealizeCalls, Is.EqualTo(1));
         }
 
         [Test]
@@ -224,20 +265,14 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                 runtime,
                 new FakeSourceResolver());
 
-            Stage1PickupDeliveryResultV1 first = queue.TryEnqueue(admission);
-            Stage1PickupDeliveryResultV1 pendingReplay =
-                queue.TryEnqueue(admission);
-            Assert.That(first.Disposition,
+            Assert.That(queue.TryEnqueue(admission).Disposition,
                 Is.EqualTo(Stage1PickupDeliveryDispositionV1.Applied));
-            Assert.That(pendingReplay.Disposition,
+            Assert.That(queue.TryEnqueue(admission).Disposition,
                 Is.EqualTo(Stage1PickupDeliveryDispositionV1.ExactReplay));
-
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
-            Stage1PickupDeliveryResultV1 completedReplay =
-                queue.TryEnqueue(admission);
-            Assert.That(completedReplay.Disposition,
+            Assert.That(queue.TryEnqueue(admission).Disposition,
                 Is.EqualTo(Stage1PickupDeliveryDispositionV1.ExactReplay));
-            Assert.That(queue.ProcessPending(), Is.EqualTo(0));
+            Assert.That(queue.ProcessPending(), Is.Zero);
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
         }
 
@@ -251,14 +286,57 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             queue.TryEnqueue(Admission());
 
             queue.ReleaseRuntime();
-            Assert.That(queue.ProcessPending(), Is.EqualTo(0));
+            Assert.That(queue.ProcessPending(), Is.Zero);
             Assert.That(queue.PendingCount, Is.EqualTo(1));
-
             var replacementRuntime = new FakeRuntime();
             queue.ConfigureRuntime(replacementRuntime);
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
-            Assert.That(queue.PendingCount, Is.Zero);
             Assert.That(replacementRuntime.AcceptedRealizationCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ProductionPickupUsesCanonicalProvenanceAndNoSyntheticFacts()
+        {
+            string stage1Path = Path.Combine(
+                Application.dataPath,
+                "ShooterMover",
+                "Production",
+                "Stage1");
+            string bootstrap = File.ReadAllText(Path.Combine(
+                stage1Path,
+                "Stage1RunPickupBootstrap2D.cs"));
+            string provenance = File.ReadAllText(Path.Combine(
+                stage1Path,
+                "Stage1PlayableLoopCompositionV1.TerminalDropProvenance.cs"));
+            string props = File.ReadAllText(Path.Combine(
+                stage1Path,
+                "Stage1RunPickupPropBootstrap2D.cs"));
+            string support = File.ReadAllText(Path.Combine(
+                stage1Path,
+                "Stage1RunPickupBootstrapSupportV1.cs"));
+
+            Assert.That(bootstrap, Does.Not.Contain(
+                "DeterministicEnemyRuntimeIdentityDeriverV1"));
+            Assert.That(bootstrap, Does.Not.Contain("BuildPickupEnemyCatalog"));
+            Assert.That(bootstrap, Does.Not.Contain("BuildRewardProfiles"));
+            Assert.That(bootstrap, Does.Not.Contain("new EnemyDeathFactV1"));
+            Assert.That(support, Does.Not.Contain(
+                "Stage1EnemyTerminalDropObserver2D"));
+
+            Assert.That(provenance, Does.Contain("pendingEnemyRewards"));
+            Assert.That(provenance, Does.Contain("notification.EventId"));
+            Assert.That(provenance, Does.Contain("notification.SourceId"));
+            Assert.That(provenance, Does.Contain(
+                "liveSource.SourceEntityStableId"));
+            Assert.That(provenance, Does.Contain(
+                "LoadProductionEnemyCatalog"));
+
+            Assert.That(props, Does.Not.Contain(
+                "DestroyedState.MaximumHealth"));
+            Assert.That(props, Does.Not.Contain("BuildPropRewardProfiles"));
+            Assert.That(props, Does.Contain(
+                "TryResolveCanonicalPropTerminalSource"));
+            Assert.That(props, Does.Contain("DefinitionFingerprint"));
         }
 
         [Test]
