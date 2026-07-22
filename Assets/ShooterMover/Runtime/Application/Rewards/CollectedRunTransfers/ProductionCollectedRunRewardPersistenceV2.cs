@@ -28,10 +28,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
         {
             this.composition = composition
                 ?? throw new ArgumentNullException(nameof(composition));
-            this.prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
-            this.receipts = receipts ?? throw new ArgumentNullException(nameof(receipts));
+            this.prepared = prepared
+                ?? throw new ArgumentNullException(nameof(prepared));
+            this.receipts = receipts
+                ?? throw new ArgumentNullException(nameof(receipts));
             this.selectedCharacterStableId = selectedCharacterStableId
-                ?? throw new ArgumentNullException(nameof(selectedCharacterStableId));
+                ?? throw new ArgumentNullException(
+                    nameof(selectedCharacterStableId));
         }
 
         public bool IsAvailable
@@ -96,6 +99,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             }
             catch (Exception exception)
             {
+                // This phase has not mutated permanent reward authorities. Even if the
+                // custody component reached disk, an exact repeat is safe and monotonic.
                 prepared.ImportSnapshot(rollback);
                 return Rejected(
                     "collected-run-transfer-custody-persist-threw:"
@@ -208,8 +213,12 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             }
             catch (Exception exception)
             {
-                return Rejected(
-                    "collected-run-transfer-final-persist-threw:"
+                // The exception may have happened after active-file replacement. Disk
+                // state is not provably old, so the coordinator must return fatal and must
+                // not roll live reward authorities back.
+                return Uncertain(
+                    null,
+                    "final-persist-threw-"
                     + exception.GetType().Name);
             }
 
@@ -304,9 +313,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             return new CollectedRunRewardTransferPersistenceResultV1(
                 status,
                 result.Account == null ? 0L : result.Account.Revision,
-                result.Account == null ? string.Empty : result.Account.Fingerprint,
+                result.Account == null
+                    ? string.Empty
+                    : result.Account.Fingerprint,
                 result.Character == null ? 0L : result.Character.Revision,
-                result.Character == null ? string.Empty : result.Character.Fingerprint,
+                result.Character == null
+                    ? string.Empty
+                    : result.Character.Fingerprint,
                 string.Empty);
         }
 
@@ -333,7 +346,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     + boundary
                     + "-durable-state-uncertain:"
                     + (result == null
-                        ? "result-null"
+                        ? "result-unavailable"
                         : result.Diagnostic));
         }
 
@@ -360,10 +373,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             ICollectedRunRewardAtomicBatchAuthorityPortV1 authority,
             ICollectedRunRewardTransferPersistencePortV1 persistence)
         {
-            this.plan = plan ?? throw new ArgumentNullException(nameof(plan));
+            this.plan = plan
+                ?? throw new ArgumentNullException(nameof(plan));
             coordinator = new CollectedRunRewardTransferCoordinatorV2(
-                authority ?? throw new ArgumentNullException(nameof(authority)),
-                persistence ?? throw new ArgumentNullException(nameof(persistence)));
+                authority
+                    ?? throw new ArgumentNullException(nameof(authority)),
+                persistence
+                    ?? throw new ArgumentNullException(nameof(persistence)));
         }
 
         public CollectedRunRewardTransferResultV1 Apply()
