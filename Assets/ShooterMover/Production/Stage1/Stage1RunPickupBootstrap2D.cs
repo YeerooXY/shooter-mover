@@ -1,17 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Runs.Session;
-using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
-using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
@@ -22,47 +17,14 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
     /// <summary>
-    /// Pickup consumer for the one shared Stage 1 Run Session aggregate. This component owns
-    /// only pickup realization/presentation adapters and retained admission delivery. It never
-    /// starts, replaces, or reconstructs a Run Session or any player/weapon/condition/room port.
+    /// Physical-pickup consumer for the one shared Stage 1 Run Session. Enemy terminal facts,
+    /// live actor identities, attribution and content provenance are exported by the production
+    /// composition; this adapter never derives or reconstructs them.
     /// </summary>
     [DefaultExecutionOrder(21000)]
     [DisallowMultipleComponent]
     public sealed class Stage1RunPickupBootstrap2D : MonoBehaviour
     {
-        private sealed class EnemySourceRegistration
-        {
-            public EnemySourceRegistration(
-                IEnemyActor2DAuthority authority,
-                Transform sourceTransform,
-                EnemyDefinitionV1 definition,
-                EnemyRuntimeIdentityV1 identity,
-                StableId roomStableId,
-                StableId placementStableId)
-            {
-                Authority = authority;
-                SourceTransform = sourceTransform;
-                Definition = definition;
-                Identity = identity;
-                RoomStableId = roomStableId;
-                PlacementStableId = placementStableId;
-            }
-
-            public IEnemyActor2DAuthority Authority { get; }
-            public Transform SourceTransform { get; }
-            public EnemyDefinitionV1 Definition { get; }
-            public EnemyRuntimeIdentityV1 Identity { get; }
-            public StableId RoomStableId { get; }
-            public StableId PlacementStableId { get; }
-        }
-
-        private static readonly StableId RoomRuntimeStableId =
-            StableId.Parse("room-runtime-instance.demo-cutover-level1");
-        private static readonly StableId MobileDefinitionStableId =
-            StableId.Parse("enemy.mobile-blaster-droid");
-        private static readonly StableId TurretDefinitionStableId =
-            StableId.Parse("enemy.blaster-turret");
-
         private Stage1PlayableLoopCompositionV1 stage1;
         private GameObject runtimeRoot;
         private RunSessionAggregateV1 run;
@@ -73,10 +35,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private RunPickupPresenter2D presenter;
         private readonly Stage1PendingAdmissionPickupBridgeV1 admissionBridge =
             new Stage1PendingAdmissionPickupBridgeV1();
-        private readonly List<EnemySourceRegistration> enemySources =
-            new List<EnemySourceRegistration>();
+        private readonly Dictionary<StableId, string> deliveredEnemyEvents =
+            new Dictionary<StableId, string>();
+        private readonly Dictionary<StableId, string> quarantinedEnemyEvents =
+            new Dictionary<StableId, string>();
         private readonly List<UnityEngine.Object> runtimeAssets =
             new List<UnityEngine.Object>();
+        private PendingTerminalDropAdmissionResultV1 lastEnemyAdmission;
         private string diagnostic = string.Empty;
 
         public bool IsComposed
@@ -96,14 +61,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             get { return pickups == null ? null : pickups.Authority; }
         }
         public int PendingAdmissionCount { get { return admissionBridge.PendingCount; } }
+        public int QuarantinedAdmissionCount
+        {
+            get { return admissionBridge.QuarantinedCount; }
+        }
         public PendingTerminalDropAdmissionResultV1 LastEnemyAdmission
         {
-            get
-            {
-                return terminalDrops == null
-                    ? null
-                    : terminalDrops.EnemyConsumer.LastAdmission;
-            }
+            get { return lastEnemyAdmission; }
         }
 
         [RuntimeInitializeOnLoadMethod(
@@ -189,6 +153,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 TryRefreshLifecycle(shared);
             }
 
+            ProcessCanonicalEnemyTerminalFacts();
             admissionBridge.ProcessPending();
             if (!string.IsNullOrWhiteSpace(admissionBridge.LastDiagnostic))
                 diagnostic = admissionBridge.LastDiagnostic;
@@ -287,52 +252,42 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 authorityHost,
                 presentations,
                 runtimeRoot.transform);
-
             admissionBridge.ConfigureRuntime(
                 new Stage1UnityPickupAdmissionRuntimeV1(
                     sourcePositions,
                     pickups.PendingConsumer,
                     presenter));
 
-            ConfigureCollector();
-            EnemyCatalogV1 enemyCatalog = BuildPickupEnemyCatalog();
+            EnemyCatalogV1 enemyCatalog;
+            PropCatalogV1 propCatalog;
+            IRewardProfileResolverV1 rewardProfiles;
+            string contentDiagnostic;
+            if (!stage1.TryResolveCanonicalTerminalDropContent(
+                    out enemyCatalog,
+                    out propCatalog,
+                    out rewardProfiles,
+                    out contentDiagnostic))
+            {
+                throw new InvalidOperationException(contentDiagnostic);
+            }
             terminalDrops = TerminalDropBindingCompositionV1.Create(
                 enemyCatalog,
                 new Stage1EnemyTerminalSourceContextResolverV1(() => run),
-                new PropCatalogV1(
-                    PropCapabilityRegistryV1.CreateBuiltIns(),
-                    Array.Empty<PropDefinitionV1>()),
+                propCatalog,
                 new Stage1MissingPropTerminalSourceContextResolverV1(),
                 new Stage1PickupTerminalDropRunContextResolverV1(
                     () => run,
                     () => stage1.RunPickupExperience.CurrentState.Level),
-                BuildRewardProfiles(),
+                rewardProfiles,
                 new RewardGenerationServiceV1(),
-                new PendingTerminalDropAdmissionAuthorityV1(),
-                null,
-                admissionBridge);
+                new PendingTerminalDropAdmissionAuthorityV1());
 
-            RegisterEnemy(
-                stage1.RunPickupController.MobileBlasterDroid,
-                stage1.RunPickupController.MobileBlasterDroid.transform,
-                MobileDefinitionStableId,
-                Level1AuthorableRoomDefinitionV1
-                    .MovingDroidInstanceStableId,
-                Level1AuthorableRoomDefinitionV1.EntryRoomStableId,
-                enemyCatalog);
-            RegisterEnemy(
-                stage1.RunPickupController.TurretPackage.Authority,
-                stage1.RunPickupController.TurretPackage.transform,
-                TurretDefinitionStableId,
-                Level1AuthorableRoomDefinitionV1.TurretInstanceStableId,
-                Level1AuthorableRoomDefinitionV1.TerminalRoomStableId,
-                enemyCatalog);
-
+            ConfigureCollector();
             observedLifecycleGeneration = run.LifecycleGeneration;
             admissionBridge.RetireOtherLifecycles(
                 run.RunStableId,
                 run.LifecycleGeneration);
-            RefreshEnemySourceBindings();
+            ProcessCanonicalEnemyTerminalFacts();
             admissionBridge.ProcessPending();
             presenter.Synchronize(stage1.RunPickupRooms.CurrentRoomStableId);
         }
@@ -345,11 +300,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     throw new InvalidOperationException(
                         "Pickup lifecycle refresh requires the same shared aggregate.");
                 observedLifecycleGeneration = shared.LifecycleGeneration;
+                deliveredEnemyEvents.Clear();
+                quarantinedEnemyEvents.Clear();
                 admissionBridge.RetireOtherLifecycles(
                     shared.RunStableId,
                     shared.LifecycleGeneration);
                 ConfigureCollector();
-                RefreshEnemySourceBindings();
+                ProcessCanonicalEnemyTerminalFacts();
                 admissionBridge.ProcessPending();
                 diagnostic = admissionBridge.LastDiagnostic;
             }
@@ -379,140 +336,120 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 playerSnapshot.ParticipantStableId);
         }
 
-        private void RegisterEnemy(
-            IEnemyActor2DAuthority authority,
-            Transform sourceTransform,
-            StableId definitionStableId,
-            StableId placementStableId,
-            StableId roomStableId,
-            EnemyCatalogV1 catalog)
+        private void ProcessCanonicalEnemyTerminalFacts()
         {
-            EnemyDefinitionV1 definition =
-                catalog.GetDefinition(definitionStableId);
-            EnemyRuntimeIdentityV1 identity =
-                new DeterministicEnemyRuntimeIdentityDeriverV1().Derive(
-                    run.RunStableId,
-                    RoomRuntimeStableId,
-                    roomStableId,
-                    placementStableId);
-            var registration = new EnemySourceRegistration(
-                authority,
-                sourceTransform,
-                definition,
-                identity,
-                roomStableId,
-                placementStableId);
-            enemySources.Add(registration);
-
-            Stage1EnemyTerminalDropObserver2D observer =
-                runtimeRoot.AddComponent<Stage1EnemyTerminalDropObserver2D>();
-            observer.Configure(
-                authority,
-                delegate { return TryEmitEnemyDeath(registration); });
-        }
-
-        private void RefreshEnemySourceBindings()
-        {
-            for (int index = 0; index < enemySources.Count; index++)
+            if (stage1 == null || run == null || terminalDrops == null) return;
+            IReadOnlyList<Stage1CanonicalEnemyTerminalFactV1> facts;
+            string exportDiagnostic;
+            if (!stage1.TryExportCanonicalEnemyTerminalFacts(
+                    out facts,
+                    out exportDiagnostic))
             {
-                EnemySourceRegistration registration = enemySources[index];
-                if (registration == null
-                    || registration.SourceTransform == null
-                    || registration.Identity == null)
+                diagnostic = exportDiagnostic;
+                return;
+            }
+
+            for (int index = 0; index < facts.Count; index++)
+            {
+                Stage1CanonicalEnemyTerminalFactV1 terminal = facts[index];
+                if (terminal == null
+                    || terminal.Fact == null
+                    || terminal.Fact.DeathEventStableId == null)
                 {
                     continue;
                 }
-                admissionBridge.RegisterTransformSource(
-                    run.RunStableId,
-                    run.LifecycleGeneration,
-                    registration.Identity.EntityInstanceId,
-                    registration.PlacementStableId,
-                    registration.RoomStableId,
-                    registration.SourceTransform);
-            }
-        }
-
-        private Stage1PickupDeliveryResultV1 TryEmitEnemyDeath(
-            EnemySourceRegistration registration)
-        {
-            if (run == null
-                || terminalDrops == null
-                || registration == null
-                || registration.Definition == null
-                || registration.Identity == null)
-            {
-                return new Stage1PickupDeliveryResultV1(
-                    Stage1PickupDeliveryDispositionV1.Retryable,
-                    null,
-                    "stage1-enemy-terminal-runtime-unavailable");
-            }
-
-            try
-            {
-                RunPlayerRuntimeSnapshotV1 player =
-                    run.RuntimePorts.Player.ExportSnapshot();
-                string suffix = run.RunStableId
-                    + "|"
-                    + run.LifecycleGeneration.ToString(
-                        CultureInfo.InvariantCulture)
-                    + "|"
-                    + registration.Identity.PlacementStableId;
-                StableId deathEvent = StableId.Create(
-                    "enemy-death-event",
-                    DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
-                        suffix + "|death"));
-                var fact = new EnemyDeathFactV1(
-                    deathEvent,
-                    StableId.Create(
-                        "combat-event",
-                        DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
-                            suffix + "|trigger")),
-                    registration.Identity,
-                    registration.Definition.DefinitionId,
-                    1,
-                    run.LifecycleGeneration,
-                    player.ActorInstanceStableId,
-                    player.ParticipantStableId,
-                    registration.Definition.ExperienceProfileId,
-                    registration.Definition.DropProfileId,
-                    (EnemyActorDeathCause)1);
-
-                admissionBridge.RegisterTransformSource(
-                    run.RunStableId,
-                    run.LifecycleGeneration,
-                    registration.Identity.EntityInstanceId,
-                    registration.PlacementStableId,
-                    registration.RoomStableId,
-                    registration.SourceTransform,
-                    deathEvent);
-                terminalDrops.EnemyConsumer.Consume(fact);
-                PendingTerminalDropAdmissionResultV1 admission =
-                    terminalDrops.EnemyConsumer.LastAdmission;
-                if (admission == null || !admission.IsAccepted)
+                StableId eventId = terminal.Fact.DeathEventStableId;
+                if (deliveredEnemyEvents.ContainsKey(eventId)
+                    || quarantinedEnemyEvents.ContainsKey(eventId))
                 {
-                    return new Stage1PickupDeliveryResultV1(
-                        Stage1PickupDeliveryDispositionV1.Retryable,
-                        admission,
-                        admission == null
-                            ? "stage1-enemy-terminal-admission-null"
-                            : admission.Diagnostic);
+                    continue;
+                }
+
+                admissionBridge.RegisterTransformSource(
+                    run.RunStableId,
+                    run.LifecycleGeneration,
+                    terminal.Fact.Identity.EntityInstanceId,
+                    terminal.PlacementStableId,
+                    terminal.RoomStableId,
+                    terminal.SourceTransform,
+                    terminal.Notification.EventId);
+
+                GeneratedTerminalDropResultV1 generated;
+                try
+                {
+                    generated = terminalDrops.Authority.Generate(terminal.Fact);
+                }
+                catch (Exception exception)
+                {
+                    diagnostic = "stage1-enemy-terminal-generation-exception:"
+                        + exception.GetType().Name
+                        + ":"
+                        + exception.Message;
+                    continue;
+                }
+                if (generated == null || !generated.IsAccepted)
+                {
+                    string failure = generated == null
+                        ? "stage1-enemy-terminal-generation-null"
+                        : generated.Diagnostic;
+                    if (generated != null
+                        && !IsRetryableTerminalGeneration(generated))
+                    {
+                        quarantinedEnemyEvents[eventId] = failure;
+                    }
+                    diagnostic = failure;
+                    continue;
+                }
+
+                lastEnemyAdmission = terminalDrops.PendingAdmission.Admit(generated);
+                if (lastEnemyAdmission == null
+                    || !lastEnemyAdmission.IsAccepted)
+                {
+                    string failure = lastEnemyAdmission == null
+                        ? "stage1-enemy-terminal-admission-null"
+                        : lastEnemyAdmission.Diagnostic;
+                    if (lastEnemyAdmission != null
+                        && lastEnemyAdmission.Status
+                            == PendingTerminalDropAdmissionStatusV1.ConflictingDuplicate)
+                    {
+                        quarantinedEnemyEvents[eventId] = failure;
+                    }
+                    diagnostic = failure;
+                    continue;
                 }
 
                 Stage1PickupDeliveryResultV1 queued =
-                    admissionBridge.TryEnqueue(admission);
-                admissionBridge.ProcessPending();
-                diagnostic = admissionBridge.LastDiagnostic;
-                return queued;
+                    admissionBridge.TryEnqueue(lastEnemyAdmission);
+                if (queued != null && queued.IsAcknowledged)
+                {
+                    deliveredEnemyEvents[eventId] = terminal.Fact.Fingerprint;
+                }
+                else if (queued != null
+                    && (queued.Disposition
+                        == Stage1PickupDeliveryDispositionV1.Rejected
+                        || queued.Disposition
+                        == Stage1PickupDeliveryDispositionV1.ConflictingDuplicate))
+                {
+                    quarantinedEnemyEvents[eventId] = queued.Diagnostic;
+                }
+                diagnostic = queued == null
+                    ? "stage1-enemy-terminal-queue-null"
+                    : queued.Diagnostic;
             }
-            catch (Exception exception)
+        }
+
+        private static bool IsRetryableTerminalGeneration(
+            GeneratedTerminalDropResultV1 result)
+        {
+            if (result == null) return true;
+            switch (result.RejectionCode)
             {
-                return new Stage1PickupDeliveryResultV1(
-                    Stage1PickupDeliveryDispositionV1.Retryable,
-                    null,
-                    "stage1-enemy-terminal-attempt-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message);
+                case TerminalDropRejectionCodeV1.MissingRun:
+                case TerminalDropRejectionCodeV1.MissingSourceContext:
+                case TerminalDropRejectionCodeV1.GenerationFailed:
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -576,102 +513,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             return entry;
         }
 
-        private static RewardProfileCatalogResolverV1 BuildRewardProfiles()
-        {
-            RewardProfileV1 common = RewardProfileV1.Create(
-                StableId.Parse("drop.enemy-common"),
-                new[]
-                {
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-common-money"),
-                        RewardGrantKindV1.Money,
-                        StableId.Parse("currency.credits"),
-                        5L),
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-common-scrap"),
-                        RewardGrantKindV1.Scrap,
-                        StableId.Parse("currency.scrap"),
-                        1L),
-                },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardProfileV1 turret = RewardProfileV1.Create(
-                StableId.Parse("drop.enemy-turret"),
-                new[]
-                {
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-turret-money"),
-                        RewardGrantKindV1.Money,
-                        StableId.Parse("currency.credits"),
-                        15L),
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-turret-box"),
-                        RewardGrantKindV1.Strongbox,
-                        StableId.Parse("strongbox.tier-common"),
-                        1L),
-                },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            return new RewardProfileCatalogResolverV1(new[]
-            {
-                common,
-                turret,
-                RewardProfileV1.CreateExplicitNoDrop(
-                    StableId.Parse("drop.enemy-none")),
-            });
-        }
-
-        private static EnemyCatalogV1 BuildPickupEnemyCatalog()
-        {
-            return new EnemyCatalogV1(
-                EnemyCatalogV1.SupportedSchemaVersion,
-                StableId.Parse(
-                    "enemy-content.stage1-pickup-live-v1"),
-                new[]
-                {
-                    PickupEnemyDefinition(
-                        MobileDefinitionStableId,
-                        "presentation.enemy-mobile-blaster-droid",
-                        16d,
-                        "xp.enemy-standard",
-                        "drop.enemy-common"),
-                    PickupEnemyDefinition(
-                        TurretDefinitionStableId,
-                        "presentation.enemy-blaster-turret",
-                        30d,
-                        "xp.enemy-turret",
-                        "drop.enemy-turret"),
-                });
-        }
-
-        private static EnemyDefinitionV1 PickupEnemyDefinition(
-            StableId definitionStableId,
-            string presentation,
-            double health,
-            string experienceProfile,
-            string dropProfile)
-        {
-            return new EnemyDefinitionV1(
-                definitionStableId,
-                StableId.Parse(presentation),
-                health,
-                new EnemyLevelScalingProfileV1(1, 100, 0d, 1d),
-                StableId.Parse("faction.hostile-machines"),
-                24d,
-                360d,
-                StableId.Parse("enemy-movement.stationary"),
-                StableId.Parse("enemy-decision.ranged-standard"),
-                Array.Empty<EnemyAttackCapabilityDescriptorV1>(),
-                StableId.Parse(experienceProfile),
-                StableId.Parse(dropProfile),
-                EnemyCatalogRoomClearRoleV1.RequiredEnemy,
-                Array.Empty<StableId>());
-        }
-
         private void TeardownProjection(bool clearDeliveryState)
         {
             admissionBridge.ReleaseRuntime();
@@ -686,15 +527,19 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     Destroy(runtimeAssets[index]);
             }
             runtimeAssets.Clear();
-            enemySources.Clear();
             runtimeRoot = null;
             sourcePositions = null;
             pickups = null;
             terminalDrops = null;
             presenter = null;
             observedLifecycleGeneration = -1L;
+            lastEnemyAdmission = null;
             if (clearDeliveryState)
+            {
                 admissionBridge.ClearAll();
+                deliveredEnemyEvents.Clear();
+                quarantinedEnemyEvents.Clear();
+            }
             run = null;
         }
 
