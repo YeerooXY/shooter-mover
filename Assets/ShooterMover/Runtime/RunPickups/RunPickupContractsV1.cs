@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.RunPickups
 {

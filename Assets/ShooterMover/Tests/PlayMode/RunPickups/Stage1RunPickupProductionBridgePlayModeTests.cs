@@ -7,6 +7,7 @@ using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Application;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;

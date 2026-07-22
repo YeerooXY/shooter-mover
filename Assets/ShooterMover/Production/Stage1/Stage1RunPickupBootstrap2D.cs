@@ -7,6 +7,7 @@ using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
@@ -33,8 +34,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private RunPickupLiveCompositionV1 pickups;
         private TerminalDropBindingCompositionV1 terminalDrops;
         private RunPickupPresenter2D presenter;
-        private readonly Stage1PendingAdmissionPickupBridgeV1 admissionBridge =
-            new Stage1PendingAdmissionPickupBridgeV1();
+        private readonly Stage1PickupTerminalDropRunContextResolverV1
+            dropRunContext =
+                new Stage1PickupTerminalDropRunContextResolverV1();
+        private readonly PendingAdmissionPickupBridgeV1 admissionBridge =
+            new PendingAdmissionPickupBridgeV1();
         private readonly Dictionary<StableId, string> deliveredEnemyEvents =
             new Dictionary<StableId, string>();
         private readonly Dictionary<StableId, string> quarantinedEnemyEvents =
@@ -68,6 +72,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         public PendingTerminalDropAdmissionResultV1 LastEnemyAdmission
         {
             get { return lastEnemyAdmission; }
+        }
+        internal ITerminalDropRunContextResolverV1 DropRunContext
+        {
+            get { return dropRunContext; }
         }
 
         [RuntimeInitializeOnLoadMethod(
@@ -137,7 +145,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             RunSessionAggregateV1 shared;
             if (!stage1.TryResolveSharedRunSession(out shared) || shared == null)
             {
-                diagnostic = "stage1-pickup-shared-run-unavailable";
+                diagnostic = "pickup-shared-run-unavailable";
                 admissionBridge.ReleaseRuntime();
                 return;
             }
@@ -155,10 +163,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 presenter.Synchronize(stage1.RunPickupRooms.CurrentRoomStableId);
         }
 
-        public Stage1PickupDeliveryResultV1 EnqueueAdmission(
+        public PickupDeliveryResultV1 EnqueueAdmission(
             PendingTerminalDropAdmissionResultV1 admission)
         {
-            Stage1PickupDeliveryResultV1 result =
+            PickupDeliveryResultV1 result =
                 admissionBridge.TryEnqueue(admission);
             admissionBridge.ProcessPending();
             diagnostic = admissionBridge.LastDiagnostic;
@@ -227,6 +235,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             bool changedRun = run != null && run.RunStableId != shared.RunStableId;
             TeardownProjection(changedRun);
             run = shared;
+            dropRunContext.Bind(run);
 
             runtimeRoot = new GameObject("PICKUP-LIVE-001 Shared Run Consumer");
             runtimeRoot.transform.SetParent(transform, false);
@@ -246,7 +255,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 presentationRegistry,
                 runtimeRoot.transform);
             admissionBridge.ConfigureRuntime(
-                new Stage1UnityPickupAdmissionRuntimeV1(
+                new UnityPickupAdmissionRuntimeV1(
                     sourcePositions,
                     pickups.PendingConsumer,
                     presenter));
@@ -269,9 +278,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 new Stage1EnemyTerminalSourceContextResolverV1(() => run),
                 propCatalog,
                 new Stage1MissingPropTerminalSourceContextResolverV1(),
-                new Stage1PickupTerminalDropRunContextResolverV1(
-                    () => run,
-                    () => stage1.RunPickupExperience.CurrentState.Level),
+                dropRunContext,
                 rewardProfiles,
                 new RewardGenerationServiceV1(),
                 new PendingTerminalDropAdmissionAuthorityV1());
@@ -294,6 +301,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     throw new InvalidOperationException(
                         "Pickup lifecycle refresh requires the same shared aggregate.");
                 observedLifecycleGeneration = shared.LifecycleGeneration;
+                dropRunContext.Bind(shared);
                 deliveredEnemyEvents.Clear();
                 quarantinedEnemyEvents.Clear();
                 admissionBridge.RetireOtherLifecycles(
@@ -430,16 +438,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            Stage1PickupDeliveryResultV1 queued =
+            PickupDeliveryResultV1 queued =
                 admissionBridge.TryEnqueue(lastEnemyAdmission);
             if (queued != null && queued.IsAcknowledged)
             {
                 deliveredEnemyEvents[eventId] = generated.Fingerprint;
             }
             else if (queued != null
-                && (queued.Disposition == Stage1PickupDeliveryDispositionV1.Rejected
+                && (queued.Disposition == PickupDeliveryDispositionV1.Rejected
                     || queued.Disposition
-                        == Stage1PickupDeliveryDispositionV1.ConflictingDuplicate))
+                        == PickupDeliveryDispositionV1.ConflictingDuplicate))
             {
                 quarantinedEnemyEvents[eventId] = queued.Diagnostic;
             }

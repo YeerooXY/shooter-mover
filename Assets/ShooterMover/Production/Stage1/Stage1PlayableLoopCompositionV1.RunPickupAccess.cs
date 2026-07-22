@@ -1,4 +1,3 @@
-using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Domain.Common;
 using ShooterMover.TestSupport.VisibleSlice;
 using ShooterMover.UnityAdapters.Missions.Rooms;
@@ -17,7 +16,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     && controller.PlayerLiveAuthority.IsInitialized
                     && controller.PlayerTransform != null
                     && rooms != null
-                    && experience != null
                     && runStableId != null;
             }
         }
@@ -37,9 +35,5 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             get { return rooms; }
         }
 
-        internal PlayerExperienceAuthorityV1 RunPickupExperience
-        {
-            get { return experience; }
-        }
     }
 }

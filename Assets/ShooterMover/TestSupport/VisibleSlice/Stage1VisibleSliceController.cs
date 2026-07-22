@@ -4,6 +4,7 @@ using System.Globalization;
 using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.Content.Definitions.Objects;
+using ShooterMover.Content.Definitions.Rewards;
 using ShooterMover.ContentPackages.Environment.Doors;
 using ShooterMover.ContentPackages.Enemies.BlasterTurret;
 using ShooterMover.ContentPackages.Enemies.MobileBlasterDroid;
@@ -1673,7 +1674,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
                         Stage1DestructiblePropIntegration.CrateMaximumHealth,
                         CrateCollisionSize,
                         Vector2.zero,
-                        crateDestructionAnimation);
+                        crateDestructionAnimation,
+                        Stage1TerminalDropContentV1
+                            .ResolveLegacyAuthoringKey(visual.name)
+                            .WithPlacement(
+                                Level1AuthorableRoomDefinitionV1
+                                    .EntryRoomStableId,
+                                Stage1DestructiblePropIntegration
+                                    .CreateLegacyPlacementId(authoring)));
                 }
                 else if (authoring == null
                     && visual.name.StartsWith("Explosive_", StringComparison.Ordinal))
@@ -1683,7 +1691,14 @@ namespace ShooterMover.TestSupport.VisibleSlice
                         Stage1DestructiblePropIntegration.ExplosiveMaximumHealth,
                         ExplosiveCollisionSize,
                         Vector2.zero,
-                        explosiveDestructionAnimation);
+                        explosiveDestructionAnimation,
+                        Stage1TerminalDropContentV1
+                            .ResolveLegacyAuthoringKey(visual.name)
+                            .WithPlacement(
+                                Level1AuthorableRoomDefinitionV1
+                                    .EntryRoomStableId,
+                                Stage1DestructiblePropIntegration
+                                    .CreateLegacyPlacementId(authoring)));
                 }
 
                 if (authoring != null)

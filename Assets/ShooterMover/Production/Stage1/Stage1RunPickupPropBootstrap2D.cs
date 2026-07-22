@@ -10,6 +10,7 @@ using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
+using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -22,7 +23,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             Stage1CanonicalPropTerminalSourceV1 provenance,
             StableId runStableId,
             long lifecycleGeneration,
-            StableId roomStableId,
             StableId attributedParticipantStableId,
             Vector2 terminalPosition)
         {
@@ -34,8 +34,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 ?? throw new ArgumentNullException(nameof(runStableId));
             if (lifecycleGeneration <= 0L)
                 throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
-            RoomStableId = roomStableId
-                ?? throw new ArgumentNullException(nameof(roomStableId));
             LifecycleGeneration = lifecycleGeneration;
             AttributedParticipantStableId = attributedParticipantStableId;
             TerminalPosition = terminalPosition;
@@ -45,7 +43,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         public Stage1CanonicalPropTerminalSourceV1 Provenance { get; }
         public StableId RunStableId { get; }
         public long LifecycleGeneration { get; }
-        public StableId RoomStableId { get; }
+        public StableId RoomStableId { get { return Provenance.RoomStableId; } }
+        public StableId PlacementStableId
+        {
+            get { return Provenance.PlacementStableId; }
+        }
         public StableId AttributedParticipantStableId { get; }
         public Vector2 TerminalPosition { get; }
     }
@@ -240,9 +242,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         {
                             new Stage1CanonicalPropTerminalDropFactAdapterV1(),
                         }),
-                    new Stage1PickupTerminalDropRunContextResolverV1(
-                        () => observedRun,
-                        () => 1),
+                    pickupBootstrap.DropRunContext,
                     rewardProfiles,
                     new ExistingRewardGenerationExecutorV1(
                         new RewardGenerationServiceV1()));
@@ -292,13 +292,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            StableId roomStableId = controller.CurrentRoomStableId;
-            if (roomStableId == null)
-            {
-                diagnostic = "stage1-prop-pickup-room-unavailable";
-                return;
-            }
-
             Vector2 position;
             try
             {
@@ -330,7 +323,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             provenance,
                             current.RunStableId,
                             current.LifecycleGeneration,
-                            roomStableId,
                             attributedParticipant,
                             position)));
             }
@@ -429,7 +421,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
             TerminalDropSourceFactV1 sourceFact =
                 LastAdmission.PendingResult.SourceFact;
-            string positionFingerprint = RunSessionFingerprintV1.Hash(
+            string positionFingerprint = Stage1ProductionFingerprintV1.Hash(
                 sourceFact.TerminalEventStableId
                 + "|"
                 + fact.TerminalPosition.x.ToString(
@@ -449,7 +441,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     fact.RoomStableId,
                     fact.TerminalPosition,
                     positionFingerprint);
-                Stage1PickupDeliveryResultV1 queued =
+                PickupDeliveryResultV1 queued =
                     pickupBootstrap.EnqueueAdmission(LastAdmission);
                 if (queued != null && queued.IsAcknowledged)
                 {
@@ -458,9 +450,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 }
                 else if (queued != null
                     && (queued.Disposition
-                        == Stage1PickupDeliveryDispositionV1.Rejected
+                        == PickupDeliveryDispositionV1.Rejected
                         || queued.Disposition
-                        == Stage1PickupDeliveryDispositionV1.ConflictingDuplicate))
+                        == PickupDeliveryDispositionV1.ConflictingDuplicate))
                 {
                     Quarantine(eventId, queued.Diagnostic);
                 }
@@ -590,7 +582,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     fact.RunStableId,
                     fact.LifecycleGeneration,
                     destruction.PropId,
-                    destruction.PropId,
+                    fact.PlacementStableId,
                     fact.LifecycleGeneration,
                     fact.Provenance.Definition.DefinitionId,
                     fact.AttributedParticipantStableId,
@@ -601,9 +593,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             + ((int)destruction.Channel).ToString(
                                 CultureInfo.InvariantCulture)),
                     fact.Provenance.DropProfileStableId,
-                    RunSessionFingerprintV1.Hash("source|" + canonical),
+                    Stage1ProductionFingerprintV1.Hash("source|" + canonical),
                     fact.Provenance.DefinitionFingerprint,
-                    RunSessionFingerprintV1.Hash("upstream|" + canonical)));
+                    Stage1ProductionFingerprintV1.Hash("upstream|" + canonical)));
         }
     }
 }

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 
 namespace ShooterMover.Tests.EditMode.RunPickups

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 using UnityEngine;
 

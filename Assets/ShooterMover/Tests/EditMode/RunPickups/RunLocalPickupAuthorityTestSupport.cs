@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Application;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;

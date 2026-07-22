@@ -6,15 +6,15 @@ using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Application;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
-using ShooterMover.UnityAdapters.Production.Stage1;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
 
 namespace ShooterMover.Tests.EditMode.RunPickups
 {
-    public sealed class Stage1PendingAdmissionPickupBridgeV1Tests
+    public sealed class PendingAdmissionPickupBridgeV1Tests
     {
         private static readonly StableId RunId = Id("run", "shared-stage1");
         private static readonly StableId RoomId = Id("room", "entry");
@@ -24,14 +24,14 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         private static readonly StableId ActorId = Id("actor", "player");
 
         private sealed class FakeSourceResolver :
-            IStage1PickupSourcePositionResolverV1
+            IPickupSourcePositionResolverV1
         {
             public int UnavailableAttempts;
             public int ThrowAttempts;
             public int Attempts;
 
             public bool TryResolve(
-                out Stage1PickupSourcePositionV1 position,
+                out PickupSourcePositionV1 position,
                 out string diagnostic)
             {
                 Attempts++;
@@ -47,7 +47,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                     diagnostic = "fake-source-unavailable";
                     return false;
                 }
-                position = new Stage1PickupSourcePositionV1(
+                position = new PickupSourcePositionV1(
                     RoomId,
                     new Vector2(4.5f, -2.25f),
                     "fake-source-position-fingerprint");
@@ -56,7 +56,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             }
         }
 
-        private sealed class FakeRuntime : IStage1PickupAdmissionRuntimeV1
+        private sealed class FakeRuntime : IPickupAdmissionRuntimeV1
         {
             private readonly HashSet<StableId> realizedOperations =
                 new HashSet<StableId>();
@@ -74,7 +74,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
 
             public bool TryRegisterPosition(
                 TerminalDropSourceFactV1 source,
-                Stage1PickupSourcePositionV1 position,
+                PickupSourcePositionV1 position,
                 out string diagnostic)
             {
                 RegisterCalls++;
@@ -157,7 +157,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         {
             var resolver = new FakeSourceResolver { UnavailableAttempts = 1 };
             var runtime = new FakeRuntime();
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(runtime, resolver);
+            PendingAdmissionPickupBridgeV1 queue = Queue(runtime, resolver);
             queue.TryEnqueue(Admission());
 
             Assert.That(queue.ProcessPending(), Is.EqualTo(0));
@@ -172,7 +172,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         public void RunSessionContextUnavailableOnce_ThenSucceeds()
         {
             var runtime = new FakeRuntime { RealizeFailures = 1 };
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 runtime,
                 new FakeSourceResolver());
             queue.TryEnqueue(Admission());
@@ -190,7 +190,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         public void PresenterUnavailableOnce_ThenExactRealizationReplayCompletes()
         {
             var runtime = new FakeRuntime { PresentationFailures = 1 };
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 runtime,
                 new FakeSourceResolver());
             queue.TryEnqueue(Admission());
@@ -207,7 +207,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         public void ExceptionDuringFirstDelivery_RetainsExactAdmissionForRetry()
         {
             var runtime = new FakeRuntime { RealizeThrows = 1 };
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 runtime,
                 new FakeSourceResolver());
             queue.TryEnqueue(Admission());
@@ -215,7 +215,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(queue.ProcessPending(), Is.EqualTo(0));
             Assert.That(queue.PendingCount, Is.EqualTo(1));
             Assert.That(queue.LastDiagnostic,
-                Does.StartWith("stage1-pickup-realization-exception:"));
+                Does.StartWith("pickup-realization-exception:"));
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
         }
@@ -225,7 +225,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         {
             var runtime = new FakeRuntime { TerminalRejects = 1 };
             PendingTerminalDropAdmissionResultV1 admission = Admission();
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 runtime,
                 new FakeSourceResolver());
             queue.TryEnqueue(admission);
@@ -237,14 +237,14 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(queue.ProcessPending(), Is.Zero);
             Assert.That(runtime.RealizeCalls, Is.EqualTo(1));
             Assert.That(queue.TryEnqueue(admission).Disposition,
-                Is.EqualTo(Stage1PickupDeliveryDispositionV1.Rejected));
+                Is.EqualTo(PickupDeliveryDispositionV1.Rejected));
         }
 
         [Test]
         public void ConflictingRealization_IsQuarantinedAndNeverRetried()
         {
             var runtime = new FakeRuntime { ConflictingRejects = 1 };
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 runtime,
                 new FakeSourceResolver());
             queue.TryEnqueue(Admission());
@@ -261,17 +261,17 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         {
             PendingTerminalDropAdmissionResultV1 admission = Admission();
             var runtime = new FakeRuntime();
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 runtime,
                 new FakeSourceResolver());
 
             Assert.That(queue.TryEnqueue(admission).Disposition,
-                Is.EqualTo(Stage1PickupDeliveryDispositionV1.Applied));
+                Is.EqualTo(PickupDeliveryDispositionV1.Applied));
             Assert.That(queue.TryEnqueue(admission).Disposition,
-                Is.EqualTo(Stage1PickupDeliveryDispositionV1.ExactReplay));
+                Is.EqualTo(PickupDeliveryDispositionV1.ExactReplay));
             Assert.That(queue.ProcessPending(), Is.EqualTo(1));
             Assert.That(queue.TryEnqueue(admission).Disposition,
-                Is.EqualTo(Stage1PickupDeliveryDispositionV1.ExactReplay));
+                Is.EqualTo(PickupDeliveryDispositionV1.ExactReplay));
             Assert.That(queue.ProcessPending(), Is.Zero);
             Assert.That(runtime.AcceptedRealizationCount, Is.EqualTo(1));
         }
@@ -280,7 +280,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         public void RuntimeReleaseAndRecomposition_DoNotLoseAdmittedReward()
         {
             var firstRuntime = new FakeRuntime();
-            Stage1PendingAdmissionPickupBridgeV1 queue = Queue(
+            PendingAdmissionPickupBridgeV1 queue = Queue(
                 firstRuntime,
                 new FakeSourceResolver());
             queue.TryEnqueue(Admission());
@@ -298,7 +298,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         public void ProductionPickupUsesCanonicalProvenanceAndNoSyntheticFacts()
         {
             string stage1Path = Path.Combine(
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 "ShooterMover",
                 "Production",
                 "Stage1");
@@ -322,6 +322,13 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(bootstrap, Does.Not.Contain("new EnemyDeathFactV1"));
             Assert.That(support, Does.Not.Contain(
                 "Stage1EnemyTerminalDropObserver2D"));
+            Assert.That(support, Does.Not.Contain("difficulty.normal"));
+            Assert.That(support, Does.Not.Contain(
+                "RunPickupExperience.CurrentState.Level"));
+            Assert.That(support, Does.Contain(
+                "run.StartCommand.DifficultyStableId"));
+            Assert.That(support, Does.Contain(
+                "run.FrozenInputs.CharacterStats.Level"));
 
             Assert.That(provenance, Does.Contain("pendingEnemyRewards"));
             Assert.That(provenance, Does.Contain("notification.EventId"));
@@ -333,6 +340,8 @@ namespace ShooterMover.Tests.EditMode.RunPickups
 
             Assert.That(props, Does.Not.Contain(
                 "DestroyedState.MaximumHealth"));
+            Assert.That(props, Does.Not.Contain(
+                "controller.CurrentRoomStableId"));
             Assert.That(props, Does.Not.Contain("BuildPropRewardProfiles"));
             Assert.That(props, Does.Contain(
                 "TryResolveCanonicalPropTerminalSource"));
@@ -343,7 +352,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
         public void ProductionPickupBootstrap_ConsumesSharedRunAndOwnsNoShadowGraph()
         {
             string stage1Path = Path.Combine(
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 "ShooterMover",
                 "Production",
                 "Stage1");
@@ -367,11 +376,11 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                 Is.False);
         }
 
-        private static Stage1PendingAdmissionPickupBridgeV1 Queue(
+        private static PendingAdmissionPickupBridgeV1 Queue(
             FakeRuntime runtime,
-            IStage1PickupSourcePositionResolverV1 resolver)
+            IPickupSourcePositionResolverV1 resolver)
         {
-            var queue = new Stage1PendingAdmissionPickupBridgeV1();
+            var queue = new PendingAdmissionPickupBridgeV1();
             queue.ConfigureRuntime(runtime);
             queue.RegisterSource(
                 RunId,

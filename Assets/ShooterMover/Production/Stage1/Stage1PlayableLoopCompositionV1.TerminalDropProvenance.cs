@@ -48,7 +48,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         public Stage1CanonicalPropTerminalSourceV1(
             PropDefinitionV1 definition,
             StableId dropProfileStableId,
-            string definitionFingerprint)
+            string definitionFingerprint,
+            StableId roomStableId,
+            StableId placementStableId)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             DropProfileStableId = dropProfileStableId
@@ -60,11 +62,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     nameof(definitionFingerprint));
             }
             DefinitionFingerprint = definitionFingerprint.Trim();
+            RoomStableId = roomStableId
+                ?? throw new ArgumentNullException(nameof(roomStableId));
+            PlacementStableId = placementStableId
+                ?? throw new ArgumentNullException(nameof(placementStableId));
         }
 
         public PropDefinitionV1 Definition { get; }
         public StableId DropProfileStableId { get; }
         public string DefinitionFingerprint { get; }
+        public StableId RoomStableId { get; }
+        public StableId PlacementStableId { get; }
     }
 
     public sealed partial class Stage1PlayableLoopCompositionV1
@@ -204,7 +212,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     notification.EventId,
                     identity,
                     definition.DefinitionId,
-                    1,
+                    liveSource.SourceLevel,
                     liveSource.LifecycleGeneration,
                     notification.SourceId,
                     pending.ParticipantStableId,
@@ -246,6 +254,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 diagnostic = "stage1-prop-terminal-provenance-missing";
                 return false;
             }
+            if (!provenance.HasPlacementProvenance)
+            {
+                diagnostic =
+                    "stage1-prop-terminal-placement-provenance-missing:" + prop.PropId;
+                return false;
+            }
 
             EnemyCatalogV1 ignoredEnemies;
             PropCatalogV1 propCatalog;
@@ -283,7 +297,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             source = new Stage1CanonicalPropTerminalSourceV1(
                 definition,
                 catalogDropProfile,
-                definition.Fingerprint);
+                definition.Fingerprint,
+                provenance.RoomStableId,
+                provenance.PlacementStableId);
             return true;
         }
     }

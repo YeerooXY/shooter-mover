@@ -214,6 +214,24 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             return StableId.Create("prop", "legacy-" + Fingerprint64(canonical));
         }
 
+        public static StableId CreateLegacyPlacementId(
+            DestructiblePropAuthoring2D authoring)
+        {
+            if (authoring == null)
+                throw new ArgumentNullException(nameof(authoring));
+            return StableId.Create(
+                "prop-placement",
+                "legacy-" + Fingerprint64(BuildLegacyIdentityMaterial(authoring)));
+        }
+
+        private static string BuildLegacyIdentityMaterial(
+            DestructiblePropAuthoring2D authoring)
+        {
+            Vector3 position = authoring.transform.position;
+            return "name=" + authoring.gameObject.name.Trim()
+                + "|position=" + Vector(position);
+        }
+
         private static DestructibleProp2D AttachLegacyOne(
             Collider2D blockingCollider,
             SpriteRenderer renderer,

@@ -180,6 +180,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 null,
                 null,
                 null,
+                1,
                 sourceRoot,
                 sourceOwnerColliders,
                 targetBindings,
@@ -197,6 +198,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             StableId roomRuntimeInstanceStableId,
             StableId roomStableId,
             StableId placementStableId,
+            int sourceLevel,
             GameObject sourceRoot,
             IEnumerable<Collider2D> sourceOwnerColliders,
             IEnumerable<EnemyAttackPatternTargetBindingV1> targetBindings,
@@ -215,6 +217,9 @@ namespace ShooterMover.UnityAdapters.Enemies
             RoomRuntimeInstanceStableId = roomRuntimeInstanceStableId;
             RoomStableId = roomStableId;
             PlacementStableId = placementStableId;
+            if (sourceLevel < 1)
+                throw new ArgumentOutOfRangeException(nameof(sourceLevel));
+            SourceLevel = sourceLevel;
             SourceRoot = sourceRoot
                 ?? throw new ArgumentNullException(nameof(sourceRoot));
             ProjectilePrefabs = projectilePrefabs
@@ -239,6 +244,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         public StableId RoomRuntimeInstanceStableId { get; }
         public StableId RoomStableId { get; }
         public StableId PlacementStableId { get; }
+        public int SourceLevel { get; }
         public bool HasCanonicalPlacementIdentity
         {
             get

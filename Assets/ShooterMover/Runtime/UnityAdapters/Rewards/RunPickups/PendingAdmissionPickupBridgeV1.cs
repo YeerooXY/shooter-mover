@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using ShooterMover.Application.Runs.Session;
+using System.Security.Cryptography;
+using System.Text;
 using ShooterMover.Domain.Common;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using UnityEngine;
 
-namespace ShooterMover.UnityAdapters.Production.Stage1
+namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 {
-    public enum Stage1PickupDeliveryDispositionV1
+    public enum PickupDeliveryDispositionV1
     {
         Applied = 1,
         ExactReplay = 2,
@@ -18,10 +19,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         ConflictingDuplicate = 5,
     }
 
-    public sealed class Stage1PickupDeliveryResultV1
+    public sealed class PickupDeliveryResultV1
     {
-        public Stage1PickupDeliveryResultV1(
-            Stage1PickupDeliveryDispositionV1 disposition,
+        public PickupDeliveryResultV1(
+            PickupDeliveryDispositionV1 disposition,
             PendingTerminalDropAdmissionResultV1 admission,
             string diagnostic)
         {
@@ -30,22 +31,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             Diagnostic = diagnostic ?? string.Empty;
         }
 
-        public Stage1PickupDeliveryDispositionV1 Disposition { get; }
+        public PickupDeliveryDispositionV1 Disposition { get; }
         public PendingTerminalDropAdmissionResultV1 Admission { get; }
         public string Diagnostic { get; }
         public bool IsAcknowledged
         {
             get
             {
-                return Disposition == Stage1PickupDeliveryDispositionV1.Applied
-                    || Disposition == Stage1PickupDeliveryDispositionV1.ExactReplay;
+                return Disposition == PickupDeliveryDispositionV1.Applied
+                    || Disposition == PickupDeliveryDispositionV1.ExactReplay;
             }
         }
     }
 
-    public sealed class Stage1PickupSourcePositionV1
+    public sealed class PickupSourcePositionV1
     {
-        public Stage1PickupSourcePositionV1(
+        public PickupSourcePositionV1(
             StableId roomStableId,
             Vector2 position,
             string fingerprint)
@@ -65,21 +66,21 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         public string Fingerprint { get; }
     }
 
-    public interface IStage1PickupSourcePositionResolverV1
+    public interface IPickupSourcePositionResolverV1
     {
         bool TryResolve(
-            out Stage1PickupSourcePositionV1 position,
+            out PickupSourcePositionV1 position,
             out string diagnostic);
     }
 
-    public sealed class TransformStage1PickupSourcePositionResolverV1 :
-        IStage1PickupSourcePositionResolverV1
+    public sealed class TransformPickupSourcePositionResolverV1 :
+        IPickupSourcePositionResolverV1
     {
         private readonly StableId roomStableId;
         private readonly Transform sourceTransform;
         private readonly StableId terminalEventStableId;
 
-        public TransformStage1PickupSourcePositionResolverV1(
+        public TransformPickupSourcePositionResolverV1(
             StableId roomStableId,
             Transform sourceTransform,
             StableId terminalEventStableId)
@@ -92,20 +93,20 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
 
         public bool TryResolve(
-            out Stage1PickupSourcePositionV1 position,
+            out PickupSourcePositionV1 position,
             out string diagnostic)
         {
             position = null;
             diagnostic = string.Empty;
             if (sourceTransform == null)
             {
-                diagnostic = "stage1-pickup-terminal-source-transform-missing";
+                diagnostic = "pickup-terminal-source-transform-missing";
                 return false;
             }
             try
             {
                 Vector2 value = sourceTransform.position;
-                string fingerprint = RunSessionFingerprintV1.Hash(
+                string fingerprint = PickupBridgeFingerprintV1.Hash(
                     (terminalEventStableId == null
                         ? "terminal-event-unbound"
                         : terminalEventStableId.ToString())
@@ -113,7 +114,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     + value.x.ToString("R", CultureInfo.InvariantCulture)
                     + "|"
                     + value.y.ToString("R", CultureInfo.InvariantCulture));
-                position = new Stage1PickupSourcePositionV1(
+                position = new PickupSourcePositionV1(
                     roomStableId,
                     value,
                     fingerprint);
@@ -121,7 +122,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             catch (Exception exception)
             {
-                diagnostic = "stage1-pickup-source-transform-exception:"
+                diagnostic = "pickup-source-transform-exception:"
                     + exception.GetType().Name
                     + ":"
                     + exception.Message;
@@ -130,19 +131,19 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
     }
 
-    public sealed class FixedStage1PickupSourcePositionResolverV1 :
-        IStage1PickupSourcePositionResolverV1
+    public sealed class FixedPickupSourcePositionResolverV1 :
+        IPickupSourcePositionResolverV1
     {
-        private readonly Stage1PickupSourcePositionV1 value;
+        private readonly PickupSourcePositionV1 value;
 
-        public FixedStage1PickupSourcePositionResolverV1(
-            Stage1PickupSourcePositionV1 value)
+        public FixedPickupSourcePositionResolverV1(
+            PickupSourcePositionV1 value)
         {
             this.value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public bool TryResolve(
-            out Stage1PickupSourcePositionV1 position,
+            out PickupSourcePositionV1 position,
             out string diagnostic)
         {
             position = value;
@@ -151,11 +152,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
     }
 
-    public interface IStage1PickupAdmissionRuntimeV1
+    public interface IPickupAdmissionRuntimeV1
     {
         bool TryRegisterPosition(
             TerminalDropSourceFactV1 source,
-            Stage1PickupSourcePositionV1 position,
+            PickupSourcePositionV1 position,
             out string diagnostic);
 
         RunPickupRealizationResultV1 Realize(
@@ -165,14 +166,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StableId roomStableId);
     }
 
-    internal sealed class Stage1UnityPickupAdmissionRuntimeV1 :
-        IStage1PickupAdmissionRuntimeV1
+    internal sealed class UnityPickupAdmissionRuntimeV1 :
+        IPickupAdmissionRuntimeV1
     {
         private readonly RunPickupSourcePositionRegistry2D sourcePositions;
         private readonly PendingTerminalDropPickupConsumerV1 pickupConsumer;
         private readonly RunPickupPresenter2D presenter;
 
-        public Stage1UnityPickupAdmissionRuntimeV1(
+        public UnityPickupAdmissionRuntimeV1(
             RunPickupSourcePositionRegistry2D sourcePositions,
             PendingTerminalDropPickupConsumerV1 pickupConsumer,
             RunPickupPresenter2D presenter)
@@ -187,7 +188,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         public bool TryRegisterPosition(
             TerminalDropSourceFactV1 source,
-            Stage1PickupSourcePositionV1 position,
+            PickupSourcePositionV1 position,
             out string diagnostic)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -220,17 +221,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// Retained transactional delivery queue. Temporary context and presentation failures retry;
     /// malformed, conflicting, stale or otherwise impossible facts are quarantined exactly once.
     /// </summary>
-    public sealed class Stage1PendingAdmissionPickupBridgeV1 :
+    public sealed class PendingAdmissionPickupBridgeV1 :
         IPendingTerminalDropAdmissionConsumerV1
     {
         private sealed class SourceBinding
         {
-            public SourceBinding(IStage1PickupSourcePositionResolverV1 resolver)
+            public SourceBinding(IPickupSourcePositionResolverV1 resolver)
             {
                 Resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             }
 
-            public IStage1PickupSourcePositionResolverV1 Resolver { get; }
+            public IPickupSourcePositionResolverV1 Resolver { get; }
         }
 
         private sealed class DeliveryRecord
@@ -251,7 +252,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 Admission = admission;
                 Diagnostic = string.IsNullOrWhiteSpace(diagnostic)
-                    ? "stage1-pickup-delivery-terminal-rejection"
+                    ? "pickup-delivery-terminal-rejection"
                     : diagnostic.Trim();
             }
 
@@ -278,7 +279,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private readonly Dictionary<StableId, QuarantineRecord>
             quarantinedByOperation =
                 new Dictionary<StableId, QuarantineRecord>();
-        private IStage1PickupAdmissionRuntimeV1 runtime;
+        private IPickupAdmissionRuntimeV1 runtime;
 
         public int PendingCount
         {
@@ -306,7 +307,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         public string LastDiagnostic { get; private set; } = string.Empty;
 
-        public void ConfigureRuntime(IStage1PickupAdmissionRuntimeV1 runtime)
+        public void ConfigureRuntime(IPickupAdmissionRuntimeV1 runtime)
         {
             lock (gate)
             {
@@ -325,7 +326,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             long lifecycleGeneration,
             StableId sourceEntityStableId,
             StableId sourcePlacementStableId,
-            IStage1PickupSourcePositionResolverV1 resolver)
+            IPickupSourcePositionResolverV1 resolver)
         {
             if (runStableId == null
                 || lifecycleGeneration <= 0L
@@ -359,7 +360,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 lifecycleGeneration,
                 sourceEntityStableId,
                 sourcePlacementStableId,
-                new TransformStage1PickupSourcePositionResolverV1(
+                new TransformPickupSourcePositionResolverV1(
                     roomStableId,
                     sourceTransform,
                     terminalEventStableId));
@@ -379,8 +380,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 lifecycleGeneration,
                 sourceEntityStableId,
                 sourcePlacementStableId,
-                new FixedStage1PickupSourcePositionResolverV1(
-                    new Stage1PickupSourcePositionV1(
+                new FixedPickupSourcePositionResolverV1(
+                    new PickupSourcePositionV1(
                         roomStableId,
                         position,
                         fingerprint)));
@@ -391,7 +392,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             TryEnqueue(admission);
         }
 
-        public Stage1PickupDeliveryResultV1 TryEnqueue(
+        public PickupDeliveryResultV1 TryEnqueue(
             PendingTerminalDropAdmissionResultV1 admission)
         {
             lock (gate)
@@ -405,12 +406,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     || admission.PendingResult.SourceFact == null)
                 {
                     LastDiagnostic = admission == null
-                        ? "stage1-pickup-admission-null"
+                        ? "pickup-admission-null"
                         : string.IsNullOrWhiteSpace(admission.Diagnostic)
-                            ? "stage1-pickup-admission-not-accepted"
+                            ? "pickup-admission-not-accepted"
                             : admission.Diagnostic;
                     return Result(
-                        Stage1PickupDeliveryDispositionV1.Rejected,
+                        PickupDeliveryDispositionV1.Rejected,
                         admission,
                         LastDiagnostic);
                 }
@@ -426,11 +427,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         StringComparison.Ordinal);
                     LastDiagnostic = exact
                         ? string.Empty
-                        : "stage1-pickup-admission-completed-conflict";
+                        : "pickup-admission-completed-conflict";
                     return Result(
                         exact
-                            ? Stage1PickupDeliveryDispositionV1.ExactReplay
-                            : Stage1PickupDeliveryDispositionV1.ConflictingDuplicate,
+                            ? PickupDeliveryDispositionV1.ExactReplay
+                            : PickupDeliveryDispositionV1.ConflictingDuplicate,
                         admission,
                         LastDiagnostic);
                 }
@@ -447,11 +448,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             StringComparison.Ordinal);
                     LastDiagnostic = exact
                         ? quarantined.Diagnostic
-                        : "stage1-pickup-admission-quarantine-conflict";
+                        : "pickup-admission-quarantine-conflict";
                     return Result(
                         exact
-                            ? Stage1PickupDeliveryDispositionV1.Rejected
-                            : Stage1PickupDeliveryDispositionV1.ConflictingDuplicate,
+                            ? PickupDeliveryDispositionV1.Rejected
+                            : PickupDeliveryDispositionV1.ConflictingDuplicate,
                         admission,
                         LastDiagnostic);
                 }
@@ -469,11 +470,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             StringComparison.Ordinal);
                     LastDiagnostic = exact
                         ? string.Empty
-                        : "stage1-pickup-admission-pending-conflict";
+                        : "pickup-admission-pending-conflict";
                     return Result(
                         exact
-                            ? Stage1PickupDeliveryDispositionV1.ExactReplay
-                            : Stage1PickupDeliveryDispositionV1.ConflictingDuplicate,
+                            ? PickupDeliveryDispositionV1.ExactReplay
+                            : PickupDeliveryDispositionV1.ConflictingDuplicate,
                         admission,
                         LastDiagnostic);
                 }
@@ -482,7 +483,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     admission.OperationStableId,
                     new DeliveryRecord(admission));
                 return Result(
-                    Stage1PickupDeliveryDispositionV1.Applied,
+                    PickupDeliveryDispositionV1.Applied,
                     admission,
                     string.Empty);
             }
@@ -494,7 +495,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 if (runtime == null)
                 {
-                    LastDiagnostic = "stage1-pickup-delivery-runtime-unavailable";
+                    LastDiagnostic = "pickup-delivery-runtime-unavailable";
                     return 0;
                 }
 
@@ -513,7 +514,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         Quarantine(
                             operation,
                             record == null ? null : record.Admission,
-                            "stage1-pickup-delivery-record-invalid");
+                            "pickup-delivery-record-invalid");
                         continue;
                     }
 
@@ -531,11 +532,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         || binding.Resolver == null)
                     {
                         LastDiagnostic =
-                            "stage1-pickup-terminal-source-binding-missing";
+                            "pickup-terminal-source-binding-missing";
                         continue;
                     }
 
-                    Stage1PickupSourcePositionV1 position;
+                    PickupSourcePositionV1 position;
                     string diagnostic;
                     bool resolved;
                     try
@@ -548,7 +549,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     {
                         resolved = false;
                         position = null;
-                        diagnostic = "stage1-pickup-source-resolution-exception:"
+                        diagnostic = "pickup-source-resolution-exception:"
                             + exception.GetType().Name
                             + ":"
                             + exception.Message;
@@ -556,7 +557,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     if (!resolved || position == null)
                     {
                         diagnostic = string.IsNullOrWhiteSpace(diagnostic)
-                            ? "stage1-pickup-source-position-unavailable"
+                            ? "pickup-source-position-unavailable"
                             : diagnostic;
                         if (IsTerminalDiagnostic(diagnostic))
                             Quarantine(operation, record.Admission, diagnostic);
@@ -576,7 +577,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     catch (Exception exception)
                     {
                         registered = false;
-                        diagnostic = "stage1-pickup-position-registration-exception:"
+                        diagnostic = "pickup-position-registration-exception:"
                             + exception.GetType().Name
                             + ":"
                             + exception.Message;
@@ -584,7 +585,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     if (!registered)
                     {
                         diagnostic = string.IsNullOrWhiteSpace(diagnostic)
-                            ? "stage1-pickup-position-registration-rejected"
+                            ? "pickup-position-registration-rejected"
                             : diagnostic;
                         if (IsTerminalDiagnostic(diagnostic))
                             Quarantine(operation, record.Admission, diagnostic);
@@ -600,7 +601,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     }
                     catch (Exception exception)
                     {
-                        LastDiagnostic = "stage1-pickup-realization-exception:"
+                        LastDiagnostic = "pickup-realization-exception:"
                             + exception.GetType().Name
                             + ":"
                             + exception.Message;
@@ -609,7 +610,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
                     if (realization == null)
                     {
-                        LastDiagnostic = "stage1-pickup-realization-null";
+                        LastDiagnostic = "pickup-realization-null";
                         continue;
                     }
                     if (realization.Status
@@ -622,7 +623,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             operation,
                             record.Admission,
                             string.IsNullOrWhiteSpace(realization.Diagnostic)
-                                ? "stage1-pickup-realization-terminal:"
+                                ? "pickup-realization-terminal:"
                                     + realization.Status
                                 : realization.Diagnostic);
                         continue;
@@ -633,7 +634,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             != RunPickupRealizationStatusV1.ExactReplay)
                     {
                         LastDiagnostic = string.IsNullOrWhiteSpace(realization.Diagnostic)
-                            ? "stage1-pickup-realization-retryable:"
+                            ? "pickup-realization-retryable:"
                                 + realization.Status
                             : realization.Diagnostic;
                         continue;
@@ -646,7 +647,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     }
                     catch (Exception exception)
                     {
-                        LastDiagnostic = "stage1-pickup-presentation-exception:"
+                        LastDiagnostic = "pickup-presentation-exception:"
                             + exception.GetType().Name
                             + ":"
                             + exception.Message;
@@ -655,9 +656,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     if (presentation == null || !presentation.Succeeded)
                     {
                         LastDiagnostic = presentation == null
-                            ? "stage1-pickup-presentation-unavailable"
+                            ? "pickup-presentation-unavailable"
                             : string.IsNullOrWhiteSpace(presentation.Diagnostic)
-                                ? "stage1-pickup-presentation-retryable"
+                                ? "pickup-presentation-retryable"
                                 : presentation.Diagnostic;
                         continue;
                     }
@@ -793,12 +794,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 && source.RunLifecycleGeneration == lifecycleGeneration;
         }
 
-        private static Stage1PickupDeliveryResultV1 Result(
-            Stage1PickupDeliveryDispositionV1 disposition,
+        private static PickupDeliveryResultV1 Result(
+            PickupDeliveryDispositionV1 disposition,
             PendingTerminalDropAdmissionResultV1 admission,
             string diagnostic)
         {
-            return new Stage1PickupDeliveryResultV1(
+            return new PickupDeliveryResultV1(
                 disposition,
                 admission,
                 diagnostic);
@@ -819,6 +820,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 + (sourcePlacementStableId == null
                     ? "none"
                     : sourcePlacementStableId.ToString());
+        }
+    }
+
+    internal static class PickupBridgeFingerprintV1
+    {
+        public static string Hash(string value)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(value ?? string.Empty);
+            using (SHA256 algorithm = SHA256.Create())
+            {
+                byte[] digest = algorithm.ComputeHash(bytes);
+                var text = new StringBuilder(digest.Length * 2);
+                for (int index = 0; index < digest.Length; index++)
+                    text.Append(digest[index].ToString("x2", CultureInfo.InvariantCulture));
+                return "sha256:" + text;
+            }
         }
     }
 }

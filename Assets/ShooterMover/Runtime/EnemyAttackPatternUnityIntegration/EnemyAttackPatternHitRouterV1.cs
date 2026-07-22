@@ -5,6 +5,7 @@ using ShooterMover.Combat.HitPolicy;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.EnemyRuntimeComposition;
+using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Players;
 
 namespace ShooterMover.UnityAdapters.Enemies

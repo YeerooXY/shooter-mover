@@ -1,5 +1,10 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
+using ShooterMover.Application.Flow.LevelSelection;
 using ShooterMover.Application.Runs.Session;
+using ShooterMover.Content.Definitions.Levels.Selection;
+using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Props;
 using ShooterMover.Domain.Progression.Context;
@@ -8,6 +13,21 @@ using ShooterMover.TerminalDropBinding;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
+    internal static class Stage1ProductionFingerprintV1
+    {
+        public static string Hash(string value)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                byte[] bytes = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(value ?? string.Empty));
+                return BitConverter.ToString(bytes)
+                    .Replace("-", string.Empty)
+                    .ToLowerInvariant();
+            }
+        }
+    }
+
     internal sealed class Stage1EnemyTerminalSourceContextResolverV1 :
         IEnemyTerminalSourceContextResolverV1
     {
@@ -44,7 +64,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 terminalFact.Identity.EntityInstanceId,
                 terminalFact.Identity.PlacementStableId,
                 terminalFact.LifecycleGeneration,
-                RunSessionFingerprintV1.Hash(
+                Stage1ProductionFingerprintV1.Hash(
                     terminalFact.DeathEventStableId
                     + "|"
                     + terminalFact.Identity.EntityInstanceId
@@ -57,16 +77,53 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     internal sealed class Stage1PickupTerminalDropRunContextResolverV1 :
         ITerminalDropRunContextResolverV1
     {
-        private readonly Func<RunSessionAggregateV1> run;
-        private readonly Func<int> playerLevel;
+        private RunSessionAggregateV1 boundRun;
+        private TerminalDropRunGenerationContextV1 frozenContext;
 
-        public Stage1PickupTerminalDropRunContextResolverV1(
-            Func<RunSessionAggregateV1> run,
-            Func<int> playerLevel)
+        public void Bind(RunSessionAggregateV1 run)
         {
-            this.run = run ?? throw new ArgumentNullException(nameof(run));
-            this.playerLevel = playerLevel
-                ?? throw new ArgumentNullException(nameof(playerLevel));
+            if (run == null) throw new ArgumentNullException(nameof(run));
+            if (run.LifecycleState != RunSessionLifecycleStateV1.Active
+                || run.FrozenInputs == null
+                || run.FrozenInputs.CharacterStats == null)
+            {
+                throw new InvalidOperationException(
+                    "An active Run Session with frozen character inputs is required.");
+            }
+
+            LevelSelectionDefinitionV1 levelDefinition;
+            LevelSelectionCatalogV1 levelCatalog =
+                LevelSelectionCatalogDefinitionV1.CreateDefaultCatalog();
+            if (run.StartCommand.MissionLayoutStableId
+                    != Level1AuthorableRoomDefinitionV1.LayoutStableId
+                || !levelCatalog.TryGet(
+                    StableId.Parse(
+                        LevelSelectionCatalogDefinitionV1.Level1StableIdText),
+                    out levelDefinition)
+                || levelDefinition == null)
+            {
+                throw new InvalidOperationException(
+                    "The Run Session mission has no canonical drop-level projection.");
+            }
+
+            int frozenPlayerLevel = Math.Max(
+                1,
+                run.FrozenInputs.CharacterStats.Level);
+            int frozenMissionLevel = Math.Max(
+                1,
+                levelDefinition.Recommendation.RecommendedPlayerLevel);
+            frozenContext = new TerminalDropRunGenerationContextV1(
+                run.RunStableId,
+                run.LifecycleGeneration,
+                unchecked((ulong)run.StartCommand.DeterministicSeed),
+                1,
+                ProgressionContext.Create(
+                    frozenPlayerLevel,
+                    frozenMissionLevel,
+                    run.StartCommand.DifficultyStableId,
+                    0),
+                run.StartCommand.EventModifierContextFingerprint);
+            boundRun = run;
         }
 
         public bool TryResolve(
@@ -79,7 +136,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             context = null;
             rejectionCode = TerminalDropRejectionCodeV1.None;
             diagnostic = string.Empty;
-            RunSessionAggregateV1 current = run();
+            TerminalDropRunGenerationContextV1 current = frozenContext;
             if (current == null || runStableId != current.RunStableId)
             {
                 rejectionCode = TerminalDropRejectionCodeV1.MissingRun;
@@ -93,26 +150,24 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "stage1-pickup-run-context-lifecycle-mismatch";
                 return false;
             }
-            if (current.LifecycleState == RunSessionLifecycleStateV1.Ended)
+            if (boundRun == null
+                || boundRun.LifecycleGeneration != current.LifecycleGeneration)
+            {
+                rejectionCode = TerminalDropRejectionCodeV1.WrongRunLifecycle;
+                diagnostic =
+                    "stage1-pickup-run-context-lifecycle-not-current";
+                return false;
+            }
+            if (boundRun.LifecycleState == RunSessionLifecycleStateV1.Ended)
             {
                 rejectionCode = TerminalDropRejectionCodeV1.RunEnded;
                 diagnostic = "stage1-pickup-run-context-ended";
                 return false;
             }
-
-            context = new TerminalDropRunGenerationContextV1(
-                current.RunStableId,
-                current.LifecycleGeneration,
-                unchecked((ulong)current.StartCommand.DeterministicSeed),
-                1,
-                ProgressionContext.Create(
-                    Math.Max(1, playerLevel()),
-                    1,
-                    StableId.Parse("difficulty.normal"),
-                    0),
-                current.StartCommand.EventModifierContextFingerprint);
+            context = current;
             return true;
         }
+
     }
 
     internal sealed class Stage1MissingPropTerminalSourceContextResolverV1 :

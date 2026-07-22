@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Text;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Application.Runs.Session
 {

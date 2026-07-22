@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;

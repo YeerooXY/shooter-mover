@@ -5,6 +5,7 @@ using NUnit.Framework;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 
 namespace ShooterMover.Tests.EditMode.RunPickups
