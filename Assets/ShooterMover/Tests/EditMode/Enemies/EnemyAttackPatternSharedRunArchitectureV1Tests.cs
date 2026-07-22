@@ -31,11 +31,13 @@ namespace ShooterMover.Tests.EditMode.Enemies
             Assert.That(enemy, Does.Not.Contain("enemyPatternSimulationTick"));
             Assert.That(enemy, Does.Contain("TryResolveSharedRunSession"));
 
-            Assert.That(Occurrences(shared, "new RunSessionAuthorityV1"),
+            Assert.That(CountTextOccurrences(
+                    shared,
+                    "new RunSessionAuthorityV1"),
                 Is.EqualTo(1));
             Assert.That(shared,
                 Does.Contain("ProductionConditionBoundRunSessionStartSourceV1"));
-            Assert.That(shared, Does.Contain("AdvanceSharedRunSessionTime"));
+            Assert.That(shared, Does.Contain("AdvanceConditionRuntime"));
             Assert.That(shared, Does.Contain("TickEnemyAttackPatterns"));
 
             Assert.That(factory,
@@ -46,9 +48,10 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Does.Not.Contain("Stage1ConditionRunProjectionV1"));
             Assert.That(factory,
                 Does.Not.Contain("IRunSessionRuntimePortFactoryV1"));
+            Assert.That(factory, Does.Not.Contain("FactWindowEffectFixtureV1"));
         }
 
-        private static int Occurrences(string source, string value)
+        private static int CountTextOccurrences(string source, string value)
         {
             int count = 0;
             int offset = 0;
