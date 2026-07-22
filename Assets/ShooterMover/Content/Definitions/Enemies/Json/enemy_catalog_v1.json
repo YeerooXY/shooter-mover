@@ -50,7 +50,7 @@
         }
       ],
       "xp_profile": "xp.enemy-standard",
-      "drop_profile": "drop.enemy-common",
+      "drop_profile": "drop-source.normal-enemy",
       "room_clear_role": "required-enemy",
       "special_capabilities": []
     },
@@ -98,7 +98,7 @@
         }
       ],
       "xp_profile": "xp.enemy-standard",
-      "drop_profile": "drop.enemy-common",
+      "drop_profile": "drop-source.small-enemy",
       "room_clear_role": "required-enemy",
       "special_capabilities": [
         "enemy-special.locked-commitment"
@@ -157,7 +157,7 @@
         }
       ],
       "xp_profile": "xp.enemy-turret",
-      "drop_profile": "drop.enemy-turret",
+      "drop_profile": "drop-source.large-enemy",
       "room_clear_role": "required-enemy",
       "special_capabilities": [
         "enemy-special.rotating-aim"
@@ -207,7 +207,7 @@
         }
       ],
       "xp_profile": "xp.enemy-light",
-      "drop_profile": "drop.enemy-none",
+      "drop_profile": "drop-source.explicit-no-drop",
       "room_clear_role": "optional-enemy",
       "special_capabilities": []
     },
@@ -283,7 +283,7 @@
         }
       ],
       "xp_profile": "xp.enemy-standard",
-      "drop_profile": "drop.enemy-common",
+      "drop_profile": "drop-source.large-enemy",
       "room_clear_role": "required-enemy",
       "special_capabilities": []
     }
