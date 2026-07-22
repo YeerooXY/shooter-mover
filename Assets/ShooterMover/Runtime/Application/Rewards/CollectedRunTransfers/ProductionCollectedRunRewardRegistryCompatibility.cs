@@ -5,6 +5,15 @@ using ShooterMover.Domain.Common;
 namespace ShooterMover.Application.Rewards.CollectedRunTransfers
 {
     /// <summary>
+    /// Source-name compatibility only. Implementations of the earlier retained-payload
+    /// interface automatically satisfy the V2 crash-custody preparation contract.
+    /// </summary>
+    public interface ICollectedRunEquipmentPayloadSource :
+        ICollectedRunEquipmentPayloadSourceV2
+    {
+    }
+
+    /// <summary>
     /// Reference-only compatibility façade for existing composition call sites. Remove once
     /// all callers use the V2 registry name directly. It creates and owns no authority.
     /// </summary>
