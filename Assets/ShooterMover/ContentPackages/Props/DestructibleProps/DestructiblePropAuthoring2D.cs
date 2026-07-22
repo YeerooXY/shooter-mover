@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using ShooterMover.Content.Definitions.Rewards;
 using ShooterMover.Contracts.Authoring;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring;
@@ -141,7 +142,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 configuredColliderSize,
                 configuredColliderOffset,
                 configuredAnimation,
-                null);
+                Stage1TerminalDropContentV1.ResolveLegacyAuthoringKey(
+                    gameObject.name));
         }
 
         public void ConfigureGenerated(
