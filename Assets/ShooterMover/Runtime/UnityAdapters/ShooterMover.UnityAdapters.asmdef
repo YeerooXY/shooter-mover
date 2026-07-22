@@ -8,9 +8,6 @@
     "ShooterMover.Content.Definitions",
     "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
-    "ShooterMover.TerminalDropBinding",
-    "ShooterMover.RunPickups",
-    "ShooterMover.RunPickupUnity",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
