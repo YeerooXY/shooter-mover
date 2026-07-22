@@ -63,6 +63,14 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     "collected-run-transfer-custody-persistence-context-invalid");
             }
 
+            string transitionDiagnostic;
+            if (!ValidateExactTransition(
+                preparedTransfer,
+                out transitionDiagnostic))
+            {
+                return Rejected(transitionDiagnostic);
+            }
+
             CollectedRunRewardPreparedTransferSnapshotV1 rollback =
                 prepared.ExportSnapshot();
             string upsertDiagnostic;
@@ -100,9 +108,6 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             }
             catch (Exception exception)
             {
-                // This phase has not mutated permanent reward authorities. Even if the
-                // custody component reached disk, the same state/fingerprint operation can
-                // be retried without applying loot.
                 prepared.ImportSnapshot(rollback);
                 return Rejected(
                     "collected-run-transfer-custody-persist-threw:"
@@ -153,6 +158,14 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             {
                 return Rejected(
                     "collected-run-transfer-final-persistence-context-invalid");
+            }
+
+            string transitionDiagnostic;
+            if (!ValidateExactTransition(
+                persistedTransfer,
+                out transitionDiagnostic))
+            {
+                return Rejected(transitionDiagnostic);
             }
 
             string upsertDiagnostic;
@@ -245,6 +258,78 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         .AlreadyPersisted
                     : CollectedRunRewardTransferPersistenceStatusV1
                         .PersistedAndVerified);
+        }
+
+        private bool ValidateExactTransition(
+            CollectedRunRewardPreparedTransferV1 incoming,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            CollectedRunRewardPreparedTransferV1 existing;
+            if (!prepared.TryGetByCustody(
+                incoming.CustodyStableId,
+                out existing))
+            {
+                if (incoming.State
+                    != CollectedRunRewardPreparedTransferStateV1
+                        .AwaitingAcceptedEnd)
+                {
+                    diagnostic =
+                        "collected-run-transfer-custody-missing-base-state";
+                    return false;
+                }
+                return true;
+            }
+            if (string.Equals(
+                existing.Fingerprint,
+                incoming.Fingerprint,
+                StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            CollectedRunRewardPreparedTransferV1 expected;
+            if (existing.State
+                    == CollectedRunRewardPreparedTransferStateV1
+                        .AwaitingAcceptedEnd
+                && incoming.State
+                    == CollectedRunRewardPreparedTransferStateV1.Prepared)
+            {
+                expected = existing.AcceptEnd(
+                    incoming.TransferOperationStableId,
+                    incoming.AcceptedMissionResultStableId,
+                    incoming.AcceptedMissionResultFingerprint,
+                    incoming.BatchFingerprint,
+                    incoming.ApplicationPlanFingerprint);
+            }
+            else if (existing.State
+                    == CollectedRunRewardPreparedTransferStateV1.Prepared
+                && incoming.State
+                    == CollectedRunRewardPreparedTransferStateV1.Persisted)
+            {
+                expected = existing.MarkPersisted(
+                    incoming.PersistedReceiptFingerprint);
+            }
+            else
+            {
+                diagnostic =
+                    "collected-run-transfer-custody-transition-invalid:"
+                    + existing.State
+                    + "->"
+                    + incoming.State;
+                return false;
+            }
+
+            if (!string.Equals(
+                expected.Fingerprint,
+                incoming.Fingerprint,
+                StringComparison.Ordinal))
+            {
+                diagnostic =
+                    "collected-run-transfer-custody-transition-content-conflict";
+                return false;
+            }
+            return true;
         }
 
         private static StableId CustodySaveOperation(
