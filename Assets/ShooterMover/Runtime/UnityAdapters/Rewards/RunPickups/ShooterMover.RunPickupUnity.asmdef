@@ -2,8 +2,10 @@
   "name": "ShooterMover.RunPickupUnity",
   "rootNamespace": "ShooterMover.UnityAdapters.Rewards.RunPickups",
   "references": [
+    "ShooterMover.Application",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
+    "ShooterMover.TerminalDropBinding",
     "ShooterMover.RunPickups"
   ],
   "includePlatforms": [],
