@@ -282,7 +282,7 @@ namespace ShooterMover.TerminalDropBinding
                         source,
                         personalResults[index]);
                 results.Add(adapted);
-                anyRewards |= adapted.Rewards.Count > 0;
+                anyRewards |= adapted.GeneratedRewards.Count > 0;
             }
             return new TerminalPersonalRewardBatchV1(
                 anyRewards
