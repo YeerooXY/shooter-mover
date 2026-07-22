@@ -20,6 +20,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             public bool IsActive { get; set; } = true;
             public StableId PlayerActorStableId { get; set; } = PlayerActorId;
             public StableId PlayerParticipantStableId { get; set; } = PlayerParticipantId;
+            public long NextCollectedRewardOrder { get; set; } = 1L;
             public RunSessionCollectedRewardV1 LastReward { get; private set; }
             public RunSessionRewardCollectionStatusV1 Status { get; set; } =
                 RunSessionRewardCollectionStatusV1.Collected;
@@ -133,6 +134,25 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(recorded.CollectionOrder, Is.EqualTo(1L));
             Assert.That(recorded.CollectedAtAuthoritativeTick, Is.EqualTo(50L));
             Assert.That(recorded.Fingerprint, Is.Not.Empty);
+        }
+
+        [Test]
+        public void ExistingRunSessionPort_ReadsLifecycleScopedNextOrder()
+        {
+            var runSession = new FakeCollectedRewardAuthority
+            {
+                LifecycleGeneration = 2L,
+                NextCollectedRewardOrder = 1L,
+            };
+            var port = new ExistingRunSessionPickupPortV1(runSession);
+
+            RunPickupRunSessionContextV1 context;
+            string diagnostic;
+            bool resolved = port.TryReadContext(out context, out diagnostic);
+
+            Assert.That(resolved, Is.True, diagnostic);
+            Assert.That(context.LifecycleGeneration, Is.EqualTo(2L));
+            Assert.That(context.NextCollectionOrder, Is.EqualTo(1L));
         }
 
         [TestCase(
