@@ -214,7 +214,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 {
                     builder.Append('|').Append(equipmentIds[index]);
                 }
-                return RunSessionFingerprintV1.Hash(builder.ToString());
+                return Stage1ProductionFingerprintV1.Hash(builder.ToString());
             }
         }
 

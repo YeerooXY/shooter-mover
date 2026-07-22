@@ -111,7 +111,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         {
             get
             {
-                return RunSessionFingerprintV1.Hash(
+                return Stage1ProductionFingerprintV1.Hash(
                     PortId
                     + "|"
                     + lifecycleGeneration.ToString(CultureInfo.InvariantCulture)

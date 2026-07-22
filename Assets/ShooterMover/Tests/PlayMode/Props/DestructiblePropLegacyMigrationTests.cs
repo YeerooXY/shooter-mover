@@ -74,6 +74,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                     host,
                     presentationRootObject.transform,
                     host.transform,
+                    StableId.Parse("room.entry"),
                     adapter,
                     6d,
                     new Func<long>(() => generation));

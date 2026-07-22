@@ -731,6 +731,7 @@ namespace ShooterMover.TestSupport.VisibleSlice
                 gameObject,
                 roomPresentation.PropRoot,
                 transform,
+                Level1AuthorableRoomDefinitionV1.EntryRoomStableId,
                 playerHitAdapter,
                 PlayerShotDamage,
                 () => RestartGeneration);

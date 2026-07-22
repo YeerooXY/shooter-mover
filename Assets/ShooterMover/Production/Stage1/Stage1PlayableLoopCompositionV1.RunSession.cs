@@ -172,7 +172,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         + playerGeneration.ToString(
                             CultureInfo.InvariantCulture)),
                 runStableId,
-                RunSessionFingerprintV1.Hash(
+                Stage1ProductionFingerprintV1.Hash(
                     "stage1-production-run-material-v1|" + runStableId),
                 graph.Character.CharacterInstanceStableId,
                 graph.Character.Revision,
@@ -181,7 +181,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 StableId.Parse("difficulty.normal"),
                 controller.RestartGeneration + 1L,
                 0L,
-                RunSessionFingerprintV1.Hash(
+                Stage1ProductionFingerprintV1.Hash(
                     "stage1-production-event-context-v1"));
             RunSessionStartResultV1 started =
                 sharedRunSessionAuthority.Start(startCommand);
@@ -304,7 +304,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
 
             sharedRunSessionSimulationTick++;
-            string fingerprint = RunSessionFingerprintV1.Hash(
+            string fingerprint = Stage1ProductionFingerprintV1.Hash(
                 sharedRunSession.RunStableId
                 + "|"
                 + sharedRunSession.LifecycleGeneration.ToString(

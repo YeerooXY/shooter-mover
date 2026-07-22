@@ -366,6 +366,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             IEnemyActor2DAuthority presentedAuthority =
                 RegisterEnemyCombatPresentation(root, authority);
             var binding = new EnemyBinding(
+                root.transform,
                 presentedAuthority,
                 definitionStableId,
                 roomInstanceStableId);
