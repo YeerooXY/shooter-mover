@@ -54,17 +54,32 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             get { return configurationError ?? string.Empty; }
         }
 
+        public void Configure(
+            StableId collectorEntity,
+            StableId collectorParticipant)
+        {
+            if (collectorEntity == null)
+                throw new ArgumentNullException(nameof(collectorEntity));
+            if (collectorParticipant == null)
+                throw new ArgumentNullException(nameof(collectorParticipant));
+
+            collectorEntityStableId = collectorEntity.ToString();
+            collectorParticipantStableId = collectorParticipant.ToString();
+            entity = collectorEntity;
+            participant = collectorParticipant;
+            configurationError = null;
+        }
+
         public void ConfigureForTests(string entityId, string participantId)
         {
-            collectorEntityStableId = entityId;
-            collectorParticipantStableId = participantId;
-            entity = null;
-            participant = null;
-            configurationError = null;
-            StableId ignoredEntity;
-            StableId ignoredParticipant;
-            if (!TryGetIdentities(out ignoredEntity, out ignoredParticipant))
-                throw new ArgumentException(configurationError);
+            StableId parsedEntity;
+            StableId parsedParticipant;
+            if (!StableId.TryParse(entityId ?? string.Empty, out parsedEntity)
+                || !StableId.TryParse(participantId ?? string.Empty, out parsedParticipant))
+            {
+                throw new ArgumentException("Collector test identities must be valid StableIds.");
+            }
+            Configure(parsedEntity, parsedParticipant);
         }
 
         private void OnValidate()
