@@ -227,6 +227,7 @@ namespace ShooterMover.Application.Runs.Session
         bool IsActive { get; }
         StableId PlayerActorStableId { get; }
         StableId PlayerParticipantStableId { get; }
+        long NextCollectedRewardOrder { get; }
 
         RunSessionRewardCollectionResultV1 RecordCollectedRunReward(
             RunSessionCollectedRewardV1 reward);
