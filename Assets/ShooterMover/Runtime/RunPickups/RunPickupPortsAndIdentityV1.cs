@@ -18,6 +18,50 @@ namespace ShooterMover.RunPickups
             out string diagnostic);
     }
 
+    /// <summary>
+    /// One coherent read of the owning Run Session facts needed by pickup realization and
+    /// collection. The next order is derived by the Run Session from its current-lifecycle
+    /// collection journal; the pickup authority never maintains a second sequence counter.
+    /// </summary>
+    public sealed class RunPickupRunSessionContextV1
+    {
+        public RunPickupRunSessionContextV1(
+            StableId runStableId,
+            long lifecycleGeneration,
+            long authoritativeTick,
+            bool isActive,
+            StableId playerActorStableId,
+            StableId playerParticipantStableId,
+            long nextCollectionOrder)
+        {
+            RunStableId = runStableId
+                ?? throw new ArgumentNullException(nameof(runStableId));
+            if (lifecycleGeneration < 0L)
+                throw new ArgumentOutOfRangeException(nameof(lifecycleGeneration));
+            if (authoritativeTick < 0L)
+                throw new ArgumentOutOfRangeException(nameof(authoritativeTick));
+            PlayerActorStableId = playerActorStableId
+                ?? throw new ArgumentNullException(nameof(playerActorStableId));
+            PlayerParticipantStableId = playerParticipantStableId
+                ?? throw new ArgumentNullException(nameof(playerParticipantStableId));
+            if (nextCollectionOrder < 1L)
+                throw new ArgumentOutOfRangeException(nameof(nextCollectionOrder));
+
+            LifecycleGeneration = lifecycleGeneration;
+            AuthoritativeTick = authoritativeTick;
+            IsActive = isActive;
+            NextCollectionOrder = nextCollectionOrder;
+        }
+
+        public StableId RunStableId { get; }
+        public long LifecycleGeneration { get; }
+        public long AuthoritativeTick { get; }
+        public bool IsActive { get; }
+        public StableId PlayerActorStableId { get; }
+        public StableId PlayerParticipantStableId { get; }
+        public long NextCollectionOrder { get; }
+    }
+
     public interface IRunPickupRunSessionPortV1
     {
         StableId RunStableId { get; }
@@ -26,6 +70,10 @@ namespace ShooterMover.RunPickups
         bool IsActive { get; }
         StableId PlayerActorStableId { get; }
         StableId PlayerParticipantStableId { get; }
+
+        bool TryReadContext(
+            out RunPickupRunSessionContextV1 context,
+            out string diagnostic);
 
         RunPickupSessionRecordResultV1 RecordCollection(
             RunPickupCollectionFactV1 fact);
