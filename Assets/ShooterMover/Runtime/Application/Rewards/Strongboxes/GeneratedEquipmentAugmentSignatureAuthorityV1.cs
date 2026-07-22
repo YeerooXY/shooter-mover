@@ -72,38 +72,130 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         public GeneratedEquipmentAugmentSignatureRecordResultV1 Record(
             GeneratedEquipmentAugmentSignatureV1 signature)
         {
-            if (signature == null)
-            {
-                throw new ArgumentNullException(nameof(signature));
-            }
-            lock (gate)
+            IReadOnlyList<GeneratedEquipmentAugmentSignatureRecordResultV1>
+                results;
+            string diagnostic;
+            if (!TryRecordBatch(
+                    new[] { signature },
+                    out results,
+                    out diagnostic))
             {
                 GeneratedEquipmentAugmentSignatureV1 existing;
-                if (byEquipmentInstance.TryGetValue(
-                        signature.EquipmentInstanceStableId,
-                        out existing))
+                lock (gate)
                 {
-                    if (existing.Equals(signature))
+                    byEquipmentInstance.TryGetValue(
+                        signature.EquipmentInstanceStableId,
+                        out existing);
+                }
+                return new GeneratedEquipmentAugmentSignatureRecordResultV1(
+                    GeneratedEquipmentAugmentSignatureRecordStatusV1
+                        .ConflictingDuplicate,
+                    existing ?? signature,
+                    diagnostic);
+            }
+            return results[0];
+        }
+
+        /// <summary>
+        /// Preflights the complete equipment batch before mutating state. A conflict in
+        /// one slot therefore cannot leave earlier slot signatures partially recorded.
+        /// </summary>
+        public bool TryRecordBatch(
+            IEnumerable<GeneratedEquipmentAugmentSignatureV1> signatures,
+            out IReadOnlyList<GeneratedEquipmentAugmentSignatureRecordResultV1>
+                results,
+            out string diagnostic)
+        {
+            if (signatures == null)
+            {
+                throw new ArgumentNullException(nameof(signatures));
+            }
+            var incoming = new List<GeneratedEquipmentAugmentSignatureV1>();
+            var unique = new Dictionary<StableId, GeneratedEquipmentAugmentSignatureV1>();
+            foreach (GeneratedEquipmentAugmentSignatureV1 signature in signatures)
+            {
+                if (signature == null)
+                {
+                    throw new ArgumentException(
+                        "Generated augment signatures must not contain null entries.",
+                        nameof(signatures));
+                }
+                GeneratedEquipmentAugmentSignatureV1 duplicate;
+                if (unique.TryGetValue(
+                        signature.EquipmentInstanceStableId,
+                        out duplicate))
+                {
+                    if (!duplicate.Equals(signature))
                     {
-                        return new GeneratedEquipmentAugmentSignatureRecordResultV1(
-                            GeneratedEquipmentAugmentSignatureRecordStatusV1.ExactReplay,
-                            existing,
-                            string.Empty);
+                        results = Array.Empty<
+                            GeneratedEquipmentAugmentSignatureRecordResultV1>();
+                        diagnostic =
+                            "generated-equipment-augment-signature-batch-conflict";
+                        return false;
                     }
-                    return new GeneratedEquipmentAugmentSignatureRecordResultV1(
-                        GeneratedEquipmentAugmentSignatureRecordStatusV1
-                            .ConflictingDuplicate,
-                        existing,
-                        "generated-equipment-augment-signature-conflict");
+                    continue;
+                }
+                unique.Add(signature.EquipmentInstanceStableId, signature);
+                incoming.Add(signature);
+            }
+            incoming.Sort();
+
+            lock (gate)
+            {
+                for (int index = 0; index < incoming.Count; index++)
+                {
+                    GeneratedEquipmentAugmentSignatureV1 signature =
+                        incoming[index];
+                    GeneratedEquipmentAugmentSignatureV1 existing;
+                    if (byEquipmentInstance.TryGetValue(
+                            signature.EquipmentInstanceStableId,
+                            out existing)
+                        && !existing.Equals(signature))
+                    {
+                        results = Array.Empty<
+                            GeneratedEquipmentAugmentSignatureRecordResultV1>();
+                        diagnostic =
+                            "generated-equipment-augment-signature-conflict";
+                        return false;
+                    }
                 }
 
-                byEquipmentInstance.Add(
-                    signature.EquipmentInstanceStableId,
-                    signature);
-                return new GeneratedEquipmentAugmentSignatureRecordResultV1(
-                    GeneratedEquipmentAugmentSignatureRecordStatusV1.Recorded,
-                    signature,
-                    string.Empty);
+                var accepted = new List<
+                    GeneratedEquipmentAugmentSignatureRecordResultV1>(
+                        incoming.Count);
+                for (int index = 0; index < incoming.Count; index++)
+                {
+                    GeneratedEquipmentAugmentSignatureV1 signature =
+                        incoming[index];
+                    GeneratedEquipmentAugmentSignatureV1 existing;
+                    if (byEquipmentInstance.TryGetValue(
+                            signature.EquipmentInstanceStableId,
+                            out existing))
+                    {
+                        accepted.Add(
+                            new GeneratedEquipmentAugmentSignatureRecordResultV1(
+                                GeneratedEquipmentAugmentSignatureRecordStatusV1
+                                    .ExactReplay,
+                                existing,
+                                string.Empty));
+                    }
+                    else
+                    {
+                        byEquipmentInstance.Add(
+                            signature.EquipmentInstanceStableId,
+                            signature);
+                        accepted.Add(
+                            new GeneratedEquipmentAugmentSignatureRecordResultV1(
+                                GeneratedEquipmentAugmentSignatureRecordStatusV1
+                                    .Recorded,
+                                signature,
+                                string.Empty));
+                    }
+                }
+                results = new ReadOnlyCollection<
+                    GeneratedEquipmentAugmentSignatureRecordResultV1>(accepted);
+                diagnostic = string.Empty;
+                return true;
             }
         }
 
