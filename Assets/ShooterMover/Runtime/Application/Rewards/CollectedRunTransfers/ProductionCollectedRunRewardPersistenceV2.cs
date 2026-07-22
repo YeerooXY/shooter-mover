@@ -13,10 +13,11 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
     /// custody/receipt component fingerprints are installed as validator expectations before
     /// PersistActive, so verification occurs before replacement and during active read-back.
     ///
-    /// Persistence certainty is explicit at this boundary. Rejected is returned only before
-    /// PersistActive is invoked. Once the account-save callback may have run, a throw, null
-    /// result, rejected result, or read-back mismatch is DurableStateUncertain. No diagnostic
-    /// substring is used to infer whether replacement happened.
+    /// Persistence certainty is explicit at this boundary. RejectedBeforeReplacement is
+    /// returned only before PersistActive is invoked. Once the account-save callback may have
+    /// run, a throw, null result, rejected result, or read-back mismatch is
+    /// DurableStateUncertain. No diagnostic substring is used to infer whether replacement
+    /// happened.
     /// </summary>
     public sealed class ProductionCollectedRunRewardPersistenceV2 :
         ICollectedRunRewardTransferPersistencePortV1
@@ -64,7 +65,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 || preparedTransfer.SelectedCharacterStableId
                     != selectedCharacterStableId)
             {
-                return Rejected(
+                return RejectedBeforeReplacement(
                     "collected-run-transfer-custody-persistence-context-invalid");
             }
 
@@ -73,11 +74,9 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 preparedTransfer,
                 out transitionDiagnostic))
             {
-                return Rejected(transitionDiagnostic);
+                return RejectedBeforeReplacement(transitionDiagnostic);
             }
 
-            CollectedRunRewardPreparedTransferSnapshotV1 rollback =
-                prepared.ExportSnapshot();
             string upsertDiagnostic;
             CollectedRunRewardTransferAuthorityStatusV1 upsert =
                 prepared.Upsert(preparedTransfer, out upsertDiagnostic);
@@ -85,7 +84,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 && upsert
                     != CollectedRunRewardTransferAuthorityStatusV1.ExactReplay)
             {
-                return Rejected(
+                return RejectedBeforeReplacement(
                     "collected-run-transfer-custody-upsert-rejected:"
                     + upsertDiagnostic);
             }
@@ -155,7 +154,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     receipt.Fingerprint,
                     StringComparison.Ordinal))
             {
-                return Rejected(
+                return RejectedBeforeReplacement(
                     "collected-run-transfer-final-persistence-context-invalid");
             }
 
@@ -164,7 +163,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 persistedTransfer,
                 out transitionDiagnostic))
             {
-                return Rejected(transitionDiagnostic);
+                return RejectedBeforeReplacement(transitionDiagnostic);
             }
 
             string upsertDiagnostic;
@@ -174,7 +173,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 && upsert
                     != CollectedRunRewardTransferAuthorityStatusV1.ExactReplay)
             {
-                return Rejected(
+                return RejectedBeforeReplacement(
                     "collected-run-transfer-persisted-custody-upsert-rejected:"
                     + upsertDiagnostic);
             }
@@ -189,7 +188,7 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     receipt.Fingerprint,
                     StringComparison.Ordinal))
             {
-                return Rejected(
+                return RejectedBeforeReplacement(
                     "collected-run-transfer-final-receipt-live-mismatch");
             }
 
@@ -426,11 +425,12 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                         : result.Diagnostic));
         }
 
-        private static CollectedRunRewardTransferPersistenceResultV1 Rejected(
-            string diagnostic)
+        private static CollectedRunRewardTransferPersistenceResultV1
+            RejectedBeforeReplacement(string diagnostic)
         {
             return new CollectedRunRewardTransferPersistenceResultV1(
-                CollectedRunRewardTransferPersistenceStatusV1.Rejected,
+                CollectedRunRewardTransferPersistenceStatusV1
+                    .RejectedBeforeReplacement,
                 0L,
                 string.Empty,
                 0L,
