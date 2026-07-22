@@ -5,7 +5,10 @@
     "ShooterMover.Application",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
-    "ShooterMover.UI.ProductionFlow"
+    "ShooterMover.UI.ProductionFlow",
+    "ShooterMover.TerminalDropBinding",
+    "ShooterMover.RunPickups",
+    "ShooterMover.RunPickupUnity"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
