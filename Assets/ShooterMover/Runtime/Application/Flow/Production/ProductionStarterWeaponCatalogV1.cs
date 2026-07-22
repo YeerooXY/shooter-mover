@@ -11,6 +11,16 @@ namespace ShooterMover.Application.Flow.Production
         public const string ArcWeaponDefinitionId = "weapon.arc-gun";
         public const string RicochetWeaponDefinitionId =
             "weapon.ricochet-gun";
+        public const string BlasterSideProfileArtId =
+            "weapon-art.blaster.side-v1";
+        public const string ShotgunSideProfileArtId =
+            "weapon-art.shotgun-basic.side-v1";
+        public const string RocketSideProfileArtId =
+            "weapon-art.rocket-launcher.side-v1";
+        public const string ArcSideProfileArtId =
+            "weapon-art.arc-rifle.side-v1";
+        public const string RicochetSideProfileArtId =
+            "weapon-art.ricochet-weapon.side-v1";
 
         public static readonly StableId BlasterEquipmentDefinitionStableId =
             StableId.Parse("equipment.production-starter-blaster");
@@ -252,7 +262,8 @@ namespace ShooterMover.Application.Flow.Production
                         40d,
                         30d,
                         5d,
-                        1),
+                        1,
+                        sideProfileArtReference: BlasterSideProfileArtId),
                     WeaponDefinition(
                         "weapon.shotgun",
                         "Shotgun",
@@ -264,7 +275,8 @@ namespace ShooterMover.Application.Flow.Production
                         30d,
                         15d,
                         3d,
-                        0),
+                        0,
+                        sideProfileArtReference: ShotgunSideProfileArtId),
                     WeaponDefinition(
                         "weapon.rocket-launcher",
                         "Rocket Launcher",
@@ -278,7 +290,8 @@ namespace ShooterMover.Application.Flow.Production
                         4d,
                         0,
                         20d,
-                        3d),
+                        3d,
+                        sideProfileArtReference: RocketSideProfileArtId),
                     WeaponDefinition(
                         ArcWeaponDefinitionId,
                         "Arc Gun",
@@ -294,7 +307,8 @@ namespace ShooterMover.Application.Flow.Production
                         0d,
                         0d,
                         3,
-                        6d),
+                        6d,
+                        ArcSideProfileArtId),
                     WeaponDefinition(
                         RicochetWeaponDefinitionId,
                         "Ricochet Gun",
@@ -306,7 +320,8 @@ namespace ShooterMover.Application.Flow.Production
                         24d,
                         30d,
                         8d,
-                        0),
+                        0,
+                        sideProfileArtReference: RicochetSideProfileArtId),
                 });
         }
 
@@ -405,7 +420,8 @@ namespace ShooterMover.Application.Flow.Production
             double areaDamage = 0d,
             double explosionRadius = 0d,
             int chainTargets = 0,
-            double chainRange = 0d)
+            double chainRange = 0d,
+            string sideProfileArtReference = null)
         {
             bool explosive = areaDamage > 0d;
             return new WeaponDefinitionData(
@@ -456,7 +472,9 @@ namespace ShooterMover.Application.Flow.Production
                 "Production vertical slice",
                 "Production vertical slice",
                 WeaponCatalogAvailability.Live,
-                Array.Empty<string>());
+                string.IsNullOrWhiteSpace(sideProfileArtReference)
+                    ? Array.Empty<string>()
+                    : new[] { sideProfileArtReference.Trim() });
         }
     }
 }

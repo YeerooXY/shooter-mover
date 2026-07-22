@@ -10,6 +10,7 @@ using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Strongboxes;
+using ShooterMover.Domain.Weapons.Catalog;
 
 namespace ShooterMover.Application.Flow.Production
 {
@@ -389,6 +390,23 @@ namespace ShooterMover.Application.Flow.Production
             StrongboxOpenCommandV1 command,
             EquipmentCatalog equipmentCatalog,
             IStrongboxDurableOpeningExecutorV1 durableOpeningExecutor = null)
+            : this(
+                selectedStrongbox,
+                openingService,
+                command,
+                equipmentCatalog,
+                null,
+                durableOpeningExecutor)
+        {
+        }
+
+        public ProductionStrongboxOpeningBindingV1(
+            MissionRunStrongboxResultV1 selectedStrongbox,
+            StrongboxOpeningServiceV1 openingService,
+            StrongboxOpenCommandV1 command,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            IStrongboxDurableOpeningExecutorV1 durableOpeningExecutor)
         {
             SelectedStrongbox = selectedStrongbox
                 ?? throw new ArgumentNullException(nameof(selectedStrongbox));
@@ -402,6 +420,7 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(openingService));
             Command = command ?? throw new ArgumentNullException(nameof(command));
             EquipmentCatalog = equipmentCatalog;
+            WeaponCatalog = weaponCatalog;
             DurableOpeningExecutor = durableOpeningExecutor;
         }
 
@@ -412,6 +431,8 @@ namespace ShooterMover.Application.Flow.Production
         public StrongboxOpenCommandV1 Command { get; }
 
         public EquipmentCatalog EquipmentCatalog { get; }
+
+        public WeaponCatalog WeaponCatalog { get; }
 
         public IStrongboxDurableOpeningExecutorV1 DurableOpeningExecutor { get; }
     }
@@ -435,6 +456,24 @@ namespace ShooterMover.Application.Flow.Production
                 commandFactory,
             EquipmentCatalog equipmentCatalog,
             Func<MissionResultPayloadV1> refreshResult)
+            : this(
+                result,
+                openingService,
+                commandFactory,
+                equipmentCatalog,
+                null,
+                refreshResult)
+        {
+        }
+
+        public ProductionResultsContextV1(
+            MissionResultPayloadV1 result,
+            StrongboxOpeningServiceV1 openingService,
+            Func<MissionRunStrongboxResultV1, StrongboxOpenCommandV1>
+                commandFactory,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            Func<MissionResultPayloadV1> refreshResult)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
             OpeningService = openingService
@@ -442,6 +481,7 @@ namespace ShooterMover.Application.Flow.Production
             this.commandFactory = commandFactory
                 ?? throw new ArgumentNullException(nameof(commandFactory));
             EquipmentCatalog = equipmentCatalog;
+            WeaponCatalog = weaponCatalog;
             this.refreshResult = refreshResult
                 ?? throw new ArgumentNullException(nameof(refreshResult));
         }
@@ -451,6 +491,8 @@ namespace ShooterMover.Application.Flow.Production
         public StrongboxOpeningServiceV1 OpeningService { get; }
 
         public EquipmentCatalog EquipmentCatalog { get; }
+
+        public WeaponCatalog WeaponCatalog { get; }
 
         public ProductionStrongboxOpeningBindingV1 BindExact(
             MissionRunStrongboxResultV1 selected)
@@ -473,6 +515,7 @@ namespace ShooterMover.Application.Flow.Production
                 authority,
                 commandFactory(selected),
                 EquipmentCatalog,
+                WeaponCatalog,
                 durableOpeningExecutor);
         }
 
@@ -546,6 +589,7 @@ namespace ShooterMover.Application.Flow.Production
                 OpeningService,
                 commandFactory,
                 EquipmentCatalog,
+                WeaponCatalog,
                 refreshResult);
         }
 

@@ -263,6 +263,9 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime.Holdings,
                 runtime.CatalogAdapter,
                 runtime.LoadoutAuthority);
+            controller.ConfigureWeaponPresentation(
+                runtime.EquipmentCatalog,
+                runtime.WeaponCatalog);
             controller.Present(HubRouteV1.Inventory, payload);
             controller.Confirmed -= HandleConfirmed;
             controller.Confirmed += HandleConfirmed;
