@@ -59,6 +59,43 @@ They are not reconstructed by the enemy-attack partial.
 The internal `TryResolveSharedRunSession` seam is the integration point for downstream Stage 1 features.
 A pickup/collection branch must consume this aggregate after rebase rather than starting another run.
 
+## Authoritative in-run restart
+
+An in-mission restart does not replace the authority or aggregate. The production input path calls
+`RunSessionAggregateV1.Restart` through `RestartSharedRunSession`.
+
+The restart command uses the existing run identity, current lifecycle generation, next generation,
+current authoritative tick and `RunRestartPolicyV1.FullTransientReset()`. The aggregate then:
+
+1. checks restart replay/conflict history;
+2. validates run identity, active state, lifecycle and tick;
+3. preflights every lifecycle runtime port;
+4. restarts the accepted player, weapon, condition/status, ability and room ports;
+5. increments lifecycle generation exactly once;
+6. resets policy-selected transient state;
+7. retains the aggregate object, authority, frozen character/loadout inputs and replay ledgers.
+
+The player port delegates to the accepted player runtime. Its accepted restart projects movement, health,
+enemy session state, input, camera and HUD reset through the retained Stage 1 presentation boundary.
+The room port resets the production room runtime within the same aggregate-controlled transaction.
+
+Enemy attack consumers are torn down before restart and recreated against the same aggregate at the new
+lifecycle generation. Their disposable scheduler, collision and physical-effect state is not the Run
+Session itself.
+
+A completely new authority and aggregate are created only when Stage 1 enters a genuinely different run
+identity or the composition is destroyed. A player lifecycle change outside `RunSessionAggregateV1.Restart`
+fails closed rather than silently reconstructing mission truth.
+
+This preserves:
+
+- the same run ID and aggregate reference;
+- frozen character, skill, loadout and equipment fingerprints;
+- restart replay and conflict history;
+- fact and local-mutation exactly-once ledgers;
+- stale-generation rejection;
+- one lifecycle ordering for future pickup collection and other run-local journals.
+
 ## Authoritative time
 
 Unity `FixedUpdate` wakes the shared Stage 1 host but does not contribute combat time directly.
@@ -194,9 +231,12 @@ after the shared run and new attack composition succeed.
 The integration is additive to `Stage1PlayableLoopCompositionV1` and does not edit
 `Stage1VisibleSliceController.cs` or create a second bootstrap.
 
-Shared-run teardown first disposes enemy physical effects and scheduler bindings, then releases the one
-Stage 1 aggregate reference. Re-entry or lifecycle replacement composes one fresh shared graph and one
-set of feature consumers.
+On lifecycle restart, only feature-consumer state is disposed: emitted enemy effects, melee windows,
+collision relays, scheduler queues and attack source bindings. The shared authority and aggregate remain
+alive and commit the new generation through their existing restart transaction.
+
+Full shared-run teardown occurs only when the component is disabled/destroyed or Stage 1 begins a truly
+different run identity. That teardown disposes feature consumers before releasing the aggregate reference.
 
 ## Verification coverage
 
@@ -210,7 +250,16 @@ Focused EditMode coverage includes:
 - transient context/damage retries;
 - authored melee hit limits and one canonical player death;
 - an architecture guard proving the enemy partial contains no Run Session start, authority, runtime-port
-  factory or private tick, while the shared production host contains exactly one authority construction.
+  factory or private tick, while the shared production host contains exactly one authority construction;
+- production source proof that restart input calls `RestartSharedRunSession` and cannot call the retained
+  player restart, room restart or `BeginRun` bypasses;
+- aggregate regression proving the same object, run identity and frozen input fingerprint survive restart,
+  lifecycle increments once, stale facts reject, exact restart replay is stable, conflicting reuse rejects,
+  pre-restart operation identities remain reserved and fresh generation work remains accepted.
+
+The open pickup branch must add collection-record-specific assertions after rebasing onto this shared-run
+restart seam. This PR proves the aggregate lifetime and exactly-once boundary without importing #279's
+parallel task-owned types.
 
 ## Current limitations and verification boundary
 
