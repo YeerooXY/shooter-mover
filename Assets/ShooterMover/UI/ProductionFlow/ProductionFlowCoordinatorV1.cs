@@ -13,6 +13,7 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Shops;
+using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.UI.Crafting;
 using ShooterMover.UI.Hub;
 using ShooterMover.UI.InventoryLoadout;
@@ -305,6 +306,7 @@ namespace ShooterMover.UI.ProductionFlow
                     controller.ConfigureDisconnected(
                         transitions.Navigation.Payload,
                         new ShopNavigationAdapter(this));
+                    ConfigureShopWeaponPresentation(controller);
                 }
                 return;
             }
@@ -388,12 +390,15 @@ namespace ShooterMover.UI.ProductionFlow
                     Find<StrongboxOpeningController>(scene);
                 if (controller != null && strongboxBinding != null)
                 {
+                    WeaponCatalog weaponCatalog = ResolveWeaponCatalog(
+                        strongboxBinding.WeaponCatalog);
                     if (strongboxBinding.DurableOpeningExecutor != null)
                     {
                         controller.BindDurableRuntime(
                             strongboxBinding.OpeningService,
                             strongboxBinding.Command,
                             strongboxBinding.EquipmentCatalog,
+                            weaponCatalog,
                             strongboxBinding.SelectedStrongbox,
                             strongboxBinding.DurableOpeningExecutor);
                     }
@@ -402,7 +407,8 @@ namespace ShooterMover.UI.ProductionFlow
                         controller.BindRuntime(
                             strongboxBinding.OpeningService,
                             strongboxBinding.Command,
-                            strongboxBinding.EquipmentCatalog);
+                            strongboxBinding.EquipmentCatalog,
+                            weaponCatalog);
                     }
                     controller.ContinueOrBackRequested -=
                         ReturnFromStrongboxOpening;
@@ -415,6 +421,39 @@ namespace ShooterMover.UI.ProductionFlow
         private bool OpenCharacterSelection()
         {
             return transitions.TryNavigateTo(HubRouteV1.CharacterSelect);
+        }
+
+        private static WeaponCatalog ResolveWeaponCatalog(
+            WeaponCatalog supplied)
+        {
+            if (supplied != null)
+            {
+                return supplied;
+            }
+
+            ProductionPlayerLoadoutRuntimeV1 runtime;
+            ProductionFlowProfileRecordV1 profile;
+            return ProductionHubLoadoutCompositionV1.TryGetCurrent(
+                out runtime,
+                out profile)
+                ? runtime.WeaponCatalog
+                : null;
+        }
+
+        private static void ConfigureShopWeaponPresentation(
+            ShopScreenControllerV1 controller)
+        {
+            ProductionPlayerLoadoutRuntimeV1 runtime;
+            ProductionFlowProfileRecordV1 profile;
+            if (controller != null
+                && ProductionHubLoadoutCompositionV1.TryGetCurrent(
+                    out runtime,
+                    out profile))
+            {
+                controller.ConfigureWeaponPresentation(
+                    runtime.EquipmentCatalog,
+                    runtime.WeaponCatalog);
+            }
         }
 
         private bool SelectExistingProfile(

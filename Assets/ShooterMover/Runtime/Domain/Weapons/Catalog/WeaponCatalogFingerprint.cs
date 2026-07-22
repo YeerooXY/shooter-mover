@@ -86,7 +86,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
         private static void AppendRules(StringBuilder builder, WeaponCatalogRules value)
         {
             Append(builder, "rules.fixed_stats_per_definition", value.FixedStatsPerDefinition);
-            Append(builder, "rules.runtime_level_scaling", value.RuntimeLevelScaling);
             Append(builder, "rules.ordinary_mark_gap", value.OrdinaryMarkGap);
             for (int index = 0; index < value.ApexPowerAnchors.Count; index++)
             {

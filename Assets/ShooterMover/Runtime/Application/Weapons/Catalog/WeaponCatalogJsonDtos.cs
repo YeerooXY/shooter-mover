@@ -48,21 +48,19 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             [DataMember(Name = "fixed_stats_per_definition", IsRequired = true, Order = 0)]
             public bool FixedStatsPerDefinition;
-            [DataMember(Name = "runtime_level_scaling", IsRequired = true, Order = 1)]
-            public bool RuntimeLevelScaling;
-            [DataMember(Name = "ordinary_mark_gap", IsRequired = true, Order = 2)]
+            [DataMember(Name = "ordinary_mark_gap", IsRequired = true, Order = 1)]
             public string OrdinaryMarkGap;
-            [DataMember(Name = "apex_power_anchors", IsRequired = true, Order = 3)]
+            [DataMember(Name = "apex_power_anchors", IsRequired = true, Order = 2)]
             public List<int> ApexPowerAnchors;
-            [DataMember(Name = "damage_types", IsRequired = true, Order = 4)]
+            [DataMember(Name = "damage_types", IsRequired = true, Order = 3)]
             public List<string> DamageTypes;
-            [DataMember(Name = "max_augments", IsRequired = true, Order = 5)]
+            [DataMember(Name = "max_augments", IsRequired = true, Order = 4)]
             public int MaxAugments;
-            [DataMember(Name = "no_recoil", IsRequired = true, Order = 6)]
+            [DataMember(Name = "no_recoil", IsRequired = true, Order = 5)]
             public bool NoRecoil;
-            [DataMember(Name = "no_spin_up", IsRequired = true, Order = 7)]
+            [DataMember(Name = "no_spin_up", IsRequired = true, Order = 6)]
             public bool NoSpinUp;
-            [DataMember(Name = "no_heat_generation", IsRequired = true, Order = 8)]
+            [DataMember(Name = "no_heat_generation", IsRequired = true, Order = 7)]
             public bool NoHeatGeneration;
         }
 

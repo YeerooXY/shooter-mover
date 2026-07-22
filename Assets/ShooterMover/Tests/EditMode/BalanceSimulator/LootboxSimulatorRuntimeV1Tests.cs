@@ -162,7 +162,6 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
             json.Append("\"status\":\"simulator fixture\",");
             json.Append("\"rules\":{");
             json.Append("\"fixed_stats_per_definition\":true,");
-            json.Append("\"runtime_level_scaling\":false,");
             json.Append("\"ordinary_mark_gap\":\"1\",");
             json.Append("\"apex_power_anchors\":[75,105,135],");
             json.Append("\"damage_types\":[\"Kinetic\"],");

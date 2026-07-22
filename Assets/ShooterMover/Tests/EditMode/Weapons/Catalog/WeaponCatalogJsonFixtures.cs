@@ -37,7 +37,6 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
             json.Append("\"status\":\"planning baseline\",");
             json.Append("\"rules\":{");
             json.Append("\"fixed_stats_per_definition\":true,");
-            json.Append("\"runtime_level_scaling\":false,");
             json.Append("\"ordinary_mark_gap\":\"20-25 peak-drop levels\",");
             json.Append("\"apex_power_anchors\":[75,105,135],");
             json.Append("\"damage_types\":[\"Kinetic\"],");
