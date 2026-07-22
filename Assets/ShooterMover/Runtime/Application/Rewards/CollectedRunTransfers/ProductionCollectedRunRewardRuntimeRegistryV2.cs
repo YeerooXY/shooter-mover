@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Domain.Common;
 
@@ -8,7 +10,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
 {
     /// <summary>
     /// Character-scoped reference registry only. RAP, prepared custody and receipts remain
-    /// the owners of their own state and are restored through normal character adapters.
+    /// owners of their state. Runtime graph/composition references let retry rebuild from
+    /// restored authorities rather than from a captured Results delegate.
     /// </summary>
     public static class ProductionCollectedRunRewardRuntimeRegistryV2
     {
@@ -17,6 +20,8 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             public RewardApplicationServiceV1 RewardApplication;
             public CollectedRunRewardPreparedTransferAuthorityV1 Prepared;
             public CollectedRunRewardTransferReceiptAuthorityV1 Receipts;
+            public ProductionCharacterRuntimeGraphV1 Graph;
+            public CharacterCompositionCoordinatorV1 Composition;
         }
 
         private static readonly object Gate = new object();
@@ -32,9 +37,22 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             if (rewardApplication == null)
                 throw new ArgumentNullException(nameof(rewardApplication));
             lock (Gate)
+                GetOrCreate(characterStableId).RewardApplication = rewardApplication;
+        }
+
+        public static void BindRuntime(
+            ProductionCharacterRuntimeGraphV1 graph,
+            CharacterCompositionCoordinatorV1 composition)
+        {
+            if (graph == null) throw new ArgumentNullException(nameof(graph));
+            if (composition == null) throw new ArgumentNullException(nameof(composition));
+            StableId characterStableId =
+                graph.Character.CharacterInstanceStableId;
+            lock (Gate)
             {
                 Entry entry = GetOrCreate(characterStableId);
-                entry.RewardApplication = rewardApplication;
+                entry.Graph = graph;
+                entry.Composition = composition;
             }
         }
 
@@ -66,6 +84,29 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             out CollectedRunRewardPreparedTransferAuthorityV1 prepared,
             out CollectedRunRewardTransferReceiptAuthorityV1 receipts)
         {
+            ProductionCharacterRuntimeGraphV1 ignoredGraph;
+            CharacterCompositionCoordinatorV1 ignoredComposition;
+            return TryResolveRuntime(
+                characterStableId,
+                out ignoredGraph,
+                out ignoredComposition,
+                out rewardApplication,
+                out prepared,
+                out receipts,
+                false);
+        }
+
+        public static bool TryResolveRuntime(
+            StableId characterStableId,
+            out ProductionCharacterRuntimeGraphV1 graph,
+            out CharacterCompositionCoordinatorV1 composition,
+            out RewardApplicationServiceV1 rewardApplication,
+            out CollectedRunRewardPreparedTransferAuthorityV1 prepared,
+            out CollectedRunRewardTransferReceiptAuthorityV1 receipts,
+            bool requireRuntime = true)
+        {
+            graph = null;
+            composition = null;
             rewardApplication = null;
             prepared = null;
             receipts = null;
@@ -76,10 +117,16 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 if (!Entries.TryGetValue(characterStableId, out entry)
                     || entry.RewardApplication == null
                     || entry.Prepared == null
-                    || entry.Receipts == null)
+                    || entry.Receipts == null
+                    || (requireRuntime
+                        && (entry.Graph == null
+                            || entry.Graph.IsDisposed
+                            || entry.Composition == null)))
                 {
                     return false;
                 }
+                graph = entry.Graph;
+                composition = entry.Composition;
                 rewardApplication = entry.RewardApplication;
                 prepared = entry.Prepared;
                 receipts = entry.Receipts;
