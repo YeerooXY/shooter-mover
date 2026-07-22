@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using ShooterMover.Content.Definitions.Rewards;
 using ShooterMover.Contracts.Authoring;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring;
@@ -49,14 +50,9 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             || Status == DestructiblePropConfigurationStatus.AlreadyConfigured;
     }
 
-    /// <summary>
-    /// Definition-to-runtime boundary for one placed destructible prop. Identity comes
-    /// from OBJ-001; every scene reference is explicit.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class DestructiblePropAuthoring2D : MonoBehaviour, IRestartParticipant
     {
-        // Retained field names preserve older prefab serialization during migration.
         [Header("Legacy migration values")]
         [Min(0.01f)]
         [SerializeField] private float maximumHealth = 24f;
@@ -93,6 +89,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private DestructiblePropConfigurationResult lastConfiguration;
         private RestartParticipantRegistrationResult restartRegistration;
         private StableId restartParticipantId;
+        private DestructiblePropTerminalProvenanceV1 generatedTerminalProvenance;
         private bool targetRegistered;
 
         public double MaximumHealth => resolvedPreview == null
@@ -114,6 +111,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         public RestartParticipantRegistrationResult LastRestartRegistration =>
             restartRegistration;
         public DestructiblePropRewardBridge2D RewardBridge => rewardBridge;
+        public DestructiblePropTerminalProvenanceV1 GeneratedTerminalProvenance =>
+            generatedTerminalProvenance;
 
         public StableId RestartParticipantId
         {
@@ -124,7 +123,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     throw new InvalidOperationException(
                         "Destructible prop must configure before its restart ID is read.");
                 }
-
                 return restartParticipantId;
             }
         }
@@ -134,6 +132,22 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             Vector2 configuredColliderSize,
             Vector2 configuredColliderOffset,
             DestructiblePropDestructionAnimation configuredAnimation)
+        {
+            ConfigureGenerated(
+                configuredMaximumHealth,
+                configuredColliderSize,
+                configuredColliderOffset,
+                configuredAnimation,
+                Stage1TerminalDropContentV1.ResolveLegacyAuthoringKey(
+                    gameObject.name));
+        }
+
+        public void ConfigureGenerated(
+            double configuredMaximumHealth,
+            Vector2 configuredColliderSize,
+            Vector2 configuredColliderOffset,
+            DestructiblePropDestructionAnimation configuredAnimation,
+            DestructiblePropTerminalProvenanceV1 configuredTerminalProvenance)
         {
             ValidatePositive(configuredMaximumHealth, nameof(configuredMaximumHealth));
             DestructiblePropDefinitionValues.RequirePositiveVector(
@@ -146,6 +160,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             colliderSize = configuredColliderSize;
             colliderOffset = configuredColliderOffset;
             destructionAnimation = configuredAnimation;
+            generatedTerminalProvenance = configuredTerminalProvenance;
         }
 
         public DestructiblePropConfigurationResult TryConfigure(
@@ -159,14 +174,12 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     resolvedPreview,
                     runtimeProp);
             }
-
             if (configuredHitAdapter == null)
             {
                 return Failure(
                     DestructiblePropConfigurationStatus.TargetRegistrationFailed,
                     "An explicit CombatHit2DAdapter is required.");
             }
-
             if (!IsPositiveFinite(confirmedHitDamage))
             {
                 return Failure(
@@ -199,7 +212,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     DestructiblePropConfigurationStatus.InvalidDefinition,
                     "Destructible prop family definition is missing.");
             }
-
             if (resolvedPlaced.ResolvedDefinitionReference == null
                 || !resolvedPlaced.ResolvedDefinitionReference.FamilyId.Equals(
                     familyDefinition.FamilyId))
@@ -208,14 +220,12 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     DestructiblePropConfigurationStatus.DefinitionMismatch,
                     "Placed-object and destructible-prop families do not match.");
             }
-
             if (blockingCollider == null)
             {
                 return Failure(
                     DestructiblePropConfigurationStatus.MissingBlockingCollider,
                     "An explicit blocking Collider2D is required.");
             }
-
             if (intactRenderer == null)
             {
                 return Failure(
@@ -245,11 +255,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     DestructiblePropConfigurationStatus.ColliderTypeMismatch,
                     colliderDiagnostic);
             }
-
             if (preview.Values.IntactSprite != null)
-            {
                 intactRenderer.sprite = preview.Values.IntactSprite;
-            }
 
             RewardSourceAuthoring2D configuredRewardSource;
             string rewardDiagnostic;
@@ -304,16 +311,15 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     preview.Values.MaximumHealth,
                     blockingCollider,
                     new Renderer[] { intactRenderer },
-                    preview.Values.DestroyedCollisionPolicy);
+                    preview.Values.DestroyedCollisionPolicy,
+                    BuildDefinitionTerminalProvenance(preview));
 
                 DestructiblePropProjectileRelay2D relay =
                     blockingCollider.GetComponent<DestructiblePropProjectileRelay2D>()
                     ?? blockingCollider.gameObject
                         .AddComponent<DestructiblePropProjectileRelay2D>();
                 if (!relay.IsConfigured)
-                {
                     relay.Configure(prop, confirmedHitDamage);
-                }
 
                 DestructiblePropDestructionPlayer2D player =
                     blockingCollider.GetComponent<DestructiblePropDestructionPlayer2D>()
@@ -366,32 +372,22 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
 
         public void OnRestartPhase(RestartContext context, RestartLifecyclePhase phase)
         {
-            if (runtimeProp == null || context == null)
-            {
-                return;
-            }
-
+            if (runtimeProp == null || context == null) return;
             if (registeredRestartScope == null
                 || !context.RunId.Equals(registeredRestartScope.RunId))
             {
                 throw new InvalidOperationException(
                     "Destructible prop received restart context for a different run.");
             }
-
             if (phase == RestartLifecyclePhase.ApplyResetProjection)
-            {
                 runtimeProp.Restart();
-            }
         }
 
         internal void ApplyLegacyConfirmedHitDamage(double value)
         {
             if (runtimeProp != null)
-            {
                 throw new InvalidOperationException(
                     "Cannot change hit damage after configuration.");
-            }
-
             ValidatePositive(value, nameof(value));
             confirmedHitDamage = (float)value;
         }
@@ -409,10 +405,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             MonoBehaviour rewardOperationSink)
         {
             if (runtimeProp != null)
-            {
                 throw new InvalidOperationException("Cannot reconfigure a live prop.");
-            }
-
             ValidatePositive(confirmedHitDamage, nameof(confirmedHitDamage));
             this.placedObject = placedObject;
             this.familyDefinition = familyDefinition;
@@ -427,6 +420,34 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             this.rewardOperationSink = rewardOperationSink;
         }
 
+        private DestructiblePropTerminalProvenanceV1
+            BuildDefinitionTerminalProvenance(
+                DestructiblePropResolvedPreview preview)
+        {
+            if (generatedTerminalProvenance != null)
+                return generatedTerminalProvenance;
+            if (preview == null
+                || preview.Values == null
+                || preview.Values.InheritedRewardProfileId == null
+                || string.IsNullOrWhiteSpace(preview.ResolvedFingerprint))
+            {
+                throw new InvalidOperationException(
+                    "Definition-authored destructible prop terminal provenance is incomplete.");
+            }
+            StableId definitionStableId = StableId.Create(
+                "prop-definition",
+                Fingerprint64(
+                    preview.FamilyId
+                    + "|"
+                    + preview.VariantId
+                    + "|"
+                    + preview.ResolvedFingerprint));
+            return new DestructiblePropTerminalProvenanceV1(
+                definitionStableId,
+                preview.Values.InheritedRewardProfileId,
+                preview.ResolvedFingerprint);
+        }
+
         private bool TryPrepareRewardSource(
             PlacedObjectAuthoring2D resolvedPlaced,
             DestructiblePropResolvedPreview preview,
@@ -436,17 +457,13 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             configuredSource = null;
             diagnostic = string.Empty;
             if (preview.Values.InheritedRewardProfile == null)
-            {
                 return true;
-            }
 
             configuredSource = rewardSource == null
                 ? GetComponent<RewardSourceAuthoring2D>()
                 : rewardSource;
             if (configuredSource == null)
-            {
                 configuredSource = gameObject.AddComponent<RewardSourceAuthoring2D>();
-            }
 
             try
             {
@@ -534,7 +551,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 names.Add(current.name);
                 current = current.parent;
             }
-
             names.Reverse();
             return gameObject.scene.name + ":" + string.Join("/", names.ToArray());
         }
@@ -549,14 +565,12 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             {
                 hitAdapter.UnregisterTarget(blockingCollider, runtimeProp.PropId);
             }
-
             if (registeredRestartScope != null && restartParticipantId != null)
             {
                 registeredRestartScope.UnregisterRestartParticipant(
                     restartParticipantId,
                     this);
             }
-
             registeredRestartScope = null;
         }
 
@@ -581,9 +595,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private static void ValidatePositive(double value, string parameterName)
         {
             if (!IsPositiveFinite(value))
-            {
                 throw new ArgumentOutOfRangeException(parameterName);
-            }
         }
 
         private static string Fingerprint64(string input)
@@ -601,7 +613,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     hash ^= (byte)(value >> 8);
                     hash *= prime;
                 }
-
                 return hash.ToString("x16", CultureInfo.InvariantCulture);
             }
         }
