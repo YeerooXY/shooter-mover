@@ -282,16 +282,19 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             StableId equipmentInstanceStableId,
             long unitIndex)
         {
-            ulong ordinal = RewardGenerationFingerprintV1.StableOrdinal(
-                StableId.Create(
-                    "terminal-drop-equipment-seed",
-                    equipmentInstanceStableId.ToString()
-                    + "-"
-                    + unitIndex.ToString(CultureInfo.InvariantCulture)));
-            return DeterministicSeedDerivationV1.Derive(
-                rootSeed,
-                operationFingerprint,
-                ordinal);
+            string fingerprint = RewardApplicationCanonicalV1.Fingerprint(
+                "schema=terminal-drop-equipment-seed-v1\nroot="
+                + rootSeed.ToString(CultureInfo.InvariantCulture)
+                + "\noperation="
+                + operationFingerprint
+                + "\ninstance="
+                + equipmentInstanceStableId
+                + "\nunit="
+                + unitIndex.ToString(CultureInfo.InvariantCulture));
+            return ulong.Parse(
+                fingerprint.Substring(7, 16),
+                NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture);
         }
     }
 
