@@ -6,16 +6,14 @@ using ShooterMover.ContentPackages.Props.DestructibleProps;
 using ShooterMover.Domain.Common;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
-using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
     /// <summary>
-    /// Retained transactional adapter for Stage 1 destructible props. The one-shot
-    /// Destroyed callback captures an immutable canonical fact; the shared terminal
-    /// composition performs generation/admission, so prop and enemy rewards use the
-    /// same participant pacing and replay state.
+    /// Transactional Stage 1 prop adapter. The immutable destruction fact is resolved
+    /// once, then every eligible participant result is delivered through the same
+    /// shared reward/pacing/pickup composition used by enemy terminal facts.
     /// </summary>
     [DefaultExecutionOrder(21100)]
     [DisallowMultipleComponent]
@@ -36,8 +34,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             public void BindFact(Stage1CanonicalPropDestructionFactV1 fact)
             {
                 if (Fact != null)
+                {
                     throw new InvalidOperationException(
                         "A pending prop terminal already has a canonical fact.");
+                }
                 Fact = fact ?? throw new ArgumentNullException(nameof(fact));
             }
         }
@@ -47,7 +47,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private Stage1RunPickupBootstrap2D pickupBootstrap;
         private RunSessionAggregateV1 observedRun;
         private TerminalDropGenerationAuthorityV1 generation;
-        private IGeneratedTerminalDropPendingAdmissionV1 pending;
         private readonly List<DestructibleProp2D> subscribedProps =
             new List<DestructibleProp2D>();
         private readonly Dictionary<StableId, PendingPropTerminal>
@@ -62,7 +61,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             get
             {
                 return generation != null
-                    && pending != null
                     && observedRun != null
                     && subscribedProps.Count > 0;
             }
@@ -84,7 +82,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             while (pickupBootstrap == null || !pickupBootstrap.IsComposed)
             {
                 if (pickupBootstrap == null)
+                {
                     pickupBootstrap = GetComponent<Stage1RunPickupBootstrap2D>();
+                }
                 yield return null;
             }
             TryCompose();
@@ -93,10 +93,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private void LateUpdate()
         {
             if (pickupBootstrap == null)
+            {
                 pickupBootstrap = GetComponent<Stage1RunPickupBootstrap2D>();
+            }
             if (pickupBootstrap == null || !pickupBootstrap.IsComposed) return;
             if (!ReferenceEquals(observedRun, pickupBootstrap.RunSession))
+            {
                 TryCompose();
+            }
             ProcessPendingTerminals();
         }
 
@@ -121,11 +125,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private void Compose()
         {
             if (controller == null)
+            {
                 controller = GetComponent<Stage1VisibleSliceController>();
+            }
             if (stage1 == null)
+            {
                 stage1 = GetComponent<Stage1PlayableLoopCompositionV1>();
+            }
             if (pickupBootstrap == null)
+            {
                 pickupBootstrap = GetComponent<Stage1RunPickupBootstrap2D>();
+            }
             if (stage1 == null
                 || pickupBootstrap == null
                 || !pickupBootstrap.IsComposed
@@ -148,7 +158,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             observedRun = nextRun;
             generation = pickupBootstrap.TerminalDrops.Authority;
-            pending = pickupBootstrap.TerminalDrops.PendingAdmission;
 
             DestructibleProp2D[] props =
                 controller.GetComponentsInChildren<DestructibleProp2D>(true);
@@ -156,13 +165,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 DestructibleProp2D prop = props[index];
                 if (prop == null || !prop.IsConfigured || prop.PropId == null)
+                {
                     continue;
+                }
                 prop.TerminalDestroyed += HandleTerminalDestroyed;
                 subscribedProps.Add(prop);
             }
             if (subscribedProps.Count == 0)
+            {
                 throw new InvalidOperationException(
                     "No configured Stage 1 destructible prop was available.");
+            }
         }
 
         private void HandleTerminalDestroyed(
@@ -186,15 +199,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             if (pickupBootstrap == null
                 || !pickupBootstrap.IsComposed
                 || observedRun == null
-                || generation == null
-                || pending == null)
+                || generation == null)
             {
                 return;
             }
 
             var events = new List<StableId>(pendingTerminalByEvent.Keys);
             for (int index = 0; index < events.Count; index++)
+            {
                 ProcessPendingTerminal(events[index]);
+            }
         }
 
         private void ProcessPendingTerminal(StableId eventId)
@@ -210,7 +224,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
 
             if (record.Fact == null && !TryBindCanonicalFact(record))
+            {
                 return;
+            }
 
             Stage1CanonicalPropDestructionFactV1 fact = record.Fact;
             if (fact.RunStableId != observedRun.RunStableId
@@ -220,10 +236,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            GeneratedTerminalDropResultV1 generated;
+            TerminalPersonalRewardBatchV1 batch;
             try
             {
-                generated = generation.Generate(fact);
+                batch = generation.GenerateBatch(fact);
             }
             catch (Exception exception)
             {
@@ -233,38 +249,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     + exception.Message;
                 return;
             }
-            if (generated == null || !generated.IsAccepted)
+            if (batch == null || !batch.IsAccepted)
             {
-                string failure = generated == null
+                string failure = batch == null
                     ? "stage1-prop-generation-null"
-                    : generated.Diagnostic;
-                if (generated != null && !IsRetryableGeneration(generated))
-                    Quarantine(eventId, failure);
-                else
-                    diagnostic = failure;
-                return;
-            }
-
-            try
-            {
-                LastAdmission = pending.Admit(generated);
-            }
-            catch (Exception exception)
-            {
-                diagnostic = "stage1-prop-admission-exception:"
-                    + exception.GetType().Name
-                    + ":"
-                    + exception.Message;
-                return;
-            }
-            if (LastAdmission == null || !LastAdmission.IsAccepted)
-            {
-                string failure = LastAdmission == null
-                    ? "stage1-prop-admission-null"
-                    : LastAdmission.Diagnostic;
-                if (LastAdmission != null
-                    && LastAdmission.Status
-                        == PendingTerminalDropAdmissionStatusV1.ConflictingDuplicate)
+                    : batch.Diagnostic;
+                if (!IsRetryableGeneration(batch))
                 {
                     Quarantine(eventId, failure);
                 }
@@ -275,46 +265,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            TerminalDropSourceFactV1 sourceFact =
-                LastAdmission.PendingResult.SourceFact;
-            try
-            {
-                pickupBootstrap.RegisterFixedSource(
-                    sourceFact.RunStableId,
-                    sourceFact.RunLifecycleGeneration,
-                    sourceFact.SourceEntityStableId,
-                    sourceFact.SourcePlacementStableId,
+            Stage1PersonalRewardBatchDeliveryResultV1 delivery =
+                pickupBootstrap.DeliverPersonalRewardBatch(
+                    batch,
                     fact.RoomStableId,
                     fact.TerminalPosition,
                     fact.PositionFingerprint);
-                PickupDeliveryResultV1 queued =
-                    pickupBootstrap.EnqueueAdmission(LastAdmission);
-                if (queued != null && queued.IsAcknowledged)
-                {
-                    pendingTerminalByEvent.Remove(eventId);
-                    diagnostic = queued.Diagnostic;
-                }
-                else if (queued != null
-                    && (queued.Disposition
-                        == PickupDeliveryDispositionV1.Rejected
-                        || queued.Disposition
-                        == PickupDeliveryDispositionV1.ConflictingDuplicate))
-                {
-                    Quarantine(eventId, queued.Diagnostic);
-                }
-                else
-                {
-                    diagnostic = queued == null
-                        ? "stage1-prop-pickup-enqueue-null"
-                        : queued.Diagnostic;
-                }
-            }
-            catch (Exception exception)
+            LastAdmission = delivery.LastAdmission;
+            if (delivery.Succeeded)
             {
-                diagnostic = "stage1-prop-pickup-enqueue-exception:"
-                    + exception.GetType().Name
-                    + ":"
-                    + exception.Message;
+                pendingTerminalByEvent.Remove(eventId);
+                diagnostic = delivery.Diagnostic;
+            }
+            else if (delivery.TerminalConflict)
+            {
+                Quarantine(eventId, delivery.Diagnostic);
+            }
+            else
+            {
+                diagnostic = delivery.Diagnostic;
             }
         }
 
@@ -342,8 +311,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     out provenanceDiagnostic))
             {
                 if (provenanceDiagnostic.StartsWith(
-                    "stage1-terminal-content-unavailable",
-                    StringComparison.Ordinal))
+                        "stage1-terminal-content-unavailable",
+                        StringComparison.Ordinal))
                 {
                     diagnostic = provenanceDiagnostic;
                 }
@@ -388,13 +357,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         }
 
         private static bool IsRetryableGeneration(
-            GeneratedTerminalDropResultV1 generated)
+            TerminalPersonalRewardBatchV1 batch)
         {
-            return generated != null
-                && (generated.RejectionCode
-                        == TerminalDropRejectionCodeV1.MissingRun
-                    || generated.RejectionCode
-                        == TerminalDropRejectionCodeV1.MissingSourceContext);
+            if (batch == null) return true;
+            string value = batch.Diagnostic ?? string.Empty;
+            return value.IndexOf("run-context", StringComparison.Ordinal) >= 0
+                || value.IndexOf("run-roster", StringComparison.Ordinal) >= 0
+                || value.IndexOf("environment-not-configured", StringComparison.Ordinal) >= 0
+                || value.IndexOf("source-context", StringComparison.Ordinal) >= 0;
         }
 
         private void ReleaseBindings()
@@ -403,12 +373,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 DestructibleProp2D prop = subscribedProps[index];
                 if (prop != null)
+                {
                     prop.TerminalDestroyed -= HandleTerminalDestroyed;
+                }
             }
             subscribedProps.Clear();
             observedRun = null;
             generation = null;
-            pending = null;
         }
 
         private void OnDestroy()
