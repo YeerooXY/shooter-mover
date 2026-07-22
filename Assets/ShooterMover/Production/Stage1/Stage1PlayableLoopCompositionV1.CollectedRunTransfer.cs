@@ -42,6 +42,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private void HandleFinalExitReachedWithCollectedRunTransfer()
         {
             if (ending) return;
+            if (rooms != null)
+            {
+                rooms.FinalExitReached -=
+                    HandleFinalExitReachedWithCollectedRunTransfer;
+            }
             ending = true;
             effectEmitter.ClearEmittedEffects();
             CommitPendingExperienceRewards();
@@ -73,7 +78,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 RejectCollectedRunTransferExit(
                     string.IsNullOrWhiteSpace(dropContextDiagnostic)
-                        ? "The frozen terminal-drop run context is unavailable."
+                        ? "The frozen terminal-drop run context is unavailable: "
+                            + dropContextRejection
                         : dropContextDiagnostic);
                 return;
             }
@@ -174,15 +180,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     rewardApplication,
                     receipts,
                     plan);
+            var preflightedAuthority =
+                new FullyPreflightedCollectedRunRewardTransferAuthorityAdapter(
+                    graph,
+                    rewardApplication,
+                    plan,
+                    authority);
             var persistence =
                 new ProductionCollectedRunRewardTransferPersistenceAdapter(
                     composition,
                     receipts,
                     graph.Character.CharacterInstanceStableId);
             var transfer =
-                new ProductionCollectedRunRewardTransferService(
+                new FullyPreflightedCollectedRunRewardTransferService(
                     plan,
                     authority,
+                    preflightedAuthority,
                     persistence);
             CollectedRunRewardTransferResultV1 transferResult =
                 transfer.Apply();
