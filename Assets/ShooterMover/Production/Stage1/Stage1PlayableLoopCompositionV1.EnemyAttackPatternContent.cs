@@ -1,6 +1,7 @@
 using System;
 using ShooterMover.Application.Enemies.Catalog;
 using ShooterMover.Application.Runs.Session;
+using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.ContentPackages.Weapons.Shared.Runtime;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
@@ -44,6 +45,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 controller.MobileBlasterDroid.EnemyTarget.TargetId,
                 MobileParticipantStableId,
                 definition.FactionId ?? EnemyFactionStableId,
+                RoomRuntimeStableId,
+                Level1AuthorableRoomDefinitionV1.EntryRoomStableId,
+                Level1AuthorableRoomDefinitionV1.MovingDroidInstanceStableId,
                 controller.MobileBlasterDroid.gameObject,
                 new[] { controller.MobileBlasterDroid.EnemyCollider },
                 new[] { playerTarget },
@@ -68,6 +72,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 controller.TurretPackage.TargetAdapter.TargetId,
                 TurretParticipantStableId,
                 definition.FactionId ?? EnemyFactionStableId,
+                RoomRuntimeStableId,
+                Level1AuthorableRoomDefinitionV1.TerminalRoomStableId,
+                Level1AuthorableRoomDefinitionV1.TurretInstanceStableId,
                 controller.TurretPackage.gameObject,
                 new[] { controller.TurretPackage.EnemyCollider },
                 new[] { playerTarget },
@@ -86,13 +93,24 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 throw new ArgumentNullException(nameof(run));
             }
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            if (!source.HasCanonicalPlacementIdentity
+                || source.RoomStableId != roomStableId
+                || source.PlacementStableId != placementStableId)
+            {
+                throw new InvalidOperationException(
+                    "The live enemy source binding and requested placement are split.");
+            }
             return new EnemyRuntimeIdentityV1(
                 source.SourceEntityStableId,
                 source.SourceRunParticipantStableId,
                 run.RunStableId,
-                RoomRuntimeStableId,
-                roomStableId,
-                placementStableId);
+                source.RoomRuntimeInstanceStableId,
+                source.RoomStableId,
+                source.PlacementStableId);
         }
 
         private void EnsureEnemyProjectileRuntimePrefab()
