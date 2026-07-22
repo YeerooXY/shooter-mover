@@ -8,7 +8,6 @@ using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
@@ -76,47 +75,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             get { return quarantinedTerminalByEvent.Count; }
         }
         public PendingTerminalDropAdmissionResultV1 LastAdmission { get; private set; }
-
-        [RuntimeInitializeOnLoadMethod(
-            RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetHook()
-        {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-        }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallHook()
-        {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-            Install(SceneManager.GetActiveScene());
-        }
-
-        private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            Install(scene);
-        }
-
-        private static void Install(Scene scene)
-        {
-            if (!scene.IsValid()) return;
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
-            {
-                Stage1VisibleSliceController[] controllers =
-                    roots[rootIndex].GetComponentsInChildren<
-                        Stage1VisibleSliceController>(true);
-                for (int index = 0; index < controllers.Length; index++)
-                {
-                    Stage1VisibleSliceController value = controllers[index];
-                    if (value == null) continue;
-                    if (value.GetComponent<Stage1RunPickupBootstrap2D>() == null)
-                        value.gameObject.AddComponent<Stage1RunPickupBootstrap2D>();
-                    if (value.GetComponent<Stage1RunPickupPropBootstrap2D>() == null)
-                        value.gameObject.AddComponent<Stage1RunPickupPropBootstrap2D>();
-                }
-            }
-        }
 
         private IEnumerator Start()
         {
