@@ -5,60 +5,9 @@ using ShooterMover.Domain.Props;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.TerminalDropBinding;
-using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
-    internal sealed class Stage1EnemyTerminalDropObserver2D : MonoBehaviour
-    {
-        private IEnemyActor2DAuthority authority;
-        private Func<Stage1PickupDeliveryResultV1> terminalAction;
-        private bool delivered;
-
-        public string LastDiagnostic { get; private set; } = string.Empty;
-
-        public void Configure(
-            IEnemyActor2DAuthority authority,
-            Func<Stage1PickupDeliveryResultV1> terminalAction)
-        {
-            this.authority = authority
-                ?? throw new ArgumentNullException(nameof(authority));
-            this.terminalAction = terminalAction
-                ?? throw new ArgumentNullException(nameof(terminalAction));
-        }
-
-        private void LateUpdate()
-        {
-            if (authority == null || terminalAction == null) return;
-            EnemyActorState state;
-            if (!authority.TryReadState(out state) || state == null) return;
-            if (!state.IsDestroyed)
-            {
-                delivered = false;
-                LastDiagnostic = string.Empty;
-                return;
-            }
-            if (delivered) return;
-
-            try
-            {
-                Stage1PickupDeliveryResultV1 result = terminalAction();
-                delivered = result != null && result.IsAcknowledged;
-                LastDiagnostic = result == null
-                    ? "stage1-enemy-terminal-delivery-null"
-                    : result.Diagnostic;
-            }
-            catch (Exception exception)
-            {
-                delivered = false;
-                LastDiagnostic = "stage1-enemy-terminal-delivery-exception:"
-                    + exception.GetType().Name
-                    + ":"
-                    + exception.Message;
-            }
-        }
-    }
-
     internal sealed class Stage1EnemyTerminalSourceContextResolverV1 :
         IEnemyTerminalSourceContextResolverV1
     {
