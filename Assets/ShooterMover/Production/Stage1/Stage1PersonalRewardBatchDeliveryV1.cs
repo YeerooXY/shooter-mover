@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
@@ -78,7 +79,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 {
                     return new Stage1PersonalRewardBatchDeliveryResultV1(
                         false,
-                        generated != null && generated.IsConflict,
+                        generated != null
+                            && generated.Status
+                                == TerminalDropBindingStatusV1
+                                    .ConflictingDuplicate,
                         lastAdmission,
                         string.Empty,
                         generated == null
@@ -160,7 +164,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 true,
                 false,
                 lastAdmission,
-                TerminalDropCanonicalV1.Hash(fingerprint.ToString()),
+                RewardGenerationFingerprintV1.Compute(
+                    fingerprint.ToString()),
                 admissionBridge.LastDiagnostic);
         }
     }
