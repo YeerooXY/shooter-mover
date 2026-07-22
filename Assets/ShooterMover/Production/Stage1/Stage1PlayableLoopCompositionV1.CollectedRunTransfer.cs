@@ -17,6 +17,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 {
     public sealed partial class Stage1PlayableLoopCompositionV1
     {
+        private const int DurableEndAutomaticRetryLimit = 5;
         private const float DurableEndRetryInitialDelaySeconds = 1f;
         private const float DurableEndRetryMaximumDelaySeconds = 15f;
 
@@ -29,9 +30,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         /// <summary>
         /// Replaces only this composition's retained direct mission-result callback. Before
-        /// the mission-result authority accepts, a safe rejection may re-arm the exit. After
-        /// terminal result creation, the exact durable End candidate is frozen and retried;
-        /// gameplay is never reopened around a terminal mission-result transaction.
+        /// the mission-result authority accepts, rejection may re-arm the exit. After terminal
+        /// result creation, gameplay remains frozen. Only an explicitly retryable transient
+        /// durability failure schedules the exact retained candidate again; deterministic
+        /// preparation failures and uncertain durability are terminal and visible.
         /// </summary>
         private void LateUpdate()
         {
@@ -198,18 +200,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 if (awaitingSaved == null
                     || awaitingSaved.DurableStateUncertain)
                 {
-                    FreezeForDurableEndRecovery(
-                        awaitingSaved == null
-                            ? "The pre-End custody save returned no result; durable state is uncertain."
-                            : awaitingSaved.Diagnostic);
+                    string uncertainDiagnostic = awaitingSaved == null
+                        ? "The pre-End custody save returned no result; durable state is uncertain."
+                        : awaitingSaved.Diagnostic;
+                    FreezeForDurableEndRecovery(uncertainDiagnostic);
                     ProductionCollectedRunRewardResultsBridge.Clear();
                     ProductionCollectedRunRewardResultsBridge
                         .PublishPreparationFailure(
                             awaiting,
-                            awaitingSaved == null
-                                ? "Pre-End custody durability is uncertain."
-                                : awaitingSaved.Diagnostic);
+                            uncertainDiagnostic);
                     ConfigureTransferOverlay();
+                    PublishFlowLevelTerminalNotice(
+                        awaiting.CustodyStableId,
+                        "REWARD CUSTODY STATE UNCERTAIN",
+                        uncertainDiagnostic,
+                        "Gameplay is frozen. Automatic and exact retry are disabled until durable custody and receipts are inspected.",
+                        false);
                     return;
                 }
                 RejectBeforeAcceptedEnd(awaitingSaved.Diagnostic);
@@ -246,7 +252,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             {
                                 acceptance =
                                     RunSessionDurableAcceptanceResultV1
-                                        .RejectedBeforeDurability(
+                                        .Terminal(
                                             "The terminal mission result does not match the exact character frozen into transfer custody.");
                                 return acceptance;
                             }
@@ -266,7 +272,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             {
                                 acceptance =
                                     RunSessionDurableAcceptanceResultV1
-                                        .RejectedBeforeDurability(
+                                        .Terminal(
                                             string.IsNullOrWhiteSpace(
                                                     planDiagnostic)
                                                 ? "The immutable transfer plan could not be constructed before End acceptance."
@@ -286,12 +292,23 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             }
                             if (!preparedSaved.Succeeded)
                             {
-                                acceptance = preparedSaved
-                                    .DurableStateUncertain
-                                    ? RunSessionDurableAcceptanceResultV1
-                                        .Uncertain(preparedSaved.Diagnostic)
-                                    : RunSessionDurableAcceptanceResultV1
-                                        .RejectedBeforeDurability(
+                                if (preparedSaved.DurableStateUncertain)
+                                {
+                                    acceptance =
+                                        RunSessionDurableAcceptanceResultV1
+                                            .Uncertain(
+                                                preparedSaved.Diagnostic);
+                                    return acceptance;
+                                }
+
+                                // The current production persistence adapter returns a safe
+                                // pre-replacement rejection only for deterministic context,
+                                // transition, or authority conflicts. It does not expose a
+                                // proven transient storage outcome, so these failures must not
+                                // enter the automatic retry timer.
+                                acceptance =
+                                    RunSessionDurableAcceptanceResultV1
+                                        .Terminal(
                                             preparedSaved.Diagnostic);
                                 return acceptance;
                             }
@@ -331,11 +348,46 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         acceptedEnd == null
                             ? "The exact terminal transaction returned no result and remains pending."
                             : acceptedEnd.RejectionCode);
-                    ScheduleDurableEndRetry(
+                    if (!ScheduleDurableEndRetry(
                         attemptDurableEnd,
                         acceptedEnd == null
                             ? "run-end-result-null"
+                            : acceptedEnd.RejectionCode))
+                    {
+                        RunSessionEndResultV1 exhausted =
+                            sharedRun.EndWithDurableAcceptance(
+                                endCommand,
+                                ignored =>
+                                    RunSessionDurableAcceptanceResultV1
+                                        .Terminal(
+                                            "The transient Prepared-custody retry limit was exhausted."));
+                        PublishTerminalEndFailure(
+                            awaiting,
+                            exhausted ?? acceptedEnd,
+                            currentProfile,
+                            moneyEarned,
+                            scrapEarned);
+                    }
+                    return;
+                }
+
+                if (sharedRun.DurableEndState
+                    == RunSessionDurableEndStateV1
+                        .TerminalPreparationFailure
+                    || (acceptance != null
+                        && acceptance.TerminalPreparationFailure))
+                {
+                    pendingDurableEndRetry = null;
+                    FreezeForDurableEndRecovery(
+                        acceptedEnd == null
+                            ? "The terminal transfer preparation failed deterministically."
                             : acceptedEnd.RejectionCode);
+                    PublishTerminalEndFailure(
+                        awaiting,
+                        acceptedEnd,
+                        currentProfile,
+                        moneyEarned,
+                        scrapEarned);
                     return;
                 }
 
@@ -344,6 +396,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     || (acceptance != null
                         && acceptance.DurableStateUncertain))
                 {
+                    pendingDurableEndRetry = null;
                     FreezeForDurableEndRecovery(
                         acceptedEnd == null
                             ? "The terminal durability result is unavailable."
@@ -448,6 +501,42 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     scrapEarned));
         }
 
+        private void PublishTerminalEndFailure(
+            CollectedRunRewardPreparedTransferV1 awaiting,
+            RunSessionEndResultV1 candidateEnd,
+            ProductionFlowProfileRecordV1 currentProfile,
+            long moneyEarned,
+            long scrapEarned)
+        {
+            string failureDiagnostic = candidateEnd == null
+                ? "The terminal transfer preparation failed deterministically."
+                : candidateEnd.RejectionCode;
+            ProductionCollectedRunRewardResultsBridge.Clear();
+            ProductionCollectedRunRewardResultsBridge
+                .PublishPreparationFailure(
+                    awaiting,
+                    failureDiagnostic);
+            ConfigureTransferOverlay();
+            PublishFlowLevelTerminalNotice(
+                awaiting.CustodyStableId,
+                "REWARD TRANSFER PREPARATION FAILED",
+                failureDiagnostic,
+                "This is a deterministic identity or immutable-plan failure. Automatic and exact retry are disabled.",
+                true);
+
+            if (candidateEnd != null
+                && candidateEnd.Receipt != null
+                && candidateEnd.Receipt.MissionResult != null)
+            {
+                QueueAcceptedResults(
+                    candidateEnd.Receipt.MissionResult,
+                    BuildTransferSummary(
+                        currentProfile,
+                        moneyEarned,
+                        scrapEarned));
+            }
+        }
+
         private void PublishDurableEndUncertainty(
             CollectedRunRewardPreparedTransferV1 awaiting,
             CollectedRunRewardPreparedTransferV1 prepared,
@@ -458,7 +547,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             long scrapEarned)
         {
             ProductionCollectedRunRewardResultsBridge.Clear();
-            string diagnostic = candidateEnd == null
+            string uncertainDiagnostic = candidateEnd == null
                 ? "The exact terminal transaction has uncertain durable state."
                 : candidateEnd.RejectionCode;
 
@@ -473,7 +562,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         string.Empty,
                         0L,
                         string.Empty,
-                        diagnostic);
+                        uncertainDiagnostic);
                 var fatal = new CollectedRunRewardTransferResultV1(
                     CollectedRunRewardTransferStatusV1
                         .FatalCompensationFailure,
@@ -484,7 +573,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     null,
                     null,
                     exactPersistence,
-                    diagnostic,
+                    uncertainDiagnostic,
                     "Durable End acceptance cannot prove whether Prepared custody replaced the active account file.",
                     false);
                 ProductionCollectedRunRewardResultsBridge.Publish(
@@ -494,13 +583,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             else
             {
                 ProductionCollectedRunRewardResultsBridge
-                    .PublishPreparationFailure(awaiting, diagnostic);
+                    .PublishPreparationFailure(
+                        awaiting,
+                        uncertainDiagnostic);
             }
 
             ConfigureTransferOverlay();
-            if (candidateEnd != null
+            bool canEnterResults = candidateEnd != null
                 && candidateEnd.Receipt != null
-                && candidateEnd.Receipt.MissionResult != null)
+                && candidateEnd.Receipt.MissionResult != null;
+            PublishFlowLevelTerminalNotice(
+                awaiting.CustodyStableId,
+                "REWARD TRANSFER DURABILITY UNCERTAIN",
+                uncertainDiagnostic,
+                "Automatic and exact retry are disabled because durable replacement may already have occurred.",
+                canEnterResults);
+            if (canEnterResults)
             {
                 QueueAcceptedResults(
                     candidateEnd.Receipt.MissionResult,
@@ -511,10 +609,16 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
         }
 
-        private void ScheduleDurableEndRetry(
+        private bool ScheduleDurableEndRetry(
             Action retry,
             string retryDiagnostic)
         {
+            if (pendingDurableEndRetryAttempt
+                >= DurableEndAutomaticRetryLimit)
+            {
+                pendingDurableEndRetry = null;
+                return false;
+            }
             pendingDurableEndRetry = retry
                 ?? throw new ArgumentNullException(nameof(retry));
             int exponent = Math.Min(pendingDurableEndRetryAttempt, 4);
@@ -526,8 +630,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             diagnostic =
                 "The exact terminal transaction is frozen and will retry in "
                 + delay.ToString("0", CultureInfo.InvariantCulture)
-                + "s: "
+                + "s (attempt "
+                + pendingDurableEndRetryAttempt.ToString(
+                    CultureInfo.InvariantCulture)
+                + "/"
+                + DurableEndAutomaticRetryLimit.ToString(
+                    CultureInfo.InvariantCulture)
+                + "): "
                 + retryDiagnostic;
+            return true;
         }
 
         private void FreezeForDurableEndRecovery(string message)
@@ -580,6 +691,30 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     ProductionCollectedRunRewardResultsOverlay>();
             }
             overlay.Configure();
+        }
+
+        private void PublishFlowLevelTerminalNotice(
+            StableId custodyStableId,
+            string heading,
+            string message,
+            string guidance,
+            bool hideWhenResultsIsActive)
+        {
+            if (flow == null || custodyStableId == null) return;
+            ProductionCollectedRunRewardTerminalNoticeV1 notice =
+                flow.GetComponent<
+                    ProductionCollectedRunRewardTerminalNoticeV1>();
+            if (notice == null)
+            {
+                notice = flow.gameObject.AddComponent<
+                    ProductionCollectedRunRewardTerminalNoticeV1>();
+            }
+            notice.Publish(
+                custodyStableId,
+                heading,
+                message,
+                guidance,
+                hideWhenResultsIsActive);
         }
 
         private void QueueAcceptedResults(
