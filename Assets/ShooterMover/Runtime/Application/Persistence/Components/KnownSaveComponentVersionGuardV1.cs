@@ -26,9 +26,10 @@ namespace ShooterMover.Application.Persistence.Components
         }
 
         /// <summary>
-        /// Validates only the known-component version contract. This method exists so
-        /// aggregate validation can compose the mandatory guard without recursion.
-        /// Callers that accept external account data should normally call Validate.
+        /// Validates known component versions and any currently scoped exact transfer
+        /// expectation. AtomicPlayerAccountStoreV1 invokes this both for the temporary
+        /// candidate and the active read-back, so receipt/custody verification happens
+        /// inside the atomic replacement protocol rather than after it.
         /// </summary>
         public static SaveComponentValidationResultV1 ValidateKnownComponents(
             PlayerAccountSnapshotV1 account)
@@ -71,7 +72,7 @@ namespace ShooterMover.Application.Persistence.Components
                 }
             }
 
-            return SaveComponentValidationResultV1.Accept();
+            return CollectedRunRewardPersistenceExpectationV1.Validate(account);
         }
 
         public static SaveComponentValidationResultV1 ValidateComponent(
@@ -115,6 +116,7 @@ namespace ShooterMover.Application.Persistence.Components
                 KnownSaveComponentDefinitionsV1.RankedSkillAllocation(),
                 KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
                 KnownSaveComponentDefinitionsV1.StrongboxState(),
+                CollectedRunRewardPreparedTransferSaveComponentV1.Definition(),
                 CollectedRunRewardTransferReceiptSaveComponentV1.Definition(),
             };
             for (int index = 0; index < known.Length; index++)
