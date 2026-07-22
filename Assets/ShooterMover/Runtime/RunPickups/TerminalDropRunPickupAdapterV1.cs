@@ -99,7 +99,8 @@ namespace ShooterMover.RunPickups
         }
     }
 
-    public sealed class PendingTerminalDropPickupConsumerV1
+    public sealed class PendingTerminalDropPickupConsumerV1 :
+        IPendingTerminalDropAdmissionConsumerV1
     {
         private readonly RunLocalPickupAuthorityV1 authority;
 
@@ -132,6 +133,12 @@ namespace ShooterMover.RunPickups
 
             LastResult = authority.Realize(batch);
             return LastResult;
+        }
+
+        void IPendingTerminalDropAdmissionConsumerV1.Consume(
+            PendingTerminalDropAdmissionResultV1 admission)
+        {
+            Consume(admission);
         }
     }
 }
