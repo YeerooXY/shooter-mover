@@ -130,7 +130,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             body.bodyType = RigidbodyType2D.Dynamic;
             body.gravityScale = 0f;
             body.freezeRotation = true;
-            body.collisionDetectionMode = Rigidbody2D.CollisionDetectionMode2D.Continuous;
+            body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             body.simulated = false;
             CircleCollider2D collider =
                 projectileObject.AddComponent<CircleCollider2D>();
