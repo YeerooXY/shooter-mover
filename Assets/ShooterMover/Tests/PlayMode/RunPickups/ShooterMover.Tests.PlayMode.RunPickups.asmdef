@@ -7,8 +7,7 @@
     "ShooterMover.Domain",
     "ShooterMover.TerminalDropBinding",
     "ShooterMover.RunPickups",
-    "ShooterMover.RunPickupUnity",
-    "ShooterMover.UnityAdapters"
+    "ShooterMover.RunPickupUnity"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
