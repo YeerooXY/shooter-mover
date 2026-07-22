@@ -310,6 +310,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     pendingDurableEndRetryAttempt = 0;
                     CompleteAcceptedCollectedRunTransfer(
                         acceptedEnd,
+                        awaiting,
                         prepared,
                         plan,
                         graph,
@@ -369,6 +370,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         private void CompleteAcceptedCollectedRunTransfer(
             RunSessionEndResultV1 acceptedEnd,
+            CollectedRunRewardPreparedTransferV1 awaiting,
             CollectedRunRewardPreparedTransferV1 prepared,
             CollectedRunRewardAtomicPlanV2 plan,
             ProductionCharacterRuntimeGraphV1 graph,
@@ -385,8 +387,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 ProductionCollectedRunRewardResultsBridge.Clear();
                 ProductionCollectedRunRewardResultsBridge
                     .PublishPreparationFailure(
-                        prepared ?? throw new InvalidOperationException(
-                            "Accepted durable End requires Prepared custody."),
+                        awaiting,
                         "Durable End succeeded without the exact transfer plan.");
                 ConfigureTransferOverlay();
                 QueueAcceptedResults(
@@ -421,11 +422,17 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     prepared.SelectedCharacterStableId,
                     null,
                     null,
-                    CollectedRunRewardTransferPersistenceResultV1
-                        .NotAttempted(string.Empty),
-                    "The collected-run transfer authority returned no result.",
-                    string.Empty,
-                    true);
+                    new CollectedRunRewardTransferPersistenceResultV1(
+                        CollectedRunRewardTransferPersistenceStatusV1
+                            .DurableStateUncertain,
+                        0L,
+                        string.Empty,
+                        0L,
+                        string.Empty,
+                        "The collected-run transfer authority returned no result after accepted End."),
+                    "The collected-run transfer authority returned no result after accepted End.",
+                    "Durable transfer completion cannot be proven; automatic retry is disabled.",
+                    false);
             }
 
             ProductionCollectedRunRewardResultsBridge.Clear();
