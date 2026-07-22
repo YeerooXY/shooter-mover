@@ -53,7 +53,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     /// <summary>
     /// Retained transactional adapter for Stage 1 destructible props. The one-shot Destroyed
     /// callback captures an immutable canonical fact; generation/admission/realization retry from
-    /// that fact. Prop definition and drop provenance come from the production catalog seam.
+    /// that fact. Definition and drop provenance come from the production prop catalog.
     /// </summary>
     [DefaultExecutionOrder(21100)]
     [DisallowMultipleComponent]
@@ -288,9 +288,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     out provenance,
                     out provenanceDiagnostic))
             {
-                quarantinedTerminalByEvent[destruction.EventId] =
-                    provenanceDiagnostic;
-                diagnostic = provenanceDiagnostic;
+                Quarantine(destruction.EventId, provenanceDiagnostic);
                 return;
             }
 
@@ -300,6 +298,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 diagnostic = "stage1-prop-pickup-room-unavailable";
                 return;
             }
+
             Vector2 position;
             try
             {
@@ -351,137 +350,133 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
             var events = new List<StableId>(pendingTerminalByEvent.Keys);
             for (int index = 0; index < events.Count; index++)
+                ProcessPendingTerminal(events[index]);
+        }
+
+        private void ProcessPendingTerminal(StableId eventId)
+        {
+            PendingPropTerminal record;
+            if (!pendingTerminalByEvent.TryGetValue(eventId, out record)
+                || record == null
+                || record.Fact == null)
             {
-                StableId eventId = events[index];
-                PendingPropTerminal record;
-                if (!pendingTerminalByEvent.TryGetValue(eventId, out record)
-                    || record == null
-                    || record.Fact == null)
-                {
-                    Quarantine(eventId, "stage1-prop-terminal-record-invalid");
-                    continue;
-                }
+                Quarantine(eventId, "stage1-prop-terminal-record-invalid");
+                return;
+            }
 
-                Stage1CanonicalPropDestructionFactV1 fact = record.Fact;
-                if (fact.RunStableId != observedRun.RunStableId
-                    || fact.LifecycleGeneration != observedRun.LifecycleGeneration)
-                {
-                    Quarantine(eventId, "stage1-prop-terminal-stale-lifecycle");
-                    continue;
-                }
+            Stage1CanonicalPropDestructionFactV1 fact = record.Fact;
+            if (fact.RunStableId != observedRun.RunStableId
+                || fact.LifecycleGeneration != observedRun.LifecycleGeneration)
+            {
+                Quarantine(eventId, "stage1-prop-terminal-stale-lifecycle");
+                return;
+            }
 
-                GeneratedTerminalDropResultV1 generated;
-                try
-                {
-                    generated = generation.Generate(fact);
-                }
-                catch (Exception exception)
-                {
-                    diagnostic = "stage1-prop-generation-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message;
-                    continue;
-                }
-                if (generated == null || !generated.IsAccepted)
-                {
-                    string failure = generated == null
-                        ? "stage1-prop-generation-null"
-                        : generated.Diagnostic;
-                    if (generated != null
-                        && !IsRetryableGeneration(generated))
-                    {
-                        Quarantine(eventId, failure);
-                    }
-                    else
-                    {
-                        diagnostic = failure;
-                    }
-                    continue;
-                }
+            GeneratedTerminalDropResultV1 generated;
+            try
+            {
+                generated = generation.Generate(fact);
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "stage1-prop-generation-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
+                return;
+            }
+            if (generated == null || !generated.IsAccepted)
+            {
+                string failure = generated == null
+                    ? "stage1-prop-generation-null"
+                    : generated.Diagnostic;
+                if (generated != null && !IsRetryableGeneration(generated))
+                    Quarantine(eventId, failure);
+                else
+                    diagnostic = failure;
+                return;
+            }
 
-                try
+            try
+            {
+                LastAdmission = pending.Admit(generated);
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "stage1-prop-admission-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
+                return;
+            }
+            if (LastAdmission == null || !LastAdmission.IsAccepted)
+            {
+                string failure = LastAdmission == null
+                    ? "stage1-prop-admission-null"
+                    : LastAdmission.Diagnostic;
+                if (LastAdmission != null
+                    && LastAdmission.Status
+                        == PendingTerminalDropAdmissionStatusV1.ConflictingDuplicate)
                 {
-                    LastAdmission = pending.Admit(generated);
+                    Quarantine(eventId, failure);
                 }
-                catch (Exception exception)
+                else
                 {
-                    diagnostic = "stage1-prop-admission-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message;
-                    continue;
+                    diagnostic = failure;
                 }
-                if (LastAdmission == null || !LastAdmission.IsAccepted)
-                {
-                    string failure = LastAdmission == null
-                        ? "stage1-prop-admission-null"
-                        : LastAdmission.Diagnostic;
-                    if (LastAdmission != null
-                        && LastAdmission.Status
-                            == PendingTerminalDropAdmissionStatusV1.ConflictingDuplicate)
-                    {
-                        Quarantine(eventId, failure);
-                    }
-                    else
-                    {
-                        diagnostic = failure;
-                    }
-                    continue;
-                }
+                return;
+            }
 
-                TerminalDropSourceFactV1 sourceFact =
-                    LastAdmission.PendingResult.SourceFact;
-                string positionFingerprint = RunSessionFingerprintV1.Hash(
-                    sourceFact.TerminalEventStableId
-                    + "|"
-                    + fact.TerminalPosition.x.ToString(
-                        "R",
-                        CultureInfo.InvariantCulture)
-                    + "|"
-                    + fact.TerminalPosition.y.ToString(
-                        "R",
-                        CultureInfo.InvariantCulture));
-                try
+            TerminalDropSourceFactV1 sourceFact =
+                LastAdmission.PendingResult.SourceFact;
+            string positionFingerprint = RunSessionFingerprintV1.Hash(
+                sourceFact.TerminalEventStableId
+                + "|"
+                + fact.TerminalPosition.x.ToString(
+                    "R",
+                    CultureInfo.InvariantCulture)
+                + "|"
+                + fact.TerminalPosition.y.ToString(
+                    "R",
+                    CultureInfo.InvariantCulture));
+            try
+            {
+                pickupBootstrap.RegisterFixedSource(
+                    sourceFact.RunStableId,
+                    sourceFact.RunLifecycleGeneration,
+                    sourceFact.SourceEntityStableId,
+                    sourceFact.SourcePlacementStableId,
+                    fact.RoomStableId,
+                    fact.TerminalPosition,
+                    positionFingerprint);
+                Stage1PickupDeliveryResultV1 queued =
+                    pickupBootstrap.EnqueueAdmission(LastAdmission);
+                if (queued != null && queued.IsAcknowledged)
                 {
-                    pickupBootstrap.RegisterFixedSource(
-                        sourceFact.RunStableId,
-                        sourceFact.RunLifecycleGeneration,
-                        sourceFact.SourceEntityStableId,
-                        sourceFact.SourcePlacementStableId,
-                        fact.RoomStableId,
-                        fact.TerminalPosition,
-                        positionFingerprint);
-                    Stage1PickupDeliveryResultV1 queued =
-                        pickupBootstrap.EnqueueAdmission(LastAdmission);
-                    if (queued != null && queued.IsAcknowledged)
-                    {
-                        pendingTerminalByEvent.Remove(eventId);
-                        diagnostic = queued.Diagnostic;
-                    }
-                    else if (queued != null
-                        && (queued.Disposition
-                            == Stage1PickupDeliveryDispositionV1.Rejected
-                            || queued.Disposition
-                            == Stage1PickupDeliveryDispositionV1
-                                .ConflictingDuplicate))
-                    {
-                        Quarantine(eventId, queued.Diagnostic);
-                    }
-                    else
-                    {
-                        diagnostic = queued == null
-                            ? "stage1-prop-pickup-enqueue-null"
-                            : queued.Diagnostic;
-                    }
+                    pendingTerminalByEvent.Remove(eventId);
+                    diagnostic = queued.Diagnostic;
                 }
-                catch (Exception exception)
+                else if (queued != null
+                    && (queued.Disposition
+                        == Stage1PickupDeliveryDispositionV1.Rejected
+                        || queued.Disposition
+                        == Stage1PickupDeliveryDispositionV1.ConflictingDuplicate))
                 {
-                    diagnostic = "stage1-prop-pickup-enqueue-exception:"
-                        + exception.GetType().Name
-                        + ":"
-                        + exception.Message;
+                    Quarantine(eventId, queued.Diagnostic);
                 }
+                else
+                {
+                    diagnostic = queued == null
+                        ? "stage1-prop-pickup-enqueue-null"
+                        : queued.Diagnostic;
+                }
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "stage1-prop-pickup-enqueue-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
             }
         }
 
@@ -514,15 +509,11 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private static bool IsRetryableGeneration(
             GeneratedTerminalDropResultV1 generated)
         {
-            switch (generated.RejectionCode)
-            {
-                case TerminalDropRejectionCodeV1.MissingRun:
-                case TerminalDropRejectionCodeV1.MissingSourceContext:
-                case TerminalDropRejectionCodeV1.GenerationFailed:
-                    return true;
-                default:
-                    return false;
-            }
+            return generated != null
+                && (generated.RejectionCode
+                        == TerminalDropRejectionCodeV1.MissingRun
+                    || generated.RejectionCode
+                        == TerminalDropRejectionCodeV1.MissingSourceContext);
         }
 
         private void ReleaseBindings()
@@ -610,11 +601,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                             + ((int)destruction.Channel).ToString(
                                 CultureInfo.InvariantCulture)),
                     fact.Provenance.DropProfileStableId,
-                    RunSessionFingerprintV1.Hash(
-                        "source|" + canonical),
+                    RunSessionFingerprintV1.Hash("source|" + canonical),
                     fact.Provenance.DefinitionFingerprint,
-                    RunSessionFingerprintV1.Hash(
-                        "upstream|" + canonical)));
+                    RunSessionFingerprintV1.Hash("upstream|" + canonical)));
         }
     }
 }
