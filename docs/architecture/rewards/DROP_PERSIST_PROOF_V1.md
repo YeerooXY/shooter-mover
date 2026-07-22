@@ -1,268 +1,311 @@
 # DROP-PERSIST-PROOF-001 — Collected run rewards to permanent character state
 
-## Status of this implementation iteration
+## Implementation status
 
-Launch `main` SHA:
+The implementation branch was launched from:
 
 ```text
 777c3f93810d74184831af4753582b757fe12f69
 ```
 
-Verified before implementation:
-
-- `SAVE-ADAPTERS-001` / PR #260 is merged.
-- `CHARACTER-COMPOSITION-001` / PR #263 is merged.
-- `RUN-SESSION-001` / PR #270 is merged.
-- `BOX-PERSIST-001` / PR #276 is merged.
-- `PICKUP-LIVE-001` / PR #279 is still open and draft at this iteration.
-- No merged PR already implements `DROP-PERSIST-PROOF-001`.
-
-This first iteration intentionally adds only the isolated engine-neutral production
-foundation that does not collide with PR #279. It does not add or run tests, and it
-does not yet wire Results or the PR #279 journal into the production composition.
-
-## Ownership boundary
-
-The shared Run Session remains the authority for transient mission truth:
-
-> this exact generated reward was physically collected in this exact run and
-> lifecycle by this exact participant.
-
-Permanent authorities remain the owners of account-backed truth:
-
-- money wallet;
-- scrap wallet;
-- holdings and concrete equipment instances;
-- unopened strongboxes and their deterministic opening contexts;
-- durable account components.
-
-`CollectedRunRewardTransferCoordinatorV1` owns no wallet, inventory, strongbox,
-mission-result, character, Run Session, or save state. It coordinates an immutable
-transfer batch through narrow ports, records a downstream receipt, and requires the
-existing account save boundary to persist and verify the complete selected character.
-
-The collected journal is never deleted or rewritten to simulate transfer. A durable
-receipt records the downstream application keyed by exact transfer operation, run,
-accepted mission result, selected character, and reward batch.
-
-## Immutable transfer batch
-
-`CollectedRunRewardTransferBatchV1` freezes:
-
-- one stable transfer operation ID;
-- one exact run ID and accepted lifecycle generation;
-- one accepted mission-result ID, payload, and fingerprint;
-- one selected character instance ID;
-- the expected permanent character revision and fingerprint;
-- every exact eligible collected reward projection;
-- a deterministic order-independent canonical fingerprint.
-
-Each `CollectedRunRewardTransferItemV1` preserves the PR #279 journal identity and
-provenance fields:
-
-- generated reward child / concrete reward instance ID;
-- reward kind, content definition ID, and exact quantity;
-- pickup, grant, DROP operation, terminal event, and triggering event IDs;
-- run and source lifecycle context;
-- source entity, placement, definition, and attributed participant;
-- generated batch and generated child fingerprints;
-- room, physical spawn position, spawn fingerprint, and available-pickup fingerprint;
-- collector entity and participant;
-- collection operation, order, authoritative tick, and collected-record fingerprint.
-
-The batch sorts only by exact reward identity and reward fingerprint. Collection
-order is retained inside each item but does not affect batch ordering. Therefore
-reordering the input records does not change the canonical batch fingerprint.
-
-The transfer layer never rerolls, regenerates, substitutes, or normalizes a reward
-identity.
-
-## Deterministic child identities
-
-Every child operation and transaction ID is derived from:
+`PICKUP-LIVE-001` / PR #279 was later merged into `main` at:
 
 ```text
-transfer batch fingerprint
-+ target authority identity
-+ exact reward instance ID
-+ exact reward fingerprint
+bccf88e857b67c57b162ebb7b0e7152f36966f31
 ```
 
-The save operation ID is derived from the complete transfer batch fingerprint.
+The branch was reconciled with that merge through a two-parent merge commit before
+production integration continued. The implementation now includes the non-test runtime,
+persistence, and Results route. Tests and Unity execution proof are intentionally deferred.
 
-These derivations make an exact retry address the same existing authority operation.
-Conflicting reuse of a transfer operation ID with a different batch fingerprint is
-rejected before mutation.
+## Authority boundary
 
-## Exactly-once and overlap rules
+The shared `RunSessionAggregateV1` remains the authority for transient mission truth:
 
-Application order is:
+> this exact generated child was physically collected in this exact run lifecycle by
+> this exact participant.
 
-1. look for an already durable receipt by transfer operation;
-2. reject conflicting operation reuse;
-3. reject any reward identity already owned by a different durable receipt;
-4. export and validate the exact current selected-character state;
-5. require the expected character ID, revision, and fingerprint;
-6. require an available durable persistence port;
-7. preflight the complete batch and every target authority;
-8. capture compensation for all affected existing authorities;
-9. apply deterministic child operations;
-10. record the immutable transfer receipt;
-11. atomically persist and verify the complete selected character;
-12. publish the accepted result.
+Permanent state remains owned by the existing selected-character authorities:
 
-An exact durable receipt returns `ExactReplay` without applying a child operation
-again. A batch that overlaps only part of an already accepted receipt is rejected;
-the coordinator never silently applies the remainder.
+- `MoneyWalletService`;
+- `ScrapWalletServiceV1`;
+- `PlayerHoldingsService`;
+- the character-scoped `RewardApplicationServiceV1`;
+- `StrongboxOpeningServiceV1`;
+- `CharacterCompositionCoordinatorV1` and the atomic account store.
 
-The durable receipt authority indexes both transfer operation IDs and exact reward
-instance IDs. It is history/proof only and cannot mutate wallets or holdings.
+The transfer code owns none of those states. Its only durable state is downstream
+application history in the transfer-receipt save component.
 
-## Compensation and atomic save
+Collision callbacks and pickup presentation never grant permanent rewards. Results owns
+only an immutable projection and an exact retry command.
 
-`ICollectedRunRewardTransferAuthorityPortV1` must capture the existing immutable
-snapshots needed to restore all affected authorities, including the durable receipt
-authority. The coordinator treats reward mutation, receipt recording, and account
-persistence as one caller-visible transaction.
+## Source of truth and eligibility
 
-Any child rejection, exception, receipt rejection, save rejection, or verification
-mismatch invokes restoration from the captured compensation.
+The only reward source is:
 
-- confirmed restoration returns a structured retryable rejection;
-- failed restoration returns `FatalCompensationFailure`;
-- the fatal result includes both the original failure and compensation diagnostic;
-- the transfer is never marked complete after uncertain restoration.
+```text
+RunSessionAggregateV1.ExportCollectedRunRewards()
+```
 
-`ICollectedRunRewardTransferPersistencePortV1.PersistAndVerify` is required to use
-the existing selected-character/account save path. It must verify that the persisted
-character contains the exact durable receipt before returning success. It may not
-write a second account file or a transfer-only save protocol.
+The final-exit route freezes that journal and the terminal-drop generation context before
+ending the run. Transfer planning is allowed only after `RunSessionAggregateV1.End(...)`
+returns an accepted receipt whose mission result is `Completed`.
 
-## Durable receipt component
+The plan validates:
 
-`CollectedRunRewardTransferReceiptSaveComponentV1` provides an optional, explicit,
-versioned character save component:
+- exact run ID;
+- accepted lifecycle generation;
+- accepted mission-result payload and fingerprint;
+- selected character instance ID;
+- expected character revision and fingerprint frozen into the run;
+- every collected journal record belongs to that run and lifecycle.
+
+A rejected or incomplete mission cannot create a transfer plan.
+
+## Immutable batch
+
+`CollectedRunRewardTransferBatchV1` contains:
+
+- one stable transfer operation ID;
+- exact run and accepted lifecycle identity;
+- derived stable mission-result identity plus the accepted result fingerprint;
+- selected character identity, expected revision, and expected fingerprint;
+- every exact collected-reward record;
+- a deterministic, order-independent fingerprint.
+
+Each item preserves the journal's:
+
+- generated reward child / concrete instance ID;
+- source grant and DROP operation IDs;
+- reward kind, content definition, and quantity;
+- terminal and triggering event IDs;
+- source entity, placement, lifecycle, definition, and participant attribution;
+- generated batch and reward fingerprints;
+- room and physical spawn facts;
+- collector identity, collection operation, order, tick, and record fingerprint.
+
+Input enumeration order does not affect the batch fingerprint. Collection order remains
+part of each exact record.
+
+## Exact application plan
+
+`CollectedRunRewardApplicationPlanV1` pairs the journal batch with:
+
+- the exact RAP commit command;
+- the exact RAP claim command;
+- concrete application payload fingerprints;
+- unopened strongbox contexts;
+- one deterministic plan fingerprint.
+
+The plan fingerprint is recorded in the durable receipt's authority-fingerprint map. An
+operation that reappears with the same journal batch but a different hidden equipment or
+strongbox payload is therefore a conflict, not an exact replay.
+
+### Money and scrap
+
+Money and scrap quantities come directly from the collected journal. They are not
+recomputed from reward profiles, kill counts, visible cards, or mutable progression.
+
+### Equipment
+
+Equipment is materialized during the same DROP/GEN execution that created the generated
+child identity. `RetainingTerminalDropRewardGenerationExecutor` delegates to the existing
+reward generator, then creates and retains the exact concrete `EquipmentInstance` under:
+
+- the exact generated child ID;
+- the referenced equipment definition;
+- the frozen progression context;
+- the frozen root seed and algorithm version;
+- a deterministic equipment-generation operation and seed.
+
+Results never regenerates equipment. The transfer plan can only resolve the retained
+instance and verifies its instance ID and definition ID before RAP receives it. Level,
+quality, augments, and the complete immutable equipment payload are therefore transferred
+as one exact instance. Missing or conflicting retained payloads fail closed.
+
+The permanent holdings record uses the generated child as the concrete grant/instance
+identity and the transfer operation as the downstream application source. The complete
+original DROP and collection provenance remains frozen in the transfer batch fingerprint
+and receipt proof rather than being duplicated into the narrower holdings provenance
+model.
+
+### Strongboxes
+
+The generated child ID becomes the exact unopened strongbox instance ID. The transfer plan
+creates a deterministic `StrongboxInstanceContextV1` from the frozen generation context,
+exact generated reward fingerprint, original DROP operation, collection operation, tier,
+and current tier-definition fingerprint.
+
+RAP adds the exact box identity to holdings. The existing BOX authority then registers the
+matching unopened context. Transfer never opens the box, consumes it, or invokes BOX reward
+generation.
+
+## Shared RAP ownership
+
+Strongbox opening and collected-run transfer use the same character-scoped
+`RewardApplicationServiceV1`. The existing BOX composition binds that RAP instance into a
+reference-only production registry; no second reward-application history is introduced.
+
+The registry also exposes the character-scoped transfer-receipt authority through the
+normal save-adapter composition.
+
+## Complete preflight
+
+Before the live graph changes, the transfer performs:
+
+1. durable operation-receipt lookup;
+2. application-plan fingerprint comparison;
+3. cross-operation and partial reward-overlap checks;
+4. character ID, revision, and fingerprint checks;
+5. strongbox-context collision checks;
+6. a full RAP dry run against cloned money, scrap, holdings, and RAP snapshots;
+7. exact RAP commit and claim preflight on that discarded clone.
+
+Only after the whole dry run succeeds are live compensation snapshots captured.
+
+The live RAP commit and claim apply the complete batch on the first canonical transfer
+child. Later child calls are exact in-transaction replays; the coordinator still records
+every exact journal child ID in the receipt. This preserves one all-or-nothing RAP
+commitment while retaining the coordinator's per-record audit ordering.
+
+## Compensation boundary
+
+The compensation snapshot contains:
+
+- money;
+- scrap;
+- holdings;
+- RAP commitments, claims, and child history;
+- BOX contexts/opening state;
+- transfer receipts.
+
+A child rejection, receipt rejection, save rejection, read-back mismatch, or exception
+restores all of those authorities. Confirmed restoration returns a retryable rejection.
+Incomplete restoration returns `FatalCompensationFailure` with both the original and
+restoration diagnostics and cannot be retried automatically.
+
+## Durable save and replay
+
+The optional character component is:
 
 ```text
 save-component.collected-run-reward-transfer-receipts
 collected-run-reward-transfer-receipts-explicit-v1
 ```
 
-Its payload contains:
+It uses an explicit deterministic codec and stores no reflection or CLR type names. It
+indexes:
 
-- receipt-authority revision;
-- exact transfer operation and batch fingerprint;
-- run, lifecycle, mission-result, and character identity;
-- exact applied reward instance IDs;
-- resulting permanent authority fingerprints;
-- each receipt fingerprint.
+- transfer operation IDs;
+- batch, run, lifecycle, mission-result, and character identity;
+- every permanently transferred reward child ID;
+- resulting permanent-authority fingerprints;
+- the application-plan fingerprint;
+- receipt fingerprints and receipt-authority revision.
 
-The codec is explicit and deterministic. It stores no CLR type name and performs no
-reflection. Snapshot construction rejects duplicate operation IDs and any reward
-identity appearing in two receipts.
+The component is part of the ordinary selected-character save-adapter list and is restored
+with the rest of the character graph. Old characters may omit it and begin with an empty
+receipt authority.
 
-The component is optional for old characters. Once the production transfer adapter is
-installed, new accepted transfers persist it through the existing additional
-character-adapter composition seam.
+`ProductionCollectedRunRewardTransferPersistenceAdapter` calls the existing
+`CharacterCompositionCoordinatorV1.PersistActive(...)`. Success requires:
 
-## Crash and interruption states
+- the atomic account store to accept the complete exported character;
+- the active graph to be marked with the persisted character revision/fingerprint;
+- the exact receipt still to be present;
+- the persisted character to contain the receipt component.
 
-| Observed state after reload | Meaning | Required behavior |
-| --- | --- | --- |
-| No receipt | Transfer was not durably accepted | Retry the exact batch |
-| Receipt exists and matches | Transfer and save completed | Return exact replay |
-| Same operation, different batch | Persisted conflict | Reject without mutation |
-| Reward appears in another receipt | Partial or cross-operation overlap | Reject without mutation |
-| Live mutation occurred but save did not verify | Not accepted | Restore and permit exact retry |
-| Save succeeded before Results refreshed | Accepted | Reload receipt and show completed |
+No transfer-only account file or second save protocol exists.
 
-The accepted receipt, not an in-memory dictionary or Results-local flag, is the
-permanent replay source of truth.
+## Replay outcomes
 
-## Equipment and strongbox identity preservation
+| Durable state | Outcome |
+| --- | --- |
+| No receipt and all preflight succeeds | Apply, persist, verify |
+| Matching operation, batch, and plan | `ExactReplay`, no child mutation |
+| Same operation with different batch | Conflicting duplicate |
+| Same operation/batch with different concrete plan | Conflicting duplicate |
+| Any child ID belongs to another receipt | Partial-overlap rejection |
+| Mutation/save failure with confirmed restoration | Retryable rejection |
+| Compensation cannot be confirmed | Fatal compensation failure |
 
-The authority adapter added after PR #279 merges must resolve the exact generated
-reward payload by the journal's generated child identity and fingerprint.
+The durable receipt, not a Results-local flag, is the permanent exactly-once source of
+truth.
 
-For equipment it must pass the original concrete equipment instance, including its
-definition, level, quality, augments, and generated data, to the existing reward and
-holdings authorities. Equal equipment definitions remain distinct exact instances.
-An existing identity with conflicting content rejects the complete batch.
+## Results route
 
-For strongboxes it must preserve the original instance ID, tier/definition, grant and
-source provenance, and deterministic opening context. Transfer registers the exact
-box as unopened. It never opens or rerolls the box, and the existing BOX flow remains
-the only opening/consumption authority.
+The Stage 1 production composition replaces only its own final-exit subscription. It does
+not modify `Stage1VisibleSliceController.cs`.
 
-Money and scrap use the exact collected quantities and deterministic child operation
-IDs; quantities are never recalculated from drop profiles.
+After accepted run completion and transfer execution, Results receives
+`CollectedRunRewardTransferResultsProjectionV1`, containing:
 
-## Why UI and collision callbacks cannot grant permanent rewards
+- transfer status;
+- operation and batch identity;
+- run, lifecycle, and character identity;
+- applied reward child IDs;
+- receipt and resulting-state fingerprints;
+- account and character revisions/fingerprints;
+- persistence status and diagnostics;
+- whether an exact retry is permitted.
 
-A collision callback proves only that a run-local pickup interaction occurred. It
-cannot prove that mission completion was accepted, that the lifecycle is eligible,
-that all collected records form one valid batch, that the selected permanent
-character still matches the frozen run, or that an account save succeeded.
+`ProductionCollectedRunRewardResultsOverlay` displays that projection. Its retry button
+constructs `RetryCollectedRunRewardTransferCommandV1` with the exact operation and batch
+fingerprint. The bridge reruns the already-frozen application plan and cannot accept a
+replacement payload, reroll, or edited reward list.
 
-Results presentation likewise cannot infer eligibility from visible cards, kill
-counts, local lists, or drop profiles. It may submit a typed retry command and display
-the immutable transfer projection. It may not mutate wallets, holdings, strongboxes,
-or transfer status.
-
-## Sequence
+## Production sequence
 
 ```mermaid
 sequenceDiagram
-    participant Pickup as Pickup authority
+    participant DROP as DROP / GEN
+    participant Pickup as Physical pickup authority
     participant Run as Shared RunSessionAggregateV1
-    participant Mission as Mission-result authority
-    participant Transfer as Transfer coordinator
-    participant Permanent as Existing permanent authorities
-    participant Save as Existing account save
-    participant Receipt as Durable receipt component
+    participant Transfer as Transfer service
+    participant RAP as Existing character RAP
+    participant BOX as Existing BOX authority
+    participant Save as Existing character/account save
     participant Results as Results projection
 
-    Pickup->>Run: accepted exact collection record
-    Run->>Mission: exact completion command
-    Mission-->>Run: accepted immutable mission result
-    Run->>Transfer: immutable collected-reward transfer batch
-    Transfer->>Receipt: durable replay / overlap lookup
-    Transfer->>Permanent: complete preflight
-    Transfer->>Permanent: capture compensation snapshots
-    loop canonical exact rewards
-        Transfer->>Permanent: deterministic child operation
-        Permanent-->>Transfer: applied or exact replay
-    end
-    Transfer->>Receipt: record exact transfer receipt
-    Transfer->>Save: atomically save complete selected character
-    Save-->>Transfer: persisted fingerprint verification
-    Transfer-->>Results: immutable accepted projection
+    DROP->>DROP: retain exact equipment payloads
+    DROP->>Pickup: admit exact generated children
+    Pickup->>Run: append accepted collection records
+    Run->>Run: accept Completed End command
+    Run-->>Transfer: accepted result + exact journal
+    Transfer->>RAP: dry-run full commit and claim on clones
+    Transfer->>Transfer: capture full compensation
+    Transfer->>RAP: commit and claim exact batch
+    Transfer->>BOX: register exact unopened contexts
+    Transfer->>Transfer: record durable receipt
+    Transfer->>Save: persist active character atomically
+    Save-->>Transfer: revision/fingerprint + receipt read-back
+    Transfer-->>Results: immutable transfer projection
 ```
 
-## First-iteration changed-file boundary
+## Changed production boundaries
 
-Production changes are intentionally confined to:
+The implementation touches:
 
 ```text
 Assets/ShooterMover/Runtime/Application/Rewards/CollectedRunTransfers/**
 Assets/ShooterMover/Runtime/Application/Persistence/Components/KnownSaveComponentVersionGuardV1.cs
+Assets/ShooterMover/Runtime/Application/Flow/Production/ProductionCharacterAuthorityAdaptersV1.cs
+Assets/ShooterMover/Runtime/Application/Flow/Production/ProductionCharacterStrongboxCompositionV1.cs
+Assets/ShooterMover/Runtime/TerminalDropBinding/TerminalDropBindingCompositionV1.cs
+Assets/ShooterMover/Production/Stage1/Stage1RunPickupBootstrap2D.cs
+Assets/ShooterMover/Production/Stage1/Stage1PlayableLoopCompositionV1.CollectedRunTransfer.cs
+Assets/ShooterMover/Production/Stage1/RetainedTerminalDropEquipmentPayloads.cs
+Assets/ShooterMover/UI/ProductionFlow/ProductionCollectedRunRewardResultsOverlay.cs
 docs/architecture/rewards/DROP_PERSIST_PROOF_V1.md
 ```
 
-No PR #279 pickup/journal file, Results controller, scene bootstrap, Stage 1 controller,
-wallet authority, holdings authority, strongbox authority, mission-result authority,
-or save protocol is modified.
+It does not add a wallet, scrap, holdings, inventory, strongbox, mission-result, Run
+Session, RAP, or account-save authority. It does not modify
+`Stage1VisibleSliceController.cs`.
 
-## Deferred integration and proof
+## Verification status
 
-After PR #279 merges, the next iteration must add:
-
-- the exact `RunSessionCollectedRewardV1` to transfer-item adapter;
-- generated reward payload resolution for equipment and strongboxes;
-- the existing-authority port over money, scrap, holdings, BOX, receipt, and restore;
-- the existing account-save persistence port;
-- accepted mission completion and Results integration;
-- engine-neutral, persistence, and production integration tests;
-- Unity compilation, focused EditMode/PlayMode XML, and manual route proof.
-
-No test or compilation success is claimed by this first iteration.
+This implementation iteration intentionally does not add tests and does not run tests.
+Unity compilation, EditMode/PlayMode XML, crash-interruption proof, and manual route proof
+are not claimed here and remain the next verification phase.
