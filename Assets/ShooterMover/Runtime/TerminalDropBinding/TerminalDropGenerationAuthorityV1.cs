@@ -142,10 +142,10 @@ namespace ShooterMover.TerminalDropBinding
                     GeneratedTerminalDropResultV1 result = batch.Results[index];
                     if (result != null
                         && result.IsAccepted
-                        && result.Operation != null)
+                        && result.OperationRequest != null)
                     {
                         acceptedOperations.Add(
-                            result.Operation.SourceOperationStableId);
+                            result.OperationRequest.SourceOperationStableId);
                     }
                 }
             }
