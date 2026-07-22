@@ -1,14 +1,15 @@
 {
-  "name": "ShooterMover.UnityAdapters",
-  "rootNamespace": "ShooterMover.UnityAdapters",
+  "name": "ShooterMover.EnemyAttackPatternUnityIntegration",
+  "rootNamespace": "ShooterMover.UnityAdapters.Enemies",
   "references": [
     "ShooterMover.Domain",
     "ShooterMover.Contracts",
     "ShooterMover.Application",
-    "ShooterMover.Content.Definitions",
     "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
-    "Unity.InputSystem"
+    "ShooterMover.CombatHitPolicy",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.PlayerRuntime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
