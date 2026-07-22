@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
-using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Missions.Rooms;
@@ -16,7 +15,6 @@ using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
-using ShooterMover.UI.ProductionFlow;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -24,17 +22,40 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UnityAdapters.Production.Stage1
 {
     /// <summary>
-    /// Production Stage 1 connection for PICKUP-LIVE-001. It observes the accepted enemy
-    /// authorities, routes their terminal transition through #277 exactly once, captures the
-    /// exact terminal transform position, realizes the admitted children, and binds collection
-    /// to the production Run Session player identity. A Stage 1 restart rebuilds only this
-    /// transient pickup composition for the new lifecycle generation; permanent state remains
-    /// untouched and the new Run Session journal starts collection ordering at one.
+    /// Pickup consumer for the one shared Stage 1 Run Session aggregate. This component owns
+    /// only pickup realization/presentation adapters and retained admission delivery. It never
+    /// starts, replaces, or reconstructs a Run Session or any player/weapon/condition/room port.
     /// </summary>
     [DefaultExecutionOrder(21000)]
     [DisallowMultipleComponent]
     public sealed class Stage1RunPickupBootstrap2D : MonoBehaviour
     {
+        private sealed class EnemySourceRegistration
+        {
+            public EnemySourceRegistration(
+                IEnemyActor2DAuthority authority,
+                Transform sourceTransform,
+                EnemyDefinitionV1 definition,
+                EnemyRuntimeIdentityV1 identity,
+                StableId roomStableId,
+                StableId placementStableId)
+            {
+                Authority = authority;
+                SourceTransform = sourceTransform;
+                Definition = definition;
+                Identity = identity;
+                RoomStableId = roomStableId;
+                PlacementStableId = placementStableId;
+            }
+
+            public IEnemyActor2DAuthority Authority { get; }
+            public Transform SourceTransform { get; }
+            public EnemyDefinitionV1 Definition { get; }
+            public EnemyRuntimeIdentityV1 Identity { get; }
+            public StableId RoomStableId { get; }
+            public StableId PlacementStableId { get; }
+        }
+
         private static readonly StableId RoomRuntimeStableId =
             StableId.Parse("room-runtime-instance.demo-cutover-level1");
         private static readonly StableId MobileDefinitionStableId =
@@ -44,26 +65,37 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
         private Stage1PlayableLoopCompositionV1 stage1;
         private GameObject runtimeRoot;
-        private StableId observedRunStableId;
-        private long observedLifecycleGeneration = -1L;
-        private RunSessionAuthorityV1 runAuthority;
         private RunSessionAggregateV1 run;
+        private long observedLifecycleGeneration = -1L;
         private RunPickupSourcePositionRegistry2D sourcePositions;
         private RunPickupLiveCompositionV1 pickups;
         private TerminalDropBindingCompositionV1 terminalDrops;
         private RunPickupPresenter2D presenter;
-        private Stage1PendingAdmissionPickupBridgeV1 admissionBridge;
+        private readonly Stage1PendingAdmissionPickupBridgeV1 admissionBridge =
+            new Stage1PendingAdmissionPickupBridgeV1();
+        private readonly List<EnemySourceRegistration> enemySources =
+            new List<EnemySourceRegistration>();
         private readonly List<UnityEngine.Object> runtimeAssets =
             new List<UnityEngine.Object>();
         private string diagnostic = string.Empty;
 
-        public bool IsComposed { get { return run != null && pickups != null; } }
+        public bool IsComposed
+        {
+            get
+            {
+                return run != null
+                    && pickups != null
+                    && ReferenceEquals(run, ResolveSharedRunOrNull());
+            }
+        }
+
         public string Diagnostic { get { return diagnostic; } }
         public RunSessionAggregateV1 RunSession { get { return run; } }
         public RunLocalPickupAuthorityV1 PickupAuthority
         {
             get { return pickups == null ? null : pickups.Authority; }
         }
+        public int PendingAdmissionCount { get { return admissionBridge.PendingCount; } }
         public PendingTerminalDropAdmissionResultV1 LastEnemyAdmission
         {
             get
@@ -120,9 +152,18 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private IEnumerator Start()
         {
             stage1 = GetComponent<Stage1PlayableLoopCompositionV1>();
-            while (stage1 != null && !stage1.IsRunPickupProductionReady)
+            while (stage1 != null)
+            {
+                RunSessionAggregateV1 shared;
+                if (stage1.IsRunPickupProductionReady
+                    && stage1.TryResolveSharedRunSession(out shared)
+                    && shared != null)
+                {
+                    TryCompose(shared);
+                    yield break;
+                }
                 yield return null;
-            TryComposeCurrentRun();
+            }
         }
 
         private void LateUpdate()
@@ -131,36 +172,73 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 stage1 = GetComponent<Stage1PlayableLoopCompositionV1>();
             if (stage1 == null || !stage1.IsRunPickupProductionReady) return;
 
-            long liveLifecycleGeneration;
-            try
+            RunSessionAggregateV1 shared;
+            if (!stage1.TryResolveSharedRunSession(out shared) || shared == null)
             {
-                liveLifecycleGeneration = stage1.RunPickupController
-                    .PlayerLiveAuthority.ExportSnapshot()
-                    .Player.LifecycleGeneration;
-            }
-            catch (Exception exception)
-            {
-                diagnostic = "Stage 1 pickup lifecycle context unavailable: "
-                    + exception.GetType().Name
-                    + ": "
-                    + exception.Message;
+                diagnostic = "stage1-pickup-shared-run-unavailable";
+                admissionBridge.ReleaseRuntime();
                 return;
             }
 
-            if (observedRunStableId != stage1.RunPickupRunStableId
-                || observedLifecycleGeneration != liveLifecycleGeneration)
+            if (run == null || !ReferenceEquals(run, shared))
             {
-                TryComposeCurrentRun();
+                TryCompose(shared);
             }
-            if (presenter != null && stage1.RunPickupRooms != null)
+            else if (observedLifecycleGeneration != shared.LifecycleGeneration)
+            {
+                TryRefreshLifecycle(shared);
+            }
+
+            admissionBridge.ProcessPending();
+            if (!string.IsNullOrWhiteSpace(admissionBridge.LastDiagnostic))
+                diagnostic = admissionBridge.LastDiagnostic;
+            else if (presenter != null && stage1.RunPickupRooms != null)
                 presenter.Synchronize(stage1.RunPickupRooms.CurrentRoomStableId);
         }
 
-        private void TryComposeCurrentRun()
+        public Stage1PickupDeliveryResultV1 EnqueueAdmission(
+            PendingTerminalDropAdmissionResultV1 admission)
+        {
+            Stage1PickupDeliveryResultV1 result =
+                admissionBridge.TryEnqueue(admission);
+            admissionBridge.ProcessPending();
+            diagnostic = admissionBridge.LastDiagnostic;
+            return result;
+        }
+
+        public void RegisterFixedSource(
+            StableId runStableId,
+            long lifecycleGeneration,
+            StableId sourceEntityStableId,
+            StableId sourcePlacementStableId,
+            StableId roomStableId,
+            Vector2 position,
+            string fingerprint)
+        {
+            admissionBridge.RegisterFixedSource(
+                runStableId,
+                lifecycleGeneration,
+                sourceEntityStableId,
+                sourcePlacementStableId,
+                roomStableId,
+                position,
+                fingerprint);
+        }
+
+        private RunSessionAggregateV1 ResolveSharedRunOrNull()
+        {
+            RunSessionAggregateV1 shared;
+            return stage1 != null
+                && stage1.TryResolveSharedRunSession(out shared)
+                    ? shared
+                    : null;
+        }
+
+        private void TryCompose(RunSessionAggregateV1 shared)
         {
             try
             {
-                ComposeCurrentRun();
+                Compose(shared);
                 diagnostic = string.Empty;
             }
             catch (Exception exception)
@@ -170,92 +248,33 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     + ": "
                     + exception.Message;
                 Debug.LogException(exception, this);
-                TeardownCurrentRun();
+                TeardownProjection(false);
             }
         }
 
-        private void ComposeCurrentRun()
+        private void Compose(RunSessionAggregateV1 shared)
         {
             if (stage1 == null || !stage1.IsRunPickupProductionReady)
                 throw new InvalidOperationException(
                     "Stage 1 pickup prerequisites are unavailable.");
-
-            TeardownCurrentRun();
-            ProductionCharacterRuntimeGraphV1 graph;
-            ProductionFlowProfileRecordV1 selectedProfile;
-            ShooterMover.Application.Persistence.Composition
-                .CharacterCompositionCoordinatorV1 characterComposition;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
-                    out graph,
-                    out selectedProfile,
-                    out characterComposition)
-                || graph == null
-                || selectedProfile == null
-                || characterComposition == null)
+            if (shared == null
+                || shared.LifecycleState != RunSessionLifecycleStateV1.Active
+                || shared.RunStableId != stage1.RunPickupRunStableId)
             {
                 throw new InvalidOperationException(
-                    "The selected production character graph is unavailable for pickups.");
+                    "The exact shared production Run Session is unavailable for pickups.");
             }
 
-            var missionResultPort = new ExistingMissionResultRunPortV1(
-                stage1.RunPickupMissionResults,
-                graph.LoadoutRuntime.Holdings,
-                graph.StrongboxAuthority.ExportSnapshot);
-            var portFactory = new Stage1PickupRunSessionRuntimePortFactoryV1(
-                stage1.RunPickupController.PlayerLiveAuthority,
-                stage1.RunPickupRooms,
-                missionResultPort,
-                stage1.RunPickupEffectEmitter.ClearEmittedEffects);
-            var startSource = new ProductionCharacterRunSessionStartSourceV1(
-                characterComposition,
-                new Stage1PickupRunStatInputResolverV1(
-                    stage1.RunPickupController.PlayerLiveAuthority),
-                portFactory);
-            runAuthority = new RunSessionAuthorityV1(startSource);
-
-            long lifecycleGeneration = stage1.RunPickupController
-                .PlayerLiveAuthority.ExportSnapshot().Player.LifecycleGeneration;
-            var startCommand = new StartRunSessionCommandV1(
-                StableId.Create(
-                    "operation",
-                    "stage1-pickup-run-start-g"
-                        + lifecycleGeneration.ToString(
-                            CultureInfo.InvariantCulture)),
-                stage1.RunPickupRunStableId,
-                string.Empty,
-                graph.Character.CharacterInstanceStableId,
-                graph.Character.Revision,
-                graph.Character.Fingerprint,
-                Level1AuthorableRoomDefinitionV1.LayoutStableId,
-                StableId.Parse("difficulty.normal"),
-                lifecycleGeneration,
-                0L,
-                RunSessionFingerprintV1.Hash(
-                    "stage1-pickup-no-active-events-v1"));
-            RunSessionStartResultV1 started = runAuthority.Start(startCommand);
-            if (started == null
-                || (started.Status != RunSessionStartStatusV1.Started
-                    && started.Status != RunSessionStartStatusV1.ExactReplay)
-                || !runAuthority.TryGetRun(
-                    stage1.RunPickupRunStableId,
-                    out run)
-                || run == null)
-            {
-                throw new InvalidOperationException(
-                    "The production pickup Run Session could not start: "
-                    + (started == null
-                        ? "result-null"
-                        : started.RejectionCode));
-            }
+            bool changedRun = run != null && run.RunStableId != shared.RunStableId;
+            TeardownProjection(changedRun);
+            run = shared;
 
             runtimeRoot = new GameObject(
-                "PICKUP-LIVE-001 Stage 1 Runtime");
+                "PICKUP-LIVE-001 Shared Run Consumer");
             runtimeRoot.transform.SetParent(transform, false);
             sourcePositions = runtimeRoot.AddComponent<
                 RunPickupSourcePositionRegistry2D>();
-            pickups = RunPickupLiveCompositionV1.Create(
-                run,
-                sourcePositions);
+            pickups = RunPickupLiveCompositionV1.Create(run, sourcePositions);
 
             RunPickupAuthorityHost2D authorityHost =
                 runtimeRoot.AddComponent<RunPickupAuthorityHost2D>();
@@ -269,23 +288,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 presentations,
                 runtimeRoot.transform);
 
-            RunPlayerRuntimeSnapshotV1 playerSnapshot =
-                run.RuntimePorts.Player.ExportSnapshot();
-            RunPickupCollector2D collector = stage1.RunPickupController
-                .PlayerTransform.GetComponent<RunPickupCollector2D>();
-            if (collector == null)
-            {
-                collector = stage1.RunPickupController.PlayerTransform
-                    .gameObject.AddComponent<RunPickupCollector2D>();
-            }
-            collector.Configure(
-                playerSnapshot.ActorInstanceStableId,
-                playerSnapshot.ParticipantStableId);
+            admissionBridge.ConfigureRuntime(
+                new Stage1UnityPickupAdmissionRuntimeV1(
+                    sourcePositions,
+                    pickups.PendingConsumer,
+                    presenter));
 
-            admissionBridge = new Stage1PendingAdmissionPickupBridgeV1(
-                sourcePositions,
-                pickups.PendingConsumer,
-                presenter);
+            ConfigureCollector();
             EnemyCatalogV1 enemyCatalog = BuildPickupEnemyCatalog();
             terminalDrops = TerminalDropBindingCompositionV1.Create(
                 enemyCatalog,
@@ -303,7 +312,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 null,
                 admissionBridge);
 
-            RegisterEnemyObserver(
+            RegisterEnemy(
                 stage1.RunPickupController.MobileBlasterDroid,
                 stage1.RunPickupController.MobileBlasterDroid.transform,
                 MobileDefinitionStableId,
@@ -311,7 +320,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     .MovingDroidInstanceStableId,
                 Level1AuthorableRoomDefinitionV1.EntryRoomStableId,
                 enemyCatalog);
-            RegisterEnemyObserver(
+            RegisterEnemy(
                 stage1.RunPickupController.TurretPackage.Authority,
                 stage1.RunPickupController.TurretPackage.transform,
                 TurretDefinitionStableId,
@@ -319,13 +328,58 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 Level1AuthorableRoomDefinitionV1.TerminalRoomStableId,
                 enemyCatalog);
 
-            observedRunStableId = stage1.RunPickupRunStableId;
-            observedLifecycleGeneration = lifecycleGeneration;
-            presenter.Synchronize(
-                stage1.RunPickupRooms.CurrentRoomStableId);
+            observedLifecycleGeneration = run.LifecycleGeneration;
+            admissionBridge.RetireOtherLifecycles(
+                run.RunStableId,
+                run.LifecycleGeneration);
+            RefreshEnemySourceBindings();
+            admissionBridge.ProcessPending();
+            presenter.Synchronize(stage1.RunPickupRooms.CurrentRoomStableId);
         }
 
-        private void RegisterEnemyObserver(
+        private void TryRefreshLifecycle(RunSessionAggregateV1 shared)
+        {
+            try
+            {
+                if (!ReferenceEquals(run, shared))
+                    throw new InvalidOperationException(
+                        "Pickup lifecycle refresh requires the same shared aggregate.");
+                observedLifecycleGeneration = shared.LifecycleGeneration;
+                admissionBridge.RetireOtherLifecycles(
+                    shared.RunStableId,
+                    shared.LifecycleGeneration);
+                ConfigureCollector();
+                RefreshEnemySourceBindings();
+                admissionBridge.ProcessPending();
+                diagnostic = admissionBridge.LastDiagnostic;
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "Stage 1 pickup lifecycle refresh failed: "
+                    + exception.GetType().Name
+                    + ": "
+                    + exception.Message;
+                Debug.LogException(exception, this);
+            }
+        }
+
+        private void ConfigureCollector()
+        {
+            RunPlayerRuntimeSnapshotV1 playerSnapshot =
+                run.RuntimePorts.Player.ExportSnapshot();
+            RunPickupCollector2D collector = stage1.RunPickupController
+                .PlayerTransform.GetComponent<RunPickupCollector2D>();
+            if (collector == null)
+            {
+                collector = stage1.RunPickupController.PlayerTransform
+                    .gameObject.AddComponent<RunPickupCollector2D>();
+            }
+            collector.Configure(
+                playerSnapshot.ActorInstanceStableId,
+                playerSnapshot.ParticipantStableId);
+        }
+
+        private void RegisterEnemy(
             IEnemyActor2DAuthority authority,
             Transform sourceTransform,
             StableId definitionStableId,
@@ -341,55 +395,125 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     RoomRuntimeStableId,
                     roomStableId,
                     placementStableId);
-            admissionBridge.RegisterSource(
-                run.RunStableId,
-                run.LifecycleGeneration,
-                identity.EntityInstanceId,
-                placementStableId,
+            var registration = new EnemySourceRegistration(
+                authority,
+                sourceTransform,
+                definition,
+                identity,
                 roomStableId,
-                sourceTransform);
+                placementStableId);
+            enemySources.Add(registration);
 
             Stage1EnemyTerminalDropObserver2D observer =
-                runtimeRoot.AddComponent<
-                    Stage1EnemyTerminalDropObserver2D>();
+                runtimeRoot.AddComponent<Stage1EnemyTerminalDropObserver2D>();
             observer.Configure(
                 authority,
-                delegate { EmitEnemyDeath(definition, identity); });
+                delegate { return TryEmitEnemyDeath(registration); });
         }
 
-        private void EmitEnemyDeath(
-            EnemyDefinitionV1 definition,
-            EnemyRuntimeIdentityV1 identity)
+        private void RefreshEnemySourceBindings()
         {
-            if (run == null || terminalDrops == null || definition == null)
-                return;
-            RunPlayerRuntimeSnapshotV1 player =
-                run.RuntimePorts.Player.ExportSnapshot();
-            string suffix = run.RunStableId
-                + "|"
-                + run.LifecycleGeneration.ToString(
-                    CultureInfo.InvariantCulture)
-                + "|"
-                + identity.PlacementStableId;
-            var fact = new EnemyDeathFactV1(
-                StableId.Create(
+            for (int index = 0; index < enemySources.Count; index++)
+            {
+                EnemySourceRegistration registration = enemySources[index];
+                if (registration == null
+                    || registration.SourceTransform == null
+                    || registration.Identity == null)
+                {
+                    continue;
+                }
+                admissionBridge.RegisterTransformSource(
+                    run.RunStableId,
+                    run.LifecycleGeneration,
+                    registration.Identity.EntityInstanceId,
+                    registration.PlacementStableId,
+                    registration.RoomStableId,
+                    registration.SourceTransform);
+            }
+        }
+
+        private Stage1PickupDeliveryResultV1 TryEmitEnemyDeath(
+            EnemySourceRegistration registration)
+        {
+            if (run == null
+                || terminalDrops == null
+                || registration == null
+                || registration.Definition == null
+                || registration.Identity == null)
+            {
+                return new Stage1PickupDeliveryResultV1(
+                    Stage1PickupDeliveryDispositionV1.Retryable,
+                    null,
+                    "stage1-enemy-terminal-runtime-unavailable");
+            }
+
+            try
+            {
+                RunPlayerRuntimeSnapshotV1 player =
+                    run.RuntimePorts.Player.ExportSnapshot();
+                string suffix = run.RunStableId
+                    + "|"
+                    + run.LifecycleGeneration.ToString(
+                        CultureInfo.InvariantCulture)
+                    + "|"
+                    + registration.Identity.PlacementStableId;
+                StableId deathEvent = StableId.Create(
                     "enemy-death-event",
                     DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
-                        suffix + "|death")),
-                StableId.Create(
-                    "combat-event",
-                    DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
-                        suffix + "|trigger")),
-                identity,
-                definition.DefinitionId,
-                1,
-                run.LifecycleGeneration,
-                player.ActorInstanceStableId,
-                player.ParticipantStableId,
-                definition.ExperienceProfileId,
-                definition.DropProfileId,
-                (EnemyActorDeathCause)1);
-            terminalDrops.EnemyConsumer.Consume(fact);
+                        suffix + "|death"));
+                var fact = new EnemyDeathFactV1(
+                    deathEvent,
+                    StableId.Create(
+                        "combat-event",
+                        DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
+                            suffix + "|trigger")),
+                    registration.Identity,
+                    registration.Definition.DefinitionId,
+                    1,
+                    run.LifecycleGeneration,
+                    player.ActorInstanceStableId,
+                    player.ParticipantStableId,
+                    registration.Definition.ExperienceProfileId,
+                    registration.Definition.DropProfileId,
+                    (EnemyActorDeathCause)1);
+
+                admissionBridge.RegisterTransformSource(
+                    run.RunStableId,
+                    run.LifecycleGeneration,
+                    registration.Identity.EntityInstanceId,
+                    registration.PlacementStableId,
+                    registration.RoomStableId,
+                    registration.SourceTransform,
+                    deathEvent);
+                terminalDrops.EnemyConsumer.Consume(fact);
+                PendingTerminalDropAdmissionResultV1 admission =
+                    terminalDrops.EnemyConsumer.LastAdmission;
+                if (admission == null || !admission.IsAccepted)
+                {
+                    return new Stage1PickupDeliveryResultV1(
+                        Stage1PickupDeliveryDispositionV1.Retryable,
+                        admission,
+                        admission == null
+                            ? "stage1-enemy-terminal-admission-null"
+                            : admission.Diagnostic);
+                }
+
+                Stage1PickupDeliveryResultV1 queued =
+                    admissionBridge.TryEnqueue(admission);
+                admissionBridge.ProcessPending();
+                diagnostic = admissionBridge.LastDiagnostic;
+                return queued;
+            }
+            catch (Exception exception)
+            {
+                return new Stage1PickupDeliveryResultV1(
+                    Stage1PickupDeliveryDispositionV1.Retryable,
+                    null,
+                    "stage1-enemy-terminal-attempt-exception:"
+                        + exception.GetType().Name
+                        + ":"
+                        + exception.Message);
+            }
         }
 
         private IEnumerable<RunPickupPresentationEntryV1>
@@ -548,8 +672,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 Array.Empty<StableId>());
         }
 
-        private void TeardownCurrentRun()
+        private void TeardownProjection(bool clearDeliveryState)
         {
+            admissionBridge.ReleaseRuntime();
             if (runtimeRoot != null)
             {
                 runtimeRoot.SetActive(false);
@@ -561,21 +686,21 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     Destroy(runtimeAssets[index]);
             }
             runtimeAssets.Clear();
+            enemySources.Clear();
             runtimeRoot = null;
-            runAuthority = null;
-            run = null;
             sourcePositions = null;
             pickups = null;
             terminalDrops = null;
             presenter = null;
-            admissionBridge = null;
-            observedRunStableId = null;
             observedLifecycleGeneration = -1L;
+            if (clearDeliveryState)
+                admissionBridge.ClearAll();
+            run = null;
         }
 
         private void OnDestroy()
         {
-            TeardownCurrentRun();
+            TeardownProjection(true);
         }
     }
 }
