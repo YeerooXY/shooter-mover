@@ -11,7 +11,7 @@ lifecycle cancellation facts.
 
 - atomic acceptance of one complete immutable sequence;
 - deterministic pending-emission ordering;
-- exact-once emission delivery;
+- commit-after-ack emission delivery;
 - replay-safe cancellation of pending effects and open melee windows;
 - immutable delivery/debug records.
 
@@ -53,6 +53,36 @@ nothing. Accepted dispatch identities preserve their canonical fingerprint:
 
 No caller-owned mutable collection is retained. The dispatch contract owns an immutable sorted copy and
 the scheduler creates its own private pending list.
+
+## Transactional downstream acknowledgement
+
+`EnemyAttackPatternTransactionalRealizerV1` adapts the physical Unity realizer to immutable operation
+results:
+
+- `Applied`;
+- `ExactReplay`;
+- `Rejected`;
+- `ConflictingDuplicate`;
+- `RetryableFailure`.
+
+A due emission remains pending until downstream realization returns `Applied` or `ExactReplay`. The
+scheduler does not mark it emitted or remove it from the pending queue before that acknowledgement. A
+throw or retryable failure therefore preserves the exact emission identity, committed aim and schedule
+for a later retry.
+
+Successful downstream realization is replay-protected independently of scheduler bookkeeping. If Unity
+created the effect but scheduler state was not committed, the next delivery is an exact downstream
+replay rather than a duplicate projectile or melee window.
+
+Active-window cancellation follows the same rule. The scheduler validates the complete cancellation,
+asks every referenced open window to close, and commits cancellation/removes its bookkeeping only after
+all downstream closes acknowledge success. Successfully closed windows replay exactly if another window
+failed during the same cancellation attempt. A failed close is not memoized and may be retried with the
+same cancellation identity.
+
+The compatibility adapter performs best-effort compensation around the retained throw-based physical
+surface: failed melee/pounce opening attempts are closed, and failed close attempts are reopened before
+returning `RetryableFailure`.
 
 ## Committed aim and physical realization
 
@@ -106,12 +136,25 @@ Only an accepted policy result is translated through `CombatHitDamageCommandAdap
 an existing `PlayerDamageRequest`. `Level1PlayerRuntimeSceneAdapterV1` and `PlayerActorAuthority` remain
 the only player-health/death authorities.
 
+Hit-event replay preserves the original semantic result:
+
+- an applied hit replays as `AppliedExactReplay` and remains accepted;
+- a policy rejection replays as the same policy rejection and is never accepted;
+- a deterministic player-damage rejection replays as the same rejected result;
+- conflicting identity reuse remains `ConflictingDuplicate`;
+- temporarily unavailable actor context or a null damage-authority result returns `RetryableFailure`
+  and is not memoized, allowing the exact callback to retry later.
+
+Melee hit counters advance only when `IsAccepted` is true, so rejected replays cannot consume authored
+`hits_per_target` capacity.
+
 Preserved behavior includes:
 
 - source participant and faction attribution;
 - friendly-fire/self-hit decisions;
 - target lifecycle validation;
-- exact hit replay and conflicting duplicate rejection;
+- exact applied replay and conflicting duplicate rejection;
+- rejected replay preserving rejection;
 - authored per-target hit counts and area capacity;
 - death emission exactly once through the existing player authority;
 - no direct health mutation from Unity collision callbacks or enemy controllers.
@@ -185,6 +228,20 @@ A future burst, shotgun, scatter, rocket, contact or pounce enemy primarily requ
 
 Shared scheduler, projectile, melee, policy and player-damage classes do not branch on enemy name,
 attack name, room, weapon name or prefab hierarchy.
+
+## Verification coverage
+
+Focused EditMode coverage includes:
+
+- atomic sequence preflight and dispatch replay/conflict;
+- deterministic burst/scatter ordering under variable tick intervals;
+- lifecycle cancellation and active melee-window bookkeeping;
+- fail-once projectile/melee realization retaining pending work;
+- fail-once active-window cancellation retaining scheduler state;
+- applied hit replay and conflicting hit identity reuse;
+- friendly-fire and stale-lifecycle rejected replay remaining rejected;
+- transient target-context and damage-authority retries;
+- authored melee hit limits and player death exactly once.
 
 ## Current limitations and verification boundary
 
