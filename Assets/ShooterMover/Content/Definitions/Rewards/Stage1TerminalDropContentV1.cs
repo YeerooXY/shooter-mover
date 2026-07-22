@@ -55,6 +55,28 @@ namespace ShooterMover.Content.Definitions.Rewards
                 ExplosiveDropProfileStableId);
         }
 
+        /// <summary>
+        /// Bounded migration for the two pre-definition Stage 1 marker keys. Classification is
+        /// performed once at authoring time and converted immediately into canonical catalog
+        /// provenance; terminal/runtime code never reads this key or infers from health.
+        /// </summary>
+        public static DestructiblePropTerminalProvenanceV1
+            ResolveLegacyAuthoringKey(string authoringKey)
+        {
+            if (string.IsNullOrWhiteSpace(authoringKey))
+                throw new ArgumentException(
+                    "A legacy Stage 1 prop authoring key is required.",
+                    nameof(authoringKey));
+            string value = authoringKey.Trim();
+            if (value.StartsWith("Crate_", StringComparison.Ordinal))
+                return CreateCrateProvenance();
+            if (value.StartsWith("Explosive_", StringComparison.Ordinal))
+                return CreateExplosiveProvenance();
+            throw new InvalidOperationException(
+                "No canonical Stage 1 prop definition is bound to legacy authoring key '"
+                + value + "'.");
+        }
+
         public static bool TryReadDropProfile(
             PropDefinitionV1 definition,
             out StableId profileStableId)
