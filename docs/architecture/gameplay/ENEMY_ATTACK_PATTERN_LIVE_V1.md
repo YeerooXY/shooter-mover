@@ -6,36 +6,77 @@
 sequence construction, immutable committed aim, sequence/emission identity, fingerprints, replay and
 lifecycle cancellation facts.
 
-`EnemyAttackPatternLiveSchedulerV1` is the production implementation of
-`IEnemyAttackPatternEffectPortV1`. It owns only downstream delivery state:
+`EnemyAttackPatternLiveSchedulerV1` implements `IEnemyAttackPatternEffectPortV1` and owns only downstream
+delivery state:
 
-- atomic acceptance of one complete immutable sequence;
+- atomic acceptance of one immutable sequence;
 - deterministic pending-emission ordering;
-- commit-after-ack emission delivery;
+- commit-after-ack physical delivery;
 - replay-safe cancellation of pending effects and open melee windows;
 - immutable delivery/debug records.
 
-It does not own enemy health, player health, Run Session identity, projectile collision, hit
-eligibility, XP, drops, room state or permanent character state.
+It does not own enemy health, player health, Run Session identity, authoritative time, room state,
+mission results, pickup collection, conditions, status effects, XP, drops or permanent character state.
 
-`EnemyCommittedAttackPatternExecutorV1` is the narrow outer transaction between one catalog attack
-and the scheduler. Cooldown and outer replay are recorded only after the complete sequence has been
-accepted downstream. A transient dispatch failure therefore retries the same operation, committed aim,
-sequence and fingerprint without consuming cooldown.
+## One shared production Run Session
 
-## Authoritative Run Session time
+Stage 1 composes exactly one `RunSessionAuthorityV1` and one `RunSessionAggregateV1` in
+`Stage1PlayableLoopCompositionV1.RunSession.cs`.
 
-`RunSessionAggregateV1.AdvanceTime` advances one explicit monotonic authoritative tick through
-`AdvanceRunSessionTimeCommandV1`. It rejects wrong-run, stale/future-lifecycle, ended-run, tick
-regression and conflicting operation reuse without mutation.
+```text
+Stage1PlayableLoopCompositionV1
+└── shared RunSessionAggregateV1
+    ├── accepted player runtime port
+    ├── frozen inventory/weapon runtime port
+    ├── canonical condition runtime
+    ├── condition-owned status-effect projection
+    ├── canonical active-ability lifecycle port
+    ├── room runtime port
+    ├── existing mission-result authority port
+    ├── authoritative run tick
+    └── feature consumers
+        ├── schema-v2 enemy attack scheduling
+        └── future physical pickup collection / run-local journals
+```
 
-`RunSessionEnemyAttackPatternTimeV1` projects the accepted Run Session tick into seconds through an
-explicit ticks-per-second scale. Unity `FixedUpdate` wakes the production host, but neither Unity frame
-time nor a per-enemy wall clock becomes combat authority.
+The shared aggregate is started through `ProductionConditionBoundRunSessionStartSourceV1`, so the
+condition and status-effect ports are the merged production authorities. The former feature-local
+`Stage1StatusRunProjectionV1` and `Stage1ConditionRunProjectionV1` placeholders were deleted.
 
-The Stage 1 host advances the Run Session clock once per accepted fixed simulation tick, then evaluates
-committed attacks and asks the scheduler to emit every due fact. Variable wake-up intervals produce the
-same ordering:
+The Stage 1 adapters for player, weapon, room and mission result are created once for this shared graph.
+They are not reconstructed by the enemy-attack partial.
+
+`Stage1PlayableLoopCompositionV1.EnemyAttackPatterns.cs` is now a consumer only. It:
+
+- calls `TryResolveSharedRunSession`;
+- receives the existing aggregate through `RunSessionEnemyAttackPatternTimeV1`;
+- validates the shared run ID and player lifecycle;
+- never constructs `RunSessionAuthorityV1`;
+- never calls `Start`;
+- never builds runtime ports;
+- never owns a simulation tick.
+
+The internal `TryResolveSharedRunSession` seam is the integration point for downstream Stage 1 features.
+A pickup/collection branch must consume this aggregate after rebase rather than starting another run.
+
+## Authoritative time
+
+Unity `FixedUpdate` wakes the shared Stage 1 host but does not contribute combat time directly.
+
+Each accepted simulation step calls `RunSessionAggregateV1.AdvanceConditionRuntime` with one explicit
+monotonic tick. That operation advances the aggregate and its bound condition/status owner together.
+Enemy attacks then read the already committed aggregate tick through
+`RunSessionEnemyAttackPatternTimeV1`.
+
+Consequently, enemy attacks, condition expiry, physical pickup collection and future run-local systems
+observe the same:
+
+- run identity;
+- lifecycle generation;
+- authoritative tick;
+- terminal state.
+
+No per-enemy or feature-local clock exists. Due emissions order by:
 
 1. `ScheduledAtSeconds`;
 2. `EmissionStableId`.
@@ -51,13 +92,11 @@ nothing. Accepted dispatch identities preserve their canonical fingerprint:
 - same identity with another fingerprint: `ConflictingDuplicate`;
 - wrong run/source lifecycle or unsupported payload: fail closed.
 
-No caller-owned mutable collection is retained. The dispatch contract owns an immutable sorted copy and
-the scheduler creates its own private pending list.
+No caller-owned mutable collection is retained.
 
 ## Transactional downstream acknowledgement
 
-`EnemyAttackPatternTransactionalRealizerV1` adapts the physical Unity realizer to immutable operation
-results:
+`EnemyAttackPatternTransactionalRealizerV1` adapts the physical Unity realizer to immutable results:
 
 - `Applied`;
 - `ExactReplay`;
@@ -65,190 +104,121 @@ results:
 - `ConflictingDuplicate`;
 - `RetryableFailure`.
 
-A due emission remains pending until downstream realization returns `Applied` or `ExactReplay`. The
-scheduler does not mark it emitted or remove it from the pending queue before that acknowledgement. A
-throw or retryable failure therefore preserves the exact emission identity, committed aim and schedule
-for a later retry.
+A due emission remains pending until realization returns `Applied` or `ExactReplay`. A throw or retryable
+failure preserves the same emission identity, committed aim and schedule for a later retry.
 
-Successful downstream realization is replay-protected independently of scheduler bookkeeping. If Unity
-created the effect but scheduler state was not committed, the next delivery is an exact downstream
-replay rather than a duplicate projectile or melee window.
+Successful physical realization has its own replay ledger. If Unity created an effect but scheduler
+bookkeeping did not commit, retry returns an exact downstream replay rather than producing a duplicate
+projectile or melee window.
 
-Active-window cancellation follows the same rule. The scheduler validates the complete cancellation,
-asks every referenced open window to close, and commits cancellation/removes its bookkeeping only after
-all downstream closes acknowledge success. Successfully closed windows replay exactly if another window
-failed during the same cancellation attempt. A failed close is not memoized and may be retried with the
-same cancellation identity.
-
-The compatibility adapter performs best-effort compensation around the retained throw-based physical
-surface: failed melee/pounce opening attempts are closed, and failed close attempts are reopened before
-returning `RetryableFailure`.
+Active-window cancellation follows the same rule. Scheduler bookkeeping is removed only after every
+referenced physical close acknowledges success. Completed closes replay exactly while unfinished closes
+remain retryable.
 
 ## Committed aim and physical realization
 
-The scheduler forwards the original `EnemyAttackEffectEmissionV1` unchanged. Unity realization consumes
-the facts frozen when the attack was committed:
+The Unity realizer consumes the immutable facts frozen at attack commitment:
 
-- committed origin, direction and optional target identity;
-- exact scheduled timestamp and melee active-window bounds;
-- sequence, emission and source participant identities;
-- source lifecycle generation;
-- schema-generated pellet spread;
-- projectile profile, speed, travel distance, collision radius and area payload;
-- resolved damage and damage channel.
+- origin, direction, target and source participant;
+- sequence/emission identity and source lifecycle;
+- scheduled timestamp and active-window bounds;
+- schema-authored pellet spread;
+- projectile profile, speed, range/lifetime and collision radius;
+- area payload, resolved damage and damage channel.
 
-Delayed shots never retarget to the player's newer position. Scatter directions are not rerolled in
-Unity.
+Delayed attacks never retarget and spread is never rerolled in Unity.
 
 ### Projectiles and area effects
 
 `EnemyAttackPatternUnityEmissionRealizerV1` reuses `BoundedProjectile2D` and
-`CombatHit2DAdapter`. Projectile profile IDs resolve through the typed
-`EnemyAttackPatternProjectilePrefabRegistryV1`; there is no enemy-name or weapon-name switch.
+`CombatHit2DAdapter`. Projectile profiles resolve through the typed
+`EnemyAttackPatternProjectilePrefabRegistryV1`; no enemy-name or weapon-name switch is used.
 
-The realizer preserves finite speed/range/lifetime, collision radius, source ownership, operation
-identity and committed direction. Instant area payloads evaluate explicitly registered targets in
-stable target-identity order and pass their authored maximum-target capacity into Combat Hit Policy.
-
-The retained bounded-projectile path currently terminates at the first physical impact, so authored
-non-area projectile pierce greater than zero fails closed instead of pretending to support pierce.
-Persistent area durations also fail closed; instantaneous rocket/explosion payloads are supported.
+Instant area payloads evaluate explicitly registered targets in stable identity order. Unsupported
+physical projectile pierce and persistent area durations fail closed.
 
 ### Melee and pounce
 
-`EnemyAttackPatternMeleeContact2D` reports trigger/collision candidates only. It never evaluates
-eligibility or mutates health.
+`EnemyAttackPatternMeleeContact2D` reports candidates only. It does not decide eligibility or mutate
+health.
 
-The realizer opens and closes timed melee windows using authoritative scheduled bounds. It captures the
-target lifecycle at emission time, enforces the committed target where present, derives deterministic
-per-target hit ordinals, and respects authored `hits_per_target`.
-
-`RigidbodyEnemyAttackPatternPounceMotion2D` realizes lunge/ram motion from committed origin, direction,
-lunge distance and authoritative active-window time. It never accumulates Unity delta time.
+Timed melee windows preserve committed bounds, target lifecycle, deterministic per-target hit ordinal
+and authored `hits_per_target`. `RigidbodyEnemyAttackPatternPounceMotion2D` derives motion from committed
+origin, direction, lunge distance and shared authoritative time rather than accumulated Unity delta.
 
 ## Combat Hit Policy and player damage
 
-`EnemyAttackPatternHitRouterV1` owns only session-local policy/history and hit-event replay. It builds
-immutable source/effect/target snapshots and delegates final eligibility to the existing
-`CombatHitPolicyV1` with `enemy-normal` policy.
+`EnemyAttackPatternHitRouterV1` delegates final eligibility to the existing `CombatHitPolicyV1`. Only an
+accepted policy result becomes an existing `PlayerDamageRequest`; `PlayerActorAuthority` remains the
+only player health/death authority.
 
-Only an accepted policy result is translated through `CombatHitDamageCommandAdapterV1` and forwarded as
-an existing `PlayerDamageRequest`. `Level1PlayerRuntimeSceneAdapterV1` and `PlayerActorAuthority` remain
-the only player-health/death authorities.
+Hit replay preserves semantic outcome:
 
-Hit-event replay preserves the original semantic result:
-
-- an applied hit replays as `AppliedExactReplay` and remains accepted;
-- a policy rejection replays as the same policy rejection and is never accepted;
-- a deterministic player-damage rejection replays as the same rejected result;
-- conflicting identity reuse remains `ConflictingDuplicate`;
-- temporarily unavailable actor context or a null damage-authority result returns `RetryableFailure`
-  and is not memoized, allowing the exact callback to retry later.
+- applied hit → `AppliedExactReplay`, accepted;
+- policy rejection → same rejection, not accepted;
+- deterministic damage-authority rejection → same rejection, not accepted;
+- conflicting identity reuse → `ConflictingDuplicate`;
+- temporary context or damage-authority unavailability → non-memoized `RetryableFailure`.
 
 Melee hit counters advance only when `IsAccepted` is true, so rejected replays cannot consume authored
-`hits_per_target` capacity.
-
-Preserved behavior includes:
-
-- source participant and faction attribution;
-- friendly-fire/self-hit decisions;
-- target lifecycle validation;
-- exact applied replay and conflicting duplicate rejection;
-- rejected replay preserving rejection;
-- authored per-target hit counts and area capacity;
-- death emission exactly once through the existing player authority;
-- no direct health mutation from Unity collision callbacks or enemy controllers.
+hit capacity.
 
 ## Cancellation and lifecycle end
 
-Cancellation facts are replay-protected by cancellation identity and fingerprint. Before mutation, the
-scheduler validates that every referenced pending or active effect belongs to the same source entity and
-lifecycle.
+Cancellation validates that every pending or active effect belongs to the same source entity and
+lifecycle before mutation. Accepted cancellation:
 
-Accepted cancellation:
-
-- removes all listed not-yet-emitted projectiles and melee strikes;
+- removes listed future projectiles and melee strikes;
 - closes listed active melee/pounce windows;
-- prevents late projectile spawning;
+- prevents late spawning;
 - leaves already emitted projectiles intact;
-- treats exact cancellation replay as idempotent;
+- replays exactly;
 - rejects conflicting cancellation identity reuse.
 
-Retained Stage 1 enemy health authorities expose active/lifecycle state. A lethal transition makes the
-source non-current immediately, so the scheduler cannot emit later work. The generic production
-controller then consumes the schema-v2 lifecycle cancellation path on the next production simulation
-wake-up and closes pending/open windows.
+A terminal enemy immediately fails the shared lifecycle gate, suppressing later emissions. The generic
+production controller then consumes the schema-v2 lifecycle cancellation path to close pending/open work.
 
 ## Production catalog cutover
 
-The authoritative enemy catalog is now schema v2. The current live production definitions migrated are:
+The production enemy catalog is schema v2. The live production definitions migrated are:
 
 - `enemy.mobile-blaster-droid`;
 - `enemy.blaster-turret`.
 
-The remaining catalog fixtures were also converted so production does not maintain a mixed-schema
-catalog. Existing gameplay cadence is represented as explicit wind-up plus recovery timing.
-
-Stage 1 imports the schema-v2 catalog from a build-safe Resources projection and rejects any malformed,
-unsupported or non-v2 production catalog. Production schema-v2 attacks never translate back to the
-historical one-call attack effect path.
-
-The retained moving-droid and turret packages continue to own their accepted movement, health and
-presentation. Their historical projectile execution adapters are retired only after the new Run Session,
-catalog, scheduler and realizer composition has succeeded. They cannot spawn duplicate gameplay
-projectiles afterward.
+The build-safe Resources projection is validated fail closed. Retained moving-droid and turret packages
+continue owning health, movement and presentation. Their historical projectile adapters are retired only
+after the shared run and new attack composition succeed.
 
 ## Composition and teardown
 
-The integration is an additive partial of `Stage1PlayableLoopCompositionV1`; it does not add another
-bootstrap or edit `Stage1VisibleSliceController.cs`.
+The integration is additive to `Stage1PlayableLoopCompositionV1` and does not edit
+`Stage1VisibleSliceController.cs` or create a second bootstrap.
 
-Production composition uses typed references already owned by Stage 1:
-
-- selected account-backed `ProductionCharacterRuntimeGraphV1`;
-- existing Level 1 player runtime;
-- existing inventory weapon effect emitter;
-- existing room runtime;
-- existing mission-result authority;
-- retained moving-droid and turret health/movement/presentation surfaces.
-
-Teardown disposes emitted projectiles, closes melee/pounce windows, unregisters collision relays, clears
-policy history and removes scheduler/source references. Re-entry or restart rebuilds one fresh run-local
-integration and leaves no orphan scheduler or duplicate subscription.
-
-## Adding future content
-
-A future burst, shotgun, scatter, rocket, contact or pounce enemy primarily requires:
-
-1. a schema-v2 enemy attack definition;
-2. a registered projectile presentation profile when applicable;
-3. a typed source/target presentation binding;
-4. a pounce motion port only when the definition authors a lunge;
-5. focused content and runtime tests.
-
-Shared scheduler, projectile, melee, policy and player-damage classes do not branch on enemy name,
-attack name, room, weapon name or prefab hierarchy.
+Shared-run teardown first disposes enemy physical effects and scheduler bindings, then releases the one
+Stage 1 aggregate reference. Re-entry or lifecycle replacement composes one fresh shared graph and one
+set of feature consumers.
 
 ## Verification coverage
 
 Focused EditMode coverage includes:
 
-- atomic sequence preflight and dispatch replay/conflict;
-- deterministic burst/scatter ordering under variable tick intervals;
-- lifecycle cancellation and active melee-window bookkeeping;
-- fail-once projectile/melee realization retaining pending work;
-- fail-once active-window cancellation retaining scheduler state;
-- applied hit replay and conflicting hit identity reuse;
-- friendly-fire and stale-lifecycle rejected replay remaining rejected;
-- transient target-context and damage-authority retries;
-- authored melee hit limits and player death exactly once.
+- atomic dispatch and exact/conflicting replay;
+- deterministic burst/scatter ordering;
+- fail-once realization and cancellation retry;
+- lifecycle cancellation and melee-window bookkeeping;
+- applied and rejected hit replay semantics;
+- transient context/damage retries;
+- authored melee hit limits and one canonical player death;
+- an architecture guard proving the enemy partial contains no Run Session start, authority, runtime-port
+  factory or private tick, while the shared production host contains exactly one authority construction.
 
 ## Current limitations and verification boundary
 
-- Non-area physical projectile pierce is rejected because the retained `BoundedProjectile2D` path does
-  not support continuing after impact.
+- Non-area physical projectile pierce is rejected by the retained bounded-projectile path.
 - Persistent area fields are not implemented; instantaneous area payloads are supported.
-- The retained package wind-up animation may still run as presentation-only compatibility, but its old
-  projectile adapter is retired and cannot produce gameplay effects.
+- The retained package wind-up animation may remain presentation-only after historical projectile
+  execution is retired.
+- The current Stage 1 condition definition is explicit neutral baseline content; lifecycle, replay,
+  windows and status effects still use the real merged production authorities.
 - This connected environment has no Unity executable or C# compiler. Unity compilation, XML results and
-  PlayMode visual proof must be produced in a licensed Unity environment; none are claimed here.
+  PlayMode/manual proof are not claimed here.
