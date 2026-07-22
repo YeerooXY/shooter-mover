@@ -19,6 +19,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private bool initialColliderIsTrigger;
         private DestructiblePropDestroyedCollisionPolicy destroyedCollisionPolicy;
         private DestructiblePropAuthority authority;
+        private DestructiblePropTerminalProvenanceV1 terminalProvenance;
         private bool configured;
         private bool destructionNotificationPublished;
         private int destructionNotificationCount;
@@ -36,12 +37,15 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             ? null
             : authority.CurrentState;
         public Collider2D BlockingCollider => blockingCollider;
+        public DestructiblePropTerminalProvenanceV1 TerminalProvenance =>
+            terminalProvenance;
         public int DestructionNotificationCount => destructionNotificationCount;
         public DestructiblePropDestroyedCollisionPolicy DestroyedCollisionPolicy =>
             destroyedCollisionPolicy;
 
         /// <summary>
-        /// Compatibility overload retained for existing package consumers.
+        /// Compatibility overload retained for existing package consumers. Production terminal
+        /// reward routes must use the provenance overload and fail closed when it is absent.
         /// </summary>
         public void Configure(
             StableId configuredPropId,
@@ -50,16 +54,15 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             GameObject configuredPresentationRoot)
         {
             if (configuredPresentationRoot == null)
-            {
                 throw new ArgumentNullException(nameof(configuredPresentationRoot));
-            }
 
             Configure(
                 configuredPropId,
                 configuredMaximumHealth,
                 configuredBlockingCollider,
                 configuredPresentationRoot.GetComponentsInChildren<Renderer>(true),
-                DestructiblePropDestroyedCollisionPolicy.Disable);
+                DestructiblePropDestroyedCollisionPolicy.Disable,
+                null);
         }
 
         public void Configure(
@@ -69,22 +72,30 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             Renderer[] configuredPresentationRenderers,
             DestructiblePropDestroyedCollisionPolicy configuredDestroyedCollisionPolicy)
         {
+            Configure(
+                configuredPropId,
+                configuredMaximumHealth,
+                configuredBlockingCollider,
+                configuredPresentationRenderers,
+                configuredDestroyedCollisionPolicy,
+                null);
+        }
+
+        public void Configure(
+            StableId configuredPropId,
+            double configuredMaximumHealth,
+            Collider2D configuredBlockingCollider,
+            Renderer[] configuredPresentationRenderers,
+            DestructiblePropDestroyedCollisionPolicy configuredDestroyedCollisionPolicy,
+            DestructiblePropTerminalProvenanceV1 configuredTerminalProvenance)
+        {
             if (configured)
-            {
                 throw new InvalidOperationException(
                     "Destructible prop is already configured.");
-            }
-
             if (configuredPropId == null)
-            {
                 throw new ArgumentNullException(nameof(configuredPropId));
-            }
-
             if (configuredBlockingCollider == null)
-            {
                 throw new ArgumentNullException(nameof(configuredBlockingCollider));
-            }
-
             if (configuredPresentationRenderers == null
                 || configuredPresentationRenderers.Length == 0)
             {
@@ -92,7 +103,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     "At least one explicit presentation renderer is required.",
                     nameof(configuredPresentationRenderers));
             }
-
             if (!Enum.IsDefined(
                 typeof(DestructiblePropDestroyedCollisionPolicy),
                 configuredDestroyedCollisionPolicy))
@@ -112,7 +122,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                         "Presentation renderer references cannot contain null.",
                         nameof(configuredPresentationRenderers));
                 }
-
                 presentationRenderers[index] = renderer;
                 initialRendererEnabled[index] = renderer.enabled;
             }
@@ -124,6 +133,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             initialColliderEnabled = blockingCollider.enabled;
             initialColliderIsTrigger = blockingCollider.isTrigger;
             destroyedCollisionPolicy = configuredDestroyedCollisionPolicy;
+            terminalProvenance = configuredTerminalProvenance;
             destructionNotificationPublished = false;
             destructionNotificationCount = 0;
             configured = true;
@@ -159,11 +169,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
 
         public void Restart()
         {
-            if (!configured || authority == null)
-            {
-                return;
-            }
-
+            if (!configured || authority == null) return;
             authority.Restart();
             destructionNotificationPublished = false;
             destructionNotificationCount = 0;
@@ -194,10 +200,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             for (int index = 0; index < presentationRenderers.Length; index++)
             {
                 Renderer renderer = presentationRenderers[index];
-                if (renderer != null)
-                {
-                    renderer.enabled = false;
-                }
+                if (renderer != null) renderer.enabled = false;
             }
         }
 
@@ -216,26 +219,17 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             {
                 Renderer renderer = presentationRenderers[index];
                 if (renderer != null)
-                {
                     renderer.enabled = initialRendererEnabled[index];
-                }
             }
         }
 
         private void PublishDestroyed(DestructiblePropDestructionResult destruction)
         {
-            if (destructionNotificationPublished || destruction == null)
-            {
-                return;
-            }
-
+            if (destructionNotificationPublished || destruction == null) return;
             destructionNotificationPublished = true;
             destructionNotificationCount++;
             Action<DestructiblePropDestructionResult> handler = Destroyed;
-            if (handler == null)
-            {
-                return;
-            }
+            if (handler == null) return;
 
             foreach (Delegate subscriber in handler.GetInvocationList())
             {
@@ -253,11 +247,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private void PublishRestarted()
         {
             Action handler = Restarted;
-            if (handler == null)
-            {
-                return;
-            }
-
+            if (handler == null) return;
             foreach (Delegate subscriber in handler.GetInvocationList())
             {
                 try
