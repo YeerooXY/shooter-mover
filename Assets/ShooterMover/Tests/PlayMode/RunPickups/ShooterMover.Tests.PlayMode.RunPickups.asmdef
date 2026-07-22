@@ -2,10 +2,13 @@
   "name": "ShooterMover.Tests.PlayMode.RunPickups",
   "rootNamespace": "ShooterMover.Tests.PlayMode.RunPickups",
   "references": [
+    "ShooterMover.Application",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
+    "ShooterMover.TerminalDropBinding",
     "ShooterMover.RunPickups",
-    "ShooterMover.RunPickupUnity"
+    "ShooterMover.RunPickupUnity",
+    "ShooterMover.UnityAdapters"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
