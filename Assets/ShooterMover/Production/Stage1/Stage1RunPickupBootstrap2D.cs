@@ -54,6 +54,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 return run != null
                     && pickups != null
+                    && terminalDrops != null
                     && ReferenceEquals(run, ResolveSharedRunOrNull());
             }
         }
@@ -76,6 +77,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         internal ITerminalDropRunContextResolverV1 DropRunContext
         {
             get { return dropRunContext; }
+        }
+        internal TerminalDropBindingCompositionV1 TerminalDrops
+        {
+            get { return terminalDrops; }
         }
 
         [RuntimeInitializeOnLoadMethod(
@@ -262,12 +267,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
 
             EnemyCatalogV1 enemyCatalog;
             PropCatalogV1 propCatalog;
-            IRewardProfileResolverV1 rewardProfiles;
+            IRewardProfileResolverV1 legacyRewardProfiles;
             string contentDiagnostic;
             if (!stage1.TryResolveCanonicalTerminalDropContent(
                     out enemyCatalog,
                     out propCatalog,
-                    out rewardProfiles,
+                    out legacyRewardProfiles,
                     out contentDiagnostic))
             {
                 throw new InvalidOperationException(contentDiagnostic);
@@ -279,9 +284,13 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 propCatalog,
                 new Stage1MissingPropTerminalSourceContextResolverV1(),
                 dropRunContext,
-                rewardProfiles,
-                new RewardGenerationServiceV1(),
-                new PendingTerminalDropAdmissionAuthorityV1());
+                legacyRewardProfiles,
+                null,
+                new PendingTerminalDropAdmissionAuthorityV1(),
+                new ITerminalDropFactAdapterV1[]
+                {
+                    new Stage1CanonicalPropTerminalDropFactAdapterV1(),
+                });
 
             ConfigureCollector();
             observedLifecycleGeneration = run.LifecycleGeneration;
