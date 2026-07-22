@@ -89,21 +89,34 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 .ExportSnapshot()
                 .Player
                 .LifecycleGeneration;
-            bool current = sharedRunSession != null
-                && sharedRunSessionObservedStableId == runStableId
-                && sharedRunSessionObservedPlayerGeneration == playerGeneration
-                && sharedRunSession.RunStableId == runStableId
-                && sharedRunSession.LifecycleGeneration == playerGeneration
-                && sharedRunSession.LifecycleState
-                    == RunSessionLifecycleStateV1.Active;
-            if (current)
+            if (sharedRunSession == null)
             {
+                ComposeSharedRunSession(playerGeneration);
                 return;
             }
 
-            TeardownEnemyAttackPatterns();
-            TeardownSharedRunSession();
-            ComposeSharedRunSession(playerGeneration);
+            bool sameRun = sharedRunSessionObservedStableId == runStableId
+                && sharedRunSession.RunStableId == runStableId;
+            if (!sameRun)
+            {
+                TeardownEnemyAttackPatterns();
+                TeardownSharedRunSession();
+                ComposeSharedRunSession(playerGeneration);
+                return;
+            }
+            if (sharedRunSession.LifecycleState
+                != RunSessionLifecycleStateV1.Active)
+            {
+                throw new InvalidOperationException(
+                    "The shared Run Session ended before Stage 1 left the mission.");
+            }
+            if (playerGeneration != sharedRunSession.LifecycleGeneration)
+            {
+                throw new InvalidOperationException(
+                    "The player lifecycle advanced outside the authoritative shared Run Session.");
+            }
+
+            sharedRunSessionObservedPlayerGeneration = playerGeneration;
         }
 
         private void ComposeSharedRunSession(long playerGeneration)
@@ -205,6 +218,76 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             sharedRunSessionObservedStableId = runStableId;
             sharedRunSessionObservedPlayerGeneration = playerGeneration;
             sharedRunSessionFailed = false;
+        }
+
+        private RunSessionRestartResultV1 RestartSharedRunSession()
+        {
+            RunSessionAggregateV1 run;
+            if (!TryResolveSharedRunSession(out run))
+            {
+                throw new InvalidOperationException(
+                    "Stage 1 cannot restart without the shared production Run Session.");
+            }
+            if (run.LifecycleGeneration == long.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "The shared Run Session lifecycle generation overflowed.");
+            }
+
+            RunSessionAggregateV1 originalAggregate = run;
+            StableId originalRunStableId = run.RunStableId;
+            string originalFrozenInputFingerprint = run.FrozenInputs.Fingerprint;
+            long retiringGeneration = run.LifecycleGeneration;
+            long replacementGeneration = retiringGeneration + 1L;
+            var command = new RestartRunSessionCommandV1(
+                StableId.Create(
+                    "operation",
+                    "stage1-production-run-restart-g"
+                        + replacementGeneration.ToString(
+                            CultureInfo.InvariantCulture)),
+                originalRunStableId,
+                retiringGeneration,
+                replacementGeneration,
+                run.AuthoritativeTick,
+                RunRestartPolicyV1.FullTransientReset());
+
+            TeardownEnemyAttackPatterns();
+            RunSessionRestartResultV1 result = run.Restart(command);
+            if (result == null || !result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "The shared Run Session rejected restart: "
+                    + (result == null
+                        ? "result-null"
+                        : result.RejectionCode));
+            }
+            if (!ReferenceEquals(originalAggregate, sharedRunSession)
+                || sharedRunSession.RunStableId != originalRunStableId
+                || !string.Equals(
+                    sharedRunSession.FrozenInputs.Fingerprint,
+                    originalFrozenInputFingerprint,
+                    StringComparison.Ordinal)
+                || sharedRunSession.LifecycleGeneration
+                    != replacementGeneration)
+            {
+                throw new InvalidOperationException(
+                    "The shared Run Session restart replaced or corrupted mission identity.");
+            }
+
+            sharedRunSessionSimulationTick =
+                sharedRunSession.AuthoritativeTick;
+            sharedRunSessionObservedPlayerGeneration = replacementGeneration;
+            restartObserved = replacementGeneration;
+            rewardedEnemies.Clear();
+            participantStats.Clear();
+            pendingEnemyRewards.Clear();
+            preparedEffects.Clear();
+            preparedPools.Clear();
+            fireSequence = 0L;
+            enemyDamageOrder = 0L;
+            playerDeathProjected = false;
+            ProjectCurrentRoom(true);
+            return result;
         }
 
         private void AdvanceSharedRunSessionTime()
