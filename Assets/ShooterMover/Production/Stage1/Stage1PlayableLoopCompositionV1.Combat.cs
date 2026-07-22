@@ -10,6 +10,7 @@ using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Missions.Results;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Experience.EnemyRewards;
+using ShooterMover.Application.Runs.Session;
 using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Content.Definitions.Missions.Rooms;
@@ -87,24 +88,24 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            long before = controller.RestartGeneration;
-            controller.QuickRestart();
-            long after = controller.RestartGeneration;
-            if (after == before || after == restartObserved)
+            try
             {
-                return;
+                RunSessionRestartResultV1 result = RestartSharedRunSession();
+                if (result == null || !result.Succeeded)
+                {
+                    diagnostic = result == null
+                        ? "The shared Run Session returned no restart result."
+                        : result.RejectionCode;
+                }
             }
-
-            restartObserved = after;
-            effectEmitter.ClearEmittedEffects();
-            preparedEffects.Clear();
-            preparedPools.Clear();
-            rooms.Restart(StableId.Create(
-                "operation",
-                "demo-cutover-room-restart-g"
-                    + after.ToString(CultureInfo.InvariantCulture)));
-            BeginRun();
-            ProjectCurrentRoom(true);
+            catch (Exception exception)
+            {
+                diagnostic = "Shared Run Session restart failed: "
+                    + exception.GetType().Name
+                    + ": "
+                    + exception.Message;
+                Debug.LogException(exception, this);
+            }
         }
 
         private void HandleWeaponSelection()
