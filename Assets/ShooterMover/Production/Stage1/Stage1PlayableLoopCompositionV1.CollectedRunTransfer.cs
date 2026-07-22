@@ -187,7 +187,53 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return;
             }
 
-            RunSessionEndResultV1 acceptedEnd = sharedRun.End(endCommand);
+            CollectedRunRewardPreparedTransferV1 prepared = null;
+            CollectedRunRewardAtomicPlanV2 plan = null;
+            RunSessionEndResultV1 acceptedEnd =
+                sharedRun.EndWithDurableAcceptance(
+                    endCommand,
+                    candidateEnd =>
+                    {
+                        CollectedRunRewardPreparedTransferV1 candidatePrepared;
+                        CollectedRunRewardAtomicPlanV2 candidatePlan;
+                        string planDiagnostic;
+                        if (!CollectedRunRewardTransferPreparationFactoryV2
+                            .TryAcceptEndAndBuildPlan(
+                                candidateEnd,
+                                awaiting,
+                                graph,
+                                rewardApplication,
+                                out candidatePrepared,
+                                out candidatePlan,
+                                out planDiagnostic)
+                            || candidatePrepared == null
+                            || candidatePlan == null)
+                        {
+                            return RunSessionDurableAcceptanceResultV1
+                                .Rejected(
+                                    string.IsNullOrWhiteSpace(planDiagnostic)
+                                        ? "The immutable transfer plan could not be constructed before End acceptance."
+                                        : planDiagnostic);
+                        }
+
+                        CollectedRunRewardTransferPersistenceResultV1
+                            preparedSaved =
+                                persistence.PersistPreparedCustody(
+                                    candidatePrepared);
+                        if (preparedSaved == null
+                            || !preparedSaved.Succeeded)
+                        {
+                            return RunSessionDurableAcceptanceResultV1
+                                .Rejected(
+                                    preparedSaved == null
+                                        ? "The Prepared transfer custody save returned no result."
+                                        : preparedSaved.Diagnostic);
+                        }
+                        prepared = candidatePrepared;
+                        plan = candidatePlan;
+                        return RunSessionDurableAcceptanceResultV1
+                            .Accepted();
+                    });
             if (acceptedEnd == null
                 || !acceptedEnd.Succeeded
                 || acceptedEnd.Receipt == null
@@ -195,33 +241,18 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             {
                 RejectBeforeAcceptedEnd(
                     acceptedEnd == null
-                        ? "The Run Session End authority returned no result."
+                        ? "The Run Session durable End authority returned no result."
                         : acceptedEnd.RejectionCode);
                 return;
             }
 
-            CollectedRunRewardPreparedTransferV1 prepared;
-            CollectedRunRewardAtomicPlanV2 plan;
-            string planDiagnostic;
-            if (!CollectedRunRewardTransferPreparationFactoryV2
-                .TryAcceptEndAndBuildPlan(
-                    acceptedEnd,
-                    awaiting,
-                    graph,
-                    rewardApplication,
-                    out prepared,
-                    out plan,
-                    out planDiagnostic)
-                || prepared == null
-                || plan == null)
+            if (prepared == null || plan == null)
             {
                 ProductionCollectedRunRewardResultsBridge.Clear();
                 ProductionCollectedRunRewardResultsBridge
                     .PublishPreparationFailure(
                         awaiting,
-                        string.IsNullOrWhiteSpace(planDiagnostic)
-                            ? "The accepted run could not construct its immutable transfer plan."
-                            : planDiagnostic);
+                        "Durable End succeeded without the exact Prepared transfer plan.");
                 ConfigureTransferOverlay();
                 QueueAcceptedResults(
                     acceptedEnd.Receipt.MissionResult,
