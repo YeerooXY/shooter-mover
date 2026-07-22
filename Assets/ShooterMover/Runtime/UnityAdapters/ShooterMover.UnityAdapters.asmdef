@@ -6,6 +6,7 @@
     "ShooterMover.Contracts",
     "ShooterMover.Application",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
     "ShooterMover.TerminalDropBinding",
     "ShooterMover.RunPickups",
