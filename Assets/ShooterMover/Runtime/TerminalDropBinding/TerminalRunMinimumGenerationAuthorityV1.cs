@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
@@ -8,9 +9,8 @@ namespace ShooterMover.TerminalDropBinding
 {
     /// <summary>
     /// Mission-completion authority for the configured minimum strongbox count. It
-    /// shares the live participant roster, run environment and pacing service with
-    /// terminal drops, but creates a distinct immutable completion source rather than
-    /// pretending that an enemy or prop dropped the fallback box.
+    /// shares the live participant roster, run environment, pacing state and personal
+    /// delivery outbox with terminal drops.
     /// </summary>
     public sealed class TerminalRunMinimumGenerationAuthorityV1
     {
@@ -24,13 +24,15 @@ namespace ShooterMover.TerminalDropBinding
         private readonly ITerminalRewardEnvironmentResolverV1 environments;
         private readonly RewardProfileResolverV1 profileResolver;
         private readonly PersonalRewardGenerationServiceV1 generation;
+        private readonly IPersonalRewardDeliveryOutboxV1 deliveryOutbox;
 
         public TerminalRunMinimumGenerationAuthorityV1(
             ITerminalDropRunContextResolverV1 runContexts,
             ITerminalRewardParticipantResolverV1 participants,
             ITerminalRewardEnvironmentResolverV1 environments,
             RewardProfileResolverV1 profileResolver,
-            PersonalRewardGenerationServiceV1 generation)
+            PersonalRewardGenerationServiceV1 generation,
+            IPersonalRewardDeliveryOutboxV1 deliveryOutbox = null)
         {
             this.runContexts = runContexts
                 ?? throw new ArgumentNullException(nameof(runContexts));
@@ -42,6 +44,7 @@ namespace ShooterMover.TerminalDropBinding
                 ?? throw new ArgumentNullException(nameof(profileResolver));
             this.generation = generation
                 ?? throw new ArgumentNullException(nameof(generation));
+            this.deliveryOutbox = deliveryOutbox;
         }
 
         public TerminalPersonalRewardBatchV1 Generate(
@@ -81,18 +84,20 @@ namespace ShooterMover.TerminalDropBinding
                         : diagnostic);
             }
 
+            string generationText = runLifecycleGeneration.ToString(
+                CultureInfo.InvariantCulture);
             StableId terminalEventId =
                 RewardGenerationFingerprintV1.DeriveStableId(
                     "runminimumterminal",
                     runStableId.ToString(),
-                    runLifecycleGeneration.ToString(),
+                    generationText,
                     placementContext.RoomStableId.ToString(),
                     placementContext.PlacementStableId.ToString());
             StableId sourceEntityId =
                 RewardGenerationFingerprintV1.DeriveStableId(
                     "runminimumsource",
                     runStableId.ToString(),
-                    runLifecycleGeneration.ToString());
+                    generationText);
             string sourceContextFingerprint = TerminalDropCanonicalV1.Hash(
                 runContext.Fingerprint
                 + "|"
@@ -219,6 +224,25 @@ namespace ShooterMover.TerminalDropBinding
                     "run-minimum-no-eligible-participants");
             }
 
+            if (deliveryOutbox != null)
+            {
+                for (int index = 0; index < personalResults.Count; index++)
+                {
+                    PersonalRewardDeliveryEnvelopeV1 envelope;
+                    if (!deliveryOutbox.TryEnqueue(
+                            personalResults[index],
+                            out envelope,
+                            out diagnostic))
+                    {
+                        return Reject(
+                            source,
+                            string.IsNullOrWhiteSpace(diagnostic)
+                                ? "run-minimum-outbox-rejected"
+                                : diagnostic);
+                    }
+                }
+            }
+
             var results = new List<GeneratedTerminalDropResultV1>(
                 personalResults.Count);
             bool anyRewards = false;
@@ -229,7 +253,7 @@ namespace ShooterMover.TerminalDropBinding
                         source,
                         personalResults[index]);
                 results.Add(adapted);
-                anyRewards |= adapted.Rewards.Count > 0;
+                anyRewards |= adapted.GeneratedRewards.Count > 0;
             }
             return new TerminalPersonalRewardBatchV1(
                 anyRewards
