@@ -173,6 +173,39 @@ namespace ShooterMover.UnityAdapters.Enemies
             Func<long> lifecycleGenerationExporter,
             Func<bool> activeExporter,
             IEnemyAttackPatternPounceMotionV1 pounceMotion = null)
+            : this(
+                sourceEntityStableId,
+                sourceRunParticipantStableId,
+                factionStableId,
+                null,
+                null,
+                null,
+                1,
+                sourceRoot,
+                sourceOwnerColliders,
+                targetBindings,
+                projectilePrefabs,
+                lifecycleGenerationExporter,
+                activeExporter,
+                pounceMotion)
+        {
+        }
+
+        public EnemyAttackPatternUnitySourceBindingV1(
+            StableId sourceEntityStableId,
+            StableId sourceRunParticipantStableId,
+            StableId factionStableId,
+            StableId roomRuntimeInstanceStableId,
+            StableId roomStableId,
+            StableId placementStableId,
+            int sourceLevel,
+            GameObject sourceRoot,
+            IEnumerable<Collider2D> sourceOwnerColliders,
+            IEnumerable<EnemyAttackPatternTargetBindingV1> targetBindings,
+            IEnemyAttackPatternProjectilePrefabResolverV1 projectilePrefabs,
+            Func<long> lifecycleGenerationExporter,
+            Func<bool> activeExporter,
+            IEnemyAttackPatternPounceMotionV1 pounceMotion = null)
         {
             SourceEntityStableId = sourceEntityStableId
                 ?? throw new ArgumentNullException(nameof(sourceEntityStableId));
@@ -181,6 +214,12 @@ namespace ShooterMover.UnityAdapters.Enemies
                     nameof(sourceRunParticipantStableId));
             FactionStableId = factionStableId
                 ?? throw new ArgumentNullException(nameof(factionStableId));
+            RoomRuntimeInstanceStableId = roomRuntimeInstanceStableId;
+            RoomStableId = roomStableId;
+            PlacementStableId = placementStableId;
+            if (sourceLevel < 1)
+                throw new ArgumentOutOfRangeException(nameof(sourceLevel));
+            SourceLevel = sourceLevel;
             SourceRoot = sourceRoot
                 ?? throw new ArgumentNullException(nameof(sourceRoot));
             ProjectilePrefabs = projectilePrefabs
@@ -202,6 +241,19 @@ namespace ShooterMover.UnityAdapters.Enemies
         public StableId SourceEntityStableId { get; }
         public StableId SourceRunParticipantStableId { get; }
         public StableId FactionStableId { get; }
+        public StableId RoomRuntimeInstanceStableId { get; }
+        public StableId RoomStableId { get; }
+        public StableId PlacementStableId { get; }
+        public int SourceLevel { get; }
+        public bool HasCanonicalPlacementIdentity
+        {
+            get
+            {
+                return RoomRuntimeInstanceStableId != null
+                    && RoomStableId != null
+                    && PlacementStableId != null;
+            }
+        }
         public GameObject SourceRoot { get; }
         public IReadOnlyList<Collider2D> OwnerColliders
         {

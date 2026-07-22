@@ -10,7 +10,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         public void Stage1EnemyPatterns_ConsumeTheSingleSharedRunSession()
         {
             string projectRoot = Path.GetFullPath(
-                Path.Combine(Application.dataPath, ".."));
+                Path.Combine(UnityEngine.Application.dataPath, ".."));
             string production = Path.Combine(
                 projectRoot,
                 "Assets/ShooterMover/Production/Stage1");

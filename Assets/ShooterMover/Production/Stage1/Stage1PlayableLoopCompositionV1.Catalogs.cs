@@ -126,15 +126,19 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private sealed class EnemyBinding
         {
             public EnemyBinding(
+                Transform sourceTransform,
                 IEnemyActor2DAuthority authority,
                 StableId definitionStableId,
                 StableId roomInstanceStableId)
             {
+                SourceTransform = sourceTransform
+                    ?? throw new ArgumentNullException(nameof(sourceTransform));
                 Authority = authority;
                 DefinitionStableId = definitionStableId;
                 RoomInstanceStableId = roomInstanceStableId;
             }
 
+            public Transform SourceTransform { get; }
             public IEnemyActor2DAuthority Authority { get; }
             public StableId DefinitionStableId { get; }
             public StableId RoomInstanceStableId { get; }
@@ -145,16 +149,28 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             public PendingEnemyReward(
                 StableId participantStableId,
                 StableId enemyDefinitionStableId,
-                EnemyDestroyedNotification destruction)
+                EnemyDestroyedNotification destruction,
+                Vector2 terminalPosition,
+                string positionFingerprint)
             {
                 ParticipantStableId = participantStableId;
                 EnemyDefinitionStableId = enemyDefinitionStableId;
                 Destruction = destruction;
+                TerminalPosition = terminalPosition;
+                if (string.IsNullOrWhiteSpace(positionFingerprint))
+                {
+                    throw new ArgumentException(
+                        "Enemy terminal position fingerprint is required.",
+                        nameof(positionFingerprint));
+                }
+                PositionFingerprint = positionFingerprint.Trim();
             }
 
             public StableId ParticipantStableId { get; }
             public StableId EnemyDefinitionStableId { get; }
             public EnemyDestroyedNotification Destruction { get; }
+            public Vector2 TerminalPosition { get; }
+            public string PositionFingerprint { get; }
         }
 
         private sealed class ParticipantRunStats

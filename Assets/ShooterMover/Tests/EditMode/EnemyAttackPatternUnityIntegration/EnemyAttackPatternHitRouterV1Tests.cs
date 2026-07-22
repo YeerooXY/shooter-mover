@@ -5,6 +5,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.GameplayEntities;
+using ShooterMover.GameplayEntities.Enemies;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Players;
 

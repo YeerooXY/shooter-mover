@@ -442,11 +442,22 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             stats.Kills++;
 
+            Vector2 terminalPosition = target.SourceTransform.position;
+            string positionFingerprint = Stage1ProductionFingerprintV1.Hash(
+                "enemy-terminal-position-v1|"
+                + destroyed.EventId
+                + "|"
+                + terminalPosition.x.ToString("R", CultureInfo.InvariantCulture)
+                + "|"
+                + terminalPosition.y.ToString("R", CultureInfo.InvariantCulture));
+
             pendingEnemyRewards.Add(
                 new PendingEnemyReward(
                     participantId,
                     target.DefinitionStableId,
-                    destroyed));
+                    destroyed,
+                    terminalPosition,
+                    positionFingerprint));
         }
 
         private bool TryResolveEnemy(
