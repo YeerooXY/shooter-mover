@@ -38,14 +38,7 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
                 equipmentDefinitionId,
                 11,
                 Id("equipment-quality.common"),
-                new[]
-                {
-                    AugmentInstance.Create(
-                        Id("augment-instance.durable-replay"),
-                        Id("augment-definition.damage"),
-                        2,
-                        8),
-                });
+                Array.Empty<AugmentInstance>());
             StableId strongboxInstanceId =
                 Id("strongbox-instance.durable-replay");
             StableId strongboxTierId =
