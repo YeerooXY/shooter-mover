@@ -68,10 +68,6 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         public string DefinitionFingerprint { get; }
     }
 
-    /// <summary>
-    /// Canonical Stage 1 terminal-drop content. Pickup production consumes this provider; it
-    /// does not reconstruct enemy/prop definitions or reward profiles.
-    /// </summary>
     internal static class Stage1ProductionTerminalDropContentV1
     {
         internal static readonly StableId CrateDefinitionStableId =
@@ -250,6 +246,44 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
         }
 
+        internal bool TryResolveTerminalParticipant(
+            StableId actorStableId,
+            out StableId participantStableId)
+        {
+            participantStableId = null;
+            if (actorStableId == null) return false;
+
+            RunSessionAggregateV1 run;
+            if (TryResolveSharedRunSession(out run) && run != null)
+            {
+                try
+                {
+                    RunPlayerRuntimeSnapshotV1 player =
+                        run.RuntimePorts.Player.ExportSnapshot();
+                    if (player != null
+                        && player.ActorInstanceStableId == actorStableId)
+                    {
+                        participantStableId = player.ParticipantStableId;
+                        return participantStableId != null;
+                    }
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+
+            EnemyAttackPatternUnitySourceBindingV1 enemySource;
+            if (enemyPatternSources != null
+                && enemyPatternSources.TryGet(actorStableId, out enemySource)
+                && enemySource != null)
+            {
+                participantStableId = enemySource.SourceRunParticipantStableId;
+                return participantStableId != null;
+            }
+            return false;
+        }
+
         internal bool TryExportCanonicalEnemyTerminalFacts(
             out IReadOnlyList<Stage1CanonicalEnemyTerminalFactV1> facts,
             out string diagnostic)
@@ -284,8 +318,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             for (int index = 0; index < pendingEnemyRewards.Count; index++)
             {
                 PendingEnemyReward pending = pendingEnemyRewards[index];
-                if (pending == null || pending.Destruction == null)
-                    continue;
+                if (pending == null || pending.Destruction == null) continue;
 
                 EnemyDestroyedNotification notification = pending.Destruction;
                 EnemyAttackPatternUnitySourceBindingV1 liveSource;
@@ -451,8 +484,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             placementStableId = null;
             diagnostic = string.Empty;
             StableId resolvedPlacement = null;
-            foreach (KeyValuePair<StableId, ShooterMover.UnityAdapters.Enemies.IEnemyActor2DAuthority>
-                pair in projectedRoomEnemies)
+            foreach (KeyValuePair<StableId, IEnemyActor2DAuthority> pair in
+                projectedRoomEnemies)
             {
                 EnemyActorState state;
                 if (pair.Value != null
