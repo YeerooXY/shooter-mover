@@ -130,7 +130,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             body.bodyType = RigidbodyType2D.Dynamic;
             body.gravityScale = 0f;
             body.freezeRotation = true;
-            body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            body.collisionDetectionMode = Rigidbody2D.CollisionDetectionMode2D.Continuous;
             body.simulated = false;
             CircleCollider2D collider =
                 projectileObject.AddComponent<CircleCollider2D>();
@@ -274,9 +274,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "xp.enemy-light",
                     "xp.enemy-turret"),
                 Ids(
-                    "drop.enemy-common",
-                    "drop.enemy-none",
-                    "drop.enemy-turret"));
+                    "drop-source.small-enemy",
+                    "drop-source.normal-enemy",
+                    "drop-source.large-enemy",
+                    "drop-source.boss-enemy",
+                    "drop-source.extra-boss-enemy",
+                    "drop-source.explicit-no-drop"));
         }
 
         private static EnemyAttackCapabilityRegistrationV1
