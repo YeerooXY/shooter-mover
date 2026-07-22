@@ -76,6 +76,28 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             return true;
         }
 
+        public void Configure(
+            RewardGrantKindV1 kind,
+            StableId contentId,
+            GameObject prefab,
+            Sprite sprite,
+            Vector3 scale,
+            float radius,
+            string displayLabel)
+        {
+            rewardKind = kind;
+            contentStableId = contentId == null ? string.Empty : contentId.ToString();
+            this.prefab = prefab;
+            this.sprite = sprite;
+            localScale = scale;
+            triggerRadius = radius;
+            label = displayLabel;
+
+            string diagnostic;
+            if (!IsUsable(out diagnostic))
+                throw new ArgumentException(diagnostic);
+        }
+
         public void ConfigureForTests(
             RewardGrantKindV1 kind,
             string contentId,
@@ -85,13 +107,13 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             float radius,
             string displayLabel)
         {
-            rewardKind = kind;
-            contentStableId = contentId;
-            this.prefab = prefab;
-            this.sprite = sprite;
-            localScale = scale;
-            triggerRadius = radius;
-            label = displayLabel;
+            StableId parsed = null;
+            if (!string.IsNullOrWhiteSpace(contentId)
+                && !StableId.TryParse(contentId.Trim(), out parsed))
+            {
+                throw new ArgumentException("Pickup presentation content StableId is invalid.");
+            }
+            Configure(kind, parsed, prefab, sprite, scale, radius, displayLabel);
         }
     }
 
@@ -146,12 +168,18 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             return true;
         }
 
-        public void ConfigureForTests(
+        public void Configure(
             IEnumerable<RunPickupPresentationEntryV1> configuredEntries)
         {
             entries = configuredEntries == null
                 ? new RunPickupPresentationEntryV1[0]
                 : new List<RunPickupPresentationEntryV1>(configuredEntries).ToArray();
+        }
+
+        public void ConfigureForTests(
+            IEnumerable<RunPickupPresentationEntryV1> configuredEntries)
+        {
+            Configure(configuredEntries);
         }
     }
 }
