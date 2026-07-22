@@ -19,7 +19,20 @@ namespace ShooterMover.RunPickups
 
             lock (gate)
             {
-                if (command.RunStableId != runSession.RunStableId)
+                RunPickupRunSessionContextV1 sessionContext;
+                string sessionDiagnostic;
+                if (!TryReadRunSessionContext(
+                    out sessionContext,
+                    out sessionDiagnostic))
+                {
+                    return RejectedCollection(
+                        RunPickupCollectionStatusV1.Rejected,
+                        command,
+                        null,
+                        sessionDiagnostic);
+                }
+
+                if (command.RunStableId != sessionContext.RunStableId)
                 {
                     return RejectedCollection(
                         RunPickupCollectionStatusV1.WrongRun,
@@ -27,13 +40,15 @@ namespace ShooterMover.RunPickups
                         null,
                         "run-pickup-collection-wrong-run");
                 }
-                if (command.RunLifecycleGeneration != runSession.LifecycleGeneration)
+                if (command.RunLifecycleGeneration
+                    != sessionContext.LifecycleGeneration)
                 {
                     return RejectedCollection(
                         RunPickupCollectionStatusV1.StaleLifecycle,
                         command,
                         null,
-                        command.RunLifecycleGeneration < runSession.LifecycleGeneration
+                        command.RunLifecycleGeneration
+                            < sessionContext.LifecycleGeneration
                             ? "run-pickup-collection-stale-generation"
                             : "run-pickup-collection-future-generation");
                 }
@@ -62,7 +77,7 @@ namespace ShooterMover.RunPickups
                         "run-pickup-collection-operation-conflict");
                 }
 
-                if (!runSession.IsActive)
+                if (!sessionContext.IsActive)
                 {
                     return RejectedCollection(
                         RunPickupCollectionStatusV1.Rejected,
@@ -73,7 +88,9 @@ namespace ShooterMover.RunPickups
 
                 RunPickupSnapshotV1 pickup;
                 if (!byPickup.TryGetValue(command.PickupStableId, out pickup)
-                    || !IsCurrentLifecycle(pickup))
+                    || pickup.Batch.RunStableId != sessionContext.RunStableId
+                    || pickup.Batch.RunLifecycleGeneration
+                        != sessionContext.LifecycleGeneration)
                 {
                     return RejectedCollection(
                         RunPickupCollectionStatusV1.PickupUnavailable,
@@ -93,9 +110,9 @@ namespace ShooterMover.RunPickups
                 if (command.CollectorEntityStableId == null
                     || command.CollectorParticipantStableId == null
                     || command.CollectorEntityStableId
-                        != runSession.PlayerActorStableId
+                        != sessionContext.PlayerActorStableId
                     || command.CollectorParticipantStableId
-                        != runSession.PlayerParticipantStableId)
+                        != sessionContext.PlayerParticipantStableId)
                 {
                     return RejectedCollection(
                         RunPickupCollectionStatusV1.UnauthorizedCollector,
@@ -124,8 +141,8 @@ namespace ShooterMover.RunPickups
                         "run-pickup-collection-not-available:" + pickup.State);
                 }
 
-                long nextSequence = checked(collectionSequence + 1L);
-                long tick = runSession.AuthoritativeTick;
+                long nextSequence = sessionContext.NextCollectionOrder;
+                long tick = sessionContext.AuthoritativeTick;
                 var collectionFact = new RunPickupCollectionFactV1(
                     pickup,
                     command,
@@ -143,7 +160,10 @@ namespace ShooterMover.RunPickups
                         RunPickupCollectionStatusV1.Rejected,
                         command,
                         pickup,
-                        "run-pickup-session-record-exception:" + exception.Message);
+                        "run-pickup-session-record-exception:"
+                        + exception.GetType().Name
+                        + ":"
+                        + exception.Message);
                 }
 
                 if (sessionResult == null || !sessionResult.IsAccepted)
@@ -164,7 +184,6 @@ namespace ShooterMover.RunPickups
                     nextSequence,
                     tick);
                 byPickup[command.PickupStableId] = collected;
-                collectionSequence = nextSequence;
 
                 var accepted = new RunPickupCollectionResultV1(
                     RunPickupCollectionStatusV1.Collected,
