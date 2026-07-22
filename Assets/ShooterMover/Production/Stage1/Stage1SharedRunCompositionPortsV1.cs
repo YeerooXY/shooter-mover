@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using ShooterMover.Application.Modifiers.StatusEffects;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.ConditionRuntime;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Modifiers;
+using ShooterMover.Domain.Modifiers.StatusEffects;
 using ShooterMover.RunConditionIntegration;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using ShooterMover.UnityAdapters.Production.Level1;
@@ -19,19 +22,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
     internal sealed class Stage1ProductionConditionDefinitionProviderV1 :
         IRunConditionDefinitionProviderV1
     {
+        private const string ConditionId =
+            "condition.stage1-baseline-enemy-observation";
+        private const string EffectId =
+            "status-effect.stage1-baseline-enemy-observation";
+        private const string ContentVersion = "1.0.0";
+
         private static readonly ConditionEffectRuntimeDefinitionV1 Definition =
-            new FactWindowEffectFixtureV1(
-                "condition.stage1-baseline-enemy-observation",
-                "status-effect.stage1-baseline-enemy-observation",
-                ConditionRuntimeFactTypeIdsV1.EnemyKilled,
-                int.MaxValue,
-                3600L,
-                1L,
-                1m)
-            .Build(
-                "condition-runtime.stage1-production",
-                "1.0.0",
-                "conditional-source.stage1-production");
+            BuildDefinition();
 
         public ConditionEffectRuntimeDefinitionV1 Resolve(
             StableId runStableId,
@@ -51,6 +49,41 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 throw new ArgumentNullException(nameof(participant));
             }
             return Definition;
+        }
+
+        private static ConditionEffectRuntimeDefinitionV1 BuildDefinition()
+        {
+            var condition = new FactWindowConditionDefinitionV1(
+                ConditionId,
+                ConditionRuntimeFactTypeIdsV1.EnemyKilled,
+                int.MaxValue,
+                3600L,
+                1L,
+                true);
+            var effect = new StatusEffectDefinitionV1(
+                EffectId,
+                ContentVersion,
+                1L,
+                1,
+                StatusEffectStackingPolicyV1.Ignore,
+                "dispel-category.conditional",
+                Array.Empty<RuntimeModifierDefinitionV1>());
+            var catalog = new StatusEffectCatalogV1(
+                "status-effect-catalog.stage1-production",
+                ContentVersion,
+                new[] { effect });
+            return new ConditionEffectRuntimeDefinitionV1(
+                "condition-runtime.stage1-production",
+                ContentVersion,
+                new[] { condition },
+                catalog,
+                new[]
+                {
+                    new FactWindowStatusEffectBindingV1(
+                        ConditionId,
+                        EffectId,
+                        "conditional-source.stage1-production"),
+                });
         }
     }
 
