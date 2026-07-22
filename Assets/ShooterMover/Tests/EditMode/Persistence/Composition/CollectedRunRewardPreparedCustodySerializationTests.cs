@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using NUnit.Framework;
+using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Strongboxes;
 
@@ -126,12 +127,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void IdenticalSnapshotsEncodeToByteIdenticalPayloads()
         {
-            var first = new CollectedRunRewardPreparedTransferSnapshotV1(
-                7L,
-                new[] { CreatePrepared("identical") });
-            var second = new CollectedRunRewardPreparedTransferSnapshotV1(
-                7L,
-                new[] { CreatePrepared("identical") });
+            CollectedRunRewardPreparedTransferSnapshotV1 first =
+                new CollectedRunRewardPreparedTransferSnapshotV1(
+                    7L,
+                    new[] { CreatePrepared("identical") });
+            CollectedRunRewardPreparedTransferSnapshotV1 second =
+                new CollectedRunRewardPreparedTransferSnapshotV1(
+                    7L,
+                    new[] { CreatePrepared("identical") });
 
             string firstPayload = Codec.Encode(first);
             string secondPayload = Codec.Encode(second);
@@ -192,31 +195,51 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         [Test]
-        public void EmbeddedStrongboxFingerprintCorruptionIsRejected()
+        public void ComponentFingerprintMismatchIsRejectedByAccountExpectation()
         {
-            CollectedRunRewardPreparedTransferV1 prepared =
+            CollectedRunRewardPreparedTransferV1 source =
                 CreatePrepared("fingerprint-mismatch");
-            string embedded = prepared.Strongboxes.Single()
-                .AlgorithmContentFingerprint;
-            byte[] payload = Convert.FromBase64String(
-                Codec.Encode(Snapshot(prepared)));
-            byte[] token = Encoding.UTF8.GetBytes(embedded);
-            int tokenIndex = IndexOf(payload, token);
-            Assert.That(tokenIndex, Is.GreaterThanOrEqualTo(0));
-            payload[tokenIndex + 7] = (byte)'z';
+            CollectedRunRewardPreparedTransferAuthorityV1 authority =
+                new CollectedRunRewardPreparedTransferAuthorityV1(
+                    Snapshot(source));
+            ISaveComponentAdapterV1 adapter =
+                CollectedRunRewardPreparedTransferSaveComponentV1
+                    .CreateAdapter(authority);
+            SaveComponentSnapshotV1 component = adapter.ExportComponent();
+            CharacterInstanceSnapshotV1[] slots =
+                new CharacterInstanceSnapshotV1[
+                    PlayerAccountSnapshotV1.CharacterSlotCount];
+            slots[0] = new CharacterInstanceSnapshotV1(
+                source.SelectedCharacterStableId,
+                Id("loadout-profile.striker"),
+                0,
+                "Fingerprint Pilot",
+                0L,
+                new[] { component });
+            PlayerAccountSnapshotV1 account = new PlayerAccountSnapshotV1(
+                Id("account.fingerprint-mismatch"),
+                0L,
+                slots,
+                null);
+            using (CollectedRunRewardPersistenceExpectationV1.Begin(
+                source.SelectedCharacterStableId,
+                new Dictionary<StableId, string>
+                {
+                    {
+                        component.ComponentStableId,
+                        Fingerprint("wrong-component-fingerprint")
+                    },
+                }))
+            {
+                SaveComponentValidationResultV1 validation =
+                    CollectedRunRewardPersistenceExpectationV1.Validate(account);
 
-            CollectedRunRewardPreparedTransferSnapshotV1 decoded;
-            string rejection;
-            bool accepted = Codec.TryDecode(
-                Convert.ToBase64String(payload),
-                out decoded,
-                out rejection);
-
-            Assert.That(accepted, Is.False);
-            Assert.That(decoded, Is.Null);
-            Assert.That(rejection,
-                Does.StartWith(
-                    "collected-run-prepared-transfer-payload-invalid:"));
+                Assert.That(validation.Succeeded, Is.False);
+                Assert.That(validation.RejectionCode,
+                    Is.EqualTo(
+                        "collected-run-persistence-expected-component-mismatch:"
+                        + component.ComponentStableId));
+            }
         }
 
         [Test]
@@ -226,12 +249,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 CreateAwaiting("canonical", false);
             CollectedRunRewardPreparedTransferV1 reversed =
                 CreateAwaiting("canonical", true);
-            var first = new CollectedRunRewardPreparedTransferSnapshotV1(
-                3L,
-                new[] { forward });
-            var second = new CollectedRunRewardPreparedTransferSnapshotV1(
-                3L,
-                new[] { reversed });
+            CollectedRunRewardPreparedTransferSnapshotV1 first =
+                new CollectedRunRewardPreparedTransferSnapshotV1(
+                    3L,
+                    new[] { forward });
+            CollectedRunRewardPreparedTransferSnapshotV1 second =
+                new CollectedRunRewardPreparedTransferSnapshotV1(
+                    3L,
+                    new[] { reversed });
 
             Assert.That(reversed.Fingerprint, Is.EqualTo(forward.Fingerprint));
             Assert.That(second.Fingerprint, Is.EqualTo(first.Fingerprint));
@@ -241,20 +266,22 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void SixCharacterSlotsRemainIsolatedAfterRoundTrip()
         {
-            var records = new List<CollectedRunRewardPreparedTransferV1>();
+            List<CollectedRunRewardPreparedTransferV1> records =
+                new List<CollectedRunRewardPreparedTransferV1>();
             for (int slot = 0; slot < 6; slot++)
             {
                 records.Add(CreatePrepared(
                     "slot-" + slot,
                     Id("character-instance.slot-" + slot)));
             }
-            var source = new CollectedRunRewardPreparedTransferSnapshotV1(
-                19L,
-                records.Reverse<CollectedRunRewardPreparedTransferV1>());
+            CollectedRunRewardPreparedTransferSnapshotV1 source =
+                new CollectedRunRewardPreparedTransferSnapshotV1(
+                    19L,
+                    records.Reverse<CollectedRunRewardPreparedTransferV1>());
 
             CollectedRunRewardPreparedTransferSnapshotV1 restored =
                 RoundTripSnapshot(source);
-            var authority =
+            CollectedRunRewardPreparedTransferAuthorityV1 authority =
                 new CollectedRunRewardPreparedTransferAuthorityV1(restored);
 
             Assert.That(restored.Records.Count, Is.EqualTo(6));
@@ -397,8 +424,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 1L,
                 2L,
                 suffix + "-strongbox");
-            var authorities = new Dictionary<string, string>(
-                StringComparer.Ordinal);
+            Dictionary<string, string> authorities =
+                new Dictionary<string, string>(StringComparer.Ordinal);
             if (reverse)
             {
                 authorities.Add("strongboxes", Fingerprint("boxes-" + suffix));
@@ -477,22 +504,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 collectionOrder,
                 100L + collectionOrder,
                 Fingerprint("collected-reward-" + suffix));
-        }
-
-        private static int IndexOf(byte[] source, byte[] token)
-        {
-            for (int index = 0; index <= source.Length - token.Length; index++)
-            {
-                bool match = true;
-                for (int offset = 0; offset < token.Length; offset++)
-                {
-                    if (source[index + offset] == token[offset]) continue;
-                    match = false;
-                    break;
-                }
-                if (match) return index;
-            }
-            return -1;
         }
 
         private static string Fingerprint(string material)
