@@ -25,15 +25,3 @@ MonoBehaviour:
     recommendedPartySize: 1
     difficultyLabel: STANDARD
     sortOrder: 10
-  - levelStableId: level.stage-2
-    displayName: LEVEL 2 — PROTOTYPE
-    description: Safe bounded placeholder. No combat, rewards, XP, or inventory changes.
-    scenePath: Assets/ShooterMover/Scenes/Prototypes/Level2Prototype.unity
-    availability: 2
-    releaseState: 2
-    routeKind: 2
-    recommendedPlayerLevel: 2
-    recommendedEquipmentLevel: 2
-    recommendedPartySize: 1
-    difficultyLabel: PROTOTYPE
-    sortOrder: 20
