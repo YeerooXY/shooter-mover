@@ -36,6 +36,8 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         Stage1GameModeStableId,
                         null)));
 
+            ConfigureDurableEquipmentPayloadRetention();
+
             var pacing = new ParticipantDropPacingAuthorityV1(
                 new RunSessionParticipantDropPacingStateStoreV1(run));
             var generation = new PersonalRewardGenerationServiceV1(pacing);
@@ -235,13 +237,15 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 return true;
             }
 
+            var collectedOperations = new HashSet<StableId>();
             IReadOnlyList<RunPickupSnapshotV1> available =
                 pickups.Authority.ExportAvailablePickups();
             for (int index = 0; index < available.Count; index++)
             {
                 RunPickupSnapshotV1 pickup = available[index];
-                if (!localOperations.Contains(
-                        pickup.Batch.DropOperationStableId))
+                StableId dropOperationStableId =
+                    pickup.Batch.DropOperationStableId;
+                if (!localOperations.Contains(dropOperationStableId))
                 {
                     continue;
                 }
@@ -270,6 +274,14 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                         : collected.Diagnostic;
                     return false;
                 }
+                collectedOperations.Add(dropOperationStableId);
+            }
+
+            if (collectedOperations.Count != localOperations.Count)
+            {
+                resultDiagnostic =
+                    "stage1-run-minimum-local-pickup-not-realized";
+                return false;
             }
             return true;
         }
@@ -283,6 +295,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         {
             batchDelivery = null;
             completedMinimumLifecycle = -1L;
+            ReleaseDurableEquipmentPayloadRetention();
         }
     }
 }
