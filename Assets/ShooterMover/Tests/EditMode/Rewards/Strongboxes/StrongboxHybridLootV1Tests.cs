@@ -95,35 +95,6 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
-        public void TwelveLevelTailHasPointZeroThreeThreeFivePercentRelativeAffinity()
-        {
-            StrongboxHybridLootPolicyV1 policy =
-                ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(4);
-            StrongboxTargetLevelRollV1 target =
-                policy.RollTargetLevel(30, 77UL, 1, 0UL);
-
-            double centered = policy.EvaluateDefinitionWeight(
-                target,
-                target.TargetLevel,
-                1.0,
-                StrongboxDefinitionRarityIdsV1.Common);
-            double tail = policy.EvaluateDefinitionWeight(
-                target,
-                target.TargetLevel + 12,
-                1.0,
-                StrongboxDefinitionRarityIdsV1.Common);
-            double ratio = tail / centered;
-
-            Assert.That(ratio, Is.EqualTo(0.000335).Within(0.0000001));
-            Assert.That(policy.EvaluateDefinitionWeight(
-                    target,
-                    target.TargetLevel + 13,
-                    1.0,
-                    StrongboxDefinitionRarityIdsV1.Common),
-                Is.EqualTo(0.0));
-        }
-
-        [Test]
         public void HybridInstanceLevelUsesEightyTwentyCenterThenNearbyVariation()
         {
             StrongboxHybridLootPolicyV1 policy =
@@ -160,23 +131,24 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
-        public void InstanceLevelRejectsDefinitionOutsideSelectionRadius()
+        public void InstanceLevelSupportsDefinitionsBeyondFormerRadius()
         {
             StrongboxHybridLootPolicyV1 policy =
                 ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(4);
             StrongboxTargetLevelRollV1 target =
                 policy.RollTargetLevel(30, 77UL, 1, 0UL);
 
-            Assert.Throws<ArgumentOutOfRangeException>(delegate
-            {
+            StrongboxInstanceLevelRollV1 result =
                 policy.RollInstanceLevel(
                     target,
-                    target.TargetLevel + 13,
+                    target.TargetLevel + 40,
                     StrongboxDefinitionRarityIdsV1.Common,
                     77UL,
                     1,
                     0UL);
-            });
+
+            Assert.That(result.DefinitionDistanceFromTarget, Is.EqualTo(40));
+            Assert.That(result.ItemLevel, Is.GreaterThan(0));
         }
 
         [Test]
@@ -280,29 +252,21 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
-        public void ArtifactRarityIsSupportedButGatedByTierProfile()
+        public void MythicArtifactRarityProfilesExpressTierBiasWithoutOwningEligibility()
         {
             StrongboxHybridLootPolicyV1 tierOne =
                 ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(1);
             StrongboxHybridLootPolicyV1 tierEleven =
                 ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(11);
-            StrongboxTargetLevelRollV1 oneTarget =
-                tierOne.RollTargetLevel(50, 1UL, 1, 0UL);
-            StrongboxTargetLevelRollV1 elevenTarget =
-                tierEleven.RollTargetLevel(50, 11UL, 1, 0UL);
 
-            Assert.That(tierOne.EvaluateDefinitionWeight(
-                    oneTarget,
-                    oneTarget.TargetLevel,
-                    1.0,
-                    StrongboxDefinitionRarityIdsV1.Artifact),
-                Is.EqualTo(0.0));
-            Assert.That(tierEleven.EvaluateDefinitionWeight(
-                    elevenTarget,
-                    elevenTarget.TargetLevel,
-                    1.0,
-                    StrongboxDefinitionRarityIdsV1.Artifact),
-                Is.GreaterThan(0.0));
+            Assert.That(
+                tierOne.ResolveDefinitionRaritySelectionMultiplierMilli(
+                    StrongboxDefinitionRarityIdsV1.MythicArtifact),
+                Is.EqualTo(0));
+            Assert.That(
+                tierEleven.ResolveDefinitionRaritySelectionMultiplierMilli(
+                    StrongboxDefinitionRarityIdsV1.MythicArtifact),
+                Is.GreaterThan(0));
         }
 
         [Test]
@@ -319,7 +283,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                     policy.RollAugmentSignature(
                         50,
                         55,
-                        StrongboxDefinitionRarityIdsV1.Artifact,
+                        StrongboxDefinitionRarityIdsV1.MythicArtifact,
                         3,
                         4,
                         0x1111UL,

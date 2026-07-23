@@ -9,6 +9,7 @@ using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Rewards.Application;
@@ -88,10 +89,9 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// <summary>
     /// Editor-only production integration runtime. It registers real tier definitions
     /// into one BOX authority and delegates equipment selection, item level and generated
-    /// augment signature to StrongboxHybridEquipmentGenerationResolverV1. The same RAP
-    /// equipment child used by production commits signatures only after holdings applies.
-    /// Payload preparation also shares the production signature rollback boundary.
-    /// No item is preselected and no simulator-only probability table exists.
+    /// augment signature to StrongboxHybridEquipmentGenerationResolverV1. Production and
+    /// the simulator receive the same canonical weapon/equipment projection rather than
+    /// independently constructing equipment candidates.
     /// </summary>
     public sealed class AuthoritativeStrongboxSimulatorRuntimeV1
     {
@@ -112,7 +112,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         private static readonly StableId GenerationPolicyId =
             StableId.Parse("generation-policy.authoritative-hybrid-simulator");
 
-        private readonly LootboxSimulatorRuntimeV1 contentRuntime;
+        private readonly IWeaponCatalogProjectionV1 contentProjection;
         private readonly MoneyWalletService money;
         private readonly ScrapWalletServiceV1 scrap;
         private readonly PlayerHoldingsService holdings;
@@ -126,12 +126,12 @@ namespace ShooterMover.Editor.BalanceSimulator
         private StrongboxOpeningServiceV1 opening;
 
         private AuthoritativeStrongboxSimulatorRuntimeV1(
-            LootboxSimulatorRuntimeV1 contentRuntime)
+            IWeaponCatalogProjectionV1 projection)
         {
-            this.contentRuntime = contentRuntime
-                ?? throw new ArgumentNullException(nameof(contentRuntime));
+            contentProjection = projection
+                ?? throw new ArgumentNullException(nameof(projection));
             var validator = new SimulatorEquipmentValidator(
-                contentRuntime.EquipmentCatalog);
+                projection.EquipmentCatalog);
             money = new MoneyWalletService();
             scrap = new ScrapWalletServiceV1(
                 ScrapAuthority,
@@ -152,11 +152,15 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         public WeaponCatalog WeaponCatalog
         {
-            get { return contentRuntime.WeaponCatalog; }
+            get { return contentProjection.WeaponCatalog; }
         }
         public EquipmentCatalog EquipmentCatalog
         {
-            get { return contentRuntime.EquipmentCatalog; }
+            get { return contentProjection.EquipmentCatalog; }
+        }
+        public string CatalogFingerprint
+        {
+            get { return contentProjection.Fingerprint; }
         }
         public GeneratedEquipmentAugmentSignatureAuthorityV1 AugmentSignatures
         {
@@ -176,16 +180,19 @@ namespace ShooterMover.Editor.BalanceSimulator
             out string diagnostic)
         {
             runtime = null;
-            LootboxSimulatorRuntimeV1 content;
-            if (!LootboxSimulatorRuntimeV1.TryCreate(
-                    weaponCatalogJson,
-                    out content,
+            CanonicalWeaponCatalogProjectionV1 projection;
+            if (!CanonicalWeaponCatalogProjectionV1.TryCreate(
+                    new StringWeaponCatalogSourceV1(
+                        "authoritative-strongbox-simulator",
+                        weaponCatalogJson),
+                    WeaponRarityNormalizationPolicyV1.CreateBaselineV1(),
+                    out projection,
                     out diagnostic))
             {
                 return false;
             }
 
-            runtime = new AuthoritativeStrongboxSimulatorRuntimeV1(content);
+            runtime = new AuthoritativeStrongboxSimulatorRuntimeV1(projection);
             diagnostic = string.Empty;
             return true;
         }

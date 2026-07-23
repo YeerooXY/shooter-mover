@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -21,6 +20,52 @@ namespace ShooterMover.Application.Weapons.Catalog
 
         public static WeaponCatalogImportResult Import(string json)
         {
+            return Import(
+                json,
+                WeaponRarityNormalizationPolicyV1.CreateBaselineV1());
+        }
+
+        public static WeaponCatalogImportResult Import(
+            string json,
+            IWeaponRarityNormalizationPolicyV1 rarityPolicy)
+        {
+            if (rarityPolicy == null)
+            {
+                return Failure(
+                    "$.rarity_normalization",
+                    "A rarity normalization policy is required.");
+            }
+
+            WeaponCatalogImportResult raw = ImportRaw(json);
+            if (!raw.IsSuccess)
+            {
+                return raw;
+            }
+
+            WeaponCatalog projected;
+            string diagnostic;
+            if (!WeaponCatalogRarityProjectorV1.TryProject(
+                    raw.Catalog,
+                    rarityPolicy,
+                    out projected,
+                    out diagnostic))
+            {
+                return new WeaponCatalogImportResult(
+                    null,
+                    new[]
+                    {
+                        new WeaponCatalogIssue(
+                            WeaponCatalogIssueCode.InvalidValue,
+                            "$.rarity_normalization",
+                            diagnostic),
+                    });
+            }
+
+            return new WeaponCatalogImportResult(projected, null);
+        }
+
+        public static WeaponCatalogImportResult ImportRaw(string json)
+        {
             if (string.IsNullOrWhiteSpace(json))
             {
                 return Failure("$", "JSON is required.");
@@ -29,7 +74,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             CatalogDto dto;
             try
             {
-                using (MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+                using (MemoryStream stream =
+                    new MemoryStream(Encoding.UTF8.GetBytes(json)))
                 {
                     dto = Serializer.ReadObject(stream) as CatalogDto;
                 }
@@ -43,7 +89,10 @@ namespace ShooterMover.Application.Weapons.Catalog
                     throw;
                 }
 
-                return Failure("$", "Malformed or incomplete weapon catalog JSON: " + exception.Message);
+                return Failure(
+                    "$",
+                    "Malformed or incomplete weapon catalog JSON: "
+                    + exception.Message);
             }
 
             if (dto == null)
@@ -55,21 +104,27 @@ namespace ShooterMover.Application.Weapons.Catalog
             {
                 WeaponCatalogRules rules = MapRules(dto.Rules);
                 WeaponCatalogInputs inputs = MapInputs(dto.Inputs);
-                Dictionary<string, WeaponArchetypeDefinition> archetypes = MapArchetypes(dto.Archetypes);
-                List<WeaponFamilyDefinition> families = MapFamilies(dto.Families);
-                List<WeaponDefinitionData> definitions = MapDefinitions(dto.Definitions);
+                Dictionary<string, WeaponArchetypeDefinition> archetypes =
+                    MapArchetypes(dto.Archetypes);
+                List<WeaponFamilyDefinition> families =
+                    MapFamilies(dto.Families);
+                List<WeaponDefinitionData> definitions =
+                    MapDefinitions(dto.Definitions);
 
-                WeaponCatalogValidationResult validation = WeaponCatalogValidator.Validate(
-                    dto.Version,
-                    dto.Status,
-                    rules,
-                    inputs,
-                    archetypes,
-                    families,
-                    definitions);
+                WeaponCatalogValidationResult validation =
+                    WeaponCatalogValidator.Validate(
+                        dto.Version,
+                        dto.Status,
+                        rules,
+                        inputs,
+                        archetypes,
+                        families,
+                        definitions);
                 if (!validation.IsValid)
                 {
-                    return new WeaponCatalogImportResult(null, validation.Issues);
+                    return new WeaponCatalogImportResult(
+                        null,
+                        validation.Issues);
                 }
 
                 return new WeaponCatalogImportResult(
@@ -89,18 +144,26 @@ namespace ShooterMover.Application.Weapons.Catalog
                     null,
                     new[]
                     {
-                        new WeaponCatalogIssue(exception.Code, exception.Path, exception.Message),
+                        new WeaponCatalogIssue(
+                            exception.Code,
+                            exception.Path,
+                            exception.Message),
                     });
             }
         }
 
-        private static WeaponCatalogImportResult Failure(string path, string detail)
+        private static WeaponCatalogImportResult Failure(
+            string path,
+            string detail)
         {
             return new WeaponCatalogImportResult(
                 null,
                 new[]
                 {
-                    new WeaponCatalogIssue(WeaponCatalogIssueCode.InvalidJson, path, detail),
+                    new WeaponCatalogIssue(
+                        WeaponCatalogIssueCode.InvalidJson,
+                        path,
+                        detail),
                 });
         }
 
@@ -110,7 +173,9 @@ namespace ShooterMover.Application.Weapons.Catalog
             return new WeaponCatalogRules(
                 dto.FixedStatsPerDefinition,
                 dto.OrdinaryMarkGap,
-                Require(dto.ApexPowerAnchors, "$.rules.apex_power_anchors"),
+                Require(
+                    dto.ApexPowerAnchors,
+                    "$.rules.apex_power_anchors"),
                 Require(dto.DamageTypes, "$.rules.damage_types"),
                 dto.MaxAugments,
                 dto.NoRecoil,
@@ -121,9 +186,11 @@ namespace ShooterMover.Application.Weapons.Catalog
         private static WeaponCatalogInputs MapInputs(InputsDto dto)
         {
             Require(dto, "$.inputs");
-            Dictionary<string, WeaponRarityInput> rarities =
-                new Dictionary<string, WeaponRarityInput>(StringComparer.Ordinal);
-            Dictionary<string, RarityDto> source = Require(dto.Rarities, "$.inputs.rarities");
+            var rarities =
+                new Dictionary<string, WeaponRarityInput>(
+                    StringComparer.Ordinal);
+            Dictionary<string, RarityDto> source =
+                Require(dto.Rarities, "$.inputs.rarities");
             foreach (KeyValuePair<string, RarityDto> pair in source)
             {
                 Require(pair.Value, "$.inputs.rarities." + pair.Key);
@@ -145,15 +212,17 @@ namespace ShooterMover.Application.Weapons.Catalog
                 rarities);
         }
 
-        private static Dictionary<string, WeaponArchetypeDefinition> MapArchetypes(
-            Dictionary<string, ArchetypeDto> source)
+        private static Dictionary<string, WeaponArchetypeDefinition>
+            MapArchetypes(Dictionary<string, ArchetypeDto> source)
         {
             source = Require(source, "$.archetypes");
-            Dictionary<string, WeaponArchetypeDefinition> result =
-                new Dictionary<string, WeaponArchetypeDefinition>(StringComparer.Ordinal);
+            var result =
+                new Dictionary<string, WeaponArchetypeDefinition>(
+                    StringComparer.Ordinal);
             foreach (KeyValuePair<string, ArchetypeDto> pair in source)
             {
-                ArchetypeDto dto = Require(pair.Value, "$.archetypes." + pair.Key);
+                ArchetypeDto dto =
+                    Require(pair.Value, "$.archetypes." + pair.Key);
                 result.Add(
                     pair.Key,
                     new WeaponArchetypeDefinition(
@@ -182,10 +251,11 @@ namespace ShooterMover.Application.Weapons.Catalog
             return result;
         }
 
-        private static List<WeaponFamilyDefinition> MapFamilies(List<FamilyDto> source)
+        private static List<WeaponFamilyDefinition> MapFamilies(
+            List<FamilyDto> source)
         {
             source = Require(source, "$.families");
-            List<WeaponFamilyDefinition> result = new List<WeaponFamilyDefinition>();
+            var result = new List<WeaponFamilyDefinition>();
             for (int index = 0; index < source.Count; index++)
             {
                 string path = "$.families[" + index + "]";
@@ -208,16 +278,22 @@ namespace ShooterMover.Application.Weapons.Catalog
                         dto.AcquisitionClass,
                         dto.PrimaryEffect,
                         dto.Notes,
-                        ParseAvailability(dto.Availability, path + ".Availability"),
-                        MapArtReferences(dto.SideProfileArtReference, dto.SideProfileArtReferences, path)));
+                        ParseAvailability(
+                            dto.Availability,
+                            path + ".Availability"),
+                        MapArtReferences(
+                            dto.SideProfileArtReference,
+                            dto.SideProfileArtReferences,
+                            path)));
             }
             return result;
         }
 
-        private static List<WeaponDefinitionData> MapDefinitions(List<DefinitionDto> source)
+        private static List<WeaponDefinitionData> MapDefinitions(
+            List<DefinitionDto> source)
         {
             source = Require(source, "$.definitions");
-            List<WeaponDefinitionData> result = new List<WeaponDefinitionData>();
+            var result = new List<WeaponDefinitionData>();
             for (int index = 0; index < source.Count; index++)
             {
                 string path = "$.definitions[" + index + "]";
@@ -241,7 +317,9 @@ namespace ShooterMover.Application.Weapons.Catalog
                         dto.EarlyTail,
                         dto.LateTail,
                         dto.AcquisitionClass,
-                        ParseYesNo(dto.TopBoxOnly, path + ".TopBoxOnly"),
+                        ParseYesNo(
+                            dto.TopBoxOnly,
+                            path + ".TopBoxOnly"),
                         dto.CraftingRoute,
                         dto.ArchetypeDpsFactor,
                         dto.PowerIndex,
@@ -270,8 +348,13 @@ namespace ShooterMover.Application.Weapons.Catalog
                         dto.HealingPerSecond,
                         dto.PrimaryEffect,
                         dto.Notes,
-                        ParseAvailability(dto.Availability, path + ".Availability"),
-                        MapArtReferences(dto.SideProfileArtReference, dto.SideProfileArtReferences, path)));
+                        ParseAvailability(
+                            dto.Availability,
+                            path + ".Availability"),
+                        MapArtReferences(
+                            dto.SideProfileArtReference,
+                            dto.SideProfileArtReferences,
+                            path)));
             }
             return result;
         }
@@ -286,7 +369,8 @@ namespace ShooterMover.Application.Weapons.Catalog
                 throw new CatalogMappingException(
                     WeaponCatalogIssueCode.InvalidArtReference,
                     path,
-                    "Use either SideProfileArtReference or SideProfileArtReferences, not both.");
+                    "Use either SideProfileArtReference or "
+                    + "SideProfileArtReferences, not both.");
             }
 
             if (!string.IsNullOrEmpty(single))
@@ -296,13 +380,19 @@ namespace ShooterMover.Application.Weapons.Catalog
             return multiple == null ? new string[0] : multiple;
         }
 
-        private static WeaponCatalogAvailability ParseAvailability(string value, string path)
+        private static WeaponCatalogAvailability ParseAvailability(
+            string value,
+            string path)
         {
-            if (string.IsNullOrEmpty(value) || string.Equals(value, "Live", StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(value)
+                || string.Equals(value, "Live", StringComparison.Ordinal))
             {
                 return WeaponCatalogAvailability.Live;
             }
-            if (string.Equals(value, "PreviewOnly", StringComparison.Ordinal))
+            if (string.Equals(
+                value,
+                "PreviewOnly",
+                StringComparison.Ordinal))
             {
                 return WeaponCatalogAvailability.PreviewOnly;
             }
@@ -330,7 +420,8 @@ namespace ShooterMover.Application.Weapons.Catalog
                 "TopBoxOnly must be the exact string 'Yes' or 'No'.");
         }
 
-        private static T Require<T>(T value, string path) where T : class
+        private static T Require<T>(T value, string path)
+            where T : class
         {
             if (value == null)
             {
@@ -341,6 +432,5 @@ namespace ShooterMover.Application.Weapons.Catalog
             }
             return value;
         }
-
     }
 }

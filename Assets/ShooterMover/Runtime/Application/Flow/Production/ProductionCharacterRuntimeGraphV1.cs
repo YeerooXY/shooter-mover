@@ -11,6 +11,7 @@ using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Scrap;
@@ -156,6 +157,7 @@ namespace ShooterMover.Application.Flow.Production
         private readonly PlayerExperienceCurveV1 experienceCurve;
         private readonly ProgressionContext progressionContext;
         private readonly RankedSkillCatalogV2 skillCatalog;
+        private readonly IWeaponCatalogProjectionV1 weaponCatalogProjection;
         private readonly Func<StableId, string> skillClassIdResolver;
         private readonly Func<ProductionCharacterRuntimeGraphV1,
             IEnumerable<ISaveComponentAdapterV1>> additionalAdapterFactory;
@@ -164,6 +166,7 @@ namespace ShooterMover.Application.Flow.Production
             PlayerExperienceCurveV1 experienceCurve,
             ProgressionContext progressionContext,
             RankedSkillCatalogV2 skillCatalog,
+            IWeaponCatalogProjectionV1 weaponCatalogProjection,
             Func<StableId, string> skillClassIdResolver = null,
             Func<ProductionCharacterRuntimeGraphV1,
                 IEnumerable<ISaveComponentAdapterV1>>
@@ -175,6 +178,9 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(progressionContext));
             this.skillCatalog = skillCatalog
                 ?? throw new ArgumentNullException(nameof(skillCatalog));
+            this.weaponCatalogProjection = weaponCatalogProjection
+                ?? throw new ArgumentNullException(
+                    nameof(weaponCatalogProjection));
             this.skillClassIdResolver = skillClassIdResolver
                 ?? ResolveCurrentSkillClassId;
             this.additionalAdapterFactory = additionalAdapterFactory;
@@ -277,6 +283,18 @@ namespace ShooterMover.Application.Flow.Production
                     IEnumerable<ISaveComponentAdapterV1>>
                         additionalAdapterFactory = null)
         {
+            return CreateVerticalSliceDefaults(
+                ResolveCompatibilityProjection(),
+                additionalAdapterFactory);
+        }
+
+        public static ProductionCharacterRuntimeGraphFactoryV1
+            CreateVerticalSliceDefaults(
+                IWeaponCatalogProjectionV1 weaponCatalogProjection,
+                Func<ProductionCharacterRuntimeGraphV1,
+                    IEnumerable<ISaveComponentAdapterV1>>
+                        additionalAdapterFactory = null)
+        {
             return new ProductionCharacterRuntimeGraphFactoryV1(
                 new PlayerExperienceCurveV1(
                     100L,
@@ -290,7 +308,26 @@ namespace ShooterMover.Application.Flow.Production
                     0,
                     new[] { StableId.Parse("progression-tag.campaign") }),
                 RankedSkillSampleCatalogV2.Create(),
+                weaponCatalogProjection,
                 additionalAdapterFactory: additionalAdapterFactory);
+        }
+
+        private static IWeaponCatalogProjectionV1
+            ResolveCompatibilityProjection()
+        {
+            CanonicalWeaponCatalogProjectionV1 composed;
+            if (ProductionStarterWeaponCatalogV1.TryGetCanonicalProjection(
+                    out composed))
+            {
+                return composed;
+            }
+#if UNITY_EDITOR
+            return CanonicalWeaponCatalogProjectionV1
+                .CreateEditorRepositoryBaseline();
+#else
+            return ProductionStarterWeaponCatalogV1
+                .BuildCanonicalProjection();
+#endif
         }
 
         private ProductionCharacterRuntimeGraphV1 CreateGraph(
@@ -301,7 +338,9 @@ namespace ShooterMover.Application.Flow.Production
             StableId scrapAuthorityId,
             StableId scrapCurrencyId)
         {
-            var loadout = new ProductionPlayerLoadoutRuntimeV1(route);
+            var loadout = new ProductionPlayerLoadoutRuntimeV1(
+                route,
+                weaponCatalogProjection);
             var experience = new PlayerExperienceAuthorityV1(
                 experienceCurve,
                 progressionContext);

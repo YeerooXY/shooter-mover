@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
@@ -12,12 +13,9 @@ using ShooterMover.Domain.Weapons.Catalog;
 namespace ShooterMover.Application.Rewards.Strongboxes
 {
     /// <summary>
-    /// Production BOX payload resolver for the hybrid policy. It selects one live
-    /// weapon definition around the tier-authored target level, rolls the concrete item
-    /// level and shared augment capacity/level, then creates an equipment instance with
-    /// an empty installed-augment collection. The generated augment metadata is staged
-    /// as immutable opening intent and is committed only by RAP after equipment applies.
-    /// Live opening and simulation share this exact resolver.
+    /// Production BOX payload resolver for the hybrid policy. It selects from the
+    /// canonical weapon/equipment catalogs, rolls item-level and augment-signature
+    /// metadata, and creates equipment with zero installed augments.
     /// </summary>
     public sealed class StrongboxHybridEquipmentGenerationResolverV1 :
         IStrongboxEquipmentPayloadResolverV1
@@ -28,7 +26,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 EquipmentDefinition equipment,
                 WeaponDefinitionData weapon,
                 StableId rarityId,
-                double weight)
+                ulong weight)
             {
                 Equipment = equipment;
                 Weapon = weapon;
@@ -39,23 +37,55 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             public EquipmentDefinition Equipment { get; }
             public WeaponDefinitionData Weapon { get; }
             public StableId RarityId { get; }
-            public double Weight { get; }
+            public ulong Weight { get; }
         }
 
         private static readonly StableId DefinitionSelectionPurposeId =
-            StableId.Parse("strongbox-rng.hybrid-definition-selection-v1");
-        private static readonly StableId QualitySelectionPurposeId =
-            StableId.Parse("strongbox-rng.hybrid-quality-selection-v1");
-
+            StableId.Parse(
+                "strongbox-rng.hybrid-definition-selection-v1");
         private readonly EquipmentCatalog equipmentCatalog;
         private readonly WeaponCatalog weaponCatalog;
+        private readonly StableId catalogDefinitionSelectionPurposeId;
         private readonly GeneratedEquipmentAugmentSignatureAuthorityV1
             augmentSignatures;
+        private readonly IWeaponDefinitionDropWeightPolicyV1
+            definitionDropWeightPolicy;
+        private readonly IWeaponDefinitionDropEligibilityPolicyV1
+            definitionDropEligibilityPolicy;
 
         public StrongboxHybridEquipmentGenerationResolverV1(
             EquipmentCatalog equipmentCatalog,
             WeaponCatalog weaponCatalog,
             GeneratedEquipmentAugmentSignatureAuthorityV1 augmentSignatures)
+            : this(
+                equipmentCatalog,
+                weaponCatalog,
+                augmentSignatures,
+                WeaponDefinitionDropWeightPolicyV1.CreateBaselineV1(),
+                WeaponDefinitionDropEligibilityPolicyV1.CreateBaselineV1())
+        {
+        }
+
+        public StrongboxHybridEquipmentGenerationResolverV1(
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            GeneratedEquipmentAugmentSignatureAuthorityV1 augmentSignatures,
+            IWeaponDefinitionDropWeightPolicyV1 dropWeightPolicy)
+            : this(
+                equipmentCatalog,
+                weaponCatalog,
+                augmentSignatures,
+                dropWeightPolicy,
+                WeaponDefinitionDropEligibilityPolicyV1.CreateBaselineV1())
+        {
+        }
+
+        public StrongboxHybridEquipmentGenerationResolverV1(
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            GeneratedEquipmentAugmentSignatureAuthorityV1 augmentSignatures,
+            IWeaponDefinitionDropWeightPolicyV1 dropWeightPolicy,
+            IWeaponDefinitionDropEligibilityPolicyV1 dropEligibilityPolicy)
         {
             this.equipmentCatalog = equipmentCatalog
                 ?? throw new ArgumentNullException(nameof(equipmentCatalog));
@@ -63,6 +93,17 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 ?? throw new ArgumentNullException(nameof(weaponCatalog));
             this.augmentSignatures = augmentSignatures
                 ?? throw new ArgumentNullException(nameof(augmentSignatures));
+            definitionDropWeightPolicy = dropWeightPolicy
+                ?? throw new ArgumentNullException(nameof(dropWeightPolicy));
+            definitionDropEligibilityPolicy = dropEligibilityPolicy
+                ?? throw new ArgumentNullException(nameof(dropEligibilityPolicy));
+            catalogDefinitionSelectionPurposeId = StrongboxCanonicalV1.DeriveId(
+                "strongboxrng",
+                DefinitionSelectionPurposeId.ToString(),
+                weaponCatalog.Fingerprint,
+                equipmentCatalog.Fingerprint,
+                definitionDropWeightPolicy.Fingerprint,
+                definitionDropEligibilityPolicy.Fingerprint);
         }
 
         public bool TryResolve(
@@ -80,19 +121,23 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 || operation == null
                 || equipmentGrant == null)
             {
-                rejectionCode = "strongbox-hybrid-equipment-input-null";
+                rejectionCode =
+                    "strongbox-hybrid-equipment-input-null";
                 return false;
             }
             if (definition.TierStableId != boxContext.TierStableId)
             {
-                rejectionCode = "strongbox-hybrid-tier-context-mismatch";
+                rejectionCode =
+                    "strongbox-hybrid-tier-context-mismatch";
                 return false;
             }
-            if (equipmentGrant.Kind != RewardGrantKindV1.EquipmentReference
+            if (equipmentGrant.Kind
+                    != RewardGrantKindV1.EquipmentReference
                 || equipmentGrant.Quantity < 1L
                 || equipmentGrant.Quantity > int.MaxValue)
             {
-                rejectionCode = "strongbox-hybrid-equipment-grant-invalid";
+                rejectionCode =
+                    "strongbox-hybrid-equipment-grant-invalid";
                 return false;
             }
 
@@ -102,21 +147,28 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     out policy)
                 || policy == null)
             {
-                rejectionCode = "strongbox-hybrid-policy-unavailable";
+                rejectionCode =
+                    "strongbox-hybrid-policy-unavailable";
                 return false;
             }
-            int tierNumber = ResolveTierNumber(definition.TierStableId);
+            int tierNumber =
+                ResolveTierNumber(definition.TierStableId);
             if (tierNumber < 1)
             {
-                rejectionCode = "strongbox-hybrid-tier-number-unavailable";
+                rejectionCode =
+                    "strongbox-hybrid-tier-number-unavailable";
                 return false;
             }
 
             int quantity = checked((int)equipmentGrant.Quantity);
-            var generated = new List<EquipmentInstance>(quantity);
-            var signatures = new List<GeneratedEquipmentAugmentSignatureV1>(
-                quantity);
-            for (int slotIndex = 0; slotIndex < quantity; slotIndex++)
+            var generated =
+                new List<EquipmentInstance>(quantity);
+            var signatures =
+                new List<GeneratedEquipmentAugmentSignatureV1>(
+                    quantity);
+            for (int slotIndex = 0;
+                slotIndex < quantity;
+                slotIndex++)
             {
                 ulong slotOrdinal = (ulong)slotIndex;
                 StrongboxTargetLevelRollV1 target;
@@ -130,7 +182,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
                 catch (Exception exception)
                 {
-                    rejectionCode = "strongbox-hybrid-target-roll-exception-"
+                    rejectionCode =
+                        "strongbox-hybrid-target-roll-exception-"
                         + exception.GetType().Name.ToLowerInvariant();
                     return false;
                 }
@@ -161,7 +214,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
                 catch (Exception exception)
                 {
-                    rejectionCode = "strongbox-hybrid-instance-level-exception-"
+                    rejectionCode =
+                        "strongbox-hybrid-instance-level-exception-"
                         + exception.GetType().Name.ToLowerInvariant();
                     return false;
                 }
@@ -171,27 +225,28 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     selected.Equipment.ItemLevelRange.Maximum);
 
                 StableId qualityId;
-                if (!TrySelectQuality(
+                if (!TryResolveAuthoredQuality(
                         selected.Equipment,
-                        boxContext,
-                        slotOrdinal,
                         out qualityId,
                         out rejectionCode))
                 {
                     return false;
                 }
 
-                StableId equipmentInstanceId = StrongboxCanonicalV1.DeriveId(
-                    "boxequipment",
-                    operation.SourceOperationStableId.ToString(),
-                    equipmentGrant.GrantStableId.ToString(),
-                    slotIndex.ToString(CultureInfo.InvariantCulture));
-                EquipmentInstance equipment = EquipmentInstance.Create(
-                    equipmentInstanceId,
-                    selected.Equipment.DefinitionId,
-                    itemLevel,
-                    qualityId,
-                    Array.Empty<AugmentInstance>());
+                StableId equipmentInstanceId =
+                    StrongboxCanonicalV1.DeriveId(
+                        "boxequipment",
+                        operation.SourceOperationStableId.ToString(),
+                        equipmentGrant.GrantStableId.ToString(),
+                        slotIndex.ToString(
+                            CultureInfo.InvariantCulture));
+                EquipmentInstance equipment =
+                    EquipmentInstance.Create(
+                        equipmentInstanceId,
+                        selected.Equipment.DefinitionId,
+                        itemLevel,
+                        qualityId,
+                        Array.Empty<AugmentInstance>());
 
                 StrongboxAugmentSignatureV1 rolledSignature;
                 try
@@ -200,8 +255,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         boxContext.ProgressionContext.CharacterLevel,
                         itemLevel,
                         selected.RarityId,
-                        StrongboxHybridLootPolicyV1.AuthoredNormalWeaponSlots,
-                        StrongboxHybridLootPolicyV1.AuthoredNormalWeaponSlots + 1,
+                        StrongboxHybridLootPolicyV1
+                            .AuthoredNormalWeaponSlots,
+                        StrongboxHybridLootPolicyV1
+                            .AuthoredNormalWeaponSlots + 1,
                         boxContext.RootSeed,
                         boxContext.AlgorithmVersion,
                         slotOrdinal);
@@ -215,14 +272,15 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 generated.Add(equipment);
-                signatures.Add(new GeneratedEquipmentAugmentSignatureV1(
-                    equipment.InstanceId,
-                    boxContext.InstanceStableId,
-                    policy.PolicyId,
-                    rolledSignature.SlotCount,
-                    rolledSignature.SharedLevel,
-                    policy.Fingerprint,
-                    boxContext.AlgorithmVersion));
+                signatures.Add(
+                    new GeneratedEquipmentAugmentSignatureV1(
+                        equipment.InstanceId,
+                        boxContext.InstanceStableId,
+                        policy.PolicyId,
+                        rolledSignature.SlotCount,
+                        rolledSignature.SharedLevel,
+                        policy.Fingerprint,
+                        boxContext.AlgorithmVersion));
             }
 
             string signatureDiagnostic;
@@ -230,9 +288,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     signatures,
                     out signatureDiagnostic))
             {
-                rejectionCode = string.IsNullOrWhiteSpace(signatureDiagnostic)
-                    ? "strongbox-hybrid-augment-signature-stage-rejected"
-                    : signatureDiagnostic;
+                rejectionCode =
+                    string.IsNullOrWhiteSpace(signatureDiagnostic)
+                        ? "strongbox-hybrid-augment-signature-stage-rejected"
+                        : signatureDiagnostic;
                 return false;
             }
             equipmentInstances = generated.AsReadOnly();
@@ -249,15 +308,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             out string rejectionCode)
         {
             var candidates = new List<Candidate>();
-            double totalWeight = 0d;
-            bool topTier = tierNumber
-                == ProductionStrongboxCatalogV1.Tiers.Count;
-            for (int index = 0;
-                 index < equipmentCatalog.EquipmentDefinitions.Count;
-                 index++)
+            ulong totalWeight = 0UL;
+            int topTierNumber = ProductionStrongboxCatalogV1.Tiers.Count;
+            for (int index = 0; index < equipmentCatalog.EquipmentDefinitions.Count; index++)
             {
-                EquipmentDefinition equipment =
-                    equipmentCatalog.EquipmentDefinitions[index];
+                EquipmentDefinition equipment = equipmentCatalog.EquipmentDefinitions[index];
                 if (equipment == null
                     || equipment.CategoryId != EquipmentCategoryIds.Weapon
                     || equipment.RuntimeWeaponReferenceId == null)
@@ -268,8 +323,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 WeaponDefinitionData weapon;
                 if (!TryResolveWeapon(equipment, out weapon)
                     || weapon == null
-                    || weapon.Availability != WeaponCatalogAvailability.Live
-                    || (weapon.TopBoxOnly && !topTier))
+                    || !definitionDropEligibilityPolicy.IsEligible(
+                        new WeaponDefinitionDropEligibilityContextV1(
+                            weapon,
+                            tierNumber,
+                            topTierNumber)))
                 {
                     continue;
                 }
@@ -279,41 +337,38 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 {
                     continue;
                 }
-                double weight;
+
+                ulong weight;
                 try
                 {
-                    weight = policy.EvaluateDefinitionWeight(
-                        target,
-                        weapon.PeakDropLevel,
-                        weapon.FinalBaseWeight,
-                        rarityId);
+                    weight = definitionDropWeightPolicy.EvaluateWeightUnits(
+                        new WeaponDefinitionDropWeightContextV1(
+                            policy,
+                            tierNumber,
+                            target,
+                            weapon,
+                            rarityId));
+                    totalWeight = checked(totalWeight + weight);
                 }
                 catch (ArgumentException)
                 {
                     continue;
                 }
-                if (double.IsNaN(weight)
-                    || double.IsInfinity(weight)
-                    || weight <= 0d)
+                catch (OverflowException)
                 {
-                    continue;
+                    selected = null;
+                    rejectionCode = "strongbox-hybrid-definition-weight-overflow";
+                    return false;
                 }
-                candidates.Add(new Candidate(
-                    equipment,
-                    weapon,
-                    rarityId,
-                    weight));
-                totalWeight += weight;
+
+                candidates.Add(new Candidate(equipment, weapon, rarityId, weight));
             }
+
             candidates.Sort(delegate(Candidate left, Candidate right)
             {
-                return left.Equipment.DefinitionId.CompareTo(
-                    right.Equipment.DefinitionId);
+                return left.Equipment.DefinitionId.CompareTo(right.Equipment.DefinitionId);
             });
-            if (candidates.Count == 0
-                || double.IsNaN(totalWeight)
-                || double.IsInfinity(totalWeight)
-                || totalWeight <= 0d)
+            if (candidates.Count == 0 || totalWeight == 0UL)
             {
                 selected = null;
                 rejectionCode = "strongbox-hybrid-no-eligible-definition";
@@ -323,15 +378,14 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             DeterministicRandom random = DeterministicRandom.CreateSubstream(
                 boxContext.RootSeed,
                 boxContext.AlgorithmVersion,
-                DefinitionSelectionPurposeId,
+                catalogDefinitionSelectionPurposeId,
                 slotOrdinal);
-            random = random.NextUnitInterval(out double unit);
-            double threshold = unit * totalWeight;
-            double cursor = 0d;
+            random = random.NextBoundedUInt64(totalWeight, out ulong threshold);
+            ulong cursor = 0UL;
             selected = candidates[candidates.Count - 1];
             for (int index = 0; index < candidates.Count; index++)
             {
-                cursor += candidates[index].Weight;
+                cursor = checked(cursor + candidates[index].Weight);
                 if (threshold < cursor)
                 {
                     selected = candidates[index];
@@ -353,21 +407,42 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 return false;
             }
 
-            string reference = equipment.RuntimeWeaponReferenceId.ToString();
-            if (weaponCatalog.TryGetDefinition(reference, out weapon)
+            string definitionId;
+            if (CanonicalWeaponCatalogProjectionV1
+                .TryResolveDefinitionId(
+                    weaponCatalog,
+                    equipment.RuntimeWeaponReferenceId,
+                    out definitionId)
+                && weaponCatalog.TryGetDefinition(
+                    definitionId,
+                    out weapon)
+                && weapon != null)
+            {
+                return true;
+            }
+
+            string reference =
+                equipment.RuntimeWeaponReferenceId.ToString();
+            if (weaponCatalog.TryGetDefinition(
+                    reference,
+                    out weapon)
                 && weapon != null)
             {
                 return true;
             }
 
             IReadOnlyList<WeaponDefinitionData> live =
-                weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.LiveOnly);
+                weaponCatalog.GetDefinitions(
+                    WeaponCatalogContentFilter.LiveOnly);
             for (int index = 0; index < live.Count; index++)
             {
                 WeaponDefinitionData candidate = live[index];
                 StableId raw;
-                if ((StableId.TryParse(candidate.DefinitionId, out raw)
-                        && raw == equipment.RuntimeWeaponReferenceId)
+                if ((StableId.TryParse(
+                            candidate.DefinitionId,
+                            out raw)
+                        && raw
+                            == equipment.RuntimeWeaponReferenceId)
                     || StrongboxCanonicalV1.DeriveId(
                             "weapon",
                             candidate.DefinitionId)
@@ -381,59 +456,57 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             return false;
         }
 
-        private static bool TrySelectQuality(
+        private static bool TryResolveAuthoredQuality(
             EquipmentDefinition equipment,
-            StrongboxInstanceContextV1 boxContext,
-            ulong slotOrdinal,
             out StableId qualityId,
             out string rejectionCode)
         {
-            if (equipment.QualityTiers == null
-                || equipment.QualityTiers.Count == 0)
+            if (equipment == null
+                || equipment.QualityTiers == null
+                || equipment.QualityTiers.Count != 1
+                || equipment.QualityTiers[0] == null
+                || equipment.QualityTiers[0].QualityId == null)
             {
                 qualityId = null;
-                rejectionCode = "strongbox-hybrid-quality-unavailable";
+                rejectionCode = "strongbox-hybrid-authored-quality-invalid";
                 return false;
             }
-            DeterministicRandom random = DeterministicRandom.CreateSubstream(
-                boxContext.RootSeed,
-                boxContext.AlgorithmVersion,
-                QualitySelectionPurposeId,
-                slotOrdinal);
-            random = random.NextBoundedUInt64(
-                (ulong)equipment.QualityTiers.Count,
-                out ulong selectedIndex);
-            qualityId = equipment.QualityTiers[(int)selectedIndex].QualityId;
+            qualityId = equipment.QualityTiers[0].QualityId;
             rejectionCode = null;
-            return qualityId != null;
+            return true;
         }
 
         private static bool TryResolveRarity(
             string rarity,
             out StableId rarityId)
         {
-            switch ((rarity ?? string.Empty).Trim().ToLowerInvariant())
+            switch ((rarity ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant())
             {
                 case "common":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Common;
-                    return true;
                 case "uncommon":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Uncommon;
+                    rarityId =
+                        StrongboxDefinitionRarityIdsV1.Common;
                     return true;
                 case "rare":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Rare;
+                    rarityId =
+                        StrongboxDefinitionRarityIdsV1.Rare;
                     return true;
                 case "epic":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Epic;
+                    rarityId =
+                        StrongboxDefinitionRarityIdsV1.Epic;
                     return true;
                 case "legendary":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Legendary;
+                    rarityId =
+                        StrongboxDefinitionRarityIdsV1.Legendary;
                     return true;
                 case "mythic":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Mythic;
-                    return true;
                 case "artifact":
-                    rarityId = StrongboxDefinitionRarityIdsV1.Artifact;
+                case "mythicartifact":
+                    rarityId =
+                        StrongboxDefinitionRarityIdsV1
+                            .MythicArtifact;
                     return true;
                 default:
                     rarityId = null;
@@ -441,14 +514,16 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             }
         }
 
-        private static int ResolveTierNumber(StableId tierStableId)
+        private static int ResolveTierNumber(
+            StableId tierStableId)
         {
             for (int index = 0;
-                 index < ProductionStrongboxCatalogV1.Tiers.Count;
-                 index++)
+                index < ProductionStrongboxCatalogV1.Tiers.Count;
+                index++)
             {
-                if (ProductionStrongboxCatalogV1.Tiers[index].TierStableId
-                    == tierStableId)
+                if (ProductionStrongboxCatalogV1
+                    .Tiers[index]
+                    .TierStableId == tierStableId)
                 {
                     return index + 1;
                 }
@@ -456,9 +531,15 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             return 0;
         }
 
-        private static int Clamp(int value, int minimum, int maximum)
+        private static int Clamp(
+            int value,
+            int minimum,
+            int maximum)
         {
-            if (value < minimum) return minimum;
+            if (value < minimum)
+            {
+                return minimum;
+            }
             return value > maximum ? maximum : value;
         }
     }

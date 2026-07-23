@@ -1,26 +1,26 @@
+
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons.Catalog;
 
 namespace ShooterMover.Application.Flow.Production
 {
+    /// <summary>
+    /// Temporary compatibility surface for the five shipped starter identities. The
+    /// canonical projection is composed elsewhere and remains the only catalog authority.
+    /// </summary>
     public static class ProductionStarterWeaponCatalogV1
     {
         public const string ArcWeaponDefinitionId = "weapon.arc-gun";
-        public const string RicochetWeaponDefinitionId =
-            "weapon.ricochet-gun";
-        public const string BlasterSideProfileArtId =
-            "weapon-art.blaster.side-v1";
-        public const string ShotgunSideProfileArtId =
-            "weapon-art.shotgun-basic.side-v1";
-        public const string RocketSideProfileArtId =
-            "weapon-art.rocket-launcher.side-v1";
-        public const string ArcSideProfileArtId =
-            "weapon-art.arc-rifle.side-v1";
-        public const string RicochetSideProfileArtId =
-            "weapon-art.ricochet-weapon.side-v1";
+        public const string RicochetWeaponDefinitionId = "weapon.ricochet-gun";
+        public const string BlasterSideProfileArtId = "weapon-art.blaster.side-v1";
+        public const string ShotgunSideProfileArtId = "weapon-art.shotgun-basic.side-v1";
+        public const string RocketSideProfileArtId = "weapon-art.rocket-launcher.side-v1";
+        public const string ArcSideProfileArtId = "weapon-art.arc-rifle.side-v1";
+        public const string RicochetSideProfileArtId = "weapon-art.ricochet-weapon.side-v1";
 
         public static readonly StableId BlasterEquipmentDefinitionStableId =
             StableId.Parse("equipment.production-starter-blaster");
@@ -44,6 +44,9 @@ namespace ShooterMover.Application.Flow.Production
         public static readonly StableId RicochetEquipmentInstanceStableId =
             StableId.Parse("equipment-instance.production-starter-ricochet");
 
+        private static readonly object Sync = new object();
+        private static CanonicalWeaponCatalogProjectionV1 composedProjection;
+
         private static readonly StableId[] initialEquipmentDefinitionStableIds =
         {
             BlasterEquipmentDefinitionStableId,
@@ -51,7 +54,6 @@ namespace ShooterMover.Application.Flow.Production
             RocketEquipmentDefinitionStableId,
             ArcEquipmentDefinitionStableId,
         };
-
         private static readonly StableId[] allEquipmentDefinitionStableIds =
         {
             BlasterEquipmentDefinitionStableId,
@@ -60,20 +62,62 @@ namespace ShooterMover.Application.Flow.Production
             ArcEquipmentDefinitionStableId,
             RicochetEquipmentDefinitionStableId,
         };
+        private static readonly Dictionary<StableId, StableId> knownDefinitionByInstance =
+            BuildKnownDefinitionMap();
 
-        private static readonly Dictionary<StableId, StableId>
-            knownDefinitionByInstance = BuildKnownDefinitionMap();
-
-        public static IReadOnlyList<StableId>
-            InitialEquipmentDefinitionStableIds
+        public static IReadOnlyList<StableId> InitialEquipmentDefinitionStableIds
         {
             get { return initialEquipmentDefinitionStableIds; }
         }
-
-        public static IReadOnlyList<StableId>
-            AllEquipmentDefinitionStableIds
+        public static IReadOnlyList<StableId> AllEquipmentDefinitionStableIds
         {
             get { return allEquipmentDefinitionStableIds; }
+        }
+
+        public static void Compose(CanonicalWeaponCatalogProjectionV1 projection)
+        {
+            if (projection == null) throw new ArgumentNullException(nameof(projection));
+            lock (Sync)
+            {
+                if (composedProjection == null)
+                {
+                    composedProjection = projection;
+                    return;
+                }
+                if (!string.Equals(composedProjection.Fingerprint, projection.Fingerprint, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("production-weapon-catalog-already-composed-differently");
+                }
+            }
+        }
+
+        public static bool TryGetCanonicalProjection(out CanonicalWeaponCatalogProjectionV1 projection)
+        {
+            lock (Sync)
+            {
+                projection = composedProjection;
+                return projection != null;
+            }
+        }
+
+        public static CanonicalWeaponCatalogProjectionV1 BuildCanonicalProjection()
+        {
+            CanonicalWeaponCatalogProjectionV1 projection;
+            if (!TryGetCanonicalProjection(out projection))
+            {
+                throw new InvalidOperationException("production-weapon-catalog-not-composed");
+            }
+            return projection;
+        }
+
+        public static EquipmentCatalog BuildEquipmentCatalog()
+        {
+            return BuildCanonicalProjection().EquipmentCatalog;
+        }
+
+        public static WeaponCatalog BuildWeaponCatalog()
+        {
+            return BuildCanonicalProjection().WeaponCatalog;
         }
 
         public static bool TryResolveDefinitionForInstance(
@@ -82,398 +126,29 @@ namespace ShooterMover.Application.Flow.Production
         {
             equipmentDefinitionStableId = null;
             return equipmentInstanceStableId != null
-                && knownDefinitionByInstance.TryGetValue(
-                    equipmentInstanceStableId,
-                    out equipmentDefinitionStableId);
+                && knownDefinitionByInstance.TryGetValue(equipmentInstanceStableId, out equipmentDefinitionStableId);
         }
 
-        public static StableId ReserveInstanceForDefinition(
-            StableId equipmentDefinitionStableId)
+        public static StableId ReserveInstanceForDefinition(StableId equipmentDefinitionStableId)
         {
-            if (equipmentDefinitionStableId
-                == BlasterEquipmentDefinitionStableId)
-            {
-                return BlasterEquipmentInstanceStableId;
-            }
-            if (equipmentDefinitionStableId
-                == ShotgunEquipmentDefinitionStableId)
-            {
-                return ShotgunEquipmentInstanceStableId;
-            }
-            if (equipmentDefinitionStableId
-                == RocketEquipmentDefinitionStableId)
-            {
-                return RocketEquipmentInstanceStableId;
-            }
-            if (equipmentDefinitionStableId
-                == ArcEquipmentDefinitionStableId)
-            {
-                return ArcEquipmentInstanceStableId;
-            }
-            if (equipmentDefinitionStableId
-                == RicochetEquipmentDefinitionStableId)
-            {
-                return RicochetEquipmentInstanceStableId;
-            }
-
-            throw new ArgumentException(
-                "Unknown production starter equipment definition.",
-                nameof(equipmentDefinitionStableId));
+            if (equipmentDefinitionStableId == BlasterEquipmentDefinitionStableId) return BlasterEquipmentInstanceStableId;
+            if (equipmentDefinitionStableId == ShotgunEquipmentDefinitionStableId) return ShotgunEquipmentInstanceStableId;
+            if (equipmentDefinitionStableId == RocketEquipmentDefinitionStableId) return RocketEquipmentInstanceStableId;
+            if (equipmentDefinitionStableId == ArcEquipmentDefinitionStableId) return ArcEquipmentInstanceStableId;
+            if (equipmentDefinitionStableId == RicochetEquipmentDefinitionStableId) return RicochetEquipmentInstanceStableId;
+            throw new ArgumentException("Unknown production starter equipment definition.", nameof(equipmentDefinitionStableId));
         }
 
-        public static EquipmentCatalog BuildEquipmentCatalog()
+        private static Dictionary<StableId, StableId> BuildKnownDefinitionMap()
         {
-            EquipmentQualityTier common = EquipmentQualityTier.Create(
-                StableId.Parse("equipment-quality.common"),
-                "Common",
-                1);
-            EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
-                new[]
-                {
-                    WeaponEquipment(
-                        BlasterEquipmentDefinitionStableId,
-                        "family.blaster",
-                        "Blaster",
-                        "weapon.blaster-machine-gun",
-                        common),
-                    WeaponEquipment(
-                        ShotgunEquipmentDefinitionStableId,
-                        "family.shotgun",
-                        "Shotgun",
-                        "weapon.shotgun",
-                        common),
-                    WeaponEquipment(
-                        RocketEquipmentDefinitionStableId,
-                        "family.rocket-launcher",
-                        "Rocket Launcher",
-                        "weapon.rocket-launcher",
-                        common),
-                    WeaponEquipment(
-                        ArcEquipmentDefinitionStableId,
-                        "family.arc-gun",
-                        "Arc Gun",
-                        ArcWeaponDefinitionId,
-                        common),
-                    WeaponEquipment(
-                        RicochetEquipmentDefinitionStableId,
-                        "family.ricochet-gun",
-                        "Ricochet Gun",
-                        RicochetWeaponDefinitionId,
-                        common),
-                },
-                Array.Empty<AugmentDefinition>());
-            if (!result.IsValid || result.Catalog == null)
+            return new Dictionary<StableId, StableId>
             {
-                throw new InvalidOperationException(
-                    "The production starter equipment catalog is invalid.");
-            }
-
-            return result.Catalog;
-        }
-
-        public static WeaponCatalog BuildWeaponCatalog()
-        {
-            var rules = new WeaponCatalogRules(
-                true,
-                "20-25",
-                new[] { 75, 105, 135 },
-                new[] { "Kinetic", "Energized" },
-                10,
-                true,
-                true,
-                true);
-            var inputs = new WeaponCatalogInputs(
-                12d,
-                0.05d,
-                0.055d,
-                0.06d,
-                new Dictionary<string, WeaponRarityInput>(
-                    StringComparer.Ordinal)
-                {
-                    {
-                        "Common",
-                        new WeaponRarityInput(
-                            "Common",
-                            1000d,
-                            0,
-                            4d,
-                            13d)
-                    },
-                });
-            var archetype = new WeaponArchetypeDefinition(
-                "DemoCutover",
-                "Demo Cutover",
-                1d,
-                1d,
-                1,
-                1,
-                0d,
-                10d,
-                10d,
-                1d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0,
-                0,
-                0d,
-                0d,
-                1d);
-
-            WeaponFamilyDefinition[] families =
-            {
-                Family("production-starter-blaster", "Blaster", "Kinetic"),
-                Family("production-starter-shotgun", "Shotgun", "Kinetic"),
-                Family(
-                    "production-starter-rocket",
-                    "Rocket Launcher",
-                    "Kinetic"),
-                Family("production-starter-arc", "Arc Gun", "Energized"),
-                Family(
-                    "production-starter-ricochet",
-                    "Ricochet Gun",
-                    "Kinetic"),
+                { BlasterEquipmentInstanceStableId, BlasterEquipmentDefinitionStableId },
+                { ShotgunEquipmentInstanceStableId, ShotgunEquipmentDefinitionStableId },
+                { RocketEquipmentInstanceStableId, RocketEquipmentDefinitionStableId },
+                { ArcEquipmentInstanceStableId, ArcEquipmentDefinitionStableId },
+                { RicochetEquipmentInstanceStableId, RicochetEquipmentDefinitionStableId },
             };
-            return new WeaponCatalog(
-                "1.0",
-                "production-hub-loadout",
-                rules,
-                inputs,
-                new Dictionary<string, WeaponArchetypeDefinition>(
-                    StringComparer.Ordinal)
-                {
-                    { "DemoCutover", archetype },
-                },
-                families,
-                new[]
-                {
-                    WeaponDefinition(
-                        "weapon.blaster-machine-gun",
-                        "Blaster",
-                        "production-starter-blaster",
-                        "Kinetic",
-                        10d,
-                        1,
-                        0d,
-                        40d,
-                        30d,
-                        5d,
-                        1,
-                        sideProfileArtReference: BlasterSideProfileArtId),
-                    WeaponDefinition(
-                        "weapon.shotgun",
-                        "Shotgun",
-                        "production-starter-shotgun",
-                        "Kinetic",
-                        2d,
-                        7,
-                        24d,
-                        30d,
-                        15d,
-                        3d,
-                        0,
-                        sideProfileArtReference: ShotgunSideProfileArtId),
-                    WeaponDefinition(
-                        "weapon.rocket-launcher",
-                        "Rocket Launcher",
-                        "production-starter-rocket",
-                        "Kinetic",
-                        1d,
-                        1,
-                        0d,
-                        12d,
-                        35d,
-                        4d,
-                        0,
-                        20d,
-                        3d,
-                        sideProfileArtReference: RocketSideProfileArtId),
-                    WeaponDefinition(
-                        ArcWeaponDefinitionId,
-                        "Arc Gun",
-                        "production-starter-arc",
-                        "Energized",
-                        1.5d,
-                        1,
-                        0d,
-                        12d,
-                        12d,
-                        12d,
-                        0,
-                        0d,
-                        0d,
-                        3,
-                        6d,
-                        ArcSideProfileArtId),
-                    WeaponDefinition(
-                        RicochetWeaponDefinitionId,
-                        "Ricochet Gun",
-                        "production-starter-ricochet",
-                        "Kinetic",
-                        2.5d,
-                        1,
-                        0d,
-                        24d,
-                        30d,
-                        8d,
-                        0,
-                        sideProfileArtReference: RicochetSideProfileArtId),
-                });
-        }
-
-        private static Dictionary<StableId, StableId>
-            BuildKnownDefinitionMap()
-        {
-            var result = new Dictionary<StableId, StableId>();
-            AddKnown(
-                result,
-                BlasterEquipmentInstanceStableId,
-                BlasterEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                ShotgunEquipmentInstanceStableId,
-                ShotgunEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                RocketEquipmentInstanceStableId,
-                RocketEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                ArcEquipmentInstanceStableId,
-                ArcEquipmentDefinitionStableId);
-            AddKnown(
-                result,
-                RicochetEquipmentInstanceStableId,
-                RicochetEquipmentDefinitionStableId);
-            return result;
-        }
-
-        private static void AddKnown(
-            IDictionary<StableId, StableId> map,
-            StableId instanceStableId,
-            StableId definitionStableId)
-        {
-            map.Add(instanceStableId, definitionStableId);
-        }
-
-        private static EquipmentDefinition WeaponEquipment(
-            StableId definitionStableId,
-            string family,
-            string displayName,
-            string runtime,
-            EquipmentQualityTier quality)
-        {
-            return EquipmentDefinition.Create(
-                definitionStableId,
-                EquipmentCategoryIds.Weapon,
-                StableId.Parse(family),
-                displayName,
-                StableId.Parse(runtime),
-                InclusiveIntRange.Create(1, 100),
-                0,
-                new[] { quality },
-                Array.Empty<StableId>());
-        }
-
-        private static WeaponFamilyDefinition Family(
-            string id,
-            string displayName,
-            string damageType)
-        {
-            return new WeaponFamilyDefinition(
-                id,
-                displayName,
-                "DemoCutover",
-                damageType,
-                "Universal",
-                1,
-                20,
-                20,
-                3,
-                "Common",
-                "Common",
-                "Common",
-                1d,
-                "Standard",
-                "Production vertical slice",
-                "Production vertical slice",
-                WeaponCatalogAvailability.Live,
-                Array.Empty<string>());
-        }
-
-        private static WeaponDefinitionData WeaponDefinition(
-            string id,
-            string displayName,
-            string family,
-            string damageType,
-            double fireRate,
-            int projectiles,
-            double spread,
-            double speed,
-            double range,
-            double damage,
-            int pierce,
-            double areaDamage = 0d,
-            double explosionRadius = 0d,
-            int chainTargets = 0,
-            double chainRange = 0d,
-            string sideProfileArtReference = null)
-        {
-            bool explosive = areaDamage > 0d;
-            return new WeaponDefinitionData(
-                id,
-                displayName,
-                family,
-                1,
-                damageType,
-                "DemoCutover",
-                "Universal",
-                1,
-                1,
-                1,
-                "Common",
-                1000d,
-                1d,
-                1000d,
-                4d,
-                13d,
-                "Standard",
-                false,
-                "Standard",
-                1d,
-                100d,
-                10d,
-                explosive ? 0.2d : 1d,
-                explosive ? 0.8d : 0d,
-                0d,
-                fireRate,
-                projectiles,
-                1,
-                damage,
-                spread,
-                speed,
-                range,
-                pierce,
-                explosionRadius,
-                areaDamage,
-                0d,
-                0d,
-                0d,
-                0d,
-                chainTargets,
-                chainRange,
-                0.5d,
-                1d,
-                0d,
-                "Production vertical slice",
-                "Production vertical slice",
-                WeaponCatalogAvailability.Live,
-                string.IsNullOrWhiteSpace(sideProfileArtReference)
-                    ? Array.Empty<string>()
-                    : new[] { sideProfileArtReference.Trim() });
         }
     }
 }
