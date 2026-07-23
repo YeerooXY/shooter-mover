@@ -1,7 +1,5 @@
 using System;
-using ShooterMover.ContentPackages.Enemies.Stage1;
 using ShooterMover.Contracts.Combat;
-using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.UnityAdapters.Enemies;
@@ -11,8 +9,8 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
 {
     /// <summary>
     /// Package-owned identity and tuning for the disposable Ram Droid. The Pursuer
-    /// comparison values are acceptance guardrails because EN-004 is a parallel task,
-    /// not a dependency; they do not own or serialize Pursuer Drone tuning.
+    /// comparison values are acceptance guardrails; they do not own or serialize
+    /// Pursuer Drone tuning.
     /// </summary>
     [CreateAssetMenu(
         fileName = "RamDroidDefinition",
@@ -25,14 +23,6 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
 
         private static readonly StableId RamDroidRoleIdValue =
             StableId.Parse("enemy.ram-droid");
-        private static readonly StableId MovementModuleIdValue =
-            StableId.Parse("module.enemy-direct-pursuit");
-        private static readonly StableId AttackModuleIdValue =
-            StableId.Parse("module.enemy-disposable-impact");
-        private static readonly StableId TelegraphModuleIdValue =
-            StableId.Parse("module.enemy-impact-telegraph");
-        private static readonly StableId ProvenanceIdValue =
-            StableId.Parse("provenance.enemy-ram-droid-original");
 
         [Header("Disposable impact tuning")]
         [SerializeField] private float movementSpeed = 7.5f;
@@ -185,43 +175,6 @@ namespace ShooterMover.ContentPackages.Enemies.RamDroid
                 maximumHealth,
                 (int)CombatWeightClass.Light,
                 contactPolicy);
-        }
-
-        public Stage1EnemyPackageDescriptor CreatePackageDescriptor()
-        {
-            ValidateOrThrow();
-            ContentReference movement = SharedModule(MovementModuleIdValue);
-            ContentReference attack = SharedModule(AttackModuleIdValue);
-            ContentReference telegraph = SharedModule(TelegraphModuleIdValue);
-            ContentDefinitionDescriptor content = ContentDefinitionDescriptor.Create(
-                RamDroidRoleIdValue,
-                ContentDefinitionKind.Enemy,
-                ContentReference.SupportedDefinitionVersion,
-                ProvenanceIdValue,
-                false,
-                movement,
-                attack,
-                telegraph);
-
-            return Stage1EnemyPackageDescriptor.Create(
-                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
-                content,
-                Stage1EnemyPackageClassification.Ordinary,
-                CombatChannel.Contact,
-                CombatWeightClass.Light,
-                movement,
-                attack,
-                telegraph,
-                Stage1EnemyCapability.DirectPursuit
-                    | Stage1EnemyCapability.DisposableImpactAttack);
-        }
-
-        private static ContentReference SharedModule(StableId id)
-        {
-            return ContentReference.Create(
-                id,
-                ContentDefinitionKind.SharedModule,
-                ContentReference.SupportedDefinitionVersion);
         }
 
         private static void RequireFinitePositive(float value, string fieldName)
