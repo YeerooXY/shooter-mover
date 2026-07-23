@@ -15,8 +15,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes
     /// Production BOX payload resolver for the hybrid policy. It selects one live
     /// weapon definition around the tier-authored target level, rolls the concrete item
     /// level and shared augment capacity/level, then creates an equipment instance with
-    /// an empty installed-augment collection. Live opening and simulation share this
-    /// exact resolver.
+    /// an empty installed-augment collection. The generated augment metadata is staged
+    /// as immutable opening intent and is committed only by RAP after equipment applies.
+    /// Live opening and simulation share this exact resolver.
     /// </summary>
     public sealed class StrongboxHybridEquipmentGenerationResolverV1 :
         IStrongboxEquipmentPayloadResolverV1
@@ -199,17 +200,16 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         boxContext.ProgressionContext.CharacterLevel,
                         itemLevel,
                         selected.RarityId,
-                        StrongboxHybridLootPolicyV1
-                            .AuthoredNormalWeaponSlots,
-                        StrongboxHybridLootPolicyV1
-                            .AuthoredNormalWeaponSlots + 1,
+                        StrongboxHybridLootPolicyV1.AuthoredNormalWeaponSlots,
+                        StrongboxHybridLootPolicyV1.AuthoredNormalWeaponSlots + 1,
                         boxContext.RootSeed,
                         boxContext.AlgorithmVersion,
                         slotOrdinal);
                 }
                 catch (Exception exception)
                 {
-                    rejectionCode = "strongbox-hybrid-augment-signature-exception-"
+                    rejectionCode =
+                        "strongbox-hybrid-augment-signature-exception-"
                         + exception.GetType().Name.ToLowerInvariant();
                     return false;
                 }
@@ -225,17 +225,13 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     boxContext.AlgorithmVersion));
             }
 
-            IReadOnlyList<
-                GeneratedEquipmentAugmentSignatureRecordResultV1>
-                signatureResults;
             string signatureDiagnostic;
-            if (!augmentSignatures.TryRecordBatch(
+            if (!augmentSignatures.TryStageBatch(
                     signatures,
-                    out signatureResults,
                     out signatureDiagnostic))
             {
                 rejectionCode = string.IsNullOrWhiteSpace(signatureDiagnostic)
-                    ? "strongbox-hybrid-augment-signature-record-rejected"
+                    ? "strongbox-hybrid-augment-signature-stage-rejected"
                     : signatureDiagnostic;
                 return false;
             }
