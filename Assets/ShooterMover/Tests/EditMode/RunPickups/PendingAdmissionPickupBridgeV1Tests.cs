@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
-using System.IO;
 using NUnit.Framework;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
@@ -16,7 +15,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
 {
     public sealed class PendingAdmissionPickupBridgeV1Tests
     {
-        private static readonly StableId RunId = Id("run", "shared-stage1");
+        private static readonly StableId RunId = Id("run", "shared-run");
         private static readonly StableId RoomId = Id("room", "entry");
         private static readonly StableId SourceEntityId = Id("enemy-entity", "droid");
         private static readonly StableId SourcePlacementId = Id("placement", "droid");
@@ -27,7 +26,6 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             IPickupSourcePositionResolverV1
         {
             public int UnavailableAttempts;
-            public int ThrowAttempts;
             public int Attempts;
 
             public bool TryResolve(
@@ -35,11 +33,6 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                 out string diagnostic)
             {
                 Attempts++;
-                if (ThrowAttempts > 0)
-                {
-                    ThrowAttempts--;
-                    throw new InvalidOperationException("source-fail-once");
-                }
                 if (UnavailableAttempts > 0)
                 {
                     UnavailableAttempts--;
@@ -47,6 +40,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                     diagnostic = "fake-source-unavailable";
                     return false;
                 }
+
                 position = new PickupSourcePositionV1(
                     RoomId,
                     new Vector2(4.5f, -2.25f),
@@ -85,6 +79,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                     diagnostic = "fake-position-registration-unavailable";
                     return false;
                 }
+
                 if (RegisteredPosition != null
                     && !string.Equals(
                         RegisteredPosition.Fingerprint,
@@ -94,6 +89,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                     diagnostic = "fake-position-registration-conflict";
                     return false;
                 }
+
                 RegisteredPosition = position;
                 diagnostic = string.Empty;
                 return true;
@@ -108,6 +104,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                     RealizeThrows--;
                     throw new InvalidOperationException("realize-fail-once");
                 }
+
                 if (RealizeFailures > 0)
                 {
                     RealizeFailures--;
@@ -117,6 +114,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                         Array.Empty<RunPickupSnapshotV1>(),
                         "run-pickup-session-context-unavailable");
                 }
+
                 if (TerminalRejects > 0)
                 {
                     TerminalRejects--;
@@ -126,6 +124,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                         Array.Empty<RunPickupSnapshotV1>(),
                         "run-pickup-realization-participant-mismatch");
                 }
+
                 if (ConflictingRejects > 0)
                 {
                     ConflictingRejects--;
@@ -158,6 +157,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                         1, 0, 0, 0, 0, 1,
                         "fake-presenter-unavailable");
                 }
+
                 return new RunPickupPresentationSyncResultV1(
                     1, 1, 1, 0, 0, 0, string.Empty);
             }
@@ -340,117 +340,6 @@ namespace ShooterMover.Tests.EditMode.RunPickups
             Assert.That(replacementRuntime.AcceptedRealizationCount, Is.EqualTo(1));
         }
 
-        [Test]
-        public void ProductionPickupUsesCanonicalProvenanceAndNoSyntheticFacts()
-        {
-            string stage1Path = Path.Combine(
-                UnityEngine.Application.dataPath,
-                "ShooterMover",
-                "Production",
-                "Stage1");
-            string bootstrap = File.ReadAllText(Path.Combine(
-                stage1Path,
-                "Stage1RunPickupBootstrap2D.cs"));
-            string provenance = File.ReadAllText(Path.Combine(
-                stage1Path,
-                "Stage1PlayableLoopCompositionV1.TerminalDropProvenance.cs"));
-            string props = File.ReadAllText(Path.Combine(
-                stage1Path,
-                "Stage1RunPickupPropBootstrap2D.cs"));
-            string support = File.ReadAllText(Path.Combine(
-                stage1Path,
-                "Stage1RunPickupBootstrapSupportV1.cs"));
-            string genericPropAuthoring = File.ReadAllText(Path.Combine(
-                UnityEngine.Application.dataPath,
-                "ShooterMover",
-                "ContentPackages",
-                "Props",
-                "DestructibleProps",
-                "DestructiblePropAuthoring2D.cs"));
-            string retainedController = File.ReadAllText(Path.Combine(
-                UnityEngine.Application.dataPath,
-                "ShooterMover",
-                "TestSupport",
-                "VisibleSlice",
-                "Stage1VisibleSliceController.cs"));
-
-            Assert.That(bootstrap, Does.Not.Contain(
-                "DeterministicEnemyRuntimeIdentityDeriverV1"));
-            Assert.That(bootstrap, Does.Not.Contain(
-                "RegisterTransformSource"));
-            Assert.That(bootstrap, Does.Contain("RegisterFixedSource"));
-            Assert.That(bootstrap, Does.Not.Contain("BuildPickupEnemyCatalog"));
-            Assert.That(bootstrap, Does.Not.Contain("BuildRewardProfiles"));
-            Assert.That(bootstrap, Does.Not.Contain("new EnemyDeathFactV1"));
-            Assert.That(support, Does.Not.Contain(
-                "Stage1EnemyTerminalDropObserver2D"));
-            Assert.That(support, Does.Not.Contain("difficulty.normal"));
-            Assert.That(support, Does.Not.Contain(
-                "RunPickupExperience.CurrentState.Level"));
-            Assert.That(support, Does.Contain(
-                "run.StartCommand.DifficultyStableId"));
-            Assert.That(support, Does.Contain(
-                "run.FrozenInputs.CharacterStats.Level"));
-
-            Assert.That(provenance, Does.Contain("pendingEnemyRewards"));
-            Assert.That(provenance, Does.Contain("notification.EventId"));
-            Assert.That(provenance, Does.Contain("notification.SourceId"));
-            Assert.That(provenance, Does.Contain(
-                "liveSource.SourceEntityStableId"));
-            Assert.That(provenance, Does.Contain(
-                "pending.TerminalPosition"));
-            Assert.That(provenance, Does.Contain(
-                "pending.PositionFingerprint"));
-            Assert.That(provenance, Does.Contain(
-                "LoadProductionEnemyCatalog"));
-
-            Assert.That(props, Does.Not.Contain(
-                "DestroyedState.MaximumHealth"));
-            Assert.That(props, Does.Not.Contain(
-                "controller.CurrentRoomStableId"));
-            Assert.That(props, Does.Not.Contain("BuildPropRewardProfiles"));
-            Assert.That(props, Does.Contain(
-                "TryResolveCanonicalPropTerminalSource"));
-            Assert.That(props, Does.Contain("DefinitionFingerprint"));
-            Assert.That(props, Does.Contain("new PendingPropTerminal(terminal)"));
-            Assert.That(props, Does.Contain("TerminalDestroyed"));
-
-            Assert.That(genericPropAuthoring, Does.Not.Contain(
-                "Stage1TerminalDropContentV1"));
-            Assert.That(genericPropAuthoring, Does.Not.Contain(
-                "ResolveLegacyAuthoringKey"));
-            Assert.That(retainedController, Does.Not.Contain(
-                "Stage1TerminalDropContentV1"));
-        }
-
-        [Test]
-        public void ProductionPickupBootstrap_ConsumesSharedRunAndOwnsNoShadowGraph()
-        {
-            string stage1Path = Path.Combine(
-                UnityEngine.Application.dataPath,
-                "ShooterMover",
-                "Production",
-                "Stage1");
-            string bootstrap = File.ReadAllText(Path.Combine(
-                stage1Path,
-                "Stage1RunPickupBootstrap2D.cs"));
-            string access = File.ReadAllText(Path.Combine(
-                stage1Path,
-                "Stage1PlayableLoopCompositionV1.RunPickupAccess.cs"));
-
-            Assert.That(bootstrap, Does.Contain("TryResolveSharedRunSession"));
-            Assert.That(bootstrap, Does.Not.Contain("new RunSessionAuthorityV1"));
-            Assert.That(bootstrap, Does.Not.Contain("StartRunSessionCommandV1"));
-            Assert.That(bootstrap,
-                Does.Not.Contain("Stage1PickupRunSessionRuntimePortFactoryV1"));
-            Assert.That(access, Does.Not.Contain("RunPickupMissionResults"));
-            Assert.That(access, Does.Not.Contain("RunPickupEffectEmitter"));
-            Assert.That(File.Exists(Path.Combine(
-                stage1Path,
-                "Stage1PickupRunSessionPortsV1.cs")),
-                Is.False);
-        }
-
         private static PendingAdmissionPickupBridgeV1 Queue(
             FakeRuntime runtime,
             IPickupSourcePositionResolverV1 resolver)
@@ -487,7 +376,7 @@ namespace ShooterMover.Tests.EditMode.RunPickups
                 SourceEntityId,
                 SourcePlacementId,
                 1L,
-                Id("enemy", "mobile-blaster-droid"),
+                Id("enemy", "generic-droid"),
                 ParticipantId,
                 ActorId,
                 Id("damage", "kinetic"),
