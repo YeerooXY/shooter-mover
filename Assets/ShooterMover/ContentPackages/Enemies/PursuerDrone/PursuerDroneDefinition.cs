@@ -1,7 +1,5 @@
 using System;
-using ShooterMover.ContentPackages.Enemies.Stage1;
 using ShooterMover.Contracts.Combat;
-using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using UnityEngine;
@@ -9,7 +7,7 @@ using UnityEngine;
 namespace ShooterMover.ContentPackages.Enemies.PursuerDrone
 {
     /// <summary>
-    /// Package-owned authoring and tuning for the uncomplicated Stage 1 contact pursuer.
+    /// Package-owned authoring and tuning for the uncomplicated contact pursuer.
     /// Runtime health and contact truth are still EN-002 EnemyActorState values.
     /// </summary>
     [CreateAssetMenu(
@@ -17,6 +15,9 @@ namespace ShooterMover.ContentPackages.Enemies.PursuerDrone
         menuName = "Shooter Mover/Enemies/Pursuer Drone Definition")]
     public sealed class PursuerDroneDefinition : ScriptableObject
     {
+        private static readonly StableId EnemyDefinitionIdValue =
+            StableId.Parse("enemy.pursuer-drone");
+
         public const double HardMaximumHealth = 10000d;
         public const double HardMaximumMovementSpeed = 50d;
         public const double HardMaximumContactDamage = 1000d;
@@ -119,34 +120,6 @@ namespace ShooterMover.ContentPackages.Enemies.PursuerDrone
                 WarningPulseSeconds);
         }
 
-        public Stage1EnemyPackageDescriptor CreatePackageDescriptor()
-        {
-            ContentReference movement = SharedModule("module.enemy-direct-pursuit");
-            ContentReference attack = SharedModule("module.enemy-ordinary-contact");
-            ContentReference telegraph = SharedModule("module.enemy-contact-telegraph");
-            ContentDefinitionDescriptor content = ContentDefinitionDescriptor.Create(
-                Stage1EnemyPackageDescriptor.PursuerDroneId,
-                ContentDefinitionKind.Enemy,
-                ContentReference.SupportedDefinitionVersion,
-                StableId.Create("provenance", "enemy-pursuer-drone-en004"),
-                false,
-                movement,
-                attack,
-                telegraph);
-
-            return Stage1EnemyPackageDescriptor.Create(
-                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
-                content,
-                Stage1EnemyPackageClassification.Ordinary,
-                CombatChannel.Contact,
-                CombatWeightClass.Standard,
-                movement,
-                attack,
-                telegraph,
-                Stage1EnemyCapability.DirectPursuit
-                    | Stage1EnemyCapability.OrdinaryContactDamage);
-        }
-
         internal EnemyActorState CreateInitialState(StableId actorId)
         {
             if (actorId == null)
@@ -163,18 +136,10 @@ namespace ShooterMover.ContentPackages.Enemies.PursuerDrone
                 MoverColliderCapacity);
             return EnemyActorState.Create(
                 actorId,
-                Stage1EnemyPackageDescriptor.PursuerDroneId,
+                EnemyDefinitionIdValue,
                 MaximumHealth,
                 (int)CombatWeightClass.Standard,
                 contactPolicy);
-        }
-
-        private static ContentReference SharedModule(string stableId)
-        {
-            return ContentReference.Create(
-                StableId.Parse(stableId),
-                ContentDefinitionKind.SharedModule,
-                ContentReference.SupportedDefinitionVersion);
         }
 
         private void OnValidate()
