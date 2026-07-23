@@ -17,6 +17,7 @@ TYPE_COMPOSITION = "Stage1PlayableLoopCompositionV1"
 CONFIG = {
     "composition_partial_glob": "Assets/ShooterMover/Production/Stage1/Stage1PlayableLoopCompositionV1*.cs",
     "pickup_partial_glob": "Assets/ShooterMover/Production/Stage1/Stage1RunPickupBootstrap2D*.cs",
+    "prop_pickup_partial_glob": "Assets/ShooterMover/Production/Stage1/Stage1RunPickupPropBootstrap2D*.cs",
     "retained_source_prefixes": [
         "Assets/ShooterMover/Production/Stage1/",
         "Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs",
@@ -224,6 +225,7 @@ def validate_source_tree(root: Path, manifest: dict) -> None:
     for type_name, pattern in (
         (TYPE_COMPOSITION, CONFIG["composition_partial_glob"]),
         ("Stage1RunPickupBootstrap2D", CONFIG["pickup_partial_glob"]),
+        ("Stage1RunPickupPropBootstrap2D", CONFIG["prop_pickup_partial_glob"]),
     ):
         actual = {normalize(path, root) for path in root.glob(pattern) if path.is_file()}
         expected = set()
