@@ -86,6 +86,10 @@ After the relevant Wave A dependencies merge:
 3. `RUN-SESSION-001`
 4. `EXTENSIBILITY-GUARDRAILS-001`
 
+## Completed/merged integration work
+
+- `BOX-PERSIST-001` / PR #276 — durable unopened strongboxes and crash-safe opening. Its full prompt remains below as historical architecture context.
+
 ## Integration Wave — coordinate sequentially
 
 These tasks touch central production composition and should not be assigned concurrently against the same files:
@@ -94,7 +98,8 @@ These tasks touch central production composition and should not be assigned conc
 2. `ROOM-JSON-LIVE-001`
 3. `STAGE1-RUNTIME-DECOMPOSE-A-001`
 4. `STAGE1-RUNTIME-DECOMPOSE-B-001`
-5. `LEVEL1-CONTROLLER-RETIRE-001`
+5. `ABILITY-RUNTIME-001`
+6. `LEVEL1-CONTROLLER-RETIRE-001`
 
 ---
 
@@ -670,6 +675,80 @@ Complete the exact strongbox lifecycle from physical run pickup through durable 
 
 ---
 
+## STAGE1-FREEZE-001 — Freeze retained Stage 1 migration surfaces
+
+**Status:** READY after verifying PR #280 and `DROP-STRONGBOX-LIVE-001` / PR #284 are merged and no active PR owns the Stage 1 production composition files.
+
+**Branch:** `agent/stage1-freeze-001-migration-guardrails`
+
+**Dependencies:** PR #280; `DROP-STRONGBOX-LIVE-001` / PR #284; current Stage 1 production composition, pickup, terminal-drop, reward-transfer, and legacy scene surfaces.
+
+### Task
+
+Freeze the retained Stage 1 migration surfaces before authored-room cutover and runtime decomposition. Stop architectural growth, inventory current responsibilities, and establish source-level guardrails without performing the extraction itself.
+
+### Frozen migration targets
+
+At minimum:
+
+- `Stage1VisibleSliceController`;
+- `Stage1PlayableLoopCompositionV1` and every partial;
+- `Stage1RunPickupBootstrap2D` and every partial;
+- `Stage1RunPickupPropBootstrap2D` and every partial;
+- `Stage1TerminalDropContentV1`;
+- current Stage 1 terminal fact/resolver/support and durable-transfer integration;
+- Stage 1 legacy prop migration integration;
+- Stage 1 self-installing runtime components.
+
+### Requirements
+
+- Add a machine-readable responsibility manifest recording each target's fully qualified type, source files, approximate line count, interfaces, Unity lifecycle methods, mutable state, discovery, reflection, gameplay responsibilities, intended owner, and deletion/presentation destination.
+- Add a human-readable report covering health/player authority, movement/input, weapon execution, damage/effects, enemy runtime, prop runtime, room truth, traversal/access, pickups, reward generation, durable transfer, Results, HUD, restart, and scene installation.
+- Declare `Stage1VisibleSliceController` and `Stage1PlayableLoopCompositionV1` as separate retirement targets. Moving behavior from the former into the latter is prohibited.
+- Mark retained types clearly as migration-only without renaming the main types.
+- Declare the intended replacement boundaries without creating empty placeholders:
+  - `Stage1SceneInstaller2D`;
+  - narrow `Stage1RunLoopDriver2D`;
+  - `InventoryWeaponEffectDamageRouter2D`;
+  - `Stage1RoomFlowController2D`;
+  - `Stage1EnemyTerminalPickupConsumerV1`;
+  - `Stage1PropTerminalPickupConsumerV1`;
+  - `RunPickupLifecycleProjection2D`;
+  - `Stage1LegacyScenePresentation2D` or `Stage1SceneView2D`.
+- `Stage1RunLoopDriver2D` may only observe Run Session lifecycle, forward typed commands, coordinate lifecycle projections, and request restart/end through ports. It must not inherit player, movement, weapon, enemy, room, reward, transfer, Results, or persistence authority/state.
+- Add source-level audits that distinguish exact inventoried debt from new violations and reject:
+  - unlisted Stage 1 production source files;
+  - additional `SceneManager.sceneLoaded` subscribers or self-installers;
+  - additional private reflection into either retirement target;
+  - new name/hierarchy/room-number gameplay decisions;
+  - new authority or persistence interfaces on retained targets, including interfaces added through partial declarations;
+  - direct creation of another `RunSessionAggregateV1` or duplicate money, scrap, inventory, holdings, reward, strongbox, room, player-health, or enemy-health authorities;
+  - new reward probability/selection logic;
+  - new weapon-name or weapon-definition switches;
+  - new content registration requiring edits to a retained Stage 1 controller.
+- Permit intentional deletion/extraction by updating the source baseline, debt entry, and migration plan together.
+- Preserve all runtime behavior.
+
+### Tests
+
+- Manifest matches the current source tree and every known debt entry appears exactly once.
+- Fixture additions for a new scene hook, private reflection, name-based decision, authority interface, partial-class interface, unlisted Stage 1 source, Stage 1 source outside legacy folders, multiline weapon-definition switch, and previously unknown authority construction all fail.
+- Ordinary data-only content does not require a Stage 1 edit.
+- Genuine legacy-source deletion plus matching manifest/debt update passes.
+- End-to-end temporary-repository fixtures exercise both passing and failing `run_audit()` paths.
+
+### Non-goals
+
+- No room JSON production cutover.
+- No large controller extraction or controller deletion.
+- No weapon-effect rewrite, scene/prefab redesign, pickup decomposition, Results/reward behavior change, balancing, or content change.
+
+### PR proof
+
+Include the exact launch `main` SHA, current line/interface/lifecycle inventories, scene-hook and reflection inventories, responsibility-to-owner map, architecture test output, changed-file audit, and confirmation that runtime behavior was not intentionally changed.
+
+---
+
 ## ROOM-JSON-LIVE-001 — Cut production Level 1 over to authored room packages
 
 **Status:** BLOCKED until `ROOM-ACCESS-001`, `ENEMY-FACTORY-001`, and `PROP-RUNTIME-001` are merged.
@@ -709,13 +788,112 @@ Capture screenshots/video of the authored rooms, door states, enemy placement, r
 
 ---
 
+## STAGE1-RUNTIME-DECOMPOSE-A-001 — Extract installation, lifecycle coordination, and room projection
+
+**Status:** BLOCKED until `STAGE1-FREEZE-001` and `ROOM-JSON-LIVE-001` are merged.
+
+**Branch:** `agent/stage1-runtime-decompose-a-001-install-run-room`
+
+**Dependencies:** the Stage 1 migration manifest/guardrails; authored-room production cutover; existing Run Session, player scene adapter, generic room authority, and production flow ports.
+
+### Task
+
+Remove self-installation, global discovery, reflection, and room/lifecycle orchestration from the retained composition. Establish explicit installation plus narrow lifecycle and room-projection boundaries without moving gameplay ownership into another Stage 1 aggregate.
+
+### Requirements
+
+- Create an explicit `Stage1SceneInstaller2D` boundary owned by the production route/scene composition. Remove the retained global `sceneLoaded` hook, fallback scene scans, reflection, and component self-attachment.
+- Create a narrow `Stage1RunLoopDriver2D` that may only:
+  - observe `RunSessionAggregateV1` lifecycle snapshots/facts;
+  - forward typed start/restart/end commands through existing ports;
+  - coordinate lifecycle generation changes across projections;
+  - expose diagnostics needed by production flow tests.
+- The driver must not own or implement player input/movement, weapon selection/execution, weapon effects/damage, enemy runtime/scheduling, room truth, reward generation, durable transfer, Results navigation, save/persistence, HUD, or presentation.
+- Keep player input and movement in the canonical player scene/input adapter, including `Level1PlayerRuntimeSceneAdapterV1` and its existing typed input/lifecycle ports.
+- Keep weapon selection/execution in `InventoryWeaponRuntimeComposition` and `InventoryBackedWeaponExecutionAdapter`; the driver may forward commands but may not recreate their state.
+- Keep authoritative room truth in the generic room authority / `RoomRuntimeComposition2D`. Extract only Unity room/traversal projection into `Stage1RoomFlowController2D`.
+- `Stage1RoomFlowController2D` must consume authored room/link/spawn identities and typed room snapshots. It must not infer rooms from coordinates, names, hierarchy, or room numbers.
+- Preserve the existing Run Session aggregate and existing authority instances; do not create replacements or duplicate ports.
+- Delete or shrink the migrated composition partials as responsibilities move. Do not leave forwarding methods that retain hidden mutable state.
+- Preserve current gameplay and visible presentation.
+
+### Tests
+
+- Production Bootstrap → Hub → Level1 installs Stage 1 exactly once without `SceneManager.sceneLoaded`, global object search, or private reflection.
+- Scene reload and route re-entry do not duplicate installers, drivers, room projections, authorities, or subscriptions.
+- Run start/restart/end commands pass through typed ports and stale lifecycle facts reject.
+- Player input/movement and weapon firing remain owned by their existing adapters/runtime.
+- Authored room traversal, return traversal, door states, and restart behave identically.
+- Architecture audit proves the driver has no concrete authority/persistence/runtime-owner fields or constructions.
+
+### Non-goals
+
+- No weapon damage/effect extraction.
+- No enemy scheduler extraction.
+- No pickup, reward, durable-transfer, Results, or presentation extraction; those belong to `STAGE1-RUNTIME-DECOMPOSE-B-001`.
+- No controller deletion; final serialized-reference cleanup belongs to `LEVEL1-CONTROLLER-RETIRE-001`.
+
+### PR proof
+
+Include before/after responsibility and subscription inventories, deleted reflection/discovery proof, driver ownership audit, changed-file audit, focused EditMode/PlayMode XML, and manual room/restart acceptance evidence.
+
+---
+
+## STAGE1-RUNTIME-DECOMPOSE-B-001 — Extract combat routing, pickups, transfer, Results, and presentation
+
+**Status:** BLOCKED until `STAGE1-RUNTIME-DECOMPOSE-A-001` is merged.
+
+**Branch:** `agent/stage1-runtime-decompose-b-001-combat-pickups-transfer`
+
+**Dependencies:** decomposition A; authored-room production route; inventory weapon runtime; generic enemy factory/runtime and attack scheduler; terminal-drop/pickup authorities; collected-run transfer/persistence; production Results flow.
+
+### Task
+
+Remove the remaining combat, enemy, pickup, reward-delivery, durable-transfer, Results, and presentation responsibilities from `Stage1PlayableLoopCompositionV1` and the retained pickup bootstraps. Connect existing canonical owners through focused adapters without turning `Stage1RunLoopDriver2D` into another god object.
+
+### Requirements
+
+- Extract projectile/effect realization and hit routing into `InventoryWeaponEffectDamageRouter2D`. It consumes immutable weapon-effect descriptions and typed target/damage ports; it does not select weapons, own cooldowns, or mutate reward/room state.
+- Keep weapon selection and execution in `InventoryWeaponRuntimeComposition` / `InventoryBackedWeaponExecutionAdapter`.
+- Keep enemy construction/runtime in the generic enemy factory/runtime and attack execution in the existing scheduler, including `EnemyAttackPatternLiveSchedulerV1`. Stage 1 adapters may bind authored placements and presentation only.
+- Extract enemy terminal reward/pickup translation into `Stage1EnemyTerminalPickupConsumerV1` and prop terminal translation into `Stage1PropTerminalPickupConsumerV1`. They consume immutable attributed terminal facts and call existing reward/pickup authorities; they do not own probability tables, reward selection, wallets, holdings, or enemy/prop health.
+- Extract pickup realization, collection projection, restart cleanup, and presentation into `RunPickupLifecycleProjection2D`. It must not own reward generation or durable character state.
+- Keep durable transfer and exactly-once persistence in the existing collected-run transfer preparation/receipt/persistence services, including `CollectedRunRewardTransferPreparationFactoryV2` and `ProductionCollectedRunRewardPersistenceV2`.
+- Keep Results publication/navigation in the production Results/flow bridge, including `ProductionCollectedRunRewardResultsBridge`; do not implement navigation in the run-loop driver.
+- Reduce `Stage1WeaponPresentationRepairV1` to presentation-only compatibility or move it into `Stage1LegacyScenePresentation2D` / `Stage1SceneView2D`. Definition-specific gameplay decisions are forbidden.
+- The narrow `Stage1RunLoopDriver2D` may connect typed ports and coordinate lifecycle order, but it must not store or implement player, weapon, enemy, room, reward, transfer, Results, or persistence state.
+- Delete migrated composition/pickup partials or reduce them to temporary delegation scheduled for final deletion. Do not retain a second hidden composition root.
+- Preserve all gameplay, reward, Results, persistence, and restart behavior.
+
+### Tests
+
+- All inventory weapon effect kinds route damage through the new router with deterministic hit ordering and no duplicate application.
+- Enemy attacks continue through the generic scheduler; adding an enemy using existing capabilities requires no Stage 1 controller edit.
+- Enemy and prop terminal facts produce exactly one accepted pickup batch and preserve participant attribution/provenance.
+- Pickup restart/re-entry does not duplicate, lose, or recollect rewards.
+- Final exit uses the existing durable transfer/persistence path exactly once; crash/retry behavior and unopened strongbox identity remain unchanged.
+- Results publication/re-entry does not reroll, reopen, duplicate, or navigate through the run-loop driver.
+- Architecture audit proves no new authority, persistence, probability, weapon-definition switch, global discovery, or unlisted Stage 1 source was introduced.
+
+### Non-goals
+
+- No new weapon, enemy, prop, room, reward, or balancing content.
+- No replacement reward, pickup, persistence, Results, player-health, enemy-health, room, or run authority.
+- No final serialized controller deletion; that belongs to `LEVEL1-CONTROLLER-RETIRE-001`.
+
+### PR proof
+
+Include before/after responsibility and line-count inventory, canonical-owner map, deleted partial/bootstrap audit, architecture audit output, focused and full Unity EditMode/PlayMode XML, changed-file audit, and manual combat/pickup/final-exit/Results acceptance evidence.
+
+---
+
 ## ABILITY-RUNTIME-001 — Data-driven active abilities and cooldowns
 
-**Status:** BLOCKED until `RUN-SESSION-001`, `DERIVED-STATS-001`, and `STATUS-EFFECT-RUNTIME-001` are merged.
+**Status:** BLOCKED until `RUN-SESSION-001`, `DERIVED-STATS-001`, `STATUS-EFFECT-RUNTIME-001`, and `STAGE1-RUNTIME-DECOMPOSE-B-001` are merged.
 
 **Branch:** `agent/ability-runtime-001-data-driven-active-abilities`
 
-**Dependencies:** skills, derived stats, run session, status effects, player/weapon/effect ports.
+**Dependencies:** skills, derived stats, run session, status effects, player/weapon/effect ports, and the decomposed Stage 1 runtime boundaries.
 
 ### Task
 
@@ -775,11 +953,11 @@ For every fixture above, the production implementation change should consist onl
 
 ## LEVEL1-CONTROLLER-RETIRE-001 — Retire the retained giant scene controller
 
-**Status:** FINAL CUTOVER. BLOCKED until `CHARACTER-COMPOSITION-001`, `RUN-SESSION-001`, `ROOM-JSON-LIVE-001`, `BOX-PERSIST-001`, and the combat routing cutovers are merged.
+**Status:** FINAL CUTOVER. BLOCKED until `CHARACTER-COMPOSITION-001`, `RUN-SESSION-001`, `ROOM-JSON-LIVE-001`, `STAGE1-RUNTIME-DECOMPOSE-A-001`, `STAGE1-RUNTIME-DECOMPOSE-B-001`, `ABILITY-RUNTIME-001`, `BOX-PERSIST-001`, and the combat routing cutovers are merged.
 
 **Branch:** `agent/level1-controller-retire-001`
 
-**Dependencies:** all production cutovers listed above.
+**Dependencies:** all production cutovers listed above, explicitly including both Stage 1 decomposition tasks.
 
 ### Task
 
