@@ -17,7 +17,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
     public sealed class EnemyExperienceRewardTests
     {
         [Test]
-        public void Stage1Authoring_ResolvesAllNamedEnemiesByLevel()
+        public void DefaultAuthoring_ResolvesAllKnownEnemiesByLevel()
         {
             EnemyExperienceRewardCatalogAssetV1 asset =
                 EnemyExperienceRewardCatalogAssetV1.CreateStage1DefaultsRuntime();
@@ -27,10 +27,10 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
 
                 Assert.That(catalog.DefinitionCount, Is.EqualTo(4));
                 for (int index = 0;
-                    index < EnemyExperienceRewardIdsV1.Stage1Enemies.Count;
+                    index < EnemyExperienceRewardIdsV1.KnownEnemies.Count;
                     index++)
                 {
-                    StableId enemyId = EnemyExperienceRewardIdsV1.Stage1Enemies[index];
+                    StableId enemyId = EnemyExperienceRewardIdsV1.KnownEnemies[index];
                     long levelOne;
                     long levelFifty;
                     long levelOneHundred;

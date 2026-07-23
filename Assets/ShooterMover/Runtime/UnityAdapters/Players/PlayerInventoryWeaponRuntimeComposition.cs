@@ -97,9 +97,9 @@ namespace ShooterMover.UnityAdapters.Players
     }
 
     /// <summary>
-    /// Main-compatible production composition root for inventory-backed player weapons.
-    /// It consumes the real player runtime, route loadout, holdings authority, catalogs,
-    /// and transactional Unity effect sink without touching Stage1VisibleSliceController.
+    /// Production composition root for inventory-backed player weapons. It consumes the
+    /// real player runtime, route loadout, holdings authority, catalogs, and transactional
+    /// Unity effect sink without owning a parallel gameplay authority.
     /// </summary>
     public sealed class PlayerInventoryWeaponRuntimeCompositionRoot
     {
