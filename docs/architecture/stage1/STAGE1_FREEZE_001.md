@@ -15,9 +15,9 @@
 
 ## Frozen source inventory
 
-The manifest freezes **29 source files** and approximately **10,653 lines** of retained Stage 1 migration code.
+The manifest freezes **30 source files**, **24 frozen type entries**, and approximately **10,705 lines** of retained Stage 1 migration code. Every target records its own approximate source-line total in addition to its source-file references.
 
-| Source file | Current lines | Launch blob |
+| Source file | Current lines | Frozen baseline blob |
 |---|---:|---|
 | `Assets/ShooterMover/ContentPackages/Props/DestructibleProps/Stage1DestructiblePropIntegration.cs` | 455 | `0d63bc289774208b09817b95734bf3e36f211fd5` |
 | `Assets/ShooterMover/Production/Content/Stage1TerminalDropContentV1.cs` | 158 | `d65a36cf2c8c73e619f66d72d4788b9f3a039dc8` |
@@ -46,6 +46,7 @@ The manifest freezes **29 source files** and approximately **10,653 lines** of r
 | `Assets/ShooterMover/Production/Stage1/Stage1RunPickupPropBootstrap2D.cs` | 393 | `906baa6fa73b81eb91bc3f017ece239f3d02cfae` |
 | `Assets/ShooterMover/Production/Stage1/Stage1SharedRunCompositionPortsV1.cs` | 238 | `ded714b4c53160b3184194a2e197a957fcf2c51c` |
 | `Assets/ShooterMover/Production/Stage1/Stage1SharedRunPlayerWeaponPortsV1.cs` | 265 | `2bbf027a79eb1a48cca83d1550ba9ec38a1064f7` |
+| `Assets/ShooterMover/Production/Stage1/Stage1MigrationOnlySurfaceDocumentationV1.cs` | 52 | `0fd32f9db33ac873be85f8f2d206f55ccbc5b76c` |
 | `Assets/ShooterMover/Production/Stage1/Stage1WeaponPresentationRepairV1.cs` | 649 | `80ba18331a9050dbe2398d90ed6bcd14e9118750` |
 | `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs` | 2,394 | `e8eb59056f91ca59371d652d4b3a592800724fe1` |
 
@@ -114,25 +115,31 @@ Any additional private field, method, or property reflection against either reti
 
 ## Responsibility-to-replacement map
 
-| Current responsibility | Current retained owner | Intended replacement |
-|---|---|---|
-| Health/player authority projection | `Stage1VisibleSliceController`, `Stage1PlayerRunPortV1` | `Stage1RunLoopDriver2D` with existing player authority |
-| Movement/input | `Stage1VisibleSliceController` | `Stage1RunLoopDriver2D` |
-| Weapon selection and execution | `Stage1PlayableLoopCompositionV1` | `Stage1RunLoopDriver2D` |
-| Projectile/effect realization and damage routing | composition combat/presentation partials, `Stage1WeaponPresentationRepairV1` | `InventoryWeaponEffectDamageRouter2D` plus `Stage1LegacyScenePresentation2D` |
-| Enemy runtime and attack scheduling | composition enemy partials | `Stage1RunLoopDriver2D` |
-| Prop runtime compatibility | controller plus `Stage1DestructiblePropIntegration` | `Stage1SceneInstaller2D` and generic prop runtime |
-| Room authority | composition room runtime and `Stage1RoomRunPortV1` | `Stage1RoomFlowController2D` |
-| Traversal and access projection | composition flow partial | `Stage1RoomFlowController2D` |
-| Pickups and lifecycle projection | `Stage1RunPickupBootstrap2D` | `RunPickupLifecycleProjection2D` |
-| Enemy terminal pickup consumption | composition terminal provenance plus pickup bootstrap | `Stage1EnemyTerminalPickupConsumerV1` |
-| Prop terminal pickup consumption | `Stage1RunPickupPropBootstrap2D` | `Stage1PropTerminalPickupConsumerV1` |
-| Reward generation composition and run minimum | pickup reward partial | terminal consumers using existing reward authorities |
-| Durable transfer | composition collected-run-transfer partial | `Stage1RunLoopDriver2D` around existing durable-transfer authorities |
-| Results handoff/presentation | composition flow and durable-transfer partials | `Stage1RunLoopDriver2D` plus Results flow |
-| HUD/presentation | controller, flow partial, presentation repair | `Stage1LegacyScenePresentation2D` / `Stage1SceneView2D` |
-| Restart | controller, composition shared-run partial, run ports | `Stage1RunLoopDriver2D` and focused ports |
-| Scene installation | global composition hook | `Stage1SceneInstaller2D` |
+`Stage1RunLoopDriver2D` is deliberately **not** the replacement owner for the systems it coordinates. Its only allowed role is:
+
+> observe Run Session lifecycle → forward typed commands → coordinate lifecycle projections → request restart/end through ports
+
+It may connect the owners below, but it must not inherit their mutable state, concrete implementations, authority interfaces, persistence, or gameplay decisions.
+
+| Current responsibility | Current retained owner | Canonical destination | Driver role |
+|---|---|---|---|
+| Health/player authority projection | `Stage1VisibleSliceController`, `Stage1PlayerRunPortV1` | existing player authority and `Level1PlayerRuntimeSceneAdapterV1` | observe lifecycle snapshots only |
+| Player input and movement | `Stage1VisibleSliceController` | canonical player scene/input adapter (`Level1PlayerRuntimeSceneAdapterV1`) | none beyond lifecycle enable/disable command forwarding |
+| Weapon selection and execution | `Stage1PlayableLoopCompositionV1` | `InventoryWeaponRuntimeComposition` and `InventoryBackedWeaponExecutionAdapter` | forward typed fire/select commands only |
+| Projectile/effect realization and damage routing | composition combat/presentation partials, `Stage1WeaponPresentationRepairV1` | `InventoryWeaponEffectDamageRouter2D`; presentation in `Stage1LegacyScenePresentation2D` | no damage/effect implementation |
+| Enemy construction/runtime and attack scheduling | composition enemy partials | generic enemy factory/runtime and `EnemyAttackPatternLiveSchedulerV1` | lifecycle coordination only |
+| Prop runtime compatibility | controller plus `Stage1DestructiblePropIntegration` | generic prop runtime; explicit binding through `Stage1SceneInstaller2D` | none |
+| Room authority | composition room runtime and `Stage1RoomRunPortV1` | generic room authority / `RoomRuntimeComposition2D` | observe room lifecycle only |
+| Traversal/access presentation | composition flow partial | `Stage1RoomFlowController2D`, consuming authored room/link/spawn identities | no room truth |
+| Pickups and lifecycle projection | `Stage1RunPickupBootstrap2D` | `RunPickupLifecycleProjection2D` | restart ordering only |
+| Enemy terminal pickup consumption | composition terminal provenance plus pickup bootstrap | `Stage1EnemyTerminalPickupConsumerV1` using existing reward/pickup authorities | none |
+| Prop terminal pickup consumption | `Stage1RunPickupPropBootstrap2D` | `Stage1PropTerminalPickupConsumerV1` using existing reward/pickup authorities | none |
+| Reward generation and run minimum | pickup reward partial | existing terminal reward generation/admission authorities | none |
+| Durable transfer | composition collected-run-transfer partial | `CollectedRunRewardTransferPreparationFactoryV2`, receipt authorities, and `ProductionCollectedRunRewardPersistenceV2` | request accepted End through a typed port only |
+| Results publication/navigation | composition flow and durable-transfer partials | `MissionRunResultAuthorityV1`, `ProductionCollectedRunRewardResultsBridge`, and production flow | no navigation/presentation state |
+| HUD/presentation | controller, flow partial, presentation repair | `Stage1LegacyScenePresentation2D` / `Stage1SceneView2D` | none |
+| Restart | controller, composition shared-run partial, run ports | `RunSessionAggregateV1` plus focused player/weapon/room/pickup ports | issue one typed restart request and coordinate accepted generation projection |
+| Scene installation | global composition hook | `Stage1SceneInstaller2D`, invoked explicitly by the production route | none |
 
 ## Existing migration debt baseline
 
@@ -160,15 +167,15 @@ Removing a frozen responsibility is allowed. The removal must be accompanied by 
 `tools/architecture/verify_stage1_freeze.py` enforces:
 
 1. Every inventoried source exists and matches its current line count and Git blob SHA.
-2. Every composition and pickup partial is represented in the manifest.
+2. Every retained source is represented in the manifest; every newly added Stage 1 production source must declare an approved replacement type or be explicitly inventoried as retained debt.
 3. Known debt and responsibility IDs are unique.
 4. Both controller and composition remain separate retirement targets.
-5. All required replacement boundaries and the five-task split sequence remain declared.
+5. All required replacement boundaries, narrow-driver ownership policy, canonical-owner map, and the six-step integration sequence remain declared.
 6. The sole scene hook and sole private reflection access match the exact inventory.
-7. Controller and composition interface baselines do not grow.
+7. Controller and composition interface baselines are aggregated across every partial declaration and do not grow.
 8. Retained classes do not directly construct `RunSessionAggregateV1`.
-9. Added retained code cannot introduce another authority/persistence owner, reward selection/probability logic, weapon-name/definition switches, global discovery, name/hierarchy/room-number decisions, or content registration in the two main retained controllers.
-10. Ordinary content under definition/resource roots remains outside the retained controller boundary.
+9. Complete added C# hunks are scanned for new authority/persistence ownership, reward selection/probability logic, multiline weapon-name/definition switches, global discovery, name/hierarchy/room-number decisions, and content registration in any partial of the two main retained controllers. Alias and semantic authority-name detection are included.
+10. Ordinary content under definition/resource roots remains outside the retained controller boundary and is exercised through the end-to-end audit path.
 
 ## Test proof
 
@@ -182,11 +189,11 @@ python tools/architecture/test_verify_stage1_freeze.py
 Result:
 
 ```text
-Ran 9 tests in 0.005s
+Ran 19 tests
 OK
 ```
 
-The fixtures prove rejection of a new scene-loaded installer, private reflection, name-based gameplay decision, controller authority interface, duplicate run aggregate, and new authority responsibility without a plan. They also prove an ordinary content definition remains decoupled and removal is accepted after the baseline is intentionally updated.
+The 19 fixtures include end-to-end temporary Git repositories. They prove rejection of an unlisted `Stage1SomethingCoordinator.cs`, a Stage 1 class outside the legacy folders, an interface added through another partial declaration, multiline weapon-definition switching, aliased and previously unknown authority construction, a concrete owner field in `Stage1RunLoopDriver2D`, a new scene-loaded installer, private reflection, and name-based gameplay decisions. They also prove approved replacement source admission, ordinary content through the real `run_audit()` path, a clean passing audit, and genuine source deletion accompanied by matching source/debt/plan updates.
 
 ## Split sequence
 
@@ -194,7 +201,8 @@ The fixtures prove rejection of a new scene-loaded installer, private reflection
 2. `ROOM-JSON-LIVE-001`
 3. `STAGE1-RUNTIME-DECOMPOSE-A-001`
 4. `STAGE1-RUNTIME-DECOMPOSE-B-001`
-5. `LEVEL1-CONTROLLER-RETIRE-001`
+5. `ABILITY-RUNTIME-001`
+6. `LEVEL1-CONTROLLER-RETIRE-001`
 
 ## Runtime-behavior statement
 
