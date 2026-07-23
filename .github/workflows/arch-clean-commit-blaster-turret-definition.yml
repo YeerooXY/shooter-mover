@@ -1,0 +1,130 @@
+name: ARCH-CLEAN commit Blaster Turret definition
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - edited
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.head_ref == 'agent/arch-clean-001-remove-legacy-vertical-slice'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish one clean commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH=agent/arch-clean-001-remove-legacy-vertical-slice
+          REMOTE_HEAD=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          git reset --hard c3626a2fda2930fe8c8ee47960c9dbbcf9c079e0
+          cat > /tmp/change.patch <<'PATCH'
+          diff --git a/Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretDefinition.cs b/Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretDefinition.cs
+          index eadab1b..554135e 100644
+          --- a/Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretDefinition.cs
+          +++ b/Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretDefinition.cs
+          @@ -1,8 +1,5 @@
+           using System;
+          -using ShooterMover.ContentPackages.Enemies.Stage1;
+          -using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
+           using ShooterMover.Contracts.Combat;
+          -using ShooterMover.Contracts.Content;
+           using ShooterMover.Domain.Common;
+           using ShooterMover.Domain.Enemies;
+           using UnityEngine;
+          @@ -10,7 +7,7 @@ using UnityEngine;
+           namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
+           {
+               /// <summary>
+          -    /// Package-owned authoring and bounded tuning for the stationary Stage 1 Blaster Turret.
+          +    /// Package-owned authoring and bounded tuning for the stationary Blaster Turret.
+               /// Health and lifecycle truth remain EN-002 EnemyActorState values.
+               /// </summary>
+               [CreateAssetMenu(
+          @@ -18,6 +15,9 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
+                   menuName = "Shooter Mover/Enemies/Blaster Turret Definition")]
+               public sealed class BlasterTurretDefinition : ScriptableObject
+               {
+          +        private static readonly StableId EnemyDefinitionStableId =
+          +            StableId.Parse("enemy.blaster-turret");
+          +
+                   public const double HardMaximumHealth = 10000d;
+                   public const double HardMaximumWarningSeconds = 10d;
+                   public const double HardMaximumRecoverySeconds = 60d;
+          @@ -179,39 +179,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
+                           MoverColliderCapacity);
+               }
+           
+          -        public Stage1EnemyPackageDescriptor CreatePackageDescriptor()
+          -        {
+          -            ContentReference movement = SharedModule("module.enemy-stationary-positioning");
+          -            ContentReference attack = ContentReference.Create(
+          -                BlasterMachineGunPackage.WeaponId,
+          -                ContentDefinitionKind.Weapon,
+          -                ContentReference.SupportedDefinitionVersion);
+          -            ContentReference telegraph = SharedModule("module.enemy-line-of-fire-telegraph");
+          -            ContentDefinitionDescriptor content = ContentDefinitionDescriptor.Create(
+          -                Stage1EnemyPackageDescriptor.BlasterTurretId,
+          -                ContentDefinitionKind.Enemy,
+          -                ContentReference.SupportedDefinitionVersion,
+          -                StableId.Create("provenance", "enemy-blaster-turret-en007"),
+          -                false,
+          -                movement,
+          -                attack,
+          -                telegraph);
+          -
+          -            return Stage1EnemyPackageDescriptor.Create(
+          -                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
+          -                content,
+          -                Stage1EnemyPackageClassification.Ordinary,
+          -                CombatChannel.Kinetic,
+          -                CombatWeightClass.Immovable,
+          -                movement,
+          -                attack,
+          -                telegraph,
+          -                Stage1EnemyCapability.StationaryPositioning
+          -                    | Stage1EnemyCapability.BlasterProjectile
+          -                    | Stage1EnemyCapability.SafeRecoveryWindow
+          -                    | Stage1EnemyCapability.LineOfFireTelegraph);
+          -        }
+          -
+                   internal EnemyActorState CreateInitialState(StableId actorId)
+                   {
+                       if (actorId == null)
+          @@ -228,20 +195,12 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
+                           MoverColliderCapacity);
+                       return EnemyActorState.Create(
+                           actorId,
+          -                Stage1EnemyPackageDescriptor.BlasterTurretId,
+          +                EnemyDefinitionStableId,
+                           MaximumHealth,
+                           (int)CombatWeightClass.Immovable,
+                           contactPolicy);
+               }
+           
+          -        private static ContentReference SharedModule(string stableId)
+          -        {
+          -            return ContentReference.Create(
+          -                StableId.Parse(stableId),
+          -                ContentDefinitionKind.SharedModule,
+          -                ContentReference.SupportedDefinitionVersion);
+          -        }
+          -
+                   private void OnValidate()
+                   {
+                       maximumHealth = Mathf.Clamp(maximumHealth, 0.01f, (float)HardMaximumHealth);
+          PATCH
+          git apply --check /tmp/change.patch
+          git apply /tmp/change.patch
+          git config user.name "OpenAI"
+          git config user.email "noreply@openai.com"
+          git add Assets/ShooterMover/ContentPackages/Enemies/BlasterTurret/BlasterTurretDefinition.cs
+          git commit -m "Detach Blaster Turret from Stage1 registry"
+          git push --force-with-lease="refs/heads/$BRANCH:$REMOTE_HEAD" origin HEAD:"refs/heads/$BRANCH"
