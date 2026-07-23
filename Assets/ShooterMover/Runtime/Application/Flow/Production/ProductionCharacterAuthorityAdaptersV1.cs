@@ -39,12 +39,17 @@ namespace ShooterMover.Application.Flow.Production
         {
             var adapters = new List<ISaveComponentAdapterV1>
             {
-                Experience(experience, experienceCurve, progressionContext),
+                Experience(
+                    experience,
+                    experienceCurve,
+                    progressionContext),
                 Holdings(loadout),
                 Money(money),
                 Scrap(scrap, scrapAuthorityId, scrapCurrencyId),
                 Skills(skills, skillProfileId),
                 Loadout(loadout),
+                GeneratedEquipmentAugmentSignatureSaveComponentV1.CreateAdapter(
+                    strongboxes.AugmentSignatures),
                 Strongboxes(strongboxes),
             };
             adapters.AddRange(

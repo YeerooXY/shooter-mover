@@ -77,9 +77,11 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
     }
 
     /// <summary>
-    /// Legacy host entry point. Definition-authored props resolve through OBJ-001. The bounded
-    /// Stage 1 migration path requires explicit terminal provenance supplied by its composition
-    /// root; it never classifies a prop from HP, geometry, presentation, or destruction behavior.
+    /// Legacy host entry point. Definition-authored props resolve through OBJ-001. The
+    /// bounded Stage 1 migration recognizes only the two exact generated authoring
+    /// signatures emitted by the retained Stage 1 composition and immediately converts
+    /// them into immutable definition/profile provenance. Object names never participate
+    /// in reward selection, identity or terminal generation.
     /// </summary>
     public static class Stage1DestructiblePropIntegration
     {
@@ -88,6 +90,11 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
 
         private const float LegacyPositionToleranceSquared = 0.000001f;
         private const float LegacyRotationToleranceDegrees = 0.01f;
+        private const double LegacyValueTolerance = 0.000001d;
+        private static readonly Vector2 LegacyCrateColliderSize =
+            new Vector2(2.2f, 1.35f);
+        private static readonly Vector2 LegacyExplosiveColliderSize =
+            new Vector2(1.2f, 1.2f);
 
         public static DestructiblePropSet2D Attach(
             GameObject owner,
@@ -130,16 +137,17 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 if (authoring.GetComponent<PlacedObjectAuthoring2D>() == null
                     && authoring.GeneratedTerminalProvenance == null)
                 {
+                    DestructiblePropTerminalProvenanceV1 provenance =
+                        ResolveLegacyGeneratedProvenance(authoring)
+                            .WithPlacement(
+                                legacyRoomStableId,
+                                CreateLegacyPlacementId(authoring));
                     authoring.ConfigureGenerated(
                         authoring.MaximumHealth,
                         authoring.ColliderSize,
                         authoring.ColliderOffset,
                         authoring.DestructionAnimation,
-                        Stage1TerminalDropContentV1
-                            .ResolveLegacyAuthoringKey(authoring.gameObject.name)
-                            .WithPlacement(
-                                legacyRoomStableId,
-                                CreateLegacyPlacementId(authoring)));
+                        provenance);
                 }
 
                 authoring.ApplyLegacyConfirmedHitDamage(confirmedHitDamage);
@@ -216,7 +224,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             return set;
         }
 
-        public static StableId CreateLegacyPropId(DestructiblePropAuthoring2D authoring)
+        public static StableId CreateLegacyPropId(
+            DestructiblePropAuthoring2D authoring)
         {
             if (authoring == null)
                 throw new ArgumentNullException(nameof(authoring));
@@ -242,12 +251,42 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 "legacy-" + Fingerprint64(BuildLegacyIdentityMaterial(authoring)));
         }
 
+        private static DestructiblePropTerminalProvenanceV1
+            ResolveLegacyGeneratedProvenance(
+                DestructiblePropAuthoring2D authoring)
+        {
+            if (authoring == null)
+            {
+                throw new ArgumentNullException(nameof(authoring));
+            }
+            if (NearlyEqual(authoring.MaximumHealth, CrateMaximumHealth)
+                && NearlyEqual(authoring.ColliderSize, LegacyCrateColliderSize))
+            {
+                return Stage1TerminalDropContentV1.CreateCrateProvenance();
+            }
+            if (NearlyEqual(
+                    authoring.MaximumHealth,
+                    ExplosiveMaximumHealth)
+                && NearlyEqual(
+                    authoring.ColliderSize,
+                    LegacyExplosiveColliderSize))
+            {
+                return Stage1TerminalDropContentV1
+                    .CreateExplosiveProvenance();
+            }
+            throw new InvalidOperationException(
+                "Unknown legacy Stage 1 prop authoring signature. Migrate the prop to "
+                + "explicit definition and reward provenance instead of inferring it "
+                + "from a GameObject name or runtime behavior.");
+        }
+
         private static string BuildLegacyIdentityMaterial(
             DestructiblePropAuthoring2D authoring)
         {
             Vector3 position = authoring.transform.position;
-            return "name=" + authoring.gameObject.name.Trim()
-                + "|position=" + Vector(position);
+            return "position=" + Vector(position)
+                + "|size=" + Vector(authoring.ColliderSize)
+                + "|offset=" + Vector(authoring.ColliderOffset);
         }
 
         private static DestructibleProp2D AttachLegacyOne(
@@ -368,6 +407,17 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             }
             if (restartGenerationSource == null)
                 throw new ArgumentNullException(nameof(restartGenerationSource));
+        }
+
+        private static bool NearlyEqual(double left, double right)
+        {
+            return Math.Abs(left - right) <= LegacyValueTolerance;
+        }
+
+        private static bool NearlyEqual(Vector2 left, Vector2 right)
+        {
+            return (left - right).sqrMagnitude
+                <= (float)(LegacyValueTolerance * LegacyValueTolerance);
         }
 
         private static string Vector(Vector2 value)

@@ -274,9 +274,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                     "xp.enemy-light",
                     "xp.enemy-turret"),
                 Ids(
-                    "drop.enemy-common",
-                    "drop.enemy-none",
-                    "drop.enemy-turret"));
+                    "drop-source.small-enemy",
+                    "drop-source.normal-enemy",
+                    "drop-source.large-enemy",
+                    "drop-source.boss-enemy",
+                    "drop-source.extra-boss-enemy",
+                    "drop-source.explicit-no-drop"));
         }
 
         private static EnemyAttackCapabilityRegistrationV1

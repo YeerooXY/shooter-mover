@@ -8,8 +8,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes
 {
     /// <summary>
     /// Authored hybrid loot-selection and augment-signature balance for the eleven
-    /// production strongbox tiers. This catalog is additive: the existing BOX/GEN
-    /// resolver can adopt it without moving installed augment identity into BOX.
+    /// production strongbox tiers. Every policy exposes all seven canonical weapon-
+    /// definition rarity bands. Uncommon and Mythic use an explicit midpoint mapping
+    /// between their neighboring authored bands; equipment quality remains a separate
+    /// Common/Rare/Exceptional roll owned by BOX/GEN.
     /// </summary>
     public static class ProductionStrongboxHybridLootCatalogV1
     {
@@ -215,7 +217,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         {
             if (values == null || weights == null || values.Length != weights.Length)
             {
-                throw new ArgumentException("Outcome values and weights must have matching lengths.");
+                throw new ArgumentException(
+                    "Outcome values and weights must have matching lengths.");
             }
 
             var output = new List<StrongboxWeightedIntOutcomeV1>(values.Length);
@@ -226,6 +229,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             return output;
         }
 
+        /// <summary>
+        /// The five original authored anchors remain unchanged. Uncommon receives the
+        /// rounded midpoint of Common/Rare selection multipliers and Mythic receives
+        /// the rounded midpoint of Legendary/Artifact. This is an explicit mapping,
+        /// not a merge: all seven stable rarity identities participate independently.
+        /// </summary>
         private static IEnumerable<StrongboxRarityProfileV1> Rarities(
             int common,
             int rare,
@@ -233,11 +242,17 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             int legendary,
             int artifact)
         {
+            int uncommon = Midpoint(common, rare);
+            int mythic = Midpoint(legendary, artifact);
             return new[]
             {
                 new StrongboxRarityProfileV1(
                     StrongboxDefinitionRarityIdsV1.Common,
                     common,
+                    2),
+                new StrongboxRarityProfileV1(
+                    StrongboxDefinitionRarityIdsV1.Uncommon,
+                    uncommon,
                     2),
                 new StrongboxRarityProfileV1(
                     StrongboxDefinitionRarityIdsV1.Rare,
@@ -252,10 +267,19 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     legendary,
                     -1),
                 new StrongboxRarityProfileV1(
+                    StrongboxDefinitionRarityIdsV1.Mythic,
+                    mythic,
+                    -2),
+                new StrongboxRarityProfileV1(
                     StrongboxDefinitionRarityIdsV1.Artifact,
                     artifact,
                     -2),
             };
+        }
+
+        private static int Midpoint(int left, int right)
+        {
+            return checked((left + right + 1) / 2);
         }
 
         private static void AddIfPositive(

@@ -1,17 +1,15 @@
 using System;
-using ShooterMover.Application.Rewards.Generation;
+using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.ContentPackages.Props.DestructibleProps;
-using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Props;
-using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.TerminalDropBinding;
 
 namespace ShooterMover.Content.Definitions.Rewards
 {
     /// <summary>
-    /// Canonical Stage 1 terminal-drop content. Production adapters consume these immutable
-    /// catalogs; pickup presentation code never reconstructs enemy/prop definitions or profiles.
+    /// Canonical Stage 1 terminal-source content. This class owns only explicit
+    /// content-to-profile references; reusable reward probabilities and quantities live
+    /// in ProductionRewardSourceCatalogV1. No object-name resolver exists here.
     /// </summary>
     public static class Stage1TerminalDropContentV1
     {
@@ -21,26 +19,20 @@ namespace ShooterMover.Content.Definitions.Rewards
             StableId.Parse("prop.stage1-explosive");
         public static readonly StableId GenericLegacyDefinitionStableId =
             StableId.Parse("prop.legacy-unclassified");
+
         public static readonly StableId CrateDropProfileStableId =
-            StableId.Parse("drop.prop-stage1-ordinary");
+            ProductionRewardSourceCatalogV1.NormalPropId;
         public static readonly StableId ExplosiveDropProfileStableId =
-            StableId.Parse("drop.prop-stage1-explosive");
+            ProductionRewardSourceCatalogV1.RarePropId;
         public static readonly StableId GenericLegacyDropProfileStableId =
-            StableId.Parse("drop.prop-legacy-none");
+            ProductionRewardSourceCatalogV1.ExplicitNoDropId;
 
         private static readonly PropCatalogV1 CanonicalPropCatalog =
             BuildPropCatalog();
-        private static readonly IRewardProfileResolverV1
-            CanonicalRewardProfiles = BuildRewardProfiles();
 
         public static PropCatalogV1 PropCatalog
         {
             get { return CanonicalPropCatalog; }
-        }
-
-        public static IRewardProfileResolverV1 RewardProfiles
-        {
-            get { return CanonicalRewardProfiles; }
         }
 
         public static DestructiblePropTerminalProvenanceV1
@@ -65,24 +57,6 @@ namespace ShooterMover.Content.Definitions.Rewards
             return CreatePropProvenance(
                 GenericLegacyDefinitionStableId,
                 GenericLegacyDropProfileStableId);
-        }
-
-        /// <summary>
-        /// Bounded migration for the two pre-definition Stage 1 marker keys. Unknown reusable
-        /// legacy markers become an explicit no-drop definition rather than being guessed from
-        /// health, geometry, presentation, or destruction behavior.
-        /// </summary>
-        public static DestructiblePropTerminalProvenanceV1
-            ResolveLegacyAuthoringKey(string authoringKey)
-        {
-            if (string.IsNullOrWhiteSpace(authoringKey))
-                return CreateGenericLegacyProvenance();
-            string value = authoringKey.Trim();
-            if (value.StartsWith("Crate_", StringComparison.Ordinal))
-                return CreateCrateProvenance();
-            if (value.StartsWith("Explosive_", StringComparison.Ordinal))
-                return CreateExplosiveProvenance();
-            return CreateGenericLegacyProvenance();
         }
 
         public static bool TryReadDropProfile(
@@ -114,7 +88,9 @@ namespace ShooterMover.Content.Definitions.Rewards
                     out definition)
                 || definition == null
                 || !TryReadDropProfile(definition, out resolvedProfile)
-                || resolvedProfile != expectedDropProfileStableId)
+                || resolvedProfile != expectedDropProfileStableId
+                || !ProductionRewardSourceCatalogV1.Profiles.ContainsKey(
+                    resolvedProfile))
             {
                 throw new InvalidOperationException(
                     "Canonical Stage 1 prop content is inconsistent: "
@@ -177,85 +153,6 @@ namespace ShooterMover.Content.Definitions.Rewards
                                 GenericLegacyDropProfileStableId),
                         }),
                 });
-        }
-
-        private static IRewardProfileResolverV1 BuildRewardProfiles()
-        {
-            RewardProfileV1 enemyCommon = RewardProfileV1.Create(
-                StableId.Parse("drop.enemy-common"),
-                new[]
-                {
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-common-money"),
-                        RewardGrantKindV1.Money,
-                        StableId.Parse("currency.credits"),
-                        5L),
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-common-scrap"),
-                        RewardGrantKindV1.Scrap,
-                        StableId.Parse("currency.scrap"),
-                        1L),
-                },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardProfileV1 enemyTurret = RewardProfileV1.Create(
-                StableId.Parse("drop.enemy-turret"),
-                new[]
-                {
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-turret-money"),
-                        RewardGrantKindV1.Money,
-                        StableId.Parse("currency.credits"),
-                        15L),
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-enemy-turret-box"),
-                        RewardGrantKindV1.Strongbox,
-                        StableId.Parse("strongbox.tier-common"),
-                        1L),
-                },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardProfileV1 crate = RewardProfileV1.Create(
-                CrateDropProfileStableId,
-                new[]
-                {
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-prop-ordinary-scrap"),
-                        RewardGrantKindV1.Scrap,
-                        StableId.Parse("currency.scrap"),
-                        2L),
-                },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardProfileV1 explosive = RewardProfileV1.Create(
-                ExplosiveDropProfileStableId,
-                new[]
-                {
-                    RewardGrantSpecificationV1.CreateFixed(
-                        StableId.Parse(
-                            "grant.stage1-prop-explosive-scrap"),
-                        RewardGrantKindV1.Scrap,
-                        StableId.Parse("currency.scrap"),
-                        4L),
-                },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            return new RewardProfileCatalogResolverV1(new[]
-            {
-                enemyCommon,
-                enemyTurret,
-                crate,
-                explosive,
-                RewardProfileV1.CreateExplicitNoDrop(
-                    GenericLegacyDropProfileStableId),
-                RewardProfileV1.CreateExplicitNoDrop(
-                    StableId.Parse("drop.enemy-none")),
-            });
         }
     }
 }

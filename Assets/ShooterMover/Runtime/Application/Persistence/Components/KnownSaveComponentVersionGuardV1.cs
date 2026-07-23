@@ -115,6 +115,7 @@ namespace ShooterMover.Application.Persistence.Components
                 KnownSaveComponentDefinitionsV1.ScrapWallet(),
                 KnownSaveComponentDefinitionsV1.RankedSkillAllocation(),
                 KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
+                GeneratedEquipmentAugmentSignatureSaveComponentV1.Definition(),
                 KnownSaveComponentDefinitionsV1.StrongboxState(),
                 CollectedRunRewardPreparedTransferSaveComponentV1.Definition(),
                 CollectedRunRewardTransferReceiptSaveComponentV1.Definition(),
