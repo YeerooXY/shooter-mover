@@ -104,8 +104,10 @@ namespace ShooterMover.Application.Flow.Production
                 new SharedStrongboxRewardGeneratorV1(generator),
                 loadout.Holdings,
                 rewardApplication,
-                new DeterministicStrongboxGrantPayloadResolverV1(
-                    equipmentResolver));
+                new TransactionalStrongboxGrantPayloadResolverV1(
+                    new DeterministicStrongboxGrantPayloadResolverV1(
+                        equipmentResolver),
+                    augmentSignatures));
             return new ProductionCharacterStrongboxRuntimeV1(
                 catalog,
                 authority,
