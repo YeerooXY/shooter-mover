@@ -1,8 +1,5 @@
 using System;
-using ShooterMover.ContentPackages.Enemies.Stage1;
-using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
 using ShooterMover.Contracts.Combat;
-using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using UnityEngine;
@@ -10,7 +7,7 @@ using UnityEngine;
 namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
 {
     /// <summary>
-    /// Package-owned authoring and bounded tuning for the stationary Stage 1 Blaster Turret.
+    /// Package-owned authoring and bounded tuning for the stationary Blaster Turret.
     /// Health and lifecycle truth remain EN-002 EnemyActorState values.
     /// </summary>
     [CreateAssetMenu(
@@ -18,6 +15,9 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
         menuName = "Shooter Mover/Enemies/Blaster Turret Definition")]
     public sealed class BlasterTurretDefinition : ScriptableObject
     {
+        private static readonly StableId EnemyDefinitionStableId =
+            StableId.Parse("enemy.blaster-turret");
+
         public const double HardMaximumHealth = 10000d;
         public const double HardMaximumWarningSeconds = 10d;
         public const double HardMaximumRecoverySeconds = 60d;
@@ -179,39 +179,6 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 MoverColliderCapacity);
         }
 
-        public Stage1EnemyPackageDescriptor CreatePackageDescriptor()
-        {
-            ContentReference movement = SharedModule("module.enemy-stationary-positioning");
-            ContentReference attack = ContentReference.Create(
-                BlasterMachineGunPackage.WeaponId,
-                ContentDefinitionKind.Weapon,
-                ContentReference.SupportedDefinitionVersion);
-            ContentReference telegraph = SharedModule("module.enemy-line-of-fire-telegraph");
-            ContentDefinitionDescriptor content = ContentDefinitionDescriptor.Create(
-                Stage1EnemyPackageDescriptor.BlasterTurretId,
-                ContentDefinitionKind.Enemy,
-                ContentReference.SupportedDefinitionVersion,
-                StableId.Create("provenance", "enemy-blaster-turret-en007"),
-                false,
-                movement,
-                attack,
-                telegraph);
-
-            return Stage1EnemyPackageDescriptor.Create(
-                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
-                content,
-                Stage1EnemyPackageClassification.Ordinary,
-                CombatChannel.Kinetic,
-                CombatWeightClass.Immovable,
-                movement,
-                attack,
-                telegraph,
-                Stage1EnemyCapability.StationaryPositioning
-                    | Stage1EnemyCapability.BlasterProjectile
-                    | Stage1EnemyCapability.SafeRecoveryWindow
-                    | Stage1EnemyCapability.LineOfFireTelegraph);
-        }
-
         internal EnemyActorState CreateInitialState(StableId actorId)
         {
             if (actorId == null)
@@ -228,18 +195,10 @@ namespace ShooterMover.ContentPackages.Enemies.BlasterTurret
                 MoverColliderCapacity);
             return EnemyActorState.Create(
                 actorId,
-                Stage1EnemyPackageDescriptor.BlasterTurretId,
+                EnemyDefinitionStableId,
                 MaximumHealth,
                 (int)CombatWeightClass.Immovable,
                 contactPolicy);
-        }
-
-        private static ContentReference SharedModule(string stableId)
-        {
-            return ContentReference.Create(
-                StableId.Parse(stableId),
-                ContentDefinitionKind.SharedModule,
-                ContentReference.SupportedDefinitionVersion);
         }
 
         private void OnValidate()
