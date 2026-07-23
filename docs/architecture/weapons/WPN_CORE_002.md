@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change introduces one engine-neutral, game-wide application boundary for weapon execution. It does not modify `Stage1VisibleSliceController`, spawn Unity objects, change inventory/loadout authority, or alter scenes and prefabs.
+This change introduces one engine-neutral, game-wide application boundary for weapon execution. It does not spawn Unity objects, change inventory/loadout authority, or alter scenes and prefabs.
 
 Starting point: `b2bf4348ab6f827a737add53278d57568684f552` from `origin/main`.
 
@@ -10,9 +10,9 @@ Starting point: `b2bf4348ab6f827a737add53278d57568684f552` from `origin/main`.
 
 The accepted `WeaponCatalog` / `WeaponDefinitionData` model remains the sole weapon-definition source. `WeaponCatalogRuntimeProfileResolver` projects a live catalog definition into a validated runtime firing profile; it does not create a second catalog. The equipment-to-weapon link is isolated behind `IEquipmentWeaponDefinitionIdResolver`, with the default using `EquipmentDefinition.RuntimeWeaponReferenceId`.
 
-PR #206 contributed useful catalog-driven cadence, projectile count, spread, range and damage ideas, independent equipment state, deterministic spread, and fail-closed behavior. Its Stage1-only runtime and controller integration were not retained.
+PR #206 contributed useful catalog-driven cadence, projectile count, spread, range and damage ideas, independent equipment state, deterministic spread, and fail-closed behavior. Its vertical-slice-only runtime and controller integration were not retained.
 
-PR #212 contributed public behavior registration, rejection before cooldown/replay commit, and distinct projectile/explosion/chain descriptions. Its `object` identities, `UnityEngine.Vector3`, Stage1-prefixed contracts, per-effect sink calls, and executor-owned shared mutable state were not retained.
+PR #212 contributed public behavior registration, rejection before cooldown/replay commit, and distinct projectile/explosion/chain descriptions. Its `object` identities, `UnityEngine.Vector3`, slice-prefixed contracts, per-effect sink calls, and executor-owned shared mutable state were not retained.
 
 ## Authoritative flow
 
@@ -68,27 +68,13 @@ A later Unity adapter should:
 
 1. Read the active concrete equipment instance from the existing loadout authority.
 2. Read actor identity and lifecycle generation from lifecycle authority.
-3. Gather origin and aim as immutable scalar `WeaponVector2` values.
-4. Create one unique fire operation and call `WeaponExecutionCore.TryExecute`.
-5. Implement one transactional sink over existing systems:
-   - stage direct projectile spawns and impact payloads;
-   - stage explosive projectile spawn plus bounded detonation data;
-   - resolve chain candidates through scene/physics adapters and stable-sort targets by entity identity;
-   - reject before any spawn or damage when any effect/value/binding is unsupported;
-   - commit all staged effects together and persist the composite batch identity;
-   - return `AlreadyAccepted` for an exact replay without repeating effects.
-6. Translate the result to HUD/debug output, including conflicting-duplicate diagnostics.
-7. Remove the retained Stage 1 weapon-ID branch and blaster fallback only in WPN-LIVE-001.
+3. Build one `WeaponFireCommand` with origin, aim and deterministic seed.
+4. Route the atomic batch through existing projectile, explosion and chain adapters.
+5. Persist or replay-protect the accepted composite batch identity.
+6. Surface conflicting-duplicate diagnostics without partial side effects.
+7. Remove the retained legacy ID branch and fallback from the live controller.
 
-The adapter must not become a second inventory, equipment, damage, projectile, explosion, chain, participant-ownership, or lifecycle authority.
-
-## Focused tests
-
-Fixture: `ShooterMover.Tests.EditMode.Weapons.Execution.WeaponExecutionCoreTests`
-
-Coverage includes exact equipment identity, authority-derived participant identity, unknown and preview definitions, missing equipment, invalid aim/tuning, unsupported effects, deterministic spread, shotgun count and sequence, atomic rejection/retry, exact accepted replay, conflicting duplicate timing/seed/origin/aim, independent equipment cooldowns, lifecycle restart, explosive/chain descriptions, and fifth-behavior registration.
-
-Suggested Unity command for Unity `6000.3.19f1`:
+## Verification command
 
 ```bash
 Unity -batchmode -projectPath <project> -runTests -testPlatform EditMode \
@@ -97,4 +83,4 @@ Unity -batchmode -projectPath <project> -runTests -testPlatform EditMode \
   -logFile artifacts/test-results/WPN-CORE-002-EditMode.log
 ```
 
-Unity was not available in the connector environment used to author this change. No Unity compilation or zero-failure XML proof is claimed.
+No Unity XML was produced in the connector environment. A passing claim requires a completed XML run with zero failures.

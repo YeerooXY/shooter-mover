@@ -80,8 +80,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
     {
         public const string Level1StableIdText = "level.stage-1";
         public const string Level2StableIdText = "level.stage-2";
-        public const string Stage1ScenePath =
-            "Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity";
+        public const string Level1RuntimeRebuildMessage =
+            "Level 1 unavailable during runtime rebuild.";
         public const string Level2PrototypeScenePath =
             "Assets/ShooterMover/Scenes/Prototypes/Level2Prototype.unity";
 
@@ -114,12 +114,12 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
             {
                 new LevelSelectionDefinitionV1(
                     StableId.Parse(Level1StableIdText),
-                    "LEVEL 1",
-                    "Enter the accepted playable Stage 1 visible slice.",
-                    Stage1ScenePath,
-                    LevelAvailabilityV1.Unlocked,
-                    LevelReleaseStateV1.Live,
-                    LevelRouteKindV1.Gameplay,
+                    "LEVEL 1 — UNAVAILABLE",
+                    Level1RuntimeRebuildMessage,
+                    string.Empty,
+                    LevelAvailabilityV1.Locked,
+                    LevelReleaseStateV1.Prototype,
+                    LevelRouteKindV1.Prototype,
                     new LevelRecommendationV1(1, 1, 1, "STANDARD"),
                     10),
                 new LevelSelectionDefinitionV1(

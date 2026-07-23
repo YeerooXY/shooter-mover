@@ -174,10 +174,20 @@ namespace ShooterMover.Application.Flow.LevelSelection
                     nameof(description));
             }
 
-            if (!IsValidScenePath(scenePath))
+            bool requiresSceneRoute =
+                availability == LevelAvailabilityV1.Unlocked;
+            if (requiresSceneRoute && !IsValidScenePath(scenePath))
             {
                 throw new ArgumentException(
-                    "A canonical Assets/.../*.unity scene route is required.",
+                    "An unlocked level requires a canonical Assets/.../*.unity scene route.",
+                    nameof(scenePath));
+            }
+            if (!requiresSceneRoute
+                && !string.IsNullOrWhiteSpace(scenePath)
+                && !IsValidScenePath(scenePath))
+            {
+                throw new ArgumentException(
+                    "A retained locked-level scene route must be canonical.",
                     nameof(scenePath));
             }
 
@@ -219,7 +229,9 @@ namespace ShooterMover.Application.Flow.LevelSelection
 
             DisplayName = displayName.Trim();
             Description = description.Trim();
-            ScenePath = scenePath.Trim();
+            ScenePath = string.IsNullOrWhiteSpace(scenePath)
+                ? string.Empty
+                : scenePath.Trim();
             Availability = availability;
             ReleaseState = releaseState;
             RouteKind = routeKind;

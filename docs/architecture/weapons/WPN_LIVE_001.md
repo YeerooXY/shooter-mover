@@ -60,7 +60,7 @@ dictionary lookup rather than a full holdings, stack, transaction, ledger, and f
 
 ## Production composition
 
-The production-compatible composition is outside `Stage1VisibleSliceController.cs`:
+The production-compatible composition is independent of any deleted demo controller:
 
 - `RouteProfileActiveWeaponSource` consumes the real immutable route/loadout payload and owns only active-slot selection;
 - `PlayerRuntimeWeaponStateAdapter` projects actor, participant, and lifecycle facts from the real `PlayerRuntimeComposition`;
@@ -108,7 +108,3 @@ terminate before the Test Framework begins.
 The connector authoring environment has no Unity editor or repository checkout, so it cannot generate valid
 Unity compilation logs or XML. The PR must remain draft and non-merge-ready until a Unity-capable runner
 executes the exact reviewed head and attaches zero-failure XML/log evidence.
-
-## Prohibited controller statement
-
-`Assets/ShooterMover/Production/Stage1/Stage1VisibleSliceController.cs` is not modified.
