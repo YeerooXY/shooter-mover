@@ -12,16 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c9d9aa5d21d4eac90471f7f33ca512f, type: 3}
   m_Name: LevelSelectionCatalogV1
   m_EditorClassIdentifier: ShooterMover.Content.Definitions::ShooterMover.Content.Definitions.Levels.Selection.LevelSelectionCatalogDefinitionV1
-  levels:
-  - levelStableId: level.stage-1
-    displayName: LEVEL 1 — UNAVAILABLE
-    description: Level 1 unavailable during runtime rebuild.
-    scenePath: 
-    availability: 1
-    releaseState: 2
-    routeKind: 2
-    recommendedPlayerLevel: 1
-    recommendedEquipmentLevel: 1
-    recommendedPartySize: 1
-    difficultyLabel: STANDARD
-    sortOrder: 10
+  levels: []
