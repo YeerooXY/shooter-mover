@@ -78,10 +78,6 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         menuName = "Shooter Mover/Flow/Level Selection Catalog V1")]
     public sealed class LevelSelectionCatalogDefinitionV1 : ScriptableObject
     {
-        public const string Level1StableIdText = "level.stage-1";
-        public const string Level1RuntimeRebuildMessage =
-            "Level 1 unavailable during runtime rebuild.";
-
         [SerializeField]
         private List<LevelSelectionDefinitionRecordV1> levels =
             new List<LevelSelectionDefinitionRecordV1>();
@@ -107,19 +103,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
 
         public static LevelSelectionCatalogV1 CreateDefaultCatalog()
         {
-            return new LevelSelectionCatalogV1(new[]
-            {
-                new LevelSelectionDefinitionV1(
-                    StableId.Parse(Level1StableIdText),
-                    "LEVEL 1 — UNAVAILABLE",
-                    Level1RuntimeRebuildMessage,
-                    string.Empty,
-                    LevelAvailabilityV1.Locked,
-                    LevelReleaseStateV1.Prototype,
-                    LevelRouteKindV1.Prototype,
-                    new LevelRecommendationV1(1, 1, 1, "STANDARD"),
-                    10),
-            });
+            return new LevelSelectionCatalogV1(
+                Array.Empty<LevelSelectionDefinitionV1>());
         }
     }
 }
