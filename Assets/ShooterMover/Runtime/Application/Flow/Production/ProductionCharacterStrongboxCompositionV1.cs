@@ -32,8 +32,9 @@ namespace ShooterMover.Application.Flow.Production
         public IStrongboxOpeningRecoveryPortV1 Recovery { get; }
 
         /// <summary>
-        /// Exact-instance generated capacity/shared-level truth. Installed augments remain
-        /// empty on fresh equipment and are owned by the equipment/augment authority.
+        /// Exact-instance generated capacity/shared-level state. Payload generation stages
+        /// intent; RAP commits it only after the matching equipment holding is applied.
+        /// Installed augments remain owned by the equipment/augment authority.
         /// </summary>
         public GeneratedEquipmentAugmentSignatureAuthorityV1 AugmentSignatures
         {
@@ -88,9 +89,10 @@ namespace ShooterMover.Application.Flow.Production
                 RewardApplicationAuthorityStableId,
                 new MoneyRewardChildAuthorityV1(money),
                 new ScrapRewardChildAuthorityV1(scrap),
-                new PlayerHoldingsRewardChildAuthorityV1(
+                new GeneratedAugmentSignaturePlayerHoldingsRewardChildAuthorityV1(
                     loadout.Holdings,
-                    loadout.CatalogAdapter));
+                    loadout.CatalogAdapter,
+                    augmentSignatures));
 
             ProductionCollectedRunRewardTransferRuntimeRegistry
                 .BindRewardApplication(
