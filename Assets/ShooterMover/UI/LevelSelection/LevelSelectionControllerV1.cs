@@ -264,13 +264,15 @@ namespace ShooterMover.UI.LevelSelection
                 "Identity: " + definition.LevelStableId,
                 detailStyle);
             GUILayout.Label(
-                "Route: " + definition.ScenePath,
+                string.IsNullOrEmpty(definition.ScenePath)
+                    ? "Route: unavailable during runtime rebuild"
+                    : "Route: " + definition.ScenePath,
                 detailStyle);
 
             bool unlocked =
                 definition.Availability == LevelAvailabilityV1.Unlocked;
             DrawActionButton(
-                unlocked ? "SELECT" : "LOCKED",
+                unlocked ? "SELECT" : "UNAVAILABLE",
                 delegate { return SelectLevel(definition.LevelStableId); },
                 unlocked);
             GUILayout.EndVertical();
