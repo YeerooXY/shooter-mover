@@ -88,8 +88,9 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// <summary>
     /// Editor-only production integration runtime. It registers real tier definitions
     /// into one BOX authority and delegates equipment selection, item level and generated
-    /// augment signature to StrongboxHybridEquipmentGenerationResolverV1. No item is
-    /// preselected and no simulator-only probability table exists.
+    /// augment signature to StrongboxHybridEquipmentGenerationResolverV1. The same RAP
+    /// equipment child used by production commits signatures only after holdings applies.
+    /// No item is preselected and no simulator-only probability table exists.
     /// </summary>
     public sealed class AuthoritativeStrongboxSimulatorRuntimeV1
     {
@@ -142,9 +143,10 @@ namespace ShooterMover.Editor.BalanceSimulator
                 RapAuthority,
                 new MoneyRewardChildAuthorityV1(money),
                 new ScrapRewardChildAuthorityV1(scrap),
-                new PlayerHoldingsRewardChildAuthorityV1(
+                new GeneratedAugmentSignaturePlayerHoldingsRewardChildAuthorityV1(
                     holdings,
-                    validator));
+                    validator,
+                    augmentSignatures));
         }
 
         public WeaponCatalog WeaponCatalog
@@ -392,8 +394,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             if (registration.Status
                     != StrongboxRegistrationStatusV1.Registered
                 && registration.Status
-                    != StrongboxRegistrationStatusV1
-                        .ExactDuplicateNoChange)
+                    != StrongboxRegistrationStatusV1.ExactDuplicateNoChange)
             {
                 throw new InvalidOperationException(
                     "Unable to register simulator strongbox: "
