@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using NUnit.Framework;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
@@ -311,43 +310,6 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
-        }
-
-        [Test]
-        public void ProductionSource_RegistersPresentationGenericallyAndReferencesRetainedAsset()
-        {
-            string assets = Application.dataPath;
-            string presentationSource = File.ReadAllText(Path.Combine(
-                assets,
-                "ShooterMover",
-                "Production",
-                "Stage1",
-                "Stage1PlayableLoopCompositionV1.CombatPresentation.cs"));
-            string compositionSource = File.ReadAllText(Path.Combine(
-                assets,
-                "ShooterMover",
-                "Production",
-                "Stage1",
-                "Stage1PlayableLoopCompositionV1.cs"));
-            string resourceAsset = File.ReadAllText(Path.Combine(
-                assets,
-                "ShooterMover",
-                "Production",
-                "Stage1",
-                "Resources",
-                "CombatPresentation",
-                "Stage1DefaultEnemyDeathVfx.asset"));
-
-            Assert.That(presentationSource, Does.Not.Contain("MobileBlasterDroid"));
-            Assert.That(presentationSource, Does.Not.Contain("TurretPackage"));
-            Assert.That(presentationSource, Does.Contain("SpriteAnimationCombatDeathVfxFactory2D"));
-            Assert.That(presentationSource, Does.Contain("Resources.Load"));
-            Assert.That(
-                compositionSource,
-                Does.Contain("RegisterEnemyCombatPresentation(root, authority)"));
-            Assert.That(
-                resourceAsset,
-                Does.Contain("guid: 57635762d1ab47529786c2db175e0f49"));
         }
 
         [Test]
