@@ -79,11 +79,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
     public sealed class LevelSelectionCatalogDefinitionV1 : ScriptableObject
     {
         public const string Level1StableIdText = "level.stage-1";
-        public const string Level2StableIdText = "level.stage-2";
         public const string Level1RuntimeRebuildMessage =
             "Level 1 unavailable during runtime rebuild.";
-        public const string Level2PrototypeScenePath =
-            "Assets/ShooterMover/Scenes/Prototypes/Level2Prototype.unity";
 
         [SerializeField]
         private List<LevelSelectionDefinitionRecordV1> levels =
@@ -122,16 +119,6 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                     LevelRouteKindV1.Prototype,
                     new LevelRecommendationV1(1, 1, 1, "STANDARD"),
                     10),
-                new LevelSelectionDefinitionV1(
-                    StableId.Parse(Level2StableIdText),
-                    "LEVEL 2 — PROTOTYPE",
-                    "Safe bounded placeholder. No combat, rewards, XP, or inventory changes.",
-                    Level2PrototypeScenePath,
-                    LevelAvailabilityV1.Unlocked,
-                    LevelReleaseStateV1.Prototype,
-                    LevelRouteKindV1.Prototype,
-                    new LevelRecommendationV1(2, 2, 1, "PROTOTYPE"),
-                    20),
             });
         }
     }
