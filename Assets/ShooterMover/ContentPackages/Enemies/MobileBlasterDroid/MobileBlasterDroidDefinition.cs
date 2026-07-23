@@ -1,5 +1,4 @@
 using System;
-using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
@@ -11,8 +10,8 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 {
     /// <summary>
     /// Package-local authoring for the uncomplicated moving ranged enemy. Projectile
-    /// shape, speed, lifetime, radius, and channel remain owned by the accepted Blaster
-    /// Machine Gun package rather than being copied into this definition.
+    /// shape, speed, lifetime, radius, and channel are resolved through the canonical
+    /// weapon catalog and generic weapon execution boundary.
     /// </summary>
     [CreateAssetMenu(
         fileName = "MobileBlasterDroidDefinition",
@@ -30,6 +29,8 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
 
         private static readonly StableId EnemyDefinitionIdValue =
             StableId.Parse("enemy.mobile-blaster-droid");
+        private static readonly StableId WeaponDefinitionIdValue =
+            StableId.Parse("weapon.blaster-machine-gun");
         private static readonly StableId ReadyPhaseIdValue =
             StableId.Parse("enemy-phase.mobile-blaster-droid-ready");
 
@@ -188,7 +189,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 PreferredDistance,
                 MaximumAttackRange,
                 AttackArcDegrees,
-                BlasterMachineGunPackage.WeaponId,
+                WeaponDefinitionIdValue,
                 ReadyPhaseId,
                 PreferredDistance,
                 PositioningTolerance);
@@ -212,7 +213,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             EnemyDefinitionProjection definition = new EnemyDefinitionProjection(
                 EnemyDefinitionIdValue,
                 StableId.Parse("module.enemy-mobile-positioning"),
-                new[] { BlasterMachineGunPackage.WeaponId },
+                new[] { WeaponDefinitionIdValue },
                 new StableId[0],
                 EnemyRoomClearRole.RequiredEnemy);
             return new EnemyRuntimeProjection(
