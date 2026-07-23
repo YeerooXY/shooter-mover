@@ -109,13 +109,6 @@ namespace ShooterMover.UI.LevelSelection
             lastResult = null;
         }
 
-        public LevelSelectionResultV1 SelectLevel1()
-        {
-            return SelectLevel(
-                StableId.Parse(
-                    LevelSelectionCatalogDefinitionV1.Level1StableIdText));
-        }
-
         public LevelSelectionResultV1 SelectLevel(StableId levelStableId)
         {
             EnsureInitialized();
