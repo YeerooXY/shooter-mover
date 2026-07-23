@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -14,6 +13,10 @@ namespace ShooterMover.Domain.Weapons.Catalog
             StringBuilder builder = new StringBuilder();
             Append(builder, "version", catalog.Version);
             Append(builder, "status", catalog.Status);
+            Append(
+                builder,
+                "normalization_policy_fingerprint",
+                catalog.NormalizationPolicyFingerprint);
             AppendRules(builder, catalog.Rules);
             AppendInputs(builder, catalog.Inputs);
 

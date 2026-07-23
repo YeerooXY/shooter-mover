@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace ShooterMover.Domain.Weapons.Catalog
 {
@@ -161,7 +158,10 @@ namespace ShooterMover.Domain.Weapons.Catalog
         public string PrimaryEffect { get; private set; }
         public string Notes { get; private set; }
         public WeaponCatalogAvailability Availability { get; private set; }
-        public IReadOnlyList<string> SideProfileArtReferences { get { return _sideProfileArtReferences; } }
+        public IReadOnlyList<string> SideProfileArtReferences
+        {
+            get { return _sideProfileArtReferences; }
+        }
     }
 
     public sealed class WeaponCatalog
@@ -180,14 +180,38 @@ namespace ShooterMover.Domain.Weapons.Catalog
             IDictionary<string, WeaponArchetypeDefinition> archetypes,
             IEnumerable<WeaponFamilyDefinition> families,
             IEnumerable<WeaponDefinitionData> definitions)
+            : this(
+                version,
+                status,
+                rules,
+                inputs,
+                archetypes,
+                families,
+                definitions,
+                string.Empty)
+        {
+        }
+
+        public WeaponCatalog(
+            string version,
+            string status,
+            WeaponCatalogRules rules,
+            WeaponCatalogInputs inputs,
+            IDictionary<string, WeaponArchetypeDefinition> archetypes,
+            IEnumerable<WeaponFamilyDefinition> families,
+            IEnumerable<WeaponDefinitionData> definitions,
+            string normalizationPolicyFingerprint)
         {
             Version = version ?? string.Empty;
             Status = status ?? string.Empty;
             Rules = rules;
             Inputs = inputs;
+            NormalizationPolicyFingerprint =
+                normalizationPolicyFingerprint ?? string.Empty;
 
-            Dictionary<string, WeaponArchetypeDefinition> sortedArchetypes =
-                new Dictionary<string, WeaponArchetypeDefinition>(StringComparer.Ordinal);
+            var sortedArchetypes =
+                new Dictionary<string, WeaponArchetypeDefinition>(
+                    StringComparer.Ordinal);
             List<string> archetypeIds = archetypes == null
                 ? new List<string>()
                 : new List<string>(archetypes.Keys);
@@ -197,39 +221,60 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 string id = archetypeIds[index];
                 sortedArchetypes.Add(id, archetypes[id]);
             }
-            _archetypes = new ReadOnlyDictionary<string, WeaponArchetypeDefinition>(sortedArchetypes);
+            _archetypes =
+                new ReadOnlyDictionary<string, WeaponArchetypeDefinition>(
+                    sortedArchetypes);
 
             List<WeaponFamilyDefinition> sortedFamilies = families == null
                 ? new List<WeaponFamilyDefinition>()
                 : new List<WeaponFamilyDefinition>(families);
-            sortedFamilies.Sort(delegate(WeaponFamilyDefinition left, WeaponFamilyDefinition right)
+            sortedFamilies.Sort(delegate(
+                WeaponFamilyDefinition left,
+                WeaponFamilyDefinition right)
             {
                 return string.CompareOrdinal(left.FamilyId, right.FamilyId);
             });
-            _families = new ReadOnlyCollection<WeaponFamilyDefinition>(sortedFamilies);
-            Dictionary<string, WeaponFamilyDefinition> familyMap =
-                new Dictionary<string, WeaponFamilyDefinition>(StringComparer.Ordinal);
+            _families =
+                new ReadOnlyCollection<WeaponFamilyDefinition>(sortedFamilies);
+            var familyMap =
+                new Dictionary<string, WeaponFamilyDefinition>(
+                    StringComparer.Ordinal);
             for (int index = 0; index < sortedFamilies.Count; index++)
             {
-                familyMap.Add(sortedFamilies[index].FamilyId, sortedFamilies[index]);
+                familyMap.Add(
+                    sortedFamilies[index].FamilyId,
+                    sortedFamilies[index]);
             }
-            _familiesById = new ReadOnlyDictionary<string, WeaponFamilyDefinition>(familyMap);
+            _familiesById =
+                new ReadOnlyDictionary<string, WeaponFamilyDefinition>(
+                    familyMap);
 
             List<WeaponDefinitionData> sortedDefinitions = definitions == null
                 ? new List<WeaponDefinitionData>()
                 : new List<WeaponDefinitionData>(definitions);
-            sortedDefinitions.Sort(delegate(WeaponDefinitionData left, WeaponDefinitionData right)
+            sortedDefinitions.Sort(delegate(
+                WeaponDefinitionData left,
+                WeaponDefinitionData right)
             {
-                return string.CompareOrdinal(left.DefinitionId, right.DefinitionId);
+                return string.CompareOrdinal(
+                    left.DefinitionId,
+                    right.DefinitionId);
             });
-            _definitions = new ReadOnlyCollection<WeaponDefinitionData>(sortedDefinitions);
-            Dictionary<string, WeaponDefinitionData> definitionMap =
-                new Dictionary<string, WeaponDefinitionData>(StringComparer.Ordinal);
+            _definitions =
+                new ReadOnlyCollection<WeaponDefinitionData>(
+                    sortedDefinitions);
+            var definitionMap =
+                new Dictionary<string, WeaponDefinitionData>(
+                    StringComparer.Ordinal);
             for (int index = 0; index < sortedDefinitions.Count; index++)
             {
-                definitionMap.Add(sortedDefinitions[index].DefinitionId, sortedDefinitions[index]);
+                definitionMap.Add(
+                    sortedDefinitions[index].DefinitionId,
+                    sortedDefinitions[index]);
             }
-            _definitionsById = new ReadOnlyDictionary<string, WeaponDefinitionData>(definitionMap);
+            _definitionsById =
+                new ReadOnlyDictionary<string, WeaponDefinitionData>(
+                    definitionMap);
             Fingerprint = WeaponCatalogFingerprint.Calculate(this);
         }
 
@@ -237,24 +282,43 @@ namespace ShooterMover.Domain.Weapons.Catalog
         public string Status { get; private set; }
         public WeaponCatalogRules Rules { get; private set; }
         public WeaponCatalogInputs Inputs { get; private set; }
-        public IReadOnlyDictionary<string, WeaponArchetypeDefinition> Archetypes { get { return _archetypes; } }
-        public IReadOnlyList<WeaponFamilyDefinition> Families { get { return _families; } }
-        public IReadOnlyList<WeaponDefinitionData> Definitions { get { return _definitions; } }
+        public string NormalizationPolicyFingerprint { get; private set; }
+        public IReadOnlyDictionary<string, WeaponArchetypeDefinition> Archetypes
+        {
+            get { return _archetypes; }
+        }
+        public IReadOnlyList<WeaponFamilyDefinition> Families
+        {
+            get { return _families; }
+        }
+        public IReadOnlyList<WeaponDefinitionData> Definitions
+        {
+            get { return _definitions; }
+        }
         public string Fingerprint { get; private set; }
 
-        public bool TryGetFamily(string familyId, out WeaponFamilyDefinition family)
+        public bool TryGetFamily(
+            string familyId,
+            out WeaponFamilyDefinition family)
         {
-            return _familiesById.TryGetValue(familyId ?? string.Empty, out family);
+            return _familiesById.TryGetValue(
+                familyId ?? string.Empty,
+                out family);
         }
 
-        public bool TryGetDefinition(string definitionId, out WeaponDefinitionData definition)
+        public bool TryGetDefinition(
+            string definitionId,
+            out WeaponDefinitionData definition)
         {
-            return _definitionsById.TryGetValue(definitionId ?? string.Empty, out definition);
+            return _definitionsById.TryGetValue(
+                definitionId ?? string.Empty,
+                out definition);
         }
 
-        public IReadOnlyList<WeaponFamilyDefinition> GetFamilies(WeaponCatalogContentFilter filter)
+        public IReadOnlyList<WeaponFamilyDefinition> GetFamilies(
+            WeaponCatalogContentFilter filter)
         {
-            List<WeaponFamilyDefinition> result = new List<WeaponFamilyDefinition>();
+            var result = new List<WeaponFamilyDefinition>();
             for (int index = 0; index < _families.Count; index++)
             {
                 WeaponFamilyDefinition family = _families[index];
@@ -266,16 +330,18 @@ namespace ShooterMover.Domain.Weapons.Catalog
             return new ReadOnlyCollection<WeaponFamilyDefinition>(result);
         }
 
-        public IReadOnlyList<WeaponDefinitionData> GetDefinitions(WeaponCatalogContentFilter filter)
+        public IReadOnlyList<WeaponDefinitionData> GetDefinitions(
+            WeaponCatalogContentFilter filter)
         {
-            List<WeaponDefinitionData> result = new List<WeaponDefinitionData>();
+            var result = new List<WeaponDefinitionData>();
             for (int index = 0; index < _definitions.Count; index++)
             {
                 WeaponDefinitionData definition = _definitions[index];
                 WeaponFamilyDefinition family;
                 WeaponCatalogAvailability effective = definition.Availability;
                 if (_familiesById.TryGetValue(definition.FamilyId, out family)
-                    && family.Availability == WeaponCatalogAvailability.PreviewOnly)
+                    && family.Availability
+                        == WeaponCatalogAvailability.PreviewOnly)
                 {
                     effective = WeaponCatalogAvailability.PreviewOnly;
                 }
@@ -288,12 +354,16 @@ namespace ShooterMover.Domain.Weapons.Catalog
             return new ReadOnlyCollection<WeaponDefinitionData>(result);
         }
 
-        private static bool Matches(WeaponCatalogContentFilter filter, WeaponCatalogAvailability availability)
+        private static bool Matches(
+            WeaponCatalogContentFilter filter,
+            WeaponCatalogAvailability availability)
         {
             return filter == WeaponCatalogContentFilter.All
-                || (filter == WeaponCatalogContentFilter.LiveOnly && availability == WeaponCatalogAvailability.Live)
-                || (filter == WeaponCatalogContentFilter.PreviewOnly && availability == WeaponCatalogAvailability.PreviewOnly);
+                || (filter == WeaponCatalogContentFilter.LiveOnly
+                    && availability == WeaponCatalogAvailability.Live)
+                || (filter == WeaponCatalogContentFilter.PreviewOnly
+                    && availability
+                        == WeaponCatalogAvailability.PreviewOnly);
         }
     }
-
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -22,6 +23,13 @@ namespace ShooterMover.Application.Flow.Production
     {
         public ProductionPlayerLoadoutRuntimeV1(
             PlayerRouteProfilePayloadV1 routePayload)
+            : this(routePayload, ResolveCompatibilityProjection())
+        {
+        }
+
+        public ProductionPlayerLoadoutRuntimeV1(
+            PlayerRouteProfilePayloadV1 routePayload,
+            IWeaponCatalogProjectionV1 weaponCatalogProjection)
         {
             if (routePayload == null)
             {
@@ -34,16 +42,19 @@ namespace ShooterMover.Application.Flow.Production
                     nameof(routePayload));
             }
 
+            if (weaponCatalogProjection == null)
+            {
+                throw new ArgumentNullException(nameof(weaponCatalogProjection));
+            }
+
             RoutePayload = ProductionWeaponMountPolicyV1
                 .NormalizeRoutePayload(routePayload);
             MountLayout = ProductionWeaponMountPolicyV1.ResolveLayout(
                 RoutePayload.LoadoutProfileStableId);
-            EquipmentCatalog = ProductionStarterWeaponCatalogV1
-                .BuildEquipmentCatalog();
+            EquipmentCatalog = weaponCatalogProjection.EquipmentCatalog;
             CatalogAdapter = new ProductionEquipmentCatalogAdapterV1(
                 EquipmentCatalog);
-            WeaponCatalog = ProductionStarterWeaponCatalogV1
-                .BuildWeaponCatalog();
+            WeaponCatalog = weaponCatalogProjection.WeaponCatalog;
             Holdings = new PlayerHoldingsService(
                 StableId.Parse("authority.production-player-holdings"),
                 999L,
@@ -82,7 +93,6 @@ namespace ShooterMover.Application.Flow.Production
         private void SeedStarterInventory(
             PlayerRouteProfilePayloadV1 routePayload)
         {
-            StableId common = StableId.Parse("equipment-quality.common");
             var presentDefinitions = new HashSet<StableId>();
             var presentInstances = new HashSet<StableId>();
 
@@ -114,7 +124,7 @@ namespace ShooterMover.Application.Flow.Production
                         instanceStableId,
                         definitionStableId,
                         1,
-                        common,
+                        QualityForDefinition(definitionStableId),
                         Array.Empty<AugmentInstance>()),
                     "route-slot-" + (index + 1));
                 presentInstances.Add(instanceStableId);
@@ -149,11 +159,48 @@ namespace ShooterMover.Application.Flow.Production
                         reserveInstanceStableId,
                         definitionStableId,
                         1,
-                        common,
+                        QualityForDefinition(definitionStableId),
                         Array.Empty<AugmentInstance>()),
                     "reserve-" + (index + 1));
                 presentDefinitions.Add(definitionStableId);
             }
+        }
+
+        private StableId QualityForDefinition(StableId definitionStableId)
+        {
+            EquipmentDefinition definition = EquipmentCatalog
+                .FindEquipmentDefinition(definitionStableId);
+            if (definition == null
+                || definition.QualityTiers == null
+                || definition.QualityTiers.Count != 1
+                || definition.QualityTiers[0] == null
+                || definition.QualityTiers[0].QualityId == null)
+            {
+                throw new InvalidOperationException(
+                    "production-weapon-authored-quality-invalid:"
+                    + (definitionStableId == null
+                        ? "null"
+                        : definitionStableId.ToString()));
+            }
+            return definition.QualityTiers[0].QualityId;
+        }
+
+        private static IWeaponCatalogProjectionV1
+            ResolveCompatibilityProjection()
+        {
+            CanonicalWeaponCatalogProjectionV1 composed;
+            if (ProductionStarterWeaponCatalogV1.TryGetCanonicalProjection(
+                    out composed))
+            {
+                return composed;
+            }
+#if UNITY_EDITOR
+            return CanonicalWeaponCatalogProjectionV1
+                .CreateEditorRepositoryBaseline();
+#else
+            return ProductionStarterWeaponCatalogV1
+                .BuildCanonicalProjection();
+#endif
         }
 
         private void AddEquipment(

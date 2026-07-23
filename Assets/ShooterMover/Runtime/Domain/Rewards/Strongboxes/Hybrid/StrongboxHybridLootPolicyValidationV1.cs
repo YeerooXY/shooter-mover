@@ -9,44 +9,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
 {
     internal static class StrongboxHybridLootPolicyValidationV1
     {
-        internal static ReadOnlyCollection<StrongboxDistanceWeightV1> CopyDistanceWeights(
-            IEnumerable<StrongboxDistanceWeightV1> values)
-        {
-            if (values == null)
-            {
-                throw new ArgumentNullException(nameof(values));
-            }
-
-            var copy = new List<StrongboxDistanceWeightV1>();
-            foreach (StrongboxDistanceWeightV1 value in values)
-            {
-                if (value == null)
-                {
-                    throw new ArgumentException(
-                        "Definition bell weights must not contain null entries.",
-                        nameof(values));
-                }
-                copy.Add(value);
-            }
-            copy.Sort();
-            if (copy.Count == 0 || copy[0].Distance != 0)
-            {
-                throw new ArgumentException(
-                    "Definition bell weights must begin at distance zero.",
-                    nameof(values));
-            }
-            for (int index = 0; index < copy.Count; index++)
-            {
-                if (copy[index].Distance != index)
-                {
-                    throw new ArgumentException(
-                        "Definition bell weights must cover every distance contiguously.",
-                        nameof(values));
-                }
-            }
-            return new ReadOnlyCollection<StrongboxDistanceWeightV1>(copy);
-        }
-
         internal static ReadOnlyCollection<StrongboxWeightedIntOutcomeV1> CopyOutcomes(
             IEnumerable<StrongboxWeightedIntOutcomeV1> values,
             string parameterName,
@@ -145,7 +107,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             int mostLikelyTargetDelta,
             int maximumTargetDelta,
             int targetBlendPermille,
-            IReadOnlyList<StrongboxDistanceWeightV1> definitionBellWeights,
             IReadOnlyList<StrongboxWeightedIntOutcomeV1> instanceLevelOffsets,
             IReadOnlyList<StrongboxWeightedIntOutcomeV1> augmentSlotOutcomes,
             IReadOnlyList<StrongboxWeightedIntOutcomeV1> augmentLevelOutcomes,
@@ -158,7 +119,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             StrongboxCanonicalV1.AppendToken(builder, "most_likely_target_delta", mostLikelyTargetDelta.ToString(CultureInfo.InvariantCulture));
             StrongboxCanonicalV1.AppendToken(builder, "maximum_target_delta", maximumTargetDelta.ToString(CultureInfo.InvariantCulture));
             StrongboxCanonicalV1.AppendToken(builder, "target_blend_permille", targetBlendPermille.ToString(CultureInfo.InvariantCulture));
-            AppendDistanceWeights(builder, definitionBellWeights);
             AppendOutcomes(builder, "instance_level_offset", instanceLevelOffsets);
             AppendOutcomes(builder, "augment_slot", augmentSlotOutcomes);
             AppendOutcomes(builder, "augment_level", augmentLevelOutcomes);
@@ -171,20 +131,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                     rarityProfiles[index].ToCanonicalString());
             }
             return builder.ToString();
-        }
-
-        private static void AppendDistanceWeights(
-            StringBuilder builder,
-            IReadOnlyList<StrongboxDistanceWeightV1> values)
-        {
-            StrongboxCanonicalV1.AppendToken(builder, "bell_weight_count", values.Count.ToString(CultureInfo.InvariantCulture));
-            for (int index = 0; index < values.Count; index++)
-            {
-                StrongboxCanonicalV1.AppendToken(
-                    builder,
-                    "bell_weight_" + index.ToString("D4", CultureInfo.InvariantCulture),
-                    values[index].ToCanonicalString());
-            }
         }
 
         private static void AppendOutcomes(

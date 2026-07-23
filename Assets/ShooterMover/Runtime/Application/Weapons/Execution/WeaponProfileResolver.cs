@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons.Catalog;
@@ -28,6 +27,7 @@ namespace ShooterMover.Application.Weapons.Execution
         InvalidTuning = 5,
         UnsupportedEffects = 6,
         UnknownBehavior = 7,
+        RuntimeBehaviorPending = 8,
     }
 
     public sealed class WeaponProfileResolution
@@ -140,5 +140,5 @@ namespace ShooterMover.Application.Weapons.Execution
             id = new WeaponDefinitionId(definition.RuntimeWeaponReferenceId.ToString());
             return true;
         }
-}
+    }
 }

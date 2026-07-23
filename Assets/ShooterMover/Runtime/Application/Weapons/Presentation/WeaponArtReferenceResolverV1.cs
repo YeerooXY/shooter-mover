@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons.Catalog;
@@ -7,8 +8,7 @@ namespace ShooterMover.Application.Weapons.Presentation
 {
     /// <summary>
     /// Engine-neutral projection from an exact equipment instance to canonical weapon
-    /// presentation identity. Unity resource paths and sprites deliberately stay out of
-    /// this layer.
+    /// presentation identity. Unity resource paths and sprites stay out of this layer.
     /// </summary>
     public sealed class WeaponArtReferenceProjectionV1
     {
@@ -40,11 +40,8 @@ namespace ShooterMover.Application.Weapons.Presentation
         }
 
         public StableId EquipmentInstanceStableId { get; }
-
         public StableId EquipmentDefinitionStableId { get; }
-
         public string WeaponDefinitionId { get; }
-
         public string ArtReferenceId { get; }
     }
 
@@ -134,12 +131,21 @@ namespace ShooterMover.Application.Weapons.Presentation
                 .RuntimeWeaponReferenceId.ToString();
             WeaponDefinitionData weaponDefinition;
             if (!weaponCatalog.TryGetDefinition(
-                weaponDefinitionId,
-                out weaponDefinition))
+                    weaponDefinitionId,
+                    out weaponDefinition))
             {
-                rejectionCode = "weapon-art-weapon-definition-missing:"
-                    + weaponDefinitionId;
-                return false;
+                if (!CanonicalWeaponCatalogProjectionV1.TryResolveDefinitionId(
+                        weaponCatalog,
+                        equipmentDefinition.RuntimeWeaponReferenceId,
+                        out weaponDefinitionId)
+                    || !weaponCatalog.TryGetDefinition(
+                        weaponDefinitionId,
+                        out weaponDefinition))
+                {
+                    rejectionCode = "weapon-art-weapon-definition-missing:"
+                        + weaponDefinitionId;
+                    return false;
+                }
             }
 
             string artReferenceId = FirstReference(
@@ -157,9 +163,10 @@ namespace ShooterMover.Application.Weapons.Presentation
             }
             if (artReferenceId == null)
             {
-                rejectionCode = "weapon-art-reference-missing:"
-                    + weaponDefinitionId;
-                return false;
+                artReferenceId = "weapon-art.generic."
+                    + CanonicalWeaponCatalogProjectionV1.Slug(
+                        weaponDefinitionId)
+                    + ".side-v1";
             }
 
             projection = new WeaponArtReferenceProjectionV1(
@@ -167,7 +174,11 @@ namespace ShooterMover.Application.Weapons.Presentation
                 equipmentDefinitionStableId,
                 weaponDefinitionId,
                 artReferenceId);
-            rejectionCode = string.Empty;
+            rejectionCode = artReferenceId.StartsWith(
+                    "weapon-art.generic.",
+                    StringComparison.Ordinal)
+                ? "weapon-art-fallback:" + weaponDefinitionId
+                : string.Empty;
             return true;
         }
 

@@ -6,23 +6,20 @@ using ShooterMover.Domain.Common;
 namespace ShooterMover.Domain.Rewards.Strongboxes
 {
     /// <summary>
-    /// Engine-neutral, deterministic strongbox policy foundation. A tier first rolls
-    /// a triangular target around the player. Definitions receive a bell-shaped
-    /// affinity around that target. The selected definition then receives a hybrid
-    /// instance level and one SAS-style shared augment signature such as 10/3.
-    /// Installed augment identities remain owned by the equipment/augment authority.
+    /// Engine-neutral, deterministic strongbox policy foundation. A tier rolls a
+    /// triangular target around the player, then owns instance-level and augment-signature
+    /// metadata. Definition eligibility and soft-tail selection weights are composed by
+    /// the Application layer from authored weapon data; this policy has no bounded
+    /// definition-distance table or hidden unlock radius.
     /// </summary>
     public sealed class StrongboxHybridLootPolicyV1 :
         IEquatable<StrongboxHybridLootPolicyV1>
     {
-        public const int DefinitionWeightScale = 1000000;
         public const int RarityMultiplierScale = 1000;
         public const int BlendScale = 1000;
         public const int AuthoredNormalWeaponSlots = 3;
         public const int NormalMaximumAugmentLevel = 10;
 
-        private readonly ReadOnlyCollection<StrongboxDistanceWeightV1>
-            definitionBellWeights;
         private readonly ReadOnlyCollection<StrongboxWeightedIntOutcomeV1>
             instanceLevelOffsets;
         private readonly ReadOnlyCollection<StrongboxWeightedIntOutcomeV1>
@@ -40,7 +37,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             int mostLikelyTargetDelta,
             int maximumTargetDelta,
             int targetBlendPermille,
-            IEnumerable<StrongboxDistanceWeightV1> definitionBellWeights,
             IEnumerable<StrongboxWeightedIntOutcomeV1> instanceLevelOffsets,
             IEnumerable<StrongboxWeightedIntOutcomeV1> augmentSlotOutcomes,
             IEnumerable<StrongboxWeightedIntOutcomeV1> augmentLevelOutcomes,
@@ -62,9 +58,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             MostLikelyTargetDelta = mostLikelyTargetDelta;
             MaximumTargetDelta = maximumTargetDelta;
             TargetBlendPermille = targetBlendPermille;
-            this.definitionBellWeights =
-                StrongboxHybridLootPolicyValidationV1.CopyDistanceWeights(
-                    definitionBellWeights);
             this.instanceLevelOffsets =
                 StrongboxHybridLootPolicyValidationV1.CopyOutcomes(
                     instanceLevelOffsets,
@@ -87,7 +80,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                     out rarityMap);
             rarityById = rarityMap;
 
-            DefinitionSelectionRadius = this.definitionBellWeights.Count - 1;
             StrongboxHybridLootPolicyValidationV1.ValidateOutcomeValues(
                 this.augmentSlotOutcomes,
                 this.augmentLevelOutcomes);
@@ -98,7 +90,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                     MostLikelyTargetDelta,
                     MaximumTargetDelta,
                     TargetBlendPermille,
-                    this.definitionBellWeights,
                     this.instanceLevelOffsets,
                     this.augmentSlotOutcomes,
                     this.augmentLevelOutcomes,
@@ -111,11 +102,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
         public int MostLikelyTargetDelta { get; }
         public int MaximumTargetDelta { get; }
         public int TargetBlendPermille { get; }
-        public int DefinitionSelectionRadius { get; }
-        public IReadOnlyList<StrongboxDistanceWeightV1> DefinitionBellWeights
-        {
-            get { return definitionBellWeights; }
-        }
         public IReadOnlyList<StrongboxWeightedIntOutcomeV1> InstanceLevelOffsets
         {
             get { return instanceLevelOffsets; }
@@ -140,7 +126,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             int mostLikelyTargetDelta,
             int maximumTargetDelta,
             int targetBlendPermille,
-            IEnumerable<StrongboxDistanceWeightV1> definitionBellWeights,
             IEnumerable<StrongboxWeightedIntOutcomeV1> instanceLevelOffsets,
             IEnumerable<StrongboxWeightedIntOutcomeV1> augmentSlotOutcomes,
             IEnumerable<StrongboxWeightedIntOutcomeV1> augmentLevelOutcomes,
@@ -152,7 +137,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                 mostLikelyTargetDelta,
                 maximumTargetDelta,
                 targetBlendPermille,
-                definitionBellWeights,
                 instanceLevelOffsets,
                 augmentSlotOutcomes,
                 augmentLevelOutcomes,
@@ -178,37 +162,10 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                 equipmentSlotOrdinal);
         }
 
-        public double EvaluateDefinitionWeight(
-            StrongboxTargetLevelRollV1 targetRoll,
-            int definitionPeakLevel,
-            double baseDefinitionWeight,
+        public int ResolveDefinitionRaritySelectionMultiplierMilli(
             StableId rarityId)
         {
-            RequireTargetRoll(targetRoll);
-            if (definitionPeakLevel < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(definitionPeakLevel));
-            }
-            if (double.IsNaN(baseDefinitionWeight)
-                || double.IsInfinity(baseDefinitionWeight)
-                || baseDefinitionWeight <= 0.0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(baseDefinitionWeight));
-            }
-
-            StrongboxRarityProfileV1 rarity = RequireRarity(rarityId);
-            int distance = Math.Abs(definitionPeakLevel - targetRoll.TargetLevel);
-            if (distance > DefinitionSelectionRadius
-                || rarity.SelectionMultiplierMilli == 0)
-            {
-                return 0.0;
-            }
-
-            double levelAffinity = definitionBellWeights[distance].WeightMillionths
-                / (double)DefinitionWeightScale;
-            double rarityMultiplier = rarity.SelectionMultiplierMilli
-                / (double)RarityMultiplierScale;
-            return baseDefinitionWeight * levelAffinity * rarityMultiplier;
+            return RequireRarity(rarityId).SelectionMultiplierMilli;
         }
 
         public StrongboxInstanceLevelRollV1 RollInstanceLevel(
@@ -225,14 +182,6 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             {
                 throw new ArgumentOutOfRangeException(nameof(definitionPeakLevel));
             }
-            if (Math.Abs(definitionPeakLevel - targetRoll.TargetLevel)
-                > DefinitionSelectionRadius)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(definitionPeakLevel),
-                    "The selected definition is outside the authored hybrid selection radius.");
-            }
-
             return StrongboxHybridLootRandomV1.RollInstanceLevel(
                 this,
                 targetRoll,

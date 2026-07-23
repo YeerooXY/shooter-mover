@@ -8,33 +8,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
 {
     /// <summary>
     /// Authored hybrid loot-selection and augment-signature balance for the eleven
-    /// production strongbox tiers. Every policy exposes all seven canonical weapon-
-    /// definition rarity bands. Uncommon and Mythic use an explicit midpoint mapping
-    /// between their neighboring authored bands; equipment quality remains a separate
-    /// Common/Rare/Exceptional roll owned by BOX/GEN.
+    /// production strongbox tiers. Equipment quality remains separate from the five
+    /// normalized weapon-definition rarity bands.
     /// </summary>
     public static class ProductionStrongboxHybridLootCatalogV1
     {
-        private static readonly ReadOnlyCollection<StrongboxDistanceWeightV1>
-            DefinitionBellWeightsValue =
-                new ReadOnlyCollection<StrongboxDistanceWeightV1>(
-                    new List<StrongboxDistanceWeightV1>
-                    {
-                        Distance(0, 1000000),
-                        Distance(1, 945959),
-                        Distance(2, 800737),
-                        Distance(3, 606531),
-                        Distance(4, 411112),
-                        Distance(5, 249352),
-                        Distance(6, 135335),
-                        Distance(7, 65799),
-                        Distance(8, 28566),
-                        Distance(9, 11109),
-                        Distance(10, 3866),
-                        Distance(11, 1204),
-                        Distance(12, 335),
-                    });
-
         private static readonly ReadOnlyCollection<StrongboxWeightedIntOutcomeV1>
             InstanceLevelOffsetsValue =
                 new ReadOnlyCollection<StrongboxWeightedIntOutcomeV1>(
@@ -176,7 +154,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 modeDelta,
                 maximumDelta,
                 800,
-                DefinitionBellWeightsValue,
                 InstanceLevelOffsetsValue,
                 slots,
                 levels,
@@ -230,29 +207,23 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         }
 
         /// <summary>
-        /// The five original authored anchors remain unchanged. Uncommon receives the
-        /// rounded midpoint of Common/Rare selection multipliers and Mythic receives
-        /// the rounded midpoint of Legendary/Artifact. This is an explicit mapping,
-        /// not a merge: all seven stable rarity identities participate independently.
+        /// The original authored Common/Rare/Epic/Legendary/Artifact anchors remain
+        /// unchanged. Uncommon definitions project into Common, while Mythic and
+        /// Artifact share the highest MythicArtifact profile. Authored per-definition
+        /// weights remain part of final selection.
         /// </summary>
         private static IEnumerable<StrongboxRarityProfileV1> Rarities(
             int common,
             int rare,
             int epic,
             int legendary,
-            int artifact)
+            int mythicArtifact)
         {
-            int uncommon = Midpoint(common, rare);
-            int mythic = Midpoint(legendary, artifact);
             return new[]
             {
                 new StrongboxRarityProfileV1(
                     StrongboxDefinitionRarityIdsV1.Common,
                     common,
-                    2),
-                new StrongboxRarityProfileV1(
-                    StrongboxDefinitionRarityIdsV1.Uncommon,
-                    uncommon,
                     2),
                 new StrongboxRarityProfileV1(
                     StrongboxDefinitionRarityIdsV1.Rare,
@@ -267,19 +238,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     legendary,
                     -1),
                 new StrongboxRarityProfileV1(
-                    StrongboxDefinitionRarityIdsV1.Mythic,
-                    mythic,
-                    -2),
-                new StrongboxRarityProfileV1(
-                    StrongboxDefinitionRarityIdsV1.Artifact,
-                    artifact,
+                    StrongboxDefinitionRarityIdsV1.MythicArtifact,
+                    mythicArtifact,
                     -2),
             };
-        }
-
-        private static int Midpoint(int left, int right)
-        {
-            return checked((left + right + 1) / 2);
         }
 
         private static void AddIfPositive(
@@ -300,11 +262,5 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             return new StrongboxWeightedIntOutcomeV1(value, weight);
         }
 
-        private static StrongboxDistanceWeightV1 Distance(
-            int distance,
-            ulong weightMillionths)
-        {
-            return new StrongboxDistanceWeightV1(distance, weightMillionths);
-        }
     }
 }

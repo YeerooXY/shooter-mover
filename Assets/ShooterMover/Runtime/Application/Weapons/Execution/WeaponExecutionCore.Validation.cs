@@ -84,6 +84,8 @@ namespace ShooterMover.Application.Weapons.Execution
                     return WeaponExecutionStatus.UnsupportedEffects;
                 case WeaponProfileResolutionStatus.UnknownBehavior:
                     return WeaponExecutionStatus.UnknownBehavior;
+                case WeaponProfileResolutionStatus.RuntimeBehaviorPending:
+                    return WeaponExecutionStatus.RuntimeBehaviorPending;
                 default:
                     return WeaponExecutionStatus.InvalidTuning;
             }

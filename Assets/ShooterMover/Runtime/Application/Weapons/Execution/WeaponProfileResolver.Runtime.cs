@@ -1,5 +1,7 @@
+
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
@@ -8,12 +10,10 @@ namespace ShooterMover.Application.Weapons.Execution
 {
     public sealed partial class WeaponCatalogRuntimeProfileResolver
     {
-        private const double Epsilon = 0.000000001d;
-
         private readonly EquipmentCatalog equipmentCatalog;
         private readonly WeaponCatalog weaponCatalog;
         private readonly HashSet<string> liveDefinitionIds;
-        private readonly IWeaponBehaviorSelector behaviorSelector;
+        private readonly IWeaponRuntimePackageRegistryV1 runtimePackageRegistry;
         private readonly IEquipmentWeaponDefinitionIdResolver definitionIdResolver;
         private readonly int simulationTicksPerSecond;
 
@@ -25,10 +25,11 @@ namespace ShooterMover.Application.Weapons.Execution
             : this(
                 equipment,
                 weapons,
-                selector,
+                ProductionWeaponRuntimePackageRegistryV1.CreateDefault(),
                 new RuntimeReferenceWeaponDefinitionIdResolver(),
                 ticks)
         {
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
         }
 
         public WeaponCatalogRuntimeProfileResolver(
@@ -37,15 +38,41 @@ namespace ShooterMover.Application.Weapons.Execution
             IWeaponBehaviorSelector selector,
             IEquipmentWeaponDefinitionIdResolver idResolver,
             int ticksPerSecond)
+            : this(
+                equipment,
+                weapons,
+                ProductionWeaponRuntimePackageRegistryV1.CreateDefault(),
+                idResolver,
+                ticksPerSecond)
         {
-            if (ticksPerSecond < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(ticksPerSecond));
-            }
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+        }
 
+        public WeaponCatalogRuntimeProfileResolver(
+            EquipmentCatalog equipment,
+            WeaponCatalog weapons,
+            IWeaponRuntimePackageRegistryV1 packageRegistry,
+            int ticksPerSecond)
+            : this(
+                equipment,
+                weapons,
+                packageRegistry,
+                new RuntimeReferenceWeaponDefinitionIdResolver(),
+                ticksPerSecond)
+        {
+        }
+
+        public WeaponCatalogRuntimeProfileResolver(
+            EquipmentCatalog equipment,
+            WeaponCatalog weapons,
+            IWeaponRuntimePackageRegistryV1 packageRegistry,
+            IEquipmentWeaponDefinitionIdResolver idResolver,
+            int ticksPerSecond)
+        {
+            if (ticksPerSecond < 1) throw new ArgumentOutOfRangeException(nameof(ticksPerSecond));
             equipmentCatalog = equipment ?? throw new ArgumentNullException(nameof(equipment));
             weaponCatalog = weapons ?? throw new ArgumentNullException(nameof(weapons));
-            behaviorSelector = selector ?? throw new ArgumentNullException(nameof(selector));
+            runtimePackageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             definitionIdResolver = idResolver ?? throw new ArgumentNullException(nameof(idResolver));
             simulationTicksPerSecond = ticksPerSecond;
 
@@ -58,42 +85,32 @@ namespace ShooterMover.Application.Weapons.Execution
             }
         }
 
-        public WeaponProfileResolution Resolve(
-            EquipmentInstanceId requested,
-            EquipmentInstance instance)
+        public WeaponProfileResolution Resolve(EquipmentInstanceId requested, EquipmentInstance instance)
         {
             if (requested == null
                 || instance == null
                 || instance.InstanceId == null
                 || requested.Value != instance.InstanceId)
             {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-instance-mismatch");
+                return Reject(WeaponProfileResolutionStatus.InvalidEquipment, "weapon-equipment-instance-mismatch");
             }
 
             EquipmentValidationResult validation = equipmentCatalog.ValidateInstance(instance);
             if (validation == null || !validation.IsValid)
             {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-instance-invalid");
+                return Reject(WeaponProfileResolutionStatus.InvalidEquipment, "weapon-equipment-instance-invalid");
             }
 
-            EquipmentDefinition equipment =
-                equipmentCatalog.FindEquipmentDefinition(instance.DefinitionId);
+            EquipmentDefinition equipment = equipmentCatalog.FindEquipmentDefinition(instance.DefinitionId);
             if (equipment == null
                 || equipment.CategoryId != EquipmentCategoryIds.Weapon
                 || equipment.RuntimeWeaponReferenceId == null)
             {
-                return Reject(
-                    WeaponProfileResolutionStatus.InvalidEquipment,
-                    "weapon-equipment-definition-invalid");
+                return Reject(WeaponProfileResolutionStatus.InvalidEquipment, "weapon-equipment-definition-invalid");
             }
 
             WeaponDefinitionId definitionId;
-            if (!definitionIdResolver.TryResolveWeaponDefinitionId(equipment, out definitionId)
-                || definitionId == null)
+            if (!definitionIdResolver.TryResolveWeaponDefinitionId(equipment, out definitionId) || definitionId == null)
             {
                 return Reject(
                     WeaponProfileResolutionStatus.InvalidEquipment,
@@ -101,19 +118,35 @@ namespace ShooterMover.Application.Weapons.Execution
             }
 
             WeaponDefinitionData definition;
-            if (!weaponCatalog.TryGetDefinition(definitionId.Value, out definition)
-                || definition == null)
+            string resolvedDefinitionId = definitionId.Value;
+            if (!weaponCatalog.TryGetDefinition(resolvedDefinitionId, out definition) || definition == null)
             {
-                return Reject(
-                    WeaponProfileResolutionStatus.UnknownWeaponDefinition,
-                    "weapon-definition-unknown:" + definitionId.Value);
+                if (!CanonicalWeaponCatalogProjectionV1.TryResolveDefinitionId(
+                        weaponCatalog,
+                        equipment.RuntimeWeaponReferenceId,
+                        out resolvedDefinitionId)
+                    || !weaponCatalog.TryGetDefinition(resolvedDefinitionId, out definition)
+                    || definition == null)
+                {
+                    return Reject(
+                        WeaponProfileResolutionStatus.UnknownWeaponDefinition,
+                        "weapon-definition-unknown:" + definitionId.Value);
+                }
             }
 
-            if (!liveDefinitionIds.Contains(definitionId.Value))
+            if (!liveDefinitionIds.Contains(resolvedDefinitionId))
             {
                 return Reject(
                     WeaponProfileResolutionStatus.PreviewOnlyWeaponDefinition,
-                    "weapon-definition-preview-only:" + definitionId.Value);
+                    "weapon-definition-preview-only:" + resolvedDefinitionId);
+            }
+
+            WeaponBehaviorId behaviorId;
+            if (!runtimePackageRegistry.TryResolveBehavior(definition, out behaviorId) || behaviorId == null)
+            {
+                return Reject(
+                    WeaponProfileResolutionStatus.RuntimeBehaviorPending,
+                    "weapon-runtime-behavior-pending:" + resolvedDefinitionId);
             }
 
             string invalidCode;
@@ -125,14 +158,6 @@ namespace ShooterMover.Application.Weapons.Execution
                     ? WeaponProfileResolutionStatus.UnsupportedEffects
                     : WeaponProfileResolutionStatus.InvalidTuning;
                 return Reject(status, invalidCode);
-            }
-
-            WeaponBehaviorId behaviorId;
-            if (!behaviorSelector.TrySelect(definition, out behaviorId) || behaviorId == null)
-            {
-                return Reject(
-                    WeaponProfileResolutionStatus.UnknownBehavior,
-                    "weapon-behavior-unresolved:" + definitionId.Value);
             }
 
             int cooldownTicks = Math.Max(
@@ -160,6 +185,5 @@ namespace ShooterMover.Application.Weapons.Execution
                     definition.Knockback,
                     definition.DamageType));
         }
-
     }
 }

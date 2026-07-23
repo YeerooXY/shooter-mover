@@ -23,6 +23,7 @@ namespace ShooterMover.Application.Weapons.Execution
         InvalidEffectBatch = 14,
         SinkRejected = 15,
         ConflictingDuplicate = 16,
+        RuntimeBehaviorPending = 17,
     }
 
     public sealed class WeaponExecutionResult

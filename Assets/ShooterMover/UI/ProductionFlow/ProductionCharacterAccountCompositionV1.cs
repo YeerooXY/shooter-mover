@@ -9,6 +9,7 @@ using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Persistence.Accounts;
@@ -246,8 +247,11 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             accountAuthority = new PlayerAccountSaveAuthorityV1(account);
+            CanonicalWeaponCatalogProjectionV1 weaponCatalogProjection =
+                ProductionWeaponCatalogCompositionV1.CreateBaseline();
+            ProductionStarterWeaponCatalogV1.Compose(weaponCatalogProjection);
             graphFactory = ProductionCharacterRuntimeGraphFactoryV1
-                .CreateVerticalSliceDefaults();
+                .CreateVerticalSliceDefaults(weaponCatalogProjection);
             composition = new CharacterCompositionCoordinatorV1(
                 accountAuthority,
                 graphFactory,
