@@ -7,6 +7,7 @@ using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Progression.Experience;
@@ -36,12 +37,9 @@ namespace ShooterMover.Application.Flow.Production
             string skillProfileId,
             ProductionCharacterStrongboxRuntimeV1 strongboxes)
         {
-            return new List<ISaveComponentAdapterV1>
+            var adapters = new List<ISaveComponentAdapterV1>
             {
-                Experience(
-                    experience,
-                    experienceCurve,
-                    progressionContext),
+                Experience(experience, experienceCurve, progressionContext),
                 Holdings(loadout),
                 Money(money),
                 Scrap(scrap, scrapAuthorityId, scrapCurrencyId),
@@ -49,6 +47,11 @@ namespace ShooterMover.Application.Flow.Production
                 Loadout(loadout),
                 Strongboxes(strongboxes),
             };
+            adapters.AddRange(
+                ProductionCollectedRunRewardRuntimeRegistryV2
+                    .CreateSaveAdapters(
+                        loadout.RoutePayload.SelectedCharacterStableId));
+            return adapters;
         }
 
         public static TSnapshot DecodeRequired<TSnapshot>(

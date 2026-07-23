@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Contracts.Rewards;
@@ -11,6 +14,7 @@ using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.RunPickups;
 using ShooterMover.TerminalDropBinding;
 using ShooterMover.TestSupport.VisibleSlice;
+using ShooterMover.UI.ProductionFlow;
 using ShooterMover.UnityAdapters.Rewards.RunPickups;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -33,6 +37,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         private RunPickupSourcePositionRegistry2D sourcePositions;
         private RunPickupLiveCompositionV1 pickups;
         private TerminalDropBindingCompositionV1 terminalDrops;
+        private RetainedTerminalDropEquipmentPayloadAuthority equipmentPayloads;
         private RunPickupPresenter2D presenter;
         private readonly Stage1PickupTerminalDropRunContextResolverV1
             dropRunContext =
@@ -76,6 +81,10 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
         internal ITerminalDropRunContextResolverV1 DropRunContext
         {
             get { return dropRunContext; }
+        }
+        internal ICollectedRunEquipmentPayloadSource EquipmentPayloadSource
+        {
+            get { return equipmentPayloads; }
         }
 
         [RuntimeInitializeOnLoadMethod(
@@ -273,6 +282,25 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 throw new InvalidOperationException(contentDiagnostic);
             }
 
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 profile;
+            CharacterCompositionCoordinatorV1 composition;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out profile,
+                    out composition)
+                || graph == null
+                || graph.IsDisposed)
+            {
+                throw new InvalidOperationException(
+                    "The selected character graph is unavailable for exact equipment payload generation.");
+            }
+
+            var rewardGeneration = new RewardGenerationServiceV1();
+            equipmentPayloads =
+                new RetainedTerminalDropEquipmentPayloadAuthority(
+                    rewardGeneration,
+                    graph.LoadoutRuntime.EquipmentCatalog);
             terminalDrops = TerminalDropBindingCompositionV1.Create(
                 enemyCatalog,
                 new Stage1EnemyTerminalSourceContextResolverV1(() => run),
@@ -280,8 +308,12 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 new Stage1MissingPropTerminalSourceContextResolverV1(),
                 dropRunContext,
                 rewardProfiles,
-                new RewardGenerationServiceV1(),
-                new PendingTerminalDropAdmissionAuthorityV1());
+                rewardGeneration,
+                new PendingTerminalDropAdmissionAuthorityV1(),
+                generationExecutor:
+                    new RetainingTerminalDropRewardGenerationExecutor(
+                        rewardGeneration,
+                        equipmentPayloads));
 
             ConfigureCollector();
             observedLifecycleGeneration = run.LifecycleGeneration;
@@ -544,6 +576,7 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             sourcePositions = null;
             pickups = null;
             terminalDrops = null;
+            equipmentPayloads = null;
             presenter = null;
             observedLifecycleGeneration = -1L;
             lastEnemyAdmission = null;

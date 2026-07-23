@@ -113,7 +113,8 @@ namespace ShooterMover.TerminalDropBinding
             RewardGenerationServiceV1 rewardGenerationService,
             IGeneratedTerminalDropPendingAdmissionV1 pendingAdmission,
             IEnumerable<ITerminalDropFactAdapterV1> additionalAdapters = null,
-            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null)
+            IPendingTerminalDropAdmissionConsumerV1 admissionConsumer = null,
+            IRewardGenerationExecutorV1 generationExecutor = null)
         {
             if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
             if (enemySourceContexts == null)
@@ -153,7 +154,9 @@ namespace ShooterMover.TerminalDropBinding
                 new TerminalDropFactAdapterRegistryV1(adapters),
                 runContexts,
                 rewardProfiles,
-                new ExistingRewardGenerationExecutorV1(rewardGenerationService));
+                generationExecutor
+                    ?? new ExistingRewardGenerationExecutorV1(
+                        rewardGenerationService));
             return new TerminalDropBindingCompositionV1(
                 authority,
                 pendingAdmission,

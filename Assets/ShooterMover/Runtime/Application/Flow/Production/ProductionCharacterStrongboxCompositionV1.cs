@@ -4,6 +4,7 @@ using System.Linq;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Rewards.Application;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
@@ -91,6 +92,10 @@ namespace ShooterMover.Application.Flow.Production
                 new PlayerHoldingsRewardChildAuthorityV1(
                     loadout.Holdings,
                     loadout.CatalogAdapter));
+            ProductionCollectedRunRewardTransferRuntimeRegistry
+                .BindRewardApplication(
+                    loadout.RoutePayload.SelectedCharacterStableId,
+                    rewardApplication);
             var authority = new StrongboxOpeningServiceV1(
                 catalog,
                 new SharedStrongboxRewardGeneratorV1(generator),
