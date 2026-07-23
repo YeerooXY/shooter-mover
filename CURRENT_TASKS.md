@@ -90,10 +90,11 @@ After the relevant Wave A dependencies merge:
 
 These tasks touch central production composition and should not be assigned concurrently against the same files:
 
-1. `BOX-PERSIST-001`
+1. `STAGE1-FREEZE-001`
 2. `ROOM-JSON-LIVE-001`
-3. `ABILITY-RUNTIME-001`
-4. `LEVEL1-CONTROLLER-RETIRE-001`
+3. `STAGE1-RUNTIME-DECOMPOSE-A-001`
+4. `STAGE1-RUNTIME-DECOMPOSE-B-001`
+5. `LEVEL1-CONTROLLER-RETIRE-001`
 
 ---
 
