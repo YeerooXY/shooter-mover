@@ -47,13 +47,14 @@ def fixture_manifest() -> dict:
         "source_record_fields": ["path", "approximate_line_count", "git_blob_sha"],
         "source_files": {},
         "target_fields": [
-            "type", "source_ids", "interfaces", "lifecycle", "mutable_state",
+            "type", "source_ids", "approximate_source_line_count",
+            "interfaces", "lifecycle", "mutable_state",
             "discovery", "reflection", "responsibilities", "destination",
         ],
         "frozen_targets": [
             [
                 "ShooterMover.TestSupport.VisibleSlice.Stage1VisibleSliceController",
-                [], [], [], [], [], [],
+                [], 0, [], [], [], [], [],
                 [["controller.existing", "Stage1SceneInstaller2D"]],
                 "delete",
             ]
