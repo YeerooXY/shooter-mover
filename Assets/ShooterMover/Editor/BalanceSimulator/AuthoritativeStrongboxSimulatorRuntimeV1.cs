@@ -90,6 +90,7 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// into one BOX authority and delegates equipment selection, item level and generated
     /// augment signature to StrongboxHybridEquipmentGenerationResolverV1. The same RAP
     /// equipment child used by production commits signatures only after holdings applies.
+    /// Payload preparation also shares the production signature rollback boundary.
     /// No item is preselected and no simulator-only probability table exists.
     /// </summary>
     public sealed class AuthoritativeStrongboxSimulatorRuntimeV1
@@ -280,8 +281,10 @@ namespace ShooterMover.Editor.BalanceSimulator
                     new RewardGenerationServiceV1()),
                 holdings,
                 rewardApplication,
-                new DeterministicStrongboxGrantPayloadResolverV1(
-                    equipmentResolver));
+                new TransactionalStrongboxGrantPayloadResolverV1(
+                    new DeterministicStrongboxGrantPayloadResolverV1(
+                        equipmentResolver),
+                    augmentSignatures));
 
             for (int index = 0; index < values.Count; index++)
             {
