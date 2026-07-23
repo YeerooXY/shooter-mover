@@ -43,20 +43,29 @@ namespace ShooterMover.Application.Persistence.Components
                 GeneratedEquipmentAugmentSignatureSnapshotV1>(
                     Definition(),
                     CodecValue,
-                    authority.ExportDurableSnapshot,
+                    () =>
+                    {
+                        lock (authority)
+                        {
+                            return authority.ExportDurableSnapshot();
+                        }
+                    },
                     CodecValue.Validate,
                     snapshot =>
                     {
-                        try
+                        lock (authority)
                         {
-                            authority.RestoreDurableSnapshot(snapshot);
-                            return SaveComponentApplyResultV1.Applied();
-                        }
-                        catch (Exception exception)
-                        {
-                            return SaveComponentApplyResultV1.Rejected(
-                                "generated-augment-signature-restore-exception:"
-                                + exception.GetType().Name);
+                            try
+                            {
+                                authority.RestoreDurableSnapshot(snapshot);
+                                return SaveComponentApplyResultV1.Applied();
+                            }
+                            catch (Exception exception)
+                            {
+                                return SaveComponentApplyResultV1.Rejected(
+                                    "generated-augment-signature-restore-exception:"
+                                    + exception.GetType().Name);
+                            }
                         }
                     });
         }
