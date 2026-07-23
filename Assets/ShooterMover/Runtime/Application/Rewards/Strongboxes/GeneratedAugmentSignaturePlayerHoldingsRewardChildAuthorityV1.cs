@@ -54,149 +54,156 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         public RewardAuthorityPreflightResultV1 Preflight(
             IReadOnlyList<RewardChildGrantCommandV1> commands)
         {
-            RewardAuthorityPreflightResultV1 result = inner.Preflight(commands);
-            if (result == null)
+            lock (signatures)
             {
-                return null;
-            }
-
-            var byTransaction = new Dictionary<
-                StableId,
-                RewardChildGrantCommandV1>();
-            for (int index = 0; index < commands.Count; index++)
-            {
-                byTransaction[commands[index].TransactionStableId] =
-                    commands[index];
-            }
-
-            var facts = new List<RewardAuthorityPreflightFactV1>(
-                result.Facts.Count);
-            for (int index = 0; index < result.Facts.Count; index++)
-            {
-                RewardAuthorityPreflightFactV1 fact = result.Facts[index];
-                RewardChildGrantCommandV1 command;
-                if (!fact.CanProceed
-                    || !byTransaction.TryGetValue(
-                        fact.TransactionStableId,
-                        out command)
-                    || command.GrantKind
-                        != RewardGrantKindV1.EquipmentReference)
+                RewardAuthorityPreflightResultV1 result =
+                    inner.Preflight(commands);
+                if (result == null)
                 {
+                    return null;
+                }
+
+                var byTransaction = new Dictionary<
+                    StableId,
+                    RewardChildGrantCommandV1>();
+                for (int index = 0; index < commands.Count; index++)
+                {
+                    byTransaction[commands[index].TransactionStableId] =
+                        commands[index];
+                }
+
+                var facts = new List<RewardAuthorityPreflightFactV1>(
+                    result.Facts.Count);
+                for (int index = 0; index < result.Facts.Count; index++)
+                {
+                    RewardAuthorityPreflightFactV1 fact = result.Facts[index];
+                    RewardChildGrantCommandV1 command;
+                    if (!fact.CanProceed
+                        || !byTransaction.TryGetValue(
+                            fact.TransactionStableId,
+                            out command)
+                        || command.GrantKind
+                            != RewardGrantKindV1.EquipmentReference)
+                    {
+                        facts.Add(fact);
+                        continue;
+                    }
+
+                    GeneratedEquipmentAugmentSignatureV1 signature;
+                    bool committed;
+                    if (!signatures.TryGetStagedOrCommitted(
+                            command.InstanceStableId,
+                            out signature,
+                            out committed))
+                    {
+                        // Non-hybrid equipment grants share this RAP authority and do not
+                        // require generated augment metadata.
+                        facts.Add(fact);
+                        continue;
+                    }
+                    if (command.EquipmentInstance == null
+                        || command.EquipmentInstance.InstanceId
+                            != command.InstanceStableId
+                        || signature.EquipmentInstanceStableId
+                            != command.InstanceStableId)
+                    {
+                        facts.Add(new RewardAuthorityPreflightFactV1(
+                            fact.TransactionStableId,
+                            RewardAuthorityAdmissionStatusV1.InvalidCommand,
+                            "generated-augment-signature-equipment-identity-mismatch"));
+                        continue;
+                    }
                     facts.Add(fact);
-                    continue;
                 }
-
-                GeneratedEquipmentAugmentSignatureV1 signature;
-                bool committed;
-                if (!signatures.TryGetStagedOrCommitted(
-                        command.InstanceStableId,
-                        out signature,
-                        out committed))
-                {
-                    // Non-hybrid equipment grants share this RAP authority and do not
-                    // require generated augment metadata.
-                    facts.Add(fact);
-                    continue;
-                }
-                if (command.EquipmentInstance == null
-                    || command.EquipmentInstance.InstanceId
-                        != command.InstanceStableId
-                    || signature.EquipmentInstanceStableId
-                        != command.InstanceStableId)
-                {
-                    facts.Add(new RewardAuthorityPreflightFactV1(
-                        fact.TransactionStableId,
-                        RewardAuthorityAdmissionStatusV1.InvalidCommand,
-                        "generated-augment-signature-equipment-identity-mismatch"));
-                    continue;
-                }
-                facts.Add(fact);
+                return new RewardAuthorityPreflightResultV1(facts);
             }
-            return new RewardAuthorityPreflightResultV1(facts);
         }
 
         public RewardChildApplyResultV1 Apply(
             RewardChildGrantCommandV1 command)
         {
-            if (command == null
-                || command.GrantKind
-                    != RewardGrantKindV1.EquipmentReference)
+            lock (signatures)
             {
-                return inner.Apply(command);
-            }
+                if (command == null
+                    || command.GrantKind
+                        != RewardGrantKindV1.EquipmentReference)
+                {
+                    return inner.Apply(command);
+                }
 
-            GeneratedEquipmentAugmentSignatureV1 signature;
-            bool alreadyCommitted;
-            if (!signatures.TryGetStagedOrCommitted(
-                    command.InstanceStableId,
-                    out signature,
-                    out alreadyCommitted))
-            {
-                return inner.Apply(command);
-            }
+                GeneratedEquipmentAugmentSignatureV1 signature;
+                bool alreadyCommitted;
+                if (!signatures.TryGetStagedOrCommitted(
+                        command.InstanceStableId,
+                        out signature,
+                        out alreadyCommitted))
+                {
+                    return inner.Apply(command);
+                }
 
-            PlayerHoldingsSnapshotV1 before;
-            try
-            {
-                before = holdings.ExportSnapshot();
-            }
-            catch (Exception exception)
-            {
-                return Rejected(
-                    command,
-                    "generated-augment-signature-holdings-snapshot-exception-"
+                PlayerHoldingsSnapshotV1 before;
+                try
+                {
+                    before = holdings.ExportSnapshot();
+                }
+                catch (Exception exception)
+                {
+                    return Rejected(
+                        command,
+                        "generated-augment-signature-holdings-snapshot-exception-"
+                            + exception.GetType().Name.ToLowerInvariant());
+                }
+
+                RewardChildApplyResultV1 applied = inner.Apply(command);
+                if (applied == null || !applied.IsConfirmedApplied)
+                {
+                    return applied;
+                }
+
+                GeneratedEquipmentAugmentSignatureV1 committed;
+                string diagnostic;
+                if (signatures.TryCommitStaged(
+                        command.InstanceStableId,
+                        signature.Fingerprint,
+                        out committed,
+                        out diagnostic))
+                {
+                    return applied;
+                }
+
+                PlayerHoldingsImportResultV1 compensation;
+                try
+                {
+                    compensation = holdings.ImportSnapshot(before);
+                }
+                catch (Exception exception)
+                {
+                    return Rejected(
+                        command,
+                        (string.IsNullOrWhiteSpace(diagnostic)
+                            ? "generated-augment-signature-commit-rejected"
+                            : diagnostic)
+                        + ";holdings-compensation-exception="
                         + exception.GetType().Name.ToLowerInvariant());
-            }
-
-            RewardChildApplyResultV1 applied = inner.Apply(command);
-            if (applied == null || !applied.IsConfirmedApplied)
-            {
-                return applied;
-            }
-
-            GeneratedEquipmentAugmentSignatureV1 committed;
-            string diagnostic;
-            if (signatures.TryCommitStaged(
-                    command.InstanceStableId,
-                    signature.Fingerprint,
-                    out committed,
-                    out diagnostic))
-            {
-                return applied;
-            }
-
-            PlayerHoldingsImportResultV1 compensation;
-            try
-            {
-                compensation = holdings.ImportSnapshot(before);
-            }
-            catch (Exception exception)
-            {
+                }
+                if (compensation == null || !compensation.Succeeded)
+                {
+                    return Rejected(
+                        command,
+                        (string.IsNullOrWhiteSpace(diagnostic)
+                            ? "generated-augment-signature-commit-rejected"
+                            : diagnostic)
+                        + ";holdings-compensation="
+                        + (compensation == null
+                            ? "result-null"
+                            : compensation.RejectionCode));
+                }
                 return Rejected(
                     command,
-                    (string.IsNullOrWhiteSpace(diagnostic)
-                        ? "generated-augment-signature-commit-rejected"
-                        : diagnostic)
-                    + ";holdings-compensation-exception="
-                    + exception.GetType().Name.ToLowerInvariant());
+                    string.IsNullOrWhiteSpace(diagnostic)
+                        ? "generated-augment-signature-commit-rejected-compensated"
+                        : diagnostic + ";holdings-compensated");
             }
-            if (compensation == null || !compensation.Succeeded)
-            {
-                return Rejected(
-                    command,
-                    (string.IsNullOrWhiteSpace(diagnostic)
-                        ? "generated-augment-signature-commit-rejected"
-                        : diagnostic)
-                    + ";holdings-compensation="
-                    + (compensation == null
-                        ? "result-null"
-                        : compensation.RejectionCode));
-            }
-            return Rejected(
-                command,
-                string.IsNullOrWhiteSpace(diagnostic)
-                    ? "generated-augment-signature-commit-rejected-compensated"
-                    : diagnostic + ";holdings-compensated");
         }
 
         private static RewardChildApplyResultV1 Rejected(
