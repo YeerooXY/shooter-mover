@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Rewards.Application;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
@@ -43,7 +44,9 @@ namespace ShooterMover.Application.Flow.Production
     /// <summary>
     /// Builds the production BOX/RAP authorities over one character graph. Strongbox
     /// equipment payloads are resolved by the same hybrid policy/catalog used by balance
-    /// simulation; the older Gaussian power-budget resolver is not part of this path.
+    /// simulation; the older power-budget equipment resolver is not part of this path.
+    /// The reward-application authority remains registered with the durable collected-run
+    /// transfer boundary introduced by DROP-PERSIST-PROOF-001.
     /// </summary>
     internal static class ProductionCharacterStrongboxCompositionV1
     {
@@ -88,6 +91,12 @@ namespace ShooterMover.Application.Flow.Production
                 new PlayerHoldingsRewardChildAuthorityV1(
                     loadout.Holdings,
                     loadout.CatalogAdapter));
+
+            ProductionCollectedRunRewardTransferRuntimeRegistry
+                .BindRewardApplication(
+                    loadout.RoutePayload.SelectedCharacterStableId,
+                    rewardApplication);
+
             var authority = new StrongboxOpeningServiceV1(
                 catalog,
                 new SharedStrongboxRewardGeneratorV1(generator),
