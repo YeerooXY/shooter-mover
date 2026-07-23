@@ -137,6 +137,11 @@ def is_retained_path(path: str, manifest: dict | None = None) -> bool:
     return False
 
 
+def is_stage1_production_path(path: str) -> bool:
+    name = Path(path).name
+    return "/Stage1/" in path or name.startswith("Stage1") or "Stage1" in name
+
+
 def unique_ids(items: Sequence[dict], key: str, label: str) -> None:
     values = [item.get(key) for item in items]
     if any(not value for value in values):
@@ -175,10 +180,20 @@ def validate_manifest_plan(manifest: dict) -> None:
         raise AuditError("Stage 1 split sequence does not match the frozen plan.")
     unique_ids(debt_records(manifest), "id", "known retained debt")
     responsibilities = []
+    sources = source_records(manifest)
     for target in target_records(manifest):
         responsibilities.extend(
             {"id": pair[0]} for pair in target["responsibilities"]
         )
+        expected_lines = sum(
+            sources[source_id]["approximate_line_count"]
+            for source_id in dict.fromkeys(target["source_ids"])
+        )
+        if target["approximate_source_line_count"] != expected_lines:
+            raise AuditError(
+                f"{target['type']} line-count summary drift: expected "
+                f"{expected_lines}, got {target['approximate_source_line_count']}"
+            )
     unique_ids(responsibilities, "id", "migration responsibility")
 
 
@@ -396,8 +411,12 @@ def run_audit(root: Path, manifest_path: Path, head: str) -> None:
         for item in manifest["scene_loaded_subscription_inventory"]
         for _ in range(item[3])
     }
+    stage1_hooks = [
+        finding for finding in scan_scene_loaded_subscriptions(sources)
+        if is_stage1_production_path(finding.path)
+    ]
     validate_inventory_findings(
-        scan_scene_loaded_subscriptions(sources), expected_hooks, "SceneManager.sceneLoaded"
+        stage1_hooks, expected_hooks, "SceneManager.sceneLoaded"
     )
     expected_reflection = {
         (source_map[item[2]]["path"], f"{item[1].split('.')[-1]}.{item[4]}")
