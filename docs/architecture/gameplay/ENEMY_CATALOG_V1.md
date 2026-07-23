@@ -94,7 +94,7 @@ Vision arc remains definition-wide perception. Attack arc remains per-attack eli
 
 The hybrid fixture intentionally authors the higher-priority ranged entry before the lower-priority contact entry. Successful import exposes the canonical priority order and produces the same fingerprint when those JSON entries are reversed.
 
-The fixture is content proof only. It is not loaded into Stage 1 by this task.
+The fixture is content proof only. It is not loaded into any deleted demo composition by this task.
 
 ## Focused verification
 
@@ -108,7 +108,7 @@ The focused suite covers known/unknown/malformed projectile profiles, non-projec
 
 ## Known limitations
 
-- No live actor construction or Stage 1 composition change is included.
+- No live actor construction or deleted demo composition change is included.
 - No projectile execution or presentation logic is implemented here.
 - No Unity presentation resolver is implemented here; later composition supplies the registry.
 - XP and drop profile IDs are references only. Definitions never award XP, roll drops, or mutate inventory.
