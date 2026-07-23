@@ -225,6 +225,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
                 GeneratedTerminalDropResultV1 result = batch.Results[index];
                 if (result != null
                     && result.IsAccepted
+                    && result.GeneratedRewards.Count > 0
+                    && result.OperationRequest != null
+                    && result.SourceFact != null
                     && result.SourceFact.AttributedParticipantStableId
                         == player.ParticipantStableId)
                 {
@@ -234,6 +237,9 @@ namespace ShooterMover.UnityAdapters.Production.Stage1
             }
             if (localOperations.Count == 0)
             {
+                // GenerateRunMinimum intentionally emits an accepted no-reward result when
+                // the participant already met the configured minimum. Such an operation
+                // owns no pickup and must not block final exit.
                 return true;
             }
 
