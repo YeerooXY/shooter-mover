@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: ShooterMover.Content.Definitions::ShooterMover.Content.Definitions.Levels.Selection.LevelSelectionCatalogDefinitionV1
   levels:
   - levelStableId: level.stage-1
-    displayName: LEVEL 1
-    description: Enter the accepted playable Stage 1 visible slice.
-    scenePath: Assets/ShooterMover/Scenes/Prototypes/Stage1VisibleSlice.unity
-    availability: 2
-    releaseState: 1
-    routeKind: 1
+    displayName: LEVEL 1 — UNAVAILABLE
+    description: Level 1 unavailable during runtime rebuild.
+    scenePath: 
+    availability: 1
+    releaseState: 2
+    routeKind: 2
     recommendedPlayerLevel: 1
     recommendedEquipmentLevel: 1
     recommendedPartySize: 1
