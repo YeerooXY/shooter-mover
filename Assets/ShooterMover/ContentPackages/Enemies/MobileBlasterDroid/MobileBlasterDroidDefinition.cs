@@ -1,8 +1,6 @@
 using System;
-using ShooterMover.ContentPackages.Enemies.Stage1;
 using ShooterMover.ContentPackages.Weapons.BlasterMachineGun;
 using ShooterMover.Contracts.Combat;
-using ShooterMover.Contracts.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.GameplayEntities;
@@ -30,6 +28,8 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
         public const double HardMaximumDetectionRadius = 1000d;
         public const int HardMaximumContactCapacity = 64;
 
+        private static readonly StableId EnemyDefinitionIdValue =
+            StableId.Parse("enemy.mobile-blaster-droid");
         private static readonly StableId ReadyPhaseIdValue =
             StableId.Parse("enemy-phase.mobile-blaster-droid-ready");
 
@@ -194,38 +194,6 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 PositioningTolerance);
         }
 
-        public Stage1EnemyPackageDescriptor CreatePackageDescriptor()
-        {
-            ContentReference movement = SharedModule("module.enemy-mobile-positioning");
-            ContentReference attack = ContentReference.Create(
-                BlasterMachineGunPackage.WeaponId,
-                ContentDefinitionKind.Weapon,
-                ContentReference.SupportedDefinitionVersion);
-            ContentReference telegraph = SharedModule("module.enemy-ranged-windup");
-            ContentDefinitionDescriptor content = ContentDefinitionDescriptor.Create(
-                Stage1EnemyPackageDescriptor.MobileBlasterDroidId,
-                ContentDefinitionKind.Enemy,
-                ContentReference.SupportedDefinitionVersion,
-                StableId.Create("provenance", "enemy-mobile-blaster-droid-en006"),
-                false,
-                movement,
-                attack,
-                telegraph);
-
-            return Stage1EnemyPackageDescriptor.Create(
-                Stage1EnemyPackageDescriptor.CurrentDescriptorVersion,
-                content,
-                Stage1EnemyPackageClassification.Ordinary,
-                CombatChannel.Kinetic,
-                CombatWeightClass.Standard,
-                movement,
-                attack,
-                telegraph,
-                Stage1EnemyCapability.MobilePositioning
-                    | Stage1EnemyCapability.BlasterProjectile
-                    | Stage1EnemyCapability.SafeRecoveryWindow);
-        }
-
         /// <summary>
         /// Projects this package and its canonical actor state into the shared enemy boundary.
         /// The projection owns no health, lifecycle transition, targeting query, or reward action.
@@ -242,7 +210,7 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
             ValidateOrThrow();
 
             EnemyDefinitionProjection definition = new EnemyDefinitionProjection(
-                Stage1EnemyPackageDescriptor.MobileBlasterDroidId,
+                EnemyDefinitionIdValue,
                 StableId.Parse("module.enemy-mobile-positioning"),
                 new[] { BlasterMachineGunPackage.WeaponId },
                 new StableId[0],
@@ -272,18 +240,10 @@ namespace ShooterMover.ContentPackages.Enemies.MobileBlasterDroid
                 ContactCapacity);
             return EnemyActorState.Create(
                 actorId,
-                Stage1EnemyPackageDescriptor.MobileBlasterDroidId,
+                EnemyDefinitionIdValue,
                 MaximumHealth,
                 (int)CombatWeightClass.Standard,
                 contactPolicy);
-        }
-
-        private static ContentReference SharedModule(string stableId)
-        {
-            return ContentReference.Create(
-                StableId.Parse(stableId),
-                ContentDefinitionKind.SharedModule,
-                ContentReference.SupportedDefinitionVersion);
         }
 
         private void OnValidate()
