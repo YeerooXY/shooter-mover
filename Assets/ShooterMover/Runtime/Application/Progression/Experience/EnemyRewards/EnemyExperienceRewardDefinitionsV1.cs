@@ -19,7 +19,7 @@ namespace ShooterMover.Application.Progression.Experience.EnemyRewards
         public static readonly StableId RamDroid =
             StableId.Parse("enemy.ram-droid");
 
-        private static readonly ReadOnlyCollection<StableId> Stage1EnemiesValue =
+        private static readonly ReadOnlyCollection<StableId> KnownEnemiesValue =
             Array.AsReadOnly(
                 new[]
                 {
@@ -29,9 +29,9 @@ namespace ShooterMover.Application.Progression.Experience.EnemyRewards
                     RamDroid,
                 });
 
-        public static IReadOnlyList<StableId> Stage1Enemies
+        public static IReadOnlyList<StableId> KnownEnemies
         {
-            get { return Stage1EnemiesValue; }
+            get { return KnownEnemiesValue; }
         }
     }
 
@@ -300,5 +300,4 @@ namespace ShooterMover.Application.Progression.Experience.EnemyRewards
             return true;
         }
     }
-
 }
