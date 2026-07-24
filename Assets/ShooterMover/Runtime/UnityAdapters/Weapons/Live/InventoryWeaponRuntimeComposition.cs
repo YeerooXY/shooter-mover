@@ -379,7 +379,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             lock (firingStateGate)
             {
-                if (!ValidateRequestLifecycleLocked(request, out string rejectionCode))
+                string rejectionCode;
+                if (!ValidateRequestLifecycleLocked(request, out rejectionCode))
                 {
                     return Reject(rejectionCode);
                 }
@@ -740,6 +741,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             bool anyNewSchedule = false;
             bool anyReplaySchedule = false;
             InventoryWeaponExecutionResult firstTransition = null;
+            var schedulingOutcomes = new List<InventoryWeaponSchedulingOutcome>();
 
             for (int index = 0; index < scheduledResults.Count; index++)
             {
@@ -752,38 +754,50 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     }
                     continue;
                 }
+
+                for (int outcomeIndex = 0;
+                    outcomeIndex < result.SchedulingOutcomes.Count;
+                    outcomeIndex++)
+                {
+                    InventoryWeaponSchedulingOutcome outcome =
+                        result.SchedulingOutcomes[outcomeIndex];
+                    schedulingOutcomes.Add(outcome);
+                    totalScheduledEmissions = checked(
+                        totalScheduledEmissions + outcome.ScheduledEmissionCount);
+                    if (outcome.OutcomeKind
+                        == InventoryWeaponExecutionOutcomeKind.AcceptedScheduleQueued)
+                    {
+                        anyNewSchedule = true;
+                    }
+                    else if (outcome.OutcomeKind
+                        == InventoryWeaponExecutionOutcomeKind.ReplayedScheduleRetained)
+                    {
+                        anyReplaySchedule = true;
+                    }
+                }
+
                 if (!result.Succeeded && firstFailure == null)
                 {
                     firstFailure = result;
                 }
-                if (result.OutcomeKind
-                    == InventoryWeaponExecutionOutcomeKind.AcceptedScheduleQueued)
-                {
-                    anyNewSchedule = true;
-                    totalScheduledEmissions += result.ScheduledEmissionCount;
-                }
-                else if (result.OutcomeKind
-                    == InventoryWeaponExecutionOutcomeKind.ReplayedScheduleRetained)
-                {
-                    anyReplaySchedule = true;
-                    totalScheduledEmissions += result.ScheduledEmissionCount;
-                }
-                else if (firstTransition == null && result.Succeeded)
+                if (firstTransition == null
+                    && result.Succeeded
+                    && result.IsNoEmissionTransition)
                 {
                     firstTransition = result;
                 }
             }
 
+            InventoryWeaponExecutionResult combined;
             if (drained != null
                 && drained.OutcomeKind
                     == InventoryWeaponExecutionOutcomeKind.RetryableDeliveryFailure)
             {
-                return drained;
+                combined = drained;
             }
-
-            if (firstFailure != null)
+            else if (firstFailure != null)
             {
-                return InventoryWeaponExecutionResult.Reject(
+                combined = InventoryWeaponExecutionResult.Reject(
                     firstFailure.EquipmentInstanceId,
                     firstFailure.Status,
                     firstFailure.RejectionCode,
@@ -795,25 +809,31 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     drained == null ? 0 : drained.AcceptedDeliveryCount,
                     drained == null ? 0 : drained.AlreadyAcceptedDeliveryCount);
             }
-
-            if (drained != null && drained.DeliveredBatchCount > 0)
+            else if (drained != null && drained.DeliveredBatchCount > 0)
             {
-                return drained;
+                combined = drained;
             }
-
-            if (anyNewSchedule || anyReplaySchedule)
+            else if (anyNewSchedule || anyReplaySchedule)
             {
-                return InventoryWeaponExecutionResult.Schedule(
+                combined = InventoryWeaponExecutionResult.Schedule(
                     null,
                     !anyNewSchedule && anyReplaySchedule,
                     totalScheduledEmissions,
                     pendingDeliveryState.PendingCount);
             }
+            else
+            {
+                combined = firstTransition
+                    ?? drained
+                    ?? InventoryWeaponExecutionResult.NoDue(
+                        pendingDeliveryState.PendingCount);
+            }
 
-            return firstTransition
-                ?? drained
-                ?? InventoryWeaponExecutionResult.NoDue(
-                    pendingDeliveryState.PendingCount);
+            return schedulingOutcomes.Count == 0
+                ? combined
+                : combined.WithSchedulingOutcomes(
+                    schedulingOutcomes,
+                    totalScheduledEmissions);
         }
 
         private bool ValidateRequestLifecycleLocked(
