@@ -450,9 +450,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
             }
 
-            return firstAccepted
+            return firstFailure
+                ?? firstAccepted
                 ?? firstCooldown
-                ?? firstFailure
                 ?? Reject("weapon-live-no-enabled-mounts");
         }
 
