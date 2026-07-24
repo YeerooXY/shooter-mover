@@ -76,7 +76,11 @@ Mapping returns typed diagnostics instead of substituting defaults. It rejects, 
 
 ## Fractional pierce boundary
 
-Catalog integer pierce maps losslessly through `PierceValue.FromLegacyInteger`. This task does not map blueprints into `WeaponRuntimeFiringProfile`. Any later runtime adapter must use `PierceValue.TryToLegacyInteger` and reject fractional values when the conversion would lose information.
+Catalog integer pierce maps losslessly through `PierceValue.FromLegacyInteger`. This task does not map blueprints into `WeaponRuntimeProfile`. Any later runtime adapter must use `PierceValue.TryToLegacyInteger` and reject fractional values when the conversion would lose information.
+
+## Prototype validation policy
+
+No automated mapper tests are included in this PR during the current prototype phase. Validation is limited to static source inspection and later in-game integration checks unless automated coverage is explicitly requested.
 
 ## Deferred
 
