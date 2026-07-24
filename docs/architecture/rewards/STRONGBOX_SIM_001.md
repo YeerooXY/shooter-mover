@@ -55,7 +55,7 @@ TopBoxOnly compatibility is not inferred from a tier stable ID. Until the produc
 
 When zero events are observed, the result may expose the descriptive rule-of-three 95% upper bound (`3 / sample count`). This is a bound, not an invented production probability. When an expected probability is supplied, the suggested sample size is `ceil(3 / expected probability)`.
 
-Exact combined slot-and-level queries are never estimated by multiplying independent marginal distributions. They require an exact combined-signature distribution.
+Exact combined slot-and-level queries are never estimated by multiplying independent marginal distributions. Construction of such a query fails explicitly until the core report exposes an exact per-equipment combined-signature distribution.
 
 ## Simulation modes
 
@@ -68,6 +68,8 @@ Exact combined slot-and-level queries are never estimated by multiplying indepen
 ## Report formats
 
 The immutable in-memory report is the source for deterministic Markdown and CSV serializers. Serializers do not automatically write into production `Assets`.
+
+The serializer surface includes the main report, catalog-coverage diagnostics and rare-outcome diagnostics. Missing optional values are emitted as empty deterministic fields rather than locale-specific placeholders.
 
 ## Illustrative examples
 
