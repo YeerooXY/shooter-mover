@@ -13,18 +13,28 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// <summary>
     /// Production-backed observation gateway for STRONGBOX-SIM-001.
     ///
-    /// Every observation is resolved through the existing authoritative editor runtime,
-    /// which composes StrongboxOpeningServiceV1, the production reward generator,
-    /// StrongboxHybridEquipmentGenerationResolverV1, RAP, isolated holdings, and an
-    /// isolated generated-augment-signature authority. No player-owned authority is
-    /// supplied to this gateway and no production probability formula is copied here.
+    /// Observations are resolved through the existing authoritative editor runtime, which
+    /// composes StrongboxOpeningServiceV1, production reward generation, the hybrid
+    /// equipment resolver, RAP, isolated holdings, and an isolated generated-signature
+    /// authority. A bounded chunk reuses those disposable authorities for throughput and
+    /// is discarded before the next chunk. No player-owned authority is supplied and no
+    /// production probability formula is copied here.
     /// </summary>
     public sealed class AuthoritativeStrongboxSimulationProductionGatewayV1 :
         IStrongboxSimulationProductionGateway
     {
+        private const int OpeningChunkSize = 256;
+
         private readonly string weaponCatalogJson;
         private readonly ReadOnlyCollection<StrongboxEquipmentMetadata> definitions;
         private readonly Dictionary<StableId, StrongboxEquipmentMetadata> metadataById;
+
+        private AuthoritativeStrongboxSimulatorRuntimeV1 chunkRuntime;
+        private IReadOnlyList<AuthoritativeStrongboxPreparedOpenV1> chunkOpenings =
+            Array.Empty<AuthoritativeStrongboxPreparedOpenV1>();
+        private long chunkStartOrdinal = -1L;
+        private int chunkLength;
+        private string chunkScenarioIdentity = string.Empty;
 
         public AuthoritativeStrongboxSimulationProductionGatewayV1(
             string weaponCatalogJson,
@@ -115,46 +125,26 @@ namespace ShooterMover.Editor.BalanceSimulator
                 diagnostic = "strongbox-simulation-tier-unknown";
                 return false;
             }
-
-            AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
-            if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
-                    weaponCatalogJson,
-                    out runtime,
-                    out diagnostic)
-                || runtime == null)
+            if (!EnsureChunk(scenario, ordinal, tierNumber, out diagnostic))
             {
-                diagnostic = string.IsNullOrWhiteSpace(diagnostic)
-                    ? "strongbox-simulation-runtime-create-rejected"
-                    : diagnostic;
                 return false;
             }
 
-            ulong openingSeed = DeriveOpeningSeed(scenario.RootSeed, ordinal);
-            IReadOnlyList<AuthoritativeStrongboxPreparedOpenV1> prepared;
-            try
-            {
-                prepared = runtime.PrepareBatch(
-                    new[] { tierNumber },
-                    scenario.PlayerLevel,
-                    openingSeed);
-            }
-            catch (Exception exception)
-            {
-                diagnostic = "strongbox-simulation-prepare-exception-"
-                    + exception.GetType().Name.ToLowerInvariant();
-                return false;
-            }
-            if (prepared == null || prepared.Count != 1 || prepared[0] == null)
+            int localIndex = checked((int)(ordinal - chunkStartOrdinal));
+            if (localIndex < 0
+                || localIndex >= chunkLength
+                || localIndex >= chunkOpenings.Count
+                || chunkOpenings[localIndex] == null)
             {
                 diagnostic = "strongbox-simulation-prepared-opening-invalid";
                 return false;
             }
 
-            AuthoritativeStrongboxPreparedOpenV1 opening = prepared[0];
+            AuthoritativeStrongboxPreparedOpenV1 opening = chunkOpenings[localIndex];
             StrongboxOpeningResultRuntimeV1 result;
             try
             {
-                result = runtime.OpenOrRetry(opening);
+                result = chunkRuntime.OpenOrRetry(opening);
             }
             catch (Exception exception)
             {
@@ -163,7 +153,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                 return false;
             }
 
-            IReadOnlyList<EquipmentInstance> equipment = runtime.EquipmentFrom(result);
+            IReadOnlyList<EquipmentInstance> equipment =
+                chunkRuntime.EquipmentFrom(result);
             if (equipment == null || equipment.Count != 1 || equipment[0] == null)
             {
                 diagnostic = result == null || string.IsNullOrWhiteSpace(result.RejectionCode)
@@ -182,7 +173,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
 
             GeneratedEquipmentAugmentSignatureV1 signature;
-            if (!runtime.TryGetAugmentSignature(generated.InstanceId, out signature)
+            if (!chunkRuntime.TryGetAugmentSignature(
+                    generated.InstanceId,
+                    out signature)
                 || signature == null)
             {
                 diagnostic = "strongbox-simulation-augment-signature-missing";
@@ -253,7 +246,75 @@ namespace ShooterMover.Editor.BalanceSimulator
                     signature,
                     target,
                     replayedSignature));
+            return true;
+        }
+
+        private bool EnsureChunk(
+            StrongboxSimulationScenario scenario,
+            long ordinal,
+            int tierNumber,
+            out string diagnostic)
+        {
             diagnostic = string.Empty;
+            long requestedStart = (ordinal / OpeningChunkSize) * OpeningChunkSize;
+            string scenarioIdentity = BuildScenarioIdentity(scenario);
+            if (chunkRuntime != null
+                && requestedStart == chunkStartOrdinal
+                && string.Equals(
+                    chunkScenarioIdentity,
+                    scenarioIdentity,
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            int remaining = checked((int)Math.Min(
+                OpeningChunkSize,
+                scenario.SampleCount - requestedStart));
+            AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
+            if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
+                    weaponCatalogJson,
+                    out runtime,
+                    out diagnostic)
+                || runtime == null)
+            {
+                diagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                    ? "strongbox-simulation-runtime-create-rejected"
+                    : diagnostic;
+                return false;
+            }
+
+            var tiers = new int[remaining];
+            for (int index = 0; index < tiers.Length; index++)
+            {
+                tiers[index] = tierNumber;
+            }
+
+            IReadOnlyList<AuthoritativeStrongboxPreparedOpenV1> prepared;
+            try
+            {
+                prepared = runtime.PrepareBatch(
+                    tiers,
+                    scenario.PlayerLevel,
+                    DeriveChunkSeed(scenario.RootSeed, requestedStart));
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "strongbox-simulation-prepare-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+                return false;
+            }
+            if (prepared == null || prepared.Count != remaining)
+            {
+                diagnostic = "strongbox-simulation-prepared-chunk-invalid";
+                return false;
+            }
+
+            chunkRuntime = runtime;
+            chunkOpenings = prepared;
+            chunkStartOrdinal = requestedStart;
+            chunkLength = remaining;
+            chunkScenarioIdentity = scenarioIdentity;
             return true;
         }
 
@@ -277,13 +338,24 @@ namespace ShooterMover.Editor.BalanceSimulator
             return false;
         }
 
-        private static ulong DeriveOpeningSeed(ulong rootSeed, long ordinal)
+        private static string BuildScenarioIdentity(
+            StrongboxSimulationScenario scenario)
+        {
+            return StrongboxCanonicalV1.Fingerprint(
+                "strongbox-simulation-scenario-runtime-v1|"
+                + scenario.PlayerLevel.ToString(CultureInfo.InvariantCulture)
+                + "|" + scenario.StrongboxTierId
+                + "|" + scenario.SampleCount.ToString(CultureInfo.InvariantCulture)
+                + "|" + scenario.RootSeed.ToString("x16", CultureInfo.InvariantCulture));
+        }
+
+        private static ulong DeriveChunkSeed(ulong rootSeed, long chunkStart)
         {
             string fingerprint = StrongboxCanonicalV1.Fingerprint(
-                "strongbox-simulation-opening-v1|"
+                "strongbox-simulation-opening-chunk-v1|"
                 + rootSeed.ToString("x16", CultureInfo.InvariantCulture)
                 + "|"
-                + ordinal.ToString(CultureInfo.InvariantCulture));
+                + chunkStart.ToString(CultureInfo.InvariantCulture));
             return ulong.Parse(
                 fingerprint.Substring(fingerprint.Length - 16),
                 NumberStyles.AllowHexSpecifier,
