@@ -44,7 +44,7 @@ step cannot be represented exactly.
 3. `EquipmentCatalog.ValidateInstance` validates the immutable instance, definition, quality, item
    level metadata, and installed augment identities.
 4. The exact equipment definition supplies the existing runtime weapon definition reference.
-5. The current `WeaponCatalog` must contain that exact definition.
+5. The current `WeaponCatalog` must contain that exact definition and mark it `Live`.
 6. One explicit `WeaponCatalogBlueprintMappingIntent`, keyed by `WeaponDefinitionId`, must exist in
    `WeaponBlueprintMappingPolicyRegistry`.
 7. `WeaponCatalogBlueprintMapper` creates the immutable `WeaponBlueprint`; it is not allowed to
@@ -58,9 +58,13 @@ Item level remains identity/progression metadata and is not used for combat scal
 
 The supplied `UnaugmentedWeaponModifierSetResolver` is intentionally narrow: it accepts equipment
 with no installed augments and rejects augmented equipment until composition supplies the canonical
-augment-to-modifier policy. Missing mapping policy, missing augment policy, incompatible structure,
-or invalid modifiers are explicit rejections. No replacement equipment, starter weapon, or fallback
-behavior is selected.
+augment-to-modifier policy. Missing or preview-only catalog content, missing mapping policy, missing
+augment policy, incompatible structure, or invalid modifiers are explicit rejections. No replacement
+equipment, starter weapon, or fallback behavior is selected.
+
+The current `main` catalog composition is intentionally empty after the architecture cleanup. This
+cutover therefore supplies the one keyed policy authority and explicit production injection point; it
+does not invent per-definition semantics or import the open PR #288 catalog branch.
 
 ## Trigger and cadence authority
 
@@ -88,10 +92,13 @@ accepted emission independently and never reconstructs a burst or pulse from cat
   and an explicit publication flag.
 - The composition is the only live boundary that assigns the next snapshot.
 - Exact replays return the unchanged authoritative snapshot and are not assigned again.
+- Before execution, the composition verifies that the request actor/lifecycle still equals the
+  trusted current player actor/lifecycle.
+- A verified actor or lifecycle replacement clears the complete snapshot before scheduling the new
+  generation; a stale request is rejected and cannot clear current state.
 - `Dispose` replaces the complete snapshot with `WeaponFiringSessionState.Empty`; state is not
   carried into another run/runtime composition.
-- A replacement player lifecycle starts in a newly constructed composition with clean bounded
-  state. The scheduler's lifecycle-keyed tracks and bounded replay pruning remain unchanged.
+- The scheduler's lifecycle-keyed tracks and bounded replay pruning remain unchanged.
 
 No second replay dictionary, accepted-operation ledger, cooldown state, or shot counter was added.
 
@@ -108,6 +115,7 @@ It does not accept provisional schedule-entry DTOs.
 Before building a batch it requires `acceptedEmission.HasValidFingerprint(effectiveWeapon)` and
 validates the exact:
 
+- projectile emission kind;
 - actor identity;
 - participant identity;
 - equipment instance identity;
@@ -117,6 +125,7 @@ validates the exact:
 - scheduler-derived emission operation identity;
 - authoritative shot sequence;
 - projectile ordinal;
+- muzzle origin and deterministic spread direction;
 - modular payload values represented by the downstream effect type.
 
 `AcceptedEmission.EmissionFireOperationId`, which is the accepted emission command's derived
@@ -180,6 +189,11 @@ For each enabled mount, `InventoryWeaponRuntimeComposition` derives and preserve
 Scheduler tracks are keyed by exact actor/equipment/lifecycle identity, so each mount has independent
 cadence and shot continuity. One mount's cooldown does not block another mount. Mounts are not
 collapsed into one equipment identity or one batch.
+
+A non-cooldown integration failure from any mount takes precedence in the aggregate return. Retrying
+the same trigger replays already successful mounts through exact scheduler/sink idempotency and lets
+the failed mount complete; a successful first mount cannot mask an unsupported or sink-failed later
+mount.
 
 ## Supported compatibility subset
 
@@ -253,21 +267,31 @@ behaviors. Its `CooldownTicks` field is now a projection of the accepted emissio
 The older profile containing cadence, burst, heat, charge, optional power-bank, recoil, behavior
 module, serialization, and presentation fields remains separate from live firing.
 
-Verified references are:
+The repository code-search index was unavailable during this connector-only audit. The following
+direct runtime and test consumers were therefore individually verified through their retained files
+and origin PRs rather than inferred from an empty search result:
 
 | Reference | Classification | Reachable from canonical live firing? |
 |---|---|---|
 | `WeaponRuntimeProfile.cs` | transitional domain model/serialization | No |
 | `WeaponRuntimeProfileValidator.cs` | transitional domain validation | No |
-| `WeaponMountState.cs` | old independent mount-state prototype | No |
+| `WeaponMountState.cs` | old independent mount-state prototype; `Initial(profile)` | No |
 | `WeaponMountStepper.cs` | old heat/charge/cadence state-machine prototype | No |
+| `WeaponPowerBankState.cs` | old independent power-bank factory from profile | No |
+| `WeaponPowerBankPolicy.cs` | old power-bank policy over the profile-derived state | No |
+| `IWeaponBehaviorModule.cs` / `WeaponBehaviorInput` | old behavior input stores the profile | No |
+| `WeaponBehaviorPipeline.cs` | old module ordering reads profile module IDs | No |
+| `WeaponFireExecutionPlan.cs` | old plan retains `WeaponBehaviorInput` transitively | No |
 | `WeaponRuntimeProfileTests.cs` | EditMode tests | No |
 | `WeaponMountStepperTests.cs` | EditMode tests | No |
-| modular-weapon architecture documentation | migration documentation | No |
+| `WeaponPowerBankPolicyTests.cs` | EditMode tests | No |
+| `WeaponBehaviorPipelineTests.cs` | EditMode tests | No |
+| modular-weapon and old combat architecture documentation | migration documentation | No |
 
-It requires a separate focused retirement task because deleting it also requires deciding the fate of
-heat, charge, power-bank, recoil, canonical serialization, and the old mount stepper. None of those
-mechanics are reconnected to `WeaponFiringScheduler` by this cutover.
+The old subsystem requires a separate focused retirement task because deletion also requires deciding
+the fate of heat, charge, power-bank, recoil, profile serialization, behavior modules, execution
+plans, and the old mount stepper. None of those mechanics are reconnected to
+`WeaponFiringScheduler` by this cutover.
 
 ## Deleted and retained authorities
 
