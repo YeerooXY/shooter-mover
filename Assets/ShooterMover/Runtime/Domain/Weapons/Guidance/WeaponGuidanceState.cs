@@ -32,7 +32,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
             double elapsedSeconds,
             double pauseRemainingSeconds,
             WeaponGuidanceAcquisitionState acquisitionState,
-            WeaponGuidanceTargetReference trackedTarget)
+            WeaponTargetReference trackedTarget)
         {
             AcquisitionAimDirection = RequireDirection(
                 acquisitionAimDirection,
@@ -72,11 +72,11 @@ namespace ShooterMover.Domain.Weapons.Guidance
         public double ElapsedSeconds { get; }
         public double PauseRemainingSeconds { get; }
         public WeaponGuidanceAcquisitionState AcquisitionState { get; }
-        public WeaponGuidanceTargetReference TrackedTarget { get; }
+        public WeaponTargetReference TrackedTarget { get; }
 
         public static WeaponGuidanceState Create(
             WeaponVector2 initialDirection,
-            WeaponGuidanceTargetReference initialTarget = null)
+            WeaponTargetReference initialTarget = null)
         {
             WeaponVector2 direction = RequireDirection(initialDirection, nameof(initialDirection));
             WeaponGuidanceAcquisitionState acquisitionState = initialTarget == null
@@ -128,7 +128,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
             WeaponVector2 direction,
             double elapsedSeconds,
             double pauseRemainingSeconds,
-            WeaponGuidanceTargetReference trackedTarget)
+            WeaponTargetReference trackedTarget)
         {
             return Advance(
                 direction,
@@ -143,7 +143,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
             double elapsedSeconds,
             double pauseRemainingSeconds,
             WeaponGuidanceAcquisitionState acquisitionState,
-            WeaponGuidanceTargetReference trackedTarget)
+            WeaponTargetReference trackedTarget)
         {
             return new WeaponGuidanceState(
                 AcquisitionAimDirection,

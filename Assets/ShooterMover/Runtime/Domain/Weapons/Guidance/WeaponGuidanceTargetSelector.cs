@@ -24,8 +24,8 @@ namespace ShooterMover.Domain.Weapons.Guidance
 
             List<WeaponGuidanceTargetSnapshot> copy =
                 new List<WeaponGuidanceTargetSnapshot>(snapshots.Count);
-            HashSet<WeaponGuidanceTargetReference> identities =
-                new HashSet<WeaponGuidanceTargetReference>();
+            HashSet<WeaponTargetReference> identities =
+                new HashSet<WeaponTargetReference>();
 
             for (int index = 0; index < snapshots.Count; index++)
             {
@@ -50,7 +50,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
 
         public static bool TryResolveExact(
             IReadOnlyList<WeaponGuidanceTargetSnapshot> snapshots,
-            WeaponGuidanceTargetReference target,
+            WeaponTargetReference target,
             WeaponVector2 projectilePosition,
             double acquisitionRangeSquared,
             out WeaponGuidanceTargetSnapshot resolved)
@@ -84,7 +84,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
         public static bool TrySelect(
             IReadOnlyList<WeaponGuidanceTargetSnapshot> snapshots,
             WeaponTargetPolicy policy,
-            WeaponGuidanceTargetReference currentTarget,
+            WeaponTargetReference currentTarget,
             WeaponVector2 projectilePosition,
             WeaponVector2 acquisitionAimDirection,
             double acquisitionRangeSquared,

@@ -109,7 +109,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
                 guidance.AcquisitionRange * guidance.AcquisitionRange;
 
             WeaponGuidanceTargetSnapshot resolvedTarget = null;
-            WeaponGuidanceTargetReference nextTrackedTarget = state.TrackedTarget;
+            WeaponTargetReference nextTrackedTarget = state.TrackedTarget;
             WeaponGuidanceAcquisitionState nextAcquisitionState = state.AcquisitionState;
             bool hasTarget = state.AcquisitionState
                     != WeaponGuidanceAcquisitionState.LostWithoutReacquisition
