@@ -36,6 +36,8 @@ namespace ShooterMover.Application.Weapons.Catalog
         DomainContractRejected = 26,
         MissingIntentDefinitionId = 27,
         MismatchedIntentDefinitionId = 28,
+        MissingExplosionTrigger = 29,
+        UnexpectedExplosionTrigger = 30,
     }
 
     public sealed class WeaponBlueprintMappingIssue
