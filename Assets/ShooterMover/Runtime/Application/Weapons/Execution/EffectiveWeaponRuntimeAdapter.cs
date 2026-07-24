@@ -90,14 +90,15 @@ namespace ShooterMover.Application.Weapons.Execution
                             : built.RejectionCode);
             }
 
-            if (!HasExpectedIdentity(
+            if (!HasExpectedBatch(
                     weapon,
                     scheduleEntry,
+                    profile,
                     built.Batch))
             {
                 return Reject(
                     EffectiveWeaponRuntimeAdapterStatus.InvalidEffectBatch,
-                    "weapon-runtime-adapter-effect-identity-invalid");
+                    "weapon-runtime-adapter-effect-batch-invalid");
             }
 
             return EffectiveWeaponRuntimeAdapterResult.Adapted(profile, built.Batch);
@@ -273,6 +274,7 @@ namespace ShooterMover.Application.Weapons.Execution
             if (hasExplosion)
             {
                 if (weapon.Projectile.Kind != WeaponProjectileKind.Rocket
+                    || pierce != 0
                     || weapon.Damage.AreaDamage <= 0d
                     || !ApproximatelyOne(
                         weapon.Effects.Explosion.MinimumDamageMultiplier))
@@ -361,12 +363,13 @@ namespace ShooterMover.Application.Weapons.Execution
                     out code);
             }
 
-            if (weapon.Damage.AreaDamage > Epsilon
+            if (weapon.Damage.DirectDamage <= 0d
+                || weapon.Damage.AreaDamage > Epsilon
                 || !ApproximatelyOne(weapon.Effects.ChainArc.RetainedDamagePerJump))
             {
                 return Fail(
                     EffectiveWeaponRuntimeAdapterStatus.UnsupportedEffects,
-                    "weapon-runtime-adapter-chain-retention-unsupported",
+                    "weapon-runtime-adapter-chain-semantics-unsupported",
                     out status,
                     out code);
             }
@@ -449,14 +452,23 @@ namespace ShooterMover.Application.Weapons.Execution
                 == WeaponProjectileTerminationBehavior.StopWhenPierceIsSpent;
         }
 
-        private static bool HasExpectedIdentity(
+        private static bool HasExpectedBatch(
             EffectiveWeapon weapon,
             WeaponFiringScheduleEntry scheduleEntry,
+            WeaponRuntimeFiringProfile profile,
             WeaponEffectBatch batch)
         {
             if (batch == null
                 || batch.EffectCount < 1
                 || batch.EffectCount > WeaponRuntimeFiringProfile.MaximumEffectsPerFire)
+            {
+                return false;
+            }
+
+            int expectedCount = profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Chain)
+                ? 1
+                : profile.ProjectileCount;
+            if (batch.EffectCount != expectedCount)
             {
                 return false;
             }
@@ -474,13 +486,66 @@ namespace ShooterMover.Application.Weapons.Execution
                     || !identity.LifecycleGeneration.Equals(
                         scheduleEntry.Command.LifecycleGeneration)
                     || identity.ShotSequence != scheduleEntry.ShotSequence
-                    || identity.ProjectileOrdinal.Value != index)
+                    || identity.ProjectileOrdinal.Value != index
+                    || !HasExpectedPayload(profile, effect))
                 {
                     return false;
                 }
             }
 
             return true;
+        }
+
+        private static bool HasExpectedPayload(
+            WeaponRuntimeFiringProfile profile,
+            IWeaponEffectDescription effect)
+        {
+            if (profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Projectile))
+            {
+                DirectProjectileEffect direct = effect as DirectProjectileEffect;
+                return direct != null
+                    && Same(direct.Speed, profile.ProjectileSpeed)
+                    && Same(direct.Range, profile.ProjectileRange)
+                    && Same(direct.DirectDamage, profile.DirectDamage)
+                    && direct.Pierce == profile.Pierce
+                    && Same(direct.Knockback, profile.Knockback)
+                    && string.Equals(
+                        direct.DamageType,
+                        profile.DamageType,
+                        StringComparison.Ordinal);
+            }
+
+            if (profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Explosive))
+            {
+                ExplosiveProjectileEffect explosive = effect as ExplosiveProjectileEffect;
+                return explosive != null
+                    && Same(explosive.Speed, profile.ProjectileSpeed)
+                    && Same(explosive.Range, profile.ProjectileRange)
+                    && Same(explosive.DirectDamage, profile.DirectDamage)
+                    && Same(explosive.AreaDamage, profile.AreaDamage)
+                    && Same(explosive.ExplosionRadius, profile.ExplosionRadius)
+                    && Same(explosive.Knockback, profile.Knockback)
+                    && string.Equals(
+                        explosive.DamageType,
+                        profile.DamageType,
+                        StringComparison.Ordinal);
+            }
+
+            if (profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Chain))
+            {
+                ChainArcEffect chain = effect as ChainArcEffect;
+                return chain != null
+                    && Same(chain.Damage, profile.DirectDamage)
+                    && chain.MaximumTargets == profile.ChainTargets
+                    && Same(chain.MaximumRange, profile.ChainRange)
+                    && Same(chain.Knockback, profile.Knockback)
+                    && string.Equals(
+                        chain.DamageType,
+                        profile.DamageType,
+                        StringComparison.Ordinal);
+            }
+
+            return false;
         }
 
         private static bool IsValidCommand(WeaponFireCommand command)
@@ -492,6 +557,11 @@ namespace ShooterMover.Application.Weapons.Execution
                 && command.AimDirection != null
                 && command.AimDirection.IsFinite
                 && command.AimDirection.LengthSquared > 0.000000000001d;
+        }
+
+        private static bool Same(double left, double right)
+        {
+            return left.Equals(right);
         }
 
         private static bool ApproximatelyOne(double value)
