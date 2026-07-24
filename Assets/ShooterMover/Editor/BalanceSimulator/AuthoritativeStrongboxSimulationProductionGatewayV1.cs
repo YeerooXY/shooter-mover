@@ -183,15 +183,19 @@ namespace ShooterMover.Editor.BalanceSimulator
                 return false;
             }
 
-            StrongboxHybridLootPolicyV1 policy =
-                ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(tierNumber);
-            StrongboxTargetLevelRollV1 target = policy.RollTargetLevel(
-                scenario.PlayerLevel,
-                opening.Context.RootSeed,
-                opening.Context.AlgorithmVersion,
-                0UL);
-            StrongboxAugmentSignatureV1 replayedSignature =
-                policy.RollAugmentSignature(
+            StrongboxHybridLootPolicyV1 policy;
+            StrongboxTargetLevelRollV1 target;
+            StrongboxAugmentSignatureV1 replayedSignature;
+            try
+            {
+                policy = ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(
+                    tierNumber);
+                target = policy.RollTargetLevel(
+                    scenario.PlayerLevel,
+                    opening.Context.RootSeed,
+                    opening.Context.AlgorithmVersion,
+                    0UL);
+                replayedSignature = policy.RollAugmentSignature(
                     scenario.PlayerLevel,
                     generated.ItemLevel,
                     metadata.RarityId,
@@ -200,6 +204,13 @@ namespace ShooterMover.Editor.BalanceSimulator
                     opening.Context.RootSeed,
                     opening.Context.AlgorithmVersion,
                     0UL);
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "strongbox-simulation-observation-replay-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+                return false;
+            }
             if (replayedSignature.SlotCount != signature.Capacity
                 || replayedSignature.SharedLevel != signature.SharedLevel
                 || replayedSignature.PolicyId != signature.HybridPolicyStableId
