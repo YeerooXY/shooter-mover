@@ -7,9 +7,9 @@ using ShooterMover.Domain.Weapons.Execution;
 namespace ShooterMover.Application.Weapons.Execution
 {
     /// <summary>
-    /// Immutable scheduler handoff for one concrete emission. Construction is internal so
-    /// external callers cannot mint an accepted schedule entry. The future canonical firing
-    /// scheduler in this assembly is the intended producer.
+    /// Immutable provisional scheduler handoff for one concrete emission. Construction is
+    /// internal so external callers cannot mint an accepted schedule entry. WEAPON-FIRING-001
+    /// must become the sole producer or replace this type with its canonical output contract.
     /// </summary>
     public sealed class WeaponFiringScheduleEntry
     {
