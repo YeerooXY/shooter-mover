@@ -115,11 +115,16 @@ Before evaluating combat values, `EffectiveWeaponFactory`:
 
 No source definition or instance is modified during evaluation.
 
+## Prototype validation policy
+
+No automated test files are included in this PR. During the current prototype phase, the behavior will be exercised in-game later. Automated coverage is intentionally deferred until it is requested.
+
 ## Deferred
 
 - mapping current `WeaponDefinitionData` into `WeaponBlueprint`;
 - the single canonical application-level `AugmentDefinitionId` to modifier resolver and its authoring/persistence format;
 - a separately named continuous `DamageTicksPerSecond` modifier policy;
+- automated test coverage after the prototype phase;
 - item-level combat scaling;
 - heat, charge, ammo, magazines, cooldown resources, and power banks;
 - mapping `EffectiveWeapon` into current `WeaponRuntimeFiringProfile` or behavior selection;
