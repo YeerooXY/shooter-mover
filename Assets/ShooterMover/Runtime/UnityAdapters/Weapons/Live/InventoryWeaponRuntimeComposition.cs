@@ -127,25 +127,26 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         }
 
         public StableId MountStableId { get; }
-
         public EquipmentInstanceId EquipmentInstanceId { get; }
-
         public double LateralOffset { get; }
     }
 
     /// <summary>
-    /// Composes actor/lifecycle facts with either the retained active-slot source or a
-    /// set of concurrently firing physical mounts. Each mount receives a locked exact
-    /// equipment identity, operation ID, origin, seed, and independent WPN-CORE state.
+    /// Composes actor/lifecycle facts with either the retained active-slot source or a set of
+    /// concurrently firing physical mounts. This class is the sole owner and publication boundary
+    /// for the immutable WeaponFiringSessionState for one runtime/run composition.
     /// </summary>
-    public sealed class InventoryWeaponRuntimeComposition
+    public sealed class InventoryWeaponRuntimeComposition : IDisposable
     {
+        private readonly object firingStateGate = new object();
         private readonly IInventoryWeaponActorStateSource actorStateSource;
         private readonly InventoryWeaponFireIntentFactory intentFactory;
         private readonly InventoryBackedWeaponExecutionAdapter executionAdapter;
         private readonly RouteProfileActiveWeaponSource activeWeaponSource;
         private readonly ReadOnlyCollection<InventoryWeaponMountedRuntimeV1>
             mountedWeapons;
+        private WeaponFiringSessionState firingSessionState;
+        private bool disposed;
 
         public InventoryWeaponRuntimeComposition(
             IInventoryWeaponActorStateSource actorState,
@@ -163,6 +164,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             mountedWeapons = new ReadOnlyCollection<
                 InventoryWeaponMountedRuntimeV1>(
                 new List<InventoryWeaponMountedRuntimeV1>());
+            firingSessionState = WeaponFiringSessionState.Empty;
         }
 
         public InventoryWeaponRuntimeComposition(
@@ -200,6 +202,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             mountedWeapons = new ReadOnlyCollection<
                 InventoryWeaponMountedRuntimeV1>(mounts);
+            firingSessionState = WeaponFiringSessionState.Empty;
         }
 
         public bool IsConcurrentMountMode
@@ -217,10 +220,20 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
         }
 
-        public IReadOnlyList<InventoryWeaponMountedRuntimeV1>
-            EnabledMounts
+        public IReadOnlyList<InventoryWeaponMountedRuntimeV1> EnabledMounts
         {
             get { return mountedWeapons; }
+        }
+
+        public WeaponFiringSessionState FiringSessionState
+        {
+            get
+            {
+                lock (firingStateGate)
+                {
+                    return firingSessionState;
+                }
+            }
         }
 
         public int SelectedSlotIndex
@@ -256,12 +269,34 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             out InventoryWeaponFireRequest request,
             out string rejectionCode)
         {
+            return TryCreateFireIntent(
+                fireOperationId,
+                simulationTick,
+                deterministicSeed,
+                origin,
+                aimDirection,
+                WeaponTriggerSignal.Pressed,
+                out request,
+                out rejectionCode);
+        }
+
+        public bool TryCreateFireIntent(
+            FireOperationId fireOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal,
+            out InventoryWeaponFireRequest request,
+            out string rejectionCode)
+        {
             request = null;
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
-            if (!actorStateSource.TryResolveActorState(
-                out actorId,
-                out generation)
+            if (disposed
+                || !actorStateSource.TryResolveActorState(
+                    out actorId,
+                    out generation)
                 || actorId == null
                 || generation == null)
             {
@@ -280,6 +315,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     deterministicSeed,
                     origin,
                     aimDirection,
+                    triggerSignal,
                     out request,
                     out rejectionCode);
             }
@@ -300,7 +336,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 simulationTick,
                 deterministicSeed,
                 origin,
-                aimDirection);
+                aimDirection,
+                triggerSignal);
             rejectionCode = string.Empty;
             return true;
         }
@@ -308,7 +345,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public InventoryWeaponExecutionResult TryExecute(
             InventoryWeaponFireRequest request)
         {
-            return executionAdapter.TryExecute(request);
+            return ExecuteAndPublish(request);
         }
 
         public InventoryWeaponExecutionResult TryFire(
@@ -317,6 +354,23 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             ulong deterministicSeed,
             WeaponVector2 origin,
             WeaponVector2 aimDirection)
+        {
+            return TryTrigger(
+                fireOperationId,
+                simulationTick,
+                deterministicSeed,
+                origin,
+                aimDirection,
+                WeaponTriggerSignal.Pressed);
+        }
+
+        public InventoryWeaponExecutionResult TryTrigger(
+            FireOperationId fireOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal)
         {
             if (!IsConcurrentMountMode)
             {
@@ -328,17 +382,22 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     deterministicSeed,
                     origin,
                     aimDirection,
+                    triggerSignal,
                     out request,
                     out rejectionCode))
                 {
                     return Reject(rejectionCode);
                 }
-                return executionAdapter.TryExecute(request);
+                return ExecuteAndPublish(request);
             }
 
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
-            if (fireOperationId == null
+            if (disposed
+                || fireOperationId == null
+                || !Enum.IsDefined(
+                    typeof(WeaponTriggerSignal),
+                    triggerSignal)
                 || !actorStateSource.TryResolveActorState(
                     out actorId,
                     out generation)
@@ -362,9 +421,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     simulationTick,
                     deterministicSeed,
                     origin,
-                    aimDirection);
+                    aimDirection,
+                    triggerSignal);
                 InventoryWeaponExecutionResult result =
-                    executionAdapter.TryExecute(request);
+                    ExecuteAndPublish(request);
                 if (result.Status == WeaponExecutionStatus.Accepted
                     || result.Status
                         == WeaponExecutionStatus.ReplayAccepted)
@@ -394,6 +454,42 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 ?? Reject("weapon-live-no-enabled-mounts");
         }
 
+        public void Dispose()
+        {
+            lock (firingStateGate)
+            {
+                if (disposed)
+                {
+                    return;
+                }
+
+                disposed = true;
+                firingSessionState = WeaponFiringSessionState.Empty;
+            }
+        }
+
+        private InventoryWeaponExecutionResult ExecuteAndPublish(
+            InventoryWeaponFireRequest request)
+        {
+            lock (firingStateGate)
+            {
+                if (disposed)
+                {
+                    return Reject("weapon-live-runtime-disposed");
+                }
+
+                InventoryWeaponExecutionTransition transition =
+                    executionAdapter.TryExecute(
+                        request,
+                        firingSessionState);
+                if (transition.PublishNextState)
+                {
+                    firingSessionState = transition.NextState;
+                }
+                return transition.Result;
+            }
+        }
+
         private static InventoryWeaponFireRequest CreateMountedRequest(
             WeaponActorInstanceId actorId,
             LifecycleGeneration generation,
@@ -403,7 +499,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             long simulationTick,
             ulong deterministicSeed,
             WeaponVector2 origin,
-            WeaponVector2 aimDirection)
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal)
         {
             double length = Math.Sqrt(
                 (aimDirection.X * aimDirection.X)
@@ -441,7 +538,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 simulationTick,
                 mountSeed,
                 mountOrigin,
-                aimDirection);
+                aimDirection,
+                triggerSignal);
         }
 
         private static InventoryWeaponExecutionResult Reject(
