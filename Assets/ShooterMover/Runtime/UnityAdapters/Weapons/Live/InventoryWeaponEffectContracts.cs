@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using ShooterMover.Application.Weapons.Execution;
@@ -216,29 +218,324 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public string Fingerprint { get; }
     }
 
+    public enum InventoryWeaponExecutionOutcomeKind
+    {
+        AcceptedEmissionDelivery = 1,
+        ReplayedEmissionDelivery = 2,
+        AcceptedScheduleQueued = 3,
+        ReplayedScheduleRetained = 4,
+        AcceptedNoEmissionTransition = 5,
+        ReplayedNoEmissionTransition = 6,
+        WaitingForCadence = 7,
+        Released = 8,
+        NoDueDelivery = 9,
+        RetryableDeliveryFailure = 10,
+        SchedulerRejected = 11,
+        IntegrationRejected = 12,
+    }
+
+    /// <summary>
+    /// Honest live-operation result. A scheduler transition can succeed without a shot, and a
+    /// schedule can be retained without any batch being due. EffectBatch is populated only when
+    /// exactly one batch was delivered; callers must use DeliveredBatches for zero-or-many results.
+    /// </summary>
     public sealed class InventoryWeaponExecutionResult
     {
+        private readonly ReadOnlyCollection<InventoryWeaponEffectBatch> deliveredBatches;
+
+        internal InventoryWeaponExecutionResult(
+            EquipmentInstanceId equipmentInstanceId,
+            InventoryWeaponExecutionOutcomeKind outcomeKind,
+            WeaponExecutionStatus status,
+            string rejectionCode,
+            WeaponExecutionResult execution,
+            WeaponFiringScheduleStatus? schedulerStatus,
+            bool isExactReplay,
+            int scheduledEmissionCount,
+            int acceptedDeliveryCount,
+            int alreadyAcceptedDeliveryCount,
+            int pendingDeliveryCount,
+            IList<InventoryWeaponEffectBatch> delivered)
+        {
+            if (scheduledEmissionCount < 0
+                || acceptedDeliveryCount < 0
+                || alreadyAcceptedDeliveryCount < 0
+                || pendingDeliveryCount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(scheduledEmissionCount));
+            }
+            if (!Enum.IsDefined(typeof(InventoryWeaponExecutionOutcomeKind), outcomeKind))
+            {
+                throw new ArgumentOutOfRangeException(nameof(outcomeKind));
+            }
+
+            EquipmentInstanceId = equipmentInstanceId;
+            OutcomeKind = outcomeKind;
+            Status = status;
+            RejectionCode = rejectionCode ?? string.Empty;
+            Execution = execution;
+            SchedulerStatus = schedulerStatus;
+            IsExactReplay = isExactReplay;
+            ScheduledEmissionCount = scheduledEmissionCount;
+            AcceptedDeliveryCount = acceptedDeliveryCount;
+            AlreadyAcceptedDeliveryCount = alreadyAcceptedDeliveryCount;
+            PendingDeliveryCount = pendingDeliveryCount;
+            deliveredBatches = new ReadOnlyCollection<InventoryWeaponEffectBatch>(
+                new List<InventoryWeaponEffectBatch>(
+                    delivered ?? new InventoryWeaponEffectBatch[0]));
+        }
+
+        /// <summary>
+        /// Retained source-compatible constructor for legacy callers that already own a concrete
+        /// effect delivery result. It must not be used for no-emission scheduler transitions.
+        /// </summary>
         public InventoryWeaponExecutionResult(
             EquipmentInstanceId equipmentInstanceId,
             WeaponExecutionResult execution,
             InventoryWeaponEffectBatch effectBatch)
+            : this(
+                equipmentInstanceId,
+                execution != null
+                    && execution.Status == WeaponExecutionStatus.ReplayAccepted
+                        ? InventoryWeaponExecutionOutcomeKind.ReplayedEmissionDelivery
+                        : execution != null
+                            && execution.Status == WeaponExecutionStatus.Accepted
+                                ? InventoryWeaponExecutionOutcomeKind.AcceptedEmissionDelivery
+                                : InventoryWeaponExecutionOutcomeKind.IntegrationRejected,
+                execution == null
+                    ? WeaponExecutionStatus.InvalidCommand
+                    : execution.Status,
+                execution == null ? "weapon-live-execution-result-null" : execution.RejectionCode,
+                execution,
+                null,
+                execution != null
+                    && execution.Status == WeaponExecutionStatus.ReplayAccepted,
+                effectBatch == null ? 0 : 1,
+                execution != null
+                    && execution.Status == WeaponExecutionStatus.Accepted
+                    && effectBatch != null ? 1 : 0,
+                execution != null
+                    && execution.Status == WeaponExecutionStatus.ReplayAccepted
+                    && effectBatch != null ? 1 : 0,
+                0,
+                effectBatch == null
+                    ? new InventoryWeaponEffectBatch[0]
+                    : new[] { effectBatch })
         {
-            EquipmentInstanceId = equipmentInstanceId;
-            Execution = execution ?? throw new ArgumentNullException(nameof(execution));
-            EffectBatch = effectBatch;
         }
 
         public EquipmentInstanceId EquipmentInstanceId { get; }
+        public InventoryWeaponExecutionOutcomeKind OutcomeKind { get; }
         public WeaponExecutionResult Execution { get; }
-        public InventoryWeaponEffectBatch EffectBatch { get; }
-        public WeaponExecutionStatus Status { get { return Execution.Status; } }
-        public string RejectionCode { get { return Execution.RejectionCode; } }
-        public bool Succeeded { get { return Status == WeaponExecutionStatus.Accepted; } }
-        public bool IsExactReplay { get { return Status == WeaponExecutionStatus.ReplayAccepted; } }
+        public WeaponExecutionStatus Status { get; }
+        public string RejectionCode { get; }
+        public WeaponFiringScheduleStatus? SchedulerStatus { get; }
+        public bool IsExactReplay { get; }
+        public int ScheduledEmissionCount { get; }
+        public int AcceptedDeliveryCount { get; }
+        public int AlreadyAcceptedDeliveryCount { get; }
+        public int DeliveredBatchCount { get { return deliveredBatches.Count; } }
+        public int PendingDeliveryCount { get; }
+        public IReadOnlyList<InventoryWeaponEffectBatch> DeliveredBatches
+        {
+            get { return deliveredBatches; }
+        }
+        public InventoryWeaponEffectBatch EffectBatch
+        {
+            get { return deliveredBatches.Count == 1 ? deliveredBatches[0] : null; }
+        }
+        public bool HasShotSequence { get { return deliveredBatches.Count > 0; } }
+        public long? LastDeliveredShotSequence
+        {
+            get
+            {
+                return deliveredBatches.Count == 0
+                    ? (long?)null
+                    : deliveredBatches[deliveredBatches.Count - 1]
+                        .Identity.ShotSequence;
+            }
+        }
+        public bool Succeeded
+        {
+            get
+            {
+                return OutcomeKind != InventoryWeaponExecutionOutcomeKind.RetryableDeliveryFailure
+                    && OutcomeKind != InventoryWeaponExecutionOutcomeKind.SchedulerRejected
+                    && OutcomeKind != InventoryWeaponExecutionOutcomeKind.IntegrationRejected;
+            }
+        }
 
         public WeaponDefinitionId WeaponDefinitionId
         {
             get { return EffectBatch == null ? null : EffectBatch.Profile.DefinitionId; }
+        }
+
+        internal static InventoryWeaponExecutionResult Schedule(
+            EquipmentInstanceId equipmentInstanceId,
+            bool replay,
+            int scheduledEmissionCount,
+            int pendingDeliveryCount)
+        {
+            return new InventoryWeaponExecutionResult(
+                equipmentInstanceId,
+                replay
+                    ? InventoryWeaponExecutionOutcomeKind.ReplayedScheduleRetained
+                    : InventoryWeaponExecutionOutcomeKind.AcceptedScheduleQueued,
+                replay
+                    ? WeaponExecutionStatus.ReplayAccepted
+                    : WeaponExecutionStatus.Accepted,
+                string.Empty,
+                null,
+                replay
+                    ? WeaponFiringScheduleStatus.Replayed
+                    : WeaponFiringScheduleStatus.Accepted,
+                replay,
+                scheduledEmissionCount,
+                0,
+                0,
+                pendingDeliveryCount,
+                new InventoryWeaponEffectBatch[0]);
+        }
+
+        internal static InventoryWeaponExecutionResult Transition(
+            EquipmentInstanceId equipmentInstanceId,
+            bool replay,
+            WeaponFiringScheduleStatus schedulerStatus,
+            int pendingDeliveryCount)
+        {
+            InventoryWeaponExecutionOutcomeKind kind;
+            if (schedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence)
+            {
+                kind = InventoryWeaponExecutionOutcomeKind.WaitingForCadence;
+            }
+            else if (schedulerStatus == WeaponFiringScheduleStatus.Released)
+            {
+                kind = InventoryWeaponExecutionOutcomeKind.Released;
+            }
+            else
+            {
+                kind = replay
+                    ? InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition
+                    : InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition;
+            }
+
+            return new InventoryWeaponExecutionResult(
+                equipmentInstanceId,
+                kind,
+                schedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence
+                    ? WeaponExecutionStatus.CooldownActive
+                    : replay
+                        ? WeaponExecutionStatus.ReplayAccepted
+                        : WeaponExecutionStatus.Accepted,
+                string.Empty,
+                null,
+                schedulerStatus,
+                replay,
+                0,
+                0,
+                0,
+                pendingDeliveryCount,
+                new InventoryWeaponEffectBatch[0]);
+        }
+
+        internal static InventoryWeaponExecutionResult Delivery(
+            EquipmentInstanceId equipmentInstanceId,
+            IList<InventoryWeaponEffectBatch> delivered,
+            int acceptedCount,
+            int alreadyAcceptedCount,
+            int pendingDeliveryCount)
+        {
+            if (delivered == null || delivered.Count < 1)
+            {
+                throw new ArgumentException(
+                    "At least one delivered batch is required.",
+                    nameof(delivered));
+            }
+
+            int totalEffects = 0;
+            for (int index = 0; index < delivered.Count; index++)
+            {
+                totalEffects = checked(totalEffects + delivered[index].EffectCount);
+            }
+            long lastShotSequence = delivered[delivered.Count - 1]
+                .Identity.ShotSequence;
+            bool replayOnly = acceptedCount == 0 && alreadyAcceptedCount > 0;
+            WeaponExecutionResult execution = replayOnly
+                ? WeaponExecutionResult.Replay(totalEffects, lastShotSequence)
+                : WeaponExecutionResult.Accept(totalEffects, lastShotSequence);
+            return new InventoryWeaponExecutionResult(
+                equipmentInstanceId,
+                replayOnly
+                    ? InventoryWeaponExecutionOutcomeKind.ReplayedEmissionDelivery
+                    : InventoryWeaponExecutionOutcomeKind.AcceptedEmissionDelivery,
+                execution.Status,
+                execution.RejectionCode,
+                execution,
+                null,
+                replayOnly,
+                delivered.Count,
+                acceptedCount,
+                alreadyAcceptedCount,
+                pendingDeliveryCount,
+                delivered);
+        }
+
+        internal static InventoryWeaponExecutionResult NoDue(int pendingDeliveryCount)
+        {
+            return new InventoryWeaponExecutionResult(
+                null,
+                InventoryWeaponExecutionOutcomeKind.NoDueDelivery,
+                WeaponExecutionStatus.Accepted,
+                string.Empty,
+                null,
+                null,
+                false,
+                0,
+                0,
+                0,
+                pendingDeliveryCount,
+                new InventoryWeaponEffectBatch[0]);
+        }
+
+        internal static InventoryWeaponExecutionResult Reject(
+            EquipmentInstanceId equipmentInstanceId,
+            WeaponExecutionStatus status,
+            string rejectionCode,
+            bool schedulerRejection,
+            bool retryableDeliveryFailure,
+            int pendingDeliveryCount,
+            IList<InventoryWeaponEffectBatch> delivered,
+            int acceptedDeliveryCount,
+            int alreadyAcceptedDeliveryCount)
+        {
+            IList<InventoryWeaponEffectBatch> safeDelivered = delivered
+                ?? new InventoryWeaponEffectBatch[0];
+            long lastShotSequence = safeDelivered.Count == 0
+                ? 0L
+                : safeDelivered[safeDelivered.Count - 1].Identity.ShotSequence;
+            WeaponExecutionResult execution = WeaponExecutionResult.Reject(
+                status,
+                string.IsNullOrWhiteSpace(rejectionCode)
+                    ? "weapon-live-integration-rejected"
+                    : rejectionCode,
+                lastShotSequence);
+            return new InventoryWeaponExecutionResult(
+                equipmentInstanceId,
+                retryableDeliveryFailure
+                    ? InventoryWeaponExecutionOutcomeKind.RetryableDeliveryFailure
+                    : schedulerRejection
+                        ? InventoryWeaponExecutionOutcomeKind.SchedulerRejected
+                        : InventoryWeaponExecutionOutcomeKind.IntegrationRejected,
+                execution.Status,
+                execution.RejectionCode,
+                execution,
+                null,
+                false,
+                0,
+                acceptedDeliveryCount,
+                alreadyAcceptedDeliveryCount,
+                pendingDeliveryCount,
+                safeDelivered);
         }
     }
 }
