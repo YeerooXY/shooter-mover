@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
@@ -59,6 +60,51 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             return builder.ToString();
         }
 
+        public static string CatalogCoverageMarkdown(
+            IReadOnlyList<StrongboxCatalogCoverageEntry> coverage)
+        {
+            if (coverage == null) throw new ArgumentNullException(nameof(coverage));
+            var builder = new StringBuilder();
+            builder.AppendLine("## Catalog coverage");
+            builder.AppendLine();
+            builder.AppendLine("| Definition ID | Name | Category | Family | Slot | Observed | Interpretation | Diagnostic |");
+            builder.AppendLine("|---|---|---|---|---|---:|---|---|");
+            for (int index = 0; index < coverage.Count; index++)
+            {
+                StrongboxCatalogCoverageEntry value = coverage[index];
+                builder.Append('|').Append(Escape(value.Metadata.DefinitionId.ToString()))
+                    .Append('|').Append(Escape(value.Metadata.DisplayName))
+                    .Append('|').Append(Escape(value.Metadata.CategoryId.ToString()))
+                    .Append('|').Append(Escape(Id(value.Metadata.FamilyId)))
+                    .Append('|').Append(Escape(Id(value.Metadata.SlotId)))
+                    .Append('|').Append(value.ObservedCount.ToString(CultureInfo.InvariantCulture))
+                    .Append('|').Append(Escape(value.Interpretation.ToString()))
+                    .Append('|').Append(Escape(value.Diagnostic))
+                    .AppendLine("|");
+            }
+            return builder.ToString();
+        }
+
+        public static string RareOutcomeMarkdown(StrongboxRareOutcomeResult result)
+        {
+            if (result == null) throw new ArgumentNullException(nameof(result));
+            var builder = new StringBuilder();
+            builder.AppendLine("## Rare outcome: " + Escape(result.Query.QueryId));
+            builder.AppendLine();
+            builder.AppendLine("- Equipment definition: `" + Id(result.Query.EquipmentDefinitionId) + "`");
+            builder.AppendLine("- Minimum slots: `" + result.Query.MinimumSlots.ToString(CultureInfo.InvariantCulture) + "`");
+            builder.AppendLine("- Require slots above ordinary maximum: `" + result.Query.RequireSlotsAboveOrdinaryMaximum + "`");
+            builder.AppendLine("- Minimum augment level: `" + result.Query.MinimumAugmentLevel.ToString(CultureInfo.InvariantCulture) + "`");
+            builder.AppendLine("- Require augment level above ordinary maximum: `" + result.Query.RequireAugmentLevelAboveOrdinaryMaximum + "`");
+            builder.AppendLine("- Observed: `" + result.ObservedCount.ToString(CultureInfo.InvariantCulture) + "`");
+            builder.AppendLine("- Evaluated samples: `" + result.SampleCount.ToString(CultureInfo.InvariantCulture) + "`");
+            builder.AppendLine("- Observed probability: `" + result.ObservedProbability.ToString("0.########", CultureInfo.InvariantCulture) + "`");
+            builder.AppendLine("- Zero-observation upper bound: `" + NullableDouble(result.ZeroObservationUpperBound) + "`");
+            builder.AppendLine("- Suggested sample count: `" + NullableLong(result.SuggestedSampleCount) + "`");
+            builder.AppendLine("- Interpretation: " + Escape(result.Interpretation));
+            return builder.ToString();
+        }
+
         public static string EquipmentCsv(StrongboxSimulationReport report)
         {
             if (report == null) throw new ArgumentNullException(nameof(report));
@@ -72,9 +118,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 Csv(builder, value.Metadata.DefinitionId.ToString());
                 Csv(builder, value.Metadata.DisplayName);
                 Csv(builder, value.Metadata.CategoryId.ToString());
-                Csv(builder, value.Metadata.FamilyId == null ? string.Empty : value.Metadata.FamilyId.ToString());
-                Csv(builder, value.Metadata.SlotId == null ? string.Empty : value.Metadata.SlotId.ToString());
-                Csv(builder, value.Metadata.RarityId == null ? string.Empty : value.Metadata.RarityId.ToString());
+                Csv(builder, Id(value.Metadata.FamilyId));
+                Csv(builder, Id(value.Metadata.SlotId));
+                Csv(builder, Id(value.Metadata.RarityId));
                 Csv(builder, value.Count.ToString(CultureInfo.InvariantCulture));
                 Csv(builder, percentage.ToString("0.########", CultureInfo.InvariantCulture));
                 Csv(builder, double.IsPositiveInfinity(boxes) ? string.Empty : boxes.ToString("0.########", CultureInfo.InvariantCulture));
@@ -87,7 +133,50 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             return builder.ToString();
         }
 
-        public static string DistributionCsv(string dimension, System.Collections.Generic.IReadOnlyList<StrongboxDistributionEntry> values)
+        public static string CatalogCoverageCsv(
+            IReadOnlyList<StrongboxCatalogCoverageEntry> coverage)
+        {
+            if (coverage == null) throw new ArgumentNullException(nameof(coverage));
+            var builder = new StringBuilder();
+            builder.AppendLine("definition_id,display_name,category_id,family_id,slot_id,available,top_box_only,observed_count,interpretation,diagnostic");
+            for (int index = 0; index < coverage.Count; index++)
+            {
+                StrongboxCatalogCoverageEntry value = coverage[index];
+                Csv(builder, value.Metadata.DefinitionId.ToString());
+                Csv(builder, value.Metadata.DisplayName);
+                Csv(builder, value.Metadata.CategoryId.ToString());
+                Csv(builder, Id(value.Metadata.FamilyId));
+                Csv(builder, Id(value.Metadata.SlotId));
+                Csv(builder, value.Metadata.Available.ToString(CultureInfo.InvariantCulture));
+                Csv(builder, value.Metadata.TopBoxOnly.ToString(CultureInfo.InvariantCulture));
+                Csv(builder, value.ObservedCount.ToString(CultureInfo.InvariantCulture));
+                Csv(builder, value.Interpretation.ToString());
+                Csv(builder, value.Diagnostic, true);
+            }
+            return builder.ToString();
+        }
+
+        public static string RareOutcomeCsv(StrongboxRareOutcomeResult result)
+        {
+            if (result == null) throw new ArgumentNullException(nameof(result));
+            var builder = new StringBuilder();
+            builder.AppendLine("query_id,equipment_definition_id,minimum_slots,slots_above_ordinary_maximum,minimum_augment_level,augment_level_above_ordinary_maximum,observed_count,sample_count,observed_probability,zero_observation_upper_bound,suggested_sample_count,interpretation");
+            Csv(builder, result.Query.QueryId);
+            Csv(builder, Id(result.Query.EquipmentDefinitionId));
+            Csv(builder, result.Query.MinimumSlots.ToString(CultureInfo.InvariantCulture));
+            Csv(builder, result.Query.RequireSlotsAboveOrdinaryMaximum.ToString(CultureInfo.InvariantCulture));
+            Csv(builder, result.Query.MinimumAugmentLevel.ToString(CultureInfo.InvariantCulture));
+            Csv(builder, result.Query.RequireAugmentLevelAboveOrdinaryMaximum.ToString(CultureInfo.InvariantCulture));
+            Csv(builder, result.ObservedCount.ToString(CultureInfo.InvariantCulture));
+            Csv(builder, result.SampleCount.ToString(CultureInfo.InvariantCulture));
+            Csv(builder, result.ObservedProbability.ToString("0.########", CultureInfo.InvariantCulture));
+            Csv(builder, NullableDouble(result.ZeroObservationUpperBound));
+            Csv(builder, NullableLong(result.SuggestedSampleCount));
+            Csv(builder, result.Interpretation, true);
+            return builder.ToString();
+        }
+
+        public static string DistributionCsv(string dimension, IReadOnlyList<StrongboxDistributionEntry> values)
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
             var builder = new StringBuilder();
@@ -103,7 +192,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             return builder.ToString();
         }
 
-        private static void AppendTable(StringBuilder builder, string title, System.Collections.Generic.IReadOnlyList<StrongboxDistributionEntry> values)
+        private static void AppendTable(StringBuilder builder, string title, IReadOnlyList<StrongboxDistributionEntry> values)
         {
             builder.AppendLine();
             builder.AppendLine("## " + title);
@@ -118,6 +207,25 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                     .Append('|').Append(value.Percentage.ToString("0.######", CultureInfo.InvariantCulture))
                     .AppendLine("%|");
             }
+        }
+
+        private static string Id(object value)
+        {
+            return value == null ? string.Empty : value.ToString();
+        }
+
+        private static string NullableDouble(double? value)
+        {
+            return value.HasValue
+                ? value.Value.ToString("0.########", CultureInfo.InvariantCulture)
+                : string.Empty;
+        }
+
+        private static string NullableLong(long? value)
+        {
+            return value.HasValue
+                ? value.Value.ToString(CultureInfo.InvariantCulture)
+                : string.Empty;
         }
 
         private static string Escape(string value)
