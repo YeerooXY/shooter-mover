@@ -45,7 +45,7 @@ The current production resolver has no supported definition-conditioning seam. A
 
 `StrongboxBatchSimulator` is a streaming analysis consumer. It receives immutable production observations and updates deterministic counters without retaining generated equipment instances.
 
-Exact augment-bias observations are represented by their IEEE-754 bit keys and counted in ordinally sorted distributions. `AverageAugmentBias` is never accumulated in opening order. After sampling completes, `StrongboxSimulationBiasMath` decodes the sorted exact distribution and performs one canonical grouped sum in that order. The same helper is used by report construction, report validation, paired comparisons and sweep bias diagnostics. Zero-count averages are exactly `0d`; malformed, NaN and infinite bias keys fail explicitly.
+Exact augment-bias observations are represented by their IEEE-754 bit keys and counted in ordinally sorted distributions. `AverageAugmentBias` is never accumulated in opening order. After sampling completes, `StrongboxSimulationBiasMath` decodes the sorted exact distribution and performs one canonical grouped sum in that order. The same helper is used by report construction, report validation, paired comparisons and sweep bias diagnostics. Zero-count averages are exactly `0d`; malformed, duplicate, unsorted, NaN and infinite bias keys fail explicitly.
 
 This rule makes the published average independent of observation arrival order whenever the counted bias distribution is identical.
 
@@ -94,6 +94,8 @@ The simulator does not mutate player-owned inventory, account, progression, curr
 ## Validation status
 
 Unity compilation and the deterministic in-editor production smoke simulation could not be run from the connector-only environment because no Unity-capable runner or connector-visible CI check is available.
+
+A manual IEEE-754 exercise used multiple fractional values and values with strongly different magnitudes. Different observation orders produced different opening-order averages, while the canonical grouped/sorted distribution produced the same exact bit pattern for every equivalent ordering. This validates the repaired construction rule independently of Unity integration.
 
 Static review confirms that bias construction, validation, comparisons and sweep diagnostics share one canonical sorted-distribution helper, canonical tags are normalized before publication, DefinitionConditioned remains rejected before sampling, and report fingerprint recomputation covers both average bias bits and tag content.
 
