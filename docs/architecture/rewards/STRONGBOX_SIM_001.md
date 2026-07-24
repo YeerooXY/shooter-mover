@@ -21,17 +21,25 @@ The production gateway delegates to the same authorities used by a real opening:
 - `EquipmentInstance.Create` for generated equipment identity;
 - `GeneratedEquipmentAugmentSignatureAuthorityV1` for generated augment metadata.
 
+## Canonical editor composition
+
+`AuthoritativeStrongboxSimulationGatewayFactoryV1` imports the exact production weapon catalog, reuses the resulting production equipment projection and builds simulator metadata from the definitions consumed by the hybrid resolver. Callers do not hand-author eligibility, family, rarity, first appearance, peak level, base weight, TopBoxOnly state or augment limits.
+
+The factory also freezes deterministic fingerprints for the catalog projection and all tier hybrid-policy fingerprints. Unsupported live rarity values, duplicate identities and empty projections fail explicitly.
+
+`AuthoritativeStrongboxSimulationRunnerV1` is the small end-to-end invocation surface for ordinary full-opening requests. It performs catalog loading, canonical projection, gateway construction, streaming simulation and structural report validation as one explicit operation.
+
 ## Production gateway
 
-`AuthoritativeStrongboxSimulationProductionGatewayV1` is an editor-side adapter over `AuthoritativeStrongboxSimulatorRuntimeV1`. For each observation it creates a fresh isolated production composition and executes:
+`AuthoritativeStrongboxSimulationProductionGatewayV1` is an editor-side adapter over `AuthoritativeStrongboxSimulatorRuntimeV1`. It executes:
 
 `StrongboxOpeningServiceV1` → production reward generation → transactional payload resolution → `StrongboxHybridEquipmentGenerationResolverV1` → RAP → isolated holdings.
 
-The isolated holdings, wallets and generated-signature authority exist only inside that simulation observation. No player-owned inventory, account, save, progression, achievement or analytics authority is supplied to the gateway.
+The gateway prepares a bounded chunk of 256 real openings inside one disposable composition. Each observation is streamed from that composition, and the complete holdings, wallet, RAP and generated-signature state is discarded before the next chunk. This avoids rebuilding the production composition for every opening while preventing unbounded simulator inventory retention.
 
-After the opening applies, the gateway reads the exact generated `EquipmentInstance` and committed `GeneratedEquipmentAugmentSignatureV1`. It replays `RollTargetLevel` and `RollAugmentSignature` through the same production policy using the exact opening seed and ordinal. The replay is observational: its slot, shared level, policy ID and policy fingerprint must match the committed production signature or the observation is rejected. Policy lookup or replay exceptions become deterministic rejection diagnostics rather than escaping from the batch.
+No player-owned inventory, account, save, progression, achievement or analytics authority is supplied to the gateway.
 
-The gateway requires a non-empty deterministic metadata projection keyed by production equipment definition ID. Duplicate, missing or unknown metadata rejects construction or the affected observation rather than synthesizing names, categories, rarity or augment limits.
+After an opening applies, the gateway reads the exact generated `EquipmentInstance` and committed `GeneratedEquipmentAugmentSignatureV1`. It replays `RollTargetLevel` and `RollAugmentSignature` through the same production policy using the exact opening seed and ordinal. The replay is observational: its slot, shared level, policy ID and policy fingerprint must match the committed production signature or the observation is rejected. Policy lookup or replay exceptions become deterministic rejection diagnostics rather than escaping from the batch.
 
 The current production resolver has no supported definition-conditioning seam. A scenario containing `EquipmentDefinitionId` is therefore rejected explicitly. The gateway does not imitate the resolver's private weighted selection or use rejection sampling to counterfeit conditioned probabilities.
 
@@ -43,7 +51,7 @@ The current production resolver has no supported definition-conditioning seam. A
 
 ## Deterministic identity
 
-A scenario includes player level, exact tier ID, sample count, root seed, optional exact definition ID and diagnostic override state. The production gateway receives the ordinal unchanged and derives one deterministic isolated-opening seed from the scenario root seed and ordinal.
+A scenario includes player level, exact tier ID, sample count, root seed, optional exact definition ID and diagnostic override state. The gateway deterministically derives a bounded-session seed from the scenario seed and chunk start; the production runtime then derives each exact opening seed from its stable local ordinal. Chunk size is fixed by the gateway implementation and therefore participates in the production observation identity.
 
 The report fingerprint includes request identity, production fingerprints, generated/rejected counts, ordered distributions, per-definition counts, exact per-definition augment-signature distributions and deterministic diagnostics. Elapsed time, timestamps, machine identity, paths and processor count are excluded.
 
