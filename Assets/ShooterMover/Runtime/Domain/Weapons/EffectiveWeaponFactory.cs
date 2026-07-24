@@ -9,7 +9,8 @@ namespace ShooterMover.Domain.Weapons
 {
     /// <summary>
     /// Resolves the existing equipment and augment authorities, then creates one immutable
-    /// effective profile without mutating any source definition or instance.
+    /// effective profile without mutating any source definition or instance. Modifier sets are
+    /// resolved inputs; production composition must obtain them from one canonical application policy.
     /// </summary>
     public static class EffectiveWeaponFactory
     {
@@ -61,6 +62,8 @@ namespace ShooterMover.Domain.Weapons
 
             Dictionary<StableId, WeaponAugmentModifierSet> modifiersByAugmentId =
                 ResolveModifierSets(equipmentCatalog, installedById, augmentModifierSets);
+            ValidateModifierSemantics(blueprint, modifiersByAugmentId);
+
             EffectiveWeaponEvaluatedValues values = EffectiveWeaponStatEvaluator.Evaluate(
                 blueprint,
                 installedAugments,
@@ -174,6 +177,34 @@ namespace ShooterMover.Domain.Weapons
             }
 
             return result;
+        }
+
+        private static void ValidateModifierSemantics(
+            WeaponBlueprint blueprint,
+            IDictionary<StableId, WeaponAugmentModifierSet> modifiersByAugmentId)
+        {
+            if (!blueprint.FireSettings.IsContinuous)
+            {
+                return;
+            }
+
+            foreach (WeaponAugmentModifierSet modifierSet in modifiersByAugmentId.Values)
+            {
+                for (int index = 0; index < modifierSet.Modifiers.Count; index++)
+                {
+                    WeaponStatModifier modifier = modifierSet.Modifiers[index];
+                    if (modifier.Stat != WeaponEffectiveStat.RateOfFire)
+                    {
+                        continue;
+                    }
+
+                    throw new IncompatibleWeaponAugmentException(
+                        modifierSet.Instance.InstanceId,
+                        modifierSet.Definition.DefinitionId,
+                        modifier.Stat,
+                        "RateOfFire modifies projectile ShotsPerSecond only; continuous DamageTicksPerSecond is a separate authored cadence and has no modifier target in this task");
+                }
+            }
         }
 
         private static string BuildEquipmentValidationMessage(
