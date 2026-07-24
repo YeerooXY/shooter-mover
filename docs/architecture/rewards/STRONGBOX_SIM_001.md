@@ -2,132 +2,99 @@
 
 ## Status
 
-This change establishes an analysis-only, equipment-generic batch simulator. It does not duplicate any production loot formula. Every generated observation comes from an `IStrongboxSimulationProductionGateway` backed by the real production opening resolver.
+This change establishes the engine-independent, equipment-generic batch-analysis boundary. It deliberately does not duplicate any production loot formula. Every generated observation comes from an `IStrongboxSimulationProductionGateway` backed by the real production opening resolver.
 
-The current production hybrid resolver (`StrongboxHybridEquipmentGenerationResolverV1`) selects live weapon equipment. Wearable equipment is therefore a production resolver limitation, not something the simulator may invent around. The simulator already carries category, family, slot, tags, rarity, availability, first appearance, peak level, authored weight, TopBoxOnly and augment-limit metadata for future production-supported categories.
+The current production hybrid resolver (`StrongboxHybridEquipmentGenerationResolverV1`) is the live authority used by real strongbox openings. It currently selects only live weapon equipment and passes the production weapon augment capacities into `StrongboxHybridLootPolicyV1`. Wearable equipment is therefore a production-catalog/resolver limitation, not something the simulator may invent around.
 
-## Authoritative production route
+## Production authorities reused
 
-Every simulated opening preserves the real route:
+The production gateway delegates to the same authorities used by a real opening:
 
-`StrongboxOpeningServiceV1`
-→ production reward generation
-→ `TransactionalStrongboxGrantPayloadResolverV1`
-→ `DeterministicStrongboxGrantPayloadResolverV1`
-→ `StrongboxHybridEquipmentGenerationResolverV1`
-→ RAP
-→ isolated simulator holdings
+- `ProductionStrongboxCatalogV1` and `ProductionStrongboxHybridLootCatalogV1` for tier and hybrid policy identity;
+- `StrongboxHybridLootPolicyV1.RollTargetLevel` for target-level and level-offset behavior;
+- `StrongboxHybridLootPolicyV1.EvaluateDefinitionWeight` for anchored/peak affinity, rarity weighting and definition weighting;
+- `StrongboxHybridLootPolicyV1.RollInstanceLevel` for item level;
+- the production equipment catalog and weapon catalog projection for eligibility and stable identity;
+- `StrongboxHybridEquipmentGenerationResolverV1` for final candidate selection, quality selection and equipment-instance construction;
+- `StrongboxHybridLootPolicyV1.RollAugmentSignature` for ordinary and exceptional slot/level outcomes;
+- `DeterministicRandom.CreateSubstream` and the resolver's production purpose IDs for deterministic random derivation;
+- `EquipmentInstance.Create` for generated equipment identity;
+- `GeneratedEquipmentAugmentSignatureAuthorityV1` for generated augment metadata.
 
-The gateway prepares bounded chunks of 256 openings inside disposable compositions. Holdings, wallets, RAP state and generated augment signatures are discarded between chunks. No player-owned inventory, account, progression, currency, save, achievement, analytics, scene or gameplay authority is supplied.
+## Canonical editor composition
 
-After each opening, the gateway reads the committed `EquipmentInstance` and `GeneratedEquipmentAugmentSignatureV1`. It observationally replays the production target/signature policy with the exact opening context. Capacity, shared-level, policy-ID or policy-fingerprint mismatches reject the observation explicitly.
+`AuthoritativeStrongboxSimulationGatewayFactoryV1` imports the exact production weapon catalog, reuses the resulting production equipment projection and builds simulator metadata from the definitions consumed by the hybrid resolver. Callers do not hand-author eligibility, family, rarity, first appearance, peak level, base weight, TopBoxOnly state or augment limits.
 
-## Canonical production projection
+The factory also freezes deterministic fingerprints for the catalog projection and all tier hybrid-policy fingerprints. Unsupported live rarity values, duplicate identities and empty projections fail explicitly.
 
-`AuthoritativeStrongboxSimulationGatewayFactoryV1` derives simulator metadata from the exact catalogs consumed by production. Callers do not hand-author eligibility, rarity, family, first appearance, peak level, authored weight, TopBoxOnly state or augment limits.
+`AuthoritativeStrongboxSimulationRunnerV1` is the small end-to-end invocation surface for ordinary full-opening requests. It performs catalog loading, canonical projection, gateway construction, streaming simulation and structural report validation as one explicit operation.
 
-Rarity weighting, item-level rolls, augment-slot rolls and augment-level rolls are currently all owned by `StrongboxHybridLootPolicyV1`. The corresponding named fields in `StrongboxProductionFingerprints` therefore expose the same hybrid-policy authority fingerprint. They are named projections, not claims that four independent production authorities exist.
+## Production gateway
 
-## Simulation modes
+`AuthoritativeStrongboxSimulationProductionGatewayV1` executes:
 
-### Full opening
+`StrongboxOpeningServiceV1` → production reward generation → transactional payload resolution → `StrongboxHybridEquipmentGenerationResolverV1` → RAP → isolated holdings.
 
-Full-opening mode executes real equipment selection and measures both exact drop frequency and the resulting copy quality.
+The gateway prepares a bounded chunk of 256 real openings inside one disposable composition. Each observation is streamed from that composition, and the complete holdings, wallet, RAP and generated-signature state is discarded before the next chunk.
 
-### Definition conditioned
+No player-owned inventory, account, save, progression, achievement or analytics authority is supplied to the gateway.
 
-A genuine definition-conditioned mode would bypass only equipment selection and then measure quality after the exact requested definition had been selected.
+The current production resolver has no supported definition-conditioning seam. A scenario containing `EquipmentDefinitionId` is therefore rejected explicitly before sampling. The gateway does not imitate the resolver's private weighted selection or use rejection sampling to counterfeit conditioned probabilities.
 
-Production currently exposes no legitimate conditioned-selection seam. Until it does:
+## Deterministic aggregation
 
-- `AuthoritativeStrongboxSimulationRunnerV1` rejects the mode before gateway creation and before sampling;
-- `StrongboxBatchSimulator` rejects direct conditioned calls before its sample loop;
-- comparisons and sweeps reject conditioned scenarios before running;
-- no normal zero-generated report is created or validated;
-- no rejection sampling, private weight copying or full-opening fallback is used.
+`StrongboxBatchSimulator` is a streaming analysis consumer. It receives immutable production observations and updates deterministic counters without retaining generated equipment instances.
 
-The stable unsupported diagnostic is `strongbox-simulation-definition-conditioned-unsupported`.
+Exact augment-bias observations are represented by their IEEE-754 bit keys and counted in ordinally sorted distributions. `AverageAugmentBias` is never accumulated in opening order. After sampling completes, `StrongboxSimulationBiasMath` decodes the sorted exact distribution and performs one canonical grouped sum in that order. The same helper is used by report construction, report validation, paired comparisons and sweep bias diagnostics. Zero-count averages are exactly `0d`; malformed, NaN and infinite bias keys fail explicitly.
 
-## Published report
+This rule makes the published average independent of observation arrival order whenever the counted bias distribution is identical.
 
-Global reporting includes:
+## Canonical metadata tags
 
-- generated and rejected counts;
-- counted rejection diagnostics;
-- target-level, item-level and quality distributions;
-- augment-slot and conditional augment-level distributions;
-- exact slot-and-level signatures;
-- exact augment-bias distributions using IEEE-754 bit keys;
-- exceptional slot, exceptional augment-level and combined exceptional counts and percentages.
-
-Per-equipment reporting includes counts, item level, quality, slot, augment-level, exact signature and exact bias distributions, deterministic averages, and all three exceptional count/percentage classes.
-
-Zero-slot copies are excluded from conditional augment-level totals and averages. Exceptional outcomes are preserved rather than clamped. Output beyond production-declared absolute limits fails with a stable integrity diagnostic instead of becoming balancing data.
+`StrongboxEquipmentMetadata` copies and sorts canonical tags by stable identity. Null and duplicate tags are rejected at construction. Report fingerprinting appends every canonical tag in that normalized order, so caller iteration order cannot change report identity while different tag content does.
 
 ## Deterministic identity
 
-The canonical report fingerprint includes:
+A scenario includes player level, exact tier ID, sample count, root seed, optional exact definition ID and diagnostic override state.
 
-- complete primary and optional comparison request identity;
-- mode, level, exact tier, sample count, seed, optional definition and diagnostic override;
-- every production fingerprint field;
-- generated/rejected counts and counted diagnostics;
-- every global distribution and exceptional aggregate;
-- every published per-equipment metadata value, count, average, distribution, exact signature and exceptional aggregate.
+The report fingerprint includes complete request identity, all production fingerprint fields, generated/rejected counts, counted diagnostics, all global distributions and exceptional values, all per-equipment metadata and distributions, exact average bit patterns, and canonical tags. Elapsed time, timestamps, machine identity, paths and processor count are excluded.
 
-Floating-point identity uses invariant IEEE-754 bit representations rather than formatted decimal text. Ordering is canonical and deterministic.
+## Ordinary and exceptional outcomes
 
-Comparison and sweep outputs have separate fingerprints containing ordered report fingerprints, scenario identity, metrics and warnings.
+Each observation carries ordinary authored and absolute attainable slot/augment limits. Actual slot counts and shared augment levels are aggregated dynamically.
 
-## Validation
+Results above ordinary maxima are preserved and classified as exceptional. They are never clamped. Results beyond production-declared absolute maxima are reported as invalid production results.
 
-`StrongboxSimulationReportValidator` recomputes the complete report fingerprint rather than trusting the stored value. It also validates:
+Zero-slot items are excluded from conditional augment-level averages. Levels 11 and 12 remain separate values.
 
-- generated plus rejected equals requested;
-- all global and per-equipment distribution totals and ordering;
-- nonzero-slot augment-level totals;
-- exact signature reconciliation with slot and augment-level marginals;
-- exceptional counts against exact signatures and production-projected ordinary/absolute limits;
-- quality and exact bias totals;
-- per-equipment averages;
-- counted diagnostic totals against rejected count;
-- global exceptional totals against per-equipment totals.
+## Zero-drop interpretation
 
-Invalid production output or report corruption fails explicitly through `StrongboxSimulationIntegrityException`.
+`StrongboxSimulationDiagnostics.BuildCatalogCoverage` compares a completed report with the gateway's deterministic equipment projection.
 
-## Catalog coverage
+Coverage uses exact production tier identities and concrete TopBoxOnly gating. Stable IDs are not treated as an ordered tier scale. Where production exposes no inspectable eligibility boundary, diagnostics state that limitation rather than inventing a formula.
 
-Coverage diagnostics use inspectable production facts only. They resolve the exact requested tier through `ProductionStrongboxCatalogV1`; tier ordering is never inferred from `StableId` values.
+## Report validation
 
-Definitions may be classified as observed, eligible-but-not-observed, unavailable, excluded by concrete TopBoxOnly gating, unsupported because the production eligibility boundary is not inspectable, or requiring diagnostic override. The simulator does not evaluate or copy selection weights to produce these classifications.
+`StrongboxSimulationReportValidator` recomputes the complete report fingerprint and verifies requested/generated/rejected totals, counted diagnostics, distribution totals and ordering, quality and bias representations, per-equipment totals, exact signature reconciliation, ordinary/absolute exceptional thresholds, canonical tag ordering, deterministic averages and all exceptional counters.
 
-## Comparisons and sweeps
+Bias-average validation calls the same canonical helper used during construction and compares the exact double bit pattern.
 
-Comparisons include generation/rejection rates, item/slot/level/bias quality, all exceptional rates, dynamic quality percentages and counted diagnostic differences.
+## Simulation modes
 
-Player-level and tier sweeps preserve the full report at every point, fingerprint ordered entries, and surface generation cliffs, rejection cliffs, quality regressions, combined-exception regressions and suspicious tier inversions. Diagnostic thresholds never change production behavior.
-
-## Report formats
-
-Deterministic Markdown and CSV serializers publish the complete report summary, quality and exact bias distributions, exceptional outcomes and counted diagnostics. Separate serializers retain exact per-equipment slot-and-level signatures. Serializers never automatically write into production `Assets`.
+- Full opening: every ordinal calls the complete production-backed gateway path.
+- Definition conditioned: represented by the contracts, but explicitly rejected before sampling until production exposes a supported conditioned-selection boundary.
+- Comparison: reports deterministic differences over complete immutable reports.
+- Player-level sweep: evaluates an inclusive level range with configurable diagnostics.
+- Tier sweep: evaluates caller-supplied production tier IDs without inferring ID ordering.
 
 ## Scope exclusions
 
-The simulator does not mutate real gameplay state, write saves, unlock achievements, emit live analytics, modify scenes, execute weapons, introduce another random service, counterfeit wearable generation or become a competing opening/reward authority.
+The simulator does not mutate player-owned inventory, account, progression, currency, saves, achievements, analytics, scenes or gameplay state. It does not introduce another reward, catalog, rarity, generation, augment or random authority.
 
 ## Validation status
 
-Unity compilation and an in-editor deterministic smoke simulation could not be executed from the connector-only environment. No GitHub status checks are currently attached to the branch.
+Unity compilation and the deterministic in-editor production smoke simulation could not be run from the connector-only environment because no Unity-capable runner or connector-visible CI check is available.
 
-The required smoke run remains:
+Static review confirms that bias construction, validation, comparisons and sweep diagnostics share one canonical sorted-distribution helper, canonical tags are normalized before publication, DefinitionConditioned remains rejected before sampling, and report fingerprint recomputation covers both average bias bits and tag content.
 
-- generated plus rejected equals requested;
-- identical request and seed produce the same report fingerprint;
-- a different seed changes the report when outcomes differ;
-- diagnostic counts reconcile with rejected count;
-- global and per-equipment distributions reconcile;
-- report fingerprint validation succeeds;
-- conditioned mode fails before sampling;
-- no real gameplay state is mutated.
-
-No automated tests were added under the prototype policy.
+No automated tests are added under the current prototype policy.
