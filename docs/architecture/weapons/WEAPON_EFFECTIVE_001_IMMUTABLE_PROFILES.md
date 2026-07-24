@@ -83,6 +83,20 @@ A SAS-style DoT augment should resolve its level into one additive percentage mo
 
 Continuous `DamageTicksPerSecond` is deliberately not an augment target in this task.
 
+## Ricochet contract preservation
+
+PR #303 extends `WeaponRicochetSpec` with authored `BounceChance` and
+`PostBounceHomingPauseSeconds`. Effective evaluation may rebuild ricochet data after applying
+supported count, retained-speed, or random-angle modifiers, but it must not erase unrelated
+authored values.
+
+The evaluator therefore uses the typed five-argument constructor and copies both new values
+unchanged from the source blueprint. For example, an authored 40% bounce chance and
+0.25-second post-bounce homing pause remain 40% and 0.25 seconds after effective evaluation.
+
+Bounce chance and post-bounce homing pause are not augment targets in this task. Their values
+are preserved exactly until explicitly named modifier policies are designed.
+
 ## Structural compatibility
 
 Augments change values only. They do not add, remove, or replace weapon structure.
@@ -123,6 +137,7 @@ No automated test files are included in this PR. During the current prototype ph
 
 - mapping current `WeaponDefinitionData` into `WeaponBlueprint`;
 - the single canonical application-level `AugmentDefinitionId` to modifier resolver and its authoring/persistence format;
+- modifier targets for ricochet bounce chance and post-bounce homing pause;
 - a separately named continuous `DamageTicksPerSecond` modifier policy;
 - automated test coverage after the prototype phase;
 - item-level combat scaling;
