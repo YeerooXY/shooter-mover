@@ -647,12 +647,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             bool schedulerRejection,
             bool retryableDeliveryFailure,
             int pendingDeliveryCount,
-            IList<InventoryWeaponEffectBatch> delivered,
+            IEnumerable<InventoryWeaponEffectBatch> delivered,
             int acceptedDeliveryCount,
             int alreadyAcceptedDeliveryCount)
         {
-            IList<InventoryWeaponEffectBatch> safeDelivered = delivered
-                ?? new InventoryWeaponEffectBatch[0];
+            IList<InventoryWeaponEffectBatch> safeDelivered = delivered == null
+                ? (IList<InventoryWeaponEffectBatch>)new InventoryWeaponEffectBatch[0]
+                : new List<InventoryWeaponEffectBatch>(delivered);
             long lastShotSequence = safeDelivered.Count == 0
                 ? 0L
                 : safeDelivered[safeDelivered.Count - 1].Identity.ShotSequence;
