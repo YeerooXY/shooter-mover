@@ -10,10 +10,52 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
+    public sealed class InventoryWeaponPendingDeliveryAttempt
+    {
+        private InventoryWeaponPendingDeliveryAttempt(
+            bool succeeded,
+            WeaponEffectBatchSinkStatus? sinkStatus,
+            string rejectionCode)
+        {
+            Succeeded = succeeded;
+            SinkStatus = sinkStatus;
+            RejectionCode = rejectionCode ?? string.Empty;
+        }
+
+        public bool Succeeded { get; }
+        public WeaponEffectBatchSinkStatus? SinkStatus { get; }
+        public string RejectionCode { get; }
+        public bool WasAlreadyAccepted
+        {
+            get { return SinkStatus == WeaponEffectBatchSinkStatus.AlreadyAccepted; }
+        }
+
+        internal static InventoryWeaponPendingDeliveryAttempt Accept(
+            WeaponEffectBatchSinkStatus status)
+        {
+            if (status != WeaponEffectBatchSinkStatus.Accepted
+                && status != WeaponEffectBatchSinkStatus.AlreadyAccepted)
+            {
+                throw new ArgumentOutOfRangeException(nameof(status));
+            }
+            return new InventoryWeaponPendingDeliveryAttempt(true, status, string.Empty);
+        }
+
+        internal static InventoryWeaponPendingDeliveryAttempt Retry(string code)
+        {
+            return new InventoryWeaponPendingDeliveryAttempt(
+                false,
+                null,
+                string.IsNullOrWhiteSpace(code)
+                    ? "weapon-live-retryable-delivery-failure"
+                    : code);
+        }
+    }
+
     /// <summary>
     /// Resolves one exact inventory equipment instance into EffectiveWeapon, schedules only through
-    /// WeaponFiringScheduler, adapts accepted emissions, and submits immutable batches before the
-    /// caller is allowed to publish the returned session state.
+    /// WeaponFiringScheduler, validates and adapts accepted emissions, and admits their immutable
+    /// projections into caller-owned pending-delivery state. It never submits a future emission.
     /// </summary>
     public sealed class InventoryBackedWeaponExecutionAdapter :
         IEquippedWeaponInstanceResolver
@@ -141,31 +183,57 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
         }
 
-        /// <summary>
-        /// Compatibility entry point. It delegates immediately to the canonical scheduler and owns
-        /// no firing state. Production composition uses the overload that supplies its session state.
-        /// </summary>
+        [Obsolete(
+            "Live firing requires caller-owned scheduler and pending-delivery state.",
+            false)]
         public InventoryWeaponExecutionResult TryExecute(
             InventoryWeaponFireRequest request)
         {
-            return TryExecute(
-                request,
-                WeaponFiringSessionState.Empty).Result;
+            return InventoryWeaponExecutionResult.Reject(
+                request == null ? null : request.EquipmentInstanceId,
+                WeaponExecutionStatus.InvalidCommand,
+                "weapon-live-firing-state-required",
+                false,
+                false,
+                0,
+                null,
+                0,
+                0);
         }
 
+        [Obsolete(
+            "Live firing requires pending-delivery state as well as scheduler state.",
+            false)]
         public InventoryWeaponExecutionTransition TryExecute(
             InventoryWeaponFireRequest request,
             WeaponFiringSessionState previousState)
         {
+            return RejectTransition(
+                request == null ? null : request.EquipmentInstanceId,
+                previousState ?? WeaponFiringSessionState.Empty,
+                InventoryWeaponPendingDeliveryState.Empty,
+                WeaponExecutionStatus.InvalidCommand,
+                "weapon-live-pending-delivery-state-required",
+                false);
+        }
+
+        public InventoryWeaponExecutionTransition TryExecute(
+            InventoryWeaponFireRequest request,
+            WeaponFiringSessionState previousState,
+            InventoryWeaponPendingDeliveryState previousPendingState)
+        {
             if (!IsValidRequest(request)
                 || previousState == null
-                || !previousState.HasValidFingerprint())
+                || !previousState.HasValidFingerprint()
+                || previousPendingState == null)
             {
                 return RejectTransition(
                     request == null ? null : request.EquipmentInstanceId,
                     previousState ?? WeaponFiringSessionState.Empty,
+                    previousPendingState ?? InventoryWeaponPendingDeliveryState.Empty,
                     WeaponExecutionStatus.InvalidCommand,
-                    "weapon-live-request-or-state-invalid");
+                    "weapon-live-request-or-state-invalid",
+                    false);
             }
 
             EquipmentInstance equipmentInstance;
@@ -177,8 +245,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     WeaponExecutionStatus.MissingEquippedEquipment,
-                    "weapon-live-equipment-unresolved");
+                    "weapon-live-equipment-unresolved",
+                    false);
             }
 
             RunParticipantId participantId;
@@ -191,8 +261,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     WeaponExecutionStatus.UnknownActorOwnership,
-                    "weapon-live-actor-ownership-unresolved");
+                    "weapon-live-actor-ownership-unresolved",
+                    false);
             }
 
             EffectiveWeapon effectiveWeapon;
@@ -206,8 +278,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     MapEffectiveResolutionFailure(effectiveRejection),
-                    effectiveRejection);
+                    effectiveRejection,
+                    false);
             }
 
             var command = new WeaponFireCommand(
@@ -235,8 +309,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     WeaponExecutionStatus.InvalidTuning,
-                    "weapon-live-scheduler-exception");
+                    "weapon-live-scheduler-exception",
+                    true);
             }
 
             if (decision == null || decision.NextState == null)
@@ -244,33 +320,36 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     WeaponExecutionStatus.InvalidTuning,
-                    "weapon-live-scheduler-result-invalid");
+                    "weapon-live-scheduler-result-invalid",
+                    true);
             }
             if (decision.Kind == WeaponFiringDecisionKind.Rejection)
             {
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     MapScheduleFailure(decision.Status),
                     string.IsNullOrWhiteSpace(decision.RejectionCode)
                         ? "weapon-live-scheduler-rejected"
-                        : decision.RejectionCode);
+                        : decision.RejectionCode,
+                    true);
             }
 
             if (decision.AcceptedSchedule == null)
             {
                 bool publish = decision.Kind
                     == WeaponFiringDecisionKind.SuccessfulTransition;
-                WeaponExecutionResult transitionResult = decision.IsReplay
-                    ? WeaponExecutionResult.Replay(0, 0L)
-                    : WeaponExecutionResult.Accept(0, 0L);
                 return new InventoryWeaponExecutionTransition(
-                    new InventoryWeaponExecutionResult(
+                    InventoryWeaponExecutionResult.Transition(
                         request.EquipmentInstanceId,
-                        transitionResult,
-                        null),
+                        decision.IsReplay,
+                        decision.Status,
+                        previousPendingState.PendingCount),
                     decision.NextState,
+                    previousPendingState,
                     publish);
             }
 
@@ -283,15 +362,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     WeaponExecutionStatus.InvalidEffectBatch,
-                    "weapon-live-accepted-schedule-invalid");
+                    "weapon-live-accepted-schedule-invalid",
+                    false);
             }
 
-            var projectedBatches =
-                new List<InventoryWeaponEffectBatch>(
-                    decision.AcceptedSchedule.EmissionCount);
-            int totalEffects = 0;
-            long lastShotSequence = 0L;
+            var pendingEntries = new List<InventoryWeaponPendingDeliveryEntry>(
+                decision.AcceptedSchedule.EmissionCount);
             for (int index = 0;
                 index < decision.AcceptedSchedule.Emissions.Count;
                 index++)
@@ -305,102 +383,137 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     return RejectTransition(
                         request.EquipmentInstanceId,
                         previousState,
+                        previousPendingState,
                         MapAdapterFailure(
                             adapted == null
                                 ? AcceptedEmissionRuntimeAdapterStatus.InvalidInput
                                 : adapted.Status),
                         adapted == null
                             ? "weapon-live-emission-adapter-null-result"
-                            : adapted.RejectionCode);
+                            : adapted.RejectionCode,
+                        false);
                 }
 
-                InventoryWeaponEffectBatch projected;
                 try
                 {
-                    projected = new InventoryWeaponEffectBatch(
+                    var projected = new InventoryWeaponEffectBatch(
                         adapted.Batch,
                         InventoryWeaponEffectProfile.From(
                             effectiveWeapon,
                             adapted.Profile));
-                    totalEffects = checked(
-                        totalEffects + projected.EffectCount);
+                    pendingEntries.Add(
+                        InventoryWeaponPendingDeliveryEntry.From(
+                            emission,
+                            projected));
                 }
                 catch (OverflowException)
                 {
                     return RejectTransition(
                         request.EquipmentInstanceId,
                         previousState,
+                        previousPendingState,
                         WeaponExecutionStatus.InvalidEffectBatch,
-                        "weapon-live-effect-count-overflow");
+                        "weapon-live-effect-count-overflow",
+                        false);
                 }
                 catch (ArgumentException)
                 {
                     return RejectTransition(
                         request.EquipmentInstanceId,
                         previousState,
+                        previousPendingState,
                         WeaponExecutionStatus.InvalidEffectBatch,
-                        "weapon-live-effect-projection-invalid");
+                        "weapon-live-effect-projection-invalid",
+                        false);
                 }
-
-                projectedBatches.Add(projected);
-                lastShotSequence = emission.ShotSequence;
             }
 
-            if (projectedBatches.Count == 0)
+            if (pendingEntries.Count == 0)
             {
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
+                    previousPendingState,
                     WeaponExecutionStatus.InvalidEffectBatch,
-                    "weapon-live-empty-accepted-schedule");
+                    "weapon-live-empty-accepted-schedule",
+                    false);
             }
 
-            for (int index = 0; index < projectedBatches.Count; index++)
+            InventoryWeaponPendingAdmissionResult admission =
+                previousPendingState.Admit(pendingEntries);
+            if (admission == null || !admission.Succeeded)
             {
-                WeaponEffectBatchSinkResult sinkResult;
-                try
-                {
-                    sinkResult = effectSink.TryAccept(projectedBatches[index]);
-                }
-                catch
-                {
-                    return RejectTransition(
-                        request.EquipmentInstanceId,
-                        previousState,
-                        WeaponExecutionStatus.SinkRejected,
-                        "weapon-live-retryable-sink-exception");
-                }
-
-                if (sinkResult == null || !sinkResult.IsAcceptance)
-                {
-                    string sinkCode = sinkResult == null
-                        || string.IsNullOrWhiteSpace(sinkResult.RejectionCode)
-                        ? "unknown"
-                        : sinkResult.RejectionCode;
-                    return RejectTransition(
-                        request.EquipmentInstanceId,
-                        previousState,
-                        WeaponExecutionStatus.SinkRejected,
-                        "weapon-live-retryable-sink-rejected:" + sinkCode);
-                }
+                InventoryWeaponPendingAdmissionStatus status = admission == null
+                    ? InventoryWeaponPendingAdmissionStatus.InvalidEntry
+                    : admission.Status;
+                return RejectTransition(
+                    request.EquipmentInstanceId,
+                    previousState,
+                    previousPendingState,
+                    MapPendingFailure(status),
+                    admission == null
+                        ? "weapon-live-pending-admission-null-result"
+                        : admission.RejectionCode,
+                    false);
             }
 
-            bool isReplay = decision.Kind
-                == WeaponFiringDecisionKind.ReplayedEmission;
-            WeaponExecutionResult executionResult = isReplay
-                ? WeaponExecutionResult.Replay(
-                    totalEffects,
-                    lastShotSequence)
-                : WeaponExecutionResult.Accept(
-                    totalEffects,
-                    lastShotSequence);
-            return new InventoryWeaponExecutionTransition(
-                new InventoryWeaponExecutionResult(
+            if (decision.IsReplay && admission.AddedCount != 0)
+            {
+                return RejectTransition(
                     request.EquipmentInstanceId,
-                    executionResult,
-                    projectedBatches[0]),
+                    previousState,
+                    previousPendingState,
+                    WeaponExecutionStatus.ConflictingDuplicate,
+                    "weapon-live-replay-pending-entry-missing",
+                    false);
+            }
+
+            bool publishStatePair = !decision.IsReplay;
+            InventoryWeaponPendingDeliveryState nextPendingState = decision.IsReplay
+                ? previousPendingState
+                : admission.NextState;
+            return new InventoryWeaponExecutionTransition(
+                InventoryWeaponExecutionResult.Schedule(
+                    request.EquipmentInstanceId,
+                    decision.IsReplay,
+                    decision.AcceptedSchedule.EmissionCount,
+                    nextPendingState.PendingCount),
                 decision.NextState,
-                !isReplay);
+                nextPendingState,
+                publishStatePair);
+        }
+
+        public InventoryWeaponPendingDeliveryAttempt TryDeliverPending(
+            InventoryWeaponPendingDeliveryEntry entry)
+        {
+            if (entry == null || !entry.HasValidFingerprint())
+            {
+                return InventoryWeaponPendingDeliveryAttempt.Retry(
+                    "weapon-live-pending-delivery-invalid");
+            }
+
+            WeaponEffectBatchSinkResult sinkResult;
+            try
+            {
+                sinkResult = effectSink.TryAccept(entry.ProjectedBatch);
+            }
+            catch
+            {
+                return InventoryWeaponPendingDeliveryAttempt.Retry(
+                    "weapon-live-retryable-sink-exception");
+            }
+
+            if (sinkResult == null || !sinkResult.IsAcceptance)
+            {
+                string sinkCode = sinkResult == null
+                    || string.IsNullOrWhiteSpace(sinkResult.RejectionCode)
+                    ? "unknown"
+                    : sinkResult.RejectionCode;
+                return InventoryWeaponPendingDeliveryAttempt.Retry(
+                    "weapon-live-retryable-sink-rejected:" + sinkCode);
+            }
+
+            return InventoryWeaponPendingDeliveryAttempt.Accept(sinkResult.Status);
         }
 
         public bool TryResolveEquippedWeapon(
@@ -568,23 +681,43 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
         }
 
+        private static WeaponExecutionStatus MapPendingFailure(
+            InventoryWeaponPendingAdmissionStatus status)
+        {
+            switch (status)
+            {
+                case InventoryWeaponPendingAdmissionStatus.ConflictingDuplicate:
+                    return WeaponExecutionStatus.ConflictingDuplicate;
+                case InventoryWeaponPendingAdmissionStatus.CapacityExceeded:
+                    return WeaponExecutionStatus.InvalidTuning;
+                default:
+                    return WeaponExecutionStatus.InvalidEffectBatch;
+            }
+        }
+
         private static InventoryWeaponExecutionTransition RejectTransition(
             EquipmentInstanceId equipmentInstanceId,
             WeaponFiringSessionState unchangedState,
+            InventoryWeaponPendingDeliveryState unchangedPendingState,
             WeaponExecutionStatus status,
-            string rejectionCode)
+            string rejectionCode,
+            bool schedulerRejection)
         {
             return new InventoryWeaponExecutionTransition(
-                new InventoryWeaponExecutionResult(
+                InventoryWeaponExecutionResult.Reject(
                     equipmentInstanceId,
-                    WeaponExecutionResult.Reject(
-                        status,
-                        string.IsNullOrWhiteSpace(rejectionCode)
-                            ? "weapon-live-integration-rejected"
-                            : rejectionCode,
-                        0L),
-                    null),
+                    status,
+                    rejectionCode,
+                    schedulerRejection,
+                    false,
+                    unchangedPendingState == null
+                        ? 0
+                        : unchangedPendingState.PendingCount,
+                    null,
+                    0,
+                    0),
                 unchangedState ?? WeaponFiringSessionState.Empty,
+                unchangedPendingState ?? InventoryWeaponPendingDeliveryState.Empty,
                 false);
         }
     }
