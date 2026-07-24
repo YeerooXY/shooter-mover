@@ -31,7 +31,7 @@ The isolated holdings, wallets and generated-signature authority exist only insi
 
 After the opening applies, the gateway reads the exact generated `EquipmentInstance` and committed `GeneratedEquipmentAugmentSignatureV1`. It replays `RollTargetLevel` and `RollAugmentSignature` through the same production policy using the exact opening seed and ordinal. The replay is observational: its slot, shared level, policy ID and policy fingerprint must match the committed production signature or the observation is rejected. Policy lookup or replay exceptions become deterministic rejection diagnostics rather than escaping from the batch.
 
-The gateway requires a deterministic metadata projection keyed by production equipment definition ID. Missing metadata rejects the observation rather than synthesizing names, categories, rarity or augment limits.
+The gateway requires a non-empty deterministic metadata projection keyed by production equipment definition ID. Duplicate, missing or unknown metadata rejects construction or the affected observation rather than synthesizing names, categories, rarity or augment limits.
 
 The current production resolver has no supported definition-conditioning seam. A scenario containing `EquipmentDefinitionId` is therefore rejected explicitly. The gateway does not imitate the resolver's private weighted selection or use rejection sampling to counterfeit conditioned probabilities.
 
