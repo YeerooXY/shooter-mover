@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Domain.Weapons.Execution;
 
@@ -142,8 +143,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             string inputFingerprint = WeaponExecutionFingerprint.Compute(
                 "held=" + (heldNow ? "1" : "0") + "\n"
-                + "simulation_tick=" + simulationTick + "\n"
-                + "deterministic_seed=" + deterministicSeed + "\n"
+                + "simulation_tick="
+                + simulationTick.ToString(CultureInfo.InvariantCulture)
+                + "\n"
+                + "deterministic_seed="
+                + deterministicSeed.ToString(CultureInfo.InvariantCulture)
+                + "\n"
                 + "origin=" + origin + "\n"
                 + "aim_direction=" + aimDirection + "\n");
 
