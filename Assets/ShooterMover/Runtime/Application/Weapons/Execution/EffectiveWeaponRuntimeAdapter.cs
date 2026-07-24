@@ -25,19 +25,43 @@ namespace ShooterMover.Application.Weapons.Execution
             EffectiveWeapon weapon,
             WeaponFiringScheduleEntry scheduleEntry)
         {
-            if (weapon == null || scheduleEntry == null || !IsValidCommand(scheduleEntry.Command))
+            if (weapon == null
+                || scheduleEntry == null
+                || !IsValidCommand(scheduleEntry.Command)
+                || string.IsNullOrWhiteSpace(scheduleEntry.EffectiveWeaponFingerprint)
+                || string.IsNullOrWhiteSpace(scheduleEntry.ScheduleFingerprint))
             {
                 return Reject(
                     EffectiveWeaponRuntimeAdapterStatus.InvalidInput,
                     "weapon-runtime-adapter-input-invalid");
             }
 
-            if (!weapon.EquipmentInstanceId.Equals(
-                    scheduleEntry.Command.EquipmentInstanceId))
+            if (!scheduleEntry.EquipmentInstanceId.Equals(
+                    scheduleEntry.Command.EquipmentInstanceId)
+                || !weapon.EquipmentInstanceId.Equals(scheduleEntry.EquipmentInstanceId))
             {
                 return Reject(
                     EffectiveWeaponRuntimeAdapterStatus.IdentityMismatch,
                     "weapon-runtime-adapter-equipment-instance-mismatch");
+            }
+
+            if (!weapon.DefinitionId.Equals(scheduleEntry.WeaponDefinitionId))
+            {
+                return Reject(
+                    EffectiveWeaponRuntimeAdapterStatus.IdentityMismatch,
+                    "weapon-runtime-adapter-definition-mismatch");
+            }
+
+            string expectedWeaponFingerprint =
+                EffectiveWeaponRuntimeBindingFingerprint.Compute(weapon);
+            if (!string.Equals(
+                    expectedWeaponFingerprint,
+                    scheduleEntry.EffectiveWeaponFingerprint,
+                    StringComparison.Ordinal))
+            {
+                return Reject(
+                    EffectiveWeaponRuntimeAdapterStatus.IdentityMismatch,
+                    "weapon-runtime-adapter-effective-weapon-fingerprint-mismatch");
             }
 
             WeaponRuntimeFiringProfile profile;
@@ -173,7 +197,9 @@ namespace ShooterMover.Application.Weapons.Execution
             bool hasExplosion = weapon.Effects.Explosion != null;
             bool hasDot = weapon.Effects.DamageOverTime != null;
             bool hasChain = weapon.Effects.ChainArc != null;
-            int effectKinds = (hasExplosion ? 1 : 0) + (hasDot ? 1 : 0) + (hasChain ? 1 : 0);
+            int effectKinds = (hasExplosion ? 1 : 0)
+                + (hasDot ? 1 : 0)
+                + (hasChain ? 1 : 0);
             if (effectKinds > 1)
             {
                 return Fail(
@@ -183,21 +209,20 @@ namespace ShooterMover.Application.Weapons.Execution
                     out code);
             }
 
+            if (hasChain)
+            {
+                return Fail(
+                    EffectiveWeaponRuntimeAdapterStatus.UnsupportedEffects,
+                    "weapon-runtime-adapter-chain-unsupported",
+                    out status,
+                    out code);
+            }
+
             if (hasDot || weapon.Damage.HasDamageOverTime)
             {
                 return Fail(
                     EffectiveWeaponRuntimeAdapterStatus.UnsupportedEffects,
                     "weapon-runtime-adapter-dot-unsupported",
-                    out status,
-                    out code);
-            }
-
-            if (hasChain)
-            {
-                return TryBuildChainProfile(
-                    weapon,
-                    cooldownTicks,
-                    out profile,
                     out status,
                     out code);
             }
@@ -343,75 +368,6 @@ namespace ShooterMover.Application.Weapons.Execution
             return true;
         }
 
-        private static bool TryBuildChainProfile(
-            EffectiveWeapon weapon,
-            int cooldownTicks,
-            out WeaponRuntimeFiringProfile profile,
-            out EffectiveWeaponRuntimeAdapterStatus status,
-            out string code)
-        {
-            profile = null;
-
-            if (weapon.ShotPattern.Kind != WeaponShotPatternKind.Beam
-                || weapon.Projectile != null
-                || weapon.ShotPattern.ProjectilesPerShot != 0)
-            {
-                return Fail(
-                    EffectiveWeaponRuntimeAdapterStatus.UnsupportedShotPattern,
-                    "weapon-runtime-adapter-chain-delivery-unsupported",
-                    out status,
-                    out code);
-            }
-
-            if (weapon.Damage.DirectDamage <= 0d
-                || weapon.Damage.AreaDamage > Epsilon
-                || !ApproximatelyOne(weapon.Effects.ChainArc.RetainedDamagePerJump))
-            {
-                return Fail(
-                    EffectiveWeaponRuntimeAdapterStatus.UnsupportedEffects,
-                    "weapon-runtime-adapter-chain-semantics-unsupported",
-                    out status,
-                    out code);
-            }
-
-            if (weapon.Impact.HandlesEnemyImpact
-                || weapon.Impact.HandlesWallImpact
-                || weapon.Impact.HandlesRangeExpiry
-                || weapon.Impact.HandlesTermination
-                || weapon.Impact.ExplosionTrigger != null)
-            {
-                return Fail(
-                    EffectiveWeaponRuntimeAdapterStatus.UnsupportedImpact,
-                    "weapon-runtime-adapter-chain-impact-policy-unsupported",
-                    out status,
-                    out code);
-            }
-
-            profile = new WeaponRuntimeFiringProfile(
-                weapon.DefinitionId,
-                BuiltInWeaponBehaviorIds.Chain,
-                cooldownTicks,
-                1,
-                0d,
-                0d,
-                0d,
-                weapon.Damage.DirectDamage,
-                0,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                weapon.Effects.ChainArc.MaximumTargets,
-                weapon.Effects.ChainArc.AcquisitionRange,
-                weapon.Damage.Knockback,
-                WeaponDamageCategoryConversion.ToCatalogValue(weapon.Damage.Category));
-            status = EffectiveWeaponRuntimeAdapterStatus.Adapted;
-            code = string.Empty;
-            return true;
-        }
-
         private static bool HasLegacyProjectileImpactShape(
             EffectiveWeapon weapon,
             bool hasExplosion,
@@ -460,15 +416,8 @@ namespace ShooterMover.Application.Weapons.Execution
         {
             if (batch == null
                 || batch.EffectCount < 1
-                || batch.EffectCount > WeaponRuntimeFiringProfile.MaximumEffectsPerFire)
-            {
-                return false;
-            }
-
-            int expectedCount = profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Chain)
-                ? 1
-                : profile.ProjectileCount;
-            if (batch.EffectCount != expectedCount)
+                || batch.EffectCount > WeaponRuntimeFiringProfile.MaximumEffectsPerFire
+                || batch.EffectCount != profile.ProjectileCount)
             {
                 return false;
             }
@@ -527,20 +476,6 @@ namespace ShooterMover.Application.Weapons.Execution
                     && Same(explosive.Knockback, profile.Knockback)
                     && string.Equals(
                         explosive.DamageType,
-                        profile.DamageType,
-                        StringComparison.Ordinal);
-            }
-
-            if (profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Chain))
-            {
-                ChainArcEffect chain = effect as ChainArcEffect;
-                return chain != null
-                    && Same(chain.Damage, profile.DirectDamage)
-                    && chain.MaximumTargets == profile.ChainTargets
-                    && Same(chain.MaximumRange, profile.ChainRange)
-                    && Same(chain.Knockback, profile.Knockback)
-                    && string.Equals(
-                        chain.DamageType,
                         profile.DamageType,
                         StringComparison.Ordinal);
             }
