@@ -2,319 +2,316 @@
 
 ## Status
 
-Production inventory-backed firing is routed through `WeaponFiringScheduler`. The previous
-`WeaponExecutionCore` route is no longer constructed or invoked by the live inventory adapter,
-player weapon composition root, or concurrent-mount composition.
+The inventory-backed runtime now uses `WeaponFiringScheduler` as the sole live authority for trigger
+state, cadence, burst and pulse expansion, cooldown timing, shot sequencing, scheduler-derived
+emission operation identity, deterministic scheduling, replay admission, and conflicting duplicate
+rejection.
 
-This document describes the production authority boundary, the compatibility projection into the
-existing runtime effect system, and the intentionally retained legacy tooling types.
-
-## Canonical live route
+The corrected live route is:
 
 ```text
 exact equipped EquipmentInstance
-  -> EquipmentCatalog exact definition/runtime reference
-  -> explicit WeaponBlueprintMappingPolicyRegistry entry
-  -> WeaponCatalogBlueprintMapper
-  -> immutable WeaponBlueprint
-  -> EffectiveWeaponFactory
+  -> explicit modular blueprint mapping
   -> immutable EffectiveWeapon
-  -> WeaponFiringScheduler.Schedule(request, current WeaponFiringSessionState)
-  -> WeaponFiringScheduler.AcceptedEmission
+  -> WeaponFiringScheduler
+  -> scheduler-authorized AcceptedEmission values
   -> AcceptedEmissionRuntimeAdapter
-  -> temporary WeaponRuntimeFiringProfile compatibility projection
-  -> existing WeaponBehaviorRegistry
-  -> existing WeaponBehaviorContext
-  -> existing immutable WeaponEffectBatch
-  -> InventoryWeaponEffectBatch projection
+  -> immutable caller-owned pending-delivery state
+  -> due-time drain
+  -> existing WeaponBehaviorRegistry projection
+  -> immutable WeaponEffectBatch
   -> existing IInventoryWeaponEffectBatchSink
 ```
 
-The route contains one cadence/replay/shot-sequence authority: `WeaponFiringScheduler` plus the
-caller-owned immutable `WeaponFiringSessionState` returned by it.
+No scene, prefab, Stage 1, strongbox, simulator, package, project-setting, or unrelated gameplay
+connection is part of this cutover.
 
-## Exact effective-weapon resolution
+## Authority boundary
 
-`InventoryWeaponEffectiveResolver` resolves one exact equipment instance and fails closed when any
-step cannot be represented exactly.
+`WeaponFiringScheduler` remains the only firing-admission authority. The downstream pending state:
 
-1. The requested `EquipmentInstanceId` is resolved through the existing player holdings/equipment
-   lookup.
-2. The resolved instance identity must exactly match the requested identity.
-3. `EquipmentCatalog.ValidateInstance` validates the immutable instance, definition, quality, item
-   level metadata, and installed augment identities.
-4. The exact equipment definition supplies the existing runtime weapon definition reference.
-5. The current `WeaponCatalog` must contain that exact definition and mark it `Live`.
-6. One explicit `WeaponCatalogBlueprintMappingIntent`, keyed by `WeaponDefinitionId`, must exist in
-   `WeaponBlueprintMappingPolicyRegistry`.
-7. `WeaponCatalogBlueprintMapper` creates the immutable `WeaponBlueprint`; it is not allowed to
-   guess missing semantics.
-8. One `IWeaponAugmentModifierSetResolver` resolves the exact installed augment instances into the
-   canonical modifier sets consumed by `EffectiveWeaponFactory`.
-9. `EffectiveWeaponFactory` produces the immutable `EffectiveWeapon` without mutating the
-   blueprint, equipment instance, or augment instances.
+- does not decide whether firing is allowed;
+- does not calculate cadence or cooldown;
+- does not expand bursts or pulses;
+- does not assign shot sequences or operation IDs;
+- does not select targets;
+- does not recreate scheduler emissions;
+- does not own random generation, behavior selection, projectile simulation, damage, or effects.
 
-Item level remains identity/progression metadata and is not used for combat scaling.
+It only retains immutable scheduler-authorized emissions until their authored `ScheduledTick` is due
+and the existing effect sink accepts the exact projected batch.
 
-The supplied `UnaugmentedWeaponModifierSetResolver` is intentionally narrow: it accepts equipment
-with no installed augments and rejects augmented equipment until composition supplies the canonical
-augment-to-modifier policy. Missing or preview-only catalog content, missing mapping policy, missing
-augment policy, incompatible structure, or invalid modifiers are explicit rejections. No replacement
-equipment, starter weapon, or fallback behavior is selected.
+## Effective weapon resolution
 
-The current `main` catalog composition is intentionally empty after the architecture cleanup. This
-cutover therefore supplies the one keyed policy authority and explicit production injection point; it
-does not invent per-definition semantics or import the open PR #288 catalog branch.
+`InventoryWeaponEffectiveResolver` resolves the exact requested equipment instance through existing
+holdings and catalog authorities, explicit blueprint mapping policy, installed augment policy, and
+`EffectiveWeaponFactory`.
 
-## Trigger and cadence authority
+Resolution fails closed when exact semantics are unavailable. It never substitutes a starter weapon,
+related family, blaster, definition-ID fallback, inferred behavior, or item-level combat scaling.
 
-Live requests carry one of the scheduler's explicit trigger transitions:
+## Pending-delivery state
 
-- `Pressed`
-- `Held`
-- `Released`
+`InventoryWeaponPendingDeliveryState` is immutable and replace-on-write. Every pending entry preserves:
 
-`InventoryWeaponRuntimeComposition.TryTrigger` delivers the same transition to every enabled
-physical mount. The retained `TryFire` compatibility method delegates immediately to `Pressed`; it
-owns no cooldown, replay, accepted-operation, shot sequence, or emission expansion logic.
-
-Burst and pulse timing are expanded by `WeaponFiringScheduler`. The runtime adapter consumes each
-accepted emission independently and never reconstructs a burst or pulse from catalog values.
-
-## Firing-session state ownership
-
-`InventoryWeaponRuntimeComposition` owns exactly one current immutable
-`WeaponFiringSessionState` snapshot for its run/runtime lifetime.
-
-- `WeaponFiringScheduler` remains configuration-only.
-- The composition passes its current snapshot into `Schedule` through the execution adapter.
-- The adapter returns an `InventoryWeaponExecutionTransition` containing the candidate `NextState`
-  and an explicit publication flag.
-- The composition is the only live boundary that assigns the next snapshot.
-- Exact replays return the unchanged authoritative snapshot and are not assigned again.
-- Before execution, the composition verifies that the request actor/lifecycle still equals the
-  trusted current player actor/lifecycle.
-- A verified actor or lifecycle replacement clears the complete snapshot before scheduling the new
-  generation; a stale request is rejected and cannot clear current state.
-- `Dispose` replaces the complete snapshot with `WeaponFiringSessionState.Empty`; state is not
-  carried into another run/runtime composition.
-- The scheduler's lifecycle-keyed tracks and bounded replay pruning remain unchanged.
-
-No second replay dictionary, accepted-operation ledger, cooldown state, or shot counter was added.
-
-## Accepted-emission compatibility adapter
-
-`AcceptedEmissionRuntimeAdapter` consumes only:
-
-```text
-EffectiveWeapon + WeaponFiringScheduler.AcceptedEmission
-```
-
-It does not accept provisional schedule-entry DTOs.
-
-Before building a batch it requires `acceptedEmission.HasValidFingerprint(effectiveWeapon)` and
-validates the exact:
-
-- projectile emission kind;
+- scheduler-authored `ScheduledTick`;
+- `EmissionFireOperationId`;
+- `SourceFireOperationId` lineage;
+- accepted-emission fingerprint;
+- effective-weapon fingerprint;
 - actor identity;
 - participant identity;
 - equipment instance identity;
 - weapon definition identity;
 - lifecycle generation;
-- source operation lineage;
-- scheduler-derived emission operation identity;
-- authoritative shot sequence;
-- projectile ordinal;
-- muzzle origin and deterministic spread direction;
-- modular payload values represented by the downstream effect type.
+- cadence, trigger-group, burst, pulse, and emission ordinals;
+- shot sequence;
+- projectile ordinal and the complete immutable multi-projectile batch;
+- exact `InventoryWeaponEffectProfile` required by the retained sink;
+- immutable projected `WeaponEffectBatch`.
 
-`AcceptedEmission.EmissionFireOperationId`, which is the accepted emission command's derived
-`FireOperationId`, is passed through `WeaponBehaviorContext` and must appear in every emitted
-`WeaponEffectIdentity`. `SourceFireOperationId` remains scheduler lineage only.
+The adapter validates and adapts every accepted emission before pending admission. A future delivery
+therefore cannot resolve a changed equipment instance, catalog entry, modular blueprint, augment set,
+behavior registration, or effect profile.
 
-`AcceptedEmission.TicksUntilNextEmission` is used only as the temporary compatibility value for
-`WeaponRuntimeFiringProfile.CooldownTicks`. The downstream profile does not decide whether or when
-firing occurs.
+Pending identity is actor + lifecycle + scheduler-derived emission operation ID. Exact identity and
+fingerprint duplicates are idempotent. The same identity with changed immutable content is rejected
+before sink mutation. Delivered fingerprints are retained only as downstream delivery receipts so an
+exact scheduler replay cannot recreate an emission that already left the outbox. Those receipts are
+not consulted by firing admission.
 
-Behavior selection is structural:
+The state has a deterministic bounded capacity. Exhaustion rejects explicitly; it never discards an
+older entry and never submits future work early.
 
-- exact regular-projectile semantics select the existing projectile behavior;
-- exact supported rocket/explosion semantics select the existing explosive behavior;
-- no weapon-definition-ID switch is used;
-- no fallback behavior is used.
+## Atomic scheduler/outbox publication
 
-The existing `WeaponBehaviorRegistry`, `WeaponBehaviorContext`, `WeaponEffectBatch`, and effect sink
-remain the only downstream authorities.
+For a newly accepted scheduler decision:
 
-## Transaction and retry order
+1. Resolve the exact `EffectiveWeapon`.
+2. Call `WeaponFiringScheduler.Schedule` with the composition-owned session snapshot.
+3. Validate the accepted schedule against the exact request and effective-weapon fingerprint.
+4. Adapt every accepted emission into its immutable projected batch and inventory effect profile.
+5. Admit the complete schedule into a candidate pending-delivery snapshot.
+6. Under `InventoryWeaponRuntimeComposition.firingStateGate`, publish the scheduler `NextState` and
+   pending-delivery snapshot together.
+7. Only after publication, drain entries that are already due.
 
-For a newly accepted schedule:
+If validation, adaptation, dedupe, or capacity admission fails, neither scheduler state nor pending
+state is published.
 
-1. Read the composition's current immutable session state.
-2. Schedule against that snapshot.
-3. Do not publish `NextState`.
-4. Validate the accepted schedule against the exact request and `EffectiveWeapon`.
-5. Adapt every accepted emission into an immutable effect batch in scheduler order.
-6. Do not submit anything if any adaptation fails.
-7. Submit projected batches in scheduler emission order.
-8. Treat sink `Accepted` and exact `AlreadyAccepted` as success.
-9. Publish the scheduler's `NextState` only after every batch succeeds.
+Once the complete accepted schedule is safely retained, scheduler state is not rolled back because of
+a later sink failure. The operation cannot be forgotten and scheduled again.
 
-If adaptation or sink submission rejects or throws, the composition retains the previous scheduler
-state and returns an explicit retryable integration failure. Retrying the exact operation schedules
-the same deterministic emissions. Batches accepted before a later failure are recovered through the
-existing sink's exact identity/fingerprint behavior.
+## Due-time draining
 
-The Unity sink keys accepted batches by actor, lifecycle generation, and the scheduler-derived
-emission operation ID. It returns `AlreadyAccepted` only when the projected batch fingerprint is
-identical; changed content is rejected as a conflicting duplicate.
+`InventoryWeaponRuntimeComposition.Advance(simulationTick)` and its
+`DrainDueEmissions(simulationTick)` alias drain pending work independently of trigger input.
 
-A successful no-emission transition publishes `NextState` without creating an empty batch. An exact
-retained transition replay leaves state unchanged. An exact retained accepted-emission replay
-resubmits the same immutable batches and relies on exact sink idempotency without advancing operation
-or shot sequence.
+Only entries with `ScheduledTick <= simulationTick` are submitted. Ordering is deterministic:
+
+1. scheduled tick;
+2. cadence ordinal;
+3. trigger-group ordinal;
+4. burst-shot ordinal;
+5. pulse ordinal;
+6. emission ordinal;
+7. scheduler-derived emission operation ID.
+
+For each due entry:
+
+- sink `Accepted` removes the exact entry and records its delivery fingerprint;
+- exact sink `AlreadyAccepted` also removes it;
+- sink rejection, exception, or an invalid response retains it;
+- draining stops at the first failed entry so later emissions cannot overtake it;
+- no entry is removed before confirmed sink acceptance;
+- no future entry is submitted.
+
+This lets scheduler-expanded burst and pulse sequences continue after release, during idle input, for
+semi-automatic weapons, and after a temporary sink failure.
+
+## Replay and partial delivery
+
+Exact scheduler replay returns the scheduler's retained schedule. The adapter projects it again only
+to validate exact immutable content against the outbox:
+
+- still-pending entries are recognised as exact duplicates;
+- already delivered entries are recognised through exact delivery receipts;
+- no pending entry is appended twice;
+- no delivered entry is recreated;
+- a missing replay entry is rejected rather than silently reconstructed;
+- changed content for an existing emission identity is a conflicting duplicate.
+
+For a partial delivery where emission 0 is accepted, emission 1 fails, and emission 2 is not attempted:
+
+- emission 0 is removed and recorded as delivered;
+- emissions 1 and 2 remain pending;
+- scheduler state remains advanced;
+- retry starts at emission 1;
+- emission 0 is not scheduled as a new shot.
+
+The existing sink remains the final exact identity/fingerprint idempotency authority.
+
+## Trigger input
+
+The runtime exposes two explicit input surfaces:
+
+- `UpdateTriggerInput(isHeld, operationId, ...)` owns only physical input-edge memory;
+- `TryTrigger(..., WeaponTriggerSignal)` accepts a caller-classified explicit scheduler transition.
+
+`UpdateTriggerInput` classifies:
+
+```text
+not held -> held      = Pressed
+held -> held          = Held
+held -> not held      = Released
+not held -> not held  = no scheduler request; drain due work only
+```
+
+It does not calculate cadence and does not emulate automatic fire with repeated synthetic presses.
+Each real scheduler request requires a deterministic operation ID. An exact retry reuses the same ID
+and exact input facts; changed facts under the same ID reject as a conflicting duplicate.
+
+The same trigger signal is delivered to every enabled mount. Stable per-mount operation IDs, muzzle
+offsets, and deterministic seed separation remain derived from the caller operation and stable mount
+identity.
+
+`TryFire` and the default-`Pressed` intent helpers remain only as obsolete one-shot compatibility
+surfaces. They do not own cadence and are not the live held-fire API.
+
+The repository currently has no production Unity gameplay/input owner after the architecture cleanup.
+This PR therefore exposes the honest input-facing API and per-tick `Advance` operation but does not
+claim an in-scene input hook. No scene or Stage 1 route was restored to manufacture one.
+
+## Stateless adapter entry points
+
+The stateless adapter overload no longer schedules from `WeaponFiringSessionState.Empty`; it fails
+closed with `weapon-live-firing-state-required`.
+
+The scheduler-state-only overload also fails closed with
+`weapon-live-pending-delivery-state-required`.
+
+Live production execution goes through `InventoryWeaponRuntimeComposition`, which owns both immutable
+state snapshots under one lock.
+
+## Result semantics
+
+`InventoryWeaponExecutionResult` no longer treats a successful no-emission transition as a fake
+zero-effect shot.
+
+It reports separately:
+
+- per-mount scheduler outcomes;
+- accepted or replayed schedules;
+- accepted or replayed no-emission transitions;
+- waiting-for-cadence and release status;
+- zero, one, or many batches delivered by the current call;
+- accepted versus exact-already-accepted sink deliveries;
+- pending count;
+- retryable delivery failure;
+- scheduler or integration rejection.
+
+`EffectBatch` is populated only when exactly one batch was delivered. `DeliveredBatches` is the
+canonical zero-or-many surface. Shot-sequence presence is explicit; sequence zero is not used to
+represent a successful transition without a shot.
+
+A call may both accept a trigger transition and drain due work. Per-mount scheduling outcomes are
+retained beside the delivery summary so an immediate batch cannot hide a release, waiting state, or
+replayed transition.
 
 ## Concurrent mounts
 
-The existing physical mount model is preserved.
+Each enabled mount preserves its exact equipment identity and independent scheduler track. One
+mount's cadence cannot block another mount, and one mount's pending entry cannot be confused with
+another's.
 
-For each enabled mount, `InventoryWeaponRuntimeComposition` derives and preserves:
+All mounts are scheduled before the global due drain, so cross-mount delivery order follows the same
+pending ordering rules rather than caller loop order alone.
 
-- the exact mounted `EquipmentInstanceId`;
-- a deterministic operation ID from the caller operation ID plus stable mount identity;
-- mount-specific lateral muzzle origin;
-- mount-specific deterministic seed separation;
-- the shared trigger transition delivered consistently to every mount.
+If one mount fails after another mount has safely published a schedule, retrying the aggregate
+operation replays/dedupes the successful mount and continues the failed mount without scheduling the
+successful emission twice. Per-mount scheduler outcomes and all delivered batches remain visible in
+the aggregate result.
 
-Scheduler tracks are keyed by exact actor/equipment/lifecycle identity, so each mount has independent
-cadence and shot continuity. One mount's cooldown does not block another mount. Mounts are not
-collapsed into one equipment identity or one batch.
+## Lifecycle and disposal
 
-A non-cooldown integration failure from any mount takes precedence in the aggregate return. Retrying
-the same trigger replays already successful mounts through exact scheduler/sink idempotency and lets
-the failed mount complete; a successful first mount cannot mask an unsupported or sink-failed later
-mount.
+The composition verifies the trusted current actor and lifecycle before activating a replacement.
+A stale request rejects before it can clear current state.
 
-## Supported compatibility subset
+A verified actor or lifecycle replacement clears:
 
-The current downstream runtime projection supports only semantics that the retained effect batch and
-Unity effect instances can represent exactly:
+- scheduler session state;
+- pending deliveries and delivery receipts;
+- input-edge state.
 
-- semi-automatic, automatic, and scheduler-expanded burst cadence;
-- scheduler-expanded pulse timing where each accepted pulse emission maps independently;
-- single, authored spread, and pulse-spread projectile patterns;
-- integer pierce values with no fractional additional-hit chance;
-- unguided regular projectiles with the retained blocking/pierce termination shapes;
-- rockets with the retained exact all-terminal-event explosion shape and minimum damage multiplier
-  of one;
-- existing projectile and explosive behavior registrations.
+`Dispose` clears those states plus active actor/lifecycle references. The disposed composition cannot
+deliver an old pending emission.
 
-## Explicitly unsupported runtime projection
+## Supported exact compatibility subset
 
-The live adapter rejects rather than downgrades:
+The retained behavior registry and effect-batch boundary support only exact projections of:
 
-- continuous fire/beam damage ticks;
+- semi-automatic projectile firing;
+- automatic projectile firing;
+- scheduler-expanded burst timing;
+- scheduler-expanded pulse timing;
+- single projectile patterns;
+- authored spread patterns;
+- pulse-spread patterns;
+- integer pierce;
+- unguided regular projectiles;
+- the retained exact rocket/explosion shape;
+- existing projectile and explosive behaviors.
+
+The adapter rejects without fallback:
+
+- continuous beams or damage ticks;
 - chain arcs;
-- orb projectiles;
+- orb projectile semantics;
 - homing or reacquisition;
-- ricochet and post-bounce guidance pause;
-- damage over time and persistent pools;
-- twin-barrel semantics whose per-barrel origin cannot be represented exactly;
-- random pattern deviation not represented by the retained behavior;
+- ricochet and post-bounce pause;
+- damage over time or persistent pools;
+- twin-barrel origin semantics not represented downstream;
+- random pattern deviation not represented downstream;
 - fractional pierce;
-- unsupported impact/termination/explosion trigger combinations;
-- unregistered behavior;
-- invalid or identity-mismatched behavior output.
-
-Future focused adapters should project continuous, chain, orb, guidance, ricochet, and DoT decisions
-from their existing canonical domain components into new or extended immutable effect descriptions.
-They must not add a second scheduler, projectile, guidance, impact, effect, or damage authority.
+- lossy impact or explosion-trigger combinations;
+- missing behavior registration;
+- invalid behavior output;
+- identity-mismatched behavior output.
 
 ## Legacy authority reachability
 
-### `WeaponExecutionCore`
+The canonical live route does not construct or invoke:
 
-Retained temporarily and marked obsolete for existing EditMode tooling/regression fixtures. Its own
-partial implementation files still contain the old private cooldown, replay, accepted-operation, and
-shot-sequence state, but no live Unity/player composition constructs or invokes it after this cutover.
+- `WeaponExecutionCore`;
+- `WeaponCatalogRuntimeProfileResolver`;
+- `DefaultWeaponBehaviorSelector`.
 
-Verified non-production consumers include the existing `WeaponExecutionCoreTests` partial fixture and
-`WeaponExecutionCoreLiveRegressionTests`. These tests describe the superseded execution route and
-should be retired or rewritten in a separate focused cleanup rather than mixed into the live cutover.
+They remain obsolete for existing non-production tooling/regression consumers and are not retired in
+this focused repair. The older heat, charge, power-bank, recoil, profile serialization, behavior
+module, and old mount-stepper ecosystem also remains a separate cleanup task.
 
-### `WeaponCatalogRuntimeProfileResolver`
+`WeaponRuntimeFiringProfile` remains only as a compatibility DTO consumed by the retained behavior
+registry. Its cooldown value is projected from a scheduler-authorized emission and never admits fire.
 
-Retained temporarily and marked obsolete because the legacy core/tooling fixtures still require its
-flat-catalog projection. It is not reachable from `InventoryBackedWeaponExecutionAdapter`,
-`InventoryWeaponRuntimeComposition`, or `PlayerInventoryWeaponRuntimeCompositionRoot`.
+## Validation scope
 
-### `DefaultWeaponBehaviorSelector`
+This repair was validated by direct source tracing of:
 
-Retained temporarily and marked obsolete for legacy resolver/tooling consumers. Production live
-behavior selection comes from the mapped modular/effective structure in
-`AcceptedEmissionRuntimeAdapter`. The source-compatible live adapter constructor accepts the old
-selector interface only to avoid breaking retained callers and ignores it; with no explicit mapping
-registry that constructor fails closed before scheduling.
+- scheduler accepted schedule and emission fingerprints;
+- adapter schedule validation and exact effect identity checks;
+- pending admission, dedupe, capacity, and deterministic ordering;
+- scheduler/outbox publication under the composition lock;
+- due-only drain and first-failure stop behavior;
+- exact replay before and after partial delivery;
+- no-emission transition publication and replay;
+- per-mount operation, origin, seed, scheduling, and result aggregation;
+- lifecycle replacement, stale request rejection, and disposal;
+- the player inventory weapon composition root;
+- absence of live references to the three legacy firing authorities in the repaired route.
 
-### `WeaponRuntimeFiringProfile`
+The repository code-search index was unavailable, so empty search results were not used as proof of
+absence. Known composition roots and relevant files were inspected directly.
 
-Retained as the downstream compatibility DTO expected by `WeaponBehaviorContext` and built-in
-behaviors. Its `CooldownTicks` field is now a projection of the accepted emission's
-`TicksUntilNextEmission`; it is not an admission or cadence authority.
-
-### `WeaponRuntimeProfile` (`Domain/Combat`)
-
-The older profile containing cadence, burst, heat, charge, optional power-bank, recoil, behavior
-module, serialization, and presentation fields remains separate from live firing.
-
-The repository code-search index was unavailable during this connector-only audit. The following
-direct runtime and test consumers were therefore individually verified through their retained files
-and origin PRs rather than inferred from an empty search result:
-
-| Reference | Classification | Reachable from canonical live firing? |
-|---|---|---|
-| `WeaponRuntimeProfile.cs` | transitional domain model/serialization | No |
-| `WeaponRuntimeProfileValidator.cs` | transitional domain validation | No |
-| `WeaponMountState.cs` | old independent mount-state prototype; `Initial(profile)` | No |
-| `WeaponMountStepper.cs` | old heat/charge/cadence state-machine prototype | No |
-| `WeaponPowerBankState.cs` | old independent power-bank factory from profile | No |
-| `WeaponPowerBankPolicy.cs` | old power-bank policy over the profile-derived state | No |
-| `IWeaponBehaviorModule.cs` / `WeaponBehaviorInput` | old behavior input stores the profile | No |
-| `WeaponBehaviorPipeline.cs` | old module ordering reads profile module IDs | No |
-| `WeaponFireExecutionPlan.cs` | old plan retains `WeaponBehaviorInput` transitively | No |
-| `WeaponRuntimeProfileTests.cs` | EditMode tests | No |
-| `WeaponMountStepperTests.cs` | EditMode tests | No |
-| `WeaponPowerBankPolicyTests.cs` | EditMode tests | No |
-| `WeaponBehaviorPipelineTests.cs` | EditMode tests | No |
-| modular-weapon and old combat architecture documentation | migration documentation | No |
-
-The old subsystem requires a separate focused retirement task because deletion also requires deciding
-the fate of heat, charge, power-bank, recoil, profile serialization, behavior modules, execution
-plans, and the old mount stepper. None of those mechanics are reconnected to
-`WeaponFiringScheduler` by this cutover.
-
-## Deleted and retained authorities
-
-No legacy implementation files are deleted in this PR because the legacy core/resolver/selector still
-have genuine non-production regression consumers. They are explicitly marked obsolete, disconnected
-from live composition, and documented for later retirement.
-
-The following transitional types remain intentionally:
-
-- `WeaponRuntimeFiringProfile`: downstream behavior compatibility only;
-- `WeaponExecutionResult` and `InventoryWeaponExecutionResult`: compatibility result surfaces;
-- `IWeaponBehaviorSelector`: retained signature compatibility only, not used for live selection;
-- `WeaponExecutionCore`, `WeaponCatalogRuntimeProfileResolver`, and
-  `DefaultWeaponBehaviorSelector`: obsolete test/tooling authorities only.
-
-## Authority invariants preserved
-
-The cutover does not modify or weaken scheduler replay records, operation sequencing, global shot
-sequencing, replay pruning, cumulative-history fingerprints, retention metadata, transition receipts,
-or conservative replay expiry. `WeaponFiringReplayRecord` and
-`WeaponFiringSessionState.WithTransition` remain the canonical bounded replay and pruning authority.
-
-No parallel firing, replay, cooldown, random, projectile, guidance, impact, effect, damage, behavior
-registry, or effect-batch authority was introduced. No Stage 1 route, scene/prefab edit, starter
-blaster fallback, item-level combat scaling, heat, charge, ammo, magazine, or power-bank behavior was
-introduced.
+No automated tests were added under the prototype policy. Unity compilation, CI, automated tests, and
+in-game validation must be reported only if they actually run elsewhere; this document does not claim
+them.
