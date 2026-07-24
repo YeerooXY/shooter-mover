@@ -269,6 +269,21 @@ namespace ShooterMover.Domain.Weapons
             int maximumRicochets,
             double retainedSpeedPerRicochet,
             double randomAngleDegrees)
+            : this(
+                maximumRicochets,
+                retainedSpeedPerRicochet,
+                randomAngleDegrees,
+                1d,
+                0d)
+        {
+        }
+
+        public WeaponRicochetSpec(
+            int maximumRicochets,
+            double retainedSpeedPerRicochet,
+            double randomAngleDegrees,
+            double bounceChance,
+            double postBounceHomingPauseSeconds)
         {
             if (maximumRicochets < 1)
             {
@@ -287,15 +302,39 @@ namespace ShooterMover.Domain.Weapons
             {
                 throw new ArgumentOutOfRangeException(nameof(randomAngleDegrees));
             }
+            if (double.IsNaN(bounceChance)
+                || double.IsInfinity(bounceChance)
+                || bounceChance < 0d
+                || bounceChance > 1d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bounceChance));
+            }
+            if (double.IsNaN(postBounceHomingPauseSeconds)
+                || double.IsInfinity(postBounceHomingPauseSeconds)
+                || postBounceHomingPauseSeconds < 0d)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(postBounceHomingPauseSeconds));
+            }
 
             MaximumRicochets = maximumRicochets;
             RetainedSpeedPerRicochet = retainedSpeedPerRicochet;
             RandomAngleDegrees = randomAngleDegrees;
+            BounceChance = bounceChance;
+            PostBounceHomingPauseSeconds = postBounceHomingPauseSeconds;
         }
 
         public int MaximumRicochets { get; }
+
+        public int MaximumSuccessfulBounces
+        {
+            get { return MaximumRicochets; }
+        }
+
         public double RetainedSpeedPerRicochet { get; }
         public double RandomAngleDegrees { get; }
+        public double BounceChance { get; }
+        public double PostBounceHomingPauseSeconds { get; }
     }
 
     public sealed class WeaponExplosionTriggerSpec
