@@ -9,6 +9,8 @@ namespace ShooterMover.Domain.Weapons
     /// <summary>
     /// Numeric effective-weapon values that an installed augment may modify.
     /// Structural kinds and feature presence are intentionally not modifier targets.
+    /// RateOfFire is projectile-only and maps to WeaponFireSettings.ShotsPerSecond;
+    /// continuous damage ticks and damage-over-time ticks are separate concepts.
     /// </summary>
     public enum WeaponEffectiveStat
     {
