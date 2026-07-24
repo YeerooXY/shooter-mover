@@ -341,7 +341,9 @@ namespace ShooterMover.Domain.Weapons
                 ricochet = new WeaponRicochetSpec(
                     maximumRicochets,
                     retainedSpeed,
-                    randomAngle);
+                    randomAngle,
+                    authored.Ricochet.BounceChance,
+                    authored.Ricochet.PostBounceHomingPauseSeconds);
             }
 
             return WeaponImpactSpec.Create(
