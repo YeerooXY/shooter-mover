@@ -189,10 +189,31 @@ namespace ShooterMover.Editor.BalanceSimulator
                 opening.Context.RootSeed,
                 opening.Context.AlgorithmVersion,
                 0UL);
+            StrongboxAugmentSignatureV1 replayedSignature =
+                policy.RollAugmentSignature(
+                    scenario.PlayerLevel,
+                    generated.ItemLevel,
+                    metadata.RarityId,
+                    metadata.OrdinaryMaximumSlots,
+                    metadata.AbsoluteMaximumSlots,
+                    opening.Context.RootSeed,
+                    opening.Context.AlgorithmVersion,
+                    0UL);
+            if (replayedSignature.SlotCount != signature.Capacity
+                || replayedSignature.SharedLevel != signature.SharedLevel
+                || replayedSignature.PolicyId != signature.HybridPolicyStableId
+                || !string.Equals(
+                    replayedSignature.PolicyFingerprint,
+                    signature.HybridPolicyFingerprint,
+                    StringComparison.Ordinal))
+            {
+                diagnostic = "strongbox-simulation-production-signature-replay-mismatch";
+                return false;
+            }
 
             bool exceptionalSlots =
-                signature.SlotCount > metadata.OrdinaryMaximumSlots;
-            bool exceptionalLevel = signature.SlotCount > 0
+                signature.Capacity > metadata.OrdinaryMaximumSlots;
+            bool exceptionalLevel = signature.Capacity > 0
                 && signature.SharedLevel > metadata.OrdinaryMaximumAugmentLevel;
             observation = new StrongboxGeneratedEquipmentObservation(
                 ordinal,
@@ -200,9 +221,9 @@ namespace ShooterMover.Editor.BalanceSimulator
                 target.TargetLevel,
                 generated.ItemLevel,
                 generated.QualityId,
-                signature.SlotCount,
+                signature.Capacity,
                 signature.SharedLevel,
-                ResolveAugmentBias(signature),
+                replayedSignature.EffectiveBiasLevels,
                 exceptionalSlots,
                 exceptionalLevel,
                 string.Empty,
@@ -212,7 +233,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                     opening,
                     generated,
                     signature,
-                    target));
+                    target,
+                    replayedSignature));
             diagnostic = string.Empty;
             return true;
         }
@@ -250,19 +272,14 @@ namespace ShooterMover.Editor.BalanceSimulator
                 CultureInfo.InvariantCulture);
         }
 
-        private static double ResolveAugmentBias(
-            GeneratedEquipmentAugmentSignatureV1 signature)
-        {
-            return signature.EffectiveBiasLevels;
-        }
-
         private static string BuildObservationFingerprint(
             StrongboxSimulationScenario scenario,
             long ordinal,
             AuthoritativeStrongboxPreparedOpenV1 opening,
             EquipmentInstance equipment,
             GeneratedEquipmentAugmentSignatureV1 signature,
-            StrongboxTargetLevelRollV1 target)
+            StrongboxTargetLevelRollV1 target,
+            StrongboxAugmentSignatureV1 replayedSignature)
         {
             return StrongboxCanonicalV1.Fingerprint(
                 "strongbox-simulation-observation-v1|"
@@ -274,7 +291,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                 + equipment.DefinitionId + "|"
                 + equipment.ItemLevel.ToString(CultureInfo.InvariantCulture) + "|"
                 + signature.Fingerprint + "|"
-                + target.Fingerprint);
+                + target.Fingerprint + "|"
+                + replayedSignature.Fingerprint);
         }
     }
 }
