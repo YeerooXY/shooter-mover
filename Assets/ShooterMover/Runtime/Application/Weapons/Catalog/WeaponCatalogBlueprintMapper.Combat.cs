@@ -178,10 +178,21 @@ namespace ShooterMover.Application.Weapons.Catalog
             IList<WeaponBlueprintMappingIssue> issues)
         {
             WeaponExplosionEffect explosion = null;
-            bool hasExplosion = definition.ExplosionRadius > 0d
+            bool hasExplosionData = definition.ExplosionRadius > 0d
                 || definition.AreaDamagePerTrigger > 0d;
-            if (hasExplosion)
+            bool hasExplosionTrigger = intent.Impact != null
+                && intent.Impact.ExplosionTrigger != null;
+            if (hasExplosionData)
             {
+                if (!hasExplosionTrigger)
+                {
+                    Add(
+                        issues,
+                        WeaponBlueprintMappingIssueCode.MissingExplosionTrigger,
+                        Path(definition, ".Impact.ExplosionTrigger"),
+                        "Authored explosion radius or area damage requires an explicit impact explosion trigger.");
+                }
+
                 if (intent.Explosion == null)
                 {
                     Add(
@@ -208,13 +219,24 @@ namespace ShooterMover.Application.Weapons.Catalog
                     }
                 }
             }
-            else if (intent.Explosion != null)
+            else
             {
-                Add(
-                    issues,
-                    WeaponBlueprintMappingIssueCode.UnexpectedExplosionMapping,
-                    Path(definition, ".ExplosionRadius"),
-                    "Mapping intent contains an explosion effect but the catalog has no explosion data.");
+                if (intent.Explosion != null)
+                {
+                    Add(
+                        issues,
+                        WeaponBlueprintMappingIssueCode.UnexpectedExplosionMapping,
+                        Path(definition, ".ExplosionRadius"),
+                        "Mapping intent contains an explosion effect but the catalog has no explosion data.");
+                }
+                if (hasExplosionTrigger)
+                {
+                    Add(
+                        issues,
+                        WeaponBlueprintMappingIssueCode.UnexpectedExplosionTrigger,
+                        Path(definition, ".Impact.ExplosionTrigger"),
+                        "Impact intent contains an explosion trigger but the catalog has no explosion radius or area damage.");
+                }
             }
 
             WeaponDamageOverTimeEffect dot = null;
