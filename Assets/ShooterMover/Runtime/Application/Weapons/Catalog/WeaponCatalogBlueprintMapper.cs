@@ -53,6 +53,31 @@ namespace ShooterMover.Application.Weapons.Catalog
                     "Explicit mapping intent is required because the legacy schema does not encode every modular semantic.");
                 return Failure(issues);
             }
+            if (intent.ExpectedDefinitionId == null)
+            {
+                Add(
+                    issues,
+                    WeaponBlueprintMappingIssueCode.MissingIntentDefinitionId,
+                    "intent.ExpectedDefinitionId",
+                    "Mapping intent must be bound to the stable definition ID it authoritatively describes.");
+                return Failure(issues);
+            }
+            if (!string.Equals(
+                    intent.ExpectedDefinitionId.Value,
+                    definition.DefinitionId,
+                    StringComparison.Ordinal))
+            {
+                Add(
+                    issues,
+                    WeaponBlueprintMappingIssueCode.MismatchedIntentDefinitionId,
+                    "intent.ExpectedDefinitionId",
+                    "Mapping intent for '"
+                    + intent.ExpectedDefinitionId.Value
+                    + "' cannot map catalog definition '"
+                    + definition.DefinitionId
+                    + "'.");
+                return Failure(issues);
+            }
 
             WeaponFamilyDefinition family;
             if (!catalog.TryGetFamily(definition.FamilyId, out family) || family == null)
