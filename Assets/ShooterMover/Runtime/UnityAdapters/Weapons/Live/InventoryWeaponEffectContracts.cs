@@ -235,13 +235,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Honest live-operation result. A scheduler transition can succeed without a shot, and a
-    /// schedule can be retained without any batch being due. EffectBatch is populated only when
-    /// exactly one batch was delivered; callers must use DeliveredBatches for zero-or-many results.
+    /// Honest live-operation result. Scheduler outcomes and downstream deliveries are retained as
+    /// separate immutable observations, so one call may report a release/wait transition and also
+    /// report every due batch delivered during that same simulation tick.
     /// </summary>
     public sealed class InventoryWeaponExecutionResult
     {
         private readonly ReadOnlyCollection<InventoryWeaponEffectBatch> deliveredBatches;
+        private readonly ReadOnlyCollection<InventoryWeaponSchedulingOutcome> schedulingOutcomes;
 
         internal InventoryWeaponExecutionResult(
             EquipmentInstanceId equipmentInstanceId,
@@ -255,7 +256,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             int acceptedDeliveryCount,
             int alreadyAcceptedDeliveryCount,
             int pendingDeliveryCount,
-            IList<InventoryWeaponEffectBatch> delivered)
+            IList<InventoryWeaponEffectBatch> delivered,
+            IList<InventoryWeaponSchedulingOutcome> scheduling = null)
         {
             if (scheduledEmissionCount < 0
                 || acceptedDeliveryCount < 0
@@ -283,6 +285,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             deliveredBatches = new ReadOnlyCollection<InventoryWeaponEffectBatch>(
                 new List<InventoryWeaponEffectBatch>(
                     delivered ?? new InventoryWeaponEffectBatch[0]));
+            schedulingOutcomes = new ReadOnlyCollection<InventoryWeaponSchedulingOutcome>(
+                new List<InventoryWeaponSchedulingOutcome>(
+                    scheduling ?? new InventoryWeaponSchedulingOutcome[0]));
         }
 
         /// <summary>
@@ -340,6 +345,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             get { return deliveredBatches; }
         }
+        public IReadOnlyList<InventoryWeaponSchedulingOutcome> SchedulingOutcomes
+        {
+            get { return schedulingOutcomes; }
+        }
         public InventoryWeaponEffectBatch EffectBatch
         {
             get { return deliveredBatches.Count == 1 ? deliveredBatches[0] : null; }
@@ -359,26 +368,72 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             get
             {
-                return OutcomeKind
-                        == InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition
-                    || OutcomeKind
-                        == InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition;
+                for (int index = 0; index < schedulingOutcomes.Count; index++)
+                {
+                    if (schedulingOutcomes[index].IsNoEmissionTransition)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        public bool HasAcceptedNoEmissionTransition
+        {
+            get
+            {
+                for (int index = 0; index < schedulingOutcomes.Count; index++)
+                {
+                    if (schedulingOutcomes[index].OutcomeKind
+                        == InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        public bool HasReplayedNoEmissionTransition
+        {
+            get
+            {
+                for (int index = 0; index < schedulingOutcomes.Count; index++)
+                {
+                    if (schedulingOutcomes[index].OutcomeKind
+                        == InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition)
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
         public bool IsWaitingForCadence
         {
             get
             {
-                return IsNoEmissionTransition
-                    && SchedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence;
+                for (int index = 0; index < schedulingOutcomes.Count; index++)
+                {
+                    if (schedulingOutcomes[index].IsWaitingForCadence)
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
         public bool IsReleaseTransition
         {
             get
             {
-                return IsNoEmissionTransition
-                    && SchedulerStatus == WeaponFiringScheduleStatus.Released;
+                for (int index = 0; index < schedulingOutcomes.Count; index++)
+                {
+                    if (schedulingOutcomes[index].IsReleaseTransition)
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
         public bool Succeeded
@@ -396,31 +451,76 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             get { return EffectBatch == null ? null : EffectBatch.Profile.DefinitionId; }
         }
 
+        internal InventoryWeaponExecutionResult WithSchedulingOutcomes(
+            IList<InventoryWeaponSchedulingOutcome> outcomes,
+            int scheduledEmissionCount)
+        {
+            if (outcomes == null)
+            {
+                throw new ArgumentNullException(nameof(outcomes));
+            }
+
+            EquipmentInstanceId commonEquipmentInstanceId = FindCommonEquipmentInstanceId(
+                outcomes,
+                deliveredBatches);
+            WeaponFiringScheduleStatus? singleStatus = outcomes.Count == 1
+                ? (WeaponFiringScheduleStatus?)outcomes[0].SchedulerStatus
+                : null;
+            return new InventoryWeaponExecutionResult(
+                commonEquipmentInstanceId,
+                OutcomeKind,
+                Status,
+                RejectionCode,
+                Execution,
+                singleStatus,
+                IsExactReplay,
+                scheduledEmissionCount,
+                AcceptedDeliveryCount,
+                AlreadyAcceptedDeliveryCount,
+                PendingDeliveryCount,
+                deliveredBatches,
+                outcomes);
+        }
+
         internal static InventoryWeaponExecutionResult Schedule(
             EquipmentInstanceId equipmentInstanceId,
             bool replay,
             int scheduledEmissionCount,
             int pendingDeliveryCount)
         {
+            InventoryWeaponExecutionOutcomeKind kind = replay
+                ? InventoryWeaponExecutionOutcomeKind.ReplayedScheduleRetained
+                : InventoryWeaponExecutionOutcomeKind.AcceptedScheduleQueued;
+            WeaponExecutionStatus status = replay
+                ? WeaponExecutionStatus.ReplayAccepted
+                : WeaponExecutionStatus.Accepted;
+            WeaponFiringScheduleStatus schedulerStatus = replay
+                ? WeaponFiringScheduleStatus.Replayed
+                : WeaponFiringScheduleStatus.Accepted;
+            var scheduling = new[]
+            {
+                new InventoryWeaponSchedulingOutcome(
+                    equipmentInstanceId,
+                    kind,
+                    status,
+                    schedulerStatus,
+                    replay,
+                    scheduledEmissionCount),
+            };
             return new InventoryWeaponExecutionResult(
                 equipmentInstanceId,
-                replay
-                    ? InventoryWeaponExecutionOutcomeKind.ReplayedScheduleRetained
-                    : InventoryWeaponExecutionOutcomeKind.AcceptedScheduleQueued,
-                replay
-                    ? WeaponExecutionStatus.ReplayAccepted
-                    : WeaponExecutionStatus.Accepted,
+                kind,
+                status,
                 string.Empty,
                 null,
-                replay
-                    ? WeaponFiringScheduleStatus.Replayed
-                    : WeaponFiringScheduleStatus.Accepted,
+                schedulerStatus,
                 replay,
                 scheduledEmissionCount,
                 0,
                 0,
                 pendingDeliveryCount,
-                new InventoryWeaponEffectBatch[0]);
+                new InventoryWeaponEffectBatch[0],
+                scheduling);
         }
 
         internal static InventoryWeaponExecutionResult Transition(
@@ -429,16 +529,29 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             WeaponFiringScheduleStatus schedulerStatus,
             int pendingDeliveryCount)
         {
+            InventoryWeaponExecutionOutcomeKind kind = replay
+                ? InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition
+                : InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition;
+            WeaponExecutionStatus status = schedulerStatus
+                    == WeaponFiringScheduleStatus.WaitingForCadence
+                ? WeaponExecutionStatus.CooldownActive
+                : replay
+                    ? WeaponExecutionStatus.ReplayAccepted
+                    : WeaponExecutionStatus.Accepted;
+            var scheduling = new[]
+            {
+                new InventoryWeaponSchedulingOutcome(
+                    equipmentInstanceId,
+                    kind,
+                    status,
+                    schedulerStatus,
+                    replay,
+                    0),
+            };
             return new InventoryWeaponExecutionResult(
                 equipmentInstanceId,
-                replay
-                    ? InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition
-                    : InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition,
-                schedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence
-                    ? WeaponExecutionStatus.CooldownActive
-                    : replay
-                        ? WeaponExecutionStatus.ReplayAccepted
-                        : WeaponExecutionStatus.Accepted,
+                kind,
+                status,
                 string.Empty,
                 null,
                 schedulerStatus,
@@ -447,7 +560,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 0,
                 0,
                 pendingDeliveryCount,
-                new InventoryWeaponEffectBatch[0]);
+                new InventoryWeaponEffectBatch[0],
+                scheduling);
         }
 
         internal static InventoryWeaponExecutionResult Delivery(
@@ -565,6 +679,49 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 alreadyAcceptedDeliveryCount,
                 pendingDeliveryCount,
                 safeDelivered);
+        }
+
+        private static EquipmentInstanceId FindCommonEquipmentInstanceId(
+            IList<InventoryWeaponSchedulingOutcome> outcomes,
+            IList<InventoryWeaponEffectBatch> delivered)
+        {
+            EquipmentInstanceId common = null;
+            bool found = false;
+            bool conflict = false;
+
+            for (int index = 0; index < outcomes.Count; index++)
+            {
+                EquipmentInstanceId candidate = outcomes[index].EquipmentInstanceId;
+                if (candidate == null)
+                {
+                    continue;
+                }
+                if (!found)
+                {
+                    common = candidate;
+                    found = true;
+                }
+                else if (!common.Equals(candidate))
+                {
+                    conflict = true;
+                }
+            }
+            for (int index = 0; index < delivered.Count; index++)
+            {
+                EquipmentInstanceId candidate =
+                    delivered[index].Identity.EquipmentInstanceId;
+                if (!found)
+                {
+                    common = candidate;
+                    found = true;
+                }
+                else if (!common.Equals(candidate))
+                {
+                    conflict = true;
+                }
+            }
+
+            return conflict ? null : common;
         }
     }
 }
