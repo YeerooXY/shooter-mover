@@ -2,13 +2,13 @@
 
 ## Status
 
-This change establishes the engine-independent, equipment-generic batch-analysis boundary. It deliberately does not duplicate any production loot formula. Every generated observation must come from an `IStrongboxSimulationProductionGateway` backed by the real production opening resolver.
+This change establishes the engine-independent, equipment-generic batch-analysis boundary. It deliberately does not duplicate any production loot formula. Every generated observation comes from an `IStrongboxSimulationProductionGateway` backed by the real production opening resolver.
 
-The current production hybrid resolver (`StrongboxHybridEquipmentGenerationResolverV1`) is the live authority used by real strongbox openings. At the time this document was written it selects only live weapon equipment and passes the production weapon augment capacities into `StrongboxHybridLootPolicyV1`. Wearable equipment is therefore a production-catalog/resolver limitation, not something the simulator may invent around. The simulator contracts already carry category, family, explicit slot, canonical tags and authored/absolute augment limits, so future production-supported equipment categories flow through without an equipment-ID switch or display-name parsing.
+The current production hybrid resolver (`StrongboxHybridEquipmentGenerationResolverV1`) is the live authority used by real strongbox openings. It currently selects only live weapon equipment and passes the production weapon augment capacities into `StrongboxHybridLootPolicyV1`. Wearable equipment is therefore a production-catalog/resolver limitation, not something the simulator may invent around. The simulator contracts already carry category, family, explicit slot, canonical tags and authored/absolute augment limits, so future production-supported equipment categories flow through without an equipment-ID switch or display-name parsing.
 
 ## Production authorities reused
 
-The production gateway must delegate to the same authorities used by a real opening:
+The production gateway delegates to the same authorities used by a real opening:
 
 - `ProductionStrongboxCatalogV1` and `ProductionStrongboxHybridLootCatalogV1` for tier and hybrid policy identity;
 - `StrongboxHybridLootPolicyV1.RollTargetLevel` for target-level and level-offset behavior;
@@ -21,6 +21,20 @@ The production gateway must delegate to the same authorities used by a real open
 - `EquipmentInstance.Create` for generated equipment identity;
 - `GeneratedEquipmentAugmentSignatureAuthorityV1` for generated augment metadata.
 
+## Production gateway
+
+`AuthoritativeStrongboxSimulationProductionGatewayV1` is an editor-side adapter over `AuthoritativeStrongboxSimulatorRuntimeV1`. For each observation it creates a fresh isolated production composition and executes:
+
+`StrongboxOpeningServiceV1` → production reward generation → transactional payload resolution → `StrongboxHybridEquipmentGenerationResolverV1` → RAP → isolated holdings.
+
+The isolated holdings, wallets and generated-signature authority exist only inside that simulation observation. No player-owned inventory, account, save, progression, achievement or analytics authority is supplied to the gateway.
+
+After the opening applies, the gateway reads the exact generated `EquipmentInstance` and committed `GeneratedEquipmentAugmentSignatureV1`. It replays `RollTargetLevel` and `RollAugmentSignature` through the same production policy using the exact opening seed and ordinal. The replay is observational: its slot, shared level, policy ID and policy fingerprint must match the committed production signature or the observation is rejected.
+
+The gateway requires a deterministic metadata projection keyed by production equipment definition ID. Missing metadata rejects the observation rather than synthesizing names, categories, rarity or augment limits.
+
+The current production resolver has no supported definition-conditioning seam. A scenario containing `EquipmentDefinitionId` is therefore rejected explicitly. The gateway does not imitate the resolver's private weighted selection or use rejection sampling to counterfeit conditioned probabilities.
+
 ## Architecture
 
 `StrongboxBatchSimulator` is a streaming analysis consumer. It receives one immutable `StrongboxGeneratedEquipmentObservation` per opening/copy ordinal and updates deterministic counters. It does not retain generated equipment instances.
@@ -29,7 +43,7 @@ The production gateway must delegate to the same authorities used by a real open
 
 ## Deterministic identity
 
-A scenario includes player level, exact tier ID, sample count, root seed, optional exact definition ID and diagnostic override state. The production gateway receives the ordinal unchanged.
+A scenario includes player level, exact tier ID, sample count, root seed, optional exact definition ID and diagnostic override state. The production gateway receives the ordinal unchanged and derives one deterministic isolated-opening seed from the scenario root seed and ordinal.
 
 The report fingerprint includes request identity, production fingerprints, generated/rejected counts, ordered distributions, per-definition counts, exact per-definition augment-signature distributions and deterministic diagnostics. Elapsed time, timestamps, machine identity, paths and processor count are excluded.
 
@@ -64,7 +78,7 @@ Exact combined slot-and-level queries use each definition's measured combined-si
 ## Simulation modes
 
 - Full opening: every ordinal calls the complete production-backed gateway path.
-- Definition conditioned: bypasses only weighted definition selection while retaining downstream production decisions and normal eligibility by default.
+- Definition conditioned: represented by the core contracts, but explicitly rejected by the current gateway until production exposes a supported conditioned-selection boundary.
 - Comparison: reports absolute, percentage-point, relative-rate, boxes-per-result and quality differences.
 - Player-level sweep: evaluates an inclusive level range with configurable cliff and regression diagnostics.
 - Tier sweep: evaluates caller-supplied production tier IDs and flags suspicious inversions without declaring them invalid.
@@ -81,9 +95,8 @@ All numbers below are fictional and are not production results.
 
 - 100,000 full openings may observe one rare definition 37 times, approximately one observed copy per 2,703 boxes.
 - A fictional legendary weapon may appear 300/100,000 times at level 16 and 4,000/100,000 at level 17, a +3.70 percentage-point and 13.33x observed-rate change.
-- Once production supports wearable gear, one exact helmet can be conditioned for 100,000 generated copies without simulator-only helmet rules.
 - A weapon with ordinary maximum three slots and production absolute maximum four preserves a four-slot result as exceptional.
-- Gear with ordinary maximum two and production absolute maximum three preserves a three-slot result as exceptional.
+- Gear with ordinary maximum two and production absolute maximum three preserves a three-slot result as exceptional once production supports that category.
 - With ordinary augment maximum 10 and production absolute maximum 12, levels 11 and 12 remain separately reported.
 - A combined query can measure the exact count of four-slot, level-12 outcomes for one definition without assuming slot and level independence.
 - A one-million-opening run with zero rare events reports zero observations and an optional descriptive upper bound, not impossibility.
@@ -91,6 +104,6 @@ All numbers below are fictional and are not production results.
 
 ## Scope exclusions
 
-The simulator does not grant equipment, consume boxes, mutate inventory/accounts/progression, write saves, unlock achievements, emit live analytics, invoke presentation, modify scenes, execute weapons, or introduce another random service.
+The simulator does not mutate any player-owned inventory/account/progression authority, write saves, unlock achievements, emit live analytics, invoke presentation, modify scenes, execute weapons, or introduce another random service. The production gateway does exercise disposable simulation-owned holdings and RAP authorities because those are part of the real opening transaction boundary.
 
 No automated tests are added under the current prototype policy. Unity compilation has not been run in the connector-only environment.
