@@ -44,8 +44,35 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
                 Intent());
 
             AssertIssue(result, WeaponBlueprintMappingIssueCode.MissingExplosionMapping);
+            AssertIssue(result, WeaponBlueprintMappingIssueCode.MissingExplosionTrigger);
             AssertIssue(result, WeaponBlueprintMappingIssueCode.MissingDamageOverTimeMapping);
             AssertIssue(result, WeaponBlueprintMappingIssueCode.MissingChainMapping);
+        }
+
+        [Test]
+        public void Map_ExplosionTriggerMustMatchAuthoredExplosionData()
+        {
+            WeaponCatalog explosionCatalog = BuildCatalog(
+                areaDamage: 8d,
+                explosionRadius: 2d);
+            WeaponBlueprintMappingResult missingTrigger = WeaponCatalogBlueprintMapper.Map(
+                explosionCatalog,
+                "test_weapon.mk1",
+                Intent(explosion: new WeaponCatalogExplosionMapping(0.25d)));
+            AssertIssue(missingTrigger, WeaponBlueprintMappingIssueCode.MissingExplosionTrigger);
+
+            WeaponImpactSpec triggeredImpact = WeaponImpactSpec.Create(
+                true,
+                true,
+                true,
+                true,
+                null,
+                new WeaponExplosionTriggerSpec(true, false, false, false));
+            WeaponBlueprintMappingResult unexpectedTrigger = WeaponCatalogBlueprintMapper.Map(
+                BuildCatalog(),
+                "test_weapon.mk1",
+                Intent(impact: triggeredImpact));
+            AssertIssue(unexpectedTrigger, WeaponBlueprintMappingIssueCode.UnexpectedExplosionTrigger);
         }
 
         [Test]
