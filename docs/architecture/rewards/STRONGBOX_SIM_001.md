@@ -114,4 +114,8 @@ All numbers below are fictional and are not production results.
 
 The simulator does not mutate any player-owned inventory/account/progression authority, write saves, unlock achievements, emit live analytics, invoke presentation, modify scenes, execute weapons, or introduce another random service. The production gateway does exercise disposable simulation-owned holdings and RAP authorities because those are part of the real opening transaction boundary.
 
-No automated tests are added under the current prototype policy. Unity compilation has not been run in the connector-only environment.
+## Remaining validation
+
+The implementation still requires Unity compilation and a small in-editor deterministic smoke run. Those checks should confirm that repeated requests produce the same report fingerprint, all projected definitions resolve, committed augment signatures match policy replay, and requested totals equal generated plus rejected totals.
+
+No automated tests are added under the current prototype policy.
