@@ -29,7 +29,7 @@ The production gateway delegates to the same authorities used by a real opening:
 
 The isolated holdings, wallets and generated-signature authority exist only inside that simulation observation. No player-owned inventory, account, save, progression, achievement or analytics authority is supplied to the gateway.
 
-After the opening applies, the gateway reads the exact generated `EquipmentInstance` and committed `GeneratedEquipmentAugmentSignatureV1`. It replays `RollTargetLevel` and `RollAugmentSignature` through the same production policy using the exact opening seed and ordinal. The replay is observational: its slot, shared level, policy ID and policy fingerprint must match the committed production signature or the observation is rejected.
+After the opening applies, the gateway reads the exact generated `EquipmentInstance` and committed `GeneratedEquipmentAugmentSignatureV1`. It replays `RollTargetLevel` and `RollAugmentSignature` through the same production policy using the exact opening seed and ordinal. The replay is observational: its slot, shared level, policy ID and policy fingerprint must match the committed production signature or the observation is rejected. Policy lookup or replay exceptions become deterministic rejection diagnostics rather than escaping from the batch.
 
 The gateway requires a deterministic metadata projection keyed by production equipment definition ID. Missing metadata rejects the observation rather than synthesizing names, categories, rarity or augment limits.
 
