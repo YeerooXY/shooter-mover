@@ -26,8 +26,19 @@ Production composition must obtain mapping intent from one authoritative resolve
 - spread -> the exact source angle, with explicit intent deciding whether it means authored spread or randomness.
 - speed, range and integer pierce -> projectile fields; integer pierce expands exactly to tenths.
 - direct, area, DoT, duration and knockback -> `WeaponDamageSpec`.
-- explosion radius, chain targets and chain range -> effect descriptions, combined only with explicit missing semantics.
+- explosion radius and area damage -> an explosion effect only when explicit falloff and impact-trigger semantics are both present.
+- chain targets and chain range -> a chain effect combined only with explicit retained-damage semantics.
 - presentation -> one exact authored definition/family reference; multiple choices require explicit selection.
+
+## Explosion invariant
+
+Explosion catalog data and explosion impact behavior are a two-way invariant:
+
+- authored `ExplosionRadius` or `AreaDamagePerTrigger` requires `WeaponCatalogExplosionMapping` and `WeaponImpactSpec.ExplosionTrigger`;
+- `WeaponImpactSpec.ExplosionTrigger` is rejected when the catalog has neither explosion radius nor area damage;
+- an explosion effect mapping is likewise rejected when the catalog has no explosion data.
+
+This prevents an authored explosion from becoming an orphaned effect with no event that can emit it, and prevents impact policy from inventing an explosion absent from the catalog.
 
 ## Explicit semantic intent
 
@@ -57,7 +68,9 @@ Mapping returns typed diagnostics instead of substituting defaults. It rejects, 
 - invalid burst/count/pattern combinations;
 - continuous interpretation of the current projectile-mandatory schema, because that would discard speed/range/projectile damage;
 - missing homing/impact semantics;
-- explosion, DoT or chain data without their missing behavior semantics;
+- explosion data without an explosion trigger;
+- an explosion trigger without authored explosion data;
+- explosion, DoT or chain data without their other missing behavior semantics;
 - persistent pool and healing data because PR #297 has no corresponding modular effect contract yet;
 - missing, unauthored or ambiguous presentation references.
 
