@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Catalog
 {
@@ -33,6 +34,8 @@ namespace ShooterMover.Application.Weapons.Catalog
         AmbiguousPresentationReference = 24,
         UnauthoredPresentationReference = 25,
         DomainContractRejected = 26,
+        MissingIntentDefinitionId = 27,
+        MismatchedIntentDefinitionId = 28,
     }
 
     public sealed class WeaponBlueprintMappingIssue
@@ -134,10 +137,14 @@ namespace ShooterMover.Application.Weapons.Catalog
     /// <summary>
     /// Explicit semantic decisions that are absent from WeaponDefinitionData. Numeric combat
     /// values already present in the catalog are never overridden by this contract.
+    ///
+    /// ExpectedDefinitionId binds this policy to one canonical catalog definition. Production
+    /// callers should obtain one authoritative intent per definition from a single resolver.
     /// </summary>
     public sealed class WeaponCatalogBlueprintMappingIntent
     {
         public WeaponCatalogBlueprintMappingIntent(
+            WeaponDefinitionId expectedDefinitionId,
             WeaponFireMode fireMode,
             int shotsPerTrigger,
             WeaponShotPatternKind shotPatternKind,
@@ -156,6 +163,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             WeaponCatalogChainMapping chain,
             string presentationReference)
         {
+            ExpectedDefinitionId = expectedDefinitionId;
             FireMode = fireMode;
             ShotsPerTrigger = shotsPerTrigger;
             ShotPatternKind = shotPatternKind;
@@ -175,6 +183,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             PresentationReference = presentationReference;
         }
 
+        public WeaponDefinitionId ExpectedDefinitionId { get; }
         public WeaponFireMode FireMode { get; }
         public int ShotsPerTrigger { get; }
         public WeaponShotPatternKind ShotPatternKind { get; }
