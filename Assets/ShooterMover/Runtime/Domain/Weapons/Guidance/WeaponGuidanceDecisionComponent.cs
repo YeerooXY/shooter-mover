@@ -57,7 +57,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
                     state.Direction,
                     elapsedSeconds,
                     pauseRemainingSeconds,
-                    null);
+                    state.TrackedTarget);
                 return new WeaponGuidanceDecision(
                     WeaponGuidanceDecisionStatus.Unguided,
                     unguidedState,
@@ -110,41 +110,79 @@ namespace ShooterMover.Domain.Weapons.Guidance
 
             WeaponGuidanceTargetSnapshot resolvedTarget;
             WeaponGuidanceTargetReference nextTrackedTarget = state.TrackedTarget;
-            bool hasTarget = WeaponGuidanceTargetSelector.TryResolveExact(
-                snapshots,
-                state.TrackedTarget,
-                projectilePosition,
-                acquisitionRangeSquared,
-                out resolvedTarget);
+            WeaponGuidanceAcquisitionState nextAcquisitionState = state.AcquisitionState;
+            bool hasTarget = state.AcquisitionState
+                    != WeaponGuidanceAcquisitionState.LostWithoutReacquisition
+                && WeaponGuidanceTargetSelector.TryResolveExact(
+                    snapshots,
+                    state.TrackedTarget,
+                    projectilePosition,
+                    acquisitionRangeSquared,
+                    out resolvedTarget);
 
-            if (!hasTarget)
+            if (hasTarget)
             {
-                bool maySelect = state.TrackedTarget == null
-                    || guidance.Reacquisition == WeaponReacquisitionMode.ReuseTargetPolicy;
+                nextTrackedTarget = resolvedTarget.Target;
+                nextAcquisitionState = WeaponGuidanceAcquisitionState.Tracking;
+            }
+            else
+            {
+                bool maySelect = false;
+                switch (state.AcquisitionState)
+                {
+                    case WeaponGuidanceAcquisitionState.NotAcquired:
+                        maySelect = true;
+                        nextTrackedTarget = null;
+                        nextAcquisitionState = WeaponGuidanceAcquisitionState.NotAcquired;
+                        break;
+
+                    case WeaponGuidanceAcquisitionState.Tracking:
+                    case WeaponGuidanceAcquisitionState.WaitingForReacquisition:
+                        if (guidance.Reacquisition
+                            == WeaponReacquisitionMode.ReuseTargetPolicy)
+                        {
+                            maySelect = true;
+                            nextAcquisitionState =
+                                WeaponGuidanceAcquisitionState.WaitingForReacquisition;
+                            if (guidance.TargetPolicy
+                                != WeaponTargetPolicy.CurrentLockedTarget)
+                            {
+                                nextTrackedTarget = null;
+                            }
+                        }
+                        else
+                        {
+                            nextTrackedTarget = null;
+                            nextAcquisitionState =
+                                WeaponGuidanceAcquisitionState.LostWithoutReacquisition;
+                        }
+                        break;
+
+                    case WeaponGuidanceAcquisitionState.LostWithoutReacquisition:
+                        nextTrackedTarget = null;
+                        nextAcquisitionState =
+                            WeaponGuidanceAcquisitionState.LostWithoutReacquisition;
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(state));
+                }
+
                 if (maySelect)
                 {
                     hasTarget = WeaponGuidanceTargetSelector.TrySelect(
                         snapshots,
                         guidance.TargetPolicy,
-                        state.TrackedTarget,
+                        nextTrackedTarget,
                         projectilePosition,
                         state.AcquisitionAimDirection,
                         acquisitionRangeSquared,
                         out resolvedTarget);
-                }
-
-                if (hasTarget)
-                {
-                    nextTrackedTarget = resolvedTarget.Target;
-                }
-                else if (guidance.TargetPolicy == WeaponTargetPolicy.CurrentLockedTarget
-                    && guidance.Reacquisition == WeaponReacquisitionMode.ReuseTargetPolicy)
-                {
-                    nextTrackedTarget = state.TrackedTarget;
-                }
-                else
-                {
-                    nextTrackedTarget = null;
+                    if (hasTarget)
+                    {
+                        nextTrackedTarget = resolvedTarget.Target;
+                        nextAcquisitionState = WeaponGuidanceAcquisitionState.Tracking;
+                    }
                 }
             }
 
@@ -154,6 +192,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
                     state.Direction,
                     elapsedSeconds,
                     pauseRemainingSeconds,
+                    nextAcquisitionState,
                     nextTrackedTarget);
                 return new WeaponGuidanceDecision(
                     WeaponGuidanceDecisionStatus.NoTarget,
@@ -174,6 +213,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
                 direction,
                 elapsedSeconds,
                 pauseRemainingSeconds,
+                WeaponGuidanceAcquisitionState.Tracking,
                 nextTrackedTarget);
 
             return new WeaponGuidanceDecision(
