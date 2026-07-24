@@ -269,7 +269,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
 
             int remaining = checked((int)Math.Min(
-                OpeningChunkSize,
+                (long)OpeningChunkSize,
                 scenario.SampleCount - requestedStart));
             AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
             if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
