@@ -4,6 +4,7 @@ using NUnit.Framework;
 using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Tests.EditMode.Weapons.Catalog
 {
@@ -22,9 +23,13 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
             int shotsPerTrigger = 1,
             double burstInterval = 0d,
             double burstRecovery = 0d,
-            string presentationReference = null)
+            string presentationReference = null,
+            string expectedDefinitionId = "test_weapon.mk1")
         {
             return new WeaponCatalogBlueprintMappingIntent(
+                expectedDefinitionId == null
+                    ? null
+                    : new WeaponDefinitionId(expectedDefinitionId),
                 fireMode,
                 shotsPerTrigger,
                 pattern,
