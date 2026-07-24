@@ -10,6 +10,12 @@ This mapper depends on the immutable modular contracts merged through PR #297. I
 
 The blueprint's `DropMetadataReference` is the exact existing `DefinitionId`. Rarity, weights, appearance/drop levels, acquisition, crafting, planning shares, and other catalog-only metadata therefore remain owned by and resolvable from the current catalog rather than being copied into a second authority.
 
+## Canonical mapping policy
+
+`WeaponCatalogBlueprintMappingIntent` is definition-bound policy, not an unrestricted override bag. It carries the existing `WeaponDefinitionId` that it authoritatively describes, and the mapper rejects a missing or mismatched ID before constructing any modular contract.
+
+Production composition must obtain mapping intent from one authoritative resolver or policy registry keyed by `WeaponDefinitionId`. Arbitrary production callers must not manufacture competing intents for the same definition. The mapper remains pure and validates identity; ownership of the single canonical policy source remains an application-composition responsibility.
+
 ## Exact mappings
 
 - `DefinitionId` -> existing `WeaponDefinitionId` with the exact source string.
@@ -27,6 +33,7 @@ The blueprint's `DropMetadataReference` is the exact existing `DefinitionId`. Ra
 
 The current schema does not encode all modular meanings. `WeaponCatalogBlueprintMappingIntent` supplies only those missing choices:
 
+- the expected existing `WeaponDefinitionId`;
 - semi-auto, automatic, burst or continuous interpretation;
 - explicit trigger-level shot-group count (`ShotsPerTrigger`), which the legacy schema does not store;
 - shot-pattern and spread meaning;
@@ -44,6 +51,7 @@ The intent cannot override numeric combat values already stored by `WeaponDefini
 
 Mapping returns typed diagnostics instead of substituting defaults. It rejects, among other cases:
 
+- missing or mismatched intent definition identity;
 - unknown definitions, families or archetypes;
 - unknown damage strings without an explicit category mapping;
 - invalid burst/count/pattern combinations;
@@ -60,7 +68,7 @@ Catalog integer pierce maps losslessly through `PierceValue.FromLegacyInteger`. 
 ## Deferred
 
 - catalog schema changes;
-- automatic semantic-intent authoring for the full weapon catalog;
+- the authoritative production policy registry/resolver for all catalog definitions;
 - persistent pools and healing effects;
 - continuous range/presentation contracts;
 - `EffectiveWeapon` and augments;
