@@ -192,7 +192,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         {
             if (report == null) throw new ArgumentNullException(nameof(report));
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-report-v3");
+            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-report-v4");
             AppendRequest(builder, report.Request);
             AppendProduction(builder, report.Production);
             Token(builder, "generated", report.GeneratedCount);
@@ -213,12 +213,13 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             for (int index = 0; index < report.Equipment.Count; index++)
             {
                 StrongboxEquipmentStatistics value = report.Equipment[index];
-                string id = value.Metadata.DefinitionId.ToString();
-                Token(builder, "equipment_id", id);
+                Token(builder, "equipment_id", Id(value.Metadata.DefinitionId));
                 Token(builder, "equipment_name", value.Metadata.DisplayName);
                 Token(builder, "equipment_category", Id(value.Metadata.CategoryId));
                 Token(builder, "equipment_family", Id(value.Metadata.FamilyId));
                 Token(builder, "equipment_slot", Id(value.Metadata.SlotId));
+                for (int tagIndex = 0; tagIndex < value.Metadata.CanonicalTags.Count; tagIndex++)
+                    Token(builder, "equipment_tag", Id(value.Metadata.CanonicalTags[tagIndex]));
                 Token(builder, "equipment_rarity", Id(value.Metadata.RarityId));
                 Token(builder, "equipment_first", value.Metadata.FirstAppearanceLevel);
                 Token(builder, "equipment_anchor", value.Metadata.AnchorLevel);
@@ -322,10 +323,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         }
     }
 
-    /// <summary>
-    /// Streaming analysis consumer. All loot decisions are delegated to the supplied
-    /// production gateway; this type owns only counters, ordering and report identity.
-    /// </summary>
     public sealed class StrongboxBatchSimulator
     {
         private sealed class EquipmentAccumulator
@@ -336,7 +333,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             public long SlotTotal;
             public long AugmentLevelTotal;
             public long NonzeroSlotCount;
-            public double BiasTotal;
             public long ExceptionalSlots;
             public long ExceptionalLevels;
             public long CombinedExceptional;
@@ -415,7 +411,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 accumulator.Count++;
                 accumulator.ItemLevelTotal += observation.ItemLevel;
                 accumulator.SlotTotal += observation.AugmentSlotCount;
-                accumulator.BiasTotal += observation.AugmentBias;
                 Increment(accumulator.Items, observation.ItemLevel);
                 Increment(accumulator.Qualities, quality);
                 Increment(accumulator.Slots, observation.AugmentSlotCount);
@@ -437,13 +432,14 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             foreach (KeyValuePair<string, EquipmentAccumulator> pair in byDefinition)
             {
                 EquipmentAccumulator value = pair.Value;
+                IReadOnlyList<StrongboxDistributionEntry> biasEntries = Entries(value.Biases, value.Count);
                 equipment.Add(new StrongboxEquipmentStatistics(
                     value.Metadata,
                     value.Count,
                     Divide(value.ItemLevelTotal, value.Count),
                     Divide(value.SlotTotal, value.Count),
                     Divide(value.AugmentLevelTotal, value.NonzeroSlotCount),
-                    value.Count == 0L ? 0d : value.BiasTotal / value.Count,
+                    StrongboxSimulationBiasMath.Average(biasEntries),
                     value.ExceptionalSlots,
                     value.ExceptionalLevels,
                     value.CombinedExceptional,
@@ -452,7 +448,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                     Entries(value.Slots, value.Count),
                     Entries(value.Levels, value.NonzeroSlotCount),
                     Entries(value.Signatures, value.Count),
-                    Entries(value.Biases, value.Count)));
+                    biasEntries));
             }
 
             var diagnosticEntries = new List<StrongboxDiagnosticEntry>();
