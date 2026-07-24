@@ -10,6 +10,9 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// </summary>
     public static class AuthoritativeStrongboxSimulationRunnerV1
     {
+        public const string DefinitionConditionedUnsupportedDiagnostic =
+            "strongbox-simulation-definition-conditioned-unsupported";
+
         public static bool TryRun(
             string weaponCatalogJson,
             StrongboxSimulationRequest request,
@@ -23,8 +26,12 @@ namespace ShooterMover.Editor.BalanceSimulator
                 diagnostic = "strongbox-simulation-request-null";
                 return false;
             }
-            if (request.Mode != StrongboxSimulationMode.FullOpening
-                && request.Mode != StrongboxSimulationMode.DefinitionConditioned)
+            if (request.Mode == StrongboxSimulationMode.DefinitionConditioned)
+            {
+                diagnostic = DefinitionConditionedUnsupportedDiagnostic;
+                return false;
+            }
+            if (request.Mode != StrongboxSimulationMode.FullOpening)
             {
                 diagnostic = "strongbox-simulation-runner-mode-requires-coordinator";
                 return false;
