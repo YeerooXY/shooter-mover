@@ -54,18 +54,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             if (minimumSlots < 0) throw new ArgumentOutOfRangeException(nameof(minimumSlots));
             if (minimumAugmentLevel < 0)
                 throw new ArgumentOutOfRangeException(nameof(minimumAugmentLevel));
-
-            bool asksSlots = minimumSlots > 0 || requireSlotsAboveOrdinaryMaximum;
-            bool asksLevels = minimumAugmentLevel > 0
-                || requireAugmentLevelAboveOrdinaryMaximum;
-            if (asksSlots && asksLevels)
-            {
-                throw new NotSupportedException(
-                    "Combined slot-and-augment-level rare queries require an exact "
-                    + "per-equipment signature distribution. Independent marginals "
-                    + "must not be multiplied or reported as a measured zero.");
-            }
-
             if (expectedProbability.HasValue
                 && (double.IsNaN(expectedProbability.Value)
                     || double.IsInfinity(expectedProbability.Value)
@@ -196,7 +184,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 if (query.EquipmentDefinitionId != null
                     && equipment.Metadata.DefinitionId != query.EquipmentDefinitionId)
                     continue;
-                observed += CountSingleAxisMatches(equipment, query);
+                observed += CountMatches(equipment, query);
             }
 
             long sampleCount = query.EquipmentDefinitionId == null
@@ -225,12 +213,16 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 interpretation);
         }
 
-        private static long CountSingleAxisMatches(
+        private static long CountMatches(
             StrongboxEquipmentStatistics equipment,
             StrongboxRareOutcomeQuery query)
         {
+            bool asksSlots = query.MinimumSlots > 0 || query.RequireSlotsAboveOrdinaryMaximum;
             bool asksLevels = query.MinimumAugmentLevel > 0
                 || query.RequireAugmentLevelAboveOrdinaryMaximum;
+            if (asksSlots && asksLevels)
+                return CountCombinedMatches(equipment, query);
+
             IReadOnlyList<StrongboxDistributionEntry> distribution = asksLevels
                 ? equipment.AugmentLevelDistribution
                 : equipment.SlotDistribution;
@@ -240,15 +232,52 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 int value;
                 if (!int.TryParse(distribution[index].Key, out value)) continue;
                 bool matches = asksLevels
-                    ? value >= query.MinimumAugmentLevel
-                        && (!query.RequireAugmentLevelAboveOrdinaryMaximum
-                            || value > equipment.Metadata.OrdinaryMaximumAugmentLevel)
-                    : value >= query.MinimumSlots
-                        && (!query.RequireSlotsAboveOrdinaryMaximum
-                            || value > equipment.Metadata.OrdinaryMaximumSlots);
+                    ? MatchesLevel(equipment, query, value)
+                    : MatchesSlots(equipment, query, value);
                 if (matches) count += distribution[index].Count;
             }
             return count;
+        }
+
+        private static long CountCombinedMatches(
+            StrongboxEquipmentStatistics equipment,
+            StrongboxRareOutcomeQuery query)
+        {
+            long count = 0L;
+            for (int index = 0; index < equipment.AugmentSignatureDistribution.Count; index++)
+            {
+                StrongboxDistributionEntry entry = equipment.AugmentSignatureDistribution[index];
+                int separator = entry.Key.IndexOf(':');
+                if (separator <= 0 || separator == entry.Key.Length - 1) continue;
+                int slots;
+                int level;
+                if (!int.TryParse(entry.Key.Substring(0, separator), out slots)) continue;
+                if (!int.TryParse(entry.Key.Substring(separator + 1), out level)) continue;
+                if (MatchesSlots(equipment, query, slots)
+                    && MatchesLevel(equipment, query, level))
+                    count += entry.Count;
+            }
+            return count;
+        }
+
+        private static bool MatchesSlots(
+            StrongboxEquipmentStatistics equipment,
+            StrongboxRareOutcomeQuery query,
+            int value)
+        {
+            return value >= query.MinimumSlots
+                && (!query.RequireSlotsAboveOrdinaryMaximum
+                    || value > equipment.Metadata.OrdinaryMaximumSlots);
+        }
+
+        private static bool MatchesLevel(
+            StrongboxEquipmentStatistics equipment,
+            StrongboxRareOutcomeQuery query,
+            int value)
+        {
+            return value >= query.MinimumAugmentLevel
+                && (!query.RequireAugmentLevelAboveOrdinaryMaximum
+                    || value > equipment.Metadata.OrdinaryMaximumAugmentLevel);
         }
 
         private static long CountDefinitionCopies(
