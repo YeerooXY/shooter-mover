@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using ShooterMover.Application.Weapons.Execution;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
 
@@ -74,6 +75,47 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public string DamageType { get; }
         public string CanonicalText { get; }
         public string Fingerprint { get; }
+
+        internal static InventoryWeaponEffectProfile From(
+            EffectiveWeapon weapon,
+            WeaponRuntimeFiringProfile runtimeProfile)
+        {
+            if (weapon == null)
+            {
+                throw new ArgumentNullException(nameof(weapon));
+            }
+            if (runtimeProfile == null)
+            {
+                throw new ArgumentNullException(nameof(runtimeProfile));
+            }
+            if (!weapon.DefinitionId.Equals(runtimeProfile.DefinitionId))
+            {
+                throw new ArgumentException(
+                    "The runtime profile must describe the supplied effective weapon.",
+                    nameof(runtimeProfile));
+            }
+
+            return new InventoryWeaponEffectProfile(
+                weapon.DefinitionId,
+                weapon.FireSettings.ShotsPerSecond,
+                runtimeProfile.CooldownTicks,
+                runtimeProfile.ProjectileCount,
+                runtimeProfile.SpreadDegrees,
+                runtimeProfile.ProjectileSpeed,
+                runtimeProfile.ProjectileRange,
+                runtimeProfile.DirectDamage,
+                runtimeProfile.Pierce,
+                runtimeProfile.AreaDamage,
+                runtimeProfile.ExplosionRadius,
+                runtimeProfile.DotDps,
+                runtimeProfile.DotDuration,
+                runtimeProfile.PoolRadius,
+                runtimeProfile.PoolDuration,
+                runtimeProfile.ChainTargets,
+                runtimeProfile.ChainRange,
+                runtimeProfile.Knockback,
+                runtimeProfile.DamageType);
+        }
 
         internal static InventoryWeaponEffectProfile From(
             WeaponDefinitionData definition,

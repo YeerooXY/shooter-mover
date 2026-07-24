@@ -6,6 +6,13 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
 {
+    /// <summary>
+    /// Legacy flat-catalog runtime projection retained for WeaponExecutionCore tooling/tests only.
+    /// Live firing resolves WeaponBlueprint and EffectiveWeapon instead.
+    /// </summary>
+    [Obsolete(
+        "Legacy tooling/test resolver only. Live firing resolves EffectiveWeapon explicitly.",
+        false)]
     public sealed partial class WeaponCatalogRuntimeProfileResolver
     {
         private const double Epsilon = 0.000000001d;

@@ -5,6 +5,14 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
 {
+    /// <summary>
+    /// Legacy execution authority retained only for existing tooling and EditMode regression
+    /// fixtures. Production gameplay must use WeaponFiringScheduler through the live inventory
+    /// composition and must not construct this type.
+    /// </summary>
+    [Obsolete(
+        "Legacy tooling/test authority only. Production firing uses WeaponFiringScheduler.",
+        false)]
     public sealed partial class WeaponExecutionCore
     {
         private readonly IWeaponActorOwnershipResolver ownershipResolver;

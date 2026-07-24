@@ -45,8 +45,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             long simulationTick,
             ulong deterministicSeed,
             WeaponVector2 origin,
-            WeaponVector2 aimDirection)
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal = WeaponTriggerSignal.Pressed)
         {
+            if (!Enum.IsDefined(typeof(WeaponTriggerSignal), triggerSignal))
+            {
+                throw new ArgumentOutOfRangeException(nameof(triggerSignal));
+            }
+
             ActorId = actorId;
             EquipmentInstanceId = equipmentInstanceId;
             FireOperationId = fireOperationId;
@@ -55,6 +61,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             DeterministicSeed = deterministicSeed;
             Origin = origin;
             AimDirection = aimDirection;
+            TriggerSignal = triggerSignal;
         }
 
         public WeaponActorInstanceId ActorId { get; }
@@ -65,6 +72,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public ulong DeterministicSeed { get; }
         public WeaponVector2 Origin { get; }
         public WeaponVector2 AimDirection { get; }
+        public WeaponTriggerSignal TriggerSignal { get; }
     }
 
     public sealed class InventoryWeaponFireIntentFactory
@@ -89,10 +97,36 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             out InventoryWeaponFireRequest request,
             out string rejectionCode)
         {
+            return TryCreate(
+                actorId,
+                fireOperationId,
+                lifecycleGeneration,
+                simulationTick,
+                deterministicSeed,
+                origin,
+                aimDirection,
+                WeaponTriggerSignal.Pressed,
+                out request,
+                out rejectionCode);
+        }
+
+        public bool TryCreate(
+            WeaponActorInstanceId actorId,
+            FireOperationId fireOperationId,
+            LifecycleGeneration lifecycleGeneration,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal,
+            out InventoryWeaponFireRequest request,
+            out string rejectionCode)
+        {
             request = null;
             if (actorId == null
                 || fireOperationId == null
-                || lifecycleGeneration == null)
+                || lifecycleGeneration == null
+                || !Enum.IsDefined(typeof(WeaponTriggerSignal), triggerSignal))
             {
                 rejectionCode = "weapon-live-intent-invalid";
                 return false;
@@ -117,9 +151,28 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 simulationTick,
                 deterministicSeed,
                 origin,
-                aimDirection);
+                aimDirection,
+                triggerSignal);
             rejectionCode = string.Empty;
             return true;
         }
-}
+    }
+
+    public sealed class InventoryWeaponExecutionTransition
+    {
+        public InventoryWeaponExecutionTransition(
+            InventoryWeaponExecutionResult result,
+            WeaponFiringSessionState nextState,
+            bool publishNextState)
+        {
+            Result = result ?? throw new ArgumentNullException(nameof(result));
+            NextState = nextState
+                ?? throw new ArgumentNullException(nameof(nextState));
+            PublishNextState = publishNextState;
+        }
+
+        public InventoryWeaponExecutionResult Result { get; }
+        public WeaponFiringSessionState NextState { get; }
+        public bool PublishNextState { get; }
+    }
 }
