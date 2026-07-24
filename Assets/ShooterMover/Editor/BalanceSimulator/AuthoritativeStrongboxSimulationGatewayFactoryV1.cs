@@ -24,7 +24,6 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             gateway = null;
             diagnostic = string.Empty;
-
             LootboxSimulatorRuntimeV1 runtime;
             if (!LootboxSimulatorRuntimeV1.TryCreate(
                     weaponCatalogJson,
@@ -64,34 +63,25 @@ namespace ShooterMover.Editor.BalanceSimulator
             WeaponCatalog weaponCatalog)
         {
             var values = new List<StrongboxEquipmentMetadata>();
-            for (int index = 0;
-                 index < equipmentCatalog.EquipmentDefinitions.Count;
-                 index++)
+            for (int index = 0; index < equipmentCatalog.EquipmentDefinitions.Count; index++)
             {
-                EquipmentDefinition equipment =
-                    equipmentCatalog.EquipmentDefinitions[index];
+                EquipmentDefinition equipment = equipmentCatalog.EquipmentDefinitions[index];
                 if (equipment == null
                     || equipment.CategoryId != EquipmentCategoryIds.Weapon
                     || equipment.RuntimeWeaponReferenceId == null)
-                {
                     continue;
-                }
 
                 WeaponDefinitionData weapon;
                 if (!TryResolveWeapon(weaponCatalog, equipment, out weapon)
                     || weapon == null
                     || weapon.Availability != WeaponCatalogAvailability.Live)
-                {
                     continue;
-                }
 
                 StableId rarityId;
                 if (!TryResolveRarity(weapon.Rarity, out rarityId))
-                {
                     throw new InvalidOperationException(
                         "Live strongbox weapon has unsupported rarity: "
                         + weapon.DefinitionId + " / " + weapon.Rarity);
-                }
 
                 values.Add(new StrongboxEquipmentMetadata(
                     equipment.DefinitionId,
@@ -112,17 +102,13 @@ namespace ShooterMover.Editor.BalanceSimulator
                     ResolveAbsoluteMaximumAugmentLevel()));
             }
 
-            values.Sort(delegate(
-                StrongboxEquipmentMetadata left,
-                StrongboxEquipmentMetadata right)
+            values.Sort(delegate(StrongboxEquipmentMetadata left, StrongboxEquipmentMetadata right)
             {
                 return left.DefinitionId.CompareTo(right.DefinitionId);
             });
             if (values.Count == 0)
-            {
                 throw new InvalidOperationException(
                     "The production strongbox metadata projection is empty.");
-            }
             return values.AsReadOnly();
         }
 
@@ -131,11 +117,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             IReadOnlyList<StrongboxEquipmentMetadata> metadata)
         {
             string equipmentCatalog = StrongboxCanonicalV1.Fingerprint(
-                "strongbox-simulation-equipment-catalog-v1|"
-                + weaponCatalogJson);
-
+                "strongbox-simulation-equipment-catalog-v1|" + weaponCatalogJson);
             var projection = new StringBuilder(
-                "strongbox-simulation-equipment-projection-v1");
+                "strongbox-simulation-equipment-projection-v2");
             for (int index = 0; index < metadata.Count; index++)
             {
                 StrongboxEquipmentMetadata value = metadata[index];
@@ -148,9 +132,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                     .Append('|').Append(value.RarityId)
                     .Append('|').Append(value.FirstAppearanceLevel)
                     .Append('|').Append(value.AnchorLevel)
-                    .Append('|').Append(value.AuthoredBaseWeight.ToString(
-                        "R",
-                        CultureInfo.InvariantCulture))
+                    .Append('|').Append(BitConverter.DoubleToInt64Bits(value.AuthoredBaseWeight)
+                        .ToString("x16", CultureInfo.InvariantCulture))
                     .Append('|').Append(value.Available)
                     .Append('|').Append(value.TopBoxOnly)
                     .Append('|').Append(value.OrdinaryMaximumSlots)
@@ -163,55 +146,43 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             var policies = new StringBuilder(
                 "strongbox-simulation-hybrid-policies-v1");
-            for (int index = 0;
-                 index < ProductionStrongboxCatalogV1.Tiers.Count;
-                 index++)
+            for (int index = 0; index < ProductionStrongboxCatalogV1.Tiers.Count; index++)
             {
-                ProductionStrongboxTierV1 tier =
-                    ProductionStrongboxCatalogV1.Tiers[index];
+                ProductionStrongboxTierV1 tier = ProductionStrongboxCatalogV1.Tiers[index];
                 StrongboxHybridLootPolicyV1 policy =
-                    ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(
-                        tier.TierNumber);
+                    ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(tier.TierNumber);
                 policies.Append('\n')
                     .Append(tier.TierStableId)
                     .Append('|')
                     .Append(policy.Fingerprint);
             }
-            string strongboxPolicy = StrongboxCanonicalV1.Fingerprint(
+            string hybridPolicyAuthority = StrongboxCanonicalV1.Fingerprint(
                 policies.ToString());
 
+            // Rarity weighting, item-level rolls, augment-slot rolls and augment-level
+            // rolls are all decisions of StrongboxHybridLootPolicyV1 today. These named
+            // fields intentionally expose the same authority fingerprint rather than
+            // manufacturing the appearance of four independent production authorities.
             return new StrongboxProductionFingerprints(
                 equipmentCatalog,
                 equipmentProjection,
-                strongboxPolicy,
-                StrongboxCanonicalV1.Fingerprint(
-                    "strongbox-simulation-rarity-policy-v1|" + strongboxPolicy),
-                StrongboxCanonicalV1.Fingerprint(
-                    "strongbox-simulation-item-level-policy-v1|" + strongboxPolicy),
-                StrongboxCanonicalV1.Fingerprint(
-                    "strongbox-simulation-augment-slot-policy-v1|" + strongboxPolicy),
-                StrongboxCanonicalV1.Fingerprint(
-                    "strongbox-simulation-augment-level-policy-v1|" + strongboxPolicy));
+                hybridPolicyAuthority,
+                hybridPolicyAuthority,
+                hybridPolicyAuthority,
+                hybridPolicyAuthority,
+                hybridPolicyAuthority);
         }
 
         private static int ResolveAbsoluteMaximumAugmentLevel()
         {
             int maximum = StrongboxHybridLootPolicyV1.NormalMaximumAugmentLevel;
-            for (int tierIndex = 0;
-                 tierIndex < ProductionStrongboxCatalogV1.Tiers.Count;
-                 tierIndex++)
+            for (int tierIndex = 0; tierIndex < ProductionStrongboxCatalogV1.Tiers.Count; tierIndex++)
             {
                 StrongboxHybridLootPolicyV1 policy =
                     ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(
                         ProductionStrongboxCatalogV1.Tiers[tierIndex].TierNumber);
-                for (int outcomeIndex = 0;
-                     outcomeIndex < policy.AugmentLevelOutcomes.Count;
-                     outcomeIndex++)
-                {
-                    maximum = Math.Max(
-                        maximum,
-                        policy.AugmentLevelOutcomes[outcomeIndex].Value);
-                }
+                for (int outcomeIndex = 0; outcomeIndex < policy.AugmentLevelOutcomes.Count; outcomeIndex++)
+                    maximum = Math.Max(maximum, policy.AugmentLevelOutcomes[outcomeIndex].Value);
             }
             return maximum;
         }
@@ -222,11 +193,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             out WeaponDefinitionData weapon)
         {
             string reference = equipment.RuntimeWeaponReferenceId.ToString();
-            if (weaponCatalog.TryGetDefinition(reference, out weapon)
-                && weapon != null)
-            {
+            if (weaponCatalog.TryGetDefinition(reference, out weapon) && weapon != null)
                 return true;
-            }
 
             IReadOnlyList<WeaponDefinitionData> live =
                 weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.LiveOnly);
@@ -236,23 +204,18 @@ namespace ShooterMover.Editor.BalanceSimulator
                 StableId raw;
                 if ((StableId.TryParse(candidate.DefinitionId, out raw)
                         && raw == equipment.RuntimeWeaponReferenceId)
-                    || StrongboxCanonicalV1.DeriveId(
-                            "weapon",
-                            candidate.DefinitionId)
+                    || StrongboxCanonicalV1.DeriveId("weapon", candidate.DefinitionId)
                         == equipment.RuntimeWeaponReferenceId)
                 {
                     weapon = candidate;
                     return true;
                 }
             }
-
             weapon = null;
             return false;
         }
 
-        private static bool TryResolveRarity(
-            string rarity,
-            out StableId rarityId)
+        private static bool TryResolveRarity(string rarity, out StableId rarityId)
         {
             switch ((rarity ?? string.Empty).Trim().ToLowerInvariant())
             {
