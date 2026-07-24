@@ -103,6 +103,13 @@ namespace ShooterMover.Domain.Weapons
             string reason = null;
             switch (stat)
             {
+                case WeaponEffectiveStat.RateOfFire:
+                    if (blueprint.FireSettings.IsContinuous)
+                    {
+                        reason = "RateOfFire modifies projectile ShotsPerSecond only; continuous DamageTicksPerSecond is a separate authored cadence";
+                    }
+                    break;
+
                 case WeaponEffectiveStat.AreaDamage:
                 case WeaponEffectiveStat.ExplosionRadius:
                     if (blueprint.Effects.Explosion == null)
@@ -185,9 +192,6 @@ namespace ShooterMover.Domain.Weapons
             WeaponFireSettings authored = blueprint.FireSettings;
             if (authored.IsContinuous)
             {
-                double ticks = RequirePositive(
-                    Apply(accumulators, WeaponEffectiveStat.RateOfFire, authored.DamageTicksPerSecond),
-                    WeaponEffectiveStat.RateOfFire);
                 return WeaponFireSettings.Create(
                     authored.Mode,
                     0d,
@@ -195,7 +199,7 @@ namespace ShooterMover.Domain.Weapons
                     0,
                     0d,
                     0d,
-                    ticks);
+                    authored.DamageTicksPerSecond);
             }
 
             double shotsPerSecond = RequirePositive(
