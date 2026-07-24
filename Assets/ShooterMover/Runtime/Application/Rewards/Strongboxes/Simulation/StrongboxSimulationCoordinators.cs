@@ -134,7 +134,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             StrongboxSimulationReport right = simulator.Run(FullOpeningRequest(comparison), production);
             var metrics = new List<StrongboxMetricDifference>
             {
-                Difference("average-augment-bias", WeightedBiasMean(left.AugmentBiases), WeightedBiasMean(right.AugmentBiases)),
+                Difference("average-augment-bias", StrongboxSimulationBiasMath.Average(left.AugmentBiases), StrongboxSimulationBiasMath.Average(right.AugmentBiases)),
                 Difference("average-augment-level", WeightedMean(left.AugmentLevels), WeightedMean(right.AugmentLevels)),
                 Difference("average-augment-slots", WeightedMean(left.AugmentSlots), WeightedMean(right.AugmentSlots)),
                 Difference("average-item-level", WeightedMean(left.ItemLevels), WeightedMean(right.ItemLevels)),
@@ -286,6 +286,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 if (WeightedMean(current.AugmentLevels)
                     < WeightedMean(previous.AugmentLevels) * thresholds.RelativeRegressionMultiplier)
                     warnings.Add("augment-level-quality-regression");
+                if (StrongboxSimulationBiasMath.Average(current.AugmentBiases)
+                    < StrongboxSimulationBiasMath.Average(previous.AugmentBiases)
+                    * thresholds.RelativeRegressionMultiplier)
+                    warnings.Add("augment-bias-quality-regression");
                 if (current.CombinedExceptionalPercentage
                     < previous.CombinedExceptionalPercentage * thresholds.RelativeRegressionMultiplier)
                     warnings.Add("combined-exceptional-rate-regression");
@@ -370,30 +374,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 total += key * (double)values[index].Count;
             }
             return count == 0L ? 0d : total / count;
-        }
-
-        private static double WeightedBiasMean(IReadOnlyList<StrongboxDistributionEntry> values)
-        {
-            long count = 0L;
-            double total = 0d;
-            for (int index = 0; index < values.Count; index++)
-            {
-                double value;
-                if (!TryParseBias(values[index].Key, out value)) continue;
-                count += values[index].Count;
-                total += value * values[index].Count;
-            }
-            return count == 0L ? 0d : total / count;
-        }
-
-        private static bool TryParseBias(string key, out double value)
-        {
-            value = 0d;
-            if (string.IsNullOrEmpty(key) || !key.StartsWith("bits:", StringComparison.Ordinal)) return false;
-            long bits;
-            if (!long.TryParse(key.Substring(5), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out bits)) return false;
-            value = BitConverter.Int64BitsToDouble(bits);
-            return !double.IsNaN(value) && !double.IsInfinity(value);
         }
 
         private static double DistributionPercent(IReadOnlyList<StrongboxDistributionEntry> values, string key)
