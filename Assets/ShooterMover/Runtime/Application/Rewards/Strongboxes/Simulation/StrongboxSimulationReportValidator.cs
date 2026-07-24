@@ -60,6 +60,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                     && string.CompareOrdinal(previousEquipmentId, id) >= 0)
                     diagnostics.Add("equipment-ordering-or-duplicate-invalid");
                 previousEquipmentId = id;
+                ValidateCanonicalTags(equipment.Metadata, id, diagnostics);
                 equipmentTotal += equipment.Count;
                 exceptionalSlots += equipment.ExceptionalSlots;
                 exceptionalLevels += equipment.ExceptionalAugmentLevels;
@@ -180,6 +181,26 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             if (total != expectedTotal) diagnostics.Add(name + "-count-total-mismatch");
         }
 
+        private static void ValidateCanonicalTags(
+            StrongboxEquipmentMetadata metadata,
+            string id,
+            ISet<string> diagnostics)
+        {
+            StableId previous = null;
+            for (int index = 0; index < metadata.CanonicalTags.Count; index++)
+            {
+                StableId tag = metadata.CanonicalTags[index];
+                if (tag == null)
+                {
+                    diagnostics.Add("equipment-canonical-tag-null-" + id);
+                    continue;
+                }
+                if (previous != null && previous.CompareTo(tag) >= 0)
+                    diagnostics.Add("equipment-canonical-tag-ordering-or-duplicate-invalid-" + id);
+                previous = tag;
+            }
+        }
+
         private static void ValidateSignatureReconciliation(
             IReadOnlyList<StrongboxDistributionEntry> signatures,
             IReadOnlyList<StrongboxDistributionEntry> slots,
@@ -241,7 +262,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             for (int index = 0; index < values.Count; index++)
             {
                 double ignored;
-                if (!TryParseBias(values[index].Key, out ignored))
+                if (!StrongboxSimulationBiasMath.TryParseKey(values[index].Key, out ignored))
                     diagnostics.Add(name + "-bias-key-invalid");
             }
         }
@@ -273,16 +294,16 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             string name,
             ISet<string> diagnostics)
         {
-            long count = 0L;
-            double total = 0d;
-            for (int index = 0; index < values.Count; index++)
+            double expected;
+            try
             {
-                double value;
-                if (!TryParseBias(values[index].Key, out value)) continue;
-                count += values[index].Count;
-                total += value * values[index].Count;
+                expected = StrongboxSimulationBiasMath.Average(values);
             }
-            double expected = count == 0L ? 0d : total / count;
+            catch (StrongboxSimulationIntegrityException)
+            {
+                diagnostics.Add(name + "-source-invalid");
+                return;
+            }
             if (BitConverter.DoubleToInt64Bits(expected) != BitConverter.DoubleToInt64Bits(published))
                 diagnostics.Add(name + "-mismatch");
         }
@@ -301,18 +322,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             return int.TryParse(levelPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out level) && level >= 1;
         }
 
-        private static bool TryParseBias(string key, out double value)
-        {
-            value = 0d;
-            if (string.IsNullOrEmpty(key) || !key.StartsWith("bits:", StringComparison.Ordinal))
-                return false;
-            long bits;
-            if (!long.TryParse(key.Substring(5), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out bits))
-                return false;
-            value = BitConverter.Int64BitsToDouble(bits);
-            return !double.IsNaN(value) && !double.IsInfinity(value);
-        }
-
         private static long Count(IReadOnlyList<StrongboxDistributionEntry> values, string key)
         {
             for (int index = 0; index < values.Count; index++)
@@ -325,21 +334,19 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             SortedDictionary<string, long> expected)
         {
             if (published.Count != expected.Count) return false;
-            int index = 0;
             foreach (KeyValuePair<string, long> pair in expected)
             {
                 bool found = false;
-                for (int publishedIndex = 0; publishedIndex < published.Count; publishedIndex++)
+                for (int index = 0; index < published.Count; index++)
                 {
-                    if (string.Equals(published[publishedIndex].Key, pair.Key, StringComparison.Ordinal)
-                        && published[publishedIndex].Count == pair.Value)
+                    if (string.Equals(published[index].Key, pair.Key, StringComparison.Ordinal)
+                        && published[index].Count == pair.Value)
                     {
                         found = true;
                         break;
                     }
                 }
                 if (!found) return false;
-                index++;
             }
             return true;
         }
