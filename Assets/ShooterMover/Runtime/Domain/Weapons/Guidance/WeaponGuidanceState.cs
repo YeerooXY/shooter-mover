@@ -12,6 +12,14 @@ namespace ShooterMover.Domain.Weapons.Guidance
         Tracking = 5,
     }
 
+    public enum WeaponGuidanceAcquisitionState
+    {
+        NotAcquired = 1,
+        Tracking = 2,
+        WaitingForReacquisition = 3,
+        LostWithoutReacquisition = 4,
+    }
+
     /// <summary>
     /// Immutable per-projectile guidance state. It is reusable for every projectile kind and owns
     /// no movement, physics, collision, or presentation behavior.
@@ -23,6 +31,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
             WeaponVector2 direction,
             double elapsedSeconds,
             double pauseRemainingSeconds,
+            WeaponGuidanceAcquisitionState acquisitionState,
             WeaponGuidanceTargetReference trackedTarget)
         {
             AcquisitionAimDirection = RequireDirection(
@@ -31,9 +40,30 @@ namespace ShooterMover.Domain.Weapons.Guidance
             Direction = RequireDirection(direction, nameof(direction));
             RequireFiniteNonNegative(elapsedSeconds, nameof(elapsedSeconds));
             RequireFiniteNonNegative(pauseRemainingSeconds, nameof(pauseRemainingSeconds));
+            if (!Enum.IsDefined(typeof(WeaponGuidanceAcquisitionState), acquisitionState))
+            {
+                throw new ArgumentOutOfRangeException(nameof(acquisitionState));
+            }
+            if (acquisitionState == WeaponGuidanceAcquisitionState.Tracking
+                && trackedTarget == null)
+            {
+                throw new ArgumentException(
+                    "Tracking guidance state requires an exact target reference.",
+                    nameof(trackedTarget));
+            }
+            if ((acquisitionState == WeaponGuidanceAcquisitionState.NotAcquired
+                    || acquisitionState
+                        == WeaponGuidanceAcquisitionState.LostWithoutReacquisition)
+                && trackedTarget != null)
+            {
+                throw new ArgumentException(
+                    "This guidance acquisition state cannot retain a target reference.",
+                    nameof(trackedTarget));
+            }
 
             ElapsedSeconds = elapsedSeconds;
             PauseRemainingSeconds = pauseRemainingSeconds;
+            AcquisitionState = acquisitionState;
             TrackedTarget = trackedTarget;
         }
 
@@ -41,6 +71,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
         public WeaponVector2 Direction { get; }
         public double ElapsedSeconds { get; }
         public double PauseRemainingSeconds { get; }
+        public WeaponGuidanceAcquisitionState AcquisitionState { get; }
         public WeaponGuidanceTargetReference TrackedTarget { get; }
 
         public static WeaponGuidanceState Create(
@@ -48,12 +79,21 @@ namespace ShooterMover.Domain.Weapons.Guidance
             WeaponGuidanceTargetReference initialTarget = null)
         {
             WeaponVector2 direction = RequireDirection(initialDirection, nameof(initialDirection));
-            return new WeaponGuidanceState(direction, direction, 0d, 0d, initialTarget);
+            WeaponGuidanceAcquisitionState acquisitionState = initialTarget == null
+                ? WeaponGuidanceAcquisitionState.NotAcquired
+                : WeaponGuidanceAcquisitionState.Tracking;
+            return new WeaponGuidanceState(
+                direction,
+                direction,
+                0d,
+                0d,
+                acquisitionState,
+                initialTarget);
         }
 
         /// <summary>
         /// Applies an externally resolved ricochet direction and pauses homing for the requested
-        /// duration. The exact tracked target is preserved while guidance is paused.
+        /// duration. The exact target and acquisition lifecycle are preserved while guidance pauses.
         /// </summary>
         public WeaponGuidanceState PauseAfterRicochet(
             WeaponVector2 reflectedDirection,
@@ -69,6 +109,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
                 direction,
                 ElapsedSeconds,
                 Math.Max(PauseRemainingSeconds, pauseSeconds),
+                AcquisitionState,
                 TrackedTarget);
         }
 
@@ -79,6 +120,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
                 Direction,
                 ElapsedSeconds,
                 0d,
+                AcquisitionState,
                 TrackedTarget);
         }
 
@@ -88,11 +130,27 @@ namespace ShooterMover.Domain.Weapons.Guidance
             double pauseRemainingSeconds,
             WeaponGuidanceTargetReference trackedTarget)
         {
+            return Advance(
+                direction,
+                elapsedSeconds,
+                pauseRemainingSeconds,
+                AcquisitionState,
+                trackedTarget);
+        }
+
+        internal WeaponGuidanceState Advance(
+            WeaponVector2 direction,
+            double elapsedSeconds,
+            double pauseRemainingSeconds,
+            WeaponGuidanceAcquisitionState acquisitionState,
+            WeaponGuidanceTargetReference trackedTarget)
+        {
             return new WeaponGuidanceState(
                 AcquisitionAimDirection,
                 direction,
                 elapsedSeconds,
                 pauseRemainingSeconds,
+                acquisitionState,
                 trackedTarget);
         }
 
