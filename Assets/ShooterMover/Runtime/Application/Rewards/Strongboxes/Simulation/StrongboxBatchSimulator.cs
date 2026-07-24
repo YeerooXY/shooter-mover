@@ -32,7 +32,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             long exceptionalSlots,
             long exceptionalAugmentLevels,
             IReadOnlyList<StrongboxDistributionEntry> slotDistribution,
-            IReadOnlyList<StrongboxDistributionEntry> augmentLevelDistribution)
+            IReadOnlyList<StrongboxDistributionEntry> augmentLevelDistribution,
+            IReadOnlyList<StrongboxDistributionEntry> augmentSignatureDistribution)
         {
             Metadata = metadata;
             Count = count;
@@ -43,6 +44,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             ExceptionalAugmentLevels = exceptionalAugmentLevels;
             SlotDistribution = slotDistribution;
             AugmentLevelDistribution = augmentLevelDistribution;
+            AugmentSignatureDistribution = augmentSignatureDistribution;
         }
 
         public StrongboxEquipmentMetadata Metadata { get; }
@@ -54,6 +56,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         public long ExceptionalAugmentLevels { get; }
         public IReadOnlyList<StrongboxDistributionEntry> SlotDistribution { get; }
         public IReadOnlyList<StrongboxDistributionEntry> AugmentLevelDistribution { get; }
+        public IReadOnlyList<StrongboxDistributionEntry> AugmentSignatureDistribution { get; }
     }
 
     public sealed class StrongboxSimulationReport
@@ -118,6 +121,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             public long ExceptionalLevels;
             public readonly SortedDictionary<int, long> Slots = new SortedDictionary<int, long>();
             public readonly SortedDictionary<int, long> Levels = new SortedDictionary<int, long>();
+            public readonly SortedDictionary<string, long> Signatures =
+                new SortedDictionary<string, long>(StringComparer.Ordinal);
         }
 
         public StrongboxSimulationReport Run(
@@ -158,10 +163,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 Increment(itemLevels, observation.ItemLevel);
                 Increment(slots, observation.AugmentSlotCount);
                 if (observation.AugmentSlotCount > 0) Increment(levels, observation.SharedAugmentLevel);
-                string signature = observation.AugmentSlotCount.ToString(CultureInfo.InvariantCulture)
-                    + ":" + (observation.AugmentSlotCount == 0
-                        ? "none"
-                        : observation.SharedAugmentLevel.ToString(CultureInfo.InvariantCulture));
+                string signature = FormatSignature(
+                    observation.AugmentSlotCount,
+                    observation.SharedAugmentLevel);
                 Increment(signatures, signature);
 
                 string definitionKey = observation.Equipment.DefinitionId.ToString();
@@ -175,6 +179,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 accumulator.ItemLevelTotal += observation.ItemLevel;
                 accumulator.SlotTotal += observation.AugmentSlotCount;
                 Increment(accumulator.Slots, observation.AugmentSlotCount);
+                Increment(accumulator.Signatures, signature);
                 if (observation.AugmentSlotCount > 0)
                 {
                     accumulator.NonzeroSlotCount++;
@@ -198,7 +203,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                     value.ExceptionalSlots,
                     value.ExceptionalLevels,
                     Entries(value.Slots, value.Count),
-                    Entries(value.Levels, value.NonzeroSlotCount)));
+                    Entries(value.Levels, value.NonzeroSlotCount),
+                    Entries(value.Signatures, value.Count)));
             }
 
             string canonical = BuildCanonical(
@@ -246,7 +252,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             SortedSet<string> diagnostics)
         {
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-report-v1");
+            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-report-v2");
             StrongboxCanonicalV1.AppendToken(builder, "mode", request.Mode.ToString());
             StrongboxCanonicalV1.AppendToken(builder, "player_level", request.Primary.PlayerLevel.ToString(CultureInfo.InvariantCulture));
             StrongboxCanonicalV1.AppendToken(builder, "tier", request.Primary.StrongboxTierId.ToString());
@@ -264,10 +270,25 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             foreach (KeyValuePair<string, long> pair in signatures)
                 StrongboxCanonicalV1.AppendToken(builder, "signature", pair.Key + "=" + pair.Value.ToString(CultureInfo.InvariantCulture));
             foreach (KeyValuePair<string, EquipmentAccumulator> pair in equipment)
+            {
                 StrongboxCanonicalV1.AppendToken(builder, "equipment", pair.Key + "=" + pair.Value.Count.ToString(CultureInfo.InvariantCulture));
+                foreach (KeyValuePair<string, long> signature in pair.Value.Signatures)
+                    StrongboxCanonicalV1.AppendToken(
+                        builder,
+                        "equipment_signature",
+                        pair.Key + ":" + signature.Key + "=" + signature.Value.ToString(CultureInfo.InvariantCulture));
+            }
             foreach (string diagnostic in diagnostics)
                 StrongboxCanonicalV1.AppendToken(builder, "diagnostic", diagnostic);
             return builder.ToString();
+        }
+
+        private static string FormatSignature(int slotCount, int augmentLevel)
+        {
+            return slotCount.ToString(CultureInfo.InvariantCulture)
+                + ":" + (slotCount == 0
+                    ? "none"
+                    : augmentLevel.ToString(CultureInfo.InvariantCulture));
         }
 
         private static void Append(StringBuilder builder, string name, SortedDictionary<int, long> values)
