@@ -56,6 +56,20 @@ namespace ShooterMover.Editor.BalanceSimulator
                 StrongboxSimulationReportValidator.ThrowIfInvalid(report);
                 return true;
             }
+            catch (StrongboxSimulationIntegrityException exception)
+            {
+                report = null;
+                diagnostic = exception.DiagnosticCode;
+                return false;
+            }
+            catch (NotSupportedException exception)
+            {
+                report = null;
+                diagnostic = string.IsNullOrWhiteSpace(exception.Message)
+                    ? "strongbox-simulation-run-unsupported"
+                    : exception.Message;
+                return false;
+            }
             catch (Exception exception)
             {
                 report = null;
