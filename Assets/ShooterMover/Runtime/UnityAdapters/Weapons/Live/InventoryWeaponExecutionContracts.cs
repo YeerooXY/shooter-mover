@@ -1,9 +1,6 @@
 using System;
-using System.Globalization;
-using System.Text;
 using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
@@ -86,6 +83,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 ?? throw new ArgumentNullException(nameof(activeEquipment));
         }
 
+        [Obsolete(
+            "One-shot Pressed compatibility only. Live held input must supply an explicit trigger signal.",
+            false)]
         public bool TryCreate(
             WeaponActorInstanceId actorId,
             FireOperationId fireOperationId,
@@ -162,17 +162,46 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     {
         public InventoryWeaponExecutionTransition(
             InventoryWeaponExecutionResult result,
-            WeaponFiringSessionState nextState,
-            bool publishNextState)
+            WeaponFiringSessionState nextFiringState,
+            InventoryWeaponPendingDeliveryState nextPendingState,
+            bool publishStatePair)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
-            NextState = nextState
-                ?? throw new ArgumentNullException(nameof(nextState));
-            PublishNextState = publishNextState;
+            NextFiringState = nextFiringState
+                ?? throw new ArgumentNullException(nameof(nextFiringState));
+            NextPendingState = nextPendingState
+                ?? throw new ArgumentNullException(nameof(nextPendingState));
+            PublishStatePair = publishStatePair;
+        }
+
+        [Obsolete(
+            "Live state publication requires both scheduler and pending-delivery state.",
+            false)]
+        public InventoryWeaponExecutionTransition(
+            InventoryWeaponExecutionResult result,
+            WeaponFiringSessionState nextState,
+            bool publishNextState)
+            : this(
+                result,
+                nextState,
+                InventoryWeaponPendingDeliveryState.Empty,
+                publishNextState)
+        {
         }
 
         public InventoryWeaponExecutionResult Result { get; }
-        public WeaponFiringSessionState NextState { get; }
-        public bool PublishNextState { get; }
+        public WeaponFiringSessionState NextFiringState { get; }
+        public InventoryWeaponPendingDeliveryState NextPendingState { get; }
+        public bool PublishStatePair { get; }
+
+        public WeaponFiringSessionState NextState
+        {
+            get { return NextFiringState; }
+        }
+
+        public bool PublishNextState
+        {
+            get { return PublishStatePair; }
+        }
     }
 }
