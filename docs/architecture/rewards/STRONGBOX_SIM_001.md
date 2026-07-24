@@ -31,7 +31,7 @@ The production gateway must delegate to the same authorities used by a real open
 
 A scenario includes player level, exact tier ID, sample count, root seed, optional exact definition ID and diagnostic override state. The production gateway receives the ordinal unchanged.
 
-The report fingerprint includes request identity, production fingerprints, generated/rejected counts, ordered distributions, per-definition counts and deterministic diagnostics. Elapsed time, timestamps, machine identity, paths and processor count are excluded.
+The report fingerprint includes request identity, production fingerprints, generated/rejected counts, ordered distributions, per-definition counts, exact per-definition augment-signature distributions and deterministic diagnostics. Elapsed time, timestamps, machine identity, paths and processor count are excluded.
 
 ## Ordinary and exceptional outcomes
 
@@ -55,7 +55,11 @@ TopBoxOnly compatibility is not inferred from a tier stable ID. Until the produc
 
 When zero events are observed, the result may expose the descriptive rule-of-three 95% upper bound (`3 / sample count`). This is a bound, not an invented production probability. When an expected probability is supplied, the suggested sample size is `ceil(3 / expected probability)`.
 
-Exact combined slot-and-level queries are never estimated by multiplying independent marginal distributions. Construction of such a query fails explicitly until the core report exposes an exact per-equipment combined-signature distribution.
+Exact combined slot-and-level queries use each definition's measured combined-signature distribution. Independent slot and level marginals are never multiplied.
+
+## Report validation
+
+`StrongboxSimulationReportValidator` performs deterministic structural validation without rerunning production generation. It checks requested/generated/rejected totals, distribution totals and percentages, ordering and duplicate keys, equipment totals, exceptional counters and combined-signature formatting. Consumers may inspect sorted diagnostics or use `ThrowIfInvalid` at an export boundary.
 
 ## Simulation modes
 
@@ -69,7 +73,7 @@ Exact combined slot-and-level queries are never estimated by multiplying indepen
 
 The immutable in-memory report is the source for deterministic Markdown and CSV serializers. Serializers do not automatically write into production `Assets`.
 
-The serializer surface includes the main report, catalog-coverage diagnostics and rare-outcome diagnostics. Missing optional values are emitted as empty deterministic fields rather than locale-specific placeholders.
+The serializer surface includes the main report, catalog-coverage diagnostics, rare-outcome diagnostics and exact per-equipment augment-signature tables. Missing optional values are emitted as empty deterministic fields rather than locale-specific placeholders.
 
 ## Illustrative examples
 
@@ -81,6 +85,7 @@ All numbers below are fictional and are not production results.
 - A weapon with ordinary maximum three slots and production absolute maximum four preserves a four-slot result as exceptional.
 - Gear with ordinary maximum two and production absolute maximum three preserves a three-slot result as exceptional.
 - With ordinary augment maximum 10 and production absolute maximum 12, levels 11 and 12 remain separately reported.
+- A combined query can measure the exact count of four-slot, level-12 outcomes for one definition without assuming slot and level independence.
 - A one-million-opening run with zero rare events reports zero observations and an optional descriptive upper bound, not impossibility.
 - Player-level and tier sweeps may flag cliffs or inversions while leaving production policy unchanged.
 
