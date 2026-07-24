@@ -146,6 +146,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private readonly ReadOnlyCollection<InventoryWeaponMountedRuntimeV1>
             mountedWeapons;
         private WeaponFiringSessionState firingSessionState;
+        private WeaponActorInstanceId activeActorId;
+        private LifecycleGeneration activeLifecycleGeneration;
         private bool disposed;
 
         public InventoryWeaponRuntimeComposition(
@@ -465,6 +467,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
                 disposed = true;
                 firingSessionState = WeaponFiringSessionState.Empty;
+                activeActorId = null;
+                activeLifecycleGeneration = null;
             }
         }
 
@@ -476,6 +480,35 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 if (disposed)
                 {
                     return Reject("weapon-live-runtime-disposed");
+                }
+                if (request == null)
+                {
+                    return Reject("weapon-live-request-invalid");
+                }
+
+                WeaponActorInstanceId currentActorId;
+                LifecycleGeneration currentLifecycleGeneration;
+                if (!actorStateSource.TryResolveActorState(
+                        out currentActorId,
+                        out currentLifecycleGeneration)
+                    || currentActorId == null
+                    || currentLifecycleGeneration == null
+                    || !currentActorId.Equals(request.ActorId)
+                    || !currentLifecycleGeneration.Equals(
+                        request.LifecycleGeneration))
+                {
+                    return Reject("weapon-live-request-lifecycle-mismatch");
+                }
+
+                if (activeActorId == null
+                    || activeLifecycleGeneration == null
+                    || !activeActorId.Equals(currentActorId)
+                    || !activeLifecycleGeneration.Equals(
+                        currentLifecycleGeneration))
+                {
+                    firingSessionState = WeaponFiringSessionState.Empty;
+                    activeActorId = currentActorId;
+                    activeLifecycleGeneration = currentLifecycleGeneration;
                 }
 
                 InventoryWeaponExecutionTransition transition =
