@@ -1,0 +1,388 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Rewards.Strongboxes.Simulation;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Rewards.Strongboxes;
+
+namespace ShooterMover.Editor.BalanceSimulator
+{
+    /// <summary>
+    /// Production-backed observation gateway for STRONGBOX-SIM-001.
+    ///
+    /// Observations are resolved through the existing authoritative editor runtime, which
+    /// composes StrongboxOpeningServiceV1, production reward generation, the hybrid
+    /// equipment resolver, RAP, isolated holdings, and an isolated generated-signature
+    /// authority. A bounded chunk reuses those disposable authorities for throughput and
+    /// is discarded before the next chunk. No player-owned authority is supplied and no
+    /// production probability formula is copied here.
+    /// </summary>
+    public sealed class AuthoritativeStrongboxSimulationProductionGatewayV1 :
+        IStrongboxSimulationProductionGateway
+    {
+        private const int OpeningChunkSize = 256;
+
+        private readonly string weaponCatalogJson;
+        private readonly ReadOnlyCollection<StrongboxEquipmentMetadata> definitions;
+        private readonly Dictionary<StableId, StrongboxEquipmentMetadata> metadataById;
+
+        private AuthoritativeStrongboxSimulatorRuntimeV1 chunkRuntime;
+        private IReadOnlyList<AuthoritativeStrongboxPreparedOpenV1> chunkOpenings =
+            Array.Empty<AuthoritativeStrongboxPreparedOpenV1>();
+        private long chunkStartOrdinal = -1L;
+        private int chunkLength;
+        private string chunkScenarioIdentity = string.Empty;
+
+        public AuthoritativeStrongboxSimulationProductionGatewayV1(
+            string weaponCatalogJson,
+            StrongboxProductionFingerprints fingerprints,
+            IEnumerable<StrongboxEquipmentMetadata> equipmentDefinitions)
+        {
+            if (string.IsNullOrWhiteSpace(weaponCatalogJson))
+            {
+                throw new ArgumentException(
+                    "Production weapon catalog JSON is required.",
+                    nameof(weaponCatalogJson));
+            }
+            Fingerprints = fingerprints
+                ?? throw new ArgumentNullException(nameof(fingerprints));
+
+            this.weaponCatalogJson = weaponCatalogJson;
+            var copied = new List<StrongboxEquipmentMetadata>();
+            metadataById = new Dictionary<StableId, StrongboxEquipmentMetadata>();
+            foreach (StrongboxEquipmentMetadata metadata in
+                equipmentDefinitions ?? Array.Empty<StrongboxEquipmentMetadata>())
+            {
+                if (metadata == null)
+                {
+                    throw new ArgumentException(
+                        "Equipment metadata cannot contain null entries.",
+                        nameof(equipmentDefinitions));
+                }
+                if (metadataById.ContainsKey(metadata.DefinitionId))
+                {
+                    throw new ArgumentException(
+                        "Duplicate equipment metadata identity: "
+                        + metadata.DefinitionId,
+                        nameof(equipmentDefinitions));
+                }
+                metadataById.Add(metadata.DefinitionId, metadata);
+                copied.Add(metadata);
+            }
+            if (copied.Count == 0)
+            {
+                throw new ArgumentException(
+                    "At least one production equipment metadata entry is required.",
+                    nameof(equipmentDefinitions));
+            }
+            copied.Sort(delegate(
+                StrongboxEquipmentMetadata left,
+                StrongboxEquipmentMetadata right)
+            {
+                return left.DefinitionId.CompareTo(right.DefinitionId);
+            });
+            definitions = new ReadOnlyCollection<StrongboxEquipmentMetadata>(copied);
+        }
+
+        public StrongboxProductionFingerprints Fingerprints { get; }
+
+        public IReadOnlyList<StrongboxEquipmentMetadata> EquipmentDefinitions
+        {
+            get { return definitions; }
+        }
+
+        public bool TryGenerate(
+            StrongboxSimulationScenario scenario,
+            long ordinal,
+            out StrongboxGeneratedEquipmentObservation observation,
+            out string diagnostic)
+        {
+            observation = null;
+            diagnostic = string.Empty;
+            if (scenario == null)
+            {
+                diagnostic = "strongbox-simulation-scenario-null";
+                return false;
+            }
+            if (ordinal < 0L || ordinal >= scenario.SampleCount)
+            {
+                diagnostic = "strongbox-simulation-ordinal-out-of-range";
+                return false;
+            }
+            if (scenario.EquipmentDefinitionId != null)
+            {
+                diagnostic =
+                    "strongbox-simulation-definition-conditioning-not-supported-by-production-resolver";
+                return false;
+            }
+
+            int tierNumber;
+            if (!TryResolveTierNumber(scenario.StrongboxTierId, out tierNumber))
+            {
+                diagnostic = "strongbox-simulation-tier-unknown";
+                return false;
+            }
+            if (!EnsureChunk(scenario, ordinal, tierNumber, out diagnostic))
+            {
+                return false;
+            }
+
+            int localIndex = checked((int)(ordinal - chunkStartOrdinal));
+            if (localIndex < 0
+                || localIndex >= chunkLength
+                || localIndex >= chunkOpenings.Count
+                || chunkOpenings[localIndex] == null)
+            {
+                diagnostic = "strongbox-simulation-prepared-opening-invalid";
+                return false;
+            }
+
+            AuthoritativeStrongboxPreparedOpenV1 opening = chunkOpenings[localIndex];
+            StrongboxOpeningResultRuntimeV1 result;
+            try
+            {
+                result = chunkRuntime.OpenOrRetry(opening);
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "strongbox-simulation-open-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+                return false;
+            }
+
+            IReadOnlyList<EquipmentInstance> equipment =
+                chunkRuntime.EquipmentFrom(result);
+            if (equipment == null || equipment.Count != 1 || equipment[0] == null)
+            {
+                diagnostic = result == null || string.IsNullOrWhiteSpace(result.RejectionCode)
+                    ? "strongbox-simulation-equipment-count-invalid"
+                    : result.RejectionCode;
+                return false;
+            }
+
+            EquipmentInstance generated = equipment[0];
+            StrongboxEquipmentMetadata metadata;
+            if (!metadataById.TryGetValue(generated.DefinitionId, out metadata))
+            {
+                diagnostic = "strongbox-simulation-equipment-metadata-missing-"
+                    + generated.DefinitionId;
+                return false;
+            }
+
+            GeneratedEquipmentAugmentSignatureV1 signature;
+            if (!chunkRuntime.TryGetAugmentSignature(
+                    generated.InstanceId,
+                    out signature)
+                || signature == null)
+            {
+                diagnostic = "strongbox-simulation-augment-signature-missing";
+                return false;
+            }
+
+            StrongboxHybridLootPolicyV1 policy;
+            StrongboxTargetLevelRollV1 target;
+            StrongboxAugmentSignatureV1 replayedSignature;
+            try
+            {
+                policy = ProductionStrongboxHybridLootCatalogV1.GetByTierNumber(
+                    tierNumber);
+                target = policy.RollTargetLevel(
+                    scenario.PlayerLevel,
+                    opening.Context.RootSeed,
+                    opening.Context.AlgorithmVersion,
+                    0UL);
+                replayedSignature = policy.RollAugmentSignature(
+                    scenario.PlayerLevel,
+                    generated.ItemLevel,
+                    metadata.RarityId,
+                    metadata.OrdinaryMaximumSlots,
+                    metadata.AbsoluteMaximumSlots,
+                    opening.Context.RootSeed,
+                    opening.Context.AlgorithmVersion,
+                    0UL);
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "strongbox-simulation-observation-replay-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+                return false;
+            }
+            if (replayedSignature.SlotCount != signature.Capacity
+                || replayedSignature.SharedLevel != signature.SharedLevel
+                || replayedSignature.PolicyId != signature.HybridPolicyStableId
+                || !string.Equals(
+                    replayedSignature.PolicyFingerprint,
+                    signature.HybridPolicyFingerprint,
+                    StringComparison.Ordinal))
+            {
+                diagnostic = "strongbox-simulation-production-signature-replay-mismatch";
+                return false;
+            }
+
+            bool exceptionalSlots =
+                signature.Capacity > metadata.OrdinaryMaximumSlots;
+            bool exceptionalLevel = signature.Capacity > 0
+                && signature.SharedLevel > metadata.OrdinaryMaximumAugmentLevel;
+            observation = new StrongboxGeneratedEquipmentObservation(
+                ordinal,
+                metadata,
+                target.TargetLevel,
+                generated.ItemLevel,
+                generated.QualityId,
+                signature.Capacity,
+                signature.SharedLevel,
+                replayedSignature.EffectiveBiasLevels,
+                exceptionalSlots,
+                exceptionalLevel,
+                string.Empty,
+                BuildObservationFingerprint(
+                    scenario,
+                    ordinal,
+                    opening,
+                    generated,
+                    signature,
+                    target,
+                    replayedSignature));
+            return true;
+        }
+
+        private bool EnsureChunk(
+            StrongboxSimulationScenario scenario,
+            long ordinal,
+            int tierNumber,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            long requestedStart = (ordinal / OpeningChunkSize) * OpeningChunkSize;
+            string scenarioIdentity = BuildScenarioIdentity(scenario);
+            if (chunkRuntime != null
+                && requestedStart == chunkStartOrdinal
+                && string.Equals(
+                    chunkScenarioIdentity,
+                    scenarioIdentity,
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            int remaining = checked((int)Math.Min(
+                (long)OpeningChunkSize,
+                scenario.SampleCount - requestedStart));
+            AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
+            if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
+                    weaponCatalogJson,
+                    out runtime,
+                    out diagnostic)
+                || runtime == null)
+            {
+                diagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                    ? "strongbox-simulation-runtime-create-rejected"
+                    : diagnostic;
+                return false;
+            }
+
+            var tiers = new int[remaining];
+            for (int index = 0; index < tiers.Length; index++)
+            {
+                tiers[index] = tierNumber;
+            }
+
+            IReadOnlyList<AuthoritativeStrongboxPreparedOpenV1> prepared;
+            try
+            {
+                prepared = runtime.PrepareBatch(
+                    tiers,
+                    scenario.PlayerLevel,
+                    DeriveChunkSeed(scenario.RootSeed, requestedStart));
+            }
+            catch (Exception exception)
+            {
+                diagnostic = "strongbox-simulation-prepare-exception-"
+                    + exception.GetType().Name.ToLowerInvariant();
+                return false;
+            }
+            if (prepared == null || prepared.Count != remaining)
+            {
+                diagnostic = "strongbox-simulation-prepared-chunk-invalid";
+                return false;
+            }
+
+            chunkRuntime = runtime;
+            chunkOpenings = prepared;
+            chunkStartOrdinal = requestedStart;
+            chunkLength = remaining;
+            chunkScenarioIdentity = scenarioIdentity;
+            return true;
+        }
+
+        private static bool TryResolveTierNumber(
+            StableId tierId,
+            out int tierNumber)
+        {
+            tierNumber = 0;
+            if (tierId == null) return false;
+            IReadOnlyList<ProductionStrongboxTierV1> tiers =
+                ProductionStrongboxCatalogV1.Tiers;
+            for (int index = 0; index < tiers.Count; index++)
+            {
+                ProductionStrongboxTierV1 tier = tiers[index];
+                if (tier != null && tier.TierStableId == tierId)
+                {
+                    tierNumber = tier.TierNumber;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static string BuildScenarioIdentity(
+            StrongboxSimulationScenario scenario)
+        {
+            return StrongboxCanonicalV1.Fingerprint(
+                "strongbox-simulation-scenario-runtime-v1|"
+                + scenario.PlayerLevel.ToString(CultureInfo.InvariantCulture)
+                + "|" + scenario.StrongboxTierId
+                + "|" + scenario.SampleCount.ToString(CultureInfo.InvariantCulture)
+                + "|" + scenario.RootSeed.ToString("x16", CultureInfo.InvariantCulture));
+        }
+
+        private static ulong DeriveChunkSeed(ulong rootSeed, long chunkStart)
+        {
+            string fingerprint = StrongboxCanonicalV1.Fingerprint(
+                "strongbox-simulation-opening-chunk-v1|"
+                + rootSeed.ToString("x16", CultureInfo.InvariantCulture)
+                + "|"
+                + chunkStart.ToString(CultureInfo.InvariantCulture));
+            return ulong.Parse(
+                fingerprint.Substring(fingerprint.Length - 16),
+                NumberStyles.AllowHexSpecifier,
+                CultureInfo.InvariantCulture);
+        }
+
+        private static string BuildObservationFingerprint(
+            StrongboxSimulationScenario scenario,
+            long ordinal,
+            AuthoritativeStrongboxPreparedOpenV1 opening,
+            EquipmentInstance equipment,
+            GeneratedEquipmentAugmentSignatureV1 signature,
+            StrongboxTargetLevelRollV1 target,
+            StrongboxAugmentSignatureV1 replayedSignature)
+        {
+            return StrongboxCanonicalV1.Fingerprint(
+                "strongbox-simulation-observation-v1|"
+                + scenario.StrongboxTierId + "|"
+                + scenario.PlayerLevel.ToString(CultureInfo.InvariantCulture) + "|"
+                + ordinal.ToString(CultureInfo.InvariantCulture) + "|"
+                + opening.Fingerprint + "|"
+                + equipment.InstanceId + "|"
+                + equipment.DefinitionId + "|"
+                + equipment.ItemLevel.ToString(CultureInfo.InvariantCulture) + "|"
+                + signature.Fingerprint + "|"
+                + target.Fingerprint + "|"
+                + replayedSignature.Fingerprint);
+        }
+    }
+}
