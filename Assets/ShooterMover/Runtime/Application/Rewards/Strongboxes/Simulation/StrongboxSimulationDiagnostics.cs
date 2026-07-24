@@ -54,6 +54,18 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             if (minimumSlots < 0) throw new ArgumentOutOfRangeException(nameof(minimumSlots));
             if (minimumAugmentLevel < 0)
                 throw new ArgumentOutOfRangeException(nameof(minimumAugmentLevel));
+
+            bool asksSlots = minimumSlots > 0 || requireSlotsAboveOrdinaryMaximum;
+            bool asksLevels = minimumAugmentLevel > 0
+                || requireAugmentLevelAboveOrdinaryMaximum;
+            if (asksSlots && asksLevels)
+            {
+                throw new NotSupportedException(
+                    "Combined slot-and-augment-level rare queries require an exact "
+                    + "per-equipment signature distribution. Independent marginals "
+                    + "must not be multiplied or reported as a measured zero.");
+            }
+
             if (expectedProbability.HasValue
                 && (double.IsNaN(expectedProbability.Value)
                     || double.IsInfinity(expectedProbability.Value)
@@ -217,16 +229,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             StrongboxEquipmentStatistics equipment,
             StrongboxRareOutcomeQuery query)
         {
-            bool asksSlots = query.MinimumSlots > 0 || query.RequireSlotsAboveOrdinaryMaximum;
             bool asksLevels = query.MinimumAugmentLevel > 0
                 || query.RequireAugmentLevelAboveOrdinaryMaximum;
-            if (asksSlots && asksLevels)
-            {
-                // Never multiply independent marginals. Exact combined queries require the
-                // per-equipment signature distribution that will be added to the core report.
-                return 0L;
-            }
-
             IReadOnlyList<StrongboxDistributionEntry> distribution = asksLevels
                 ? equipment.AugmentLevelDistribution
                 : equipment.SlotDistribution;
