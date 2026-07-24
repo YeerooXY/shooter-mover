@@ -27,6 +27,8 @@ namespace ShooterMover.Application.Weapons.Execution
         {
             if (weapon == null
                 || acceptedEmission == null
+                || acceptedEmission.Kind
+                    != WeaponFiringEmissionKind.ProjectileShot
                 || !acceptedEmission.HasValidFingerprint(weapon)
                 || !IsValidCommand(acceptedEmission.Command))
             {
@@ -445,7 +447,12 @@ namespace ShooterMover.Application.Weapons.Execution
                         acceptedEmission.Command.LifecycleGeneration)
                     || identity.ShotSequence != acceptedEmission.ShotSequence
                     || identity.ProjectileOrdinal.Value != index
-                    || !HasExpectedPayload(profile, effect))
+                    || !HasExpectedPayload(
+                        profile,
+                        acceptedEmission.Command,
+                        acceptedEmission.ShotSequence,
+                        index,
+                        effect))
                 {
                     return false;
                 }
@@ -456,13 +463,30 @@ namespace ShooterMover.Application.Weapons.Execution
 
         private static bool HasExpectedPayload(
             WeaponRuntimeFiringProfile profile,
+            WeaponFireCommand command,
+            long shotSequence,
+            int projectileOrdinal,
             IWeaponEffectDescription effect)
         {
+            WeaponVector2 expectedDirection =
+                WeaponDeterministicSpread.DirectionFor(
+                    command.AimDirection,
+                    profile.SpreadDegrees,
+                    command.DeterministicSeed,
+                    command.FireOperationId,
+                    command.EquipmentInstanceId,
+                    shotSequence,
+                    new ProjectileOrdinal(projectileOrdinal));
+
             if (profile.BehaviorId.Equals(BuiltInWeaponBehaviorIds.Projectile))
             {
                 DirectProjectileEffect direct =
                     effect as DirectProjectileEffect;
                 return direct != null
+                    && direct.Origin != null
+                    && direct.Origin.Equals(command.Origin)
+                    && direct.Direction != null
+                    && direct.Direction.Equals(expectedDirection)
                     && Same(direct.Speed, profile.ProjectileSpeed)
                     && Same(direct.Range, profile.ProjectileRange)
                     && Same(direct.DirectDamage, profile.DirectDamage)
@@ -479,6 +503,10 @@ namespace ShooterMover.Application.Weapons.Execution
                 ExplosiveProjectileEffect explosive =
                     effect as ExplosiveProjectileEffect;
                 return explosive != null
+                    && explosive.Origin != null
+                    && explosive.Origin.Equals(command.Origin)
+                    && explosive.Direction != null
+                    && explosive.Direction.Equals(expectedDirection)
                     && Same(explosive.Speed, profile.ProjectileSpeed)
                     && Same(explosive.Range, profile.ProjectileRange)
                     && Same(explosive.DirectDamage, profile.DirectDamage)
