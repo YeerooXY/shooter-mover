@@ -15,11 +15,17 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             if (values == null) throw new ArgumentNullException(nameof(values));
             long count = 0L;
             double total = 0d;
+            string previous = null;
             for (int index = 0; index < values.Count; index++)
             {
                 StrongboxDistributionEntry entry = values[index]
                     ?? throw new StrongboxSimulationIntegrityException(
                         "strongbox-simulation-bias-entry-null");
+                if (previous != null
+                    && string.CompareOrdinal(previous, entry.Key) >= 0)
+                    throw new StrongboxSimulationIntegrityException(
+                        "strongbox-simulation-bias-ordering-invalid");
+                previous = entry.Key;
                 double value;
                 if (!TryParseKey(entry.Key, out value))
                     throw new StrongboxSimulationIntegrityException(
