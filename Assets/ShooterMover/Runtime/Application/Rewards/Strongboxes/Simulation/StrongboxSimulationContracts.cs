@@ -123,8 +123,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             CategoryId = categoryId ?? throw new ArgumentNullException(nameof(categoryId));
             FamilyId = familyId;
             SlotId = slotId;
-            CanonicalTags = new ReadOnlyCollection<StableId>(
-                new List<StableId>(canonicalTags ?? Array.Empty<StableId>()));
+            CanonicalTags = CanonicalizeTags(canonicalTags);
             RarityId = rarityId;
             FirstAppearanceLevel = firstAppearanceLevel;
             AnchorLevel = anchorLevel;
@@ -153,6 +152,19 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         public int AbsoluteMaximumSlots { get; }
         public int OrdinaryMaximumAugmentLevel { get; }
         public int AbsoluteMaximumAugmentLevel { get; }
+
+        private static IReadOnlyList<StableId> CanonicalizeTags(IReadOnlyList<StableId> tags)
+        {
+            var values = new List<StableId>(tags ?? Array.Empty<StableId>());
+            for (int index = 0; index < values.Count; index++)
+                if (values[index] == null)
+                    throw new ArgumentException("Canonical tags cannot contain null.", nameof(tags));
+            values.Sort(delegate(StableId left, StableId right) { return left.CompareTo(right); });
+            for (int index = 1; index < values.Count; index++)
+                if (values[index - 1] == values[index])
+                    throw new ArgumentException("Canonical tags cannot contain duplicates.", nameof(tags));
+            return new ReadOnlyCollection<StableId>(values);
+        }
     }
 
     public sealed class StrongboxGeneratedEquipmentObservation
