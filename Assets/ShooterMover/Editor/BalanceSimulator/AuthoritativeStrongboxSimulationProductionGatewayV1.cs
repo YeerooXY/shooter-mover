@@ -62,6 +62,12 @@ namespace ShooterMover.Editor.BalanceSimulator
                 metadataById.Add(metadata.DefinitionId, metadata);
                 copied.Add(metadata);
             }
+            if (copied.Count == 0)
+            {
+                throw new ArgumentException(
+                    "At least one production equipment metadata entry is required.",
+                    nameof(equipmentDefinitions));
+            }
             copied.Sort(delegate(
                 StrongboxEquipmentMetadata left,
                 StrongboxEquipmentMetadata right)
