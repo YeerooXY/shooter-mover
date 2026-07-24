@@ -157,7 +157,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             EquipmentValidationResult validation =
                 equipmentCatalog.ValidateInstance(equipmentInstance);
-            if (!validation.IsValid)
+            if (validation == null || !validation.IsValid)
             {
                 rejectionCode = "weapon-live-equipment-invalid";
                 return false;
@@ -185,6 +185,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 rejectionCode =
                     "weapon-live-definition-unresolved:" + definitionValue;
+                return false;
+            }
+            if (catalogDefinition.Availability != WeaponCatalogAvailability.Live)
+            {
+                rejectionCode =
+                    "weapon-live-definition-not-live:" + definitionValue;
                 return false;
             }
 
