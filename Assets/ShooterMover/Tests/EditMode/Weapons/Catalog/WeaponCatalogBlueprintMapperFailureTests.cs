@@ -10,6 +10,24 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
     public sealed partial class WeaponCatalogBlueprintMapperTests
     {
         [Test]
+        public void Map_IntentMustMatchRequestedDefinitionIdentity()
+        {
+            WeaponCatalog catalog = BuildCatalog();
+
+            WeaponBlueprintMappingResult missing = WeaponCatalogBlueprintMapper.Map(
+                catalog,
+                "test_weapon.mk1",
+                Intent(expectedDefinitionId: null));
+            AssertIssue(missing, WeaponBlueprintMappingIssueCode.MissingIntentDefinitionId);
+
+            WeaponBlueprintMappingResult mismatched = WeaponCatalogBlueprintMapper.Map(
+                catalog,
+                "test_weapon.mk1",
+                Intent(expectedDefinitionId: "other_weapon.mk1"));
+            AssertIssue(mismatched, WeaponBlueprintMappingIssueCode.MismatchedIntentDefinitionId);
+        }
+
+        [Test]
         public void Map_EffectDataRequiresExplicitMissingSemantics()
         {
             WeaponCatalog catalog = BuildCatalog(
