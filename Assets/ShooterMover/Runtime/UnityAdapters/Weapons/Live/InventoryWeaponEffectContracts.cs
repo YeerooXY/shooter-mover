@@ -310,7 +310,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 null,
                 execution != null
                     && execution.Status == WeaponExecutionStatus.ReplayAccepted,
-                effectBatch == null ? 0 : 1,
+                0,
                 execution != null
                     && execution.Status == WeaponExecutionStatus.Accepted
                     && effectBatch != null ? 1 : 0,
@@ -353,6 +353,32 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     ? (long?)null
                     : deliveredBatches[deliveredBatches.Count - 1]
                         .Identity.ShotSequence;
+            }
+        }
+        public bool IsNoEmissionTransition
+        {
+            get
+            {
+                return OutcomeKind
+                        == InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition
+                    || OutcomeKind
+                        == InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition;
+            }
+        }
+        public bool IsWaitingForCadence
+        {
+            get
+            {
+                return IsNoEmissionTransition
+                    && SchedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence;
+            }
+        }
+        public bool IsReleaseTransition
+        {
+            get
+            {
+                return IsNoEmissionTransition
+                    && SchedulerStatus == WeaponFiringScheduleStatus.Released;
             }
         }
         public bool Succeeded
@@ -403,25 +429,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             WeaponFiringScheduleStatus schedulerStatus,
             int pendingDeliveryCount)
         {
-            InventoryWeaponExecutionOutcomeKind kind;
-            if (schedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence)
-            {
-                kind = InventoryWeaponExecutionOutcomeKind.WaitingForCadence;
-            }
-            else if (schedulerStatus == WeaponFiringScheduleStatus.Released)
-            {
-                kind = InventoryWeaponExecutionOutcomeKind.Released;
-            }
-            else
-            {
-                kind = replay
-                    ? InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition
-                    : InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition;
-            }
-
             return new InventoryWeaponExecutionResult(
                 equipmentInstanceId,
-                kind,
+                replay
+                    ? InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition
+                    : InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition,
                 schedulerStatus == WeaponFiringScheduleStatus.WaitingForCadence
                     ? WeaponExecutionStatus.CooldownActive
                     : replay
@@ -453,10 +465,27 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             int totalEffects = 0;
+            EquipmentInstanceId commonEquipmentInstanceId =
+                delivered[0].Identity.EquipmentInstanceId;
             for (int index = 0; index < delivered.Count; index++)
             {
                 totalEffects = checked(totalEffects + delivered[index].EffectCount);
+                if (commonEquipmentInstanceId != null
+                    && !commonEquipmentInstanceId.Equals(
+                        delivered[index].Identity.EquipmentInstanceId))
+                {
+                    commonEquipmentInstanceId = null;
+                }
             }
+            if (equipmentInstanceId != null
+                && commonEquipmentInstanceId != null
+                && !equipmentInstanceId.Equals(commonEquipmentInstanceId))
+            {
+                throw new ArgumentException(
+                    "The delivery summary equipment identity does not match its batches.",
+                    nameof(equipmentInstanceId));
+            }
+
             long lastShotSequence = delivered[delivered.Count - 1]
                 .Identity.ShotSequence;
             bool replayOnly = acceptedCount == 0 && alreadyAcceptedCount > 0;
@@ -464,7 +493,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 ? WeaponExecutionResult.Replay(totalEffects, lastShotSequence)
                 : WeaponExecutionResult.Accept(totalEffects, lastShotSequence);
             return new InventoryWeaponExecutionResult(
-                equipmentInstanceId,
+                commonEquipmentInstanceId,
                 replayOnly
                     ? InventoryWeaponExecutionOutcomeKind.ReplayedEmissionDelivery
                     : InventoryWeaponExecutionOutcomeKind.AcceptedEmissionDelivery,
@@ -473,7 +502,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 execution,
                 null,
                 replayOnly,
-                delivered.Count,
+                0,
                 acceptedCount,
                 alreadyAcceptedCount,
                 pendingDeliveryCount,
