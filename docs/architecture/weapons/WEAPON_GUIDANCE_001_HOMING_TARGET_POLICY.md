@@ -48,12 +48,27 @@ rejected explicitly.
 - `CurrentLockedTarget` resolves only the exact supplied lock. It never substitutes a respawned
   lifecycle or another actor.
 
-A valid existing lock is retained before any new policy selection. When the lock is lost,
-`WeaponReacquisitionMode.None` clears it. `ReuseTargetPolicy` evaluates the authored policy again.
-For `CurrentLockedTarget`, the exact missing reference is retained so it may be resolved again later.
+A valid existing lock is retained before any new policy selection. The current
+`WeaponGuidanceSpec` has one range value. Until a separate retention range is authored, that range
+is used for both initial acquisition and continued lock validity.
 
-The current `WeaponGuidanceSpec` has one range value. Until a separate retention range is authored,
-that range is used for both initial acquisition and continued lock validity.
+## Acquisition lifecycle
+
+`WeaponGuidanceState` records acquisition history explicitly:
+
+- `NotAcquired`: no target has ever been acquired; the authored selection policy may run;
+- `Tracking`: an exact identity and lifecycle generation is currently locked;
+- `WaitingForReacquisition`: a previous lock was lost and `ReuseTargetPolicy` may run again;
+- `LostWithoutReacquisition`: a previous lock was lost under `None`; this is terminal and the
+  projectile continues without selecting another target.
+
+Losing a target under `WeaponReacquisitionMode.None` therefore cannot become indistinguishable
+from a projectile that has never acquired a target. Later simulation steps remain in
+`LostWithoutReacquisition` and do not invoke target selection.
+
+For `CurrentLockedTarget` with `ReuseTargetPolicy`, the exact missing identity and lifecycle
+reference is retained while waiting. It may resolve that same target again, but it never substitutes
+another actor or lifecycle generation.
 
 ## Activation, turn rate, and ricochet pause
 
@@ -65,8 +80,9 @@ active portion of the step. The implementation never replaces the projectile dir
 target direction without passing through that turn-rate limit.
 
 `WeaponGuidanceState.PauseAfterRicochet` accepts the externally resolved reflected direction,
-updates the acquisition aim to that trajectory, preserves the exact target lock, and pauses guidance
-for an explicit duration.
+updates the acquisition aim to that trajectory, preserves the exact target lock and acquisition
+lifecycle, and pauses guidance for an explicit duration. A ricochet therefore cannot reset the
+one-acquisition limit.
 
 ## Intentionally deferred
 
@@ -75,6 +91,7 @@ for an explicit duration.
 - collision and ricochet resolution;
 - effect emission;
 - scene or Stage 1 adoption;
-- focused deterministic geometry and target-selection tests.
+- focused deterministic geometry and target-selection tests;
+- overflow hardening for extreme finite coordinates outside expected game-scale values.
 
 Tests are intentionally deferred until the guidance contract reaches its final reviewed form.
