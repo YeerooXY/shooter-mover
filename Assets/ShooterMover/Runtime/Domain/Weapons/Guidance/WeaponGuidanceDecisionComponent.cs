@@ -108,7 +108,7 @@ namespace ShooterMover.Domain.Weapons.Guidance
             double acquisitionRangeSquared =
                 guidance.AcquisitionRange * guidance.AcquisitionRange;
 
-            WeaponGuidanceTargetSnapshot resolvedTarget;
+            WeaponGuidanceTargetSnapshot resolvedTarget = null;
             WeaponGuidanceTargetReference nextTrackedTarget = state.TrackedTarget;
             WeaponGuidanceAcquisitionState nextAcquisitionState = state.AcquisitionState;
             bool hasTarget = state.AcquisitionState
