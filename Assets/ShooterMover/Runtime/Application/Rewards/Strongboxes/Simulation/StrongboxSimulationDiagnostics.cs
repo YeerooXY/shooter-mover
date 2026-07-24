@@ -24,15 +24,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             string diagnostic)
         {
             Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
-            if (observedCount < 0L)
-            {
-                throw new ArgumentOutOfRangeException(nameof(observedCount));
-            }
+            if (observedCount < 0L) throw new ArgumentOutOfRangeException(nameof(observedCount));
             if (!Enum.IsDefined(typeof(StrongboxZeroDropInterpretation), interpretation))
-            {
                 throw new ArgumentOutOfRangeException(nameof(interpretation));
-            }
-
             ObservedCount = observedCount;
             Interpretation = interpretation;
             Diagnostic = diagnostic ?? string.Empty;
@@ -56,25 +50,16 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             double? expectedProbability = null)
         {
             if (string.IsNullOrWhiteSpace(queryId))
-            {
                 throw new ArgumentException("Query ID is required.", nameof(queryId));
-            }
-            if (minimumSlots < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(minimumSlots));
-            }
+            if (minimumSlots < 0) throw new ArgumentOutOfRangeException(nameof(minimumSlots));
             if (minimumAugmentLevel < 0)
-            {
                 throw new ArgumentOutOfRangeException(nameof(minimumAugmentLevel));
-            }
             if (expectedProbability.HasValue
                 && (double.IsNaN(expectedProbability.Value)
                     || double.IsInfinity(expectedProbability.Value)
                     || expectedProbability.Value <= 0d
                     || expectedProbability.Value > 1d))
-            {
                 throw new ArgumentOutOfRangeException(nameof(expectedProbability));
-            }
 
             QueryId = queryId.Trim();
             EquipmentDefinitionId = equipmentDefinitionId;
@@ -125,8 +110,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
     }
 
     /// <summary>
-    /// Analysis-only diagnostics over a completed production-backed simulation report.
-    /// It never evaluates loot weights and never changes generation decisions.
+    /// Analysis-only diagnostics. This type never evaluates selection weights and never
+    /// upgrades incomplete metadata into a claim of production impossibility.
     /// </summary>
     public static class StrongboxSimulationDiagnostics
     {
@@ -139,24 +124,22 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
 
             var observed = new Dictionary<StableId, long>();
             for (int index = 0; index < report.Equipment.Count; index++)
-            {
-                StrongboxEquipmentStatistics value = report.Equipment[index];
-                observed[value.Metadata.DefinitionId] = value.Count;
-            }
+                observed[report.Equipment[index].Metadata.DefinitionId] =
+                    report.Equipment[index].Count;
 
             var definitions = new List<StrongboxEquipmentMetadata>(
                 production.EquipmentDefinitions ?? Array.Empty<StrongboxEquipmentMetadata>());
             definitions.Sort(CompareMetadata);
-
             var result = new List<StrongboxCatalogCoverageEntry>(definitions.Count);
+
             for (int index = 0; index < definitions.Count; index++)
             {
                 StrongboxEquipmentMetadata metadata = definitions[index];
                 long count;
                 observed.TryGetValue(metadata.DefinitionId, out count);
-
                 StrongboxZeroDropInterpretation interpretation;
                 string diagnostic;
+
                 if (count > 0L)
                 {
                     interpretation = StrongboxZeroDropInterpretation.Observed;
@@ -167,11 +150,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                     interpretation = StrongboxZeroDropInterpretation.Unavailable;
                     diagnostic = "production metadata marks the definition unavailable";
                 }
-                else if (metadata.TopBoxOnly
-                    && !IsTopTierScenario(report.Request.Primary.StrongboxTierId))
+                else if (metadata.TopBoxOnly)
                 {
-                    interpretation = StrongboxZeroDropInterpretation.BoxPolicyExcluded;
-                    diagnostic = "TopBoxOnly definition under a non-top-tier scenario";
+                    interpretation = StrongboxZeroDropInterpretation.CatalogLimitation;
+                    diagnostic = "TopBoxOnly compatibility requires explicit production tier metadata; the simulator does not infer tier ordering from IDs";
                 }
                 else
                 {
@@ -196,46 +178,29 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             if (query == null) throw new ArgumentNullException(nameof(query));
 
             long observed = 0L;
-            for (int equipmentIndex = 0;
-                 equipmentIndex < report.Equipment.Count;
-                 equipmentIndex++)
+            for (int index = 0; index < report.Equipment.Count; index++)
             {
-                StrongboxEquipmentStatistics equipment = report.Equipment[equipmentIndex];
+                StrongboxEquipmentStatistics equipment = report.Equipment[index];
                 if (query.EquipmentDefinitionId != null
                     && equipment.Metadata.DefinitionId != query.EquipmentDefinitionId)
-                {
                     continue;
-                }
-
-                observed += CountMatchingSignatures(equipment, query);
+                observed += CountSingleAxisMatches(equipment, query);
             }
 
             long sampleCount = query.EquipmentDefinitionId == null
                 ? report.GeneratedCount
                 : CountDefinitionCopies(report, query.EquipmentDefinitionId);
-            double probability = sampleCount == 0L
-                ? 0d
-                : (double)observed / sampleCount;
-
-            double? upperBound = null;
-            if (observed == 0L && sampleCount > 0L)
-            {
-                // Rule-of-three descriptive 95% upper bound. This is not a fabricated
-                // production probability and is deliberately labelled as a bound.
-                upperBound = Math.Min(1d, 3d / sampleCount);
-            }
-
-            long? suggested = null;
-            if (query.ExpectedProbability.HasValue)
-            {
-                suggested = checked((long)Math.Ceiling(
-                    3d / query.ExpectedProbability.Value));
-            }
-
+            double probability = sampleCount == 0L ? 0d : (double)observed / sampleCount;
+            double? upperBound = observed == 0L && sampleCount > 0L
+                ? Math.Min(1d, 3d / sampleCount)
+                : (double?)null;
+            long? suggested = query.ExpectedProbability.HasValue
+                ? checked((long)Math.Ceiling(3d / query.ExpectedProbability.Value))
+                : (long?)null;
             string interpretation = observed > 0L
                 ? "observed"
                 : sampleCount == 0L
-                    ? "not evaluated because the conditioned definition had no generated copies"
+                    ? "not evaluated because no conditioned copies were generated"
                     : "possible-but-not-observed unless production metadata proves impossibility";
 
             return new StrongboxRareOutcomeResult(
@@ -248,56 +213,36 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 interpretation);
         }
 
-        private static long CountMatchingSignatures(
+        private static long CountSingleAxisMatches(
             StrongboxEquipmentStatistics equipment,
             StrongboxRareOutcomeQuery query)
         {
-            long count = 0L;
-            for (int slotIndex = 0;
-                 slotIndex < equipment.SlotDistribution.Count;
-                 slotIndex++)
+            bool asksSlots = query.MinimumSlots > 0 || query.RequireSlotsAboveOrdinaryMaximum;
+            bool asksLevels = query.MinimumAugmentLevel > 0
+                || query.RequireAugmentLevelAboveOrdinaryMaximum;
+            if (asksSlots && asksLevels)
             {
-                StrongboxDistributionEntry slotEntry = equipment.SlotDistribution[slotIndex];
-                int slots;
-                if (!int.TryParse(slotEntry.Key, out slots)
-                    || slots < query.MinimumSlots
-                    || (query.RequireSlotsAboveOrdinaryMaximum
-                        && slots <= equipment.Metadata.OrdinaryMaximumSlots))
-                {
-                    continue;
-                }
-
-                if (query.MinimumAugmentLevel == 0
-                    && !query.RequireAugmentLevelAboveOrdinaryMaximum)
-                {
-                    count += slotEntry.Count;
-                    continue;
-                }
-
-                // Existing per-equipment reports keep independent slot and level marginals.
-                // Exact combined-query counts must come from the global signature table or a
-                // future per-equipment combined-signature table, so do not multiply marginals.
+                // Never multiply independent marginals. Exact combined queries require the
+                // per-equipment signature distribution that will be added to the core report.
                 return 0L;
             }
 
-            if (query.MinimumSlots == 0)
+            IReadOnlyList<StrongboxDistributionEntry> distribution = asksLevels
+                ? equipment.AugmentLevelDistribution
+                : equipment.SlotDistribution;
+            long count = 0L;
+            for (int index = 0; index < distribution.Count; index++)
             {
-                for (int levelIndex = 0;
-                     levelIndex < equipment.AugmentLevelDistribution.Count;
-                     levelIndex++)
-                {
-                    StrongboxDistributionEntry levelEntry =
-                        equipment.AugmentLevelDistribution[levelIndex];
-                    int level;
-                    if (!int.TryParse(levelEntry.Key, out level)
-                        || level < query.MinimumAugmentLevel
-                        || (query.RequireAugmentLevelAboveOrdinaryMaximum
-                            && level <= equipment.Metadata.OrdinaryMaximumAugmentLevel))
-                    {
-                        continue;
-                    }
-                    count += levelEntry.Count;
-                }
+                int value;
+                if (!int.TryParse(distribution[index].Key, out value)) continue;
+                bool matches = asksLevels
+                    ? value >= query.MinimumAugmentLevel
+                        && (!query.RequireAugmentLevelAboveOrdinaryMaximum
+                            || value > equipment.Metadata.OrdinaryMaximumAugmentLevel)
+                    : value >= query.MinimumSlots
+                        && (!query.RequireSlotsAboveOrdinaryMaximum
+                            || value > equipment.Metadata.OrdinaryMaximumSlots);
+                if (matches) count += distribution[index].Count;
             }
             return count;
         }
@@ -307,13 +252,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             StableId definitionId)
         {
             for (int index = 0; index < report.Equipment.Count; index++)
-            {
-                StrongboxEquipmentStatistics value = report.Equipment[index];
-                if (value.Metadata.DefinitionId == definitionId)
-                {
-                    return value.Count;
-                }
-            }
+                if (report.Equipment[index].Metadata.DefinitionId == definitionId)
+                    return report.Equipment[index].Count;
             return 0L;
         }
 
@@ -321,13 +261,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             StrongboxEquipmentMetadata left,
             StrongboxEquipmentMetadata right)
         {
-            int category = CompareIds(left.CategoryId, right.CategoryId);
-            if (category != 0) return category;
-            int slot = CompareIds(left.SlotId, right.SlotId);
-            if (slot != 0) return slot;
-            int family = CompareIds(left.FamilyId, right.FamilyId);
-            if (family != 0) return family;
-            return left.DefinitionId.CompareTo(right.DefinitionId);
+            int value = CompareIds(left.CategoryId, right.CategoryId);
+            if (value != 0) return value;
+            value = CompareIds(left.SlotId, right.SlotId);
+            if (value != 0) return value;
+            value = CompareIds(left.FamilyId, right.FamilyId);
+            return value != 0 ? value : left.DefinitionId.CompareTo(right.DefinitionId);
         }
 
         private static int CompareIds(StableId left, StableId right)
@@ -336,13 +275,6 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             if (left == null) return -1;
             if (right == null) return 1;
             return left.CompareTo(right);
-        }
-
-        private static bool IsTopTierScenario(StableId tierId)
-        {
-            // The simulator must not duplicate tier ordering. Until the production gateway
-            // exposes explicit top-tier metadata, it cannot prove this gate from an ID alone.
-            return false;
         }
     }
 }
