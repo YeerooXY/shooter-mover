@@ -8,8 +8,10 @@ using ShooterMover.Domain.Weapons.Execution;
 namespace ShooterMover.Domain.Weapons
 {
     /// <summary>
-    /// Immutable derived weapon profile. It preserves canonical blueprint identity and
-    /// equipment-instance identity while keeping item level as metadata rather than combat scaling.
+    /// Immutable derived weapon profile. It preserves canonical definition and exact equipment
+    /// instance identity while keeping item level as metadata rather than combat scaling. Existing
+    /// evaluated contracts remain the final runtime values; canonical authored grouping is exposed
+    /// without allowing spawned attacks to query inventory, augments, skills, or the catalogue.
     /// </summary>
     public sealed class EffectiveWeapon
     {
@@ -62,6 +64,58 @@ namespace ShooterMover.Domain.Weapons
         public WeaponImpactSpec Impact { get; }
         public WeaponDamageSpec Damage { get; }
         public WeaponEffects Effects { get; }
+
+        public bool UsesCanonicalAuthoredDefinition
+        {
+            get { return !Blueprint.IsTransitionalCatalogProjection; }
+        }
+        public WeaponDeliverySpec AuthoredDelivery { get { return Blueprint.Delivery; } }
+        public WeaponPresentation Presentation { get { return Blueprint.Presentation; } }
+        public WeaponDropMetadata DropMetadata { get { return Blueprint.DropMetadata; } }
+        public double MovementPenaltyPercent
+        {
+            get
+            {
+                return Blueprint.BaseStats == null
+                    ? 0d
+                    : Blueprint.BaseStats.MovementPenaltyPercent;
+            }
+        }
+        public WeaponAttackDistance MaximumAttackDistance
+        {
+            get
+            {
+                if (Projectile != null)
+                {
+                    return WeaponAttackDistance.Limited(Projectile.Range);
+                }
+                return Blueprint.BaseStats == null
+                    ? null
+                    : Blueprint.BaseStats.MaximumAttackDistance;
+            }
+        }
+        public PierceValue Pierce
+        {
+            get
+            {
+                if (Projectile != null)
+                {
+                    return Projectile.Pierce;
+                }
+                return Blueprint.BaseStats == null
+                    ? new PierceValue(0)
+                    : Blueprint.BaseStats.Pierce;
+            }
+        }
+        public RicochetValue AuthoredRicochet
+        {
+            get
+            {
+                return Blueprint.BaseStats == null
+                    ? new RicochetValue(0)
+                    : Blueprint.BaseStats.Ricochet;
+            }
+        }
 
         private static ReadOnlyCollection<AugmentInstance> CopyAugments(
             IEnumerable<AugmentInstance> values)
