@@ -21,9 +21,15 @@ namespace ShooterMover.Domain.Weapons
                     "A weapon display name is required.",
                     nameof(displayName));
             }
+            if (string.IsNullOrWhiteSpace(familyId))
+            {
+                throw new ArgumentException(
+                    "A weapon family identity is required by the current architecture.",
+                    nameof(familyId));
+            }
 
             DisplayName = displayName;
-            FamilyId = familyId ?? string.Empty;
+            FamilyId = familyId;
         }
 
         public WeaponDefinitionId DefinitionId { get; }
