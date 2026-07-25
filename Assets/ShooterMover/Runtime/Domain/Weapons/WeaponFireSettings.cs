@@ -143,8 +143,14 @@ namespace ShooterMover.Domain.Weapons
             {
                 throw new ArgumentNullException(nameof(burst));
             }
+            if (double.IsNaN(rateOfFire)
+                || double.IsInfinity(rateOfFire)
+                || rateOfFire <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rateOfFire));
+            }
 
-            return Create(
+            return new WeaponFireSettings(
                 WeaponFireMode.Burst,
                 rateOfFire,
                 1,
@@ -211,10 +217,11 @@ namespace ShooterMover.Domain.Weapons
                             nameof(shotsPerBurst),
                             "Burst fire requires at least two sequential shots.");
                     }
-                    if (intervalBetweenBurstShotsSeconds <= 0d)
+                    if (intervalBetweenBurstShotsSeconds <= 0d
+                        || intervalAfterBurstSeconds <= 0d)
                     {
                         throw new ArgumentException(
-                            "Burst fire requires a positive interval between sequential shots.");
+                            "Transitional burst fire requires explicit in-burst and post-burst intervals.");
                     }
                     if (damageTicksPerSecond != 0d)
                     {
