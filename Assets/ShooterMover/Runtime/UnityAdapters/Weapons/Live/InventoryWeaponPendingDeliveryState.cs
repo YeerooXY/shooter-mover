@@ -227,7 +227,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     right.EmissionFireOperationId.ToString());
         }
 
-        private static string BuildIdentityKey(
+        internal static string BuildIdentityKey(
             WeaponActorInstanceId actorId,
             LifecycleGeneration lifecycleGeneration,
             FireOperationId emissionFireOperationId)
@@ -296,9 +296,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Caller-owned immutable outbox. Completed fingerprints are delivery receipts only: they stop
-    /// exact scheduler replays from reconstructing already delivered emissions and never participate
-    /// in firing admission, cadence, trigger, targeting, or shot sequencing.
+    /// Caller-owned immutable outbox. Capacity limits only actual pending work. Delivered receipts
+    /// prevent reconstruction only while the canonical scheduler retains the matching accepted
+    /// schedule replay record; receipt pruning never removes pending entries or interprets firing.
     /// </summary>
     public sealed class InventoryWeaponPendingDeliveryState
     {
@@ -317,6 +317,18 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 throw new ArgumentOutOfRangeException(nameof(capacity));
             }
+            if (pendingEntries == null)
+            {
+                throw new ArgumentNullException(nameof(pendingEntries));
+            }
+            if (deliveredFingerprints == null)
+            {
+                throw new ArgumentNullException(nameof(deliveredFingerprints));
+            }
+            if (pendingEntries.Count > capacity)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pendingEntries));
+            }
 
             Capacity = capacity;
             var ordered = new List<InventoryWeaponPendingDeliveryEntry>(pendingEntries);
@@ -326,11 +338,31 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 StringComparer.Ordinal);
             for (int index = 0; index < ordered.Count; index++)
             {
-                pendingByIdentity.Add(ordered[index].IdentityKey, ordered[index]);
+                InventoryWeaponPendingDeliveryEntry entry = ordered[index];
+                if (entry == null
+                    || !entry.HasValidFingerprint()
+                    || pendingByIdentity.ContainsKey(entry.IdentityKey))
+                {
+                    throw new ArgumentException(
+                        "Pending delivery entries must be valid and identity-unique.",
+                        nameof(pendingEntries));
+                }
+                pendingByIdentity.Add(entry.IdentityKey, entry);
             }
-            deliveredByIdentity = new Dictionary<string, string>(
-                deliveredFingerprints,
-                StringComparer.Ordinal);
+
+            deliveredByIdentity = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, string> receipt in deliveredFingerprints)
+            {
+                if (string.IsNullOrWhiteSpace(receipt.Key)
+                    || string.IsNullOrWhiteSpace(receipt.Value)
+                    || pendingByIdentity.ContainsKey(receipt.Key))
+                {
+                    throw new ArgumentException(
+                        "Delivered receipts must be valid and disjoint from pending work.",
+                        nameof(deliveredFingerprints));
+                }
+                deliveredByIdentity.Add(receipt.Key, receipt.Value);
+            }
         }
 
         public static InventoryWeaponPendingDeliveryState Empty
@@ -344,6 +376,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
         }
 
+        /// <summary>Maximum number of actual pending delivery entries.</summary>
         public int Capacity { get; }
         public int PendingCount { get { return pending.Count; } }
         public int DeliveredReceiptCount { get { return deliveredByIdentity.Count; } }
@@ -386,9 +419,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 InventoryWeaponPendingDeliveryEntry>(
                     pendingByIdentity,
                     StringComparer.Ordinal);
-            var nextDeliveredByIdentity = new Dictionary<string, string>(
-                deliveredByIdentity,
-                StringComparer.Ordinal);
             int addedCount = 0;
             bool sawExactDuplicate = false;
 
@@ -420,7 +450,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
 
                 string deliveredFingerprint;
-                if (nextDeliveredByIdentity.TryGetValue(
+                if (deliveredByIdentity.TryGetValue(
                         entry.IdentityKey,
                         out deliveredFingerprint))
                 {
@@ -437,7 +467,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     continue;
                 }
 
-                if (nextPending.Count + nextDeliveredByIdentity.Count >= Capacity)
+                if (nextPending.Count >= Capacity)
                 {
                     return RejectAdmission(
                         InventoryWeaponPendingAdmissionStatus.CapacityExceeded,
@@ -465,7 +495,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 new InventoryWeaponPendingDeliveryState(
                     Capacity,
                     nextPending,
-                    nextDeliveredByIdentity),
+                    deliveredByIdentity),
                 addedCount,
                 string.Empty);
         }
@@ -518,6 +548,75 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 Capacity,
                 nextPending,
                 nextDelivered);
+        }
+
+        /// <summary>
+        /// Removes only delivered receipts whose accepted schedules are no longer present in the
+        /// canonical scheduler replay state. Pending work is always retained unchanged.
+        /// </summary>
+        public InventoryWeaponPendingDeliveryState PruneDeliveredReceipts(
+            WeaponFiringSessionState retainedSchedulerState)
+        {
+            if (retainedSchedulerState == null
+                || !retainedSchedulerState.HasValidFingerprint())
+            {
+                throw new ArgumentException(
+                    "A valid scheduler state is required for receipt pruning.",
+                    nameof(retainedSchedulerState));
+            }
+            if (deliveredByIdentity.Count == 0)
+            {
+                return this;
+            }
+
+            var requiredReceiptKeys = new HashSet<string>(StringComparer.Ordinal);
+            for (int replayIndex = 0;
+                replayIndex < retainedSchedulerState.ReplayRecords.Count;
+                replayIndex++)
+            {
+                WeaponFiringReplayRecord replay =
+                    retainedSchedulerState.ReplayRecords[replayIndex];
+                if (replay == null
+                    || !replay.HasAcceptedSchedule
+                    || replay.AcceptedSchedule == null)
+                {
+                    continue;
+                }
+
+                for (int emissionIndex = 0;
+                    emissionIndex < replay.AcceptedSchedule.Emissions.Count;
+                    emissionIndex++)
+                {
+                    WeaponFiringScheduler.AcceptedEmission emission =
+                        replay.AcceptedSchedule.Emissions[emissionIndex];
+                    if (emission == null)
+                    {
+                        throw new InvalidOperationException(
+                            "A retained scheduler replay contains an invalid emission.");
+                    }
+                    requiredReceiptKeys.Add(
+                        InventoryWeaponPendingDeliveryEntry.BuildIdentityKey(
+                            emission.Command.ActorId,
+                            emission.Command.LifecycleGeneration,
+                            emission.EmissionFireOperationId));
+                }
+            }
+
+            var nextDelivered = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, string> receipt in deliveredByIdentity)
+            {
+                if (requiredReceiptKeys.Contains(receipt.Key))
+                {
+                    nextDelivered.Add(receipt.Key, receipt.Value);
+                }
+            }
+
+            return nextDelivered.Count == deliveredByIdentity.Count
+                ? this
+                : new InventoryWeaponPendingDeliveryState(
+                    Capacity,
+                    pending,
+                    nextDelivered);
         }
 
         private InventoryWeaponPendingAdmissionResult RejectAdmission(
