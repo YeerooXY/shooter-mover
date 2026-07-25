@@ -82,23 +82,33 @@ namespace ShooterMover.Domain.Weapons
             WeaponDamageCategory category,
             double directDamage,
             double areaDamage,
-            double damageOverTimePerSecond,
-            double damageOverTimeDurationSeconds,
+            WeaponDamageOverTimeStats damageOverTime,
             double knockback)
         {
             Category = category;
             DirectDamage = directDamage;
             AreaDamage = areaDamage;
-            DamageOverTimePerSecond = damageOverTimePerSecond;
-            DamageOverTimeDurationSeconds = damageOverTimeDurationSeconds;
+            DamageOverTime = damageOverTime;
             Knockback = knockback;
         }
 
         public WeaponDamageCategory Category { get; }
         public double DirectDamage { get; }
         public double AreaDamage { get; }
-        public double DamageOverTimePerSecond { get; }
-        public double DamageOverTimeDurationSeconds { get; }
+
+        /// <summary>
+        /// Canonical optional DoT data. Legacy magnitude/duration projections remain below for
+        /// the current evaluator and execution adapters.
+        /// </summary>
+        public WeaponDamageOverTimeStats DamageOverTime { get; }
+        public double DamageOverTimePerSecond
+        {
+            get { return DamageOverTime == null ? 0d : DamageOverTime.DamagePerSecond; }
+        }
+        public double DamageOverTimeDurationSeconds
+        {
+            get { return DamageOverTime == null ? 0d : DamageOverTime.DurationSeconds; }
+        }
         public double Knockback { get; }
 
         public bool HasAreaDamage
@@ -108,9 +118,31 @@ namespace ShooterMover.Domain.Weapons
 
         public bool HasDamageOverTime
         {
-            get { return DamageOverTimePerSecond > 0d; }
+            get { return DamageOverTime != null; }
         }
 
+        /// <summary>
+        /// Canonical damaging-weapon factory. Area damage remains a delivery/effect concern.
+        /// </summary>
+        public static WeaponDamageSpec Create(
+            WeaponDamageCategory category,
+            double directDamage,
+            WeaponDamageOverTimeStats damageOverTime,
+            double knockback)
+        {
+            return CreateCore(
+                category,
+                directDamage,
+                0d,
+                damageOverTime,
+                knockback);
+        }
+
+        /// <summary>
+        /// Transitional compatibility factory for the flat catalogue and existing effect adapter.
+        /// Zero/zero DoT values are converted to an absent typed value rather than retained as
+        /// canonical placeholder data.
+        /// </summary>
         public static WeaponDamageSpec Create(
             WeaponDamageCategory category,
             double directDamage,
@@ -119,19 +151,12 @@ namespace ShooterMover.Domain.Weapons
             double damageOverTimeDurationSeconds,
             double knockback)
         {
-            if (!Enum.IsDefined(typeof(WeaponDamageCategory), category))
-            {
-                throw new ArgumentOutOfRangeException(nameof(category));
-            }
-            RequireFiniteNonNegative(directDamage, nameof(directDamage));
-            RequireFiniteNonNegative(areaDamage, nameof(areaDamage));
             RequireFiniteNonNegative(
                 damageOverTimePerSecond,
                 nameof(damageOverTimePerSecond));
             RequireFiniteNonNegative(
                 damageOverTimeDurationSeconds,
                 nameof(damageOverTimeDurationSeconds));
-            RequireFiniteNonNegative(knockback, nameof(knockback));
 
             bool hasDotDamage = damageOverTimePerSecond > 0d;
             bool hasDotDuration = damageOverTimeDurationSeconds > 0d;
@@ -141,12 +166,39 @@ namespace ShooterMover.Domain.Weapons
                     "Damage-over-time magnitude and duration must both be zero or both be positive.");
             }
 
+            WeaponDamageOverTimeStats damageOverTime = hasDotDamage
+                ? new WeaponDamageOverTimeStats(
+                    damageOverTimePerSecond,
+                    damageOverTimeDurationSeconds)
+                : null;
+            return CreateCore(
+                category,
+                directDamage,
+                areaDamage,
+                damageOverTime,
+                knockback);
+        }
+
+        private static WeaponDamageSpec CreateCore(
+            WeaponDamageCategory category,
+            double directDamage,
+            double areaDamage,
+            WeaponDamageOverTimeStats damageOverTime,
+            double knockback)
+        {
+            if (!Enum.IsDefined(typeof(WeaponDamageCategory), category))
+            {
+                throw new ArgumentOutOfRangeException(nameof(category));
+            }
+            RequireFiniteNonNegative(directDamage, nameof(directDamage));
+            RequireFiniteNonNegative(areaDamage, nameof(areaDamage));
+            RequireFiniteNonNegative(knockback, nameof(knockback));
+
             return new WeaponDamageSpec(
                 category,
                 directDamage,
                 areaDamage,
-                damageOverTimePerSecond,
-                damageOverTimeDurationSeconds,
+                damageOverTime,
                 knockback);
         }
 
