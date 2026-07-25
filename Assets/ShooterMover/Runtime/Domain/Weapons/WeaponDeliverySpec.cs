@@ -236,15 +236,33 @@ namespace ShooterMover.Domain.Weapons
         public WeaponSpecialDeliverySettings(
             WeaponBehaviorId behaviorId,
             WeaponSpecialParameterSet parameters)
+            : this(behaviorId, parameters, false, false)
+        {
+        }
+
+        /// <summary>
+        /// Approved special schemas opt in explicitly when their adapter consumes the canonical
+        /// maximum-distance or ordered-target Pierce values. These flags do not implement a Unity
+        /// delivery route and cannot create projectile-speed compatibility.
+        /// </summary>
+        public WeaponSpecialDeliverySettings(
+            WeaponBehaviorId behaviorId,
+            WeaponSpecialParameterSet parameters,
+            bool usesCanonicalRange,
+            bool usesCanonicalPierce)
         {
             BehaviorId = behaviorId
                 ?? throw new ArgumentNullException(nameof(behaviorId));
             Parameters = parameters
                 ?? throw new ArgumentNullException(nameof(parameters));
+            UsesCanonicalRange = usesCanonicalRange;
+            UsesCanonicalPierce = usesCanonicalPierce;
         }
 
         public WeaponBehaviorId BehaviorId { get; }
         public WeaponSpecialParameterSet Parameters { get; }
+        public bool UsesCanonicalRange { get; }
+        public bool UsesCanonicalPierce { get; }
     }
 
     /// <summary>
@@ -292,6 +310,29 @@ namespace ShooterMover.Domain.Weapons
                 return Type == WeaponDeliveryType.Normal
                     || Type == WeaponDeliveryType.Orb
                     || Type == WeaponDeliveryType.Rocket;
+            }
+        }
+
+        public bool SupportsProjectileSpeedModifiers
+        {
+            get { return IsTravelling; }
+        }
+
+        public bool SupportsCanonicalRangeModifiers
+        {
+            get
+            {
+                return Type != WeaponDeliveryType.Special
+                    || (Special != null && Special.UsesCanonicalRange);
+            }
+        }
+
+        public bool SupportsCanonicalPierceModifiers
+        {
+            get
+            {
+                return Type != WeaponDeliveryType.Special
+                    || (Special != null && Special.UsesCanonicalPierce);
             }
         }
 
