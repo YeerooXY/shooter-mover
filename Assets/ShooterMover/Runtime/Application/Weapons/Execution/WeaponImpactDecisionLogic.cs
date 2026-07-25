@@ -16,8 +16,6 @@ namespace ShooterMover.Application.Weapons.Execution
             StableId.Parse("weapon.ricochet-final-bounce");
         private static readonly StableId RicochetProjectileOrdinalPurpose =
             StableId.Parse("weapon.ricochet-projectile-ordinal");
-        private static readonly StableId RicochetWallContactPurpose =
-            StableId.Parse("weapon.ricochet-wall-contact");
 
         public static WeaponImpactDecision Evaluate(
             WeaponImpactRequest request,
@@ -291,8 +289,8 @@ namespace ShooterMover.Application.Weapons.Execution
             return DeterministicRandom.CreateSubstream(
                 stream.StreamSeed,
                 stream.AlgorithmVersion,
-                RicochetWallContactPurpose,
-                checked((ulong)request.WallContactId.Value.GetHashCode()));
+                request.WallContactId.Value,
+                checked((ulong)request.SimulationStep));
         }
     }
 }
