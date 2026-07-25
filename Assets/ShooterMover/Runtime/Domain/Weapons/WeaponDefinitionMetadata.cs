@@ -5,10 +5,6 @@ using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Domain.Weapons
 {
-    /// <summary>
-    /// Presentation references are independent from combat semantics. Missing art is a content
-    /// validation failure and never changes delivery behaviour.
-    /// </summary>
     public sealed class WeaponPresentation
     {
         public WeaponPresentation(
@@ -19,15 +15,9 @@ namespace ShooterMover.Domain.Weapons
             string impactReference,
             string explosionReference)
         {
-            InventorySideProfileReference = RequireText(
-                inventorySideProfileReference,
-                nameof(inventorySideProfileReference));
-            MountedTopDownReference = RequireText(
-                mountedTopDownReference,
-                nameof(mountedTopDownReference));
-            DeliveryReference = RequireText(
-                deliveryReference,
-                nameof(deliveryReference));
+            InventorySideProfileReference = RequireText(inventorySideProfileReference, nameof(inventorySideProfileReference));
+            MountedTopDownReference = RequireText(mountedTopDownReference, nameof(mountedTopDownReference));
+            DeliveryReference = RequireText(deliveryReference, nameof(deliveryReference));
             TrailReference = OptionalText(trailReference);
             ImpactReference = OptionalText(impactReference);
             ExplosionReference = OptionalText(explosionReference);
@@ -44,9 +34,7 @@ namespace ShooterMover.Domain.Weapons
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException(
-                    "A presentation reference is required.",
-                    parameterName);
+                throw new ArgumentException("A presentation reference is required.", parameterName);
             }
             return value;
         }
@@ -68,12 +56,9 @@ namespace ShooterMover.Domain.Weapons
     {
         MinimumTier = 1,
         ExplicitAllowedTierIds = 2,
+        ExplicitAllowedTiers = ExplicitAllowedTierIds,
     }
 
-    /// <summary>
-    /// MinimumTier is a numeric progression rule. ExplicitAllowedTierIds is a named-box rule and
-    /// never derives identity from a tier number or from the current highest production tier.
-    /// </summary>
     public sealed class WeaponStrongboxEligibility
     {
         private readonly ReadOnlyCollection<StableId> allowedTierIds;
@@ -105,8 +90,7 @@ namespace ShooterMover.Domain.Weapons
                 Array.Empty<StableId>());
         }
 
-        public static WeaponStrongboxEligibility FromAllowedTierIds(
-            IEnumerable<StableId> tierIds)
+        public static WeaponStrongboxEligibility FromAllowedTierIds(IEnumerable<StableId> tierIds)
         {
             if (tierIds == null)
             {
@@ -144,6 +128,11 @@ namespace ShooterMover.Domain.Weapons
                 WeaponStrongboxEligibilityMode.ExplicitAllowedTierIds,
                 0,
                 copy);
+        }
+
+        internal static WeaponStrongboxEligibility FromAllowedTiers(IEnumerable<StableId> tierIds)
+        {
+            return FromAllowedTierIds(tierIds);
         }
 
         public bool IsEligibleForProgressionTier(int tier)
@@ -190,11 +179,6 @@ namespace ShooterMover.Domain.Weapons
         }
     }
 
-    /// <summary>
-    /// Equipment-specific selection metadata consumed by the future canonical strongbox
-    /// projection. Strongbox rarity percentages, level rolls, and augment tables remain owned by
-    /// strongbox tier/profile authorities.
-    /// </summary>
     public sealed class WeaponDropMetadata
     {
         public WeaponDropMetadata(
@@ -205,10 +189,8 @@ namespace ShooterMover.Domain.Weapons
             double baseSelectionWeight,
             WeaponStrongboxEligibility strongboxEligibility)
         {
-            EquipmentDefinitionId = equipmentDefinitionId
-                ?? throw new ArgumentNullException(nameof(equipmentDefinitionId));
-            RarityId = rarityId
-                ?? throw new ArgumentNullException(nameof(rarityId));
+            EquipmentDefinitionId = equipmentDefinitionId ?? throw new ArgumentNullException(nameof(equipmentDefinitionId));
+            RarityId = rarityId ?? throw new ArgumentNullException(nameof(rarityId));
             if (!Enum.IsDefined(typeof(WeaponDropAvailability), availability))
             {
                 throw new ArgumentOutOfRangeException(nameof(availability));
@@ -227,8 +209,7 @@ namespace ShooterMover.Domain.Weapons
             Availability = availability;
             PeakDropLevel = peakDropLevel;
             BaseSelectionWeight = baseSelectionWeight;
-            StrongboxEligibility = strongboxEligibility
-                ?? throw new ArgumentNullException(nameof(strongboxEligibility));
+            StrongboxEligibility = strongboxEligibility ?? throw new ArgumentNullException(nameof(strongboxEligibility));
         }
 
         public StableId EquipmentDefinitionId { get; }
