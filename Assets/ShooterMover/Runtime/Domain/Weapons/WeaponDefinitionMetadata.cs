@@ -67,31 +67,31 @@ namespace ShooterMover.Domain.Weapons
     public enum WeaponStrongboxEligibilityMode
     {
         MinimumTier = 1,
-        ExplicitAllowedTiers = 2,
+        ExplicitAllowedTierIds = 2,
     }
 
     /// <summary>
-    /// Stable strongbox eligibility. MinimumTier means that tier and every later tier.
-    /// ExplicitAllowedTiers is reserved for genuinely named-tier-exclusive content.
+    /// MinimumTier is a numeric progression rule. ExplicitAllowedTierIds is a named-box rule and
+    /// never derives identity from a tier number or from the current highest production tier.
     /// </summary>
     public sealed class WeaponStrongboxEligibility
     {
-        private readonly ReadOnlyCollection<int> allowedTiers;
+        private readonly ReadOnlyCollection<StableId> allowedTierIds;
 
         private WeaponStrongboxEligibility(
             WeaponStrongboxEligibilityMode mode,
             int minimumTier,
-            IEnumerable<int> tiers)
+            IEnumerable<StableId> tierIds)
         {
             Mode = mode;
             MinimumTier = minimumTier;
-            allowedTiers = new ReadOnlyCollection<int>(
-                new List<int>(tiers ?? Array.Empty<int>()));
+            allowedTierIds = new ReadOnlyCollection<StableId>(
+                new List<StableId>(tierIds ?? Array.Empty<StableId>()));
         }
 
         public WeaponStrongboxEligibilityMode Mode { get; }
         public int MinimumTier { get; }
-        public IReadOnlyList<int> AllowedTiers { get { return allowedTiers; } }
+        public IReadOnlyList<StableId> AllowedTierIds { get { return allowedTierIds; } }
 
         public static WeaponStrongboxEligibility FromMinimumTier(int minimumTier)
         {
@@ -102,67 +102,75 @@ namespace ShooterMover.Domain.Weapons
             return new WeaponStrongboxEligibility(
                 WeaponStrongboxEligibilityMode.MinimumTier,
                 minimumTier,
-                Array.Empty<int>());
+                Array.Empty<StableId>());
         }
 
-        public static WeaponStrongboxEligibility FromAllowedTiers(
-            IEnumerable<int> tiers)
+        public static WeaponStrongboxEligibility FromAllowedTierIds(
+            IEnumerable<StableId> tierIds)
         {
-            if (tiers == null)
+            if (tierIds == null)
             {
-                throw new ArgumentNullException(nameof(tiers));
+                throw new ArgumentNullException(nameof(tierIds));
             }
 
-            var copy = new List<int>(tiers);
-            copy.Sort();
+            var copy = new List<StableId>(tierIds);
             if (copy.Count == 0)
             {
                 throw new ArgumentException(
-                    "At least one explicit strongbox tier is required.",
-                    nameof(tiers));
+                    "At least one explicit strongbox tier identity is required.",
+                    nameof(tierIds));
             }
             for (int index = 0; index < copy.Count; index++)
             {
-                if (copy[index] < 1)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(tiers));
-                }
-                if (index > 0 && copy[index - 1] == copy[index])
+                if (copy[index] == null)
                 {
                     throw new ArgumentException(
-                        "Explicit strongbox tiers must be unique.",
-                        nameof(tiers));
+                        "Explicit strongbox tier identities cannot contain null values.",
+                        nameof(tierIds));
+                }
+            }
+            copy.Sort();
+            for (int index = 1; index < copy.Count; index++)
+            {
+                if (copy[index - 1].Equals(copy[index]))
+                {
+                    throw new ArgumentException(
+                        "Explicit strongbox tier identities must be unique.",
+                        nameof(tierIds));
                 }
             }
 
             return new WeaponStrongboxEligibility(
-                WeaponStrongboxEligibilityMode.ExplicitAllowedTiers,
+                WeaponStrongboxEligibilityMode.ExplicitAllowedTierIds,
                 0,
                 copy);
         }
 
-        public bool IsEligible(int tier)
+        public bool IsEligibleForProgressionTier(int tier)
         {
-            if (tier < 1)
+            return Mode == WeaponStrongboxEligibilityMode.MinimumTier
+                && tier >= MinimumTier;
+        }
+
+        public bool IsExplicitlyAllowed(StableId tierId)
+        {
+            if (tierId == null
+                || Mode != WeaponStrongboxEligibilityMode.ExplicitAllowedTierIds)
             {
                 return false;
             }
-            if (Mode == WeaponStrongboxEligibilityMode.MinimumTier)
-            {
-                return tier >= MinimumTier;
-            }
 
             int minimum = 0;
-            int maximum = allowedTiers.Count - 1;
+            int maximum = allowedTierIds.Count - 1;
             while (minimum <= maximum)
             {
                 int middle = minimum + ((maximum - minimum) / 2);
-                int candidate = allowedTiers[middle];
-                if (candidate == tier)
+                int comparison = allowedTierIds[middle].CompareTo(tierId);
+                if (comparison == 0)
                 {
                     return true;
                 }
-                if (candidate < tier)
+                if (comparison < 0)
                 {
                     minimum = middle + 1;
                 }
@@ -172,6 +180,13 @@ namespace ShooterMover.Domain.Weapons
                 }
             }
             return false;
+        }
+
+        public bool IsEligible(StableId tierId, int progressionTier)
+        {
+            return Mode == WeaponStrongboxEligibilityMode.MinimumTier
+                ? IsEligibleForProgressionTier(progressionTier)
+                : IsExplicitlyAllowed(tierId);
         }
     }
 
