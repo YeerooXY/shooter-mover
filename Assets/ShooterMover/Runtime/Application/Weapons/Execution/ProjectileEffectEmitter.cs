@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
@@ -28,8 +27,16 @@ namespace ShooterMover.Application.Weapons.Execution
             ProjectileLifecycleState state = decision.StateAfter;
             ProjectileExecutionProfile profile = state.Profile;
             int eventOrdinal = state.EventOrdinal;
-            bool canonicalRocket = profile.SourceBlueprint.Delivery != null
-                && profile.SourceBlueprint.Delivery.Type == WeaponDeliveryType.Rocket;
+            bool canonicalRocket = profile.IsCanonicalRocket;
+            if (canonicalRocket
+                && decision.Contact.Kind == ProjectileContactKind.Enemy
+                && decision.EnemyImpactApplied
+                && (decision.ExplosionTriggerReasons
+                    & WeaponExplosionTriggerReason.EnemyImpact) == 0)
+            {
+                throw new InvalidOperationException(
+                    "projectile-emission-canonical-rocket-enemy-explosion-required");
+            }
 
             if (decision.EnemyImpactApplied && !canonicalRocket)
             {
@@ -66,7 +73,7 @@ namespace ShooterMover.Application.Weapons.Execution
                 if (profile.Effects.Explosion == null)
                 {
                     throw new InvalidOperationException(
-                        "Projectile explosion decisions require authored explosion effect data.");
+                        "projectile-emission-explosion-effect-required");
                 }
 
                 emissions.Add(Create(
@@ -87,7 +94,32 @@ namespace ShooterMover.Application.Weapons.Execution
                     decision.TerminationReason));
             }
 
+            if (canonicalRocket
+                && decision.Contact.Kind == ProjectileContactKind.Enemy
+                && decision.EnemyImpactApplied
+                && !ContainsCanonicalRocketExplosion(emissions))
+            {
+                throw new InvalidOperationException(
+                    "projectile-emission-canonical-rocket-explosion-missing");
+            }
+
             return new ProjectileEmissionResult(emissions);
+        }
+
+        private static bool ContainsCanonicalRocketExplosion(
+            IList<ProjectileEffectEmission> emissions)
+        {
+            for (int index = 0; index < emissions.Count; index++)
+            {
+                ProjectileEffectEmission emission = emissions[index];
+                if (emission != null
+                    && emission.Kind == ProjectileEffectEmissionKind.Explosion
+                    && emission.IsCanonicalRocket)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static ProjectileEffectEmission Create(
@@ -108,6 +140,7 @@ namespace ShooterMover.Application.Weapons.Execution
                 eventOrdinal,
                 explosionReasons,
                 terminationReason,
+                state.Profile,
                 state.Profile.Damage,
                 state.Profile.Effects);
         }
