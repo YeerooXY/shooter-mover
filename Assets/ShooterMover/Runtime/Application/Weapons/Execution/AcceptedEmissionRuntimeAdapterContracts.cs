@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
@@ -137,6 +138,77 @@ namespace ShooterMover.Application.Weapons.Execution
                 batch ?? throw new ArgumentNullException(nameof(batch)),
                 null,
                 null);
+        }
+
+        public static AcceptedEmissionRuntimeAdapterResult CanonicalProjectile(
+            ProjectileExecutionProfile projectileProfile,
+            IList<AcceptedProjectileLaunch> launches)
+        {
+            if (projectileProfile == null || !projectileProfile.IsCanonical)
+            {
+                throw new ArgumentException(
+                    "A canonical projectile profile is required.",
+                    nameof(projectileProfile));
+            }
+            if (launches == null || launches.Count < 1)
+            {
+                throw new ArgumentException(
+                    "At least one canonical projectile launch is required.",
+                    nameof(launches));
+            }
+
+            var effects = new List<IWeaponEffectDescription>(launches.Count);
+            for (int index = 0; index < launches.Count; index++)
+            {
+                AcceptedProjectileLaunch launch = launches[index];
+                if (launch == null
+                    || !ReferenceEquals(launch.Profile, projectileProfile)
+                    || launch.Identity == null
+                    || launch.Identity.SourceIdentity.ProjectileOrdinal.Value != index)
+                {
+                    throw new ArgumentException(
+                        "Canonical projectile launches must use one shared profile and ordered unique ordinals.",
+                        nameof(launches));
+                }
+                effects.Add(new CanonicalProjectileLaunchEffect(
+                    launch.Request,
+                    launch.InitialState));
+            }
+
+            WeaponEffectBatch batch = new WeaponEffectBatch(effects);
+            WeaponExplosionEffect explosion = projectileProfile.Effects.Explosion;
+            WeaponDamageOverTimeStats dot = projectileProfile.Damage.DamageOverTime;
+            WeaponChainArcEffect chain = projectileProfile.Effects.ChainArc;
+            WeaponRuntimeFiringProfile compatibilityProfile =
+                new WeaponRuntimeFiringProfile(
+                    projectileProfile.DefinitionId,
+                    projectileProfile.IsCanonicalRocket
+                        ? BuiltInWeaponBehaviorIds.Explosive
+                        : BuiltInWeaponBehaviorIds.Projectile,
+                    0,
+                    launches.Count,
+                    0d,
+                    projectileProfile.Projectile.Speed,
+                    projectileProfile.Projectile.Range,
+                    projectileProfile.Damage.DirectDamage,
+                    projectileProfile.Pierce.GuaranteedHits,
+                    0d,
+                    explosion == null ? 0d : explosion.Radius,
+                    dot == null ? 0d : dot.DamagePerSecond,
+                    dot == null ? 0d : dot.DurationSeconds,
+                    0d,
+                    0d,
+                    chain == null ? 0 : chain.MaximumTargets,
+                    chain == null ? 0d : chain.AcquisitionRange,
+                    projectileProfile.Damage.Knockback,
+                    WeaponDamageCategoryConversion.ToCatalogValue(
+                        projectileProfile.Damage.Category));
+
+            return CanonicalProjectile(
+                projectileProfile,
+                launches,
+                compatibilityProfile,
+                batch);
         }
 
         public static AcceptedEmissionRuntimeAdapterResult CanonicalProjectile(
