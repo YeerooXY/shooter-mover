@@ -57,6 +57,24 @@ holdings and catalog authorities, explicit blueprint mapping policy, installed a
 Resolution fails closed when exact semantics are unavailable. It never substitutes a starter weapon,
 related family, blaster, definition-ID fallback, inferred behavior, or item-level combat scaling.
 
+### Extension-boundary containment
+
+Injected mapping and augment policies cannot unwind the live firing boundary. The resolver contains each
+extension point and returns stable diagnostics:
+
+- mapping-policy exception: `weapon-live-blueprint-policy-exception`;
+- blueprint mapper overflow: `weapon-live-blueprint-mapping-numerical-failure`;
+- other blueprint mapper exception: `weapon-live-blueprint-mapping-exception`;
+- augment resolver exception: `weapon-live-augment-resolution-exception`.
+
+`InventoryBackedWeaponExecutionAdapter` also guards the complete effective-resolution call as a final
+containment layer. An otherwise unclassified overflow returns
+`weapon-live-effective-resolution-numerical-exception`; any other unexpected resolver exception returns
+`weapon-live-effective-resolution-exception`.
+
+All of these failures leave scheduler and pending-delivery snapshots unchanged and are reported as
+integration-side invalid tuning rather than escaping into the gameplay loop.
+
 ## Pending-delivery state
 
 `InventoryWeaponPendingDeliveryState` is immutable and replace-on-write. Every pending entry preserves:
@@ -347,6 +365,11 @@ Rejected without fallback:
 
 Manual source tracing covered:
 
+- throwing custom blueprint mapping policy;
+- blueprint mapper numerical overflow and non-numerical exception diagnostics;
+- throwing custom augment resolver;
+- unexpected effective-resolver overflow and general exception containment at the adapter boundary;
+- unchanged scheduler and pending state after effective-resolution failure;
 - stale delivered-receipt identity reuse after scheduler replay pruning;
 - receipt alignment before admission, after scheduler transition, and after delivery;
 - long-running receipt pruning beyond scheduler replay-retention capacity;
