@@ -165,8 +165,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             WeaponCatalogSpreadInterpretation spreadInterpretation,
             int pulsesPerShot,
             double intervalBetweenPulsesSeconds,
-            double intervalAfterBurstSeconds,
             double intervalBetweenBurstShotsSeconds,
+            double intervalAfterBurstSeconds,
             WeaponProjectileKind projectileKind,
             WeaponProjectileTerminationBehavior projectileTermination,
             WeaponDamageCategory? explicitDamageCategory,
@@ -184,8 +184,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             SpreadInterpretation = spreadInterpretation;
             PulsesPerShot = pulsesPerShot;
             IntervalBetweenPulsesSeconds = intervalBetweenPulsesSeconds;
-            IntervalAfterBurstSeconds = intervalAfterBurstSeconds;
             IntervalBetweenBurstShotsSeconds = intervalBetweenBurstShotsSeconds;
+            IntervalAfterBurstSeconds = intervalAfterBurstSeconds;
             ProjectileKind = projectileKind;
             ProjectileTermination = projectileTermination;
             ExplicitDamageCategory = explicitDamageCategory;
@@ -204,8 +204,8 @@ namespace ShooterMover.Application.Weapons.Catalog
         public WeaponCatalogSpreadInterpretation SpreadInterpretation { get; }
         public int PulsesPerShot { get; }
         public double IntervalBetweenPulsesSeconds { get; }
-        public double IntervalAfterBurstSeconds { get; }
         public double IntervalBetweenBurstShotsSeconds { get; }
+        public double IntervalAfterBurstSeconds { get; }
         public WeaponProjectileKind ProjectileKind { get; }
         public WeaponProjectileTerminationBehavior ProjectileTermination { get; }
         public WeaponDamageCategory? ExplicitDamageCategory { get; }
