@@ -75,6 +75,13 @@ namespace ShooterMover.Application.Weapons.Execution
             out WeaponBehaviorId behaviorId);
     }
 
+    /// <summary>
+    /// Legacy flat-catalog inference retained for WeaponExecutionCore tooling/tests only.
+    /// Production behavior selection is structural and comes from EffectiveWeapon projection.
+    /// </summary>
+    [Obsolete(
+        "Legacy tooling/test selector only. Live behavior comes from EffectiveWeapon structure.",
+        false)]
     public sealed class DefaultWeaponBehaviorSelector : IWeaponBehaviorSelector
     {
         private const double Epsilon = 0.000000001d;
@@ -140,5 +147,5 @@ namespace ShooterMover.Application.Weapons.Execution
             id = new WeaponDefinitionId(definition.RuntimeWeaponReferenceId.ToString());
             return true;
         }
-}
+    }
 }

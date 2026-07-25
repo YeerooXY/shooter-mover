@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -97,27 +98,23 @@ namespace ShooterMover.UnityAdapters.Players
     }
 
     /// <summary>
-    /// Production composition root for inventory-backed player weapons. It consumes the
-    /// real player runtime, route loadout, holdings authority, catalogs, and transactional
-    /// Unity effect sink without owning a parallel gameplay authority.
+    /// Production composition root for inventory-backed player weapons. Runtime is the sole public
+    /// firing and delivery surface; the concrete execution adapter remains private composition detail.
     /// </summary>
-    public sealed class PlayerInventoryWeaponRuntimeCompositionRoot
+    public sealed class PlayerInventoryWeaponRuntimeCompositionRoot : IDisposable
     {
         private PlayerInventoryWeaponRuntimeCompositionRoot(
             PlayerRuntimeWeaponStateAdapter playerState,
             RouteProfileActiveWeaponSource activeWeapon,
-            InventoryBackedWeaponExecutionAdapter executionAdapter,
             InventoryWeaponRuntimeComposition runtime)
         {
             PlayerState = playerState;
             ActiveWeapon = activeWeapon;
-            ExecutionAdapter = executionAdapter;
             Runtime = runtime;
         }
 
         public PlayerRuntimeWeaponStateAdapter PlayerState { get; }
         public RouteProfileActiveWeaponSource ActiveWeapon { get; }
-        public InventoryBackedWeaponExecutionAdapter ExecutionAdapter { get; }
         public InventoryWeaponRuntimeComposition Runtime { get; }
 
         public static PlayerInventoryWeaponRuntimeCompositionRoot Create(
@@ -128,6 +125,8 @@ namespace ShooterMover.UnityAdapters.Players
             WeaponCatalog weaponCatalog,
             IInventoryWeaponEffectBatchSink effectSink,
             int simulationTicksPerSecond,
+            IWeaponBlueprintMappingPolicyResolver mappingPolicyResolver,
+            IWeaponAugmentModifierSetResolver augmentModifierResolver,
             int initialSlotIndex = 0)
         {
             var playerState = new PlayerRuntimeWeaponStateAdapter(
@@ -141,7 +140,11 @@ namespace ShooterMover.UnityAdapters.Players
                 weaponCatalog ?? throw new ArgumentNullException(nameof(weaponCatalog)),
                 playerState,
                 effectSink ?? throw new ArgumentNullException(nameof(effectSink)),
-                simulationTicksPerSecond);
+                simulationTicksPerSecond,
+                mappingPolicyResolver
+                    ?? throw new ArgumentNullException(nameof(mappingPolicyResolver)),
+                augmentModifierResolver
+                    ?? throw new ArgumentNullException(nameof(augmentModifierResolver)));
             var runtime = new InventoryWeaponRuntimeComposition(
                 playerState,
                 activeWeapon,
@@ -149,8 +152,41 @@ namespace ShooterMover.UnityAdapters.Players
             return new PlayerInventoryWeaponRuntimeCompositionRoot(
                 playerState,
                 activeWeapon,
-                executionAdapter,
                 runtime);
+        }
+
+        /// <summary>
+        /// Retained source-compatible construction. It uses an empty mapping registry and therefore
+        /// rejects every fire request explicitly until the caller supplies production mapping policy.
+        /// It never falls back to WeaponExecutionCore or legacy behavior inference.
+        /// </summary>
+        public static PlayerInventoryWeaponRuntimeCompositionRoot Create(
+            PlayerRuntimeComposition playerRuntime,
+            PlayerRouteProfilePayloadV1 routeProfile,
+            IPlayerHoldingsAuthorityV1 holdings,
+            EquipmentCatalog equipmentCatalog,
+            WeaponCatalog weaponCatalog,
+            IInventoryWeaponEffectBatchSink effectSink,
+            int simulationTicksPerSecond,
+            int initialSlotIndex = 0)
+        {
+            return Create(
+                playerRuntime,
+                routeProfile,
+                holdings,
+                equipmentCatalog,
+                weaponCatalog,
+                effectSink,
+                simulationTicksPerSecond,
+                new WeaponBlueprintMappingPolicyRegistry(
+                    new WeaponCatalogBlueprintMappingIntent[0]),
+                new UnaugmentedWeaponModifierSetResolver(),
+                initialSlotIndex);
+        }
+
+        public void Dispose()
+        {
+            Runtime.Dispose();
         }
     }
 }

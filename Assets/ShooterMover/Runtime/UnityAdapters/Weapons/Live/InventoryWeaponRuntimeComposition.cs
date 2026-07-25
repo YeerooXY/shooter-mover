@@ -16,8 +16,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Legacy active-slot projection retained for callers outside the production mount
-    /// path. Production gameplay uses the mounted constructor below and does not switch.
+    /// Legacy active-slot projection retained for callers outside the production mount path.
+    /// Production gameplay uses the mounted constructor below and does not switch.
     /// </summary>
     public sealed class RouteProfileActiveWeaponSource :
         IActiveWeaponEquipmentInstanceSource
@@ -72,8 +72,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public InventoryWeaponSlotSelectionStatus SelectSlot(int slotIndex)
         {
             if (slotIndex < 0
-                || slotIndex
-                    >= PlayerRouteProfilePayloadV1.WeaponSlotCount
+                || slotIndex >= PlayerRouteProfilePayloadV1.WeaponSlotCount
                 || routeProfile.WeaponSlots[slotIndex]
                     .EquipmentInstanceStableId == null)
             {
@@ -102,8 +101,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// One currently enabled physical mount. It carries only position, exact equipment
-    /// identity, and the muzzle's lateral offset. Activation policy remains upstream.
+    /// One currently enabled physical mount. It carries only position, exact equipment identity,
+    /// and the muzzle's lateral offset. Activation policy remains upstream.
     /// </summary>
     public sealed class InventoryWeaponMountedRuntimeV1
     {
@@ -127,25 +126,53 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         }
 
         public StableId MountStableId { get; }
-
         public EquipmentInstanceId EquipmentInstanceId { get; }
-
         public double LateralOffset { get; }
     }
 
     /// <summary>
-    /// Composes actor/lifecycle facts with either the retained active-slot source or a
-    /// set of concurrently firing physical mounts. Each mount receives a locked exact
-    /// equipment identity, operation ID, origin, seed, and independent WPN-CORE state.
+    /// Sole live owner of scheduler state, downstream pending delivery, and input-edge state for one
+    /// actor lifecycle. Scheduling, receipt alignment, pending admission, and delivery are serialized
+    /// under firingStateGate. Only this composition submits the exact retained first due entry.
     /// </summary>
-    public sealed class InventoryWeaponRuntimeComposition
+    public sealed class InventoryWeaponRuntimeComposition : IDisposable
     {
+        private sealed class MountAttempt
+        {
+            internal MountAttempt(
+                StableId mountStableId,
+                int mountOrdinal,
+                EquipmentInstanceId equipmentInstanceId,
+                InventoryWeaponExecutionResult result,
+                bool statePairPublished)
+            {
+                MountStableId = mountStableId;
+                MountOrdinal = mountOrdinal;
+                EquipmentInstanceId = equipmentInstanceId;
+                Result = result ?? throw new ArgumentNullException(nameof(result));
+                StatePairPublished = statePairPublished;
+            }
+
+            internal StableId MountStableId { get; }
+            internal int MountOrdinal { get; }
+            internal EquipmentInstanceId EquipmentInstanceId { get; }
+            internal InventoryWeaponExecutionResult Result { get; }
+            internal bool StatePairPublished { get; }
+        }
+
+        private readonly object firingStateGate = new object();
         private readonly IInventoryWeaponActorStateSource actorStateSource;
         private readonly InventoryWeaponFireIntentFactory intentFactory;
         private readonly InventoryBackedWeaponExecutionAdapter executionAdapter;
         private readonly RouteProfileActiveWeaponSource activeWeaponSource;
         private readonly ReadOnlyCollection<InventoryWeaponMountedRuntimeV1>
             mountedWeapons;
+        private WeaponFiringSessionState firingSessionState;
+        private InventoryWeaponPendingDeliveryState pendingDeliveryState;
+        private InventoryWeaponTriggerEdgeState triggerEdgeState;
+        private WeaponActorInstanceId activeActorId;
+        private LifecycleGeneration activeLifecycleGeneration;
+        private bool disposed;
 
         public InventoryWeaponRuntimeComposition(
             IInventoryWeaponActorStateSource actorState,
@@ -163,6 +190,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             mountedWeapons = new ReadOnlyCollection<
                 InventoryWeaponMountedRuntimeV1>(
                 new List<InventoryWeaponMountedRuntimeV1>());
+            firingSessionState = WeaponFiringSessionState.Empty;
+            pendingDeliveryState = InventoryWeaponPendingDeliveryState.Empty;
+            triggerEdgeState = InventoryWeaponTriggerEdgeState.Empty;
         }
 
         public InventoryWeaponRuntimeComposition(
@@ -174,6 +204,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 ?? throw new ArgumentNullException(nameof(actorState));
             executionAdapter = adapter
                 ?? throw new ArgumentNullException(nameof(adapter));
+            activeWeaponSource = null;
+            intentFactory = null;
+
             var mounts = new List<InventoryWeaponMountedRuntimeV1>(
                 enabledMounts
                 ?? throw new ArgumentNullException(nameof(enabledMounts)));
@@ -200,6 +233,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             mountedWeapons = new ReadOnlyCollection<
                 InventoryWeaponMountedRuntimeV1>(mounts);
+            firingSessionState = WeaponFiringSessionState.Empty;
+            pendingDeliveryState = InventoryWeaponPendingDeliveryState.Empty;
+            triggerEdgeState = InventoryWeaponTriggerEdgeState.Empty;
         }
 
         public bool IsConcurrentMountMode
@@ -209,18 +245,45 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public int EnabledMountCount
         {
+            get { return IsConcurrentMountMode ? mountedWeapons.Count : 1; }
+        }
+
+        public IReadOnlyList<InventoryWeaponMountedRuntimeV1> EnabledMounts
+        {
+            get { return mountedWeapons; }
+        }
+
+        public WeaponFiringSessionState FiringSessionState
+        {
             get
             {
-                return IsConcurrentMountMode
-                    ? mountedWeapons.Count
-                    : 1;
+                lock (firingStateGate)
+                {
+                    return firingSessionState;
+                }
             }
         }
 
-        public IReadOnlyList<InventoryWeaponMountedRuntimeV1>
-            EnabledMounts
+        public InventoryWeaponPendingDeliveryState PendingDeliveryState
         {
-            get { return mountedWeapons; }
+            get
+            {
+                lock (firingStateGate)
+                {
+                    return pendingDeliveryState;
+                }
+            }
+        }
+
+        public InventoryWeaponTriggerEdgeState TriggerEdgeState
+        {
+            get
+            {
+                lock (firingStateGate)
+                {
+                    return triggerEdgeState;
+                }
+            }
         }
 
         public int SelectedSlotIndex
@@ -238,15 +301,16 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (activeWeaponSource == null)
             {
                 return slotIndex >= 0
-                        && slotIndex
-                            < PlayerRouteProfilePayloadV1.WeaponSlotCount
-                    ? InventoryWeaponSlotSelectionStatus
-                        .ExactDuplicateNoChange
+                        && slotIndex < PlayerRouteProfilePayloadV1.WeaponSlotCount
+                    ? InventoryWeaponSlotSelectionStatus.ExactDuplicateNoChange
                     : InventoryWeaponSlotSelectionStatus.InvalidSlot;
             }
             return activeWeaponSource.SelectSlot(slotIndex);
         }
 
+        [Obsolete(
+            "One-shot Pressed compatibility only. Live input must supply explicit trigger state.",
+            false)]
         public bool TryCreateFireIntent(
             FireOperationId fireOperationId,
             long simulationTick,
@@ -256,18 +320,50 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             out InventoryWeaponFireRequest request,
             out string rejectionCode)
         {
+            return TryCreateFireIntent(
+                fireOperationId,
+                simulationTick,
+                deterministicSeed,
+                origin,
+                aimDirection,
+                WeaponTriggerSignal.Pressed,
+                out request,
+                out rejectionCode);
+        }
+
+        public bool TryCreateFireIntent(
+            FireOperationId fireOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal,
+            out InventoryWeaponFireRequest request,
+            out string rejectionCode)
+        {
             request = null;
+            if (!HasValidTriggerInput(
+                    fireOperationId,
+                    simulationTick,
+                    origin,
+                    aimDirection,
+                    triggerSignal))
+            {
+                rejectionCode = "weapon-live-intent-invalid";
+                return false;
+            }
+
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
-            if (!actorStateSource.TryResolveActorState(
-                out actorId,
-                out generation)
-                || actorId == null
-                || generation == null)
+            lock (firingStateGate)
             {
-                rejectionCode =
-                    "weapon-live-actor-state-unresolved";
-                return false;
+                if (!TryResolveAndActivateCurrentLifecycleLocked(
+                        out actorId,
+                        out generation,
+                        out rejectionCode))
+                {
+                    return false;
+                }
             }
 
             if (!IsConcurrentMountMode)
@@ -280,14 +376,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     deterministicSeed,
                     origin,
                     aimDirection,
+                    triggerSignal,
                     out request,
                     out rejectionCode);
-            }
-
-            if (fireOperationId == null)
-            {
-                rejectionCode = "weapon-live-intent-invalid";
-                return false;
             }
 
             InventoryWeaponMountedRuntimeV1 first = mountedWeapons[0];
@@ -300,7 +391,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 simulationTick,
                 deterministicSeed,
                 origin,
-                aimDirection);
+                aimDirection,
+                triggerSignal);
             rejectionCode = string.Empty;
             return true;
         }
@@ -308,9 +400,33 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public InventoryWeaponExecutionResult TryExecute(
             InventoryWeaponFireRequest request)
         {
-            return executionAdapter.TryExecute(request);
+            lock (firingStateGate)
+            {
+                string rejectionCode;
+                if (!ValidateRequestLifecycleLocked(request, out rejectionCode))
+                {
+                    return Reject(rejectionCode);
+                }
+
+                MountAttempt scheduled = ScheduleAndPublishLocked(
+                    request,
+                    null,
+                    0);
+                InventoryWeaponExecutionResult drained =
+                    DrainDueLocked(request.SimulationTick);
+                return CombineScheduledAndDrained(
+                    new[] { scheduled },
+                    drained);
+            }
         }
 
+        /// <summary>
+        /// One-shot source compatibility only. Repeated automatic input must use UpdateTriggerInput
+        /// or explicit TryTrigger edges; this method owns no cadence and always means one Pressed edge.
+        /// </summary>
+        [Obsolete(
+            "One-shot Pressed compatibility only. Use UpdateTriggerInput for live held input.",
+            false)]
         public InventoryWeaponExecutionResult TryFire(
             FireOperationId fireOperationId,
             long simulationTick,
@@ -318,80 +434,837 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             WeaponVector2 origin,
             WeaponVector2 aimDirection)
         {
-            if (!IsConcurrentMountMode)
+            return TryTrigger(
+                fireOperationId,
+                simulationTick,
+                deterministicSeed,
+                origin,
+                aimDirection,
+                WeaponTriggerSignal.Pressed);
+        }
+
+        /// <summary>
+        /// Lower-level explicit edge API for a caller that already owns input-edge classification.
+        /// Every enabled mount receives the same signal with deterministic per-mount operation IDs.
+        /// </summary>
+        public InventoryWeaponExecutionResult TryTrigger(
+            FireOperationId fireOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal)
+        {
+            lock (firingStateGate)
             {
-                InventoryWeaponFireRequest request;
+                if (!HasValidTriggerInput(
+                        fireOperationId,
+                        simulationTick,
+                        origin,
+                        aimDirection,
+                        triggerSignal))
+                {
+                    return Reject("weapon-live-trigger-invalid");
+                }
+
+                WeaponActorInstanceId actorId;
+                LifecycleGeneration generation;
                 string rejectionCode;
-                if (!TryCreateFireIntent(
+                if (!TryResolveAndActivateCurrentLifecycleLocked(
+                        out actorId,
+                        out generation,
+                        out rejectionCode))
+                {
+                    return Reject(rejectionCode);
+                }
+
+                return TriggerAllMountsAndDrainLocked(
+                    actorId,
+                    generation,
                     fireOperationId,
                     simulationTick,
                     deterministicSeed,
                     origin,
                     aimDirection,
-                    out request,
-                    out rejectionCode))
+                    triggerSignal,
+                    null,
+                    false);
+            }
+        }
+
+        /// <summary>
+        /// Input-facing live API. A candidate physical edge is published only after every mount has
+        /// either published its scheduler/pending pair or produced an exact canonical replay.
+        /// </summary>
+        public InventoryWeaponExecutionResult UpdateTriggerInput(
+            bool isHeld,
+            FireOperationId inputOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection)
+        {
+            lock (firingStateGate)
+            {
+                WeaponActorInstanceId actorId;
+                LifecycleGeneration generation;
+                string rejectionCode;
+                if (!TryResolveAndActivateCurrentLifecycleLocked(
+                        out actorId,
+                        out generation,
+                        out rejectionCode))
                 {
                     return Reject(rejectionCode);
                 }
-                return executionAdapter.TryExecute(request);
+
+                InventoryWeaponTriggerEdgeDecision edge = triggerEdgeState.Resolve(
+                    isHeld,
+                    inputOperationId,
+                    simulationTick,
+                    deterministicSeed,
+                    origin,
+                    aimDirection);
+                if (edge == null || !edge.Succeeded)
+                {
+                    return Reject(
+                        edge == null
+                            ? "weapon-live-trigger-edge-null-result"
+                            : edge.RejectionCode);
+                }
+
+                if (!edge.HasSchedulerRequest)
+                {
+                    triggerEdgeState = edge.NextState;
+                    return DrainDueLocked(simulationTick);
+                }
+
+                return TriggerAllMountsAndDrainLocked(
+                    actorId,
+                    generation,
+                    inputOperationId,
+                    simulationTick,
+                    deterministicSeed,
+                    origin,
+                    aimDirection,
+                    edge.TriggerSignal.Value,
+                    edge.NextState,
+                    true);
+            }
+        }
+
+        /// <summary>
+        /// Advances downstream delivery independently of trigger transitions. This must be called
+        /// every simulation tick by the eventual gameplay loop so accepted burst/pulse emissions and
+        /// retryable sink failures continue even while input is idle or released.
+        /// </summary>
+        public InventoryWeaponExecutionResult Advance(long simulationTick)
+        {
+            lock (firingStateGate)
+            {
+                return simulationTick < 0L
+                    ? Reject("weapon-live-advance-invalid")
+                    : DrainDueLocked(simulationTick);
+            }
+        }
+
+        public InventoryWeaponExecutionResult DrainDueEmissions(
+            long simulationTick)
+        {
+            return Advance(simulationTick);
+        }
+
+        public void Dispose()
+        {
+            lock (firingStateGate)
+            {
+                if (disposed)
+                {
+                    return;
+                }
+
+                disposed = true;
+                ClearLifecycleStateLocked();
+                activeActorId = null;
+                activeLifecycleGeneration = null;
+            }
+        }
+
+        private InventoryWeaponExecutionResult TriggerAllMountsAndDrainLocked(
+            WeaponActorInstanceId actorId,
+            LifecycleGeneration generation,
+            FireOperationId fireOperationId,
+            long simulationTick,
+            ulong deterministicSeed,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal,
+            InventoryWeaponTriggerEdgeState candidateEdgeState,
+            bool publishCandidateEdgeWhenSafe)
+        {
+            var scheduled = new List<MountAttempt>();
+            if (!IsConcurrentMountMode)
+            {
+                InventoryWeaponFireRequest request;
+                string rejectionCode;
+                if (!intentFactory.TryCreate(
+                        actorId,
+                        fireOperationId,
+                        generation,
+                        simulationTick,
+                        deterministicSeed,
+                        origin,
+                        aimDirection,
+                        triggerSignal,
+                        out request,
+                        out rejectionCode))
+                {
+                    scheduled.Add(new MountAttempt(
+                        null,
+                        0,
+                        activeWeaponSource == null
+                            ? null
+                            : activeWeaponSource.SelectedEquipmentInstanceId,
+                        Reject(
+                            activeWeaponSource == null
+                                ? null
+                                : activeWeaponSource.SelectedEquipmentInstanceId,
+                            WeaponExecutionStatus.InvalidCommand,
+                            rejectionCode,
+                            false,
+                            null),
+                        false));
+                }
+                else
+                {
+                    scheduled.Add(ScheduleAndPublishLocked(request, null, 0));
+                }
+            }
+            else
+            {
+                for (int index = 0; index < mountedWeapons.Count; index++)
+                {
+                    InventoryWeaponMountedRuntimeV1 mount = mountedWeapons[index];
+                    try
+                    {
+                        InventoryWeaponFireRequest request = CreateMountedRequest(
+                            actorId,
+                            generation,
+                            mount,
+                            index,
+                            fireOperationId,
+                            simulationTick,
+                            deterministicSeed,
+                            origin,
+                            aimDirection,
+                            triggerSignal);
+                        scheduled.Add(ScheduleAndPublishLocked(
+                            request,
+                            mount.MountStableId,
+                            index));
+                    }
+                    catch (ArgumentException)
+                    {
+                        scheduled.Add(new MountAttempt(
+                            mount.MountStableId,
+                            index,
+                            mount.EquipmentInstanceId,
+                            Reject(
+                                mount.EquipmentInstanceId,
+                                WeaponExecutionStatus.InvalidCommand,
+                                "weapon-live-mounted-request-invalid",
+                                false,
+                                null),
+                            false));
+                    }
+                    catch (OverflowException)
+                    {
+                        scheduled.Add(new MountAttempt(
+                            mount.MountStableId,
+                            index,
+                            mount.EquipmentInstanceId,
+                            Reject(
+                                mount.EquipmentInstanceId,
+                                WeaponExecutionStatus.InvalidCommand,
+                                "weapon-live-mounted-request-overflow",
+                                false,
+                                null),
+                            false));
+                    }
+                }
             }
 
+            bool allSafelyRepresented = true;
+            for (int index = 0; index < scheduled.Count; index++)
+            {
+                if (!HasSafeCanonicalRepresentation(scheduled[index]))
+                {
+                    allSafelyRepresented = false;
+                    break;
+                }
+            }
+            if (publishCandidateEdgeWhenSafe && allSafelyRepresented)
+            {
+                triggerEdgeState = candidateEdgeState
+                    ?? throw new InvalidOperationException(
+                        "A safe trigger publication requires a candidate edge state.");
+            }
+
+            InventoryWeaponExecutionResult drained =
+                DrainDueLocked(simulationTick);
+            return CombineScheduledAndDrained(scheduled, drained);
+        }
+
+        private MountAttempt ScheduleAndPublishLocked(
+            InventoryWeaponFireRequest request,
+            StableId mountStableId,
+            int mountOrdinal)
+        {
+            InventoryWeaponPendingDeliveryState alignedPending;
+            try
+            {
+                // A receipt may participate in admission only while the current canonical scheduler
+                // still retains the accepted-schedule replay that created it.
+                alignedPending = pendingDeliveryState
+                    .PruneDeliveredReceipts(firingSessionState);
+            }
+            catch (ArgumentException)
+            {
+                return new MountAttempt(
+                    mountStableId,
+                    mountOrdinal,
+                    request == null ? null : request.EquipmentInstanceId,
+                    Reject(
+                        request == null ? null : request.EquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidEffectBatch,
+                        "weapon-live-pre-admission-receipt-pruning-invalid",
+                        false,
+                        null),
+                    false);
+            }
+            catch (InvalidOperationException)
+            {
+                return new MountAttempt(
+                    mountStableId,
+                    mountOrdinal,
+                    request == null ? null : request.EquipmentInstanceId,
+                    Reject(
+                        request == null ? null : request.EquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidEffectBatch,
+                        "weapon-live-pre-admission-receipt-pruning-failed",
+                        false,
+                        null),
+                    false);
+            }
+
+            InventoryWeaponExecutionTransition transition =
+                executionAdapter.TryExecute(
+                    request,
+                    firingSessionState,
+                    alignedPending);
+            if (transition == null)
+            {
+                return new MountAttempt(
+                    mountStableId,
+                    mountOrdinal,
+                    request == null ? null : request.EquipmentInstanceId,
+                    Reject(
+                        request == null ? null : request.EquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidCommand,
+                        "weapon-live-transition-null-result",
+                        false,
+                        null),
+                    false);
+            }
+
+            bool statePairPublished = false;
+            if (transition.Result.Succeeded)
+            {
+                InventoryWeaponPendingDeliveryState prunedPending;
+                try
+                {
+                    // A newly accepted schedule can prune older replay records, so align once more
+                    // against the scheduler state that will become authoritative.
+                    prunedPending = transition.NextPendingState
+                        .PruneDeliveredReceipts(transition.NextFiringState);
+                }
+                catch (ArgumentException)
+                {
+                    return new MountAttempt(
+                        mountStableId,
+                        mountOrdinal,
+                        request.EquipmentInstanceId,
+                        Reject(
+                            request.EquipmentInstanceId,
+                            WeaponExecutionStatus.InvalidEffectBatch,
+                            "weapon-live-delivered-receipt-pruning-invalid",
+                            false,
+                            transition.Result.SchedulerStatus),
+                        false);
+                }
+                catch (InvalidOperationException)
+                {
+                    return new MountAttempt(
+                        mountStableId,
+                        mountOrdinal,
+                        request.EquipmentInstanceId,
+                        Reject(
+                            request.EquipmentInstanceId,
+                            WeaponExecutionStatus.InvalidEffectBatch,
+                            "weapon-live-delivered-receipt-pruning-failed",
+                            false,
+                            transition.Result.SchedulerStatus),
+                        false);
+                }
+
+                statePairPublished = transition.PublishStatePair
+                    || !ReferenceEquals(prunedPending, pendingDeliveryState)
+                    || !ReferenceEquals(
+                        transition.NextFiringState,
+                        firingSessionState);
+                if (statePairPublished)
+                {
+                    firingSessionState = transition.NextFiringState;
+                    pendingDeliveryState = prunedPending;
+                }
+            }
+
+            return new MountAttempt(
+                mountStableId,
+                mountOrdinal,
+                request.EquipmentInstanceId,
+                transition.Result,
+                statePairPublished);
+        }
+
+        private InventoryWeaponExecutionResult DrainDueLocked(
+            long simulationTick)
+        {
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
-            if (fireOperationId == null
+            string lifecycleRejection;
+            if (simulationTick < 0L
+                || !TryResolveAndActivateCurrentLifecycleLocked(
+                    out actorId,
+                    out generation,
+                    out lifecycleRejection))
+            {
+                return Reject(
+                    string.IsNullOrWhiteSpace(lifecycleRejection)
+                        ? "weapon-live-drain-invalid"
+                        : lifecycleRejection);
+            }
+
+            var delivered = new List<InventoryWeaponEffectBatch>();
+            int acceptedCount = 0;
+            int alreadyAcceptedCount = 0;
+            EquipmentInstanceId firstEquipmentInstanceId = null;
+
+            while (true)
+            {
+                // Re-resolve immediately before selecting each sink submission. A legitimate
+                // lifecycle replacement clears scheduler, pending, receipts, and edge state here.
+                if (!TryResolveAndActivateCurrentLifecycleLocked(
+                        out actorId,
+                        out generation,
+                        out lifecycleRejection))
+                {
+                    return InventoryWeaponExecutionResult.Reject(
+                        firstEquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidCommand,
+                        lifecycleRejection,
+                        false,
+                        false,
+                        pendingDeliveryState.PendingCount,
+                        delivered,
+                        acceptedCount,
+                        alreadyAcceptedCount);
+                }
+
+                InventoryWeaponPendingDeliveryEntry entry;
+                if (!pendingDeliveryState.TryPeekDue(simulationTick, out entry))
+                {
+                    break;
+                }
+                if (entry == null
+                    || !entry.ActorId.Equals(actorId)
+                    || !entry.LifecycleGeneration.Equals(generation)
+                    || activeActorId == null
+                    || activeLifecycleGeneration == null
+                    || !activeActorId.Equals(actorId)
+                    || !activeLifecycleGeneration.Equals(generation))
+                {
+                    return InventoryWeaponExecutionResult.Reject(
+                        entry == null ? null : entry.EquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidEffectBatch,
+                        "weapon-live-pending-lifecycle-mismatch",
+                        false,
+                        false,
+                        pendingDeliveryState.PendingCount,
+                        delivered,
+                        acceptedCount,
+                        alreadyAcceptedCount);
+                }
+
+                InventoryWeaponPendingDeliveryAttempt attempt =
+                    executionAdapter.TryDeliverPending(entry);
+                if (attempt == null || !attempt.Succeeded)
+                {
+                    return InventoryWeaponExecutionResult.Reject(
+                        entry.EquipmentInstanceId,
+                        WeaponExecutionStatus.SinkRejected,
+                        attempt == null
+                            ? "weapon-live-retryable-delivery-null-result"
+                            : attempt.RejectionCode,
+                        false,
+                        true,
+                        pendingDeliveryState.PendingCount,
+                        delivered,
+                        acceptedCount,
+                        alreadyAcceptedCount);
+                }
+
+                if (firstEquipmentInstanceId == null)
+                {
+                    firstEquipmentInstanceId = entry.EquipmentInstanceId;
+                }
+                delivered.Add(entry.ProjectedBatch);
+                if (attempt.WasAlreadyAccepted)
+                {
+                    alreadyAcceptedCount++;
+                }
+                else
+                {
+                    acceptedCount++;
+                }
+
+                try
+                {
+                    // Record the downstream acceptance, then immediately discard the receipt when
+                    // the canonical scheduler has already pruned the matching replay record.
+                    pendingDeliveryState = pendingDeliveryState
+                        .MarkDelivered(entry)
+                        .PruneDeliveredReceipts(firingSessionState);
+                }
+                catch
+                {
+                    // The sink may already have accepted the batch. Retaining the entry is safe because
+                    // the next attempt must return exact AlreadyAccepted before removal.
+                    return InventoryWeaponExecutionResult.Reject(
+                        entry.EquipmentInstanceId,
+                        WeaponExecutionStatus.SinkRejected,
+                        "weapon-live-retryable-pending-commit-failed",
+                        false,
+                        true,
+                        pendingDeliveryState.PendingCount,
+                        delivered,
+                        acceptedCount,
+                        alreadyAcceptedCount);
+                }
+            }
+
+            if (delivered.Count == 0)
+            {
+                return InventoryWeaponExecutionResult.NoDue(
+                    pendingDeliveryState.PendingCount);
+            }
+
+            return InventoryWeaponExecutionResult.Delivery(
+                firstEquipmentInstanceId,
+                delivered,
+                acceptedCount,
+                alreadyAcceptedCount,
+                pendingDeliveryState.PendingCount);
+        }
+
+        private InventoryWeaponExecutionResult CombineScheduledAndDrained(
+            IList<MountAttempt> scheduledAttempts,
+            InventoryWeaponExecutionResult drained)
+        {
+            MountAttempt firstIntegrationFailure = null;
+            MountAttempt firstSchedulerFailure = null;
+            InventoryWeaponExecutionResult firstTransition = null;
+            int totalScheduledEmissions = 0;
+            bool anyNewSchedule = false;
+            bool anyReplaySchedule = false;
+            var schedulingOutcomes = new List<InventoryWeaponSchedulingOutcome>();
+            var mountOutcomes = new List<InventoryWeaponMountExecutionOutcome>();
+
+            for (int index = 0; index < scheduledAttempts.Count; index++)
+            {
+                MountAttempt attempt = scheduledAttempts[index];
+                InventoryWeaponExecutionResult result = attempt.Result;
+                InventoryWeaponMountExecutionOutcome mountOutcome =
+                    CreateMountOutcome(attempt);
+                mountOutcomes.Add(mountOutcome);
+                totalScheduledEmissions = checked(
+                    totalScheduledEmissions
+                    + mountOutcome.ScheduledEmissionCount);
+
+                for (int outcomeIndex = 0;
+                    outcomeIndex < result.SchedulingOutcomes.Count;
+                    outcomeIndex++)
+                {
+                    schedulingOutcomes.Add(
+                        result.SchedulingOutcomes[outcomeIndex]);
+                }
+
+                if (mountOutcome.OutcomeKind
+                    == InventoryWeaponExecutionOutcomeKind.AcceptedScheduleQueued)
+                {
+                    anyNewSchedule = true;
+                }
+                else if (mountOutcome.OutcomeKind
+                    == InventoryWeaponExecutionOutcomeKind.ReplayedScheduleRetained)
+                {
+                    anyReplaySchedule = true;
+                }
+
+                if (mountOutcome.Source
+                    == InventoryWeaponMountOutcomeSource.IntegrationRejection
+                    && firstIntegrationFailure == null)
+                {
+                    firstIntegrationFailure = attempt;
+                }
+                else if (mountOutcome.Source
+                    == InventoryWeaponMountOutcomeSource.SchedulerRejection
+                    && firstSchedulerFailure == null)
+                {
+                    firstSchedulerFailure = attempt;
+                }
+                if (firstTransition == null
+                    && result.Succeeded
+                    && result.IsNoEmissionTransition)
+                {
+                    firstTransition = result;
+                }
+            }
+
+            InventoryWeaponExecutionResult combined;
+            if (drained != null
+                && drained.OutcomeKind
+                    == InventoryWeaponExecutionOutcomeKind.RetryableDeliveryFailure)
+            {
+                combined = drained;
+            }
+            else if (drained != null && !drained.Succeeded)
+            {
+                // Lifecycle, membership, disposal, and other non-retryable drain failures must not be
+                // hidden by an otherwise successful scheduling result from the same call.
+                combined = drained;
+            }
+            else if (firstIntegrationFailure != null)
+            {
+                combined = CombineFailureWithDelivery(
+                    firstIntegrationFailure.Result,
+                    false,
+                    drained);
+            }
+            else if (firstSchedulerFailure != null)
+            {
+                combined = CombineFailureWithDelivery(
+                    firstSchedulerFailure.Result,
+                    true,
+                    drained);
+            }
+            else if (drained != null && drained.DeliveredBatchCount > 0)
+            {
+                combined = drained;
+            }
+            else if (anyNewSchedule || anyReplaySchedule)
+            {
+                combined = InventoryWeaponExecutionResult.Schedule(
+                    null,
+                    !anyNewSchedule && anyReplaySchedule,
+                    totalScheduledEmissions,
+                    pendingDeliveryState.PendingCount);
+            }
+            else
+            {
+                combined = firstTransition
+                    ?? drained
+                    ?? InventoryWeaponExecutionResult.NoDue(
+                        pendingDeliveryState.PendingCount);
+            }
+
+            if (schedulingOutcomes.Count > 0)
+            {
+                combined = combined.WithSchedulingOutcomes(
+                    schedulingOutcomes,
+                    totalScheduledEmissions);
+            }
+            return mountOutcomes.Count == 0
+                ? combined
+                : combined.WithMountOutcomes(
+                    mountOutcomes,
+                    totalScheduledEmissions);
+        }
+
+        private InventoryWeaponExecutionResult CombineFailureWithDelivery(
+            InventoryWeaponExecutionResult failure,
+            bool schedulerRejection,
+            InventoryWeaponExecutionResult drained)
+        {
+            return InventoryWeaponExecutionResult.Reject(
+                failure.EquipmentInstanceId,
+                failure.Status,
+                failure.RejectionCode,
+                schedulerRejection,
+                false,
+                pendingDeliveryState.PendingCount,
+                drained == null ? null : drained.DeliveredBatches,
+                drained == null ? 0 : drained.AcceptedDeliveryCount,
+                drained == null ? 0 : drained.AlreadyAcceptedDeliveryCount,
+                failure.SchedulerStatus);
+        }
+
+        private static InventoryWeaponMountExecutionOutcome CreateMountOutcome(
+            MountAttempt attempt)
+        {
+            InventoryWeaponExecutionResult result = attempt.Result;
+            InventoryWeaponMountOutcomeSource source = result.Succeeded
+                ? InventoryWeaponMountOutcomeSource.SuccessfulScheduling
+                : result.OutcomeKind
+                    == InventoryWeaponExecutionOutcomeKind.SchedulerRejected
+                    ? InventoryWeaponMountOutcomeSource.SchedulerRejection
+                    : InventoryWeaponMountOutcomeSource.IntegrationRejection;
+            bool exactReplay = IsExactReplay(result);
+            bool retryable = result.OutcomeKind
+                    == InventoryWeaponExecutionOutcomeKind.RetryableDeliveryFailure
+                || (!result.Succeeded
+                    && result.RejectionCode.IndexOf(
+                        "pending-capacity-exceeded",
+                        StringComparison.Ordinal) >= 0);
+            return new InventoryWeaponMountExecutionOutcome(
+                attempt.MountStableId,
+                attempt.MountOrdinal,
+                attempt.EquipmentInstanceId ?? result.EquipmentInstanceId,
+                result.OutcomeKind,
+                result.Status,
+                result.SchedulerStatus,
+                result.RejectionCode,
+                exactReplay,
+                result.ScheduledEmissionCount,
+                attempt.StatePairPublished,
+                retryable,
+                source);
+        }
+
+        private static bool HasSafeCanonicalRepresentation(
+            MountAttempt attempt)
+        {
+            return attempt.Result.Succeeded
+                && (attempt.StatePairPublished || IsExactReplay(attempt.Result));
+        }
+
+        private static bool IsExactReplay(
+            InventoryWeaponExecutionResult result)
+        {
+            return result != null
+                && (result.IsExactReplay
+                    || result.SchedulerStatus
+                        == WeaponFiringScheduleStatus.Replayed);
+        }
+
+        private bool ValidateRequestLifecycleLocked(
+            InventoryWeaponFireRequest request,
+            out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            if (disposed)
+            {
+                rejectionCode = "weapon-live-runtime-disposed";
+                return false;
+            }
+            if (request == null)
+            {
+                rejectionCode = "weapon-live-request-invalid";
+                return false;
+            }
+
+            WeaponActorInstanceId currentActorId;
+            LifecycleGeneration currentLifecycleGeneration;
+            if (!actorStateSource.TryResolveActorState(
+                    out currentActorId,
+                    out currentLifecycleGeneration)
+                || currentActorId == null
+                || currentLifecycleGeneration == null
+                || !currentActorId.Equals(request.ActorId)
+                || !currentLifecycleGeneration.Equals(
+                    request.LifecycleGeneration))
+            {
+                // A stale request must not clear the current lifecycle's state.
+                rejectionCode = "weapon-live-request-lifecycle-mismatch";
+                return false;
+            }
+
+            ActivateLifecycleLocked(currentActorId, currentLifecycleGeneration);
+            return true;
+        }
+
+        private bool TryResolveAndActivateCurrentLifecycleLocked(
+            out WeaponActorInstanceId actorId,
+            out LifecycleGeneration generation,
+            out string rejectionCode)
+        {
+            actorId = null;
+            generation = null;
+            if (disposed
                 || !actorStateSource.TryResolveActorState(
                     out actorId,
                     out generation)
                 || actorId == null
                 || generation == null)
             {
-                return Reject("weapon-live-actor-state-unresolved");
+                rejectionCode = disposed
+                    ? "weapon-live-runtime-disposed"
+                    : "weapon-live-actor-state-unresolved";
+                return false;
             }
 
-            InventoryWeaponExecutionResult firstAccepted = null;
-            InventoryWeaponExecutionResult firstCooldown = null;
-            InventoryWeaponExecutionResult firstFailure = null;
-            for (int index = 0; index < mountedWeapons.Count; index++)
+            ActivateLifecycleLocked(actorId, generation);
+            rejectionCode = string.Empty;
+            return true;
+        }
+
+        private void ActivateLifecycleLocked(
+            WeaponActorInstanceId actorId,
+            LifecycleGeneration generation)
+        {
+            if (activeActorId == null
+                || activeLifecycleGeneration == null
+                || !activeActorId.Equals(actorId)
+                || !activeLifecycleGeneration.Equals(generation))
             {
-                InventoryWeaponFireRequest request = CreateMountedRequest(
-                    actorId,
-                    generation,
-                    mountedWeapons[index],
-                    index,
-                    fireOperationId,
-                    simulationTick,
-                    deterministicSeed,
-                    origin,
-                    aimDirection);
-                InventoryWeaponExecutionResult result =
-                    executionAdapter.TryExecute(request);
-                if (result.Status == WeaponExecutionStatus.Accepted
-                    || result.Status
-                        == WeaponExecutionStatus.ReplayAccepted)
-                {
-                    if (firstAccepted == null)
-                    {
-                        firstAccepted = result;
-                    }
-                }
-                else if (result.Status
-                    == WeaponExecutionStatus.CooldownActive)
-                {
-                    if (firstCooldown == null)
-                    {
-                        firstCooldown = result;
-                    }
-                }
-                else if (firstFailure == null)
-                {
-                    firstFailure = result;
-                }
+                ClearLifecycleStateLocked();
+                activeActorId = actorId;
+                activeLifecycleGeneration = generation;
             }
+        }
 
-            return firstAccepted
-                ?? firstCooldown
-                ?? firstFailure
-                ?? Reject("weapon-live-no-enabled-mounts");
+        private void ClearLifecycleStateLocked()
+        {
+            firingSessionState = WeaponFiringSessionState.Empty;
+            pendingDeliveryState = InventoryWeaponPendingDeliveryState.Empty;
+            triggerEdgeState = InventoryWeaponTriggerEdgeState.Empty;
+        }
+
+        private static bool HasValidTriggerInput(
+            FireOperationId fireOperationId,
+            long simulationTick,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal)
+        {
+            return fireOperationId != null
+                && simulationTick >= 0L
+                && origin != null
+                && origin.IsFinite
+                && aimDirection != null
+                && aimDirection.IsFinite
+                && aimDirection.LengthSquared > 0.000000000001d
+                && Enum.IsDefined(
+                    typeof(WeaponTriggerSignal),
+                    triggerSignal);
         }
 
         private static InventoryWeaponFireRequest CreateMountedRequest(
@@ -403,17 +1276,29 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             long simulationTick,
             ulong deterministicSeed,
             WeaponVector2 origin,
-            WeaponVector2 aimDirection)
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal)
         {
+            if (actorId == null
+                || generation == null
+                || mount == null
+                || mountOrdinal < 0
+                || !HasValidTriggerInput(
+                    baseOperationId,
+                    simulationTick,
+                    origin,
+                    aimDirection,
+                    triggerSignal))
+            {
+                throw new ArgumentException(
+                    "A valid actor, lifecycle, mount, and trigger input are required.");
+            }
+
             double length = Math.Sqrt(
                 (aimDirection.X * aimDirection.X)
                 + (aimDirection.Y * aimDirection.Y));
-            double normalizedX = length <= 0.0000001d
-                ? 0d
-                : aimDirection.X / length;
-            double normalizedY = length <= 0.0000001d
-                ? 1d
-                : aimDirection.Y / length;
+            double normalizedX = aimDirection.X / length;
+            double normalizedY = aimDirection.Y / length;
             double perpendicularX = -normalizedY;
             double perpendicularY = normalizedX;
             var mountOrigin = new WeaponVector2(
@@ -441,19 +1326,41 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 simulationTick,
                 mountSeed,
                 mountOrigin,
-                aimDirection);
+                aimDirection,
+                triggerSignal);
         }
 
-        private static InventoryWeaponExecutionResult Reject(
+        private InventoryWeaponExecutionResult Reject(
             string rejectionCode)
         {
-            return new InventoryWeaponExecutionResult(
+            return Reject(
                 null,
-                WeaponExecutionResult.Reject(
-                    WeaponExecutionStatus.InvalidCommand,
-                    rejectionCode,
-                    0L),
+                WeaponExecutionStatus.InvalidCommand,
+                rejectionCode,
+                false,
                 null);
+        }
+
+        private InventoryWeaponExecutionResult Reject(
+            EquipmentInstanceId equipmentInstanceId,
+            WeaponExecutionStatus status,
+            string rejectionCode,
+            bool schedulerRejection,
+            WeaponFiringScheduleStatus? schedulerStatus)
+        {
+            return InventoryWeaponExecutionResult.Reject(
+                equipmentInstanceId,
+                status,
+                rejectionCode,
+                schedulerRejection,
+                false,
+                pendingDeliveryState == null
+                    ? 0
+                    : pendingDeliveryState.PendingCount,
+                null,
+                0,
+                0,
+                schedulerStatus);
         }
     }
 }
