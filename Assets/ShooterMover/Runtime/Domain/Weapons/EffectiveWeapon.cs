@@ -30,7 +30,11 @@ namespace ShooterMover.Domain.Weapons
             WeaponGuidanceSpec guidance,
             WeaponImpactSpec impact,
             WeaponDamageSpec damage,
-            WeaponEffects effects)
+            WeaponEffects effects,
+            WeaponAttackDistance effectiveMaximumAttackDistance,
+            PierceValue effectivePierce,
+            RicochetValue effectiveRicochet,
+            double effectiveMovementPenaltyPercent)
         {
             Blueprint = blueprint ?? throw new ArgumentNullException(nameof(blueprint));
             EquipmentInstanceId = equipmentInstanceId
@@ -47,6 +51,17 @@ namespace ShooterMover.Domain.Weapons
             Impact = impact ?? throw new ArgumentNullException(nameof(impact));
             Damage = damage ?? throw new ArgumentNullException(nameof(damage));
             Effects = effects ?? throw new ArgumentNullException(nameof(effects));
+            EffectiveMaximumAttackDistance = effectiveMaximumAttackDistance;
+            EffectivePierce = effectivePierce;
+            EffectiveRicochet = effectiveRicochet;
+            if (double.IsNaN(effectiveMovementPenaltyPercent)
+                || double.IsInfinity(effectiveMovementPenaltyPercent)
+                || effectiveMovementPenaltyPercent < 0d
+                || effectiveMovementPenaltyPercent > 100d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(effectiveMovementPenaltyPercent));
+            }
+            EffectiveMovementPenaltyPercent = effectiveMovementPenaltyPercent;
         }
 
         public WeaponBlueprint Blueprint { get; }
@@ -72,41 +87,32 @@ namespace ShooterMover.Domain.Weapons
         public WeaponDeliverySpec AuthoredDelivery { get { return Blueprint.Delivery; } }
         public WeaponPresentation Presentation { get { return Blueprint.Presentation; } }
         public WeaponDropMetadata DropMetadata { get { return Blueprint.DropMetadata; } }
+
+        /// <summary>
+        /// Final immutable semantic values after compatible modifiers. These remain available for
+        /// Laser and approved non-projectile Special deliveries and are not inferred from a
+        /// WeaponProjectileSpec.
+        /// </summary>
+        public WeaponAttackDistance EffectiveMaximumAttackDistance { get; }
+        public PierceValue EffectivePierce { get; }
+        public RicochetValue EffectiveRicochet { get; }
+        public double EffectiveMovementPenaltyPercent { get; }
+
         public double MovementPenaltyPercent
         {
-            get
-            {
-                return Blueprint.BaseStats == null
-                    ? 0d
-                    : Blueprint.BaseStats.MovementPenaltyPercent;
-            }
+            get { return EffectiveMovementPenaltyPercent; }
         }
+
         public WeaponAttackDistance MaximumAttackDistance
         {
-            get
-            {
-                if (Projectile != null)
-                {
-                    return WeaponAttackDistance.Limited(Projectile.Range);
-                }
-                return Blueprint.BaseStats == null
-                    ? null
-                    : Blueprint.BaseStats.MaximumAttackDistance;
-            }
+            get { return EffectiveMaximumAttackDistance; }
         }
+
         public PierceValue Pierce
         {
-            get
-            {
-                if (Projectile != null)
-                {
-                    return Projectile.Pierce;
-                }
-                return Blueprint.BaseStats == null
-                    ? new PierceValue(0)
-                    : Blueprint.BaseStats.Pierce;
-            }
+            get { return EffectivePierce; }
         }
+
         public RicochetValue AuthoredRicochet
         {
             get
