@@ -172,6 +172,27 @@ namespace ShooterMover.Domain.Weapons
             RicochetValue ricochet,
             double movementPenaltyPercent,
             WeaponAttackDistance maximumAttackDistance)
+            : this(
+                directDamage,
+                damageCategory,
+                damageOverTime,
+                pierce,
+                ricochet,
+                movementPenaltyPercent,
+                maximumAttackDistance,
+                0d)
+        {
+        }
+
+        public WeaponBaseStats(
+            double directDamage,
+            WeaponDamageCategory damageCategory,
+            WeaponDamageOverTimeStats damageOverTime,
+            PierceValue pierce,
+            RicochetValue ricochet,
+            double movementPenaltyPercent,
+            WeaponAttackDistance maximumAttackDistance,
+            double knockback)
         {
             if (!Enum.IsDefined(typeof(WeaponDamageCategory), damageCategory))
             {
@@ -196,6 +217,12 @@ namespace ShooterMover.Domain.Weapons
             {
                 throw new ArgumentOutOfRangeException(nameof(movementPenaltyPercent));
             }
+            if (double.IsNaN(knockback)
+                || double.IsInfinity(knockback)
+                || knockback < 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(knockback));
+            }
 
             DirectDamage = directDamage;
             DamageCategory = damageCategory;
@@ -205,6 +232,7 @@ namespace ShooterMover.Domain.Weapons
             MovementPenaltyPercent = movementPenaltyPercent;
             MaximumAttackDistance = maximumAttackDistance
                 ?? throw new ArgumentNullException(nameof(maximumAttackDistance));
+            Knockback = knockback;
         }
 
         public double DirectDamage { get; }
@@ -214,5 +242,6 @@ namespace ShooterMover.Domain.Weapons
         public RicochetValue Ricochet { get; }
         public double MovementPenaltyPercent { get; }
         public WeaponAttackDistance MaximumAttackDistance { get; }
+        public double Knockback { get; }
     }
 }
