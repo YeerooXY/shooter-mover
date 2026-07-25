@@ -44,6 +44,7 @@ namespace ShooterMover.Domain.Weapons.Execution
         public ProjectileExecutionProfile Profile { get; }
         public WeaponVector2 Position { get; }
         public double DistanceTravelled { get; }
+        public double TravelledDistance { get { return DistanceTravelled; } }
         public double Speed { get; }
         public double RemainingRange
         {
@@ -52,6 +53,7 @@ namespace ShooterMover.Domain.Weapons.Execution
         public WeaponGuidanceState Guidance { get; }
         public WeaponVector2 Direction { get { return Guidance.Direction; } }
         public ProjectilePierceState Pierce { get; }
+        public ProjectilePierceState PierceState { get { return Pierce; } }
         public int EventOrdinal { get; }
         public WeaponTargetReference LastTarget { get; }
         public StableId LastSurfaceId { get; }
@@ -128,7 +130,7 @@ namespace ShooterMover.Domain.Weapons.Execution
             if (pierce.AuthoredValue != Profile.Projectile.Pierce)
             {
                 throw new ArgumentException(
-                    "Projectile pierce state must retain the authored launch value.",
+                    "Projectile pierce state must retain the baked launch value.",
                     nameof(pierce));
             }
             return Copy(pierce: pierce);
