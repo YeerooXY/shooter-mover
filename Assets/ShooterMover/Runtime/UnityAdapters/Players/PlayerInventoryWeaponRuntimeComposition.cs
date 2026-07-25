@@ -98,27 +98,23 @@ namespace ShooterMover.UnityAdapters.Players
     }
 
     /// <summary>
-    /// Production composition root for inventory-backed player weapons. It consumes the real
-    /// player runtime, route loadout, holdings authority, catalogs, explicit blueprint mapping
-    /// policy, canonical scheduler state boundary, and transactional Unity effect sink.
+    /// Production composition root for inventory-backed player weapons. Runtime is the sole public
+    /// firing and delivery surface; the concrete execution adapter remains private composition detail.
     /// </summary>
     public sealed class PlayerInventoryWeaponRuntimeCompositionRoot : IDisposable
     {
         private PlayerInventoryWeaponRuntimeCompositionRoot(
             PlayerRuntimeWeaponStateAdapter playerState,
             RouteProfileActiveWeaponSource activeWeapon,
-            InventoryBackedWeaponExecutionAdapter executionAdapter,
             InventoryWeaponRuntimeComposition runtime)
         {
             PlayerState = playerState;
             ActiveWeapon = activeWeapon;
-            ExecutionAdapter = executionAdapter;
             Runtime = runtime;
         }
 
         public PlayerRuntimeWeaponStateAdapter PlayerState { get; }
         public RouteProfileActiveWeaponSource ActiveWeapon { get; }
-        public InventoryBackedWeaponExecutionAdapter ExecutionAdapter { get; }
         public InventoryWeaponRuntimeComposition Runtime { get; }
 
         public static PlayerInventoryWeaponRuntimeCompositionRoot Create(
@@ -156,7 +152,6 @@ namespace ShooterMover.UnityAdapters.Players
             return new PlayerInventoryWeaponRuntimeCompositionRoot(
                 playerState,
                 activeWeapon,
-                executionAdapter,
                 runtime);
         }
 
