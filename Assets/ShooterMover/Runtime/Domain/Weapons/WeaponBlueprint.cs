@@ -169,7 +169,7 @@ namespace ShooterMover.Domain.Weapons
                     baseStats.DamageCategory,
                     baseStats.DirectDamage,
                     baseStats.DamageOverTime,
-                    0d);
+                    baseStats.Knockback);
             }
             catch (InvalidOperationException exception)
             {
