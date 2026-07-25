@@ -50,6 +50,7 @@ namespace ShooterMover.Domain.Weapons
     {
         private WeaponFireSettings(
             WeaponFireMode mode,
+            double rateOfFire,
             double shotsPerSecond,
             int shotsPerTrigger,
             int shotsPerBurst,
@@ -58,6 +59,7 @@ namespace ShooterMover.Domain.Weapons
             double damageTicksPerSecond)
         {
             Mode = mode;
+            RateOfFire = rateOfFire;
             ShotsPerSecond = shotsPerSecond;
             ShotsPerTrigger = shotsPerTrigger;
             ShotsPerBurst = shotsPerBurst;
@@ -74,10 +76,15 @@ namespace ShooterMover.Domain.Weapons
         public WeaponFireMode Mode { get; }
 
         /// <summary>
-        /// Canonical firing cycles per second. The legacy property name is retained because the
-        /// current scheduler already consumes this exact value.
+        /// Canonical firing cycles per second. For transitional contracts this retains the old
+        /// ShotsPerSecond value because their cadence was not authored with the new distinction.
         /// </summary>
-        public double RateOfFire { get { return ShotsPerSecond; } }
+        public double RateOfFire { get; }
+
+        /// <summary>
+        /// Compatibility value consumed by the current scheduler. For canonical burst content it
+        /// is derived from RateOfFire and the burst emission span; it is not separately authored.
+        /// </summary>
         public double ShotsPerSecond { get; }
 
         /// <summary>
@@ -94,8 +101,8 @@ namespace ShooterMover.Domain.Weapons
         public double IntervalBetweenBurstShotsSeconds { get; }
 
         /// <summary>
-        /// Scheduler compatibility projection. For canonical burst content this is derived as
-        /// exactly one firing-cycle interval and is not a separately authored value.
+        /// Scheduler compatibility projection. For canonical burst content this is the derived
+        /// recovery remainder after subtracting the burst emission span from one firing cycle.
         /// </summary>
         public double IntervalAfterBurstSeconds { get; }
         public double DamageTicksPerSecond { get; }
@@ -118,8 +125,10 @@ namespace ShooterMover.Domain.Weapons
 
         public static WeaponFireSettings SemiAutomatic(double rateOfFire)
         {
-            return Create(
+            RequireFinitePositive(rateOfFire, nameof(rateOfFire));
+            return new WeaponFireSettings(
                 WeaponFireMode.SemiAutomatic,
+                rateOfFire,
                 rateOfFire,
                 1,
                 1,
@@ -130,8 +139,10 @@ namespace ShooterMover.Domain.Weapons
 
         public static WeaponFireSettings Automatic(double rateOfFire)
         {
-            return Create(
+            RequireFinitePositive(rateOfFire, nameof(rateOfFire));
+            return new WeaponFireSettings(
                 WeaponFireMode.Automatic,
+                rateOfFire,
                 rateOfFire,
                 1,
                 1,
@@ -148,20 +159,30 @@ namespace ShooterMover.Domain.Weapons
             {
                 throw new ArgumentNullException(nameof(burst));
             }
-            if (double.IsNaN(rateOfFire)
-                || double.IsInfinity(rateOfFire)
-                || rateOfFire <= 0d)
+            RequireFinitePositive(rateOfFire, nameof(rateOfFire));
+
+            double cycleIntervalSeconds = 1d / rateOfFire;
+            double burstEmissionSpanSeconds =
+                (burst.ShotsPerBurst - 1d) * burst.IntervalBetweenShotsSeconds;
+            double schedulerRecoverySeconds =
+                cycleIntervalSeconds - burstEmissionSpanSeconds;
+            if (double.IsNaN(schedulerRecoverySeconds)
+                || double.IsInfinity(schedulerRecoverySeconds)
+                || schedulerRecoverySeconds <= 0d)
             {
-                throw new ArgumentOutOfRangeException(nameof(rateOfFire));
+                throw new ArgumentException(
+                    "Rate of fire must leave positive recovery time after the sequential burst emission span.",
+                    nameof(rateOfFire));
             }
 
             return new WeaponFireSettings(
                 WeaponFireMode.Burst,
                 rateOfFire,
+                1d / schedulerRecoverySeconds,
                 1,
                 burst.ShotsPerBurst,
                 burst.IntervalBetweenShotsSeconds,
-                1d / rateOfFire,
+                schedulerRecoverySeconds,
                 0d);
         }
 
@@ -261,6 +282,7 @@ namespace ShooterMover.Domain.Weapons
             return new WeaponFireSettings(
                 mode,
                 shotsPerSecond,
+                shotsPerSecond,
                 shotsPerTrigger,
                 shotsPerBurst,
                 intervalBetweenBurstShotsSeconds,
@@ -283,6 +305,14 @@ namespace ShooterMover.Domain.Weapons
                 throw new ArgumentOutOfRangeException(
                     nameof(shotsPerTrigger),
                     "Projectile fire requires at least one shot group per trigger.");
+            }
+        }
+
+        private static void RequireFinitePositive(double value, string parameterName)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
             }
         }
 
