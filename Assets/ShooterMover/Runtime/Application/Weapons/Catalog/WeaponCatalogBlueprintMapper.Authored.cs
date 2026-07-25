@@ -162,7 +162,8 @@ namespace ShooterMover.Application.Weapons.Catalog
                         PierceValue.FromLegacyInteger(definition.Pierce),
                         ricochet,
                         details.MovementPenaltyPercent,
-                        WeaponAttackDistance.Limited(definition.Range));
+                        WeaponAttackDistance.Limited(definition.Range),
+                        definition.Knockback);
                     dropMetadata = new WeaponDropMetadata(
                         details.EquipmentDefinitionId,
                         details.RarityId,
@@ -306,6 +307,14 @@ namespace ShooterMover.Application.Weapons.Catalog
             WeaponDefinitionData definition,
             ICollection<WeaponBlueprintMappingIssue> issues)
         {
+            if (definition.AreaDamagePerTrigger > 0d)
+            {
+                Add(
+                    issues,
+                    WeaponBlueprintMappingIssueCode.UnsupportedAreaDamage,
+                    Path(definition, ".AreaDamagePerTrigger"),
+                    "Legacy independent area-damage magnitude cannot be discarded. Migrate it to the canonical direct-damage-plus-explosion interpretation explicitly before using MapAuthored.");
+            }
             if (definition.PoolRadius > 0d || definition.PoolDuration > 0d)
             {
                 Add(
@@ -342,16 +351,40 @@ namespace ShooterMover.Application.Weapons.Catalog
                 switch (details.DeliveryType)
                 {
                     case WeaponDeliveryType.Normal:
+                        if (!ValidateTravellingProjection(
+                                intent,
+                                WeaponProjectileKind.RegularProjectile,
+                                WeaponProjectileTerminationBehavior.StopWhenPierceIsSpent,
+                                issues))
+                        {
+                            return null;
+                        }
                         normal = new WeaponNormalDeliverySettings(
                             definition.ProjectileSpeed,
                             details.DeliveryRadiusOrWidth);
                         break;
                     case WeaponDeliveryType.Orb:
+                        if (!ValidateTravellingProjection(
+                                intent,
+                                WeaponProjectileKind.Orb,
+                                WeaponProjectileTerminationBehavior.StopWhenPierceIsSpent,
+                                issues))
+                        {
+                            return null;
+                        }
                         orb = new WeaponOrbDeliverySettings(
                             definition.ProjectileSpeed,
                             details.DeliveryRadiusOrWidth);
                         break;
                     case WeaponDeliveryType.Rocket:
+                        if (!ValidateTravellingProjection(
+                                intent,
+                                WeaponProjectileKind.Rocket,
+                                WeaponProjectileTerminationBehavior.StopOnFirstBlockingImpact,
+                                issues))
+                        {
+                            return null;
+                        }
                         rocket = new WeaponRocketDeliverySettings(
                             definition.ProjectileSpeed,
                             details.DeliveryRadiusOrWidth);
@@ -428,6 +461,33 @@ namespace ShooterMover.Application.Weapons.Catalog
             }
         }
 
+        private static bool ValidateTravellingProjection(
+            WeaponCatalogBlueprintMappingIntent intent,
+            WeaponProjectileKind expectedKind,
+            WeaponProjectileTerminationBehavior expectedTermination,
+            ICollection<WeaponBlueprintMappingIssue> issues)
+        {
+            if (intent.ProjectileKind != expectedKind)
+            {
+                Add(
+                    issues,
+                    WeaponBlueprintMappingIssueCode.InvalidAuthoredDelivery,
+                    "intent.ProjectileKind",
+                    "The explicit projectile kind does not match the selected canonical delivery type.");
+                return false;
+            }
+            if (intent.ProjectileTermination != expectedTermination)
+            {
+                Add(
+                    issues,
+                    WeaponBlueprintMappingIssueCode.InvalidAuthoredDelivery,
+                    "intent.ProjectileTermination",
+                    "The explicit termination policy cannot be discarded by the canonical delivery projection.");
+                return false;
+            }
+            return true;
+        }
+
         private static WeaponStrongboxEligibility BuildStrongboxEligibility(
             WeaponDefinitionData definition,
             WeaponCatalogAuthoredMappingDetails details,
@@ -463,14 +523,6 @@ namespace ShooterMover.Application.Weapons.Catalog
 
                 // TopBoxOnly is deliberately not converted from the current maximum tier. The
                 // explicit rule above is the authored replacement required for migration.
-                if (definition.TopBoxOnly && eligibility == null)
-                {
-                    Add(
-                        issues,
-                        WeaponBlueprintMappingIssueCode.TopBoxOnlyRequiresExplicitRule,
-                        Path(definition, ".TopBoxOnly"),
-                        "TopBoxOnly requires an explicit stable tier rule before canonical migration.");
-                }
                 return eligibility;
             }
             catch (Exception exception)
