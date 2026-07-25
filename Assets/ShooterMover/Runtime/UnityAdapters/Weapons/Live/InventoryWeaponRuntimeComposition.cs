@@ -132,8 +132,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
     /// <summary>
     /// Sole live owner of scheduler state, downstream pending delivery, and input-edge state for one
-    /// actor lifecycle. Scheduling, receipt pruning, and pending admission publish together under
-    /// firingStateGate. Only this composition selects and submits the exact retained first due entry.
+    /// actor lifecycle. Scheduling, receipt alignment, pending admission, and delivery are serialized
+    /// under firingStateGate. Only this composition submits the exact retained first due entry.
     /// </summary>
     public sealed class InventoryWeaponRuntimeComposition : IDisposable
     {
@@ -204,6 +204,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 ?? throw new ArgumentNullException(nameof(actorState));
             executionAdapter = adapter
                 ?? throw new ArgumentNullException(nameof(adapter));
+            activeWeaponSource = null;
+            intentFactory = null;
+
             var mounts = new List<InventoryWeaponMountedRuntimeV1>(
                 enabledMounts
                 ?? throw new ArgumentNullException(nameof(enabledMounts)));
@@ -339,6 +342,17 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             out string rejectionCode)
         {
             request = null;
+            if (!HasValidTriggerInput(
+                    fireOperationId,
+                    simulationTick,
+                    origin,
+                    aimDirection,
+                    triggerSignal))
+            {
+                rejectionCode = "weapon-live-intent-invalid";
+                return false;
+            }
+
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
             lock (firingStateGate)
@@ -365,12 +379,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     triggerSignal,
                     out request,
                     out rejectionCode);
-            }
-
-            if (fireOperationId == null)
-            {
-                rejectionCode = "weapon-live-intent-invalid";
-                return false;
             }
 
             InventoryWeaponMountedRuntimeV1 first = mountedWeapons[0];
@@ -449,22 +457,25 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             lock (firingStateGate)
             {
+                if (!HasValidTriggerInput(
+                        fireOperationId,
+                        simulationTick,
+                        origin,
+                        aimDirection,
+                        triggerSignal))
+                {
+                    return Reject("weapon-live-trigger-invalid");
+                }
+
                 WeaponActorInstanceId actorId;
                 LifecycleGeneration generation;
                 string rejectionCode;
                 if (!TryResolveAndActivateCurrentLifecycleLocked(
                         out actorId,
                         out generation,
-                        out rejectionCode)
-                    || fireOperationId == null
-                    || !Enum.IsDefined(
-                        typeof(WeaponTriggerSignal),
-                        triggerSignal))
+                        out rejectionCode))
                 {
-                    return Reject(
-                        string.IsNullOrWhiteSpace(rejectionCode)
-                            ? "weapon-live-trigger-invalid"
-                            : rejectionCode);
+                    return Reject(rejectionCode);
                 }
 
                 return TriggerAllMountsAndDrainLocked(
@@ -708,11 +719,48 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             StableId mountStableId,
             int mountOrdinal)
         {
+            InventoryWeaponPendingDeliveryState alignedPending;
+            try
+            {
+                // A receipt may participate in admission only while the current canonical scheduler
+                // still retains the accepted-schedule replay that created it.
+                alignedPending = pendingDeliveryState
+                    .PruneDeliveredReceipts(firingSessionState);
+            }
+            catch (ArgumentException)
+            {
+                return new MountAttempt(
+                    mountStableId,
+                    mountOrdinal,
+                    request == null ? null : request.EquipmentInstanceId,
+                    Reject(
+                        request == null ? null : request.EquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidEffectBatch,
+                        "weapon-live-pre-admission-receipt-pruning-invalid",
+                        false,
+                        null),
+                    false);
+            }
+            catch (InvalidOperationException)
+            {
+                return new MountAttempt(
+                    mountStableId,
+                    mountOrdinal,
+                    request == null ? null : request.EquipmentInstanceId,
+                    Reject(
+                        request == null ? null : request.EquipmentInstanceId,
+                        WeaponExecutionStatus.InvalidEffectBatch,
+                        "weapon-live-pre-admission-receipt-pruning-failed",
+                        false,
+                        null),
+                    false);
+            }
+
             InventoryWeaponExecutionTransition transition =
                 executionAdapter.TryExecute(
                     request,
                     firingSessionState,
-                    pendingDeliveryState);
+                    alignedPending);
             if (transition == null)
             {
                 return new MountAttempt(
@@ -734,8 +782,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 InventoryWeaponPendingDeliveryState prunedPending;
                 try
                 {
-                    // Admission has already produced NextPendingState. Receipt pruning is derived
-                    // solely from the exact scheduler replay records in NextFiringState.
+                    // A newly accepted schedule can prune older replay records, so align once more
+                    // against the scheduler state that will become authoritative.
                     prunedPending = transition.NextPendingState
                         .PruneDeliveredReceipts(transition.NextFiringState);
                 }
@@ -775,7 +823,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         firingSessionState);
                 if (statePairPublished)
                 {
-                    // The scheduler and outbox snapshots become authoritative together.
                     firingSessionState = transition.NextFiringState;
                     pendingDeliveryState = prunedPending;
                 }
@@ -892,12 +939,15 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
                 try
                 {
-                    // Removal happens only after Accepted or exact AlreadyAccepted.
-                    pendingDeliveryState = pendingDeliveryState.MarkDelivered(entry);
+                    // Record the downstream acceptance, then immediately discard the receipt when
+                    // the canonical scheduler has already pruned the matching replay record.
+                    pendingDeliveryState = pendingDeliveryState
+                        .MarkDelivered(entry)
+                        .PruneDeliveredReceipts(firingSessionState);
                 }
                 catch
                 {
-                    // The sink may already have accepted the batch. Retaining it is safe because
+                    // The sink may already have accepted the batch. Retaining the entry is safe because
                     // the next attempt must return exact AlreadyAccepted before removal.
                     return InventoryWeaponExecutionResult.Reject(
                         entry.EquipmentInstanceId,
@@ -994,6 +1044,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 && drained.OutcomeKind
                     == InventoryWeaponExecutionOutcomeKind.RetryableDeliveryFailure)
             {
+                combined = drained;
+            }
+            else if (drained != null && !drained.Succeeded)
+            {
+                // Lifecycle, membership, disposal, and other non-retryable drain failures must not be
+                // hidden by an otherwise successful scheduling result from the same call.
                 combined = drained;
             }
             else if (firstIntegrationFailure != null)
@@ -1192,6 +1248,25 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             triggerEdgeState = InventoryWeaponTriggerEdgeState.Empty;
         }
 
+        private static bool HasValidTriggerInput(
+            FireOperationId fireOperationId,
+            long simulationTick,
+            WeaponVector2 origin,
+            WeaponVector2 aimDirection,
+            WeaponTriggerSignal triggerSignal)
+        {
+            return fireOperationId != null
+                && simulationTick >= 0L
+                && origin != null
+                && origin.IsFinite
+                && aimDirection != null
+                && aimDirection.IsFinite
+                && aimDirection.LengthSquared > 0.000000000001d
+                && Enum.IsDefined(
+                    typeof(WeaponTriggerSignal),
+                    triggerSignal);
+        }
+
         private static InventoryWeaponFireRequest CreateMountedRequest(
             WeaponActorInstanceId actorId,
             LifecycleGeneration generation,
@@ -1204,15 +1279,26 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             WeaponVector2 aimDirection,
             WeaponTriggerSignal triggerSignal)
         {
+            if (actorId == null
+                || generation == null
+                || mount == null
+                || mountOrdinal < 0
+                || !HasValidTriggerInput(
+                    baseOperationId,
+                    simulationTick,
+                    origin,
+                    aimDirection,
+                    triggerSignal))
+            {
+                throw new ArgumentException(
+                    "A valid actor, lifecycle, mount, and trigger input are required.");
+            }
+
             double length = Math.Sqrt(
                 (aimDirection.X * aimDirection.X)
                 + (aimDirection.Y * aimDirection.Y));
-            double normalizedX = length <= 0.0000001d
-                ? 0d
-                : aimDirection.X / length;
-            double normalizedY = length <= 0.0000001d
-                ? 1d
-                : aimDirection.Y / length;
+            double normalizedX = aimDirection.X / length;
+            double normalizedY = aimDirection.Y / length;
             double perpendicularX = -normalizedY;
             double perpendicularY = normalizedX;
             var mountOrigin = new WeaponVector2(
