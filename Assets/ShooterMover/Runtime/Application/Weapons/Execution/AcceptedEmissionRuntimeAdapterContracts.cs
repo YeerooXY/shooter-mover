@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
@@ -19,33 +21,102 @@ namespace ShooterMover.Application.Weapons.Execution
         BehaviorRejected = 12,
         InvalidEffectBatch = 13,
         NumericalFailure = 14,
+        InvalidProjectileProfile = 15,
+        InvalidProjectileLaunch = 16,
+    }
+
+    /// <summary>
+    /// One scheduler-authorized canonical projectile launch and its already-created initial
+    /// lifecycle state. The state is created at composition time so final speed, range, Pierce,
+    /// guidance, impact, damage, effects and delivery identity cannot be reconstructed later.
+    /// </summary>
+    public sealed class AcceptedProjectileLaunch
+    {
+        public AcceptedProjectileLaunch(ProjectileLaunchRequest request)
+        {
+            Request = request ?? throw new ArgumentNullException(nameof(request));
+            InitialState = ProjectileLifecycleState.Launch(request);
+            if (InitialState.Profile == null
+                || !ReferenceEquals(InitialState.Profile, request.Profile)
+                || !InitialState.Lifecycle.Identity.Equals(request.Lifecycle.Identity))
+            {
+                throw new InvalidOperationException(
+                    "weapon-runtime-canonical-projectile-state-invalid");
+            }
+        }
+
+        public ProjectileLaunchRequest Request { get; }
+        public ProjectileLifecycleState InitialState { get; }
+        public ProjectileExecutionProfile Profile { get { return Request.Profile; } }
+        public ProjectileExecutionIdentity Identity { get { return Request.Lifecycle.Identity; } }
     }
 
     public sealed class AcceptedEmissionRuntimeAdapterResult
     {
+        private readonly ReadOnlyCollection<AcceptedProjectileLaunch> projectileLaunches;
+
         private AcceptedEmissionRuntimeAdapterResult(
             AcceptedEmissionRuntimeAdapterStatus status,
             string rejectionCode,
             WeaponRuntimeFiringProfile profile,
-            WeaponEffectBatch batch)
+            WeaponEffectBatch batch,
+            ProjectileExecutionProfile projectileProfile,
+            IList<AcceptedProjectileLaunch> canonicalProjectileLaunches)
         {
             Status = status;
             RejectionCode = rejectionCode ?? string.Empty;
             Profile = profile;
             Batch = batch;
+            ProjectileProfile = projectileProfile;
+            projectileLaunches = new ReadOnlyCollection<AcceptedProjectileLaunch>(
+                canonicalProjectileLaunches == null
+                    ? new List<AcceptedProjectileLaunch>()
+                    : new List<AcceptedProjectileLaunch>(canonicalProjectileLaunches));
         }
 
         public AcceptedEmissionRuntimeAdapterStatus Status { get; }
         public string RejectionCode { get; }
+
+        /// <summary>
+        /// Transitional-only retained firing profile.
+        /// </summary>
         public WeaponRuntimeFiringProfile Profile { get; }
+
+        /// <summary>
+        /// Transitional-only retained effect batch.
+        /// </summary>
         public WeaponEffectBatch Batch { get; }
-        public bool Succeeded
+
+        public ProjectileExecutionProfile ProjectileProfile { get; }
+        public IReadOnlyList<AcceptedProjectileLaunch> ProjectileLaunches
+        {
+            get { return projectileLaunches; }
+        }
+        public bool IsCanonicalProjectile
+        {
+            get
+            {
+                return Status == AcceptedEmissionRuntimeAdapterStatus.Adapted
+                    && ProjectileProfile != null
+                    && ProjectileProfile.IsCanonical
+                    && projectileLaunches.Count > 0;
+            }
+        }
+        public bool IsTransitionalBatch
         {
             get
             {
                 return Status == AcceptedEmissionRuntimeAdapterStatus.Adapted
                     && Profile != null
                     && Batch != null;
+            }
+        }
+        public bool Succeeded
+        {
+            get
+            {
+                return Status == AcceptedEmissionRuntimeAdapterStatus.Adapted
+                    && (IsCanonicalProjectile || IsTransitionalBatch);
             }
         }
 
@@ -57,7 +128,48 @@ namespace ShooterMover.Application.Weapons.Execution
                 AcceptedEmissionRuntimeAdapterStatus.Adapted,
                 string.Empty,
                 profile ?? throw new ArgumentNullException(nameof(profile)),
-                batch ?? throw new ArgumentNullException(nameof(batch)));
+                batch ?? throw new ArgumentNullException(nameof(batch)),
+                null,
+                null);
+        }
+
+        public static AcceptedEmissionRuntimeAdapterResult CanonicalProjectile(
+            ProjectileExecutionProfile profile,
+            IList<AcceptedProjectileLaunch> launches)
+        {
+            if (profile == null || !profile.IsCanonical)
+            {
+                throw new ArgumentException(
+                    "A canonical projectile profile is required.",
+                    nameof(profile));
+            }
+            if (launches == null || launches.Count < 1)
+            {
+                throw new ArgumentException(
+                    "At least one canonical projectile launch is required.",
+                    nameof(launches));
+            }
+            for (int index = 0; index < launches.Count; index++)
+            {
+                AcceptedProjectileLaunch launch = launches[index];
+                if (launch == null
+                    || !ReferenceEquals(launch.Profile, profile)
+                    || launch.Identity == null
+                    || launch.Identity.SourceIdentity.ProjectileOrdinal.Value != index)
+                {
+                    throw new ArgumentException(
+                        "Canonical projectile launches must use one shared profile and ordered unique ordinals.",
+                        nameof(launches));
+                }
+            }
+
+            return new AcceptedEmissionRuntimeAdapterResult(
+                AcceptedEmissionRuntimeAdapterStatus.Adapted,
+                string.Empty,
+                null,
+                null,
+                profile,
+                launches);
         }
 
         public static AcceptedEmissionRuntimeAdapterResult Reject(
@@ -78,6 +190,8 @@ namespace ShooterMover.Application.Weapons.Execution
             return new AcceptedEmissionRuntimeAdapterResult(
                 status,
                 rejectionCode,
+                null,
+                null,
                 null,
                 null);
         }
