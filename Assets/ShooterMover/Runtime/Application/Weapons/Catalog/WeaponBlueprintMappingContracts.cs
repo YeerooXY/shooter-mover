@@ -100,10 +100,6 @@ namespace ShooterMover.Application.Weapons.Catalog
         }
     }
 
-    /// <summary>
-    /// States whether the legacy SpreadDegrees value is an authored multi-projectile arc
-    /// or a random angular deviation. The catalog does not distinguish those meanings.
-    /// </summary>
     public enum WeaponCatalogSpreadInterpretation
     {
         None = 1,
@@ -148,13 +144,6 @@ namespace ShooterMover.Application.Weapons.Catalog
         public double RetainedDamagePerJump { get; }
     }
 
-    /// <summary>
-    /// Explicit semantic decisions that are absent from WeaponDefinitionData. Numeric combat
-    /// values already present in the catalog are never overridden by this contract.
-    ///
-    /// ExpectedDefinitionId binds this policy to one canonical catalog definition. Production
-    /// callers should obtain one authoritative intent per definition from a single resolver.
-    /// </summary>
     public sealed class WeaponCatalogBlueprintMappingIntent
     {
         public WeaponCatalogBlueprintMappingIntent(
@@ -220,17 +209,17 @@ namespace ShooterMover.Application.Weapons.Catalog
     public enum WeaponCatalogStrongboxEligibilityMappingMode
     {
         MinimumTier = 1,
-        ExplicitAllowedTiers = 2,
+        ExplicitAllowedTierIds = 2,
     }
 
     /// <summary>
     /// Additional semantic data required to map one flat catalogue definition into the canonical
-    /// grouped authority. This is mapper input, not a second weapon-definition authority.
-    /// Combat numerics already present in WeaponDefinitionData remain authoritative.
+    /// grouped authority. Named exclusive strongboxes are identified by StableId rather than by
+    /// their current numeric progression position.
     /// </summary>
     public sealed class WeaponCatalogAuthoredMappingDetails
     {
-        private readonly ReadOnlyCollection<int> allowedStrongboxTiers;
+        private readonly ReadOnlyCollection<StableId> allowedStrongboxTierIds;
 
         public WeaponCatalogAuthoredMappingDetails(
             WeaponDeliveryType deliveryType,
@@ -244,7 +233,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             WeaponDropAvailability availability,
             WeaponCatalogStrongboxEligibilityMappingMode strongboxEligibilityMode,
             int minimumStrongboxTier,
-            IEnumerable<int> allowedStrongboxTiers)
+            IEnumerable<StableId> allowedStrongboxTierIds)
         {
             DeliveryType = deliveryType;
             DeliveryRadiusOrWidth = deliveryRadiusOrWidth;
@@ -257,8 +246,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             Availability = availability;
             StrongboxEligibilityMode = strongboxEligibilityMode;
             MinimumStrongboxTier = minimumStrongboxTier;
-            this.allowedStrongboxTiers = new ReadOnlyCollection<int>(
-                new List<int>(allowedStrongboxTiers ?? Array.Empty<int>()));
+            this.allowedStrongboxTierIds = new ReadOnlyCollection<StableId>(
+                new List<StableId>(allowedStrongboxTierIds ?? Array.Empty<StableId>()));
         }
 
         public WeaponDeliveryType DeliveryType { get; }
@@ -272,9 +261,9 @@ namespace ShooterMover.Application.Weapons.Catalog
         public WeaponDropAvailability Availability { get; }
         public WeaponCatalogStrongboxEligibilityMappingMode StrongboxEligibilityMode { get; }
         public int MinimumStrongboxTier { get; }
-        public IReadOnlyList<int> AllowedStrongboxTiers
+        public IReadOnlyList<StableId> AllowedStrongboxTierIds
         {
-            get { return allowedStrongboxTiers; }
+            get { return allowedStrongboxTierIds; }
         }
     }
 }
