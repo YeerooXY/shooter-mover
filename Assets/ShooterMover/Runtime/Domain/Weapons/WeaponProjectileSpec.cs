@@ -270,6 +270,7 @@ namespace ShooterMover.Domain.Weapons
             double retainedSpeedPerRicochet,
             double randomAngleDegrees)
             : this(
+                new RicochetValue(checked(maximumRicochets * 10)),
                 maximumRicochets,
                 retainedSpeedPerRicochet,
                 randomAngleDegrees,
@@ -278,7 +279,56 @@ namespace ShooterMover.Domain.Weapons
         {
         }
 
+        /// <summary>
+        /// Transitional constructor for the previous independent maximum/chance contract. It is
+        /// intentionally not reinterpreted as the canonical integer-plus-one-fraction budget.
+        /// </summary>
         public WeaponRicochetSpec(
+            int maximumRicochets,
+            double retainedSpeedPerRicochet,
+            double randomAngleDegrees,
+            double bounceChance,
+            double postBounceHomingPauseSeconds)
+            : this(
+                null,
+                maximumRicochets,
+                retainedSpeedPerRicochet,
+                randomAngleDegrees,
+                bounceChance,
+                postBounceHomingPauseSeconds)
+        {
+        }
+
+        /// <summary>
+        /// Canonical fixed-point ricochet contract. Guaranteed bounces consume exactly one whole
+        /// unit. The fractional remainder is rolled once for one final bounce using the existing
+        /// deterministic random authority, then the budget is exhausted.
+        /// </summary>
+        public WeaponRicochetSpec(
+            RicochetValue budget,
+            double retainedSpeedPerRicochet,
+            double randomAngleDegrees,
+            double postBounceHomingPauseSeconds)
+            : this(
+                budget,
+                checked(
+                    budget.GuaranteedBounces
+                    + (budget.HasFractionalFinalBounce ? 1 : 0)),
+                retainedSpeedPerRicochet,
+                randomAngleDegrees,
+                budget.HasFractionalFinalBounce
+                    ? budget.FractionalFinalBounceChance
+                    : 1d,
+                postBounceHomingPauseSeconds)
+        {
+            if (budget.Tenths < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(budget));
+            }
+        }
+
+        private WeaponRicochetSpec(
+            RicochetValue? fixedPointBudget,
             int maximumRicochets,
             double retainedSpeedPerRicochet,
             double randomAngleDegrees,
@@ -317,6 +367,7 @@ namespace ShooterMover.Domain.Weapons
                     nameof(postBounceHomingPauseSeconds));
             }
 
+            FixedPointBudget = fixedPointBudget;
             MaximumRicochets = maximumRicochets;
             RetainedSpeedPerRicochet = retainedSpeedPerRicochet;
             RandomAngleDegrees = randomAngleDegrees;
@@ -324,6 +375,11 @@ namespace ShooterMover.Domain.Weapons
             PostBounceHomingPauseSeconds = postBounceHomingPauseSeconds;
         }
 
+        public RicochetValue? FixedPointBudget { get; }
+        public bool HasCanonicalFixedPointBudget
+        {
+            get { return FixedPointBudget.HasValue; }
+        }
         public int MaximumRicochets { get; }
 
         public int MaximumSuccessfulBounces
