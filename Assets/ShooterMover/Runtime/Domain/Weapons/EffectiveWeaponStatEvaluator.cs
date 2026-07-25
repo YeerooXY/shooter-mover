@@ -14,7 +14,11 @@ namespace ShooterMover.Domain.Weapons
             WeaponGuidanceSpec guidance,
             WeaponImpactSpec impact,
             WeaponDamageSpec damage,
-            WeaponEffects effects)
+            WeaponEffects effects,
+            WeaponAttackDistance maximumAttackDistance,
+            PierceValue pierce,
+            RicochetValue ricochet,
+            double movementPenaltyPercent)
         {
             FireSettings = fireSettings;
             ShotPattern = shotPattern;
@@ -23,6 +27,10 @@ namespace ShooterMover.Domain.Weapons
             Impact = impact;
             Damage = damage;
             Effects = effects;
+            MaximumAttackDistance = maximumAttackDistance;
+            Pierce = pierce;
+            Ricochet = ricochet;
+            MovementPenaltyPercent = movementPenaltyPercent;
         }
 
         public WeaponFireSettings FireSettings { get; }
@@ -32,10 +40,15 @@ namespace ShooterMover.Domain.Weapons
         public WeaponImpactSpec Impact { get; }
         public WeaponDamageSpec Damage { get; }
         public WeaponEffects Effects { get; }
+        public WeaponAttackDistance MaximumAttackDistance { get; }
+        public PierceValue Pierce { get; }
+        public RicochetValue Ricochet { get; }
+        public double MovementPenaltyPercent { get; }
     }
 
     /// <summary>
     /// Applies numeric modifier stages and reconstructs the validated immutable weapon contracts.
+    /// Semantic values remain available even when a delivery has no travelling projectile.
     /// </summary>
     internal static class EffectiveWeaponStatEvaluator
     {
@@ -47,9 +60,19 @@ namespace ShooterMover.Domain.Weapons
             Dictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators =
                 BuildAccumulators(blueprint, installedAugments, modifiersByAugmentId);
 
+            WeaponAttackDistance maximumAttackDistance =
+                BuildMaximumAttackDistance(blueprint, accumulators);
+            PierceValue pierce = BuildPierce(blueprint, accumulators);
+            RicochetValue ricochet = BuildRicochet(blueprint);
+            double movementPenaltyPercent = BuildMovementPenalty(blueprint);
+
             WeaponFireSettings fireSettings = BuildFireSettings(blueprint, accumulators);
             WeaponShotPattern shotPattern = BuildShotPattern(blueprint, accumulators);
-            WeaponProjectileSpec projectile = BuildProjectile(blueprint, accumulators);
+            WeaponProjectileSpec projectile = BuildProjectile(
+                blueprint,
+                accumulators,
+                maximumAttackDistance,
+                pierce);
             WeaponGuidanceSpec guidance = BuildGuidance(blueprint, accumulators);
             WeaponImpactSpec impact = BuildImpact(blueprint, accumulators);
             WeaponDamageSpec damage = BuildDamage(blueprint, accumulators);
@@ -63,7 +86,11 @@ namespace ShooterMover.Domain.Weapons
                 guidance,
                 impact,
                 damage,
-                effects);
+                effects,
+                maximumAttackDistance,
+                pierce,
+                ricochet,
+                movementPenaltyPercent);
         }
 
         private static Dictionary<WeaponEffectiveStat, ModifierAccumulator> BuildAccumulators(
@@ -111,6 +138,16 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponEffectiveStat.AreaDamage:
+                    if (!blueprint.IsTransitionalCatalogProjection)
+                    {
+                        reason = "canonical weapons have one universal damage value; area delivery is projected explicitly rather than independently modified";
+                    }
+                    else if (blueprint.Effects.Explosion == null)
+                    {
+                        reason = "the authored weapon has no explosion structure";
+                    }
+                    break;
+
                 case WeaponEffectiveStat.ExplosionRadius:
                     if (blueprint.Effects.Explosion == null)
                     {
@@ -119,11 +156,23 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponEffectiveStat.ProjectileSpeed:
-                case WeaponEffectiveStat.ProjectileRange:
-                case WeaponEffectiveStat.PierceTenths:
-                    if (blueprint.Projectile == null)
+                    if (!SupportsProjectileSpeed(blueprint))
                     {
-                        reason = "the current modifier targets travelling-projectile data; the authored delivery has no projectile structure";
+                        reason = "projectile speed is valid only for travelling Normal, Orb, or Rocket delivery";
+                    }
+                    break;
+
+                case WeaponEffectiveStat.ProjectileRange:
+                    if (!SupportsMaximumRange(blueprint))
+                    {
+                        reason = "the delivery does not expose a finite canonical maximum attack distance";
+                    }
+                    break;
+
+                case WeaponEffectiveStat.PierceTenths:
+                    if (!SupportsPierce(blueprint))
+                    {
+                        reason = "the delivery does not declare reusable canonical Pierce semantics";
                     }
                     break;
 
@@ -216,6 +265,100 @@ namespace ShooterMover.Domain.Weapons
             }
         }
 
+        private static bool SupportsProjectileSpeed(WeaponBlueprint blueprint)
+        {
+            return blueprint.IsTransitionalCatalogProjection
+                ? blueprint.Projectile != null
+                : blueprint.Delivery != null
+                    && blueprint.Delivery.SupportsProjectileSpeedModifiers;
+        }
+
+        private static bool SupportsMaximumRange(WeaponBlueprint blueprint)
+        {
+            if (blueprint.IsTransitionalCatalogProjection)
+            {
+                return blueprint.Projectile != null;
+            }
+            return blueprint.Delivery != null
+                && blueprint.Delivery.SupportsCanonicalRangeModifiers
+                && blueprint.BaseStats != null
+                && blueprint.BaseStats.MaximumAttackDistance.IsLimited;
+        }
+
+        private static bool SupportsPierce(WeaponBlueprint blueprint)
+        {
+            return blueprint.IsTransitionalCatalogProjection
+                ? blueprint.Projectile != null
+                : blueprint.Delivery != null
+                    && blueprint.Delivery.SupportsCanonicalPierceModifiers;
+        }
+
+        private static WeaponAttackDistance BuildMaximumAttackDistance(
+            WeaponBlueprint blueprint,
+            IDictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators)
+        {
+            WeaponAttackDistance authored = blueprint.BaseStats == null
+                ? (blueprint.Projectile == null
+                    ? null
+                    : WeaponAttackDistance.Limited(blueprint.Projectile.Range))
+                : blueprint.BaseStats.MaximumAttackDistance;
+            if (authored == null || !authored.IsLimited)
+            {
+                return authored;
+            }
+
+            return WeaponAttackDistance.Limited(
+                RequirePositive(
+                    Apply(
+                        accumulators,
+                        WeaponEffectiveStat.ProjectileRange,
+                        authored.Distance),
+                    WeaponEffectiveStat.ProjectileRange));
+        }
+
+        private static PierceValue BuildPierce(
+            WeaponBlueprint blueprint,
+            IDictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators)
+        {
+            PierceValue authored = blueprint.BaseStats == null
+                ? (blueprint.Projectile == null
+                    ? new PierceValue(0)
+                    : blueprint.Projectile.Pierce)
+                : blueprint.BaseStats.Pierce;
+            return new PierceValue(
+                ToNonNegativeInt(
+                    Apply(
+                        accumulators,
+                        WeaponEffectiveStat.PierceTenths,
+                        authored.Tenths),
+                    WeaponEffectiveStat.PierceTenths));
+        }
+
+        private static RicochetValue BuildRicochet(WeaponBlueprint blueprint)
+        {
+            if (blueprint.BaseStats != null)
+            {
+                return blueprint.BaseStats.Ricochet;
+            }
+            if (blueprint.Impact.Ricochet == null)
+            {
+                return new RicochetValue(0);
+            }
+            if (blueprint.Impact.Ricochet.FixedPointBudget.HasValue)
+            {
+                return blueprint.Impact.Ricochet.FixedPointBudget.Value;
+            }
+            return new RicochetValue(
+                checked(blueprint.Impact.Ricochet.MaximumSuccessfulBounces * 10));
+        }
+
+        private static double BuildMovementPenalty(WeaponBlueprint blueprint)
+        {
+            return blueprint.BaseStats == null
+                ? 0d
+                : blueprint.BaseStats.MovementPenaltyPercent;
+        }
+
         private static WeaponFireSettings BuildFireSettings(
             WeaponBlueprint blueprint,
             IDictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators)
@@ -293,29 +436,30 @@ namespace ShooterMover.Domain.Weapons
 
         private static WeaponProjectileSpec BuildProjectile(
             WeaponBlueprint blueprint,
-            IDictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators)
+            IDictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators,
+            WeaponAttackDistance maximumAttackDistance,
+            PierceValue pierce)
         {
             WeaponProjectileSpec authored = blueprint.Projectile;
             if (authored == null)
             {
                 return null;
             }
+            if (maximumAttackDistance == null || !maximumAttackDistance.IsLimited)
+            {
+                throw new InvalidOperationException(
+                    "Travelling projectile execution requires a finite effective maximum range.");
+            }
 
             double speed = RequirePositive(
                 Apply(accumulators, WeaponEffectiveStat.ProjectileSpeed, authored.Speed),
                 WeaponEffectiveStat.ProjectileSpeed);
-            double range = RequirePositive(
-                Apply(accumulators, WeaponEffectiveStat.ProjectileRange, authored.Range),
-                WeaponEffectiveStat.ProjectileRange);
-            int pierceTenths = ToNonNegativeInt(
-                Apply(accumulators, WeaponEffectiveStat.PierceTenths, authored.Pierce.Tenths),
-                WeaponEffectiveStat.PierceTenths);
 
             return WeaponProjectileSpec.Create(
                 authored.Kind,
                 speed,
-                range,
-                new PierceValue(pierceTenths),
+                maximumAttackDistance.Distance,
+                pierce,
                 authored.TerminationBehavior);
         }
 
@@ -422,26 +566,42 @@ namespace ShooterMover.Domain.Weapons
             IDictionary<WeaponEffectiveStat, ModifierAccumulator> accumulators)
         {
             WeaponDamageSpec authored = blueprint.Damage;
+            double directDamage = ClampNonNegative(
+                Apply(accumulators, WeaponEffectiveStat.DirectDamage, authored.DirectDamage),
+                WeaponEffectiveStat.DirectDamage);
+            double dotDamage = ClampNonNegative(
+                Apply(
+                    accumulators,
+                    WeaponEffectiveStat.DamageOverTimePerSecond,
+                    authored.DamageOverTimePerSecond),
+                WeaponEffectiveStat.DamageOverTimePerSecond);
+            double dotDuration = ClampNonNegative(
+                Apply(
+                    accumulators,
+                    WeaponEffectiveStat.DamageOverTimeDurationSeconds,
+                    authored.DamageOverTimeDurationSeconds),
+                WeaponEffectiveStat.DamageOverTimeDurationSeconds);
+
+            if (!blueprint.IsTransitionalCatalogProjection)
+            {
+                WeaponDamageOverTimeStats damageOverTime = dotDamage > 0d || dotDuration > 0d
+                    ? new WeaponDamageOverTimeStats(dotDamage, dotDuration)
+                    : null;
+                return WeaponDamageSpec.Create(
+                    authored.Category,
+                    directDamage,
+                    damageOverTime,
+                    authored.Knockback);
+            }
+
             return WeaponDamageSpec.Create(
                 authored.Category,
-                ClampNonNegative(
-                    Apply(accumulators, WeaponEffectiveStat.DirectDamage, authored.DirectDamage),
-                    WeaponEffectiveStat.DirectDamage),
+                directDamage,
                 ClampNonNegative(
                     Apply(accumulators, WeaponEffectiveStat.AreaDamage, authored.AreaDamage),
                     WeaponEffectiveStat.AreaDamage),
-                ClampNonNegative(
-                    Apply(
-                        accumulators,
-                        WeaponEffectiveStat.DamageOverTimePerSecond,
-                        authored.DamageOverTimePerSecond),
-                    WeaponEffectiveStat.DamageOverTimePerSecond),
-                ClampNonNegative(
-                    Apply(
-                        accumulators,
-                        WeaponEffectiveStat.DamageOverTimeDurationSeconds,
-                        authored.DamageOverTimeDurationSeconds),
-                    WeaponEffectiveStat.DamageOverTimeDurationSeconds),
+                dotDamage,
+                dotDuration,
                 authored.Knockback);
         }
 
@@ -677,7 +837,6 @@ namespace ShooterMover.Domain.Weapons
             {
                 RequireFinite(authoredValue, stat);
 
-                // Required order: authored, flat, additive percentage, multiplier, override.
                 double result = authoredValue;
                 result += flatAddition;
                 result *= 1d + additivePercentage;
