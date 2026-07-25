@@ -50,6 +50,12 @@ namespace ShooterMover.Application.Weapons.Execution
             }
             if (targetBudgetPolicy == WeaponExplosionTargetBudgetPolicy.RocketPierce)
             {
+                if (targetPierce.Tenths <= 0)
+                {
+                    throw new ArgumentException(
+                        "Canonical Rocket target budgeting requires positive final Pierce.",
+                        nameof(targetPierce));
+                }
                 if (!random.HasValue
                     || random.Value.AlgorithmVersion
                         != DeterministicRandom.CurrentAlgorithmVersion)
@@ -101,9 +107,89 @@ namespace ShooterMover.Application.Weapons.Execution
         }
 
         /// <summary>
-        /// Explicit compatibility projection for one canonical effective Rocket. Universal final
-        /// damage becomes explosion base damage, and final Pierce becomes explosion-victim capacity.
-        /// The Rocket body therefore does not need an independently authored area-damage value.
+        /// Canonical Rocket projection from the exact final values retained by projectile
+        /// execution. No inventory, augment, skill, catalogue, registry or character lookup occurs.
+        /// </summary>
+        public static WeaponExplosionResolutionRequest ForCanonicalRocket(
+            ProjectileExecutionProfile profile,
+            WeaponEffectSourceContext source,
+            WeaponVector2 impactPosition,
+            DeterministicRandom random,
+            IWeaponEffectTargetSource targetSource,
+            WeaponEffectLineOfSightPolicy lineOfSightPolicy,
+            IWeaponEffectLineOfSightResolver lineOfSightResolver)
+        {
+            if (profile == null)
+            {
+                throw new ArgumentNullException(nameof(profile));
+            }
+            if (!profile.IsCanonicalRocket
+                || profile.CanonicalDeliveryType != WeaponDeliveryType.Rocket
+                || profile.Projectile == null
+                || profile.Projectile.Kind != WeaponProjectileKind.Rocket)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-profile-required",
+                    nameof(profile));
+            }
+            if (profile.Effects == null || profile.Effects.Explosion == null)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-explosion-required",
+                    nameof(profile));
+            }
+            WeaponExplosionTriggerSpec trigger = profile.Impact == null
+                ? null
+                : profile.Impact.ExplosionTrigger;
+            if (trigger == null || !trigger.OnEnemyImpact || !trigger.OnWallImpact)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-contact-triggers-required",
+                    nameof(profile));
+            }
+            if (profile.Damage == null || profile.Damage.DirectDamage <= 0d)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-positive-damage-required",
+                    nameof(profile));
+            }
+            if (profile.Pierce.Tenths <= 0)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-positive-pierce-required",
+                    nameof(profile));
+            }
+            if (profile.Damage.HasAreaDamage)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-independent-area-damage-rejected",
+                    nameof(profile));
+            }
+            if (profile.Projectile.TerminationBehavior
+                != WeaponProjectileTerminationBehavior.StopOnFirstBlockingImpact)
+            {
+                throw new ArgumentException(
+                    "canonical-rocket-request-first-contact-termination-required",
+                    nameof(profile));
+            }
+
+            return new WeaponExplosionResolutionRequest(
+                source,
+                impactPosition,
+                profile.Damage,
+                profile.Effects.Explosion,
+                profile.Damage.DirectDamage,
+                WeaponExplosionTargetBudgetPolicy.RocketPierce,
+                profile.Pierce,
+                random,
+                targetSource,
+                lineOfSightPolicy,
+                lineOfSightResolver);
+        }
+
+        /// <summary>
+        /// Additive compatibility overload. It delegates through the same EffectiveWeapon to
+        /// ProjectileExecutionProfile projection so there is only one final-value Rocket path.
         /// </summary>
         public static WeaponExplosionResolutionRequest ForCanonicalRocket(
             EffectiveWeapon effectiveWeapon,
@@ -118,48 +204,10 @@ namespace ShooterMover.Application.Weapons.Execution
             {
                 throw new ArgumentNullException(nameof(effectiveWeapon));
             }
-            if (!effectiveWeapon.UsesCanonicalAuthoredDefinition
-                || effectiveWeapon.AuthoredDelivery == null
-                || effectiveWeapon.AuthoredDelivery.Type != WeaponDeliveryType.Rocket)
-            {
-                throw new ArgumentException(
-                    "Canonical Rocket explosion projection requires a canonical effective Rocket.",
-                    nameof(effectiveWeapon));
-            }
-            if (effectiveWeapon.Effects.Explosion == null)
-            {
-                throw new ArgumentException(
-                    "Canonical Rocket explosion projection requires an explosion effect.",
-                    nameof(effectiveWeapon));
-            }
-            WeaponExplosionTriggerSpec trigger = effectiveWeapon.Impact.ExplosionTrigger;
-            if (trigger == null || !trigger.OnEnemyImpact || !trigger.OnWallImpact)
-            {
-                throw new ArgumentException(
-                    "Canonical Rocket explosion projection requires enemy- and wall-contact triggers.",
-                    nameof(effectiveWeapon));
-            }
-            if (effectiveWeapon.Damage.DirectDamage <= 0d)
-            {
-                throw new ArgumentException(
-                    "Canonical Rocket explosion projection requires positive final universal damage.",
-                    nameof(effectiveWeapon));
-            }
-            if (effectiveWeapon.Damage.HasAreaDamage)
-            {
-                throw new ArgumentException(
-                    "Canonical Rockets cannot carry an independently authored area-damage payload.",
-                    nameof(effectiveWeapon));
-            }
-
-            return new WeaponExplosionResolutionRequest(
+            return ForCanonicalRocket(
+                ProjectileExecutionProfile.From(effectiveWeapon),
                 source,
                 impactPosition,
-                effectiveWeapon.Damage,
-                effectiveWeapon.Effects.Explosion,
-                effectiveWeapon.Damage.DirectDamage,
-                WeaponExplosionTargetBudgetPolicy.RocketPierce,
-                effectiveWeapon.Pierce,
                 random,
                 targetSource,
                 lineOfSightPolicy,
@@ -191,6 +239,107 @@ namespace ShooterMover.Application.Weapons.Execution
                     nameof(damage));
             }
             return damage;
+        }
+    }
+
+    /// <summary>
+    /// Downstream projectile-emission adapter. Canonical Rockets use only the profile retained by
+    /// the emission; transitional area-damage content keeps the legacy unlimited-target request.
+    /// </summary>
+    public sealed class ProjectileExplosionResolutionAdapter
+    {
+        private readonly WeaponExplosionResolver resolver;
+
+        public ProjectileExplosionResolutionAdapter(WeaponExplosionResolver resolver)
+        {
+            this.resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        }
+
+        public WeaponExplosionResolution Resolve(
+            ProjectileEffectEmission emission,
+            IWeaponEffectTargetSource targetSource,
+            WeaponEffectLineOfSightPolicy lineOfSightPolicy,
+            IWeaponEffectLineOfSightResolver lineOfSightResolver)
+        {
+            if (emission == null)
+            {
+                throw new ArgumentNullException(nameof(emission));
+            }
+            if (emission.Kind != ProjectileEffectEmissionKind.Explosion)
+            {
+                throw new ArgumentException(
+                    "projectile-explosion-emission-required",
+                    nameof(emission));
+            }
+            if (emission.Effects == null || emission.Effects.Explosion == null)
+            {
+                throw new InvalidOperationException(
+                    "projectile-explosion-emission-effect-required");
+            }
+
+            WeaponEffectSourceContext source = new WeaponEffectSourceContext(
+                emission.Lifecycle.Identity.SourceIdentity,
+                emission.EventOrdinal);
+            WeaponExplosionResolutionRequest request;
+            if (emission.IsCanonicalRocket)
+            {
+                ValidateCanonicalRocketReason(emission);
+                request = WeaponExplosionResolutionRequest.ForCanonicalRocket(
+                    emission.Profile,
+                    source,
+                    emission.Position,
+                    emission.Lifecycle.Random,
+                    targetSource,
+                    lineOfSightPolicy,
+                    lineOfSightResolver);
+            }
+            else
+            {
+                if (emission.Profile != null && emission.Profile.IsCanonical)
+                {
+                    throw new InvalidOperationException(
+                        "projectile-explosion-canonical-non-rocket-request-rejected");
+                }
+                request = new WeaponExplosionResolutionRequest(
+                    source,
+                    emission.Position,
+                    emission.Damage,
+                    emission.Effects.Explosion,
+                    targetSource,
+                    lineOfSightPolicy,
+                    lineOfSightResolver);
+            }
+
+            return resolver.Resolve(request);
+        }
+
+        private static void ValidateCanonicalRocketReason(
+            ProjectileEffectEmission emission)
+        {
+            WeaponExplosionTriggerReason required;
+            switch (emission.SourceContactKind)
+            {
+                case ProjectileContactKind.Enemy:
+                    required = WeaponExplosionTriggerReason.EnemyImpact;
+                    break;
+                case ProjectileContactKind.Wall:
+                    required = WeaponExplosionTriggerReason.WallImpact;
+                    break;
+                case ProjectileContactKind.RangeExpiry:
+                    required = WeaponExplosionTriggerReason.RangeExpiry;
+                    break;
+                case ProjectileContactKind.ExplicitTermination:
+                    required = WeaponExplosionTriggerReason.Termination;
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        "projectile-explosion-canonical-rocket-contact-invalid");
+            }
+            if ((emission.ExplosionTriggerReasons & required) == 0)
+            {
+                throw new InvalidOperationException(
+                    "projectile-explosion-canonical-rocket-trigger-mismatch");
+            }
         }
     }
 
