@@ -189,6 +189,7 @@ namespace ShooterMover.Domain.Weapons
             {
                 Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "fire.shots_per_trigger", "Canonical firing cycles contain one shot group; simultaneous emissions belong to shot.projectiles_per_shot.");
             }
+
             if (fire.Mode == WeaponFireMode.Burst)
             {
                 if (fire.BurstSettings == null
@@ -196,21 +197,51 @@ namespace ShooterMover.Domain.Weapons
                     || fire.IntervalBetweenBurstShotsSeconds <= 0d)
                 {
                     Add(issues, WeaponDefinitionIssueCode.MissingBurstSettings, "fire.burst", "Burst mode requires valid sequential shot count and interval data.");
+                    return;
                 }
-                if (fire.RateOfFire > 0d
-                    && !ApproximatelyEqual(
-                        fire.IntervalAfterBurstSeconds,
-                        1d / fire.RateOfFire))
+                if (fire.RateOfFire <= 0d)
                 {
-                    Add(issues, WeaponDefinitionIssueCode.UnexpectedBurstSettings, "fire.interval_after_burst_seconds", "Canonical burst recovery is derived from rate of fire and cannot carry an independent post-burst interval.");
+                    return;
+                }
+
+                double cycleIntervalSeconds = 1d / fire.RateOfFire;
+                double burstEmissionSpanSeconds =
+                    (fire.ShotsPerBurst - 1d)
+                    * fire.IntervalBetweenBurstShotsSeconds;
+                double expectedRecoverySeconds =
+                    cycleIntervalSeconds - burstEmissionSpanSeconds;
+                if (double.IsNaN(expectedRecoverySeconds)
+                    || double.IsInfinity(expectedRecoverySeconds)
+                    || expectedRecoverySeconds <= 0d)
+                {
+                    Add(issues, WeaponDefinitionIssueCode.InvalidRateOfFire, "fire.rate_of_fire", "Rate of fire must leave positive recovery time after the sequential burst emission span.");
+                    return;
+                }
+
+                double expectedSchedulerRate = 1d / expectedRecoverySeconds;
+                if (!ApproximatelyEqual(
+                        fire.IntervalAfterBurstSeconds,
+                        expectedRecoverySeconds)
+                    || !ApproximatelyEqual(
+                        fire.ShotsPerSecond,
+                        expectedSchedulerRate))
+                {
+                    Add(issues, WeaponDefinitionIssueCode.UnexpectedBurstSettings, "fire", "Canonical burst scheduler fields must be the exact derived recovery projection of rate of fire and burst timing.");
                 }
             }
-            else if (fire.BurstSettings != null
-                || fire.ShotsPerBurst != 1
-                || fire.IntervalBetweenBurstShotsSeconds != 0d
-                || fire.IntervalAfterBurstSeconds != 0d)
+            else
             {
-                Add(issues, WeaponDefinitionIssueCode.UnexpectedBurstSettings, "fire.burst", "Non-burst modes cannot carry burst-only data.");
+                if (fire.BurstSettings != null
+                    || fire.ShotsPerBurst != 1
+                    || fire.IntervalBetweenBurstShotsSeconds != 0d
+                    || fire.IntervalAfterBurstSeconds != 0d)
+                {
+                    Add(issues, WeaponDefinitionIssueCode.UnexpectedBurstSettings, "fire.burst", "Non-burst modes cannot carry burst-only data.");
+                }
+                if (!ApproximatelyEqual(fire.ShotsPerSecond, fire.RateOfFire))
+                {
+                    Add(issues, WeaponDefinitionIssueCode.InvalidRateOfFire, "fire", "Semi-automatic and automatic scheduler cadence must equal the authored firing-cycle rate.");
+                }
             }
         }
 
