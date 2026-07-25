@@ -89,11 +89,17 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 throw new InvalidOperationException(
                     "Room runtime composition is already built.");
             }
+            if (definition == null)
+            {
+                throw new ArgumentNullException(nameof(definition));
+            }
+            if (catalog == null)
+            {
+                throw new ArgumentNullException(nameof(catalog));
+            }
 
-            configuredDefinition = definition
-                ?? throw new ArgumentNullException(nameof(definition));
-            presentationCatalog = catalog
-                ?? throw new ArgumentNullException(nameof(catalog));
+            configuredDefinition = definition;
+            presentationCatalog = catalog;
             roomPresentationRoot = presentationRoot;
             buildOnAwake = false;
         }
