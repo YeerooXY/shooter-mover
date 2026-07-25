@@ -272,13 +272,31 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     null);
             }
 
-            EffectiveWeapon effectiveWeapon;
-            string effectiveRejection;
-            if (!effectiveResolver.TryResolve(
+            EffectiveWeapon effectiveWeapon = null;
+            string effectiveRejection = string.Empty;
+            bool effectiveResolved;
+            try
+            {
+                effectiveResolved = effectiveResolver.TryResolve(
                     equipmentInstance,
                     out effectiveWeapon,
-                    out effectiveRejection)
-                || effectiveWeapon == null)
+                    out effectiveRejection);
+            }
+            catch (OverflowException)
+            {
+                effectiveResolved = false;
+                effectiveWeapon = null;
+                effectiveRejection =
+                    "weapon-live-effective-resolution-numerical-exception";
+            }
+            catch (Exception)
+            {
+                effectiveResolved = false;
+                effectiveWeapon = null;
+                effectiveRejection = "weapon-live-effective-resolution-exception";
+            }
+
+            if (!effectiveResolved || effectiveWeapon == null)
             {
                 return RejectTransition(
                     request.EquipmentInstanceId,
@@ -644,6 +662,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     StringComparison.Ordinal) >= 0
                 || rejectionCode.IndexOf(
                     "augment",
+                    StringComparison.Ordinal) >= 0
+                || rejectionCode.IndexOf(
+                    "effective-resolution",
                     StringComparison.Ordinal) >= 0)
             {
                 return WeaponExecutionStatus.InvalidTuning;
