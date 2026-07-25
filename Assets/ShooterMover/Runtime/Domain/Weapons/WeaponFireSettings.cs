@@ -475,13 +475,6 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponShotPatternKind.Spray:
-                    RequireProjectileCount(projectilesPerShot, 1, "Spray");
-                    if (spreadDegrees != 0d)
-                    {
-                        throw new ArgumentException(
-                            "Spray uses random angular deviation rather than a deterministic spread arc.",
-                            nameof(spreadDegrees));
-                    }
                     if (randomnessDegrees <= 0d)
                     {
                         throw new ArgumentOutOfRangeException(
