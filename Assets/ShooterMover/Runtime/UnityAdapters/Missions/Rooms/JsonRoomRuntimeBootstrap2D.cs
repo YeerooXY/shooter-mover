@@ -61,6 +61,13 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
             catch (Exception exception)
             {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+
                 RoomContentImportIssueV1 issue = CreateImportExceptionIssue(exception);
                 lastImportIssues = new[] { issue };
                 LogImportFailure(issue, lastImportIssues.Count);
