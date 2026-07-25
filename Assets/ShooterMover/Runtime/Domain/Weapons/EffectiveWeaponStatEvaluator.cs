@@ -123,7 +123,7 @@ namespace ShooterMover.Domain.Weapons
                 case WeaponEffectiveStat.PierceTenths:
                     if (blueprint.Projectile == null)
                     {
-                        reason = "the authored weapon has no projectile structure";
+                        reason = "the current modifier targets travelling-projectile data; the authored delivery has no projectile structure";
                     }
                     break;
 
@@ -157,6 +157,16 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponEffectiveStat.RicochetMaximumRicochets:
+                    if (blueprint.Impact.Ricochet == null)
+                    {
+                        reason = "the authored weapon has no ricochet structure";
+                    }
+                    else if (blueprint.Impact.Ricochet.HasCanonicalFixedPointBudget)
+                    {
+                        reason = "legacy maximum-ricochet modifiers cannot rewrite the canonical fixed-point guaranteed-plus-one-fraction budget";
+                    }
+                    break;
+
                 case WeaponEffectiveStat.RicochetRetainedSpeed:
                 case WeaponEffectiveStat.RicochetRandomAngleDegrees:
                     if (blueprint.Impact.Ricochet == null)
@@ -309,12 +319,6 @@ namespace ShooterMover.Domain.Weapons
             WeaponRicochetSpec ricochet = null;
             if (authored.Ricochet != null)
             {
-                int maximumRicochets = ToPositiveInt(
-                    Apply(
-                        accumulators,
-                        WeaponEffectiveStat.RicochetMaximumRicochets,
-                        authored.Ricochet.MaximumRicochets),
-                    WeaponEffectiveStat.RicochetMaximumRicochets);
                 double retainedSpeed = Clamp(
                     Apply(
                         accumulators,
@@ -338,12 +342,29 @@ namespace ShooterMover.Domain.Weapons
                     360d,
                     WeaponEffectiveStat.RicochetRandomAngleDegrees);
 
-                ricochet = new WeaponRicochetSpec(
-                    maximumRicochets,
-                    retainedSpeed,
-                    randomAngle,
-                    authored.Ricochet.BounceChance,
-                    authored.Ricochet.PostBounceHomingPauseSeconds);
+                if (authored.Ricochet.FixedPointBudget.HasValue)
+                {
+                    ricochet = new WeaponRicochetSpec(
+                        authored.Ricochet.FixedPointBudget.Value,
+                        retainedSpeed,
+                        randomAngle,
+                        authored.Ricochet.PostBounceHomingPauseSeconds);
+                }
+                else
+                {
+                    int maximumRicochets = ToPositiveInt(
+                        Apply(
+                            accumulators,
+                            WeaponEffectiveStat.RicochetMaximumRicochets,
+                            authored.Ricochet.MaximumRicochets),
+                        WeaponEffectiveStat.RicochetMaximumRicochets);
+                    ricochet = new WeaponRicochetSpec(
+                        maximumRicochets,
+                        retainedSpeed,
+                        randomAngle,
+                        authored.Ricochet.BounceChance,
+                        authored.Ricochet.PostBounceHomingPauseSeconds);
+                }
             }
 
             return WeaponImpactSpec.Create(
@@ -456,20 +477,28 @@ namespace ShooterMover.Domain.Weapons
             WeaponDamageSpec damage,
             WeaponEffects effects)
         {
-            if (blueprint.ShotPattern.UsesProjectiles && projectile == null)
+            bool requiresTravellingProjectile = blueprint.Delivery == null
+                ? blueprint.ShotPattern.UsesProjectiles
+                : blueprint.Delivery.IsTravelling;
+            if (requiresTravellingProjectile && projectile == null)
             {
                 throw new InvalidOperationException(
-                    "Effective projectile-emitting weapons must retain projectile structure.");
+                    "Effective travelling deliveries must retain projectile structure.");
             }
             if (guidance.Mode == WeaponGuidanceMode.Homing && projectile == null)
             {
                 throw new InvalidOperationException(
                     "Effective homing weapons must retain projectile structure.");
             }
-            if (impact.Ricochet != null && projectile == null)
+
+            bool supportsNonProjectileRicochet = blueprint.Delivery != null
+                && blueprint.Delivery.Type == WeaponDeliveryType.Laser;
+            if (impact.Ricochet != null
+                && projectile == null
+                && !supportsNonProjectileRicochet)
             {
                 throw new InvalidOperationException(
-                    "Effective ricochet weapons must retain projectile structure.");
+                    "Effective ricochet requires a travelling projectile or canonical Laser delivery.");
             }
             if ((impact.ExplosionTrigger != null || damage.HasAreaDamage)
                 && effects.Explosion == null)
