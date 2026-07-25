@@ -6,12 +6,6 @@ namespace ShooterMover.Domain.Weapons
 {
     /// <summary>
     /// Canonical immutable authored weapon definition.
-    ///
-    /// New content uses the grouped identity, fire, shot, base-stat, delivery, presentation, and
-    /// drop-metadata properties. The older flat construction path is retained only as an explicit
-    /// transitional output of WeaponCatalogBlueprintMapper while the catalogue schema is migrated.
-    /// Runtime state, inventory identity, item level, installed augments, and active modifiers
-    /// deliberately live outside this contract.
     /// </summary>
     public sealed class WeaponBlueprint
     {
@@ -56,38 +50,19 @@ namespace ShooterMover.Domain.Weapons
         public string DisplayName { get { return Identity.DisplayName; } }
         public string WeaponFamily { get { return Identity.FamilyId; } }
 
-        /// <summary>
-        /// Compatibility projection consumed by the current effective-weapon and live-runtime
-        /// route. Lasers and specials correctly have no travelling-projectile projection.
-        /// </summary>
         public WeaponProjectileSpec Projectile { get; }
         public WeaponGuidanceSpec Guidance
         {
-            get
-            {
-                return Delivery == null
-                    ? TransitionalGuidance
-                    : Delivery.Guidance;
-            }
+            get { return Delivery == null ? TransitionalGuidance : Delivery.Guidance; }
         }
         public WeaponImpactSpec Impact
         {
-            get
-            {
-                return Delivery == null
-                    ? TransitionalImpact
-                    : Delivery.Impact;
-            }
+            get { return Delivery == null ? TransitionalImpact : Delivery.Impact; }
         }
         public WeaponDamageSpec Damage { get; }
         public WeaponEffects Effects
         {
-            get
-            {
-                return Delivery == null
-                    ? TransitionalEffects
-                    : Delivery.Effects;
-            }
+            get { return Delivery == null ? TransitionalEffects : Delivery.Effects; }
         }
         public string DropMetadataReference
         {
@@ -155,6 +130,15 @@ namespace ShooterMover.Domain.Weapons
                 delivery,
                 presentation,
                 dropMetadata);
+            if (delivery != null
+                && delivery.Type == WeaponDeliveryType.Rocket
+                && (baseStats == null || baseStats.DirectDamage <= 0d))
+            {
+                issues.Add(new WeaponDefinitionIssue(
+                    WeaponDefinitionIssueCode.RocketExplosionRequired,
+                    "base_stats.direct_damage",
+                    "Canonical Rocket universal damage must be positive because it is the executable explosion base damage."));
+            }
             if (issues.Count != 0)
             {
                 return new WeaponDefinitionConstructionResult(null, issues);
@@ -205,11 +189,6 @@ namespace ShooterMover.Domain.Weapons
                 issues);
         }
 
-        /// <summary>
-        /// Transitional flat construction path used by the current catalogue mapper. It preserves
-        /// the live route while making the migration state explicit on the resulting definition.
-        /// New authored content must use CreateAuthored.
-        /// </summary>
         public static WeaponBlueprint Create(
             WeaponDefinitionId definitionId,
             string displayName,
@@ -334,8 +313,7 @@ namespace ShooterMover.Domain.Weapons
                     nameof(shotPattern));
             }
 
-            bool hasExplosionData = impact.ExplosionTrigger != null
-                || damage.HasAreaDamage;
+            bool hasExplosionData = impact.ExplosionTrigger != null || damage.HasAreaDamage;
             if (hasExplosionData && effects.Explosion == null)
             {
                 throw new ArgumentException(
@@ -354,9 +332,7 @@ namespace ShooterMover.Domain.Weapons
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException(
-                    "A non-empty value is required.",
-                    parameterName);
+                throw new ArgumentException("A non-empty value is required.", parameterName);
             }
         }
     }
