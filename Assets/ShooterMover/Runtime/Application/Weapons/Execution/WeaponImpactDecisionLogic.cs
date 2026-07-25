@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
@@ -11,6 +12,13 @@ namespace ShooterMover.Application.Weapons.Execution
     /// </summary>
     public static partial class WeaponImpactDecisionLogic
     {
+        private static readonly StableId CanonicalRicochetDecisionPurpose =
+            StableId.Parse("weapon.ricochet-final-bounce");
+        private static readonly StableId RicochetProjectileOrdinalPurpose =
+            StableId.Parse("weapon.ricochet-projectile-ordinal");
+        private static readonly StableId RicochetWallContactPurpose =
+            StableId.Parse("weapon.ricochet-wall-contact");
+
         public static WeaponImpactDecision Evaluate(
             WeaponImpactRequest request,
             DeterministicRandom random)
@@ -120,6 +128,59 @@ namespace ShooterMover.Application.Weapons.Execution
                     random);
             }
 
+            return ricochet.HasCanonicalFixedPointBudget
+                ? EvaluateCanonicalWallImpact(request, ricochet, random)
+                : EvaluateLegacyWallImpact(request, ricochet, random);
+        }
+
+        private static WeaponImpactDecision EvaluateCanonicalWallImpact(
+            WeaponImpactRequest request,
+            WeaponRicochetSpec ricochet,
+            DeterministicRandom random)
+        {
+            RicochetValue authoredBudget = ricochet.FixedPointBudget.Value;
+            WeaponRicochetRuntimeState state =
+                request.RicochetState.BeginCanonicalBudget(authoredBudget);
+            RicochetValue remaining = state.RemainingFixedPointBudget.Value;
+
+            bool fractionalRollSucceeded = false;
+            if (WeaponFixedPointBudgetRules.RequiresFractionalRicochetRoll(remaining))
+            {
+                DeterministicRandom decisionStream = CreateCanonicalRicochetDecisionStream(
+                    request,
+                    random);
+                decisionStream.NextChance(
+                    checked((ulong)remaining.FractionalTenths),
+                    10UL,
+                    out fractionalRollSucceeded);
+            }
+
+            WeaponRicochetCollisionResolution resolution =
+                WeaponFixedPointBudgetRules.ResolveEligibleRicochetCollision(
+                    remaining,
+                    fractionalRollSucceeded);
+            WeaponRicochetRuntimeState resolvedState = state.AfterCanonicalWallContact(
+                request.SimulationStep,
+                request.WallContactId,
+                resolution);
+
+            if (!resolution.Bounces)
+            {
+                return BuildWallFallback(request, resolvedState, random);
+            }
+
+            return BuildSuccessfulBounce(
+                request,
+                ricochet,
+                resolvedState,
+                random);
+        }
+
+        private static WeaponImpactDecision EvaluateLegacyWallImpact(
+            WeaponImpactRequest request,
+            WeaponRicochetSpec ricochet,
+            DeterministicRandom random)
+        {
             if (request.RicochetState.SuccessfulBounceCount
                 >= ricochet.MaximumSuccessfulBounces)
             {
@@ -143,9 +204,28 @@ namespace ShooterMover.Application.Weapons.Execution
                 return BuildWallFallback(request, failedState, nextRandom);
             }
 
+            WeaponRicochetRuntimeState bouncedState =
+                request.RicochetState.AfterWallContact(
+                    request.SimulationStep,
+                    request.WallContactId,
+                    true);
+            return BuildSuccessfulBounce(
+                request,
+                ricochet,
+                bouncedState,
+                nextRandom);
+        }
+
+        private static WeaponImpactDecision BuildSuccessfulBounce(
+            WeaponImpactRequest request,
+            WeaponRicochetSpec ricochet,
+            WeaponRicochetRuntimeState bouncedState,
+            DeterministicRandom random)
+        {
             WeaponVector2 reflected = Reflect(
                 request.IncomingDirection,
                 request.WallNormal);
+            DeterministicRandom nextRandom = random;
             if (ricochet.RandomAngleDegrees > 0d)
             {
                 double angleRoll;
@@ -155,11 +235,6 @@ namespace ShooterMover.Application.Weapons.Execution
                 reflected = reflected.RotateDegrees(angle).Normalized;
             }
 
-            WeaponRicochetRuntimeState bouncedState =
-                request.RicochetState.AfterWallContact(
-                    request.SimulationStep,
-                    request.WallContactId,
-                    true);
             WeaponExplosionTriggerReason explosionReasons = ResolveExplosionReasons(
                 request.ImpactSpec.ExplosionTrigger,
                 WeaponExplosionTriggerReason.WallImpact,
@@ -176,6 +251,48 @@ namespace ShooterMover.Application.Weapons.Execution
                 ricochet.PostBounceHomingPauseSeconds,
                 bouncedState,
                 nextRandom);
+        }
+
+        private static DeterministicRandom CreateCanonicalRicochetDecisionStream(
+            WeaponImpactRequest request,
+            DeterministicRandom random)
+        {
+            WeaponEffectIdentity identity = request.ProjectileIdentity;
+            DeterministicRandom stream = DeterministicRandom.CreateSubstream(
+                random.StreamSeed,
+                random.AlgorithmVersion,
+                CanonicalRicochetDecisionPurpose,
+                checked((ulong)identity.ShotSequence));
+            stream = DeterministicRandom.CreateSubstream(
+                stream.StreamSeed,
+                stream.AlgorithmVersion,
+                RicochetProjectileOrdinalPurpose,
+                checked((ulong)identity.ProjectileOrdinal.Value));
+            stream = DeterministicRandom.CreateSubstream(
+                stream.StreamSeed,
+                stream.AlgorithmVersion,
+                identity.ActorId.Value,
+                checked((ulong)identity.LifecycleGeneration.Value));
+            stream = DeterministicRandom.CreateSubstream(
+                stream.StreamSeed,
+                stream.AlgorithmVersion,
+                identity.ParticipantId.Value,
+                0UL);
+            stream = DeterministicRandom.CreateSubstream(
+                stream.StreamSeed,
+                stream.AlgorithmVersion,
+                identity.EquipmentInstanceId.Value,
+                0UL);
+            stream = DeterministicRandom.CreateSubstream(
+                stream.StreamSeed,
+                stream.AlgorithmVersion,
+                identity.FireOperationId.Value,
+                checked((ulong)request.ImpactOrdinal));
+            return DeterministicRandom.CreateSubstream(
+                stream.StreamSeed,
+                stream.AlgorithmVersion,
+                RicochetWallContactPurpose,
+                checked((ulong)request.WallContactId.Value.GetHashCode()));
         }
     }
 }
