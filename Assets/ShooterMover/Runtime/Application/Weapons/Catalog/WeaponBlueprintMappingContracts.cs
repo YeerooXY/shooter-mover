@@ -54,10 +54,7 @@ namespace ShooterMover.Application.Weapons.Catalog
 
     public sealed class WeaponBlueprintMappingIssue
     {
-        public WeaponBlueprintMappingIssue(
-            WeaponBlueprintMappingIssueCode code,
-            string path,
-            string detail)
+        public WeaponBlueprintMappingIssue(WeaponBlueprintMappingIssueCode code, string path, string detail)
         {
             Code = code;
             Path = path ?? string.Empty;
@@ -78,26 +75,16 @@ namespace ShooterMover.Application.Weapons.Catalog
     {
         private readonly ReadOnlyCollection<WeaponBlueprintMappingIssue> issues;
 
-        internal WeaponBlueprintMappingResult(
-            WeaponBlueprint blueprint,
-            IEnumerable<WeaponBlueprintMappingIssue> mappingIssues)
+        internal WeaponBlueprintMappingResult(WeaponBlueprint blueprint, IEnumerable<WeaponBlueprintMappingIssue> mappingIssues)
         {
             Blueprint = blueprint;
             issues = new ReadOnlyCollection<WeaponBlueprintMappingIssue>(
-                new List<WeaponBlueprintMappingIssue>(
-                    mappingIssues ?? Array.Empty<WeaponBlueprintMappingIssue>()));
+                new List<WeaponBlueprintMappingIssue>(mappingIssues ?? Array.Empty<WeaponBlueprintMappingIssue>()));
         }
 
         public WeaponBlueprint Blueprint { get; }
-        public IReadOnlyList<WeaponBlueprintMappingIssue> Issues
-        {
-            get { return issues; }
-        }
-
-        public bool Succeeded
-        {
-            get { return Blueprint != null && issues.Count == 0; }
-        }
+        public IReadOnlyList<WeaponBlueprintMappingIssue> Issues { get { return issues; } }
+        public bool Succeeded { get { return Blueprint != null && issues.Count == 0; } }
     }
 
     public enum WeaponCatalogSpreadInterpretation
@@ -113,22 +100,17 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             MinimumDamageMultiplier = minimumDamageMultiplier;
         }
-
         public double MinimumDamageMultiplier { get; }
     }
 
     public sealed class WeaponCatalogDamageOverTimeMapping
     {
-        public WeaponCatalogDamageOverTimeMapping(
-            double ticksPerSecond,
-            int maximumStacks,
-            bool refreshesDuration)
+        public WeaponCatalogDamageOverTimeMapping(double ticksPerSecond, int maximumStacks, bool refreshesDuration)
         {
             TicksPerSecond = ticksPerSecond;
             MaximumStacks = maximumStacks;
             RefreshesDuration = refreshesDuration;
         }
-
         public double TicksPerSecond { get; }
         public int MaximumStacks { get; }
         public bool RefreshesDuration { get; }
@@ -140,7 +122,6 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             RetainedDamagePerJump = retainedDamagePerJump;
         }
-
         public double RetainedDamagePerJump { get; }
     }
 
@@ -210,13 +191,9 @@ namespace ShooterMover.Application.Weapons.Catalog
     {
         MinimumTier = 1,
         ExplicitAllowedTierIds = 2,
+        ExplicitAllowedTiers = ExplicitAllowedTierIds,
     }
 
-    /// <summary>
-    /// Additional semantic data required to map one flat catalogue definition into the canonical
-    /// grouped authority. Named exclusive strongboxes are identified by StableId rather than by
-    /// their current numeric progression position.
-    /// </summary>
     public sealed class WeaponCatalogAuthoredMappingDetails
     {
         private readonly ReadOnlyCollection<StableId> allowedStrongboxTierIds;
@@ -261,9 +238,7 @@ namespace ShooterMover.Application.Weapons.Catalog
         public WeaponDropAvailability Availability { get; }
         public WeaponCatalogStrongboxEligibilityMappingMode StrongboxEligibilityMode { get; }
         public int MinimumStrongboxTier { get; }
-        public IReadOnlyList<StableId> AllowedStrongboxTierIds
-        {
-            get { return allowedStrongboxTierIds; }
-        }
+        public IReadOnlyList<StableId> AllowedStrongboxTierIds { get { return allowedStrongboxTierIds; } }
+        internal IReadOnlyList<StableId> AllowedStrongboxTiers { get { return allowedStrongboxTierIds; } }
     }
 }
