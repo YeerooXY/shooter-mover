@@ -323,14 +323,29 @@ namespace ShooterMover.Domain.Weapons
         public int PulsesPerShot { get; }
         public double IntervalBetweenPulsesSeconds { get; }
 
+        /// <summary>
+        /// Canonical designer-facing spread. One emitted attack uses random angular deviation;
+        /// multiple emitted attacks use a deterministic spread arc.
+        /// </summary>
+        public double CanonicalSpreadDegrees
+        {
+            get
+            {
+                return Kind == WeaponShotPatternKind.Spray
+                    ? RandomnessDegrees
+                    : SpreadDegrees;
+            }
+        }
+
         public bool UsesProjectiles
         {
             get { return ProjectilesPerShot > 0; }
         }
 
         /// <summary>
-        /// Canonical designer-facing shot settings. A zero-spread multi-emission shot is a volley;
-        /// a positive-spread multi-emission shot is a spread. Neither implies burst fire.
+        /// Canonical designer-facing shot settings. Positive spread on one emitted attack is an
+        /// accuracy cone; positive spread on multiple simultaneous attacks is an authored arc.
+        /// Neither representation implies burst fire.
         /// </summary>
         public static WeaponShotPattern Canonical(
             int projectilesPerShot,
@@ -349,19 +364,21 @@ namespace ShooterMover.Domain.Weapons
             }
             if (projectilesPerShot == 1)
             {
-                if (spreadDegrees != 0d)
-                {
-                    throw new ArgumentException(
-                        "One emitted attack cannot author a multi-emission spread arc.",
-                        nameof(spreadDegrees));
-                }
-                return Create(
-                    WeaponShotPatternKind.Single,
-                    1,
-                    0d,
-                    0d,
-                    1,
-                    0d);
+                return spreadDegrees > 0d
+                    ? Create(
+                        WeaponShotPatternKind.Spray,
+                        1,
+                        0d,
+                        spreadDegrees,
+                        1,
+                        0d)
+                    : Create(
+                        WeaponShotPatternKind.Single,
+                        1,
+                        0d,
+                        0d,
+                        1,
+                        0d);
             }
 
             return Create(
@@ -446,6 +463,13 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponShotPatternKind.Spray:
+                    RequireProjectileCount(projectilesPerShot, 1, "Spray");
+                    if (spreadDegrees != 0d)
+                    {
+                        throw new ArgumentException(
+                            "Spray uses random angular deviation rather than a deterministic spread arc.",
+                            nameof(spreadDegrees));
+                    }
                     if (randomnessDegrees <= 0d)
                     {
                         throw new ArgumentOutOfRangeException(
