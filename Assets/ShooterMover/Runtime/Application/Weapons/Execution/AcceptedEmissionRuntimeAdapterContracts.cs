@@ -142,7 +142,9 @@ namespace ShooterMover.Application.Weapons.Execution
 
         public static AcceptedEmissionRuntimeAdapterResult CanonicalProjectile(
             ProjectileExecutionProfile projectileProfile,
-            IList<AcceptedProjectileLaunch> launches)
+            IList<AcceptedProjectileLaunch> launches,
+            int cooldownTicks,
+            double spreadDegrees)
         {
             if (projectileProfile == null || !projectileProfile.IsCanonical)
             {
@@ -155,6 +157,16 @@ namespace ShooterMover.Application.Weapons.Execution
                 throw new ArgumentException(
                     "At least one canonical projectile launch is required.",
                     nameof(launches));
+            }
+            if (cooldownTicks < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(cooldownTicks));
+            }
+            if (double.IsNaN(spreadDegrees)
+                || double.IsInfinity(spreadDegrees)
+                || spreadDegrees < 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(spreadDegrees));
             }
 
             var effects = new List<IWeaponEffectDescription>(launches.Count);
@@ -185,9 +197,9 @@ namespace ShooterMover.Application.Weapons.Execution
                     projectileProfile.IsCanonicalRocket
                         ? BuiltInWeaponBehaviorIds.Explosive
                         : BuiltInWeaponBehaviorIds.Projectile,
-                    0,
+                    cooldownTicks,
                     launches.Count,
-                    0d,
+                    spreadDegrees,
                     projectileProfile.Projectile.Speed,
                     projectileProfile.Projectile.Range,
                     projectileProfile.Damage.DirectDamage,
