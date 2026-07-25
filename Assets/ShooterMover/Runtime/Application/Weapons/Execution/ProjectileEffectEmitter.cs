@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
@@ -27,8 +28,10 @@ namespace ShooterMover.Application.Weapons.Execution
             ProjectileLifecycleState state = decision.StateAfter;
             ProjectileExecutionProfile profile = state.Profile;
             int eventOrdinal = state.EventOrdinal;
+            bool canonicalRocket = profile.SourceBlueprint.Delivery != null
+                && profile.SourceBlueprint.Delivery.Type == WeaponDeliveryType.Rocket;
 
-            if (decision.EnemyImpactApplied)
+            if (decision.EnemyImpactApplied && !canonicalRocket)
             {
                 emissions.Add(Create(
                     ProjectileEffectEmissionKind.EnemyImpact,
