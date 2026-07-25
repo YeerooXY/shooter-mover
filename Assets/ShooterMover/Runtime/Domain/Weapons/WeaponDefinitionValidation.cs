@@ -214,18 +214,63 @@ namespace ShooterMover.Domain.Weapons
             {
                 Add(issues, WeaponDefinitionIssueCode.InvalidProjectileCount, "shot.projectiles_per_shot", "At least one simultaneous attack instance is required.");
             }
-            if (double.IsNaN(shot.SpreadDegrees)
-                || double.IsInfinity(shot.SpreadDegrees)
-                || shot.SpreadDegrees < 0d
-                || shot.SpreadDegrees > 360d)
+
+            double canonicalSpread = shot.CanonicalSpreadDegrees;
+            if (double.IsNaN(canonicalSpread)
+                || double.IsInfinity(canonicalSpread)
+                || canonicalSpread < 0d
+                || canonicalSpread > 360d)
             {
                 Add(issues, WeaponDefinitionIssueCode.InvalidSpread, "shot.spread_degrees", "Spread must be finite and between zero and 360 degrees.");
             }
-            if (shot.RandomnessDegrees != 0d
-                || shot.PulsesPerShot != 1
+
+            if (shot.PulsesPerShot != 1
                 || shot.IntervalBetweenPulsesSeconds != 0d)
             {
                 Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "shot", "Canonical authored shot data contains simultaneous count and spread only. Sequential timing belongs to burst fire.");
+            }
+
+            switch (shot.Kind)
+            {
+                case WeaponShotPatternKind.Single:
+                    if (shot.ProjectilesPerShot != 1
+                        || shot.SpreadDegrees != 0d
+                        || shot.RandomnessDegrees != 0d)
+                    {
+                        Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "shot", "A zero-spread single emission must use the canonical Single representation.");
+                    }
+                    break;
+
+                case WeaponShotPatternKind.Spray:
+                    if (shot.ProjectilesPerShot < 1
+                        || shot.SpreadDegrees != 0d
+                        || shot.RandomnessDegrees <= 0d)
+                    {
+                        Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "shot", "A single-emission accuracy cone must use positive random angular deviation and no deterministic spread arc.");
+                    }
+                    break;
+
+                case WeaponShotPatternKind.Spread:
+                    if (shot.ProjectilesPerShot < 2
+                        || shot.SpreadDegrees <= 0d
+                        || shot.RandomnessDegrees != 0d)
+                    {
+                        Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "shot", "A simultaneous multi-emission spread requires at least two attacks, a positive deterministic arc, and no separate randomness field.");
+                    }
+                    break;
+
+                case WeaponShotPatternKind.Volley:
+                    if (shot.ProjectilesPerShot < 2
+                        || shot.SpreadDegrees != 0d
+                        || shot.RandomnessDegrees != 0d)
+                    {
+                        Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "shot", "A zero-spread simultaneous multi-emission shot must use the canonical Volley representation.");
+                    }
+                    break;
+
+                default:
+                    Add(issues, WeaponDefinitionIssueCode.IncompatibleDeliveryData, "shot.kind", "Canonical authored definitions use Single, Spray, Spread, or Volley. Legacy pulse, twin-barrel, and beam patterns remain transitional.");
+                    break;
             }
         }
 
@@ -254,6 +299,12 @@ namespace ShooterMover.Domain.Weapons
             if (baseStats.Ricochet.Tenths < 0)
             {
                 Add(issues, WeaponDefinitionIssueCode.InvalidRicochet, "base_stats.ricochet", "Ricochet fixed-point tenths cannot be negative.");
+            }
+            if (double.IsNaN(baseStats.Knockback)
+                || double.IsInfinity(baseStats.Knockback)
+                || baseStats.Knockback < 0d)
+            {
+                Add(issues, WeaponDefinitionIssueCode.InvalidDamage, "base_stats.knockback", "Knockback must be finite and non-negative.");
             }
         }
 
