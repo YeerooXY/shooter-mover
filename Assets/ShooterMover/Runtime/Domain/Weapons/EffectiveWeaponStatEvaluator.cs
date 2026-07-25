@@ -106,7 +106,7 @@ namespace ShooterMover.Domain.Weapons
                 case WeaponEffectiveStat.RateOfFire:
                     if (blueprint.FireSettings.IsContinuous)
                     {
-                        reason = "RateOfFire modifies projectile ShotsPerSecond only; continuous DamageTicksPerSecond is a separate authored cadence";
+                        reason = "RateOfFire modifies firing-cycle cadence only; continuous DamageTicksPerSecond is a separate transitional cadence";
                     }
                     break;
 
@@ -128,11 +128,32 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponEffectiveStat.SpreadDegrees:
-                case WeaponEffectiveStat.RandomnessDegrees:
-                    if (blueprint.ShotPattern.Kind == WeaponShotPatternKind.Single
-                        || blueprint.ShotPattern.Kind == WeaponShotPatternKind.Beam)
+                    if (blueprint.IsTransitionalCatalogProjection)
                     {
-                        reason = "the authored shot-pattern kind does not support angular spread changes";
+                        if (blueprint.ShotPattern.Kind == WeaponShotPatternKind.Single
+                            || blueprint.ShotPattern.Kind == WeaponShotPatternKind.Beam)
+                        {
+                            reason = "the transitional shot-pattern kind does not support angular spread changes";
+                        }
+                    }
+                    else if (blueprint.ShotPattern.Kind != WeaponShotPatternKind.Spread)
+                    {
+                        reason = "canonical deterministic spread modifiers require an existing multi-emission Spread structure";
+                    }
+                    break;
+
+                case WeaponEffectiveStat.RandomnessDegrees:
+                    if (blueprint.IsTransitionalCatalogProjection)
+                    {
+                        if (blueprint.ShotPattern.Kind == WeaponShotPatternKind.Single
+                            || blueprint.ShotPattern.Kind == WeaponShotPatternKind.Beam)
+                        {
+                            reason = "the transitional shot-pattern kind does not support angular randomness changes";
+                        }
+                    }
+                    else if (blueprint.ShotPattern.Kind != WeaponShotPatternKind.Spray)
+                    {
+                        reason = "canonical random-deviation modifiers require an existing single-emission Spray structure";
                     }
                     break;
 
@@ -212,17 +233,37 @@ namespace ShooterMover.Domain.Weapons
                     authored.DamageTicksPerSecond);
             }
 
-            double shotsPerSecond = RequirePositive(
-                Apply(accumulators, WeaponEffectiveStat.RateOfFire, authored.ShotsPerSecond),
+            double rateOfFire = RequirePositive(
+                Apply(accumulators, WeaponEffectiveStat.RateOfFire, authored.RateOfFire),
                 WeaponEffectiveStat.RateOfFire);
-            return WeaponFireSettings.Create(
-                authored.Mode,
-                shotsPerSecond,
-                authored.ShotsPerTrigger,
-                authored.ShotsPerBurst,
-                authored.IntervalBetweenBurstShotsSeconds,
-                authored.IntervalAfterBurstSeconds,
-                0d);
+            if (blueprint.IsTransitionalCatalogProjection)
+            {
+                return WeaponFireSettings.Create(
+                    authored.Mode,
+                    rateOfFire,
+                    authored.ShotsPerTrigger,
+                    authored.ShotsPerBurst,
+                    authored.IntervalBetweenBurstShotsSeconds,
+                    authored.IntervalAfterBurstSeconds,
+                    0d);
+            }
+
+            switch (authored.Mode)
+            {
+                case WeaponFireMode.SemiAutomatic:
+                    return WeaponFireSettings.SemiAutomatic(rateOfFire);
+                case WeaponFireMode.Automatic:
+                    return WeaponFireSettings.Automatic(rateOfFire);
+                case WeaponFireMode.Burst:
+                    return WeaponFireSettings.Burst(
+                        rateOfFire,
+                        new WeaponBurstSettings(
+                            authored.ShotsPerBurst,
+                            authored.IntervalBetweenBurstShotsSeconds));
+                default:
+                    throw new InvalidOperationException(
+                        "Canonical effective weapons support semi-automatic, automatic, or burst fire.");
+            }
         }
 
         private static WeaponShotPattern BuildShotPattern(
