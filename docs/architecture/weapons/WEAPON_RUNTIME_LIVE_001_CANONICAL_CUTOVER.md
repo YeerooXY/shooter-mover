@@ -99,8 +99,16 @@ scheduler replay records containing accepted schedules. Receipts whose accepted-
 were pruned by the canonical scheduler are removed deterministically. Pending entries are never removed
 by receipt pruning.
 
+Receipt alignment happens at both authority boundaries:
+
+- before pending admission, the current outbox is pruned against the current scheduler replay state;
+- after a successful scheduler decision, the candidate outbox is pruned against scheduler `NextState`;
+- after sink `Accepted` or exact `AlreadyAccepted`, the newly created receipt is immediately pruned
+  against the still-authoritative scheduler state.
+
 Consequently:
 
+- a stale receipt cannot reject or suppress a newly scheduler-accepted shot;
 - still-replayable delivered emissions retain exact receipts;
 - conflicting immutable content still rejects while the scheduler replay is retained;
 - once the scheduler forgets an operation, the outbox also stops acting as a replay authority;
@@ -110,18 +118,19 @@ Consequently:
 
 For a successful scheduler transition:
 
-1. resolve the exact `EffectiveWeapon`;
-2. call `WeaponFiringScheduler.Schedule` with the composition-owned session snapshot;
-3. validate the accepted schedule and each accepted emission;
-4. adapt every emission into its immutable projected batch;
-5. admit the full schedule into a candidate pending snapshot;
-6. prune delivered receipts against the new scheduler replay snapshot;
-7. under `InventoryWeaponRuntimeComposition.firingStateGate`, publish the scheduler and pending
+1. prune the current delivered receipts against the current scheduler replay state;
+2. resolve the exact `EffectiveWeapon`;
+3. call `WeaponFiringScheduler.Schedule` with the composition-owned session snapshot;
+4. validate the accepted schedule and each accepted emission;
+5. adapt every emission into its immutable projected batch;
+6. admit the full schedule into the already-aligned candidate pending snapshot;
+7. prune candidate receipts against scheduler `NextState`;
+8. under `InventoryWeaponRuntimeComposition.firingStateGate`, publish the scheduler and pending
    snapshots together;
-8. only after publication, drain entries already due.
+9. only after publication, drain entries already due.
 
-If mapping, validation, adaptation, dedupe, pending admission, or receipt pruning fails, neither candidate
-snapshot is published.
+If receipt alignment, mapping, validation, adaptation, dedupe, pending admission, or final receipt
+pruning fails, neither candidate snapshot is published.
 
 A later sink failure does not roll scheduler state or pending admission back. The accepted operation
 remains represented and cannot be scheduled again as a new shot.
@@ -174,10 +183,14 @@ For each due entry:
 
 - sink `Accepted` removes the exact entry and records a delivery receipt;
 - exact sink `AlreadyAccepted` also removes it;
-- rejection, exception, or invalid response retains it;
+- the receipt is immediately aligned to current scheduler replay retention;
+- rejection, exception, or invalid response retains the entry;
 - drain stops on the first failed entry;
 - later due entries cannot overtake it;
 - no future entry is submitted.
+
+If recording or pruning a downstream acceptance fails after the sink accepted it, the original pending
+entry remains. Retry must receive exact `AlreadyAccepted` before removal, preserving delivery safety.
 
 ## Replay and partial delivery
 
@@ -192,7 +205,7 @@ against pending entries and delivered receipts:
 
 For partial delivery where emission 0 succeeds and emission 1 fails:
 
-- emission 0 is removed and receipted;
+- emission 0 is removed and receipted while its scheduler replay is retained;
 - emission 1 and later entries remain pending;
 - scheduler state remains advanced;
 - retry begins at emission 1;
@@ -229,6 +242,20 @@ Idle no-request input may initialise the non-held edge state and drain due work.
 `TryTrigger(..., WeaponTriggerSignal)` remains the lower-level caller-classified scheduler surface.
 `TryFire` and default-`Pressed` helpers remain obsolete one-shot compatibility surfaces only.
 
+### Fail-closed trigger geometry
+
+Explicit trigger and fire-intent entry points validate the complete common input before mount request
+construction:
+
+- deterministic operation identity is present;
+- simulation tick is non-negative;
+- origin is present and finite;
+- aim direction is present, finite, and non-zero;
+- trigger signal is a defined value.
+
+Malformed common input returns an explicit rejection. It cannot dereference invalid geometry or throw
+while calculating per-mount muzzle origins.
+
 ## Complete per-mount outcomes
 
 `InventoryWeaponExecutionResult.MountOutcomes` is the canonical ordered record of every enabled mount
@@ -256,17 +283,18 @@ use `MountOutcomes`.
 The aggregate top-level result uses deterministic precedence:
 
 1. retryable delivery failure;
-2. mount integration failure;
-3. mount scheduler rejection;
-4. successful due delivery;
-5. accepted new schedule;
-6. accepted replay schedule;
-7. successful no-emission transition;
-8. no due delivery.
+2. non-retryable drain, lifecycle, membership, or disposal failure;
+3. mount integration failure;
+4. mount scheduler rejection;
+5. successful due delivery;
+6. accepted new schedule;
+7. accepted replay schedule;
+8. successful no-emission transition;
+9. no due delivery.
 
-Per-mount scheduling/integration outcomes remain separate from zero-or-many delivered batches. A mount
-failure cannot erase batches already delivered safely during the same call, and delivery cannot hide
-mount failures.
+Every unsuccessful drain result is preserved. A successful mount schedule cannot hide a lifecycle or
+pending-membership rejection. Per-mount outcomes and any safely delivered batches remain attached to the
+aggregate result.
 
 ## Lifecycle and disposal
 
@@ -319,10 +347,15 @@ Rejected without fallback:
 
 Manual source tracing covered:
 
+- stale delivered-receipt identity reuse after scheduler replay pruning;
+- receipt alignment before admission, after scheduler transition, and after delivery;
 - long-running receipt pruning beyond scheduler replay-retention capacity;
 - replay before and after scheduler replay pruning;
 - future burst/pulse due-time enforcement;
 - stop-on-first sink failure and retained pending order;
+- retry after downstream acceptance but pending-state commit failure;
+- non-retryable drain/lifecycle failure precedence over successful scheduling;
+- fail-closed null, non-finite, zero-direction, negative-tick, and invalid-signal input paths;
 - transactional trigger-edge retry before and after pending publication;
 - four-mount mixed success, integration rejection, unsupported effects, and no-emission transitions;
 - lifecycle replacement, stale request rejection, and disposal;
