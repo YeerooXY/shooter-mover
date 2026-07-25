@@ -68,9 +68,21 @@ namespace ShooterMover.Application.Weapons.Execution
                     "weapon-runtime-emission-operation-mismatch");
             }
 
+            int cooldownTicks;
+            if (acceptedEmission.TicksUntilNextEmission > int.MaxValue)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.NumericalFailure,
+                    "weapon-runtime-cooldown-projection-overflow");
+            }
+            cooldownTicks = (int)acceptedEmission.TicksUntilNextEmission;
+
             if (weapon.UsesCanonicalAuthoredDefinition)
             {
-                return AdaptCanonicalProjectile(weapon, acceptedEmission);
+                return AdaptCanonicalProjectile(
+                    weapon,
+                    acceptedEmission,
+                    cooldownTicks);
             }
 
             if (weapon.Blueprint == null
@@ -80,15 +92,6 @@ namespace ShooterMover.Application.Weapons.Execution
                     AcceptedEmissionRuntimeAdapterStatus.InvalidProjectileProfile,
                     "weapon-runtime-transitional-blueprint-required");
             }
-
-            int cooldownTicks;
-            if (acceptedEmission.TicksUntilNextEmission > int.MaxValue)
-            {
-                return Reject(
-                    AcceptedEmissionRuntimeAdapterStatus.NumericalFailure,
-                    "weapon-runtime-cooldown-projection-overflow");
-            }
-            cooldownTicks = (int)acceptedEmission.TicksUntilNextEmission;
 
             WeaponRuntimeFiringProfile profile;
             AcceptedEmissionRuntimeAdapterStatus profileStatus;
@@ -158,7 +161,8 @@ namespace ShooterMover.Application.Weapons.Execution
 
         private static AcceptedEmissionRuntimeAdapterResult AdaptCanonicalProjectile(
             EffectiveWeapon weapon,
-            WeaponFiringScheduler.AcceptedEmission acceptedEmission)
+            WeaponFiringScheduler.AcceptedEmission acceptedEmission,
+            int cooldownTicks)
         {
             if (weapon.FireSettings.IsContinuous)
             {
@@ -275,7 +279,9 @@ namespace ShooterMover.Application.Weapons.Execution
 
             return AcceptedEmissionRuntimeAdapterResult.CanonicalProjectile(
                 profile,
-                launches);
+                launches,
+                cooldownTicks,
+                weapon.ShotPattern.SpreadDegrees);
         }
 
         private static bool TryBuildProfile(
