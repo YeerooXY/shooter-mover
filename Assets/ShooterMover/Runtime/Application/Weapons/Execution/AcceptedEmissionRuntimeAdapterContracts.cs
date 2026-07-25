@@ -78,12 +78,14 @@ namespace ShooterMover.Application.Weapons.Execution
         public string RejectionCode { get; }
 
         /// <summary>
-        /// Transitional-only retained firing profile.
+        /// Retained scalar compatibility projection used by the existing inventory delivery
+        /// envelope. Canonical projectile execution must use ProjectileProfile/ProjectileLaunches.
         /// </summary>
         public WeaponRuntimeFiringProfile Profile { get; }
 
         /// <summary>
-        /// Transitional-only retained effect batch.
+        /// Existing immutable delivery envelope. Canonical batches contain only
+        /// CanonicalProjectileLaunchEffect descriptions with baked launch requests and states.
         /// </summary>
         public WeaponEffectBatch Batch { get; }
 
@@ -97,6 +99,8 @@ namespace ShooterMover.Application.Weapons.Execution
             get
             {
                 return Status == AcceptedEmissionRuntimeAdapterStatus.Adapted
+                    && Profile != null
+                    && Batch != null
                     && ProjectileProfile != null
                     && ProjectileProfile.IsCanonical
                     && projectileLaunches.Count > 0;
@@ -108,7 +112,9 @@ namespace ShooterMover.Application.Weapons.Execution
             {
                 return Status == AcceptedEmissionRuntimeAdapterStatus.Adapted
                     && Profile != null
-                    && Batch != null;
+                    && Batch != null
+                    && ProjectileProfile == null
+                    && projectileLaunches.Count == 0;
             }
         }
         public bool Succeeded
@@ -134,31 +140,46 @@ namespace ShooterMover.Application.Weapons.Execution
         }
 
         public static AcceptedEmissionRuntimeAdapterResult CanonicalProjectile(
-            ProjectileExecutionProfile profile,
-            IList<AcceptedProjectileLaunch> launches)
+            ProjectileExecutionProfile projectileProfile,
+            IList<AcceptedProjectileLaunch> launches,
+            WeaponRuntimeFiringProfile compatibilityProfile,
+            WeaponEffectBatch batch)
         {
-            if (profile == null || !profile.IsCanonical)
+            if (projectileProfile == null || !projectileProfile.IsCanonical)
             {
                 throw new ArgumentException(
                     "A canonical projectile profile is required.",
-                    nameof(profile));
+                    nameof(projectileProfile));
             }
-            if (launches == null || launches.Count < 1)
+            if (compatibilityProfile == null)
+            {
+                throw new ArgumentNullException(nameof(compatibilityProfile));
+            }
+            if (batch == null)
+            {
+                throw new ArgumentNullException(nameof(batch));
+            }
+            if (launches == null || launches.Count < 1 || batch.EffectCount != launches.Count)
             {
                 throw new ArgumentException(
-                    "At least one canonical projectile launch is required.",
+                    "Canonical launch and delivery counts must match and be positive.",
                     nameof(launches));
             }
             for (int index = 0; index < launches.Count; index++)
             {
                 AcceptedProjectileLaunch launch = launches[index];
+                CanonicalProjectileLaunchEffect effect =
+                    batch.Effects[index] as CanonicalProjectileLaunchEffect;
                 if (launch == null
-                    || !ReferenceEquals(launch.Profile, profile)
+                    || !ReferenceEquals(launch.Profile, projectileProfile)
                     || launch.Identity == null
-                    || launch.Identity.SourceIdentity.ProjectileOrdinal.Value != index)
+                    || launch.Identity.SourceIdentity.ProjectileOrdinal.Value != index
+                    || effect == null
+                    || !ReferenceEquals(effect.LaunchRequest, launch.Request)
+                    || !ReferenceEquals(effect.InitialState, launch.InitialState))
                 {
                     throw new ArgumentException(
-                        "Canonical projectile launches must use one shared profile and ordered unique ordinals.",
+                        "Canonical projectile launches must use one shared profile and ordered retained launch effects.",
                         nameof(launches));
                 }
             }
@@ -166,9 +187,9 @@ namespace ShooterMover.Application.Weapons.Execution
             return new AcceptedEmissionRuntimeAdapterResult(
                 AcceptedEmissionRuntimeAdapterStatus.Adapted,
                 string.Empty,
-                null,
-                null,
-                profile,
+                compatibilityProfile,
+                batch,
+                projectileProfile,
                 launches);
         }
 
