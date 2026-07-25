@@ -235,14 +235,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Honest live-operation result. Scheduler outcomes and downstream deliveries are retained as
-    /// separate immutable observations, so one call may report a release/wait transition and also
-    /// report every due batch delivered during that same simulation tick.
+    /// Honest live-operation result. Complete ordered per-mount outcomes and downstream deliveries
+    /// are separate immutable observations, so failures cannot hide successful schedules or batches.
     /// </summary>
     public sealed class InventoryWeaponExecutionResult
     {
         private readonly ReadOnlyCollection<InventoryWeaponEffectBatch> deliveredBatches;
         private readonly ReadOnlyCollection<InventoryWeaponSchedulingOutcome> schedulingOutcomes;
+        private readonly ReadOnlyCollection<InventoryWeaponMountExecutionOutcome> mountOutcomes;
 
         internal InventoryWeaponExecutionResult(
             EquipmentInstanceId equipmentInstanceId,
@@ -256,8 +256,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             int acceptedDeliveryCount,
             int alreadyAcceptedDeliveryCount,
             int pendingDeliveryCount,
-            IList<InventoryWeaponEffectBatch> delivered,
-            IList<InventoryWeaponSchedulingOutcome> scheduling = null)
+            IEnumerable<InventoryWeaponEffectBatch> delivered,
+            IEnumerable<InventoryWeaponSchedulingOutcome> scheduling = null,
+            IEnumerable<InventoryWeaponMountExecutionOutcome> mounts = null)
         {
             if (scheduledEmissionCount < 0
                 || acceptedDeliveryCount < 0
@@ -283,11 +284,17 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             AlreadyAcceptedDeliveryCount = alreadyAcceptedDeliveryCount;
             PendingDeliveryCount = pendingDeliveryCount;
             deliveredBatches = new ReadOnlyCollection<InventoryWeaponEffectBatch>(
-                new List<InventoryWeaponEffectBatch>(
-                    delivered ?? new InventoryWeaponEffectBatch[0]));
+                delivered == null
+                    ? new List<InventoryWeaponEffectBatch>()
+                    : new List<InventoryWeaponEffectBatch>(delivered));
             schedulingOutcomes = new ReadOnlyCollection<InventoryWeaponSchedulingOutcome>(
-                new List<InventoryWeaponSchedulingOutcome>(
-                    scheduling ?? new InventoryWeaponSchedulingOutcome[0]));
+                scheduling == null
+                    ? new List<InventoryWeaponSchedulingOutcome>()
+                    : new List<InventoryWeaponSchedulingOutcome>(scheduling));
+            mountOutcomes = new ReadOnlyCollection<InventoryWeaponMountExecutionOutcome>(
+                mounts == null
+                    ? new List<InventoryWeaponMountExecutionOutcome>()
+                    : new List<InventoryWeaponMountExecutionOutcome>(mounts));
         }
 
         /// <summary>
@@ -345,6 +352,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             get { return deliveredBatches; }
         }
+        public IReadOnlyList<InventoryWeaponMountExecutionOutcome> MountOutcomes
+        {
+            get { return mountOutcomes; }
+        }
+        /// <summary>
+        /// Retained successful-scheduling-only compatibility projection. New callers should inspect
+        /// MountOutcomes, which includes every success and rejection.
+        /// </summary>
         public IReadOnlyList<InventoryWeaponSchedulingOutcome> SchedulingOutcomes
         {
             get { return schedulingOutcomes; }
@@ -368,6 +383,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             get
             {
+                for (int index = 0; index < mountOutcomes.Count; index++)
+                {
+                    if (mountOutcomes[index].IsNoEmissionTransition)
+                    {
+                        return true;
+                    }
+                }
                 for (int index = 0; index < schedulingOutcomes.Count; index++)
                 {
                     if (schedulingOutcomes[index].IsNoEmissionTransition)
@@ -382,36 +404,35 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             get
             {
-                for (int index = 0; index < schedulingOutcomes.Count; index++)
-                {
-                    if (schedulingOutcomes[index].OutcomeKind
-                        == InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition)
-                    {
-                        return true;
-                    }
-                }
-                return false;
+                return HasMountOutcome(
+                    InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition)
+                    || HasSchedulingOutcome(
+                        InventoryWeaponExecutionOutcomeKind.AcceptedNoEmissionTransition);
             }
         }
         public bool HasReplayedNoEmissionTransition
         {
             get
             {
-                for (int index = 0; index < schedulingOutcomes.Count; index++)
-                {
-                    if (schedulingOutcomes[index].OutcomeKind
-                        == InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition)
-                    {
-                        return true;
-                    }
-                }
-                return false;
+                return HasMountOutcome(
+                    InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition)
+                    || HasSchedulingOutcome(
+                        InventoryWeaponExecutionOutcomeKind.ReplayedNoEmissionTransition);
             }
         }
         public bool IsWaitingForCadence
         {
             get
             {
+                for (int index = 0; index < mountOutcomes.Count; index++)
+                {
+                    if (mountOutcomes[index].IsNoEmissionTransition
+                        && mountOutcomes[index].SchedulerStatus
+                            == WeaponFiringScheduleStatus.WaitingForCadence)
+                    {
+                        return true;
+                    }
+                }
                 for (int index = 0; index < schedulingOutcomes.Count; index++)
                 {
                     if (schedulingOutcomes[index].IsWaitingForCadence)
@@ -426,6 +447,15 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             get
             {
+                for (int index = 0; index < mountOutcomes.Count; index++)
+                {
+                    if (mountOutcomes[index].IsNoEmissionTransition
+                        && mountOutcomes[index].SchedulerStatus
+                            == WeaponFiringScheduleStatus.Released)
+                    {
+                        return true;
+                    }
+                }
                 for (int index = 0; index < schedulingOutcomes.Count; index++)
                 {
                     if (schedulingOutcomes[index].IsReleaseTransition)
@@ -445,10 +475,40 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     && OutcomeKind != InventoryWeaponExecutionOutcomeKind.IntegrationRejected;
             }
         }
-
         public WeaponDefinitionId WeaponDefinitionId
         {
             get { return EffectBatch == null ? null : EffectBatch.Profile.DefinitionId; }
+        }
+
+        internal InventoryWeaponExecutionResult WithMountOutcomes(
+            IEnumerable<InventoryWeaponMountExecutionOutcome> outcomes,
+            int scheduledEmissionCount)
+        {
+            if (outcomes == null)
+            {
+                throw new ArgumentNullException(nameof(outcomes));
+            }
+            var copy = new List<InventoryWeaponMountExecutionOutcome>(outcomes);
+            EquipmentInstanceId commonEquipmentInstanceId =
+                FindCommonEquipmentInstanceId(copy, deliveredBatches);
+            WeaponFiringScheduleStatus? singleStatus = copy.Count == 1
+                ? copy[0].SchedulerStatus
+                : null;
+            return new InventoryWeaponExecutionResult(
+                commonEquipmentInstanceId,
+                OutcomeKind,
+                Status,
+                RejectionCode,
+                Execution,
+                singleStatus,
+                IsExactReplay,
+                scheduledEmissionCount,
+                AcceptedDeliveryCount,
+                AlreadyAcceptedDeliveryCount,
+                PendingDeliveryCount,
+                deliveredBatches,
+                schedulingOutcomes,
+                copy);
         }
 
         internal InventoryWeaponExecutionResult WithSchedulingOutcomes(
@@ -459,10 +519,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 throw new ArgumentNullException(nameof(outcomes));
             }
-
-            EquipmentInstanceId commonEquipmentInstanceId = FindCommonEquipmentInstanceId(
-                outcomes,
-                deliveredBatches);
+            EquipmentInstanceId commonEquipmentInstanceId =
+                FindCommonEquipmentInstanceId(outcomes, deliveredBatches);
             WeaponFiringScheduleStatus? singleStatus = outcomes.Count == 1
                 ? (WeaponFiringScheduleStatus?)outcomes[0].SchedulerStatus
                 : null;
@@ -479,7 +537,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 AlreadyAcceptedDeliveryCount,
                 PendingDeliveryCount,
                 deliveredBatches,
-                outcomes);
+                outcomes,
+                mountOutcomes);
         }
 
         internal static InventoryWeaponExecutionResult Schedule(
@@ -649,7 +708,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             int pendingDeliveryCount,
             IEnumerable<InventoryWeaponEffectBatch> delivered,
             int acceptedDeliveryCount,
-            int alreadyAcceptedDeliveryCount)
+            int alreadyAcceptedDeliveryCount,
+            WeaponFiringScheduleStatus? schedulerStatus = null)
         {
             IList<InventoryWeaponEffectBatch> safeDelivered = delivered == null
                 ? (IList<InventoryWeaponEffectBatch>)new InventoryWeaponEffectBatch[0]
@@ -673,13 +733,57 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 execution.Status,
                 execution.RejectionCode,
                 execution,
-                null,
+                schedulerStatus,
                 false,
                 0,
                 acceptedDeliveryCount,
                 alreadyAcceptedDeliveryCount,
                 pendingDeliveryCount,
                 safeDelivered);
+        }
+
+        private bool HasMountOutcome(InventoryWeaponExecutionOutcomeKind kind)
+        {
+            for (int index = 0; index < mountOutcomes.Count; index++)
+            {
+                if (mountOutcomes[index].OutcomeKind == kind)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool HasSchedulingOutcome(InventoryWeaponExecutionOutcomeKind kind)
+        {
+            for (int index = 0; index < schedulingOutcomes.Count; index++)
+            {
+                if (schedulingOutcomes[index].OutcomeKind == kind)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static EquipmentInstanceId FindCommonEquipmentInstanceId(
+            IList<InventoryWeaponMountExecutionOutcome> outcomes,
+            IList<InventoryWeaponEffectBatch> delivered)
+        {
+            EquipmentInstanceId common = null;
+            bool found = false;
+            bool conflict = false;
+            for (int index = 0; index < outcomes.Count; index++)
+            {
+                IncludeCommon(outcomes[index].EquipmentInstanceId,
+                    ref common, ref found, ref conflict);
+            }
+            for (int index = 0; index < delivered.Count; index++)
+            {
+                IncludeCommon(delivered[index].Identity.EquipmentInstanceId,
+                    ref common, ref found, ref conflict);
+            }
+            return conflict ? null : common;
         }
 
         private static EquipmentInstanceId FindCommonEquipmentInstanceId(
@@ -689,40 +793,38 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             EquipmentInstanceId common = null;
             bool found = false;
             bool conflict = false;
-
             for (int index = 0; index < outcomes.Count; index++)
             {
-                EquipmentInstanceId candidate = outcomes[index].EquipmentInstanceId;
-                if (candidate == null)
-                {
-                    continue;
-                }
-                if (!found)
-                {
-                    common = candidate;
-                    found = true;
-                }
-                else if (!common.Equals(candidate))
-                {
-                    conflict = true;
-                }
+                IncludeCommon(outcomes[index].EquipmentInstanceId,
+                    ref common, ref found, ref conflict);
             }
             for (int index = 0; index < delivered.Count; index++)
             {
-                EquipmentInstanceId candidate =
-                    delivered[index].Identity.EquipmentInstanceId;
-                if (!found)
-                {
-                    common = candidate;
-                    found = true;
-                }
-                else if (!common.Equals(candidate))
-                {
-                    conflict = true;
-                }
+                IncludeCommon(delivered[index].Identity.EquipmentInstanceId,
+                    ref common, ref found, ref conflict);
             }
-
             return conflict ? null : common;
+        }
+
+        private static void IncludeCommon(
+            EquipmentInstanceId candidate,
+            ref EquipmentInstanceId common,
+            ref bool found,
+            ref bool conflict)
+        {
+            if (candidate == null)
+            {
+                return;
+            }
+            if (!found)
+            {
+                common = candidate;
+                found = true;
+            }
+            else if (!common.Equals(candidate))
+            {
+                conflict = true;
+            }
         }
     }
 }
