@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 
@@ -38,6 +39,16 @@ namespace ShooterMover.Application.Weapons.Catalog
         MismatchedIntentDefinitionId = 28,
         MissingExplosionTrigger = 29,
         UnexpectedExplosionTrigger = 30,
+        MissingAuthoredMappingDetails = 31,
+        InvalidAuthoredDelivery = 32,
+        LaserCarriesProjectileSpeed = 33,
+        InvalidAuthoredRicochet = 34,
+        InvalidAuthoredMovementPenalty = 35,
+        MissingAuthoredPresentation = 36,
+        MissingAuthoredDropIdentity = 37,
+        InvalidStrongboxTierRestriction = 38,
+        TopBoxOnlyRequiresExplicitRule = 39,
+        AuthoredDefinitionRejected = 40,
     }
 
     public sealed class WeaponBlueprintMappingIssue
@@ -203,5 +214,66 @@ namespace ShooterMover.Application.Weapons.Catalog
         public WeaponCatalogDamageOverTimeMapping DamageOverTime { get; }
         public WeaponCatalogChainMapping Chain { get; }
         public string PresentationReference { get; }
+    }
+
+    public enum WeaponCatalogStrongboxEligibilityMappingMode
+    {
+        MinimumTier = 1,
+        ExplicitAllowedTiers = 2,
+    }
+
+    /// <summary>
+    /// Additional semantic data required to map one flat catalogue definition into the canonical
+    /// grouped authority. This is mapper input, not a second weapon-definition authority.
+    /// Combat numerics already present in WeaponDefinitionData remain authoritative.
+    /// </summary>
+    public sealed class WeaponCatalogAuthoredMappingDetails
+    {
+        private readonly ReadOnlyCollection<int> allowedStrongboxTiers;
+
+        public WeaponCatalogAuthoredMappingDetails(
+            WeaponDeliveryType deliveryType,
+            double deliveryRadiusOrWidth,
+            int ricochetTenths,
+            double movementPenaltyPercent,
+            WeaponSpecialDeliverySettings specialDelivery,
+            WeaponPresentation presentation,
+            StableId equipmentDefinitionId,
+            StableId rarityId,
+            WeaponDropAvailability availability,
+            WeaponCatalogStrongboxEligibilityMappingMode strongboxEligibilityMode,
+            int minimumStrongboxTier,
+            IEnumerable<int> allowedStrongboxTiers)
+        {
+            DeliveryType = deliveryType;
+            DeliveryRadiusOrWidth = deliveryRadiusOrWidth;
+            RicochetTenths = ricochetTenths;
+            MovementPenaltyPercent = movementPenaltyPercent;
+            SpecialDelivery = specialDelivery;
+            Presentation = presentation;
+            EquipmentDefinitionId = equipmentDefinitionId;
+            RarityId = rarityId;
+            Availability = availability;
+            StrongboxEligibilityMode = strongboxEligibilityMode;
+            MinimumStrongboxTier = minimumStrongboxTier;
+            this.allowedStrongboxTiers = new ReadOnlyCollection<int>(
+                new List<int>(allowedStrongboxTiers ?? Array.Empty<int>()));
+        }
+
+        public WeaponDeliveryType DeliveryType { get; }
+        public double DeliveryRadiusOrWidth { get; }
+        public int RicochetTenths { get; }
+        public double MovementPenaltyPercent { get; }
+        public WeaponSpecialDeliverySettings SpecialDelivery { get; }
+        public WeaponPresentation Presentation { get; }
+        public StableId EquipmentDefinitionId { get; }
+        public StableId RarityId { get; }
+        public WeaponDropAvailability Availability { get; }
+        public WeaponCatalogStrongboxEligibilityMappingMode StrongboxEligibilityMode { get; }
+        public int MinimumStrongboxTier { get; }
+        public IReadOnlyList<int> AllowedStrongboxTiers
+        {
+            get { return allowedStrongboxTiers; }
+        }
     }
 }
