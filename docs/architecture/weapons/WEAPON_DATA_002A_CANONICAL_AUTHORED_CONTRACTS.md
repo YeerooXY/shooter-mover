@@ -95,7 +95,8 @@ The pre-existing `Continuous` fire mode remains only for older transitional defi
 - `PierceValue`;
 - `RicochetValue`;
 - movement penalty percentage;
-- typed maximum attack distance.
+- typed maximum attack distance;
+- knockback, preserved from the current catalogue rather than discarded by migration.
 
 Absent DoT is `null`. The compatibility `WeaponDamageSpec` still exposes legacy zero-valued projections for existing adapters, but canonical content stores DoT as an optional typed object.
 
@@ -147,6 +148,8 @@ Runtime consumption remains:
 
 World collisions do not consume Pierce.
 
+The existing effective evaluator preserves the exact fixed-point budget while rebuilding modified impact physics. The legacy `RicochetMaximumRicochets` augment target is rejected for canonical fixed-point definitions because rewriting a maximum count would destroy the guaranteed-plus-one-fraction semantics. Retained-speed and angle modifiers remain reusable.
+
 ## Typed delivery union
 
 `WeaponDeliverySpec` is a discriminated union with exactly one selected settings group:
@@ -191,6 +194,8 @@ Laser still uses:
 - damage, damage type and optional DoT;
 - Pierce and Ricochet;
 - movement penalty and maximum distance.
+
+The effective evaluator now distinguishes travelling deliveries from simultaneous non-projectile emissions, so canonical Laser definitions can resolve to `EffectiveWeapon` without inventing projectile structure. Current projectile-only range/Pierce augment targets still fail closed for Laser until delivery-neutral modifier targets are introduced.
 
 The current Unity runtime adapter has not been expanded to execute Laser delivery in this task.
 
@@ -273,7 +278,7 @@ canonical WeaponBlueprint
 
 `EffectiveWeapon` now exposes canonical delivery, presentation, drop metadata, movement penalty, final projected range, and final Pierce without querying the catalogue after construction.
 
-The existing evaluator remains the modifier authority. Unsupported structural augment changes continue to fail closed through its structural compatibility checks; no structural field is silently created by an augment.
+The existing evaluator remains the modifier authority. It now validates structure by delivery type rather than assuming every simultaneous attack instance is a travelling projectile. Unsupported structural augment changes continue to fail closed; no absent projectile, explosion, DoT, homing, chain, or canonical ricochet structure is silently created by an augment.
 
 A spawned attack still receives the resolved immutable profile and must not query inventory, augment definitions, character skills, passive abilities, buffs, or the original weapon catalogue.
 
@@ -281,15 +286,16 @@ A spawned attack still receives the resolved immutable profile and must not quer
 
 The current flat `WeaponDefinitionData` and `WeaponCatalogJsonImporter` remain temporary inputs.
 
-`WeaponCatalogBlueprintMapper` remains the one explicit loss-conscious mapping boundary. Its existing `WeaponBlueprint.Create(...)` output is now marked with:
+`WeaponCatalogBlueprintMapper` remains the one explicit loss-conscious mapping boundary:
 
-```csharp
-IsTransitionalCatalogProjection == true
-```
+- the existing `Map(...)` path preserves the current live route and produces a blueprint marked `IsTransitionalCatalogProjection == true`;
+- the new `MapAuthored(...)` path accepts the existing definition plus explicit missing semantics and produces the canonical grouped authority through `WeaponBlueprint.TryCreateAuthored(...)`.
 
-This prevents transitional flat data from masquerading as a fully grouped authored definition.
+`MapAuthored(...)` never infers delivery from weapon names and never converts `TopBoxOnly` from the catalogue's moving highest tier. It requires explicit delivery size/width, fixed-point Ricochet, movement penalty, presentation, equipment/rarity identities, availability, and stable strongbox eligibility.
 
-New authored content must use `CreateAuthored`. A full JSON schema/catalogue migration is intentionally deferred.
+The mapper preserves current direct damage, damage category, DoT, Pierce, range, fire/shot numerics, peak level, weight, and knockback. It fails closed when migration would otherwise discard independent legacy area-damage magnitude, persistent-pool data, healing, mismatched projectile kinds/termination policies, fake Laser speed, or another unsupported structure.
+
+New directly authored content must use `CreateAuthored`. A full JSON schema/catalogue migration is intentionally deferred.
 
 ## Representative definitions
 
@@ -325,6 +331,8 @@ Stable issue codes cover:
 - conflicting Special behaviour selection;
 - unsupported structural augment changes;
 - transitional runtime-projection limitations.
+
+`MapAuthored(...)` translates raw catalogue and migration failures into stable `WeaponBlueprintMappingIssueCode` values, including explicit diagnostics for missing authored mapping data, invalid delivery, fake Laser speed, invalid fixed-point Ricochet, invalid tier rules, unresolved `TopBoxOnly`, unsupported area damage, and canonical construction rejection.
 
 Leaf constructors also fail closed for invalid finite ranges, speed/radius/width, behaviour IDs, duplicate special parameters, duplicate/invalid tier lists, and missing required references. Invalid content is never silently reinterpreted.
 
