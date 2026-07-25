@@ -197,10 +197,18 @@ namespace ShooterMover.Domain.Weapons
                 {
                     Add(issues, WeaponDefinitionIssueCode.MissingBurstSettings, "fire.burst", "Burst mode requires valid sequential shot count and interval data.");
                 }
+                if (fire.RateOfFire > 0d
+                    && !ApproximatelyEqual(
+                        fire.IntervalAfterBurstSeconds,
+                        1d / fire.RateOfFire))
+                {
+                    Add(issues, WeaponDefinitionIssueCode.UnexpectedBurstSettings, "fire.interval_after_burst_seconds", "Canonical burst recovery is derived from rate of fire and cannot carry an independent post-burst interval.");
+                }
             }
             else if (fire.BurstSettings != null
                 || fire.ShotsPerBurst != 1
-                || fire.IntervalBetweenBurstShotsSeconds != 0d)
+                || fire.IntervalBetweenBurstShotsSeconds != 0d
+                || fire.IntervalAfterBurstSeconds != 0d)
             {
                 Add(issues, WeaponDefinitionIssueCode.UnexpectedBurstSettings, "fire.burst", "Non-burst modes cannot carry burst-only data.");
             }
@@ -242,7 +250,7 @@ namespace ShooterMover.Domain.Weapons
                     break;
 
                 case WeaponShotPatternKind.Spray:
-                    if (shot.ProjectilesPerShot < 1
+                    if (shot.ProjectilesPerShot != 1
                         || shot.SpreadDegrees != 0d
                         || shot.RandomnessDegrees <= 0d)
                     {
@@ -384,6 +392,12 @@ namespace ShooterMover.Domain.Weapons
             {
                 Add(issues, WeaponDefinitionIssueCode.InvalidRicochet, "delivery.impact.ricochet.fixed_point_budget", "Canonical impact settings must carry the exact authored fixed-point ricochet budget.");
             }
+        }
+
+        private static bool ApproximatelyEqual(double left, double right)
+        {
+            double scale = Math.Max(1d, Math.Max(Math.Abs(left), Math.Abs(right)));
+            return Math.Abs(left - right) <= scale * 1e-9d;
         }
 
         private static void Add(
