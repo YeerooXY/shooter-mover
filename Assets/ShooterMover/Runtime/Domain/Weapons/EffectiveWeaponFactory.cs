@@ -82,7 +82,11 @@ namespace ShooterMover.Domain.Weapons
                 values.Guidance,
                 values.Impact,
                 values.Damage,
-                values.Effects);
+                values.Effects,
+                values.MaximumAttackDistance,
+                values.Pierce,
+                values.Ricochet,
+                values.MovementPenaltyPercent);
         }
 
         private static void ValidateWeaponEquipmentLink(
