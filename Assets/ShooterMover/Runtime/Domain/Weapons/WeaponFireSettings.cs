@@ -92,6 +92,11 @@ namespace ShooterMover.Domain.Weapons
         public int ShotsPerBurst { get; }
 
         public double IntervalBetweenBurstShotsSeconds { get; }
+
+        /// <summary>
+        /// Scheduler compatibility projection. For canonical burst content this is derived as
+        /// exactly one firing-cycle interval and is not a separately authored value.
+        /// </summary>
         public double IntervalAfterBurstSeconds { get; }
         public double DamageTicksPerSecond { get; }
         public WeaponBurstSettings BurstSettings { get; }
@@ -156,7 +161,7 @@ namespace ShooterMover.Domain.Weapons
                 1,
                 burst.ShotsPerBurst,
                 burst.IntervalBetweenShotsSeconds,
-                0d,
+                1d / rateOfFire,
                 0d);
         }
 
