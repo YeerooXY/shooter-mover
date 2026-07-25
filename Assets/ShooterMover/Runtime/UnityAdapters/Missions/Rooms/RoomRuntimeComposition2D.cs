@@ -79,7 +79,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             get { return presentation.SpawnedDoorCount; }
         }
 
-        public void ConfigureForTests(
+        public void ConfigureDefinition(
             AuthorableRoomGraphDefinitionV1 definition,
             RoomPresentationCatalog2D catalog,
             Transform presentationRoot = null)
@@ -96,6 +96,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 ?? throw new ArgumentNullException(nameof(catalog));
             roomPresentationRoot = presentationRoot;
             buildOnAwake = false;
+        }
+
+        public void ConfigureForTests(
+            AuthorableRoomGraphDefinitionV1 definition,
+            RoomPresentationCatalog2D catalog,
+            Transform presentationRoot = null)
+        {
+            ConfigureDefinition(definition, catalog, presentationRoot);
         }
 
         public void BuildSession()
