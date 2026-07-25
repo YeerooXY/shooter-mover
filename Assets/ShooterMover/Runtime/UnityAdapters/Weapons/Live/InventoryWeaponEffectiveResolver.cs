@@ -196,19 +196,42 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             var definitionId = new WeaponDefinitionId(definitionValue);
             WeaponCatalogBlueprintMappingIntent intent;
-            if (!mappingPolicies.TryResolve(definitionId, out intent)
-                || intent == null)
+            try
             {
-                rejectionCode =
-                    "weapon-live-blueprint-policy-missing:" + definitionValue;
+                if (!mappingPolicies.TryResolve(definitionId, out intent)
+                    || intent == null)
+                {
+                    rejectionCode =
+                        "weapon-live-blueprint-policy-missing:" + definitionValue;
+                    return false;
+                }
+            }
+            catch (Exception)
+            {
+                rejectionCode = "weapon-live-blueprint-policy-exception";
                 return false;
             }
 
-            WeaponBlueprintMappingResult mapping =
-                WeaponCatalogBlueprintMapper.Map(
+            WeaponBlueprintMappingResult mapping;
+            try
+            {
+                mapping = WeaponCatalogBlueprintMapper.Map(
                     weaponCatalog,
                     definitionValue,
                     intent);
+            }
+            catch (OverflowException)
+            {
+                rejectionCode =
+                    "weapon-live-blueprint-mapping-numerical-failure";
+                return false;
+            }
+            catch (Exception)
+            {
+                rejectionCode = "weapon-live-blueprint-mapping-exception";
+                return false;
+            }
+
             if (mapping == null || !mapping.Succeeded || mapping.Blueprint == null)
             {
                 string issue = mapping == null || mapping.Issues.Count == 0
@@ -220,17 +243,25 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             IReadOnlyList<WeaponAugmentModifierSet> modifierSets;
-            if (!augmentModifiers.TryResolve(
-                    equipmentInstance,
-                    equipmentCatalog,
-                    out modifierSets,
-                    out rejectionCode)
-                || modifierSets == null)
+            try
             {
-                if (string.IsNullOrWhiteSpace(rejectionCode))
+                if (!augmentModifiers.TryResolve(
+                        equipmentInstance,
+                        equipmentCatalog,
+                        out modifierSets,
+                        out rejectionCode)
+                    || modifierSets == null)
                 {
-                    rejectionCode = "weapon-live-augment-resolution-failed";
+                    if (string.IsNullOrWhiteSpace(rejectionCode))
+                    {
+                        rejectionCode = "weapon-live-augment-resolution-failed";
+                    }
+                    return false;
                 }
+            }
+            catch (Exception)
+            {
+                rejectionCode = "weapon-live-augment-resolution-exception";
                 return false;
             }
 
