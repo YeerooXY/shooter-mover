@@ -49,6 +49,7 @@ namespace ShooterMover.Application.Weapons.Catalog
         InvalidStrongboxTierRestriction = 38,
         TopBoxOnlyRequiresExplicitRule = 39,
         AuthoredDefinitionRejected = 40,
+        UnsupportedAreaDamage = 41,
     }
 
     public sealed class WeaponBlueprintMappingIssue
@@ -164,8 +165,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             WeaponCatalogSpreadInterpretation spreadInterpretation,
             int pulsesPerShot,
             double intervalBetweenPulsesSeconds,
-            double intervalBetweenBurstShotsSeconds,
             double intervalAfterBurstSeconds,
+            double intervalBetweenBurstShotsSeconds,
             WeaponProjectileKind projectileKind,
             WeaponProjectileTerminationBehavior projectileTermination,
             WeaponDamageCategory? explicitDamageCategory,
@@ -183,8 +184,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             SpreadInterpretation = spreadInterpretation;
             PulsesPerShot = pulsesPerShot;
             IntervalBetweenPulsesSeconds = intervalBetweenPulsesSeconds;
-            IntervalBetweenBurstShotsSeconds = intervalBetweenBurstShotsSeconds;
             IntervalAfterBurstSeconds = intervalAfterBurstSeconds;
+            IntervalBetweenBurstShotsSeconds = intervalBetweenBurstShotsSeconds;
             ProjectileKind = projectileKind;
             ProjectileTermination = projectileTermination;
             ExplicitDamageCategory = explicitDamageCategory;
@@ -203,8 +204,8 @@ namespace ShooterMover.Application.Weapons.Catalog
         public WeaponCatalogSpreadInterpretation SpreadInterpretation { get; }
         public int PulsesPerShot { get; }
         public double IntervalBetweenPulsesSeconds { get; }
-        public double IntervalBetweenBurstShotsSeconds { get; }
         public double IntervalAfterBurstSeconds { get; }
+        public double IntervalBetweenBurstShotsSeconds { get; }
         public WeaponProjectileKind ProjectileKind { get; }
         public WeaponProjectileTerminationBehavior ProjectileTermination { get; }
         public WeaponDamageCategory? ExplicitDamageCategory { get; }
