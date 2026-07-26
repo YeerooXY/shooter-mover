@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
+using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Enemies;
@@ -34,6 +36,192 @@ namespace ShooterMover.UI.ProductionFlow
 
             channel = CombatChannel.Kinetic;
             return true;
+        }
+    }
+
+    public enum FirstCombatRoomEnemyPublisherResolutionStatusV1
+    {
+        Pending = 1,
+        Ready = 2,
+        Rejected = 3,
+    }
+
+    /// <summary>
+    /// Reconciles presentation publishers against the authoritative current-room enemy
+    /// projection. Props and other non-enemy occupants never contribute to the expected count.
+    /// </summary>
+    public static class FirstCombatRoomEnemyPublisherReconciliationV1
+    {
+        public static FirstCombatRoomEnemyPublisherResolutionStatusV1 Classify(
+            int authoritativeActiveEnemyCount,
+            int readyPublisherCount,
+            bool hasNonTerminalUnboundPublisher,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (authoritativeActiveEnemyCount < 0 || readyPublisherCount < 0)
+            {
+                diagnostic =
+                    "first-combat-room-integration-enemy-publisher-count-invalid";
+                return FirstCombatRoomEnemyPublisherResolutionStatusV1.Rejected;
+            }
+            if (hasNonTerminalUnboundPublisher)
+            {
+                diagnostic =
+                    "first-combat-room-integration-enemy-publisher-binding-pending";
+                return FirstCombatRoomEnemyPublisherResolutionStatusV1.Pending;
+            }
+            if (readyPublisherCount < authoritativeActiveEnemyCount)
+            {
+                diagnostic =
+                    "first-combat-room-integration-enemy-publisher-pending:"
+                    + readyPublisherCount
+                    + "/"
+                    + authoritativeActiveEnemyCount;
+                return FirstCombatRoomEnemyPublisherResolutionStatusV1.Pending;
+            }
+            if (readyPublisherCount > authoritativeActiveEnemyCount)
+            {
+                diagnostic =
+                    "first-combat-room-integration-enemy-publisher-duplicated:"
+                    + readyPublisherCount
+                    + "/"
+                    + authoritativeActiveEnemyCount;
+                return FirstCombatRoomEnemyPublisherResolutionStatusV1.Rejected;
+            }
+
+            return FirstCombatRoomEnemyPublisherResolutionStatusV1.Ready;
+        }
+
+        public static int CountAuthoritativeActiveEnemies(
+            RoomRuntimeComposition2D roomRuntime)
+        {
+            if (roomRuntime == null
+                || !roomRuntime.IsBuilt
+                || roomRuntime.Definition == null
+                || roomRuntime.CurrentProjection == null)
+            {
+                throw new InvalidOperationException(
+                    "first-combat-room-integration-room-projection-pending");
+            }
+
+            RoomLiveRuntimeProjectionV1 runtimeProjection =
+                roomRuntime.CurrentProjection;
+            RoomLiveRoomProjectionV1 roomProjection =
+                runtimeProjection.GetRoom(runtimeProjection.CurrentRoomStableId);
+            AuthorableRoomDefinitionV1 roomDefinition =
+                roomRuntime.Definition.GetRoom(runtimeProjection.CurrentRoomStableId);
+
+            int count = 0;
+            for (int index = 0; index < roomProjection.ActiveOccupants.Count; index++)
+            {
+                RoomPlacedEntityDefinitionV1 placement;
+                if (roomDefinition.TryGetPlacement(
+                        roomProjection.ActiveOccupants[index].EntityStableId,
+                        out placement)
+                    && placement.PlacementKind == RoomLivePlacementKindV1.Enemy)
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+    }
+
+    /// <summary>
+    /// Owns the exact EnemyAttack2D event subscriptions so room rebuilds replace, rather than
+    /// accumulate, enemy-hit handlers.
+    /// </summary>
+    public sealed class FirstCombatRoomEnemyHitSubscriptionSetV1
+    {
+        private readonly Dictionary<EnemyAttack2D, Action<EnemyHitV1>>
+            subscriptions =
+                new Dictionary<EnemyAttack2D, Action<EnemyHitV1>>();
+
+        public int Count
+        {
+            get { return subscriptions.Count; }
+        }
+
+        public bool Contains(EnemyAttack2D publisher)
+        {
+            return publisher != null && subscriptions.ContainsKey(publisher);
+        }
+
+        public void Replace(
+            IReadOnlyList<EnemyAttack2D> publishers,
+            Action<EnemyAttack2D, EnemyHitV1> receiver)
+        {
+            if (publishers == null)
+            {
+                throw new ArgumentNullException(nameof(publishers));
+            }
+            if (receiver == null)
+            {
+                throw new ArgumentNullException(nameof(receiver));
+            }
+
+            Clear();
+            var seen = new HashSet<EnemyAttack2D>();
+            try
+            {
+                for (int index = 0; index < publishers.Count; index++)
+                {
+                    EnemyAttack2D publisher = publishers[index];
+                    if (publisher == null)
+                    {
+                        throw new InvalidOperationException(
+                            "first-combat-room-integration-enemy-publisher-missing");
+                    }
+                    if (!seen.Add(publisher))
+                    {
+                        throw new InvalidOperationException(
+                            "first-combat-room-integration-enemy-publisher-duplicated");
+                    }
+
+                    EnemyAttack2D capturedPublisher = publisher;
+                    Action<EnemyHitV1> handler = hit =>
+                        receiver(capturedPublisher, hit);
+                    publisher.Hit += handler;
+                    subscriptions.Add(publisher, handler);
+                }
+            }
+            catch
+            {
+                Clear();
+                throw;
+            }
+        }
+
+        public bool AllCurrent(Scene scene)
+        {
+            foreach (KeyValuePair<EnemyAttack2D, Action<EnemyHitV1>> pair
+                in subscriptions)
+            {
+                EnemyAttack2D publisher = pair.Key;
+                if (publisher == null
+                    || publisher.gameObject.scene != scene
+                    || !publisher.gameObject.activeInHierarchy
+                    || !publisher.IsBound
+                    || publisher.IsTerminalStopped)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public void Clear()
+        {
+            foreach (KeyValuePair<EnemyAttack2D, Action<EnemyHitV1>> pair
+                in subscriptions)
+            {
+                if (pair.Key != null)
+                {
+                    pair.Key.Hit -= pair.Value;
+                }
+            }
+            subscriptions.Clear();
         }
     }
 
@@ -166,8 +354,6 @@ namespace ShooterMover.UI.ProductionFlow
                 }
             }
 
-            // The production level controller has its own fatal composition diagnostic. Its
-            // temporary absence during runtime-hook ordering is not an integration error.
             if (controller != null)
             {
                 controller.gameObject.AddComponent<
@@ -177,9 +363,9 @@ namespace ShooterMover.UI.ProductionFlow
     }
 
     /// <summary>
-    /// Final first-combat-room integration boundary. It owns neutral enemy-hit subscriptions,
-    /// maps accepted contacts into the current run-local player authority, and shuts down the
-    /// exact player weapon immediately after the first canonical defeat fact.
+    /// Final combat integration boundary. It owns neutral enemy-hit subscriptions, maps accepted
+    /// contacts into the current run-local player authority, and shuts down the exact player
+    /// weapon immediately after the first canonical defeat fact.
     /// </summary>
     [DefaultExecutionOrder(700)]
     [DisallowMultipleComponent]
@@ -187,9 +373,9 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private const int StartupResolutionAttemptLimit = 240;
 
-        private readonly Dictionary<EnemyAttack2D, Action<EnemyHitV1>>
+        private readonly FirstCombatRoomEnemyHitSubscriptionSetV1
             enemyHitSubscriptions =
-                new Dictionary<EnemyAttack2D, Action<EnemyHitV1>>();
+                new FirstCombatRoomEnemyHitSubscriptionSetV1();
 
         private RoomRuntimeComposition2D roomRuntime;
         private PlayablePlayerMarker2D playerMarker;
@@ -215,8 +401,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return !resolving
                     && !resolutionRejected
                     && playerDamageReceiver != null
-                    && roomRuntime != null
-                    && enemyHitSubscriptions.Count > 0;
+                    && roomRuntime != null;
             }
         }
 
@@ -300,10 +485,9 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            // After defeat the controller and sink are intentionally destroyed. The player
-            // receiver and enemy subscriptions remain alive until scene cleanup so late contacts
-            // still flow to the canonical dead-target rejection path.
-            if (!defeatAccepted && !KnownPlayerBindingsAreCurrent())
+            if (!defeatAccepted
+                && (!KnownPlayerBindingsAreCurrent()
+                    || !KnownEnemyBindingsAreCurrent()))
             {
                 BeginResolution();
             }
@@ -403,23 +587,59 @@ namespace ShooterMover.UI.ProductionFlow
                 return ResolutionStatus.Pending;
             }
 
-            List<EnemyAttack2D> publishers =
-                FindActiveComponents<EnemyAttack2D>(scene);
-            if (publishers.Count == 0)
+            int authoritativeEnemyCount;
+            try
             {
+                authoritativeEnemyCount =
+                    FirstCombatRoomEnemyPublisherReconciliationV1
+                        .CountAuthoritativeActiveEnemies(rooms[0]);
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception))
+                {
+                    throw;
+                }
                 diagnostic =
-                    "first-combat-room-integration-enemy-publisher-pending";
+                    "first-combat-room-integration-room-projection-pending:"
+                    + exception.GetType().Name;
                 return ResolutionStatus.Pending;
             }
-            for (int index = 0; index < publishers.Count; index++)
+
+            List<EnemyAttack2D> discoveredPublishers =
+                FindActiveComponents<EnemyAttack2D>(scene);
+            var readyPublishers = new List<EnemyAttack2D>();
+            bool hasNonTerminalUnboundPublisher = false;
+            for (int index = 0; index < discoveredPublishers.Count; index++)
             {
-                if (!publishers[index].IsBound
-                    || publishers[index].IsTerminalStopped)
+                EnemyAttack2D publisher = discoveredPublishers[index];
+                if (publisher.IsTerminalStopped)
                 {
-                    diagnostic =
-                        "first-combat-room-integration-enemy-publisher-binding-pending";
-                    return ResolutionStatus.Pending;
+                    continue;
                 }
+                if (!publisher.IsBound)
+                {
+                    hasNonTerminalUnboundPublisher = true;
+                    continue;
+                }
+                readyPublishers.Add(publisher);
+            }
+
+            FirstCombatRoomEnemyPublisherResolutionStatusV1 publisherStatus =
+                FirstCombatRoomEnemyPublisherReconciliationV1.Classify(
+                    authoritativeEnemyCount,
+                    readyPublishers.Count,
+                    hasNonTerminalUnboundPublisher,
+                    out diagnostic);
+            if (publisherStatus
+                == FirstCombatRoomEnemyPublisherResolutionStatusV1.Pending)
+            {
+                return ResolutionStatus.Pending;
+            }
+            if (publisherStatus
+                == FirstCombatRoomEnemyPublisherResolutionStatusV1.Rejected)
+            {
+                return ResolutionStatus.Rejected;
             }
 
             PlayablePlayerMarker2D marker = markers[0];
@@ -456,20 +676,9 @@ namespace ShooterMover.UI.ProductionFlow
                 roomRuntime.CurrentRoomPresentationRebuilt +=
                     HandleRoomPresentationRebuilt;
                 playerDamageReceiver.Defeated += HandlePlayerDefeated;
-                for (int index = 0; index < publishers.Count; index++)
-                {
-                    EnemyAttack2D publisher = publishers[index];
-                    if (enemyHitSubscriptions.ContainsKey(publisher))
-                    {
-                        continue;
-                    }
-
-                    EnemyAttack2D capturedPublisher = publisher;
-                    Action<EnemyHitV1> handler = hit =>
-                        HandleEnemyHit(capturedPublisher, hit);
-                    publisher.Hit += handler;
-                    enemyHitSubscriptions.Add(publisher, handler);
-                }
+                enemyHitSubscriptions.Replace(
+                    readyPublishers,
+                    HandleEnemyHit);
 
                 return ResolutionStatus.Ready;
             }
@@ -496,7 +705,7 @@ namespace ShooterMover.UI.ProductionFlow
             if (destroying
                 || publisher == null
                 || hit == null
-                || !enemyHitSubscriptions.ContainsKey(publisher))
+                || !enemyHitSubscriptions.Contains(publisher))
             {
                 return;
             }
@@ -577,8 +786,6 @@ namespace ShooterMover.UI.ProductionFlow
                     return;
                 }
 
-                // The PlayerActorAuthority result remains the only replay, conflict, target,
-                // lifecycle, alive/dead, health, feedback and defeat source of truth.
                 lastDamageResult = playerDamageReceiver.ApplyDamage(command);
                 if (lastDamageResult == null)
                 {
@@ -622,9 +829,6 @@ namespace ShooterMover.UI.ProductionFlow
                     return;
                 }
 
-                // Latch before shutdown so an ordinary cleanup failure cannot admit a second
-                // defeat-side effect. The canonical vitals adapter continues its Hub request
-                // after this synchronous observer returns.
                 defeatAccepted = true;
                 acceptedDefeatCount = checked(acceptedDefeatCount + 1);
                 stoppedProjectileCount =
@@ -671,6 +875,31 @@ namespace ShooterMover.UI.ProductionFlow
                 && playerWeaponController.gameObject.scene == gameObject.scene
                 && playerProjectileSink != null
                 && playerProjectileSink.gameObject.scene == gameObject.scene;
+        }
+
+        private bool KnownEnemyBindingsAreCurrent()
+        {
+            if (roomRuntime == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                int expected =
+                    FirstCombatRoomEnemyPublisherReconciliationV1
+                        .CountAuthoritativeActiveEnemies(roomRuntime);
+                return enemyHitSubscriptions.Count == expected
+                    && enemyHitSubscriptions.AllCurrent(gameObject.scene);
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception))
+                {
+                    throw;
+                }
+                return false;
+            }
         }
 
         private bool IsReceiverCurrent()
@@ -732,14 +961,6 @@ namespace ShooterMover.UI.ProductionFlow
                 playerDamageReceiver.Defeated -= HandlePlayerDefeated;
             }
 
-            foreach (KeyValuePair<EnemyAttack2D, Action<EnemyHitV1>> pair
-                in enemyHitSubscriptions)
-            {
-                if (pair.Key != null)
-                {
-                    pair.Key.Hit -= pair.Value;
-                }
-            }
             enemyHitSubscriptions.Clear();
 
             roomRuntime = null;
@@ -860,6 +1081,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             public MonoBehaviour Behaviour { get; }
+
             public IPlayablePlayerDamageReceiverV1 Receiver { get; }
         }
     }
