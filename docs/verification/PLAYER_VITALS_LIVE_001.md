@@ -8,6 +8,10 @@
 - Pull-request target: `agent/first-combat-room-001-integration`
 - Draft only; never target `main`, merge, or enable auto-merge from this task branch.
 
+The target branch was refreshed during the final audit. At that point it was eight commits
+ahead of the shared starting SHA, with changes confined to room-door content and
+presentation files. No player-vitals file overlapped, and no merge or rebase was performed.
+
 ## Health authority
 
 The authored gameplay player reuses the retained engine-neutral
@@ -32,8 +36,8 @@ clearly provisional run-local maximum health of `100`. It is not final balance.
 
 ## Run-local lifecycle identity
 
-`CharacterInstanceStableId` remains the persistent selected-character identity. It is not
-used as the canonical damage actor identity.
+`CharacterInstanceStableId` remains the persistent selected-character ownership identity. It
+is not used as the canonical damage actor identity.
 
 Every successful `PlayablePlayerVitals2D.Bind(...)` creates one new run-entry token and
 uses it in both canonical identities:
@@ -53,44 +57,29 @@ A delayed command captured from an earlier entry retains the earlier actor in
 `TargetActorId`. The new authority rejects it with `TargetMismatch`; health and accepted
 sequence remain unchanged.
 
-## Neutral damage receiver and Task B integration mapping
+## Neutral external-contact mapping
 
 Integration consumes `IPlayablePlayerDamageReceiverV1`, which extends the existing
 package-neutral `IDamageReceiver` boundary.
 
-Task B's `RoomEnemyProjectileContactV1.TargetEntityStableId` identifies the marker's
-persistent `CharacterInstanceStableId`. It is **not** the canonical damage actor identity.
-A direct assignment from Task B's target field to
-`DamageReceiverCommand.TargetActorId` is invalid and would reject every hit.
+An external character-target contact identifies the marker's persistent
+`CharacterInstanceStableId`. That value is **not** the canonical damage actor identity, and
+must never be assigned directly to `DamageReceiverCommand.TargetActorId`.
 
-`PlayablePlayerDamageCommandFactoryV1.TryCreateForCharacterContact(...)` supplies a narrow
-Task-B-independent mapping seam:
+`PlayablePlayerDamageCommandFactoryV1.TryCreateForCharacterContact(...)` supplies the narrow,
+external-type-independent mapping seam:
 
-1. validate the external/contact target against
-   `receiver.CharacterInstanceStableId`;
-2. use the contact identity as `DamageReceiverCommand.EventId`;
-3. use the canonical enemy source entity as `SourceActorId`;
-4. use the canonical enemy run participant as `SourceRunParticipantId`;
+1. validate the external target against `receiver.CharacterInstanceStableId`;
+2. preserve the external event identity as `DamageReceiverCommand.EventId`;
+3. preserve the source actor as `SourceActorId`;
+4. preserve the source run participant as `SourceRunParticipantId`;
 5. use `receiver.Identity.EntityInstanceId` as `TargetActorId`;
-6. use the exact resolved contact damage and mapped canonical combat channel;
+6. preserve exact damage and the canonical combat channel;
 7. use `receiver.LifecycleGeneration` as the target lifecycle generation.
 
-For Task B specifically, the final integration adapter should map:
-
-| Task B contact fact | Task C command input |
-| --- | --- |
-| `TargetEntityStableId` | validation against `CharacterInstanceStableId` only |
-| `ContactStableId` | `EventId` |
-| `SourceEntityStableId` | `SourceActorId` |
-| `SourceRunParticipantStableId` | `SourceRunParticipantId` |
-| `ResolvedDamage` | `Amount` |
-| `DamageChannelStableId` | exact canonical `CombatChannel` mapping |
-| current receiver actor | `receiver.Identity.EntityInstanceId` → `TargetActorId` |
-| current receiver generation | `receiver.LifecycleGeneration` |
-
-The final integration test must construct a real Task B contact, pass it through this
-mapping, verify one accepted hit, replay the same contact to verify no second mutation, and
-verify a contact carrying another character identity fails before command admission.
+The integration branch must connect its neutral external hit fact through this factory. A
+focused integration test must verify one accepted hit, exact replay with no second mutation,
+and rejection of a contact carrying another character identity.
 
 Replay behavior after command construction remains canonical:
 
@@ -120,9 +109,10 @@ There is no per-frame global player search and no edit to the D-owned
 
 ## HUD and hit feedback
 
-The adapter projects current health, maximum health, and a normalized health bar. Every
-newly accepted damage result gives the existing player sprite a short white hit flash.
-Duplicate or rejected commands produce no second flash.
+The HUD reads one immutable `PlayerActorSnapshot` from the canonical authority and projects
+current health, maximum health, and a normalized health bar. Every newly accepted damage
+result gives the existing player sprite a short white hit flash. Duplicate or rejected
+commands produce no second flash.
 
 ## Exactly-once defeat and retryable safe return
 
@@ -168,6 +158,8 @@ later observers continue. `OutOfMemoryException`, `StackOverflowException`, and
 - `Assets/ShooterMover/Tests/PlayMode/ProductionFlow.meta`
 - `Assets/ShooterMover/Tests/PlayMode/ProductionFlow/PlayablePlayerVitalsRetryPlayModeTests.cs`
 - `Assets/ShooterMover/Tests/PlayMode/ProductionFlow/PlayablePlayerVitalsRetryPlayModeTests.cs.meta`
+- `Assets/ShooterMover/Tests/PlayMode/ProductionFlow/PlayablePlayerVitalsAcceptedFeedbackPlayModeTests.cs`
+- `Assets/ShooterMover/Tests/PlayMode/ProductionFlow/PlayablePlayerVitalsAcceptedFeedbackPlayModeTests.cs.meta`
 - `Assets/ShooterMover/Tests/PlayMode/ProductionFlow/ShooterMover.Tests.PlayMode.ProductionFlow.asmdef`
 - `Assets/ShooterMover/Tests/PlayMode/ProductionFlow/ShooterMover.Tests.PlayMode.ProductionFlow.asmdef.meta`
 - `docs/verification/PLAYER_VITALS_LIVE_001.md`
@@ -179,7 +171,7 @@ Focused EditMode coverage asserts:
 - valid damage, exact replay, and conflicting duplicate semantics;
 - provisional maximum health `100`;
 - exact holdings/loadout reference preservation;
-- same character re-entry creates a different actor identity;
+- same-character re-entry creates a different actor identity;
 - replaying the old entry's command is rejected with `TargetMismatch`, no health mutation,
   and no accepted sequence;
 - character-target contact mapping produces the current actor target and generation;
@@ -195,7 +187,10 @@ Focused PlayMode coverage is authored for:
 - the real MonoBehaviour `Update()` timer: first immediate attempt rejects, automatic retry
   accepts, and later frames cannot transition twice;
 - `PlayablePlayerVitalsInstallerV1.Start()`: an already-spawned player child is discovered,
-  bound once, and retains the same authority/component on later frames.
+  bound once, and retains the same authority/component on later frames;
+- accepted-only presentation: one accepted non-lethal command changes health and starts the
+  white hit flash, while exact replay and conflicting identity reuse produce no second health
+  mutation and no second flash.
 
 Suggested Unity commands using the repository's Unity `6000.3.19f1` baseline:
 
@@ -210,7 +205,7 @@ Unity -batchmode -nographics -projectPath . \
 ```text
 Unity -batchmode -nographics -projectPath . \
   -runTests -testPlatform PlayMode \
-  -testFilter ShooterMover.Tests.PlayMode.ProductionFlow.PlayablePlayerVitalsRetryPlayModeTests \
+  -testFilter ShooterMover.Tests.PlayMode.ProductionFlow \
   -testResults Temp/player-vitals-live-001-playmode.xml \
   -logFile Temp/player-vitals-live-001-playmode.log
 ```
@@ -220,15 +215,17 @@ Unity -batchmode -nographics -projectPath . \
 Static inspection performed:
 
 - required exact merge base retained;
+- current target-branch changes do not overlap player-vitals files;
 - canonical `PlayerActorAuthority` still owns health/replay/death/lifecycle state;
 - every binding creates a fresh run-local actor and participant identity within StableId
   limits;
 - previous-entry commands retain the old target and fail against the new actor;
 - contact-command factory validates character identity before projecting actor/generation;
+- HUD reads the authority snapshot and hit feedback runs only for `Applied` results;
 - accepted Hub-return latch is written only after a true transition result;
 - authority guard is read-only and exact-reference based;
 - fatal observer exceptions are rethrown;
-- no Task A weapon or Task B concrete projectile/contact type is referenced;
+- no concrete external projectile or hit class is referenced;
 - no D-owned scene/controller, inventory, reward, XP, or room-clear authority file changed.
 
 ## Validation not performed in this environment
@@ -240,11 +237,11 @@ This connected environment has no Unity Editor or runnable repository checkout. 
 - authored PlayMode tests were not executed and no XML exists;
 - the synthetic installer test does not replace loading the real production scene and
   observing the actual controller-spawned player sequence;
-- the final Task B-contact-to-Task C-command integration test does not exist on this isolated
-  task branch and must be implemented on the integration branch;
-- manual authored-level repeated entry, delayed projectile replay, HUD, defeat, rejected
-  return recovery, and persistent character/loadout verification were not performed;
-- no CI status exists for this head.
+- the final neutral-contact-to-canonical-command integration test does not exist on this
+  isolated task branch and must be implemented on the integration branch;
+- manual authored-level repeated entry, delayed contact replay, HUD, defeat, rejected return
+  recovery, and persistent character/loadout verification were not performed;
+- no CI workflow or commit status exists for this head.
 
 No passing Unity, CI, or manual result is claimed. Keep the PR draft until those paths are
 genuinely validated.
