@@ -1,9 +1,9 @@
 using System;
 using System.Reflection;
-using System.Runtime.Serialization;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
+using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UI.ProductionFlow;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using ShooterMover.UnityAdapters.Weapons.Live;
@@ -45,7 +45,7 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
         }
 
         [Test]
-        public void DefeatRetainsExactCommittedEnemyImpactRetryState()
+        public void DefeatRetainsExactCommittedLethalEnemyImpactRetryState()
         {
             GameObject enemyObject = new GameObject(
                 "Pending Retry Enemy Test Double");
@@ -57,16 +57,20 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                     enemyObject.AddComponent<RoomEnemyActor2D>();
                 ProductionNormalProjectile2D projectile =
                     projectileObject.AddComponent<ProductionNormalProjectile2D>();
+                var exactCommand = new EnemyRuntimeDamageCommandV1(
+                    StableId.Parse("enemy-damage-operation.defeat-retry-test"),
+                    StableId.Parse("actor.player-defeat-retry-test"),
+                    StableId.Parse("participant.player-defeat-retry-test"),
+                    StableId.Parse("enemy.defeat-retry-test"),
+                    7L,
+                    41L,
+                    1,
+                    500d);
+                const double exactOccurredAtSeconds = 47.125d;
 
                 FieldInfo commandField = RequirePrivateField(
                     typeof(ProductionNormalProjectile2D),
                     "pendingDamageCommand");
-#pragma warning disable SYSLIB0050
-                object exactCommand = FormatterServices.GetUninitializedObject(
-                    commandField.FieldType);
-#pragma warning restore SYSLIB0050
-                const double exactOccurredAtSeconds = 47.125d;
-
                 SetPrivateField(projectile, "impactCommitted", true);
                 SetPrivateField(projectile, "pendingImpactEnemy", enemy);
                 commandField.SetValue(projectile, exactCommand);
