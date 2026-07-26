@@ -8,6 +8,7 @@ using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
@@ -74,7 +75,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             GameObject batchRoot = new GameObject(
                 "PlayerWeaponProjectileBatch_"
                 + batch.Identity.FireOperationId);
-            batchRoot.transform.SetParent(transform, false);
+            SceneManager.MoveGameObjectToScene(
+                batchRoot,
+                gameObject.scene);
             batchRoot.SetActive(false);
             var staged = new List<ProductionNormalProjectile2D>(
                 batch.CoreBatch.EffectCount);
@@ -233,6 +236,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         private void OnDestroy()
         {
+            foreach (AcceptedBatch batch in accepted.Values)
+            {
+                if (batch != null && batch.Root != null)
+                {
+                    Destroy(batch.Root);
+                }
+            }
             accepted.Clear();
             if (runtimeSprite != null) Destroy(runtimeSprite);
             if (runtimeTexture != null) Destroy(runtimeTexture);
