@@ -3,6 +3,7 @@ using System.Collections;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.GameplayEntities;
 using UnityEngine;
@@ -23,6 +24,126 @@ namespace ShooterMover.UI.ProductionFlow
         bool IsDefeated { get; }
         event Action<PlayablePlayerDefeatedFactV1> Defeated;
         PlayerActorSnapshot ExportSnapshot();
+    }
+
+    /// <summary>
+    /// One retryable request seam for the existing production Hub transition. A false result
+    /// never means that a transition was accepted.
+    /// </summary>
+    public interface IPlayablePlayerHubReturnRequestV1
+    {
+        bool TryReturnToHub(
+            PlayablePlayerMarker2D player,
+            out string rejectionCode);
+    }
+
+    /// <summary>
+    /// Pure guard for the exact selected-character authority handoff. It observes identities
+    /// and references only and cannot mutate character, holdings, or loadout state.
+    /// </summary>
+    public static class PlayablePlayerHubReturnAuthorityGuardV1
+    {
+        public static bool TryValidate(
+            PlayablePlayerMarker2D player,
+            StableId currentCharacterInstanceStableId,
+            StableId currentClassDefinitionStableId,
+            PlayerRouteProfilePayloadV1 graphRoutePayload,
+            PlayerRouteProfilePayloadV1 profileRoutePayload,
+            object currentHoldingsAuthority,
+            object currentLoadoutAuthority,
+            out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            if (player == null
+                || currentCharacterInstanceStableId == null
+                || currentClassDefinitionStableId == null
+                || graphRoutePayload == null
+                || profileRoutePayload == null
+                || currentHoldingsAuthority == null
+                || currentLoadoutAuthority == null)
+            {
+                rejectionCode =
+                    "playable-player-vitals-character-context-missing";
+                return false;
+            }
+
+            if (player.CharacterInstanceStableId
+                    != currentCharacterInstanceStableId
+                || player.ClassDefinitionStableId
+                    != currentClassDefinitionStableId
+                || player.RoutePayload == null
+                || !graphRoutePayload.Equals(player.RoutePayload)
+                || !profileRoutePayload.Equals(player.RoutePayload)
+                || !ReferenceEquals(
+                    player.HoldingsAuthority,
+                    currentHoldingsAuthority)
+                || !ReferenceEquals(
+                    player.LoadoutAuthority,
+                    currentLoadoutAuthority))
+            {
+                rejectionCode =
+                    "playable-player-vitals-character-authority-changed";
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Production adapter that resolves the current selected graph, validates exact authority
+    /// continuity, and delegates to the retained production transition coordinator.
+    /// </summary>
+    public sealed class ProductionPlayablePlayerHubReturnRequestV1 :
+        IPlayablePlayerHubReturnRequestV1
+    {
+        public bool TryReturnToHub(
+            PlayablePlayerMarker2D player,
+            out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 profile;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out profile)
+                || graph == null
+                || profile == null
+                || graph.IsDisposed)
+            {
+                rejectionCode =
+                    "playable-player-vitals-character-context-missing";
+                return false;
+            }
+
+            if (!PlayablePlayerHubReturnAuthorityGuardV1.TryValidate(
+                    player,
+                    graph.Character.CharacterInstanceStableId,
+                    graph.Character.ClassDefinitionStableId,
+                    graph.RoutePayload,
+                    profile.Payload,
+                    graph.LoadoutRuntime.Holdings,
+                    graph.LoadoutRuntime.LoadoutAuthority,
+                    out rejectionCode))
+            {
+                return false;
+            }
+
+            ProductionFlowCoordinatorV1 flow =
+                UnityEngine.Object.FindFirstObjectByType<
+                    ProductionFlowCoordinatorV1>(
+                    FindObjectsInactive.Include);
+            if (flow == null
+                || flow.Transitions == null
+                || !flow.Transitions.TryReturnToHub(player.RoutePayload))
+            {
+                rejectionCode =
+                    "playable-player-vitals-hub-return-rejected";
+                return false;
+            }
+
+            return true;
+        }
     }
 
     public sealed class PlayablePlayerDefeatedFactV1
@@ -170,6 +291,7 @@ namespace ShooterMover.UI.ProductionFlow
         IPlayablePlayerDamageReceiverV1
     {
         public const double ProvisionalMaximumHealth = 100d;
+        private const float HubReturnRetrySeconds = 0.25f;
 
         private static readonly StableId PlayerFactionStableId =
             StableId.Parse("faction.players");
@@ -178,17 +300,23 @@ namespace ShooterMover.UI.ProductionFlow
         private Rigidbody2D body;
         private PlayableTopDownMovement2D movement;
         private PlayerActorAuthority authority;
+        private IPlayablePlayerHubReturnRequestV1 hubReturnRequest;
         private SpriteRenderer playerRenderer;
         private Color playerBaseColor;
         private Coroutine hitFlash;
         private bool defeatedRaised;
-        private bool hubReturnRequested;
+        private bool hubReturnAccepted;
+        private bool hubReturnAttemptInProgress;
+        private float nextHubReturnAttemptAt;
+        private int hubReturnAttemptCount;
         private string diagnostic = string.Empty;
 
         public event Action<PlayablePlayerDefeatedFactV1> Defeated;
 
         public bool IsBound { get { return authority != null; } }
         public bool UsesProvisionalMaximumHealth { get { return true; } }
+        public bool IsHubReturnAccepted { get { return hubReturnAccepted; } }
+        public int HubReturnAttemptCount { get { return hubReturnAttemptCount; } }
         public string Diagnostic { get { return diagnostic; } }
 
         public GameplayEntityIdentity Identity
@@ -230,6 +358,19 @@ namespace ShooterMover.UI.ProductionFlow
             Rigidbody2D configuredBody,
             PlayableTopDownMovement2D configuredMovement)
         {
+            Bind(
+                configuredMarker,
+                configuredBody,
+                configuredMovement,
+                new ProductionPlayablePlayerHubReturnRequestV1());
+        }
+
+        public void Bind(
+            PlayablePlayerMarker2D configuredMarker,
+            Rigidbody2D configuredBody,
+            PlayableTopDownMovement2D configuredMovement,
+            IPlayablePlayerHubReturnRequestV1 configuredHubReturnRequest)
+        {
             if (IsBound)
             {
                 throw new InvalidOperationException(
@@ -242,6 +383,9 @@ namespace ShooterMover.UI.ProductionFlow
                 ?? throw new ArgumentNullException(nameof(configuredBody));
             movement = configuredMovement
                 ?? throw new ArgumentNullException(nameof(configuredMovement));
+            hubReturnRequest = configuredHubReturnRequest
+                ?? throw new ArgumentNullException(
+                    nameof(configuredHubReturnRequest));
             if (marker.CharacterInstanceStableId == null
                 || marker.ClassDefinitionStableId == null
                 || marker.RoutePayload == null
@@ -305,6 +449,33 @@ namespace ShooterMover.UI.ProductionFlow
             return result;
         }
 
+        /// <summary>
+        /// Immediate retry seam for deterministic validation and explicit recovery callers.
+        /// The accepted-transition latch is set only after the production transition accepts.
+        /// </summary>
+        public bool TryRetryHubReturn()
+        {
+            EnsureBound();
+            if (!defeatedRaised)
+            {
+                return false;
+            }
+            return TryRequestHubReturn();
+        }
+
+        private void Update()
+        {
+            if (!defeatedRaised
+                || hubReturnAccepted
+                || hubReturnAttemptInProgress
+                || Time.unscaledTime < nextHubReturnAttemptAt)
+            {
+                return;
+            }
+
+            TryRequestHubReturn();
+        }
+
         private void AcceptDefeat(GameplayEntityDeathFact deathFact)
         {
             if (defeatedRaised || deathFact == null)
@@ -323,73 +494,107 @@ namespace ShooterMover.UI.ProductionFlow
                 deathFact.EventId,
                 deathFact.LifecycleGeneration,
                 deathFact.AcceptedSequence);
-            Action<PlayablePlayerDefeatedFactV1> handler = Defeated;
-            if (handler != null)
+            PublishDefeated(fact);
+            TryRequestHubReturn();
+        }
+
+        private void PublishDefeated(PlayablePlayerDefeatedFactV1 fact)
+        {
+            Action<PlayablePlayerDefeatedFactV1> handlers = Defeated;
+            if (handlers == null)
             {
+                return;
+            }
+
+            Delegate[] observers = handlers.GetInvocationList();
+            for (int index = 0; index < observers.Length; index++)
+            {
+                var observer =
+                    (Action<PlayablePlayerDefeatedFactV1>)observers[index];
                 try
                 {
-                    handler(fact);
+                    observer(fact);
                 }
                 catch (Exception exception)
                 {
+                    if (IsFatal(exception))
+                    {
+                        throw;
+                    }
                     Debug.LogException(exception, this);
                 }
             }
-
-            RequestHubReturnOnce();
         }
 
-        private void RequestHubReturnOnce()
+        private bool TryRequestHubReturn()
         {
-            if (hubReturnRequested)
+            if (hubReturnAccepted)
             {
-                return;
+                return true;
             }
-            hubReturnRequested = true;
-
-            ProductionCharacterRuntimeGraphV1 graph;
-            ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
-                    out graph,
-                    out profile)
-                || graph == null
-                || profile == null
-                || graph.IsDisposed)
+            if (hubReturnAttemptInProgress)
             {
-                RejectHubReturn("playable-player-vitals-character-context-missing");
-                return;
-            }
-            if (graph.Character.CharacterInstanceStableId
-                    != marker.CharacterInstanceStableId
-                || graph.Character.ClassDefinitionStableId
-                    != marker.ClassDefinitionStableId
-                || !graph.RoutePayload.Equals(marker.RoutePayload)
-                || !profile.Payload.Equals(marker.RoutePayload)
-                || !ReferenceEquals(
-                    marker.HoldingsAuthority,
-                    graph.LoadoutRuntime.Holdings)
-                || !ReferenceEquals(
-                    marker.LoadoutAuthority,
-                    graph.LoadoutRuntime.LoadoutAuthority))
-            {
-                RejectHubReturn("playable-player-vitals-character-authority-changed");
-                return;
+                return false;
             }
 
-            ProductionFlowCoordinatorV1 flow = FindFirstObjectByType<
-                ProductionFlowCoordinatorV1>(FindObjectsInactive.Include);
-            if (flow == null
-                || flow.Transitions == null
-                || !flow.Transitions.TryReturnToHub(marker.RoutePayload))
+            hubReturnAttemptInProgress = true;
+            try
             {
-                RejectHubReturn("playable-player-vitals-hub-return-rejected");
+                hubReturnAttemptCount = checked(hubReturnAttemptCount + 1);
+                string rejectionCode;
+                bool accepted;
+                try
+                {
+                    accepted = hubReturnRequest.TryReturnToHub(
+                        marker,
+                        out rejectionCode);
+                }
+                catch (Exception exception)
+                {
+                    if (IsFatal(exception))
+                    {
+                        throw;
+                    }
+
+                    Debug.LogException(exception, this);
+                    RejectHubReturn(
+                        "playable-player-vitals-hub-return-exception");
+                    return false;
+                }
+
+                if (!accepted)
+                {
+                    RejectHubReturn(rejectionCode);
+                    return false;
+                }
+
+                hubReturnAccepted = true;
+                diagnostic = string.Empty;
+                return true;
+            }
+            finally
+            {
+                hubReturnAttemptInProgress = false;
             }
         }
 
         private void RejectHubReturn(string code)
         {
-            diagnostic = code;
-            Debug.LogError(code, this);
+            string normalized = string.IsNullOrWhiteSpace(code)
+                ? "playable-player-vitals-hub-return-rejected"
+                : code.Trim();
+            if (!string.Equals(
+                    diagnostic,
+                    normalized,
+                    StringComparison.Ordinal))
+            {
+                Debug.LogError(normalized, this);
+            }
+
+            diagnostic = normalized;
+            nextHubReturnAttemptAt = Application.isPlaying
+                ? Time.unscaledTime + HubReturnRetrySeconds
+                : 0f;
         }
 
         private void ShowAcceptedHitFeedback()
@@ -465,6 +670,13 @@ namespace ShooterMover.UI.ProductionFlow
             }
         }
 
+        private static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
+        }
+
         private void OnDestroy()
         {
             if (hitFlash != null)
@@ -477,6 +689,7 @@ namespace ShooterMover.UI.ProductionFlow
                 playerRenderer.color = playerBaseColor;
             }
             Defeated = null;
+            hubReturnRequest = null;
         }
     }
 }
