@@ -21,6 +21,8 @@ namespace ShooterMover.UnityAdapters.Enemies
     {
         private const string PlayerMarkerTypeName =
             "ShooterMover.UI.ProductionFlow.PlayablePlayerMarker2D";
+        private const int PlayerAcquisitionIntervalFixedTicks = 5;
+        private const int PlayerAcquisitionAttemptLimit = 60;
 
         private static readonly StableId PlayerFactionId =
             StableId.Create("faction", "gameplay-player");
@@ -46,6 +48,9 @@ namespace ShooterMover.UnityAdapters.Enemies
         private Material telegraphMaterial;
         private Texture2D shotTexture;
         private Sprite shotSprite;
+        private int playerAcquisitionAttempts;
+        private int playerAcquisitionWaitTicks;
+        private string pendingPlayerDiagnostic;
 
         public event Action<EnemyHitV1> Hit;
 
@@ -115,7 +120,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             runtime = next;
             revision = presentationRevision;
             BuildSupported(next);
-            player = FindPlayer(boundActor.gameObject.scene);
+            player = null;
             body = EnsureBody(boundActor.gameObject);
             EnsureCollider(boundActor.gameObject);
             EnsureVisuals();
@@ -129,9 +134,13 @@ namespace ShooterMover.UnityAdapters.Enemies
             {
                 throw new InvalidOperationException("enemy-attack-fixed-step-invalid");
             }
+            playerAcquisitionAttempts = 0;
+            playerAcquisitionWaitTicks = 0;
+            pendingPlayerDiagnostic = "enemy-attack-player-missing";
             stopped = false;
             lastDiagnostic = null;
             body.linearVelocity = Vector2.zero;
+            body.angularVelocity = 0f;
             body.simulated = true;
             enabled = true;
         }
@@ -276,15 +285,36 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         private void FixedUpdate()
         {
+            try
+            {
+                TickPresentation();
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception)) throw;
+                Report(
+                    "enemy-attack-presentation-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message);
+                Debug.LogException(exception, this);
+                Stop(true);
+            }
+        }
+
+        private void TickPresentation()
+        {
             if (!IsCurrent() || !actor.IsAlive || !runtime.ActorState.IsActive)
             {
                 Stop(true);
                 return;
             }
-            if (player == null || !player.IsCurrent(gameObject.scene))
+            if (!EnsurePlayerBinding())
             {
-                Report("enemy-attack-player-binding-lost");
-                Stop(true);
+                if (body != null)
+                {
+                    body.linearVelocity = Vector2.zero;
+                }
                 return;
             }
 
@@ -318,7 +348,8 @@ namespace ShooterMover.UnityAdapters.Enemies
                 tick,
                 runtime.DifficultyScaling.MovementMultiplier,
                 null);
-            ApplyMovement(runtime.RealizeMovement(decision, movementContext));
+            EnemyMovementRealizationV1 movement =
+                runtime.RealizeMovement(decision, movementContext);
 
             EnemyAttackIntent requested = decision.Evaluation.Decision.RequestedAttack;
             if (requested != null)
@@ -334,7 +365,71 @@ namespace ShooterMover.UnityAdapters.Enemies
                 }
             }
 
+            // TryExecuteAttack synchronously dispatches accepted emissions into pending. Applying
+            // movement afterwards makes the acceptance tick part of the hold without introducing
+            // another decision authority.
+            ApplyMovement(movement);
             RefreshTelegraph();
+        }
+
+        private bool EnsurePlayerBinding()
+        {
+            Scene scene = gameObject.scene;
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                Stop(true);
+                return false;
+            }
+            if (player != null)
+            {
+                if (player.IsCurrent(scene))
+                {
+                    return true;
+                }
+                Report("enemy-attack-player-binding-lost");
+                Stop(true);
+                return false;
+            }
+            if (playerAcquisitionWaitTicks > 0)
+            {
+                playerAcquisitionWaitTicks--;
+                return false;
+            }
+
+            playerAcquisitionAttempts++;
+            PlayerBinding acquired;
+            string diagnostic;
+            PlayerAcquisitionStatus status = InspectPlayer(
+                scene,
+                out acquired,
+                out diagnostic);
+            if (status == PlayerAcquisitionStatus.Ready)
+            {
+                player = acquired;
+                pendingPlayerDiagnostic = null;
+                return true;
+            }
+            if (status == PlayerAcquisitionStatus.Duplicate
+                || status == PlayerAcquisitionStatus.Invalid)
+            {
+                Report(diagnostic);
+                Stop(true);
+                return false;
+            }
+
+            pendingPlayerDiagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                ? "enemy-attack-player-missing"
+                : diagnostic;
+            if (playerAcquisitionAttempts >= PlayerAcquisitionAttemptLimit)
+            {
+                Report(
+                    "enemy-attack-player-acquisition-timeout:"
+                    + pendingPlayerDiagnostic);
+                Stop(true);
+                return false;
+            }
+            playerAcquisitionWaitTicks = PlayerAcquisitionIntervalFixedTicks - 1;
+            return false;
         }
 
         private void ApplyMovement(EnemyMovementRealizationV1 movement)
@@ -347,15 +442,20 @@ namespace ShooterMover.UnityAdapters.Enemies
             Vector2 velocity = ToUnity(movement.DesiredVelocity);
             if (HasTelegraph())
             {
-                velocity = Vector2.zero;
+                // A committed dangerous wind-up is a hard translation hold. Do not decelerate
+                // toward zero: clear inherited velocity before the physics step consumes it.
+                body.linearVelocity = Vector2.zero;
             }
-            float acceleration =
-                (float)(runtime.Movement.Configuration.Acceleration
-                    * runtime.DifficultyScaling.MovementMultiplier);
-            body.linearVelocity = Vector2.MoveTowards(
-                body.linearVelocity,
-                velocity,
-                acceleration * Time.fixedDeltaTime);
+            else
+            {
+                float acceleration =
+                    (float)(runtime.Movement.Configuration.Acceleration
+                        * runtime.DifficultyScaling.MovementMultiplier);
+                body.linearVelocity = Vector2.MoveTowards(
+                    body.linearVelocity,
+                    velocity,
+                    acceleration * Time.fixedDeltaTime);
+            }
 
             Vector2 desired = ToUnity(movement.DesiredFacing);
             if (desired.sqrMagnitude <= 0.000001f)
@@ -390,7 +490,7 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         private void Spawn(EnemyAttackEffectEmissionV1 emission)
         {
-            if (!IsCurrent() || !actor.IsAlive)
+            if (!IsCurrent() || !actor.IsAlive || player == null)
             {
                 return;
             }
@@ -570,14 +670,21 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
         }
 
-        private PlayerBinding FindPlayer(Scene scene)
+        private PlayerAcquisitionStatus InspectPlayer(
+            Scene scene,
+            out PlayerBinding result,
+            out string diagnostic)
         {
+            result = null;
+            diagnostic = null;
             if (!scene.IsValid() || !scene.isLoaded)
             {
-                throw new InvalidOperationException("enemy-attack-player-scene-invalid");
+                diagnostic = "enemy-attack-player-scene-invalid";
+                return PlayerAcquisitionStatus.Invalid;
             }
 
-            PlayerBinding result = null;
+            MonoBehaviour marker = null;
+            int markerCount = 0;
             GameObject[] roots = scene.GetRootGameObjects();
             for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
             {
@@ -594,33 +701,45 @@ namespace ShooterMover.UnityAdapters.Enemies
                     {
                         continue;
                     }
-                    if (result != null)
+                    markerCount++;
+                    if (markerCount > 1)
                     {
-                        throw new InvalidOperationException("enemy-attack-player-duplicated");
+                        diagnostic = "enemy-attack-player-duplicated";
+                        return PlayerAcquisitionStatus.Duplicate;
                     }
-
-                    PropertyInfo property = candidate.GetType().GetProperty(
-                        "CharacterInstanceStableId",
-                        BindingFlags.Instance | BindingFlags.Public);
-                    StableId entityId = property == null
-                        ? null
-                        : property.GetValue(candidate, null) as StableId;
-                    if (entityId == null)
-                    {
-                        throw new InvalidOperationException("enemy-attack-player-unbound");
-                    }
-                    Rigidbody2D playerBody = candidate.GetComponent<Rigidbody2D>();
-                    Collider2D playerCollider =
-                        candidate.GetComponentInChildren<Collider2D>(true);
-                    if (playerBody == null || playerCollider == null)
-                    {
-                        throw new InvalidOperationException("enemy-attack-player-physics-missing");
-                    }
-                    result = new PlayerBinding(candidate, entityId, playerBody);
+                    marker = candidate;
                 }
             }
-            return result
-                ?? throw new InvalidOperationException("enemy-attack-player-missing");
+            if (marker == null)
+            {
+                diagnostic = "enemy-attack-player-missing";
+                return PlayerAcquisitionStatus.Pending;
+            }
+
+            PropertyInfo property = marker.GetType().GetProperty(
+                "CharacterInstanceStableId",
+                BindingFlags.Instance | BindingFlags.Public);
+            if (property == null || !typeof(StableId).IsAssignableFrom(property.PropertyType))
+            {
+                diagnostic = "enemy-attack-player-marker-contract-missing";
+                return PlayerAcquisitionStatus.Invalid;
+            }
+            StableId entityId = property.GetValue(marker, null) as StableId;
+            if (entityId == null)
+            {
+                diagnostic = "enemy-attack-player-unbound";
+                return PlayerAcquisitionStatus.Pending;
+            }
+            Rigidbody2D playerBody = marker.GetComponent<Rigidbody2D>();
+            Collider2D playerCollider = marker.GetComponentInChildren<Collider2D>(true);
+            if (playerBody == null || playerCollider == null)
+            {
+                diagnostic = "enemy-attack-player-physics-missing";
+                return PlayerAcquisitionStatus.Pending;
+            }
+
+            result = new PlayerBinding(marker, entityId, playerBody);
+            return PlayerAcquisitionStatus.Ready;
         }
 
         private bool HasLineOfSight(Vector2 origin, Vector2 target)
@@ -757,7 +876,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             result.angularDamping = 8f;
             result.interpolation = RigidbodyInterpolation2D.Interpolate;
             result.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            result.constraints = RigidbodyConstraints2D.FreezeRotation;
+            result.constraints = RigidbodyConstraints2D.None;
             result.simulated = true;
             return result;
         }
@@ -806,7 +925,12 @@ namespace ShooterMover.UnityAdapters.Enemies
             if (body != null)
             {
                 body.linearVelocity = Vector2.zero;
+                body.angularVelocity = 0f;
             }
+            player = null;
+            playerAcquisitionAttempts = 0;
+            playerAcquisitionWaitTicks = 0;
+            pendingPlayerDiagnostic = null;
             if (markStopped)
             {
                 stopped = true;
@@ -916,11 +1040,22 @@ namespace ShooterMover.UnityAdapters.Enemies
 
             public bool IsCurrent(Scene scene)
             {
-                return Marker != null
+                return scene.IsValid()
+                    && scene.isLoaded
+                    && Marker != null
+                    && Marker.isActiveAndEnabled
                     && Body != null
                     && Marker.gameObject.scene == scene
                     && EntityStableId != null;
             }
+        }
+
+        private enum PlayerAcquisitionStatus
+        {
+            Pending = 0,
+            Ready = 1,
+            Duplicate = 2,
+            Invalid = 3
         }
     }
 }
