@@ -20,6 +20,6 @@ MonoBehaviour:
   - presentationStableId: presentation.prop-level1-cover
     prefab: {fileID: 100100000, guid: 58290c58f7b44b0f9d86443fa783f47c, type: 3}
   - presentationStableId: presentation.environment-room-door
-    prefab: {fileID: 100100000, guid: 58290c58f7b44b0f9d86443fa783f47c, type: 3}
+    prefab: {fileID: 100100000, guid: 25d30588df9b49bb836c4a715611bbc5, type: 3}
   - presentationStableId: presentation.environment-floor-industrial
     prefab: {fileID: 100100000, guid: cc33503d0e2b4efa9e20a54fb32971b4, type: 3}
