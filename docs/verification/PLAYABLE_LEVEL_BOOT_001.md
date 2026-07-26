@@ -3,9 +3,10 @@
 ## Repository baseline
 
 - Repository: `YeerooXY/shooter-mover`
-- Starting `main` SHA: `9a20e3707ae3f504eb0f383be3183cf0d5457bf5`
+- Starting `main` SHA before implementation: `9a20e3707ae3f504eb0f383be3183cf0d5457bf5`
 - Branch: `agent/playable-level-boot-001`
-- `main` was checked again before PR preparation and still pointed at the starting SHA.
+- `main` advanced during PR preparation to `fa03194d30e6b14c42113b70a691e527788da7ae` through the documentation-only PR #321.
+- The feature branch was synchronized onto that exact latest `main` head before final reporting and compares zero commits behind it.
 
 ## Discovery record
 
@@ -216,8 +217,9 @@ Enemies continue through the existing authored placement and PR #319 runtime bin
 
 Performed by repository/source and serialized-asset inspection:
 
-- reconfirmed `main` at `9a20e3707ae3f504eb0f383be3183cf0d5457bf5` before PR preparation;
-- branch compares ahead of that SHA and is not behind it;
+- confirmed the pre-implementation starting `main` SHA as `9a20e3707ae3f504eb0f383be3183cf0d5457bf5`;
+- detected the later `main` advancement to `fa03194d30e6b14c42113b70a691e527788da7ae` and synchronized the branch onto it;
+- confirmed the final branch is ahead of and zero commits behind the latest `main` head;
 - gameplay scene is registered in `EditorBuildSettings.asset`;
 - every script GUID used by the new scene was matched to its existing or newly added `.meta` file;
 - resource assets reference the existing authored JSON files and production enemy catalogue by GUID;
