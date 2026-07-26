@@ -27,6 +27,54 @@ namespace ShooterMover.UI.ProductionFlow
     }
 
     /// <summary>
+    /// Neutral integration helper for contacts that identify the selected character rather
+    /// than the scene-local gameplay actor. The character identity is validated first, then
+    /// the current receiver actor identity and lifecycle generation are projected into the
+    /// canonical damage command.
+    /// </summary>
+    public static class PlayablePlayerDamageCommandFactoryV1
+    {
+        public static bool TryCreateForCharacterContact(
+            IPlayablePlayerDamageReceiverV1 receiver,
+            StableId contactedCharacterInstanceStableId,
+            StableId eventStableId,
+            StableId sourceActorStableId,
+            StableId sourceRunParticipantStableId,
+            double amount,
+            CombatChannel channel,
+            out DamageReceiverCommand command,
+            out string rejectionCode)
+        {
+            command = null;
+            rejectionCode = string.Empty;
+            if (receiver == null)
+            {
+                rejectionCode = "playable-player-damage-receiver-missing";
+                return false;
+            }
+            if (contactedCharacterInstanceStableId == null
+                || receiver.CharacterInstanceStableId == null
+                || contactedCharacterInstanceStableId
+                    != receiver.CharacterInstanceStableId)
+            {
+                rejectionCode =
+                    "playable-player-damage-character-target-mismatch";
+                return false;
+            }
+
+            command = new DamageReceiverCommand(
+                eventStableId,
+                sourceActorStableId,
+                sourceRunParticipantStableId,
+                receiver.Identity.EntityInstanceId,
+                amount,
+                channel,
+                receiver.LifecycleGeneration);
+            return true;
+        }
+    }
+
+    /// <summary>
     /// One retryable request seam for the existing production Hub transition. A false result
     /// never means that a transition was accepted.
     /// </summary>
@@ -396,12 +444,19 @@ namespace ShooterMover.UI.ProductionFlow
                     "playable-player-vitals-player-context-incomplete");
             }
 
+            string runEntryToken = Guid.NewGuid().ToString("N");
             StableId actorStableId = StableId.Create(
                 "actor",
-                "playable-level-" + marker.CharacterInstanceStableId.Value);
+                "playable-level-"
+                + marker.CharacterInstanceStableId.Value
+                + "-"
+                + runEntryToken);
             StableId participantStableId = StableId.Create(
                 "participant",
-                "playable-level-" + marker.CharacterInstanceStableId.Value);
+                "playable-level-"
+                + marker.CharacterInstanceStableId.Value
+                + "-"
+                + runEntryToken);
             PlayerActorCreationResult creation = PlayerActorAuthority.TryCreate(
                 new PlayerActorDefinition(
                     actorStableId,
