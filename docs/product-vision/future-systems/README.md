@@ -6,6 +6,65 @@ This folder is the long-lived product-design memory for systems that are intenti
 
 It exists so that ideas discussed during development are not lost, silently rewritten by later architecture work, or mistaken for finished requirements. When implementation reaches one of these systems, the relevant document should be reviewed with the product owner and converted into a bounded implementation task.
 
+## Design-memory routing convention
+
+When the product owner says that they want to **think, brainstorm, refine or design an idea without implementing it yet**, treat the discussion as product-design memory for this folder.
+
+This applies even when the request is informal, for example:
+
+- “I have a skill idea for Juggernaut.”
+- “Let us think about a new weapon.”
+- “I have an enemy or boss idea.”
+- “I want to design a level, room, prop or environmental hazard.”
+- “How should this shop, crafting, difficulty, multiplayer or endless-mode idea work?”
+- “Do not implement this yet; I only want to develop the idea.”
+
+The expected workflow is:
+
+1. Read this index and the most relevant existing design-memory document.
+2. Help the product owner explore the idea before committing to a solution.
+3. Identify whether each conclusion is a **Confirmed direction**, **Working proposal** or **Open decision**.
+4. Record the developed idea in the relevant Markdown document on a documentation branch or PR.
+5. Create a new document in this folder when no existing document is a natural home.
+6. Do not modify runtime code, scenes, prefabs, tests or production content unless the product owner separately requests implementation.
+7. Preserve superseded ideas with a short note when useful instead of silently erasing the design history.
+
+### Default routing map
+
+| Idea mentioned | Primary design-memory document |
+|---|---|
+| character skill, class passive, active ability, Juggernaut/Medic/Striker idea | [SKILLS_AND_CLASSES.md](SKILLS_AND_CLASSES.md) |
+| weapon augment, modifier, socket, capacity or overclock | [AUGMENTS_AND_OVERCLOCK.md](AUGMENTS_AND_OVERCLOCK.md) |
+| enemy, elite, boss, attack pattern, telegraph or encounter combination | [ENEMY_ARCHETYPES.md](ENEMY_ARCHETYPES.md) |
+| weapon name, family, firing mechanic, projectile or damage identity | [WEAPON_IDEAS.md](WEAPON_IDEAS.md) |
+| crafting recipe, salvage, currency, resource source or economic sink | [CRAFTING_AND_ECONOMY.md](CRAFTING_AND_ECONOMY.md) |
+| vendor, shop stock, rotation, purchase or unlock level | [SHOP_AND_UNLOCKS.md](SHOP_AND_UNLOCKS.md) |
+| XP curve, level cap, loot box, reward tier or long-term progression | [PROGRESSION_AND_LOOT.md](PROGRESSION_AND_LOOT.md) |
+| difficulty tier, modifier, challenge rule or reward scaling | [DIFFICULTY_MODES.md](DIFFICULTY_MODES.md) |
+| co-op, raid, lobby, matchmaking, revive, PvP or multiplayer loot | [MULTIPLAYER_MODES.md](MULTIPLAYER_MODES.md) |
+| survival, endless descent, holdout, boss rush, extraction or challenge seed | [ENDLESS_MODES.md](ENDLESS_MODES.md) |
+| level, room, biome, prop, hazard, interactable or environmental storytelling | create or use a suitable level/world-design document in this folder and link it from this index |
+
+Ideas may affect several systems. Start with the primary document, then update linked documents only when the cross-system decision is important enough to preserve.
+
+### Example
+
+If the product owner says:
+
+> I have a skill idea for Juggernaut.
+
+Interpret it as:
+
+```text
+Sas5–Robokill product-design discussion
+-> open SKILLS_AND_CLASSES.md
+-> review the existing Juggernaut identity and guardrails
+-> develop the idea conversationally
+-> classify conclusions by certainty
+-> write the resulting design memory into that document
+-> no implementation unless separately requested
+```
+
 ## Status language
 
 Every document uses three levels of certainty:
