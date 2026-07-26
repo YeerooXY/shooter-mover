@@ -14,6 +14,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons;
 
 namespace ShooterMover.Tests.EditMode.Persistence.Composition
 {
