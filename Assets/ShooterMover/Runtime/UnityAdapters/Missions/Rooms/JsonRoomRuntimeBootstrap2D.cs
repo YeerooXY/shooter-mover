@@ -44,6 +44,42 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             get { return lastImportIssues; }
         }
 
+        public void Configure(
+            JsonRoomContentDefinition2D configuredRoomContentDefinition,
+            RoomRuntimeComposition2D configuredRoomRuntimeComposition,
+            RoomPresentationCatalog2D configuredPresentationCatalog,
+            Transform configuredPresentationRoot,
+            string configuredRuntimeInstanceStableId)
+        {
+            if (isBuilt || (roomRuntimeComposition != null
+                && roomRuntimeComposition.IsBuilt))
+            {
+                throw new InvalidOperationException(
+                    "A built JSON room bootstrap cannot be reconfigured.");
+            }
+
+            roomContentDefinition = configuredRoomContentDefinition
+                ?? throw new ArgumentNullException(
+                    nameof(configuredRoomContentDefinition));
+            roomRuntimeComposition = configuredRoomRuntimeComposition
+                ?? throw new ArgumentNullException(
+                    nameof(configuredRoomRuntimeComposition));
+            presentationCatalog = configuredPresentationCatalog
+                ?? throw new ArgumentNullException(
+                    nameof(configuredPresentationCatalog));
+            presentationRoot = configuredPresentationRoot
+                ?? throw new ArgumentNullException(
+                    nameof(configuredPresentationRoot));
+            if (string.IsNullOrWhiteSpace(configuredRuntimeInstanceStableId))
+            {
+                throw new ArgumentException(
+                    "A room runtime instance stable ID is required.",
+                    nameof(configuredRuntimeInstanceStableId));
+            }
+            runtimeInstanceStableId = configuredRuntimeInstanceStableId.Trim();
+            buildOnAwake = false;
+        }
+
         public bool BuildFromJson()
         {
             ValidateBuildReferences();
@@ -134,6 +170,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             {
                 throw new InvalidOperationException(
                     "A room presentation catalog is required.");
+            }
+            if (presentationRoot == null)
+            {
+                throw new InvalidOperationException(
+                    "A room presentation root is required.");
             }
         }
 

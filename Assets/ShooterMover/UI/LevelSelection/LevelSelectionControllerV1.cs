@@ -11,11 +11,8 @@ namespace ShooterMover.UI.LevelSelection
     [DisallowMultipleComponent]
     public sealed class LevelSelectionControllerV1 : MonoBehaviour
     {
-        [SerializeField]
-        private LevelSelectionCatalogDefinitionV1 levelCatalog;
-
-        [SerializeField]
-        private Texture2D backplate;
+        [SerializeField] private LevelSelectionCatalogDefinitionV1 levelCatalog;
+        [SerializeField] private Texture2D backplate;
 
         private LevelSelectionServiceV1 service;
         private ILevelSelectionRouteAdapterV1 routeAdapter;
@@ -165,6 +162,9 @@ namespace ShooterMover.UI.LevelSelection
                 return;
             }
 
+            // Production and standalone adapters now observe the same immutable handoff.
+            // Capturing before presentation avoids a gameplay scene racing the transition.
+            LevelSelectionRouteContextV1.Capture(result);
             routeAdapter.Present(result);
         }
     }

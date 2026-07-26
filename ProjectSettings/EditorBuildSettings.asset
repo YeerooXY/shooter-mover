@@ -24,6 +24,9 @@ EditorBuildSettings:
     path: Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity
     guid: 7435c727a9ca40ab8f0fb9b2931700d6
   - enabled: 1
+    path: Assets/ShooterMover/Scenes/Gameplay/PlayableLevel.unity
+    guid: bb73958b2333454e8c3abba5c8c6aa55
+  - enabled: 1
     path: Assets/ShooterMover/Scenes/Flow/InventoryLoadout/InventoryLoadout.unity
     guid: 1a7fd6714630474c9fbca9a7bda055bf
   - enabled: 1
