@@ -9,6 +9,16 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
+    internal static class WeaponLiveExceptionPolicyV1
+    {
+        internal static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
+        }
+    }
+
     public interface IWeaponBlueprintMappingPolicyResolver
     {
         bool TryResolve(
@@ -225,8 +235,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         return false;
                     }
                 }
-                catch (Exception)
+                catch (Exception exception)
                 {
+                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                     rejectionCode =
                         "weapon-live-canonical-blueprint-resolution-exception";
                     return false;
@@ -254,8 +265,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         return false;
                     }
                 }
-                catch (Exception)
+                catch (Exception exception)
                 {
+                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                     rejectionCode = "weapon-live-blueprint-policy-exception";
                     return false;
                 }
@@ -274,8 +286,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         "weapon-live-blueprint-mapping-numerical-failure";
                     return false;
                 }
-                catch (Exception)
+                catch (Exception exception)
                 {
+                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                     rejectionCode = "weapon-live-blueprint-mapping-exception";
                     return false;
                 }
@@ -311,8 +324,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     return false;
                 }
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                 rejectionCode = "weapon-live-augment-resolution-exception";
                 return false;
             }
