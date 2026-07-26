@@ -24,14 +24,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     {
         private sealed class AcceptedBatch
         {
-            public AcceptedBatch(string fingerprint, GameObject root)
+            public AcceptedBatch(string fingerprint)
             {
                 Fingerprint = fingerprint;
-                Root = root;
             }
 
             public string Fingerprint { get; }
-            public GameObject Root { get; }
         }
 
         private readonly Dictionary<string, AcceptedBatch> accepted =
@@ -87,26 +85,21 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             EnsureRuntimeSprite();
-            GameObject batchRoot = new GameObject(
-                "PlayerWeaponProjectileBatch_"
-                + batch.Identity.FireOperationId);
-            SceneManager.MoveGameObjectToScene(
-                batchRoot,
-                gameObject.scene);
-            batchRoot.SetActive(false);
-
+            GameObject projectileObject = null;
             try
             {
-                GameObject projectileObject = new GameObject(
+                projectileObject = new GameObject(
                     "PlayerWeaponProjectile_"
                     + effect.Identity.ShotSequence.ToString(
                         CultureInfo.InvariantCulture)
                     + "_"
                     + effect.Identity.ProjectileOrdinal.Value.ToString(
                         CultureInfo.InvariantCulture));
-                projectileObject.transform.SetParent(
-                    batchRoot.transform,
-                    false);
+                SceneManager.MoveGameObjectToScene(
+                    projectileObject,
+                    gameObject.scene);
+                projectileObject.SetActive(false);
+
                 ProductionNormalProjectile2D projectile =
                     projectileObject.AddComponent<
                         ProductionNormalProjectile2D>();
@@ -116,7 +109,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         "player-weapon-projectile-configuration-rejected");
                 }
 
-                batchRoot.SetActive(true);
+                projectileObject.SetActive(true);
                 if (!projectile.BeginEmission())
                 {
                     throw new InvalidOperationException(
@@ -125,13 +118,17 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
                 accepted.Add(
                     operationKey,
-                    new AcceptedBatch(batch.Fingerprint, batchRoot));
+                    new AcceptedBatch(batch.Fingerprint));
                 return WeaponEffectBatchSinkResult.Accept();
             }
             catch (Exception exception)
             {
-                batchRoot.SetActive(false);
-                Destroy(batchRoot);
+                if (projectileObject != null)
+                {
+                    projectileObject.SetActive(false);
+                    Destroy(projectileObject);
+                }
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                 Debug.LogError(
                     "player-weapon-projectile-batch-rejected:"
                     + exception.Message,
@@ -230,13 +227,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         private void OnDestroy()
         {
-            foreach (AcceptedBatch batch in accepted.Values)
-            {
-                if (batch != null && batch.Root != null)
-                {
-                    Destroy(batch.Root);
-                }
-            }
             accepted.Clear();
             if (runtimeSprite != null) Destroy(runtimeSprite);
             if (runtimeTexture != null) Destroy(runtimeTexture);
@@ -250,10 +240,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private ProjectileLifecycleState state;
         private Rigidbody2D body;
         private CircleCollider2D trigger;
+        private RoomEnemyActor2D pendingImpactEnemy;
+        private EnemyRuntimeDamageCommandV1 pendingDamageCommand;
+        private double pendingOccurredAtSeconds;
         private bool configured;
         private bool launched;
         private bool completed;
         private bool impactCommitted;
+        private string lastImpactDiagnostic = string.Empty;
 
         public bool TryConfigure(
             CanonicalProjectileLaunchEffect configuredEffect,
@@ -327,8 +321,17 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (!configured
                 || !launched
                 || completed
-                || state == null
-                || !state.IsActive)
+                || state == null)
+            {
+                return;
+            }
+
+            if (pendingDamageCommand != null)
+            {
+                TryResolvePendingImpact();
+                return;
+            }
+            if (!state.IsActive)
             {
                 return;
             }
@@ -372,10 +375,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return;
             }
 
-            impactCommitted = true;
-            WeaponEffectIdentity identity = effect.Identity;
+            EnemyRuntimeDamageCommandV1 command;
+            double occurredAtSeconds = Time.fixedTimeAsDouble;
             try
             {
+                WeaponEffectIdentity identity = effect.Identity;
                 StableId operationId = StableId.Create(
                     "enemy-damage-operation",
                     "player-projectile-"
@@ -387,7 +391,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 long order = checked(
                     state.Lifecycle.LaunchSimulationTick * 64L
                     + identity.ProjectileOrdinal.Value);
-                var command = new EnemyRuntimeDamageCommandV1(
+                command = new EnemyRuntimeDamageCommandV1(
                     operationId,
                     identity.ActorId.Value,
                     identity.ParticipantId.Value,
@@ -396,31 +400,130 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     order,
                     (int)effect.Profile.Damage.Category,
                     effect.Profile.Damage.DirectDamage);
-                EnemyRuntimeDamageResultV1 result = enemy.ApplyDamage(
-                    command,
-                    Time.fixedTimeAsDouble);
-                if (result == null
-                    || result.Status == EnemyRuntimeOperationStatusV1.Rejected)
-                {
-                    Debug.LogError(
-                        "player-weapon-enemy-damage-rejected:"
-                        + (result == null
-                            ? "result-missing"
-                            : result.Rejection.ToString()),
-                        this);
-                }
             }
             catch (Exception exception)
             {
-                Debug.LogError(
-                    "player-weapon-enemy-damage-exception:"
-                    + exception.Message,
-                    this);
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                ReportImpactDiagnostic(
+                    "player-weapon-enemy-damage-command-invalid:"
+                    + exception.Message);
+                TerminateAfterImpact();
+                return;
             }
 
-            state = state.Terminate(
-                ProjectileTerminationReason.EnemyImpact);
+            impactCommitted = true;
+            pendingImpactEnemy = enemy;
+            pendingDamageCommand = command;
+            pendingOccurredAtSeconds = occurredAtSeconds;
+            StopPhysicalTravelForImpact();
+            TryResolvePendingImpact();
+        }
+
+        private void TryResolvePendingImpact()
+        {
+            if (completed || pendingDamageCommand == null) return;
+            if (pendingImpactEnemy == null
+                || !pendingImpactEnemy.IsBound
+                || pendingImpactEnemy.ActorStableId
+                    != pendingDamageCommand.TargetEntityStableId
+                || pendingImpactEnemy.LifecycleGeneration
+                    != pendingDamageCommand.TargetLifecycleGeneration)
+            {
+                ReportImpactDiagnostic(
+                    "player-weapon-enemy-damage-target-no-longer-valid");
+                TerminateAfterImpact();
+                return;
+            }
+
+            EnemyRuntimeDamageResultV1 result;
+            try
+            {
+                result = pendingImpactEnemy.ApplyDamage(
+                    pendingDamageCommand,
+                    pendingOccurredAtSeconds);
+            }
+            catch (Exception exception)
+            {
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                ReportImpactDiagnostic(
+                    "player-weapon-enemy-damage-retryable-exception:"
+                    + exception.Message);
+                return;
+            }
+
+            if (result == null)
+            {
+                ReportImpactDiagnostic(
+                    "player-weapon-enemy-damage-retryable-null-result");
+                return;
+            }
+            if (result.Status == EnemyRuntimeOperationStatusV1.Applied
+                || result.Status == EnemyRuntimeOperationStatusV1.ExactReplay)
+            {
+                TerminateAfterImpact();
+                return;
+            }
+            if (IsRetryableTerminalTransition(result))
+            {
+                ReportImpactDiagnostic(
+                    "player-weapon-enemy-terminal-transition-retryable:"
+                    + result.Rejection);
+                return;
+            }
+
+            ReportImpactDiagnostic(
+                "player-weapon-enemy-damage-permanently-rejected:"
+                + result.Status + ":" + result.Rejection);
+            TerminateAfterImpact();
+        }
+
+        private static bool IsRetryableTerminalTransition(
+            EnemyRuntimeDamageResultV1 result)
+        {
+            return result != null
+                && result.Status == EnemyRuntimeOperationStatusV1.Rejected
+                && result.Rejection == EnemyRuntimeRejectionCodeV1.InvalidCommand
+                && result.DeathFact != null;
+        }
+
+        private void StopPhysicalTravelForImpact()
+        {
+            if (body != null)
+            {
+                body.linearVelocity = Vector2.zero;
+                body.simulated = false;
+            }
+            if (trigger != null) trigger.enabled = false;
+        }
+
+        private void TerminateAfterImpact()
+        {
+            pendingImpactEnemy = null;
+            pendingDamageCommand = null;
+            pendingOccurredAtSeconds = 0d;
+            if (state != null && state.IsActive)
+            {
+                state = state.Terminate(
+                    ProjectileTerminationReason.EnemyImpact);
+            }
             Complete();
+        }
+
+        private void ReportImpactDiagnostic(string diagnostic)
+        {
+            string value = string.IsNullOrWhiteSpace(diagnostic)
+                ? "player-weapon-enemy-damage-failed"
+                : diagnostic;
+            if (string.Equals(
+                value,
+                lastImpactDiagnostic,
+                StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lastImpactDiagnostic = value;
+            Debug.LogError(value, this);
         }
 
         private void Complete()
