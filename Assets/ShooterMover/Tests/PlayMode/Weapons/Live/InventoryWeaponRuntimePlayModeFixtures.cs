@@ -25,7 +25,7 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 definitions.Add(EquipmentDefinition.Create(
                     instance.DefinitionId,
                     EquipmentCategoryIds.Weapon,
-                    StableId.Parse("equipment-family.playmode-weapons"),
+                    StableId.Parse("equipment-family.playmode-authored-weapons"),
                     instance.DefinitionId.ToString(),
                     RuntimeWeaponId(instance.DefinitionId),
                     InclusiveIntRange.Create(1, 100),
@@ -44,22 +44,22 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
         private static StableId RuntimeWeaponId(StableId equipmentDefinitionId)
         {
             string value = equipmentDefinitionId.ToString();
-            if (value.EndsWith("shotgun", StringComparison.Ordinal))
+            if (value.EndsWith("ironwake", StringComparison.Ordinal))
             {
-                return StableId.Parse("weapon.shotgun");
+                return StableId.Parse("ironwake.mk1");
             }
 
-            if (value.EndsWith("rocket", StringComparison.Ordinal))
+            if (value.EndsWith("crownfall", StringComparison.Ordinal))
             {
-                return StableId.Parse("weapon.rocket-launcher");
+                return StableId.Parse("crownfall.mk1");
             }
 
-            if (value.EndsWith("flamethrower", StringComparison.Ordinal))
+            if (value.EndsWith("nullstar", StringComparison.Ordinal))
             {
-                return StableId.Parse("weapon.flamethrower");
+                return StableId.Parse("nullstar.mk1");
             }
 
-            return StableId.Parse("weapon.blaster-machine-gun");
+            return StableId.Parse("rattler.mk1");
         }
 
         private static WeaponCatalog WeaponCatalogFor()
@@ -93,7 +93,6 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 10d,
                 10d,
                 1d,
-                0d,
                 0d,
                 0d,
                 0d,
@@ -135,10 +134,10 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 new[] { family },
                 new[]
                 {
-                    Definition("weapon.blaster-machine-gun", "Kinetic", 10d, 1, 0d, 40d, 30d, 5d),
-                    Definition("weapon.shotgun", "Kinetic", 2d, 7, 24d, 30d, 15d, 3d),
-                    Definition("weapon.rocket-launcher", "Kinetic", 1d, 1, 0d, 12d, 35d, 4d, 20d, 3d),
-                    Definition("weapon.flamethrower", "Thermal", 5d, 4, 12d, 10d, 8d, 1d, 0d, 0d, 4d, 2d, 2d, 3d),
+                    Definition("rattler.mk1", "Kinetic", 10d, 1, 0d, 40d, 30d, 5d),
+                    Definition("ironwake.mk1", "Kinetic", 2d, 7, 24d, 30d, 15d, 3d),
+                    Definition("crownfall.mk1", "Thermal", 1d, 1, 0d, 12d, 35d, 4d, 20d, 3d),
+                    Definition("nullstar.mk1", "Thermal", 5d, 4, 12d, 10d, 8d, 1d, 0d, 0d, 4d, 2d, 2d, 3d),
                 });
         }
 
