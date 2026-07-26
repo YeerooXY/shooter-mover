@@ -22,10 +22,22 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return prefab; }
         }
 
+        public void Configure(string stableId, GameObject configuredPrefab)
+        {
+            if (string.IsNullOrWhiteSpace(stableId))
+            {
+                throw new ArgumentException(
+                    "A presentation stable ID is required.",
+                    nameof(stableId));
+            }
+            presentationStableId = stableId.Trim();
+            prefab = configuredPrefab
+                ?? throw new ArgumentNullException(nameof(configuredPrefab));
+        }
+
         public void ConfigureForTests(string stableId, GameObject configuredPrefab)
         {
-            presentationStableId = stableId;
-            prefab = configuredPrefab;
+            Configure(stableId, configuredPrefab);
         }
     }
 
@@ -71,12 +83,17 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
         }
 
-        public void ConfigureForTests(params RoomPresentationCatalogEntry2D[] configuredEntries)
+        public void Configure(params RoomPresentationCatalogEntry2D[] configuredEntries)
         {
             entries = configuredEntries == null
                 ? Array.Empty<RoomPresentationCatalogEntry2D>()
                 : (RoomPresentationCatalogEntry2D[])configuredEntries.Clone();
             resolved = null;
+        }
+
+        public void ConfigureForTests(params RoomPresentationCatalogEntry2D[] configuredEntries)
+        {
+            Configure(configuredEntries);
         }
 
         private void Require(StableId presentationStableId)

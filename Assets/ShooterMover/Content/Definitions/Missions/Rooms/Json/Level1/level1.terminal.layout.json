@@ -8,6 +8,7 @@
   },
   "spawns": [
     {
+      "id": "terminal-entry",
       "kind": "forward-entry",
       "position": [-10, 0],
       "rotation": 0
@@ -15,6 +16,7 @@
   ],
   "doors": [
     {
+      "id": "entry-return",
       "object": "door.room-standard",
       "position": [-11, -3],
       "rotation": 180,
@@ -22,10 +24,11 @@
         "kind": "room",
         "exit_type": "return",
         "target_room": "room.level1-entry",
-        "target_spawn_kind": "forward-entry"
+        "target_spawn": "player-start"
       }
     },
     {
+      "id": "hub-exit",
       "object": "door.room-standard",
       "position": [11, 3],
       "rotation": 0,
