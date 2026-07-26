@@ -18,11 +18,11 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             EquipmentInstance[] equipment =
             {
                 Equipment(
-                    "equipment-instance.aim-blaster",
-                    "equipment-definition.blaster"),
+                    "equipment-instance.aim-rattler",
+                    "equipment-definition.rattler"),
                 Equipment(
-                    "equipment-instance.aim-rocket",
-                    "equipment-definition.rocket"),
+                    "equipment-instance.aim-crownfall",
+                    "equipment-definition.crownfall"),
             };
             var emitterObject = new GameObject(
                 "InventoryWeaponMountedAim_Test");
