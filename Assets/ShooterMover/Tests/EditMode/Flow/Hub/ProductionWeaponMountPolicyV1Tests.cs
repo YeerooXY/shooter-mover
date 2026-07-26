@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
@@ -95,7 +96,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         [Test]
-        public void AggressiveRuntimeKeepsAllFiveOwnedButOnlyTwoConfigurable()
+        public void AggressiveRuntimeOwnsExactlyTwoConfigurableWeapons()
         {
             var runtime = new ProductionPlayerLoadoutRuntimeV1(
                 Route(
@@ -107,10 +108,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 runtime.Holdings,
                 runtime.CatalogAdapter,
                 runtime.LoadoutAuthority);
+            StableId owned = runtime.Holdings.ExportSnapshot()
+                .UniqueHoldings.First().InstanceStableId;
 
             Assert.That(
                 runtime.Holdings.ExportSnapshot().UniqueHoldings.Count,
-                Is.EqualTo(5));
+                Is.EqualTo(2));
             Assert.That(
                 runtime.RoutePayload.WeaponSlots[1].IsBound,
                 Is.False);
@@ -121,7 +124,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 service.TrySelect(
                     InventoryLoadoutSlotIdsV1.WeaponTwo,
-                    runtime.RicochetEquipmentInstanceStableId).Status,
+                    owned).Status,
                 Is.EqualTo(
                     InventoryLoadoutScreenStatusV1.InvalidSlot));
         }
