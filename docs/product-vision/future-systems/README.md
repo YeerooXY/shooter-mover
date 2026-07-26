@@ -104,6 +104,7 @@ enter level
 
 | Document | Scope |
 |---|---|
+| [NEXT_VISIBLE_DELIVERY_WORKFLOW.md](NEXT_VISIBLE_DELIVERY_WORKFLOW.md) | Small visible implementation milestones, four-way parallel splits, integration branches and acceptance gates. |
 | [SKILLS_AND_CLASSES.md](SKILLS_AND_CLASSES.md) | Class identities, active skills, passive boards and the future Assault third mount. |
 | [AUGMENTS_AND_OVERCLOCK.md](AUGMENTS_AND_OVERCLOCK.md) | Weapon augments, augment capacity, overclock cores and anti-reroll principles. |
 | [ENEMY_ARCHETYPES.md](ENEMY_ARCHETYPES.md) | Concrete enemy roles, behaviours, telegraphs and extensibility rules. |
@@ -119,7 +120,7 @@ enter level
 
 Before implementing one of these systems:
 
-1. Read the relevant document and any linked system documents.
+1. Read [NEXT_VISIBLE_DELIVERY_WORKFLOW.md](NEXT_VISIBLE_DELIVERY_WORKFLOW.md) and the relevant design-memory document.
 2. Separate confirmed direction from working proposals.
 3. Resolve the open decisions needed for the smallest visible slice.
 4. Write one bounded task with explicit out-of-scope sections.
