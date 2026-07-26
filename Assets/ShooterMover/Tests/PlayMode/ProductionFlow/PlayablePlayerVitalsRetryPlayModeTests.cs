@@ -17,7 +17,15 @@ namespace ShooterMover.Tests.PlayMode.ProductionFlow
         public IEnumerator AutomaticUpdateRetriesRejectedReturnAndStopsAfterAcceptance()
         {
             var returnRequest = new SequencedHubReturnRequest(false, true);
-            GameObject player = CreateBoundPlayer(returnRequest, out PlayablePlayerVitals2D vitals);
+            GameObject player = CreatePlayerPresentation(null);
+            Rigidbody2D body = player.GetComponent<Rigidbody2D>();
+            PlayableTopDownMovement2D movement = player.GetComponent<
+                PlayableTopDownMovement2D>();
+            PlayablePlayerMarker2D marker = player.GetComponent<
+                PlayablePlayerMarker2D>();
+            PlayablePlayerVitals2D vitals = player.AddComponent<
+                PlayablePlayerVitals2D>();
+            vitals.Bind(marker, body, movement, returnRequest);
 
             LogAssert.Expect(
                 LogType.Error,
@@ -54,11 +62,42 @@ namespace ShooterMover.Tests.PlayMode.ProductionFlow
             yield return null;
         }
 
-        private static GameObject CreateBoundPlayer(
-            IPlayablePlayerHubReturnRequestV1 returnRequest,
-            out PlayablePlayerVitals2D vitals)
+        [UnityTest]
+        public IEnumerator InstallerStartBindsExistingSpawnedPlayerExactlyOnce()
         {
-            var player = new GameObject("Player Vitals Automatic Retry Test");
+            var root = new GameObject("Player Vitals Installer Test Root");
+            GameObject player = CreatePlayerPresentation(root.transform);
+            PlayablePlayerVitalsInstallerV1 installer = root.AddComponent<
+                PlayablePlayerVitalsInstallerV1>();
+
+            yield return null;
+
+            Assert.That(installer, Is.Not.Null);
+            PlayablePlayerVitals2D first = player.GetComponent<
+                PlayablePlayerVitals2D>();
+            Assert.That(first, Is.Not.Null);
+            Assert.That(first.IsBound, Is.True);
+            GameplayEntityIdentity firstIdentity = first.Identity;
+
+            yield return null;
+
+            PlayablePlayerVitals2D second = player.GetComponent<
+                PlayablePlayerVitals2D>();
+            Assert.That(second, Is.SameAs(first));
+            Assert.That(second.Identity, Is.EqualTo(firstIdentity));
+
+            Object.Destroy(root);
+            yield return null;
+        }
+
+        private static GameObject CreatePlayerPresentation(Transform parent)
+        {
+            var player = new GameObject("Player Vitals PlayMode Test Player");
+            if (parent != null)
+            {
+                player.transform.SetParent(parent, false);
+            }
+
             Rigidbody2D body = player.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
 
@@ -82,9 +121,6 @@ namespace ShooterMover.Tests.PlayMode.ProductionFlow
             PlayableTopDownMovement2D movement = player.AddComponent<
                 PlayableTopDownMovement2D>();
             movement.Bind(body, 6f);
-
-            vitals = player.AddComponent<PlayablePlayerVitals2D>();
-            vitals.Bind(marker, body, movement, returnRequest);
             return player;
         }
 
