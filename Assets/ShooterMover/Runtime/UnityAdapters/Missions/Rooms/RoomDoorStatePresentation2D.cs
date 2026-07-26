@@ -24,7 +24,13 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         public bool IsBound
         {
-            get { return door != null && door.IsConfigured; }
+            get
+            {
+                return door != null
+                    && door.IsConfigured
+                    && renderers != null
+                    && renderers.Length > 0;
+            }
         }
 
         public bool LastKnownOpenState
@@ -63,16 +69,20 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         private bool TryBind()
         {
-            if (door != null && door.IsConfigured) return true;
-
-            door = GetComponent<RoomDoorInstance2D>();
+            if (door == null)
+            {
+                door = GetComponent<RoomDoorInstance2D>();
+            }
             if (door == null || !door.IsConfigured)
             {
                 LogBindingFailureOnce("room-door-state-presentation-door-binding-missing");
                 return false;
             }
 
-            renderers = GetComponentsInChildren<SpriteRenderer>(true);
+            if (renderers == null || renderers.Length == 0)
+            {
+                renderers = GetComponentsInChildren<SpriteRenderer>(true);
+            }
             if (renderers == null || renderers.Length == 0)
             {
                 renderers = Array.Empty<SpriteRenderer>();
