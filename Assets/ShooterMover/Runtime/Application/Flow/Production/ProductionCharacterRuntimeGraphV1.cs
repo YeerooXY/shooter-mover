@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Progression.Experience;
@@ -12,6 +11,7 @@ using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Scrap;
 using ShooterMover.Domain.Persistence.Accounts;
@@ -93,27 +93,16 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         public PlayerRouteProfilePayloadV1 RoutePayload { get; }
-
         public ProductionPlayerLoadoutRuntimeV1 LoadoutRuntime { get; }
-
         public PlayerExperienceAuthorityV1 ExperienceAuthority { get; }
-
         public MoneyWalletService MoneyWallet { get; }
-
         public ScrapWalletServiceV1 ScrapWallet { get; }
-
         public RankedSkillAllocationAuthorityV2 SkillAuthority { get; }
-
         public string SkillProfileId { get; }
-
         public StrongboxDefinitionCatalogV1 StrongboxCatalog { get; }
-
         public StrongboxOpeningServiceV1 StrongboxAuthority { get; }
-
         public IStrongboxOpeningRecoveryPortV1 StrongboxRecovery { get; }
-
         public IReadOnlyList<ISaveComponentAdapterV1> SaveAdapters { get; }
-
         public bool IsDisposed { get; private set; }
 
         public void MarkPersisted(
@@ -188,6 +177,11 @@ namespace ShooterMover.Application.Flow.Production
                 throw new ArgumentNullException(nameof(character));
             }
 
+            PlayerHoldingsSnapshotV1 holdings =
+                ProductionCharacterAuthorityAdaptersV1.DecodeRequired(
+                    character,
+                    KnownSaveComponentDefinitionsV1.PlayerHoldings(),
+                    KnownSaveComponentCodecsV1.PlayerHoldings);
             InventoryLoadoutAuthoritySnapshotV1 loadout =
                 ProductionCharacterAuthorityAdaptersV1.DecodeRequired(
                     character,
@@ -204,12 +198,15 @@ namespace ShooterMover.Application.Flow.Production
                     KnownSaveComponentDefinitionsV1.ScrapWallet(),
                     KnownSaveComponentCodecsV1.ScrapWallet);
 
-            return CreateGraph(
-                character,
-                RouteFromLoadout(
+            ProductionPlayerLoadoutRuntimeV1 inventory =
+                ProductionPlayerLoadoutRuntimeV1.Restore(
                     character.CharacterInstanceStableId,
                     character.ClassDefinitionStableId,
-                    loadout),
+                    holdings,
+                    loadout);
+            return CreateGraph(
+                character,
+                inventory,
                 skills.ProfileId,
                 skills.ClassId,
                 StableId.Parse(scrap.AuthorityStableId),
@@ -240,21 +237,12 @@ namespace ShooterMover.Application.Flow.Production
                     nameof(displayName));
             }
 
-            PlayerRouteProfilePayloadV1 legacyRoute =
-                legacyContext as PlayerRouteProfilePayloadV1;
-            if (legacyRoute == null || !legacyRoute.HasValidFingerprint())
-            {
-                throw new ArgumentException(
-                    "Starter migration requires the valid legacy route payload.",
-                    nameof(legacyContext));
-            }
-
-            PlayerRouteProfilePayloadV1 exactRoute =
+            PlayerRouteProfilePayloadV1 onboardingRoute =
                 PlayerRouteProfilePayloadV1.Create(
                     exactCharacterInstanceStableId,
                     classDefinitionStableId,
-                    legacyRoute.WeaponSlots.Select(
-                        item => item.EquipmentInstanceStableId));
+                    new StableId[
+                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             var shell = new CharacterInstanceSnapshotV1(
                 exactCharacterInstanceStableId,
                 classDefinitionStableId,
@@ -264,7 +252,7 @@ namespace ShooterMover.Application.Flow.Production
                 null);
             return CreateGraph(
                 shell,
-                exactRoute,
+                new ProductionPlayerLoadoutRuntimeV1(onboardingRoute),
                 exactCharacterInstanceStableId.ToString(),
                 skillClassIdResolver(classDefinitionStableId),
                 StableId.Parse("authority.production-scrap-wallet"),
@@ -295,13 +283,12 @@ namespace ShooterMover.Application.Flow.Production
 
         private ProductionCharacterRuntimeGraphV1 CreateGraph(
             CharacterInstanceSnapshotV1 character,
-            PlayerRouteProfilePayloadV1 route,
+            ProductionPlayerLoadoutRuntimeV1 loadout,
             string skillProfileId,
             string skillClassId,
             StableId scrapAuthorityId,
             StableId scrapCurrencyId)
         {
-            var loadout = new ProductionPlayerLoadoutRuntimeV1(route);
             var experience = new PlayerExperienceAuthorityV1(
                 experienceCurve,
                 progressionContext);
@@ -335,7 +322,7 @@ namespace ShooterMover.Application.Flow.Production
 
             var core = new ProductionCharacterRuntimeGraphV1(
                 character,
-                route,
+                loadout.RoutePayload,
                 loadout,
                 experience,
                 money,
@@ -360,7 +347,7 @@ namespace ShooterMover.Application.Flow.Production
             adapters.AddRange(additional);
             return new ProductionCharacterRuntimeGraphV1(
                 character,
-                route,
+                loadout.RoutePayload,
                 loadout,
                 experience,
                 money,
@@ -371,27 +358,6 @@ namespace ShooterMover.Application.Flow.Production
                 strongboxes.Authority,
                 strongboxes.Recovery,
                 adapters);
-        }
-
-        private static PlayerRouteProfilePayloadV1 RouteFromLoadout(
-            StableId characterInstanceId,
-            StableId loadoutProfileId,
-            InventoryLoadoutAuthoritySnapshotV1 loadout)
-        {
-            var instances = new List<StableId>(
-                PlayerRouteProfilePayloadV1.WeaponSlotCount);
-            for (int index = 0;
-                index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                index++)
-            {
-                instances.Add(loadout.GetBinding(
-                    InventoryLoadoutSlotsV1.All[index].SlotStableId)
-                    .EquipmentInstanceStableId);
-            }
-            return PlayerRouteProfilePayloadV1.Create(
-                characterInstanceId,
-                loadoutProfileId,
-                instances);
         }
 
         private static string ResolveCurrentSkillClassId(
