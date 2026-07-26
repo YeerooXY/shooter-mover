@@ -6,7 +6,8 @@
     "ShooterMover.GameplayEntities",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
-    "ShooterMover.UnityAdapters"
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.EnemyRuntimeComposition"
   ],
   "includePlatforms": [
     "Editor"
