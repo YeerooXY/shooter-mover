@@ -1,0 +1,15 @@
+{
+  "room": "room.combat-loop-double",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {"door_id": "double-to-single"},
+      "open_when": "always"
+    },
+    {
+      "match": {"door_id": "double-to-staging-exit-side"},
+      "open_when": "room-complete"
+    }
+  ]
+}
