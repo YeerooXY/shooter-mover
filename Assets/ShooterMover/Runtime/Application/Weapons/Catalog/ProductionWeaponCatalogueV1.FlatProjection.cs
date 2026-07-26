@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Catalog
 {
@@ -27,14 +28,14 @@ namespace ShooterMover.Application.Weapons.Catalog
                         ProvisionalArchetypeId,
                         new WeaponArchetypeDefinition(
                             ProvisionalArchetypeId,
-                            "PROVISIONAL single-projectile automatic profile; not approved balance.",
+                            "PROVISIONAL canonical system-test matrix; typed mechanics remain authoritative in WeaponBlueprint.",
                             1d,
-                            PlaceholderRateOfFire,
+                            4d,
                             1,
                             1,
                             0d,
-                            PlaceholderProjectileSpeed,
-                            PlaceholderRange,
+                            20d,
+                            25d,
                             1d,
                             0d,
                             0d,
@@ -74,7 +75,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                 true,
                 "independently-authored-drop-anchors",
                 new[] { 70, 90, 110 },
-                new[] { "Physical" },
+                new[] { "Physical", "Thermal", "Chemical", "Energy" },
                 4,
                 true,
                 true,
@@ -133,11 +134,12 @@ namespace ShooterMover.Application.Weapons.Catalog
             ProductionWeaponMarkV1 mk1 = family.Marks[0];
             ProductionWeaponMarkV1 mk2 = family.Marks[1];
             ProductionWeaponMarkV1 mk3 = family.Marks[2];
+            string damageCategory = DamageCategory(family);
             return new WeaponFamilyDefinition(
                 family.FamilyId,
                 family.DisplayName,
                 ProvisionalArchetypeId,
-                "Physical",
+                damageCategory,
                 "PROVISIONAL",
                 mk1.DropAnchorLevel,
                 mk2.DropAnchorLevel - mk1.DropAnchorLevel,
@@ -148,8 +150,8 @@ namespace ShooterMover.Application.Weapons.Catalog
                 family.CatalogRarity,
                 1d,
                 "StrongboxAndCrafting",
-                "ProvisionalProjectile",
-                "Permanent family rarity; combat values remain provisional unless explicitly noted.",
+                family.WeaponCategoryId.ToString(),
+                "Permanent family rarity; canonical definitions carry the provisional fire mode, delivery, guidance, effect, and damage-channel test data.",
                 WeaponCatalogAvailability.Live,
                 new[]
                 {
@@ -171,16 +173,28 @@ namespace ShooterMover.Application.Weapons.Catalog
                 throw new InvalidOperationException(
                     "The provisional flat projection requires whole-number Pierce.");
             }
+            if (blueprint.Projectile == null)
+            {
+                throw new InvalidOperationException(
+                    "The provisional flat projection currently requires travelling deliveries.");
+            }
 
+            double directDps = blueprint.BaseStats.DirectDamage
+                * blueprint.FireSettings.RateOfFire
+                * blueprint.ShotPattern.ProjectilesPerShot
+                * blueprint.FireSettings.ShotsPerBurst;
+            string damageCategory =
+                WeaponDamageCategoryConversion.ToCatalogValue(
+                    blueprint.BaseStats.DamageCategory);
             string note = mark.IsCombatTuningProvisional
-                ? "PROVISIONAL COMBAT VALUES. Identity, family rarity, Mark, drop anchor, and craft unlock are the intended data under review."
-                : "Confirmed Rattler MK1 starter values: kinetic automatic rifle, rate of fire 4, damage 1, Pierce 1, no spread.";
+                ? BuildProvisionalCombatNote(blueprint)
+                : "Confirmed Rattler MK1 starter values: physical automatic rifle, rate of fire 4, damage 1, Pierce 1, no spread.";
             return new WeaponDefinitionData(
                 blueprint.DefinitionId.ToString(),
                 blueprint.DisplayName,
                 family.FamilyId,
                 mark.Mark,
-                "Physical",
+                damageCategory,
                 ProvisionalArchetypeId,
                 "PROVISIONAL",
                 Math.Max(1, mark.DropAnchorLevel - 15),
@@ -199,9 +213,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                         CultureInfo.InvariantCulture),
                 1d,
                 100d,
-                blueprint.BaseStats.DirectDamage
-                    * blueprint.FireSettings.RateOfFire
-                    * blueprint.ShotPattern.ProjectilesPerShot,
+                directDps,
                 1d,
                 0d,
                 0d,
@@ -209,7 +221,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                 blueprint.ShotPattern.ProjectilesPerShot,
                 blueprint.FireSettings.ShotsPerBurst,
                 blueprint.BaseStats.DirectDamage,
-                blueprint.ShotPattern.SpreadDegrees,
+                blueprint.ShotPattern.CanonicalSpreadDegrees,
                 blueprint.Projectile.Speed,
                 blueprint.Projectile.Range,
                 legacyPierce,
@@ -224,13 +236,63 @@ namespace ShooterMover.Application.Weapons.Catalog
                 blueprint.BaseStats.Knockback,
                 0d,
                 0d,
-                "ProvisionalProjectile",
+                family.WeaponCategoryId.ToString(),
                 note,
                 WeaponCatalogAvailability.Live,
                 new[]
                 {
                     blueprint.Presentation.InventorySideProfileReference,
                 });
+        }
+
+        private static string DamageCategory(
+            ProductionWeaponFamilyV1 family)
+        {
+            WeaponDamageCategory category =
+                family.Marks[0].Blueprint.BaseStats.DamageCategory;
+            for (int index = 1; index < family.Marks.Count; index++)
+            {
+                if (family.Marks[index].Blueprint.BaseStats.DamageCategory
+                    != category)
+                {
+                    throw new InvalidOperationException(
+                        "The provisional test matrix expects one damage channel per family: "
+                        + family.FamilyId);
+                }
+            }
+
+            return WeaponDamageCategoryConversion.ToCatalogValue(category);
+        }
+
+        private static string BuildProvisionalCombatNote(
+            WeaponBlueprint blueprint)
+        {
+            string behavior = blueprint.Delivery.Type.ToString();
+            if (blueprint.ShotPattern.ProjectilesPerShot > 1)
+            {
+                behavior += " shotgun-spread";
+            }
+            if (blueprint.Guidance.Mode == WeaponGuidanceMode.Homing)
+            {
+                behavior += " seeking";
+            }
+            if (blueprint.BaseStats.DamageOverTime != null)
+            {
+                behavior += " damage-over-time";
+            }
+            if (blueprint.Delivery.Effects.Explosion != null)
+            {
+                behavior += " explosion";
+            }
+
+            return "PROVISIONAL SYSTEM-TEST PROFILE. "
+                + blueprint.FireSettings.Mode
+                + ", "
+                + behavior
+                + ", "
+                + WeaponDamageCategoryConversion.ToCatalogValue(
+                    blueprint.BaseStats.DamageCategory)
+                + " damage. Balance is not approved.";
         }
     }
 }
