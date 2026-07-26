@@ -5,7 +5,8 @@
     "ShooterMover.UI.ProductionFlow",
     "ShooterMover.GameplayEntities",
     "ShooterMover.Contracts",
-    "ShooterMover.Domain"
+    "ShooterMover.Domain",
+    "ShooterMover.UnityAdapters"
   ],
   "includePlatforms": [
     "Editor"
