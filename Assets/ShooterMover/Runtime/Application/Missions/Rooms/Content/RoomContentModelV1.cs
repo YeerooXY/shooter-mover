@@ -278,6 +278,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             StableId instanceStableId,
             StableId roomStableId,
             StableId objectStableId,
+            StableId presentationStableId,
             RoomContentVisualLayerV1 layer,
             RoomVector2V1 localPosition,
             double localRotationDegrees)
@@ -288,6 +289,8 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 ?? throw new ArgumentNullException(nameof(roomStableId));
             ObjectStableId = objectStableId
                 ?? throw new ArgumentNullException(nameof(objectStableId));
+            PresentationStableId = presentationStableId
+                ?? throw new ArgumentNullException(nameof(presentationStableId));
             if (!Enum.IsDefined(typeof(RoomContentVisualLayerV1), layer))
             {
                 throw new ArgumentOutOfRangeException(nameof(layer));
@@ -304,6 +307,8 @@ namespace ShooterMover.Application.Missions.Rooms.Content
         public StableId RoomStableId { get; }
 
         public StableId ObjectStableId { get; }
+
+        public StableId PresentationStableId { get; }
 
         public RoomContentVisualLayerV1 Layer { get; }
 
@@ -456,6 +461,8 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     .Append(value.RoomStableId)
                     .Append('|')
                     .Append(value.ObjectStableId)
+                    .Append('|')
+                    .Append(value.PresentationStableId)
                     .Append('|')
                     .Append(((int)value.Layer).ToString(CultureInfo.InvariantCulture))
                     .Append('|')
