@@ -146,10 +146,12 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         {
             Unsubscribe();
             Exception cleanupFailure = ClearCommittedBindings();
-            if (cleanupFailure != null)
+            if (cleanupFailure == null) return;
+            if (IsFatalException(cleanupFailure))
             {
-                Debug.LogException(cleanupFailure, this);
+                ExceptionDispatchInfo.Capture(cleanupFailure).Throw();
             }
+            Debug.LogException(cleanupFailure, this);
         }
 
         private void Subscribe()
@@ -201,13 +203,17 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     Exception oldCleanup = ClearCommittedBindings();
                     if (oldCleanup != null)
                     {
+                        if (IsFatalException(oldCleanup))
+                        {
+                            ExceptionDispatchInfo.Capture(oldCleanup).Throw();
+                        }
                         throw new InvalidOperationException(
                             "Previous room enemy bindings could not be cleared.",
                             oldCleanup);
                     }
                 }
 
-                ValidateCompositionInputs();
+                ValidateCompositionInputs(bundle);
                 EnemyCatalogImportResultV1 importResult = enemyCatalog.Import();
                 if (importResult == null || !importResult.IsValid)
                 {
@@ -266,10 +272,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                             : composition.Diagnostic;
                         throw new InvalidOperationException(diagnostic);
                     }
-                    if (composition.Runtimes.Count != candidates.Count)
+                    if (composition.RoomStableId != currentRoomId
+                        || composition.Runtimes.Count != candidates.Count)
                     {
                         throw new InvalidOperationException(
-                            "Enemy factory room batch returned an unexpected runtime count.");
+                            "Enemy factory room batch returned unexpected room facts.");
                     }
 
                     var runtimesByPlacement =
@@ -279,10 +286,16 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                         EnemyPlacementRuntimeInstanceV1 runtime =
                             composition.Runtimes[index];
                         if (runtime == null
+                            || runtime.RoomStableId != currentRoomId
+                            || runtime.Request.RoomRuntimeInstanceStableId
+                                != room.Query.RuntimeInstanceStableId
+                            || runtime.Request.RoomLifecycleGeneration
+                                != projection.LifecycleGeneration
+                            || runtime.LifecycleGeneration != revision
                             || runtimesByPlacement.ContainsKey(runtime.PlacementStableId))
                         {
                             throw new InvalidOperationException(
-                                "Enemy factory room batch returned an invalid placement mapping.");
+                                "Enemy factory room batch returned an invalid lifecycle mapping.");
                         }
                         runtimesByPlacement.Add(runtime.PlacementStableId, runtime);
                     }
@@ -311,8 +324,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                                 + candidate.Content.InstanceStableId);
                         }
 
-                        actor.Bind(runtime);
                         boundDuringAttempt.Add(actor);
+                        actor.Bind(runtime);
                         var binding = new EnemyBinding(actor, runtime);
                         if (temporaryByPlacement.ContainsKey(runtime.PlacementStableId)
                             || temporaryByActor.ContainsKey(runtime.SpawnStableId))
@@ -577,8 +590,22 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 && revision > 0L;
         }
 
-        private void ValidateCompositionInputs()
+        private void ValidateCompositionInputs(RoomContentBundleV1 bundle)
         {
+            if (bundle == null)
+            {
+                throw new InvalidOperationException(
+                    "An imported room bundle is required to compose room enemies.");
+            }
+            if (room.Definition == null
+                || !string.Equals(
+                    room.Definition.Fingerprint,
+                    bundle.RuntimeDefinition.Fingerprint,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The imported room bundle does not match the live room definition.");
+            }
             if (string.IsNullOrWhiteSpace(runStableId))
             {
                 throw new InvalidOperationException(
