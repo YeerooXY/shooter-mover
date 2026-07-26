@@ -783,6 +783,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                                 instanceId,
                                 source.RoomStableId,
                                 objectDefinition.ObjectStableId,
+                                objectDefinition.PresentationStableId,
                                 RoomContentVisualLayerV1.Tile,
                                 position,
                                 0d));
@@ -853,6 +854,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         instanceId,
                         source.RoomStableId,
                         objectDefinition.ObjectStableId,
+                        objectDefinition.PresentationStableId,
                         layer,
                         position,
                         dto.Rotation));
