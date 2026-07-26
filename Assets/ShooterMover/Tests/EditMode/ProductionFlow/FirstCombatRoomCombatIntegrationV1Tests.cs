@@ -57,6 +57,12 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                     enemyObject.AddComponent<RoomEnemyActor2D>();
                 ProductionNormalProjectile2D projectile =
                     projectileObject.AddComponent<ProductionNormalProjectile2D>();
+                Rigidbody2D body = projectileObject.AddComponent<Rigidbody2D>();
+                CircleCollider2D trigger =
+                    projectileObject.AddComponent<CircleCollider2D>();
+                body.simulated = true;
+                trigger.enabled = true;
+
                 var exactCommand = new EnemyRuntimeDamageCommandV1(
                     StableId.Parse("enemy-damage-operation.defeat-retry-test"),
                     StableId.Parse("actor.player-defeat-retry-test"),
@@ -71,6 +77,8 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                 FieldInfo commandField = RequirePrivateField(
                     typeof(ProductionNormalProjectile2D),
                     "pendingDamageCommand");
+                SetPrivateField(projectile, "body", body);
+                SetPrivateField(projectile, "trigger", trigger);
                 SetPrivateField(projectile, "impactCommitted", true);
                 SetPrivateField(projectile, "pendingImpactEnemy", enemy);
                 commandField.SetValue(projectile, exactCommand);
@@ -91,6 +99,8 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                 Assert.That(projectileObject.activeSelf, Is.True);
                 Assert.That(projectile.IsOwnerDefeatShutdownRequested, Is.True);
                 Assert.That(projectile.HasPendingEnemyImpactRetry, Is.True);
+                Assert.That(body.simulated, Is.False);
+                Assert.That(trigger.enabled, Is.False);
                 Assert.That(
                     commandField.GetValue(projectile),
                     Is.SameAs(exactCommand));
@@ -104,6 +114,8 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                     Is.EqualTo(
                         ProductionNormalProjectileOwnerDefeatDispositionV1
                             .PendingEnemyImpactRetryRetained));
+                Assert.That(body.simulated, Is.False);
+                Assert.That(trigger.enabled, Is.False);
                 Assert.That(
                     commandField.GetValue(projectile),
                     Is.SameAs(exactCommand));
