@@ -26,12 +26,19 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             new RoomPresentationScene2D();
         private AuthorableRoomGraphDefinitionV1 configuredDefinition;
         private RoomLiveRuntimeAuthorityV1 authority;
+        private long presentationRevision;
 
+        public event Action CurrentRoomPresentationRebuilt;
         public event Action FinalExitReached;
 
         public bool IsBuilt
         {
             get { return authority != null; }
+        }
+
+        public long PresentationRevision
+        {
+            get { return presentationRevision; }
         }
 
         public AuthorableRoomGraphDefinitionV1 Definition
@@ -278,6 +285,35 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 presentationCatalog,
                 roomPresentationRoot,
                 authority);
+            presentationRevision++;
+            PublishCurrentRoomPresentationRebuilt();
+        }
+
+        private void PublishCurrentRoomPresentationRebuilt()
+        {
+            Action handlers = CurrentRoomPresentationRebuilt;
+            if (handlers == null) return;
+
+            Delegate[] subscribers = handlers.GetInvocationList();
+            for (int index = 0; index < subscribers.Length; index++)
+            {
+                try
+                {
+                    ((Action)subscribers[index])();
+                }
+                catch (Exception exception)
+                {
+                    if (IsFatalException(exception)) throw;
+                    Debug.LogException(exception, this);
+                }
+            }
+        }
+
+        private static bool IsFatalException(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
 
         private void EnsurePresentationRoot()
