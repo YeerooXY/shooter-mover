@@ -31,27 +31,27 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
             StableId.Parse("equipment-family.test-weapons");
 
         [Test]
-        public void CatalogDefinitions_ResolveToCanonicalCoreProfiles()
+        public void AuthoredFamilyDefinitions_ResolveToCanonicalCoreProfiles()
         {
-            EquipmentInstance blaster = Equipment(
-                "equipment-instance.blaster",
-                "equipment-definition.blaster");
-            EquipmentInstance shotgun = Equipment(
-                "equipment-instance.shotgun",
-                "equipment-definition.shotgun");
-            EquipmentInstance rocket = Equipment(
-                "equipment-instance.rocket",
-                "equipment-definition.rocket");
-            EquipmentInstance flamethrower = Equipment(
-                "equipment-instance.flamethrower",
-                "equipment-definition.flamethrower");
-            Harness harness = CreateHarness(blaster, shotgun, rocket, flamethrower);
+            EquipmentInstance rattler = Equipment(
+                "equipment-instance.rattler",
+                "equipment-definition.rattler");
+            EquipmentInstance ironwake = Equipment(
+                "equipment-instance.ironwake",
+                "equipment-definition.ironwake");
+            EquipmentInstance crownfall = Equipment(
+                "equipment-instance.crownfall",
+                "equipment-definition.crownfall");
+            EquipmentInstance nullstar = Equipment(
+                "equipment-instance.nullstar",
+                "equipment-definition.nullstar");
+            Harness harness = CreateHarness(rattler, ironwake, crownfall, nullstar);
 
             AssertProfile(
                 harness,
-                blaster,
-                "fire.profile-blaster",
-                "weapon.blaster-machine-gun",
+                rattler,
+                "fire.profile-rattler",
+                "rattler.mk1",
                 10d,
                 1,
                 0d,
@@ -64,9 +64,9 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                 6);
             AssertProfile(
                 harness,
-                shotgun,
-                "fire.profile-shotgun",
-                "weapon.shotgun",
+                ironwake,
+                "fire.profile-ironwake",
+                "ironwake.mk1",
                 2d,
                 7,
                 24d,
@@ -79,9 +79,9 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                 30);
             AssertProfile(
                 harness,
-                rocket,
-                "fire.profile-rocket",
-                "weapon.rocket-launcher",
+                crownfall,
+                "fire.profile-crownfall",
+                "crownfall.mk1",
                 1d,
                 1,
                 0d,
@@ -94,9 +94,9 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                 60);
             AssertProfile(
                 harness,
-                flamethrower,
-                "fire.profile-flamethrower",
-                "weapon.flamethrower",
+                nullstar,
+                "fire.profile-nullstar",
+                "nullstar.mk1",
                 5d,
                 4,
                 12d,
@@ -117,15 +117,15 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         }
 
         [Test]
-        public void Shotgun_UsesCatalogProjectileCountAndRealSpread()
+        public void Ironwake_UsesCatalogProjectileCountAndRealSpread()
         {
-            EquipmentInstance shotgun = Equipment(
-                "equipment-instance.shotgun-spread",
-                "equipment-definition.shotgun");
-            Harness harness = CreateHarness(shotgun);
+            EquipmentInstance ironwake = Equipment(
+                "equipment-instance.ironwake-spread",
+                "equipment-definition.ironwake");
+            Harness harness = CreateHarness(ironwake);
 
             InventoryWeaponExecutionResult result = harness.Adapter.TryExecute(
-                Request(shotgun, "fire.shotgun-spread", 0L, 4421UL));
+                Request(ironwake, "fire.ironwake-spread", 0L, 4421UL));
 
             Assert.That(result.Status, Is.EqualTo(WeaponExecutionStatus.Accepted));
             Assert.That(result.EffectBatch.CoreBatch.EffectCount, Is.EqualTo(7));
@@ -140,15 +140,15 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         }
 
         [Test]
-        public void Blaster_DoesNotAccidentallyUseShotgunBehavior()
+        public void Rattler_DoesNotAccidentallyUseIronwakeSpread()
         {
-            EquipmentInstance blaster = Equipment(
-                "equipment-instance.blaster-single",
-                "equipment-definition.blaster");
-            Harness harness = CreateHarness(blaster);
+            EquipmentInstance rattler = Equipment(
+                "equipment-instance.rattler-single",
+                "equipment-definition.rattler");
+            Harness harness = CreateHarness(rattler);
 
             InventoryWeaponExecutionResult result = harness.Adapter.TryExecute(
-                Request(blaster, "fire.blaster-single", 0L));
+                Request(rattler, "fire.rattler-single", 0L));
 
             Assert.That(result.Status, Is.EqualTo(WeaponExecutionStatus.Accepted));
             Assert.That(result.EffectBatch.CoreBatch.EffectCount, Is.EqualTo(1));
@@ -162,11 +162,11 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         public void ConcreteEquipmentInstances_HaveIndependentCooldowns()
         {
             EquipmentInstance first = Equipment(
-                "equipment-instance.blaster-a",
-                "equipment-definition.blaster");
+                "equipment-instance.rattler-a",
+                "equipment-definition.rattler");
             EquipmentInstance second = Equipment(
-                "equipment-instance.blaster-b",
-                "equipment-definition.blaster");
+                "equipment-instance.rattler-b",
+                "equipment-definition.rattler");
             Harness harness = CreateHarness(first, second);
 
             Assert.That(
