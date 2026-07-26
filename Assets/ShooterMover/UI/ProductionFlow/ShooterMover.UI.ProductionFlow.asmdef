@@ -6,6 +6,7 @@
     "ShooterMover.Content.Definitions",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
+    "ShooterMover.GameplayEntities",
     "ShooterMover.UnityAdapters",
     "ShooterMover.UI.Hub",
     "ShooterMover.UI.InventoryLoadout",
