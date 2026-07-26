@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf2833e1171d44b89e67f2eaa0f7c10a, type: 3}
+  m_Name: Level1RoomContent
+  m_EditorClassIdentifier: 
+  manifest: {fileID: 4900000, guid: 3f53e3cafdce4f9eb725a19b39f5a05a, type: 3}
+  documents:
+  - key: level1.entry.layout
+    document: {fileID: 4900000, guid: 70caa9a8a8f548809fdbfc2ab8aaf442, type: 3}
+  - key: level1.entry.enemies
+    document: {fileID: 4900000, guid: 46a154eabac54c8fbc62e9c03dbb400d, type: 3}
+  - key: level1.entry.props
+    document: {fileID: 4900000, guid: 6767a055233d49d5b55bd0236eceb160, type: 3}
+  - key: level1.entry.decor
+    document: {fileID: 4900000, guid: 1e0a15670c41451ca07011817a9bf18c, type: 3}
+  - key: level1.entry.encounter
+    document: {fileID: 4900000, guid: 199e5c5445cf4651aaad8d953f83e04d, type: 3}
+  - key: level1.terminal.layout
+    document: {fileID: 4900000, guid: b8c166878f2d4423888061a638f9db13, type: 3}
+  - key: level1.terminal.enemies
+    document: {fileID: 4900000, guid: 7dcaeafbdabe47bbb661e3a71fe5ae2f, type: 3}
+  - key: level1.terminal.props
+    document: {fileID: 4900000, guid: 11483261cc6a491490b086ed8e76ab68, type: 3}
+  - key: level1.terminal.decor
+    document: {fileID: 4900000, guid: 5e03d271a282465399b3754244231665, type: 3}
+  - key: level1.terminal.encounter
+    document: {fileID: 4900000, guid: 53a418fc1baa4cbf9691704aab2e6c68, type: 3}
