@@ -1,18 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ShooterMover.Domain.Weapons;
 
 namespace ShooterMover.Application.Weapons.Execution
 {
     /// <summary>
     /// Immutable per-projectile ricochet state. It is deliberately supplied by the caller so
     /// impact decisions remain pure and do not require a registry or another runtime service.
+    /// Canonical fixed-point state remains separate from the legacy maximum/chance path.
     /// </summary>
     public sealed class WeaponRicochetRuntimeState
     {
         private static readonly WeaponRicochetRuntimeState InitialState =
             new WeaponRicochetRuntimeState(
                 0,
+                null,
                 -1L,
                 new WeaponWallContactId[0]);
 
@@ -20,6 +23,7 @@ namespace ShooterMover.Application.Weapons.Execution
 
         private WeaponRicochetRuntimeState(
             int successfulBounceCount,
+            RicochetValue? remainingFixedPointBudget,
             long wallContactSimulationStep,
             IEnumerable<WeaponWallContactId> processedWallContactIds)
         {
@@ -45,6 +49,7 @@ namespace ShooterMover.Application.Weapons.Execution
             }
 
             SuccessfulBounceCount = successfulBounceCount;
+            RemainingFixedPointBudget = remainingFixedPointBudget;
             WallContactSimulationStep = wallContactSimulationStep;
             this.processedWallContactIds = copy.AsReadOnly();
         }
@@ -55,6 +60,11 @@ namespace ShooterMover.Application.Weapons.Execution
         }
 
         public int SuccessfulBounceCount { get; }
+        public RicochetValue? RemainingFixedPointBudget { get; }
+        public bool HasCanonicalFixedPointBudget
+        {
+            get { return RemainingFixedPointBudget.HasValue; }
+        }
         public long WallContactSimulationStep { get; }
         public IReadOnlyList<WeaponWallContactId> ProcessedWallContactIds
         {
@@ -88,10 +98,66 @@ namespace ShooterMover.Application.Weapons.Execution
             return false;
         }
 
+        internal WeaponRicochetRuntimeState BeginCanonicalBudget(RicochetValue authoredBudget)
+        {
+            if (HasCanonicalFixedPointBudget)
+            {
+                return this;
+            }
+            if (SuccessfulBounceCount != 0 || HasProcessedWallContact)
+            {
+                throw new InvalidOperationException(
+                    "Legacy ricochet runtime state cannot be reinterpreted as canonical fixed-point state.");
+            }
+
+            return new WeaponRicochetRuntimeState(
+                SuccessfulBounceCount,
+                authoredBudget,
+                WallContactSimulationStep,
+                processedWallContactIds);
+        }
+
+        internal WeaponRicochetRuntimeState AfterCanonicalWallContact(
+            long simulationStep,
+            WeaponWallContactId wallContactId,
+            WeaponRicochetCollisionResolution resolution)
+        {
+            if (!HasCanonicalFixedPointBudget)
+            {
+                throw new InvalidOperationException(
+                    "Canonical ricochet resolution requires initialized fixed-point runtime state.");
+            }
+
+            return AfterWallContactCore(
+                simulationStep,
+                wallContactId,
+                resolution.Bounces,
+                resolution.Remaining);
+        }
+
         internal WeaponRicochetRuntimeState AfterWallContact(
             long simulationStep,
             WeaponWallContactId wallContactId,
             bool successfulBounce)
+        {
+            if (HasCanonicalFixedPointBudget)
+            {
+                throw new InvalidOperationException(
+                    "Canonical fixed-point ricochet state cannot enter the legacy maximum/chance path.");
+            }
+
+            return AfterWallContactCore(
+                simulationStep,
+                wallContactId,
+                successfulBounce,
+                null);
+        }
+
+        private WeaponRicochetRuntimeState AfterWallContactCore(
+            long simulationStep,
+            WeaponWallContactId wallContactId,
+            bool successfulBounce,
+            RicochetValue? remainingFixedPointBudget)
         {
             if (simulationStep < 0L)
             {
@@ -114,6 +180,7 @@ namespace ShooterMover.Application.Weapons.Execution
 
             return new WeaponRicochetRuntimeState(
                 checked(SuccessfulBounceCount + (successfulBounce ? 1 : 0)),
+                remainingFixedPointBudget,
                 simulationStep,
                 nextContacts);
         }

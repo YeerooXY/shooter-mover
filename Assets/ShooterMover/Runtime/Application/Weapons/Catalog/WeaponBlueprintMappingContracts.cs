@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 
@@ -38,14 +39,22 @@ namespace ShooterMover.Application.Weapons.Catalog
         MismatchedIntentDefinitionId = 28,
         MissingExplosionTrigger = 29,
         UnexpectedExplosionTrigger = 30,
+        MissingAuthoredMappingDetails = 31,
+        InvalidAuthoredDelivery = 32,
+        LaserCarriesProjectileSpeed = 33,
+        InvalidAuthoredRicochet = 34,
+        InvalidAuthoredMovementPenalty = 35,
+        MissingAuthoredPresentation = 36,
+        MissingAuthoredDropIdentity = 37,
+        InvalidStrongboxTierRestriction = 38,
+        TopBoxOnlyRequiresExplicitRule = 39,
+        AuthoredDefinitionRejected = 40,
+        UnsupportedAreaDamage = 41,
     }
 
     public sealed class WeaponBlueprintMappingIssue
     {
-        public WeaponBlueprintMappingIssue(
-            WeaponBlueprintMappingIssueCode code,
-            string path,
-            string detail)
+        public WeaponBlueprintMappingIssue(WeaponBlueprintMappingIssueCode code, string path, string detail)
         {
             Code = code;
             Path = path ?? string.Empty;
@@ -66,32 +75,18 @@ namespace ShooterMover.Application.Weapons.Catalog
     {
         private readonly ReadOnlyCollection<WeaponBlueprintMappingIssue> issues;
 
-        internal WeaponBlueprintMappingResult(
-            WeaponBlueprint blueprint,
-            IEnumerable<WeaponBlueprintMappingIssue> mappingIssues)
+        internal WeaponBlueprintMappingResult(WeaponBlueprint blueprint, IEnumerable<WeaponBlueprintMappingIssue> mappingIssues)
         {
             Blueprint = blueprint;
             issues = new ReadOnlyCollection<WeaponBlueprintMappingIssue>(
-                new List<WeaponBlueprintMappingIssue>(
-                    mappingIssues ?? Array.Empty<WeaponBlueprintMappingIssue>()));
+                new List<WeaponBlueprintMappingIssue>(mappingIssues ?? Array.Empty<WeaponBlueprintMappingIssue>()));
         }
 
         public WeaponBlueprint Blueprint { get; }
-        public IReadOnlyList<WeaponBlueprintMappingIssue> Issues
-        {
-            get { return issues; }
-        }
-
-        public bool Succeeded
-        {
-            get { return Blueprint != null && issues.Count == 0; }
-        }
+        public IReadOnlyList<WeaponBlueprintMappingIssue> Issues { get { return issues; } }
+        public bool Succeeded { get { return Blueprint != null && issues.Count == 0; } }
     }
 
-    /// <summary>
-    /// States whether the legacy SpreadDegrees value is an authored multi-projectile arc
-    /// or a random angular deviation. The catalog does not distinguish those meanings.
-    /// </summary>
     public enum WeaponCatalogSpreadInterpretation
     {
         None = 1,
@@ -105,22 +100,17 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             MinimumDamageMultiplier = minimumDamageMultiplier;
         }
-
         public double MinimumDamageMultiplier { get; }
     }
 
     public sealed class WeaponCatalogDamageOverTimeMapping
     {
-        public WeaponCatalogDamageOverTimeMapping(
-            double ticksPerSecond,
-            int maximumStacks,
-            bool refreshesDuration)
+        public WeaponCatalogDamageOverTimeMapping(double ticksPerSecond, int maximumStacks, bool refreshesDuration)
         {
             TicksPerSecond = ticksPerSecond;
             MaximumStacks = maximumStacks;
             RefreshesDuration = refreshesDuration;
         }
-
         public double TicksPerSecond { get; }
         public int MaximumStacks { get; }
         public bool RefreshesDuration { get; }
@@ -132,17 +122,9 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             RetainedDamagePerJump = retainedDamagePerJump;
         }
-
         public double RetainedDamagePerJump { get; }
     }
 
-    /// <summary>
-    /// Explicit semantic decisions that are absent from WeaponDefinitionData. Numeric combat
-    /// values already present in the catalog are never overridden by this contract.
-    ///
-    /// ExpectedDefinitionId binds this policy to one canonical catalog definition. Production
-    /// callers should obtain one authoritative intent per definition from a single resolver.
-    /// </summary>
     public sealed class WeaponCatalogBlueprintMappingIntent
     {
         public WeaponCatalogBlueprintMappingIntent(
@@ -203,5 +185,60 @@ namespace ShooterMover.Application.Weapons.Catalog
         public WeaponCatalogDamageOverTimeMapping DamageOverTime { get; }
         public WeaponCatalogChainMapping Chain { get; }
         public string PresentationReference { get; }
+    }
+
+    public enum WeaponCatalogStrongboxEligibilityMappingMode
+    {
+        MinimumTier = 1,
+        ExplicitAllowedTierIds = 2,
+        ExplicitAllowedTiers = ExplicitAllowedTierIds,
+    }
+
+    public sealed class WeaponCatalogAuthoredMappingDetails
+    {
+        private readonly ReadOnlyCollection<StableId> allowedStrongboxTierIds;
+
+        public WeaponCatalogAuthoredMappingDetails(
+            WeaponDeliveryType deliveryType,
+            double deliveryRadiusOrWidth,
+            int ricochetTenths,
+            double movementPenaltyPercent,
+            WeaponSpecialDeliverySettings specialDelivery,
+            WeaponPresentation presentation,
+            StableId equipmentDefinitionId,
+            StableId rarityId,
+            WeaponDropAvailability availability,
+            WeaponCatalogStrongboxEligibilityMappingMode strongboxEligibilityMode,
+            int minimumStrongboxTier,
+            IEnumerable<StableId> allowedStrongboxTierIds)
+        {
+            DeliveryType = deliveryType;
+            DeliveryRadiusOrWidth = deliveryRadiusOrWidth;
+            RicochetTenths = ricochetTenths;
+            MovementPenaltyPercent = movementPenaltyPercent;
+            SpecialDelivery = specialDelivery;
+            Presentation = presentation;
+            EquipmentDefinitionId = equipmentDefinitionId;
+            RarityId = rarityId;
+            Availability = availability;
+            StrongboxEligibilityMode = strongboxEligibilityMode;
+            MinimumStrongboxTier = minimumStrongboxTier;
+            this.allowedStrongboxTierIds = new ReadOnlyCollection<StableId>(
+                new List<StableId>(allowedStrongboxTierIds ?? Array.Empty<StableId>()));
+        }
+
+        public WeaponDeliveryType DeliveryType { get; }
+        public double DeliveryRadiusOrWidth { get; }
+        public int RicochetTenths { get; }
+        public double MovementPenaltyPercent { get; }
+        public WeaponSpecialDeliverySettings SpecialDelivery { get; }
+        public WeaponPresentation Presentation { get; }
+        public StableId EquipmentDefinitionId { get; }
+        public StableId RarityId { get; }
+        public WeaponDropAvailability Availability { get; }
+        public WeaponCatalogStrongboxEligibilityMappingMode StrongboxEligibilityMode { get; }
+        public int MinimumStrongboxTier { get; }
+        public IReadOnlyList<StableId> AllowedStrongboxTierIds { get { return allowedStrongboxTierIds; } }
+        internal IReadOnlyList<StableId> AllowedStrongboxTiers { get { return allowedStrongboxTierIds; } }
     }
 }

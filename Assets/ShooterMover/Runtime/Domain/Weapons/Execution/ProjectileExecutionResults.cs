@@ -268,6 +268,10 @@ namespace ShooterMover.Domain.Weapons.Execution
 
     public sealed class ProjectileEffectEmission
     {
+        /// <summary>
+        /// Transitional compatibility constructor. Canonical projectile execution must use the
+        /// profile-retaining overload below.
+        /// </summary>
         public ProjectileEffectEmission(
             ProjectileEffectEmissionKind kind,
             ProjectileLifecycleContext lifecycle,
@@ -278,6 +282,35 @@ namespace ShooterMover.Domain.Weapons.Execution
             int eventOrdinal,
             WeaponExplosionTriggerReason explosionTriggerReasons,
             ProjectileTerminationReason terminationReason,
+            WeaponDamageSpec damage,
+            WeaponEffects effects)
+            : this(
+                kind,
+                lifecycle,
+                sourceContactKind,
+                target,
+                surfaceId,
+                position,
+                eventOrdinal,
+                explosionTriggerReasons,
+                terminationReason,
+                null,
+                damage,
+                effects)
+        {
+        }
+
+        public ProjectileEffectEmission(
+            ProjectileEffectEmissionKind kind,
+            ProjectileLifecycleContext lifecycle,
+            ProjectileContactKind sourceContactKind,
+            WeaponTargetReference target,
+            StableId surfaceId,
+            WeaponVector2 position,
+            int eventOrdinal,
+            WeaponExplosionTriggerReason explosionTriggerReasons,
+            ProjectileTerminationReason terminationReason,
+            ProjectileExecutionProfile profile,
             WeaponDamageSpec damage,
             WeaponEffects effects)
         {
@@ -307,8 +340,26 @@ namespace ShooterMover.Domain.Weapons.Execution
             EventOrdinal = eventOrdinal;
             ExplosionTriggerReasons = explosionTriggerReasons;
             TerminationReason = terminationReason;
+            Profile = profile;
             Damage = damage ?? throw new ArgumentNullException(nameof(damage));
             Effects = effects ?? throw new ArgumentNullException(nameof(effects));
+
+            if (profile != null)
+            {
+                WeaponEffectIdentity identity = lifecycle.Identity.SourceIdentity;
+                if (!profile.DefinitionId.Equals(identity.WeaponDefinitionId)
+                    || (profile.IsCanonical
+                        && (profile.EquipmentInstanceId == null
+                            || !profile.EquipmentInstanceId.Equals(
+                                identity.EquipmentInstanceId)))
+                    || !ReferenceEquals(profile.Damage, damage)
+                    || !ReferenceEquals(profile.Effects, effects))
+                {
+                    throw new ArgumentException(
+                        "projectile-emission-profile-payload-mismatch",
+                        nameof(profile));
+                }
+            }
         }
 
         public ProjectileEffectEmissionKind Kind { get; }
@@ -321,8 +372,13 @@ namespace ShooterMover.Domain.Weapons.Execution
         public int EventOrdinal { get; }
         public WeaponExplosionTriggerReason ExplosionTriggerReasons { get; }
         public ProjectileTerminationReason TerminationReason { get; }
+        public ProjectileExecutionProfile Profile { get; }
         public WeaponDamageSpec Damage { get; }
         public WeaponEffects Effects { get; }
+        public bool IsCanonicalRocket
+        {
+            get { return Profile != null && Profile.IsCanonicalRocket; }
+        }
 
         public string ToCanonicalString()
         {
@@ -339,6 +395,21 @@ namespace ShooterMover.Domain.Weapons.Execution
                     EventOrdinal.ToString(CultureInfo.InvariantCulture),
                     ((int)ExplosionTriggerReasons).ToString(CultureInfo.InvariantCulture),
                     ((int)TerminationReason).ToString(CultureInfo.InvariantCulture),
+                    Profile == null
+                        ? "transitional"
+                        : ((int)Profile.ExecutionMode).ToString(CultureInfo.InvariantCulture),
+                    Profile == null || !Profile.CanonicalDeliveryType.HasValue
+                        ? "none"
+                        : ((int)Profile.CanonicalDeliveryType.Value).ToString(
+                            CultureInfo.InvariantCulture),
+                    Profile == null
+                        ? "none"
+                        : Profile.Pierce.Tenths.ToString(CultureInfo.InvariantCulture),
+                    Damage.DirectDamage.ToString("R", CultureInfo.InvariantCulture),
+                    Damage.AreaDamage.ToString("R", CultureInfo.InvariantCulture),
+                    Effects.Explosion == null
+                        ? "none"
+                        : Effects.Explosion.Radius.ToString("R", CultureInfo.InvariantCulture),
                 });
         }
     }

@@ -7,17 +7,50 @@ namespace ShooterMover.Domain.Weapons
         SemiAutomatic = 1,
         Automatic = 2,
         Burst = 3,
+
+        // Transitional compatibility for pre-WEAPON-DATA-002 contracts. Canonical authored
+        // weapons use semi-automatic, automatic, or burst even when their delivery is a laser.
         Continuous = 4,
     }
 
+    public sealed class WeaponBurstSettings
+    {
+        public WeaponBurstSettings(
+            int shotsPerBurst,
+            double intervalBetweenShotsSeconds)
+        {
+            if (shotsPerBurst < 2)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(shotsPerBurst),
+                    "Burst fire requires at least two sequential shots.");
+            }
+            if (double.IsNaN(intervalBetweenShotsSeconds)
+                || double.IsInfinity(intervalBetweenShotsSeconds)
+                || intervalBetweenShotsSeconds <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(intervalBetweenShotsSeconds));
+            }
+
+            ShotsPerBurst = shotsPerBurst;
+            IntervalBetweenShotsSeconds = intervalBetweenShotsSeconds;
+        }
+
+        public int ShotsPerBurst { get; }
+        public double IntervalBetweenShotsSeconds { get; }
+    }
+
     /// <summary>
-    /// Immutable trigger and cadence configuration. Projectile cadence and continuous
-    /// damage cadence are intentionally separate so one cannot silently stand in for the other.
+    /// Immutable trigger and firing-cycle cadence. RateOfFire means how frequently a new firing
+    /// cycle may begin. Sequential burst shots remain separate from simultaneous projectiles per
+    /// shot. Continuous fields remain only for the explicit legacy migration boundary.
     /// </summary>
     public sealed class WeaponFireSettings
     {
         private WeaponFireSettings(
             WeaponFireMode mode,
+            double rateOfFire,
             double shotsPerSecond,
             int shotsPerTrigger,
             int shotsPerBurst,
@@ -26,23 +59,37 @@ namespace ShooterMover.Domain.Weapons
             double damageTicksPerSecond)
         {
             Mode = mode;
+            RateOfFire = rateOfFire;
             ShotsPerSecond = shotsPerSecond;
             ShotsPerTrigger = shotsPerTrigger;
             ShotsPerBurst = shotsPerBurst;
             IntervalBetweenBurstShotsSeconds = intervalBetweenBurstShotsSeconds;
             IntervalAfterBurstSeconds = intervalAfterBurstSeconds;
             DamageTicksPerSecond = damageTicksPerSecond;
+            BurstSettings = mode == WeaponFireMode.Burst
+                ? new WeaponBurstSettings(
+                    shotsPerBurst,
+                    intervalBetweenBurstShotsSeconds)
+                : null;
         }
 
         public WeaponFireMode Mode { get; }
 
         /// <summary>
-        /// Projectile shots authored per second. Always zero for continuous weapons.
+        /// Canonical firing cycles per second. For transitional contracts this retains the old
+        /// ShotsPerSecond value because their cadence was not authored with the new distinction.
+        /// </summary>
+        public double RateOfFire { get; }
+
+        /// <summary>
+        /// Compatibility value consumed by the current scheduler. For canonical burst content it
+        /// is derived from RateOfFire and the burst emission span; it is not separately authored.
         /// </summary>
         public double ShotsPerSecond { get; }
 
         /// <summary>
-        /// Trigger-level shot groups. This is not the projectile count emitted by one shot.
+        /// Transitional trigger-level grouping. Canonical authored definitions always use one.
+        /// It is never the projectile count emitted by a shot.
         /// </summary>
         public int ShotsPerTrigger { get; }
 
@@ -52,18 +99,97 @@ namespace ShooterMover.Domain.Weapons
         public int ShotsPerBurst { get; }
 
         public double IntervalBetweenBurstShotsSeconds { get; }
-        public double IntervalAfterBurstSeconds { get; }
 
         /// <summary>
-        /// Explicit continuous-damage evaluation rate. Always zero for projectile modes.
+        /// Scheduler compatibility projection. For canonical burst content this is the derived
+        /// recovery remainder after subtracting the burst emission span from one firing cycle.
         /// </summary>
+        public double IntervalAfterBurstSeconds { get; }
         public double DamageTicksPerSecond { get; }
+        public WeaponBurstSettings BurstSettings { get; }
 
         public bool IsContinuous
         {
             get { return Mode == WeaponFireMode.Continuous; }
         }
 
+        public bool IsCanonicalAuthoredMode
+        {
+            get
+            {
+                return Mode == WeaponFireMode.SemiAutomatic
+                    || Mode == WeaponFireMode.Automatic
+                    || Mode == WeaponFireMode.Burst;
+            }
+        }
+
+        public static WeaponFireSettings SemiAutomatic(double rateOfFire)
+        {
+            RequireFinitePositive(rateOfFire, nameof(rateOfFire));
+            return new WeaponFireSettings(
+                WeaponFireMode.SemiAutomatic,
+                rateOfFire,
+                rateOfFire,
+                1,
+                1,
+                0d,
+                0d,
+                0d);
+        }
+
+        public static WeaponFireSettings Automatic(double rateOfFire)
+        {
+            RequireFinitePositive(rateOfFire, nameof(rateOfFire));
+            return new WeaponFireSettings(
+                WeaponFireMode.Automatic,
+                rateOfFire,
+                rateOfFire,
+                1,
+                1,
+                0d,
+                0d,
+                0d);
+        }
+
+        public static WeaponFireSettings Burst(
+            double rateOfFire,
+            WeaponBurstSettings burst)
+        {
+            if (burst == null)
+            {
+                throw new ArgumentNullException(nameof(burst));
+            }
+            RequireFinitePositive(rateOfFire, nameof(rateOfFire));
+
+            double cycleIntervalSeconds = 1d / rateOfFire;
+            double burstEmissionSpanSeconds =
+                (burst.ShotsPerBurst - 1d) * burst.IntervalBetweenShotsSeconds;
+            double schedulerRecoverySeconds =
+                cycleIntervalSeconds - burstEmissionSpanSeconds;
+            if (double.IsNaN(schedulerRecoverySeconds)
+                || double.IsInfinity(schedulerRecoverySeconds)
+                || schedulerRecoverySeconds <= 0d)
+            {
+                throw new ArgumentException(
+                    "Rate of fire must leave positive recovery time after the sequential burst emission span.",
+                    nameof(rateOfFire));
+            }
+
+            return new WeaponFireSettings(
+                WeaponFireMode.Burst,
+                rateOfFire,
+                1d / schedulerRecoverySeconds,
+                1,
+                burst.ShotsPerBurst,
+                burst.IntervalBetweenShotsSeconds,
+                schedulerRecoverySeconds,
+                0d);
+        }
+
+        /// <summary>
+        /// Compatibility factory retained for the current catalogue mapper and scheduler.
+        /// Canonical content should use SemiAutomatic, Automatic, or Burst.
+        /// </summary>
         public static WeaponFireSettings Create(
             WeaponFireMode mode,
             double shotsPerSecond,
@@ -92,14 +218,14 @@ namespace ShooterMover.Domain.Weapons
                     if (shotsPerBurst != 1)
                     {
                         throw new ArgumentException(
-                            "Non-burst projectile fire requires exactly one shot per burst.",
+                            "Non-burst fire requires exactly one sequential shot per cycle.",
                             nameof(shotsPerBurst));
                     }
                     if (intervalBetweenBurstShotsSeconds != 0d
                         || intervalAfterBurstSeconds != 0d)
                     {
                         throw new ArgumentException(
-                            "Non-burst projectile fire cannot author burst intervals.");
+                            "Non-burst fire cannot carry burst-only settings.");
                     }
                     if (damageTicksPerSecond != 0d)
                     {
@@ -121,7 +247,7 @@ namespace ShooterMover.Domain.Weapons
                         || intervalAfterBurstSeconds <= 0d)
                     {
                         throw new ArgumentException(
-                            "Burst fire requires explicit in-burst and post-burst intervals.");
+                            "Transitional burst fire requires explicit in-burst and post-burst intervals.");
                     }
                     if (damageTicksPerSecond != 0d)
                     {
@@ -139,13 +265,13 @@ namespace ShooterMover.Domain.Weapons
                         || intervalAfterBurstSeconds != 0d)
                     {
                         throw new ArgumentException(
-                            "Continuous fire must leave every projectile firing field at zero.");
+                            "Transitional continuous fire must leave projectile firing fields at zero.");
                     }
                     if (damageTicksPerSecond <= 0d)
                     {
                         throw new ArgumentOutOfRangeException(
                             nameof(damageTicksPerSecond),
-                            "Continuous fire requires an explicit positive damage tick rate.");
+                            "Transitional continuous fire requires a positive damage tick rate.");
                     }
                     break;
 
@@ -155,6 +281,7 @@ namespace ShooterMover.Domain.Weapons
 
             return new WeaponFireSettings(
                 mode,
+                shotsPerSecond,
                 shotsPerSecond,
                 shotsPerTrigger,
                 shotsPerBurst,
@@ -171,13 +298,21 @@ namespace ShooterMover.Domain.Weapons
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(shotsPerSecond),
-                    "Projectile fire requires a positive shots-per-second value.");
+                    "Fire rate must be positive.");
             }
             if (shotsPerTrigger < 1)
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(shotsPerTrigger),
                     "Projectile fire requires at least one shot group per trigger.");
+            }
+        }
+
+        private static void RequireFinitePositive(double value, string parameterName)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
             }
         }
 
@@ -230,9 +365,73 @@ namespace ShooterMover.Domain.Weapons
         public int PulsesPerShot { get; }
         public double IntervalBetweenPulsesSeconds { get; }
 
+        /// <summary>
+        /// Canonical designer-facing spread. One emitted attack uses random angular deviation;
+        /// multiple emitted attacks use a deterministic spread arc.
+        /// </summary>
+        public double CanonicalSpreadDegrees
+        {
+            get
+            {
+                return Kind == WeaponShotPatternKind.Spray
+                    ? RandomnessDegrees
+                    : SpreadDegrees;
+            }
+        }
+
         public bool UsesProjectiles
         {
             get { return ProjectilesPerShot > 0; }
+        }
+
+        /// <summary>
+        /// Canonical designer-facing shot settings. Positive spread on one emitted attack is an
+        /// accuracy cone; positive spread on multiple simultaneous attacks is an authored arc.
+        /// Neither representation implies burst fire.
+        /// </summary>
+        public static WeaponShotPattern Canonical(
+            int projectilesPerShot,
+            double spreadDegrees)
+        {
+            if (projectilesPerShot < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(projectilesPerShot));
+            }
+            if (double.IsNaN(spreadDegrees)
+                || double.IsInfinity(spreadDegrees)
+                || spreadDegrees < 0d
+                || spreadDegrees > 360d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(spreadDegrees));
+            }
+            if (projectilesPerShot == 1)
+            {
+                return spreadDegrees > 0d
+                    ? Create(
+                        WeaponShotPatternKind.Spray,
+                        1,
+                        0d,
+                        spreadDegrees,
+                        1,
+                        0d)
+                    : Create(
+                        WeaponShotPatternKind.Single,
+                        1,
+                        0d,
+                        0d,
+                        1,
+                        0d);
+            }
+
+            return Create(
+                spreadDegrees > 0d
+                    ? WeaponShotPatternKind.Spread
+                    : WeaponShotPatternKind.Volley,
+                projectilesPerShot,
+                spreadDegrees,
+                0d,
+                1,
+                0d);
         }
 
         public static WeaponShotPattern Create(

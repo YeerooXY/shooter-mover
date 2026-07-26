@@ -61,6 +61,7 @@ namespace ShooterMover.Domain.Weapons.Execution
         ExplosiveProjectile = 2,
         ChainArc = 3,
         DamageOverTimeProjectile = 4,
+        CanonicalProjectileLaunch = 5,
     }
 
     public interface IWeaponEffectDescription
@@ -113,6 +114,116 @@ namespace ShooterMover.Domain.Weapons.Execution
                 + DirectDamage.ToString("R", CultureInfo.InvariantCulture) + "|"
                 + Pierce.ToString(CultureInfo.InvariantCulture) + "|"
                 + Knockback.ToString("R", CultureInfo.InvariantCulture) + "|" + DamageType;
+        }
+    }
+
+    /// <summary>
+    /// Canonical scheduler-to-projectile handoff retained inside the existing immutable batch
+    /// envelope. All execution values are already baked into the request profile and initial state;
+    /// downstream adapters must launch this state instead of rebuilding values from a blueprint.
+    /// </summary>
+    public sealed class CanonicalProjectileLaunchEffect : IWeaponEffectDescription
+    {
+        public CanonicalProjectileLaunchEffect(
+            ProjectileLaunchRequest launchRequest,
+            ProjectileLifecycleState initialState)
+        {
+            LaunchRequest = launchRequest
+                ?? throw new ArgumentNullException(nameof(launchRequest));
+            InitialState = initialState
+                ?? throw new ArgumentNullException(nameof(initialState));
+            if (launchRequest.Profile == null
+                || !launchRequest.Profile.IsCanonical
+                || initialState.Profile == null
+                || !ReferenceEquals(initialState.Profile, launchRequest.Profile)
+                || initialState.Lifecycle == null
+                || !initialState.Lifecycle.Identity.Equals(
+                    launchRequest.Lifecycle.Identity))
+            {
+                throw new ArgumentException(
+                    "canonical-projectile-launch-state-mismatch",
+                    nameof(initialState));
+            }
+
+            Identity = launchRequest.Lifecycle.Identity.SourceIdentity;
+        }
+
+        public WeaponEffectKind Kind
+        {
+            get { return WeaponEffectKind.CanonicalProjectileLaunch; }
+        }
+        public WeaponEffectIdentity Identity { get; }
+        public ProjectileLaunchRequest LaunchRequest { get; }
+        public ProjectileLifecycleState InitialState { get; }
+        public ProjectileExecutionProfile Profile { get { return LaunchRequest.Profile; } }
+
+        public string ToCanonicalString()
+        {
+            WeaponExplosionTriggerSpec trigger = Profile.Impact.ExplosionTrigger;
+            WeaponRicochetSpec ricochet = Profile.Impact.Ricochet;
+            WeaponExplosionEffect explosion = Profile.Effects.Explosion;
+            WeaponDamageOverTimeStats dot = Profile.Damage.DamageOverTime;
+            return string.Join(
+                "|",
+                new[]
+                {
+                    "canonical-projectile-launch",
+                    Identity.ToCanonicalString(),
+                    Profile.DefinitionId.ToString(),
+                    Profile.EquipmentInstanceId.ToString(),
+                    ((int)Profile.ExecutionMode).ToString(CultureInfo.InvariantCulture),
+                    Profile.CanonicalDeliveryType.HasValue
+                        ? ((int)Profile.CanonicalDeliveryType.Value).ToString(CultureInfo.InvariantCulture)
+                        : "none",
+                    ((int)Profile.Projectile.Kind).ToString(CultureInfo.InvariantCulture),
+                    Format(Profile.Projectile.Speed),
+                    Format(Profile.Projectile.Range),
+                    Profile.Pierce.Tenths.ToString(CultureInfo.InvariantCulture),
+                    Profile.Ricochet.Tenths.ToString(CultureInfo.InvariantCulture),
+                    ((int)Profile.Projectile.TerminationBehavior).ToString(CultureInfo.InvariantCulture),
+                    ((int)Profile.Guidance.Mode).ToString(CultureInfo.InvariantCulture),
+                    Format(Profile.Guidance.AcquisitionRange),
+                    Format(Profile.Guidance.TurnRateDegreesPerSecond),
+                    Format(Profile.Guidance.ActivationDelaySeconds),
+                    ((int)Profile.Guidance.TargetPolicy).ToString(CultureInfo.InvariantCulture),
+                    ((int)Profile.Guidance.Reacquisition).ToString(CultureInfo.InvariantCulture),
+                    Profile.Impact.HandlesEnemyImpact ? "1" : "0",
+                    Profile.Impact.HandlesWallImpact ? "1" : "0",
+                    Profile.Impact.HandlesRangeExpiry ? "1" : "0",
+                    Profile.Impact.HandlesTermination ? "1" : "0",
+                    ricochet == null ? "none" : Format(ricochet.RetainedSpeedPerRicochet),
+                    ricochet == null ? "none" : Format(ricochet.RandomAngleDegrees),
+                    ricochet == null ? "none" : Format(ricochet.PostBounceHomingPauseSeconds),
+                    trigger == null ? "none" : (trigger.OnEnemyImpact ? "1" : "0"),
+                    trigger == null ? "none" : (trigger.OnWallImpact ? "1" : "0"),
+                    trigger == null ? "none" : (trigger.OnRangeExpiry ? "1" : "0"),
+                    trigger == null ? "none" : (trigger.OnTermination ? "1" : "0"),
+                    ((int)Profile.Damage.Category).ToString(CultureInfo.InvariantCulture),
+                    Format(Profile.Damage.DirectDamage),
+                    Format(Profile.Damage.AreaDamage),
+                    dot == null ? "none" : Format(dot.DamagePerSecond),
+                    dot == null ? "none" : Format(dot.DurationSeconds),
+                    Format(Profile.Damage.Knockback),
+                    explosion == null ? "none" : Format(explosion.Radius),
+                    explosion == null ? "none" : Format(explosion.MinimumDamageMultiplier),
+                    Format(Profile.MovementPenaltyPercent),
+                    LaunchRequest.Origin.ToString(),
+                    LaunchRequest.Direction.ToString(),
+                    LaunchRequest.InitialTarget == null
+                        ? "none"
+                        : LaunchRequest.InitialTarget.ToCanonicalString(),
+                    InitialState.Position.ToString(),
+                    InitialState.Direction.ToString(),
+                    Format(InitialState.Speed),
+                    Format(InitialState.TravelledDistance),
+                    InitialState.PierceState.AuthoredValue.Tenths.ToString(
+                        CultureInfo.InvariantCulture),
+                });
+        }
+
+        private static string Format(double value)
+        {
+            return value.ToString("R", CultureInfo.InvariantCulture);
         }
     }
 

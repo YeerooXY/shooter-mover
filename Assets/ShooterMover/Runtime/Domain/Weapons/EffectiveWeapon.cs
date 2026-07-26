@@ -8,8 +8,10 @@ using ShooterMover.Domain.Weapons.Execution;
 namespace ShooterMover.Domain.Weapons
 {
     /// <summary>
-    /// Immutable derived weapon profile. It preserves canonical blueprint identity and
-    /// equipment-instance identity while keeping item level as metadata rather than combat scaling.
+    /// Immutable derived weapon profile. It preserves canonical definition and exact equipment
+    /// instance identity while keeping item level as metadata rather than combat scaling. Existing
+    /// evaluated contracts remain the final runtime values; canonical authored grouping is exposed
+    /// without allowing spawned attacks to query inventory, augments, skills, or the catalogue.
     /// </summary>
     public sealed class EffectiveWeapon
     {
@@ -28,7 +30,11 @@ namespace ShooterMover.Domain.Weapons
             WeaponGuidanceSpec guidance,
             WeaponImpactSpec impact,
             WeaponDamageSpec damage,
-            WeaponEffects effects)
+            WeaponEffects effects,
+            WeaponAttackDistance effectiveMaximumAttackDistance,
+            PierceValue effectivePierce,
+            RicochetValue effectiveRicochet,
+            double effectiveMovementPenaltyPercent)
         {
             Blueprint = blueprint ?? throw new ArgumentNullException(nameof(blueprint));
             EquipmentInstanceId = equipmentInstanceId
@@ -45,6 +51,17 @@ namespace ShooterMover.Domain.Weapons
             Impact = impact ?? throw new ArgumentNullException(nameof(impact));
             Damage = damage ?? throw new ArgumentNullException(nameof(damage));
             Effects = effects ?? throw new ArgumentNullException(nameof(effects));
+            EffectiveMaximumAttackDistance = effectiveMaximumAttackDistance;
+            EffectivePierce = effectivePierce;
+            EffectiveRicochet = effectiveRicochet;
+            if (double.IsNaN(effectiveMovementPenaltyPercent)
+                || double.IsInfinity(effectiveMovementPenaltyPercent)
+                || effectiveMovementPenaltyPercent < 0d
+                || effectiveMovementPenaltyPercent > 100d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(effectiveMovementPenaltyPercent));
+            }
+            EffectiveMovementPenaltyPercent = effectiveMovementPenaltyPercent;
         }
 
         public WeaponBlueprint Blueprint { get; }
@@ -62,6 +79,49 @@ namespace ShooterMover.Domain.Weapons
         public WeaponImpactSpec Impact { get; }
         public WeaponDamageSpec Damage { get; }
         public WeaponEffects Effects { get; }
+
+        public bool UsesCanonicalAuthoredDefinition
+        {
+            get { return !Blueprint.IsTransitionalCatalogProjection; }
+        }
+        public WeaponDeliverySpec AuthoredDelivery { get { return Blueprint.Delivery; } }
+        public WeaponPresentation Presentation { get { return Blueprint.Presentation; } }
+        public WeaponDropMetadata DropMetadata { get { return Blueprint.DropMetadata; } }
+
+        /// <summary>
+        /// Final immutable semantic values after compatible modifiers. These remain available for
+        /// Laser and approved non-projectile Special deliveries and are not inferred from a
+        /// WeaponProjectileSpec.
+        /// </summary>
+        public WeaponAttackDistance EffectiveMaximumAttackDistance { get; }
+        public PierceValue EffectivePierce { get; }
+        public RicochetValue EffectiveRicochet { get; }
+        public double EffectiveMovementPenaltyPercent { get; }
+
+        public double MovementPenaltyPercent
+        {
+            get { return EffectiveMovementPenaltyPercent; }
+        }
+
+        public WeaponAttackDistance MaximumAttackDistance
+        {
+            get { return EffectiveMaximumAttackDistance; }
+        }
+
+        public PierceValue Pierce
+        {
+            get { return EffectivePierce; }
+        }
+
+        public RicochetValue AuthoredRicochet
+        {
+            get
+            {
+                return Blueprint.BaseStats == null
+                    ? new RicochetValue(0)
+                    : Blueprint.BaseStats.Ricochet;
+            }
+        }
 
         private static ReadOnlyCollection<AugmentInstance> CopyAugments(
             IEnumerable<AugmentInstance> values)

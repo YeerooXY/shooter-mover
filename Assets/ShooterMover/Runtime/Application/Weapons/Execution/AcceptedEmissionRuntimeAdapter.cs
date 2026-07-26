@@ -1,17 +1,24 @@
 using System;
+using System.Collections.Generic;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
 {
     /// <summary>
-    /// Loss-aware projection from one scheduler-authorized emission into the retained
-    /// behavior-registry and immutable effect-batch boundaries. It never admits cadence,
-    /// reconstructs bursts, or selects behavior by weapon definition ID.
+    /// Loss-aware projection from one scheduler-authorized emission. Canonical travelling
+    /// deliveries are launched directly from the immutable EffectiveWeapon projection. Only
+    /// transitional catalogue projections may continue through the retained behavior registry
+    /// and WeaponEffectBatch compatibility route.
     /// </summary>
     public sealed class AcceptedEmissionRuntimeAdapter
     {
         private const double Epsilon = 0.000000001d;
+
+        private static readonly StableId ProjectileExecutionPurpose =
+            StableId.Parse("weapon.projectile-execution");
 
         private readonly WeaponBehaviorRegistry behaviorRegistry;
 
@@ -69,6 +76,22 @@ namespace ShooterMover.Application.Weapons.Execution
                     "weapon-runtime-cooldown-projection-overflow");
             }
             cooldownTicks = (int)acceptedEmission.TicksUntilNextEmission;
+
+            if (weapon.UsesCanonicalAuthoredDefinition)
+            {
+                return AdaptCanonicalProjectile(
+                    weapon,
+                    acceptedEmission,
+                    cooldownTicks);
+            }
+
+            if (weapon.Blueprint == null
+                || !weapon.Blueprint.IsTransitionalCatalogProjection)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.InvalidProjectileProfile,
+                    "weapon-runtime-transitional-blueprint-required");
+            }
 
             WeaponRuntimeFiringProfile profile;
             AcceptedEmissionRuntimeAdapterStatus profileStatus;
@@ -134,6 +157,131 @@ namespace ShooterMover.Application.Weapons.Execution
             return AcceptedEmissionRuntimeAdapterResult.Adapted(
                 profile,
                 built.Batch);
+        }
+
+        private static AcceptedEmissionRuntimeAdapterResult AdaptCanonicalProjectile(
+            EffectiveWeapon weapon,
+            WeaponFiringScheduler.AcceptedEmission acceptedEmission,
+            int cooldownTicks)
+        {
+            if (weapon.FireSettings.IsContinuous)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.UnsupportedFireMode,
+                    "weapon-runtime-canonical-travelling-continuous-rejected");
+            }
+            if (weapon.ShotPattern.Kind != WeaponShotPatternKind.Single
+                && weapon.ShotPattern.Kind != WeaponShotPatternKind.Spread
+                && weapon.ShotPattern.Kind != WeaponShotPatternKind.PulseSpread)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.UnsupportedShotPattern,
+                    "weapon-runtime-canonical-shot-pattern-unsupported:"
+                        + weapon.ShotPattern.Kind);
+            }
+            if (weapon.ShotPattern.RandomnessDegrees > Epsilon)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.UnsupportedShotPattern,
+                    "weapon-runtime-canonical-pattern-randomness-unsupported");
+            }
+            if (weapon.ShotPattern.ProjectilesPerShot < 1
+                || weapon.ShotPattern.ProjectilesPerShot
+                    > WeaponRuntimeFiringProfile.MaximumEffectsPerFire)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.UnsupportedShotPattern,
+                    "weapon-runtime-canonical-projectile-count-unsupported");
+            }
+
+            ProjectileExecutionProfile profile;
+            try
+            {
+                profile = ProjectileExecutionProfile.From(weapon);
+            }
+            catch (OverflowException)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.NumericalFailure,
+                    "weapon-runtime-canonical-projectile-profile-overflow");
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.InvalidProjectileProfile,
+                    string.IsNullOrWhiteSpace(exception.Message)
+                        ? "weapon-runtime-canonical-projectile-profile-invalid"
+                        : exception.Message);
+            }
+            catch (ArgumentException)
+            {
+                return Reject(
+                    AcceptedEmissionRuntimeAdapterStatus.InvalidProjectileProfile,
+                    "weapon-runtime-canonical-projectile-profile-invalid");
+            }
+
+            var launches = new List<AcceptedProjectileLaunch>(
+                weapon.ShotPattern.ProjectilesPerShot);
+            for (int index = 0; index < weapon.ShotPattern.ProjectilesPerShot; index++)
+            {
+                try
+                {
+                    ProjectileOrdinal ordinal = new ProjectileOrdinal(index);
+                    WeaponEffectIdentity sourceIdentity = new WeaponEffectIdentity(
+                        acceptedEmission.Command.ActorId,
+                        acceptedEmission.ParticipantId,
+                        weapon.EquipmentInstanceId,
+                        weapon.DefinitionId,
+                        acceptedEmission.EmissionFireOperationId,
+                        acceptedEmission.Command.LifecycleGeneration,
+                        acceptedEmission.ShotSequence,
+                        ordinal);
+                    ProjectileExecutionIdentity projectileIdentity =
+                        new ProjectileExecutionIdentity(sourceIdentity);
+                    DeterministicRandom random = DeterministicRandom.CreateSubstream(
+                        acceptedEmission.Command.DeterministicSeed,
+                        DeterministicRandom.CurrentAlgorithmVersion,
+                        ProjectileExecutionPurpose,
+                        checked((ulong)index));
+                    ProjectileLifecycleContext lifecycle = new ProjectileLifecycleContext(
+                        projectileIdentity,
+                        acceptedEmission.ScheduledTick,
+                        random);
+                    WeaponVector2 direction = WeaponDeterministicSpread.DirectionFor(
+                        acceptedEmission.Command.AimDirection,
+                        weapon.ShotPattern.SpreadDegrees,
+                        acceptedEmission.Command.DeterministicSeed,
+                        acceptedEmission.EmissionFireOperationId,
+                        weapon.EquipmentInstanceId,
+                        acceptedEmission.ShotSequence,
+                        ordinal);
+                    ProjectileLaunchRequest request = new ProjectileLaunchRequest(
+                        lifecycle,
+                        profile,
+                        acceptedEmission.Command.Origin,
+                        direction,
+                        null);
+                    launches.Add(new AcceptedProjectileLaunch(request));
+                }
+                catch (OverflowException)
+                {
+                    return Reject(
+                        AcceptedEmissionRuntimeAdapterStatus.NumericalFailure,
+                        "weapon-runtime-canonical-projectile-launch-overflow");
+                }
+                catch (Exception)
+                {
+                    return Reject(
+                        AcceptedEmissionRuntimeAdapterStatus.InvalidProjectileLaunch,
+                        "weapon-runtime-canonical-projectile-launch-invalid");
+                }
+            }
+
+            return AcceptedEmissionRuntimeAdapterResult.CanonicalProjectile(
+                profile,
+                launches,
+                cooldownTicks,
+                weapon.ShotPattern.SpreadDegrees);
         }
 
         private static bool TryBuildProfile(
