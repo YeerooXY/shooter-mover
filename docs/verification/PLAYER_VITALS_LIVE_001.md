@@ -68,7 +68,8 @@ controller has spawned the selected-character player, it:
 2. reuses its exact character, route, holdings, and loadout references;
 3. binds the existing `Rigidbody2D` and `PlayableTopDownMovement2D`;
 4. creates one fresh run-local `PlayerActorAuthority` for that scene entry;
-5. refuses duplicate binding rather than replacing the authority.
+5. binds the production Hub-return request adapter;
+6. refuses duplicate binding rather than replacing the authority.
 
 There is no per-frame global player search, no scene/prefab/name branch, and no edit to the
 D-owned `PlayableLevel.unity` or `ProductionPlayableLevelControllerV1.cs`.
@@ -84,7 +85,7 @@ The adapter projects the authority snapshot through a small runtime HUD showing:
 Every newly accepted damage result gives the existing player sprite a short white hit
 flash. Duplicate or rejected commands produce no second flash.
 
-## Exactly-once defeat flow
+## Exactly-once defeat and retryable safe return
 
 When the authority emits its first lethal death fact, the adapter:
 
@@ -93,18 +94,51 @@ When the authority emits its first lethal death fact, the adapter:
 3. zeroes `Rigidbody2D.linearVelocity` and angular velocity;
 4. publishes one neutral `PlayablePlayerDefeatedFactV1` event for integration to disable
    the Task A weapon bridge;
-5. verifies that selected character ID, class ID, route payload, exact holdings authority,
-   and exact loadout authority are unchanged;
-6. requests one Hub return through the existing
-   `ProductionFlowCoordinatorV1.Transitions.TryReturnToHub(...)` boundary.
+5. begins the retryable Hub-return path.
 
-Repeated lethal facts or exact lethal command replays cannot request another transition.
-The flow receives the existing route payload, so failure does not replace or mutate the
-selected character's persistent authorities.
+`ProductionPlayablePlayerHubReturnRequestV1` resolves the current production graph and
+profile on every attempt, then uses `PlayablePlayerHubReturnAuthorityGuardV1` to verify:
+
+- selected character identity;
+- class identity;
+- graph route payload;
+- profile route payload;
+- exact holdings authority reference;
+- exact loadout authority reference.
+
+The guard is read-only. It cannot mutate character, holdings, loadout, money, or
+progression state.
+
+The retry coordinator obeys these rules:
+
+- a rejected context lookup, authority guard, or transition request does **not** set the
+  accepted latch;
+- the first return attempt happens immediately after defeat;
+- while defeated and not accepted, the scene-local adapter retries at a throttled
+  deterministic interval;
+- `TryRetryHubReturn()` exposes the same immediate retry boundary for focused validation;
+- only `TryReturnToHub(...) == true` marks the return accepted;
+- after acceptance, Update/retry/replay processing cannot call the transition again;
+- a permanent authority mismatch fails closed with a diagnostic and never reports false
+  success or substitutes another character authority.
+
+This means a transient rejected transition can recover without relying on another damage
+or death fact. Exact lethal replay still cannot duplicate defeat or an accepted Hub
+transition.
+
+## Observer exception policy
+
+Defeat observers are invoked individually:
+
+- ordinary observer exceptions are logged and later observers still run;
+- `OutOfMemoryException`, `StackOverflowException`, and `AccessViolationException` are
+  rethrown rather than converted into observer failures.
+
+This matches the fatal-exception policy used by the surrounding production runtime.
 
 Destroying the gameplay player destroys the run-local authority adapter, HUD projection,
-and defeat subscriptions. Re-entering the level creates a fresh health lifecycle rather
-than a persistent replacement character authority.
+return request binding, and defeat subscriptions. Re-entering the level creates a fresh
+health lifecycle rather than a persistent replacement character authority.
 
 ## Files changed
 
@@ -129,6 +163,12 @@ Focused EditMode coverage asserts:
 - exact holdings and loadout marker references are not replaced;
 - lethal damage disables movement and zeroes velocity;
 - lethal replay raises one defeat event only;
+- first Hub-return attempt may reject and a later retry may accept;
+- repeated processing after acceptance cannot request a second transition;
+- authority mismatch cannot report success, invoke the accepted transition, or mutate
+  holdings/loadout/route references;
+- ordinary defeat-observer failure does not block later observers or Hub return;
+- fatal defeat-observer failure is rethrown;
 - duplicate runtime binding is rejected without replacing the authority.
 
 Suggested Unity command using the repository's Unity `6000.3.19f1` baseline:
@@ -145,11 +185,15 @@ Unity -batchmode -nographics -projectPath . \
 
 Static inspection performed:
 
-- confirmed the task branch started at the required exact SHA;
-- confirmed the retained `PlayerActorAuthority` already owns the required health,
-  replay, conflict, death, and lifecycle semantics;
-- confirmed the selected-character marker retains exact holdings/loadout references;
-- confirmed defeat uses the existing production Hub transition;
+- confirmed the task branch retains the required exact merge base;
+- confirmed the retained `PlayerActorAuthority` still owns health, replay, conflict,
+  death, and lifecycle semantics;
+- confirmed the Hub-return accepted latch is written only after the retained transition
+  returns true;
+- confirmed rejected attempts remain eligible for deterministic retry independently of
+  later damage/death facts;
+- confirmed the authority guard is read-only and exact-reference based;
+- confirmed fatal defeat-observer exceptions are rethrown;
 - confirmed no Task A weapon type or Task B projectile type is referenced;
 - confirmed no scene, gameplay controller, inventory, reward, XP, or room-clear authority
   file is changed.
@@ -161,7 +205,7 @@ This connected environment has no Unity Editor or runnable repository checkout. 
 - Unity script import/compilation was not run;
 - EditMode XML was not produced;
 - PlayMode validation was not run;
-- manual authored-level entry, HUD, hit flash, defeat, Hub return, and persistent
-  character/loadout verification were not performed.
+- manual authored-level entry, HUD, hit flash, rejected-return recovery, defeat, Hub return,
+  and persistent character/loadout verification were not performed.
 
 No passing Unity or manual result is claimed.
