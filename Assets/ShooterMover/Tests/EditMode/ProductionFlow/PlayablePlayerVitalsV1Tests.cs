@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
@@ -58,7 +59,8 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
         [Test]
         public void LethalDamageDisablesMovementZerosVelocityAndRaisesDefeatOnce()
         {
-            Fixture fixture = Fixture.Create();
+            var returnRequest = new SequencedHubReturnRequest(true);
+            Fixture fixture = Fixture.Create(returnRequest);
             try
             {
                 fixture.Body.linearVelocity = new Vector2(4f, -3f);
@@ -73,11 +75,6 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                 DamageReceiverCommand lethal = fixture.Damage(
                     "lethal-impact",
                     500d);
-                LogAssert.Expect(
-                    LogType.Error,
-                    new Regex(
-                        "^playable-player-vitals-(character-context-missing|"
-                        + "character-authority-changed|hub-return-rejected)$"));
 
                 DamageReceiverResult first = fixture.Vitals.ApplyDamage(lethal);
                 DamageReceiverResult replay = fixture.Vitals.ApplyDamage(lethal);
@@ -98,6 +95,160 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                 Assert.That(fixture.Movement.enabled, Is.False);
                 Assert.That(fixture.Body.linearVelocity, Is.EqualTo(Vector2.zero));
                 Assert.That(fixture.Vitals.CurrentHealth, Is.EqualTo(0d));
+                Assert.That(fixture.Vitals.IsHubReturnAccepted, Is.True);
+                Assert.That(returnRequest.AttemptCount, Is.EqualTo(1));
+            }
+            finally
+            {
+                fixture.Dispose();
+            }
+        }
+
+        [Test]
+        public void RejectedReturnCanRetryAndAcceptedReturnCannotDuplicate()
+        {
+            var returnRequest = new SequencedHubReturnRequest(false, true);
+            Fixture fixture = Fixture.Create(returnRequest);
+            try
+            {
+                LogAssert.Expect(
+                    LogType.Error,
+                    "playable-player-vitals-hub-return-rejected");
+
+                fixture.Vitals.ApplyDamage(
+                    fixture.Damage("retryable-lethal", 500d));
+
+                Assert.That(fixture.Vitals.IsDefeated, Is.True);
+                Assert.That(fixture.Vitals.IsHubReturnAccepted, Is.False);
+                Assert.That(fixture.Vitals.HubReturnAttemptCount, Is.EqualTo(1));
+                Assert.That(returnRequest.AttemptCount, Is.EqualTo(1));
+                Assert.That(
+                    fixture.Vitals.Diagnostic,
+                    Is.EqualTo("playable-player-vitals-hub-return-rejected"));
+
+                Assert.That(fixture.Vitals.TryRetryHubReturn(), Is.True);
+                Assert.That(fixture.Vitals.IsHubReturnAccepted, Is.True);
+                Assert.That(fixture.Vitals.HubReturnAttemptCount, Is.EqualTo(2));
+                Assert.That(returnRequest.AttemptCount, Is.EqualTo(2));
+                Assert.That(fixture.Vitals.Diagnostic, Is.Empty);
+
+                Assert.That(fixture.Vitals.TryRetryHubReturn(), Is.True);
+                Assert.That(fixture.Vitals.TryRetryHubReturn(), Is.True);
+                Assert.That(fixture.Vitals.HubReturnAttemptCount, Is.EqualTo(2));
+                Assert.That(returnRequest.AttemptCount, Is.EqualTo(2));
+            }
+            finally
+            {
+                fixture.Dispose();
+            }
+        }
+
+        [Test]
+        public void AuthorityMismatchCannotReportSuccessOrMutateCharacterReferences()
+        {
+            var returnRequest = new GuardedHubReturnRequest(
+                mismatchHoldingsAuthority: true);
+            Fixture fixture = Fixture.Create(returnRequest);
+            try
+            {
+                object originalHoldings = fixture.Marker.HoldingsAuthority;
+                object originalLoadout = fixture.Marker.LoadoutAuthority;
+                PlayerRouteProfilePayloadV1 originalRoute =
+                    fixture.Marker.RoutePayload;
+
+                LogAssert.Expect(
+                    LogType.Error,
+                    "playable-player-vitals-character-authority-changed");
+
+                fixture.Vitals.ApplyDamage(
+                    fixture.Damage("authority-mismatch-lethal", 500d));
+
+                Assert.That(fixture.Vitals.IsDefeated, Is.True);
+                Assert.That(fixture.Vitals.IsHubReturnAccepted, Is.False);
+                Assert.That(returnRequest.AcceptedTransitionCount, Is.EqualTo(0));
+                Assert.That(
+                    fixture.Vitals.Diagnostic,
+                    Is.EqualTo(
+                        "playable-player-vitals-character-authority-changed"));
+                Assert.That(
+                    fixture.Marker.HoldingsAuthority,
+                    Is.SameAs(originalHoldings));
+                Assert.That(
+                    fixture.Marker.LoadoutAuthority,
+                    Is.SameAs(originalLoadout));
+                Assert.That(fixture.Marker.RoutePayload, Is.SameAs(originalRoute));
+
+                Assert.That(fixture.Vitals.TryRetryHubReturn(), Is.False);
+                Assert.That(returnRequest.AcceptedTransitionCount, Is.EqualTo(0));
+                Assert.That(
+                    fixture.Marker.HoldingsAuthority,
+                    Is.SameAs(originalHoldings));
+                Assert.That(
+                    fixture.Marker.LoadoutAuthority,
+                    Is.SameAs(originalLoadout));
+            }
+            finally
+            {
+                fixture.Dispose();
+            }
+        }
+
+        [Test]
+        public void OrdinaryObserverFailureDoesNotBlockLaterObserversOrHubReturn()
+        {
+            var returnRequest = new SequencedHubReturnRequest(true);
+            Fixture fixture = Fixture.Create(returnRequest);
+            try
+            {
+                int observed = 0;
+                fixture.Vitals.Defeated += fact =>
+                {
+                    throw new InvalidOperationException(
+                        "ordinary-defeat-observer-failure");
+                };
+                fixture.Vitals.Defeated += fact => observed++;
+
+                LogAssert.Expect(
+                    LogType.Exception,
+                    new Regex("ordinary-defeat-observer-failure"));
+
+                fixture.Vitals.ApplyDamage(
+                    fixture.Damage("ordinary-observer-lethal", 500d));
+
+                Assert.That(observed, Is.EqualTo(1));
+                Assert.That(fixture.Vitals.IsHubReturnAccepted, Is.True);
+                Assert.That(returnRequest.AttemptCount, Is.EqualTo(1));
+            }
+            finally
+            {
+                fixture.Dispose();
+            }
+        }
+
+        [Test]
+        public void FatalObserverExceptionIsRethrown()
+        {
+            var returnRequest = new SequencedHubReturnRequest(true);
+            Fixture fixture = Fixture.Create(returnRequest);
+            try
+            {
+                fixture.Vitals.Defeated += fact =>
+                {
+                    throw new OutOfMemoryException(
+                        "fatal-defeat-observer-failure");
+                };
+
+                Assert.Throws<OutOfMemoryException>(() =>
+                {
+                    fixture.Vitals.ApplyDamage(
+                        fixture.Damage("fatal-observer-lethal", 500d));
+                });
+
+                Assert.That(fixture.Vitals.IsDefeated, Is.True);
+                Assert.That(fixture.Movement.enabled, Is.False);
+                Assert.That(fixture.Body.linearVelocity, Is.EqualTo(Vector2.zero));
+                Assert.That(fixture.Vitals.IsHubReturnAccepted, Is.False);
+                Assert.That(returnRequest.AttemptCount, Is.EqualTo(0));
             }
             finally
             {
@@ -128,6 +279,75 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
             finally
             {
                 fixture.Dispose();
+            }
+        }
+
+        private sealed class SequencedHubReturnRequest :
+            IPlayablePlayerHubReturnRequestV1
+        {
+            private readonly Queue<bool> results;
+
+            public SequencedHubReturnRequest(params bool[] configuredResults)
+            {
+                results = new Queue<bool>(
+                    configuredResults == null || configuredResults.Length == 0
+                        ? new[] { false }
+                        : configuredResults);
+            }
+
+            public int AttemptCount { get; private set; }
+
+            public bool TryReturnToHub(
+                PlayablePlayerMarker2D player,
+                out string rejectionCode)
+            {
+                AttemptCount++;
+                bool accepted = results.Count > 0 && results.Dequeue();
+                rejectionCode = accepted
+                    ? string.Empty
+                    : "playable-player-vitals-hub-return-rejected";
+                return accepted;
+            }
+        }
+
+        private sealed class GuardedHubReturnRequest :
+            IPlayablePlayerHubReturnRequestV1
+        {
+            private readonly bool mismatchHoldingsAuthority;
+
+            public GuardedHubReturnRequest(bool mismatchHoldingsAuthority)
+            {
+                this.mismatchHoldingsAuthority = mismatchHoldingsAuthority;
+            }
+
+            public int AttemptCount { get; private set; }
+            public int AcceptedTransitionCount { get; private set; }
+
+            public bool TryReturnToHub(
+                PlayablePlayerMarker2D player,
+                out string rejectionCode)
+            {
+                AttemptCount++;
+                object expectedHoldings = mismatchHoldingsAuthority
+                    ? new object()
+                    : player.HoldingsAuthority;
+                bool valid =
+                    PlayablePlayerHubReturnAuthorityGuardV1.TryValidate(
+                        player,
+                        player.CharacterInstanceStableId,
+                        player.ClassDefinitionStableId,
+                        player.RoutePayload,
+                        player.RoutePayload,
+                        expectedHoldings,
+                        player.LoadoutAuthority,
+                        out rejectionCode);
+                if (!valid)
+                {
+                    return false;
+                }
+
+                AcceptedTransitionCount++;
+                return true;
             }
         }
 
@@ -162,7 +382,8 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
             public object HoldingsAuthority { get; }
             public object LoadoutAuthority { get; }
 
-            public static Fixture Create()
+            public static Fixture Create(
+                IPlayablePlayerHubReturnRequestV1 hubReturnRequest = null)
             {
                 var player = new GameObject("Player Vitals Test Player");
                 Rigidbody2D body = player.AddComponent<Rigidbody2D>();
@@ -191,7 +412,12 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                 movement.Bind(body, 6f);
                 PlayablePlayerVitals2D vitals = player.AddComponent<
                     PlayablePlayerVitals2D>();
-                vitals.Bind(marker, body, movement);
+                vitals.Bind(
+                    marker,
+                    body,
+                    movement,
+                    hubReturnRequest
+                    ?? new SequencedHubReturnRequest(true));
 
                 return new Fixture(
                     player,
