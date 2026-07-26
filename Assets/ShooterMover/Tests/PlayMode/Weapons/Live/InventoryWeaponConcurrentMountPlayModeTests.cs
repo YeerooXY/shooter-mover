@@ -18,11 +18,11 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             EquipmentInstance[] equipment =
             {
                 Equipment(
-                    "equipment-instance.concurrent-blaster",
-                    "equipment-definition.blaster"),
+                    "equipment-instance.concurrent-rattler",
+                    "equipment-definition.rattler"),
                 Equipment(
-                    "equipment-instance.concurrent-rocket",
-                    "equipment-definition.rocket"),
+                    "equipment-instance.concurrent-crownfall",
+                    "equipment-definition.crownfall"),
             };
             var emitterObject = new GameObject(
                 "InventoryWeaponConcurrentMounts_Test");
