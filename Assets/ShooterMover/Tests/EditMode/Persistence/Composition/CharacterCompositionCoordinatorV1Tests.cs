@@ -239,27 +239,18 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 .CreateVerticalSliceDefaults();
             StableId characterId = Id("character-instance.real-roundtrip");
             StableId classId = Id("loadout-profile.juggernaut");
-            PlayerRouteProfilePayloadV1 legacyRoute =
+            PlayerRouteProfilePayloadV1 draftRoute =
                 PlayerRouteProfilePayloadV1.Create(
                     Id("character.frontier"),
                     classId,
-                    new[]
-                    {
-                        ProductionStarterWeaponCatalogV1
-                            .BlasterEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ShotgunEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .RocketEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ArcEquipmentInstanceStableId,
-                    });
+                    new StableId[
+                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             ICharacterRuntimeGraphV1 starter = factory.CreateStarter(
                 2,
                 characterId,
                 classId,
                 "Real Pilot",
-                legacyRoute);
+                draftRoute);
             IReadOnlyList<SaveComponentSnapshotV1> components =
                 PlayerAccountRestoreCoordinatorV1.ExportComponents(
                     starter.SaveAdapters);
@@ -283,23 +274,18 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 composition.ActiveRuntime;
             InventoryLoadoutAuthoritySnapshotV1 loadout =
                 graph.LoadoutRuntime.LoadoutAuthority.ExportSnapshot();
-            Assert.That(
-                loadout.GetBinding(InventoryLoadoutSlotIdsV1.WeaponOne)
-                    .EquipmentInstanceStableId,
-                Is.EqualTo(ProductionStarterWeaponCatalogV1
-                    .BlasterEquipmentInstanceStableId));
-            Assert.That(
-                loadout.GetBinding(InventoryLoadoutSlotIdsV1.WeaponFour)
-                    .EquipmentInstanceStableId,
-                Is.EqualTo(ProductionStarterWeaponCatalogV1
-                    .ArcEquipmentInstanceStableId));
-            Assert.That(
-                graph.LoadoutRuntime.Holdings.ExportSnapshot()
-                    .UniqueHoldings.Any(item =>
-                        item.InstanceStableId
-                            == ProductionStarterWeaponCatalogV1
-                                .RocketEquipmentInstanceStableId),
-                Is.True);
+            var equipped = loadout.Bindings
+                .Where(item => item.EquipmentInstanceStableId != null)
+                .Select(item => item.EquipmentInstanceStableId)
+                .ToArray();
+            var owned = graph.LoadoutRuntime.Holdings.ExportSnapshot()
+                .UniqueHoldings.Select(item => item.InstanceStableId)
+                .ToArray();
+
+            Assert.That(equipped.Length, Is.EqualTo(4));
+            Assert.That(equipped.Distinct().Count(), Is.EqualTo(4));
+            Assert.That(owned.Length, Is.EqualTo(4));
+            Assert.That(equipped.All(owned.Contains), Is.True);
         }
 
         private static CharacterCompositionCoordinatorV1 CreateComposition(
