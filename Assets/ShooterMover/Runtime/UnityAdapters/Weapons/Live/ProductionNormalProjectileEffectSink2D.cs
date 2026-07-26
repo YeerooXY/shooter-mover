@@ -111,7 +111,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 ProductionNormalProjectile2D projectile =
                     projectileObject.AddComponent<
                         ProductionNormalProjectile2D>();
-                if (!projectile.TryConfigure(effect, runtimeSprite))
+                if (!projectile.TryConfigure(effect, runtimeSprite, transform))
                 {
                     throw new InvalidOperationException(
                         "player-weapon-projectile-configuration-rejected");
@@ -215,6 +215,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 || effect.Profile.Damage.HasDamageOverTime
                 || effect.Profile.Effects == null
                 || effect.Profile.Effects.Explosion != null
+                || effect.Profile.Effects.DamageOverTime != null
                 || effect.Profile.Effects.ChainArc != null)
             {
                 rejectionCode =
@@ -290,6 +291,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             new HashSet<string>(StringComparer.Ordinal);
 
         private CanonicalProjectileLaunchEffect effect;
+        private Transform sourceOwner;
         private ProjectileLifecycleState state;
         private Rigidbody2D body;
         private CircleCollider2D trigger;
@@ -304,17 +306,20 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public bool TryConfigure(
             CanonicalProjectileLaunchEffect configuredEffect,
-            Sprite projectileSprite)
+            Sprite projectileSprite,
+            Transform configuredSourceOwner)
         {
             if (configured
                 || configuredEffect == null
                 || configuredEffect.InitialState == null
-                || projectileSprite == null)
+                || projectileSprite == null
+                || configuredSourceOwner == null)
             {
                 return false;
             }
 
             effect = configuredEffect;
+            sourceOwner = configuredSourceOwner;
             state = configuredEffect.InitialState;
             Vector2 position = ToUnity(state.Position);
             Vector2 direction = ToUnity(state.Direction);
@@ -452,6 +457,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 || effect == null
                 || state == null
                 || !state.IsActive)
+            {
+                return;
+            }
+
+            if (IsSourceCollider(other))
             {
                 return;
             }
@@ -633,7 +643,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     ProjectileContact.Wall(
                         StableId.Create(
                             "player-projectile-wall",
-                            ColliderIdentity(other)),
+                            Hash64(ColliderIdentity(other))),
                         CurrentPosition());
                 ProjectileImpactDecision pending =
                     impactResolver.Resolve(state, contact);
@@ -852,6 +862,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private static Vector2 ToUnity(WeaponVector2 value)
         {
             return new Vector2((float)value.X, (float)value.Y);
+        }
+
+        private bool IsSourceCollider(Collider2D other)
+        {
+            if (sourceOwner == null || other == null) return false;
+            Transform colliderTransform = other.transform;
+            return colliderTransform == sourceOwner
+                || colliderTransform.IsChildOf(sourceOwner);
         }
 
         private static string TargetKey(
