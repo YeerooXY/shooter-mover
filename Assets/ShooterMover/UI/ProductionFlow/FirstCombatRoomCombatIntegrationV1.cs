@@ -40,8 +40,9 @@ namespace ShooterMover.UI.ProductionFlow
     /// <summary>
     /// Lifecycle-local shutdown seam for the production player weapon. Disabling the controller
     /// clears held input synchronously through OnDisable; destroying it invokes its existing
-    /// runtime disposal path. Existing player-owned projectiles are deactivated before their
-    /// deferred destruction so defeat cannot produce another collision or emission.
+    /// runtime disposal path. Each player projectile owns its defeat disposition: an uncommitted
+    /// flying shot terminates, while a committed enemy impact retains its exact command and
+    /// occurred-at timestamp until the canonical retry reaches a terminal result.
     /// </summary>
     public static class ProductionPlayablePlayerWeaponDefeatShutdownV1
     {
@@ -90,8 +91,7 @@ namespace ShooterMover.UI.ProductionFlow
                     }
 
                     stopped++;
-                    projectile.gameObject.SetActive(false);
-                    DestroyLifecycleLocal(projectile.gameObject);
+                    projectile.DisableForOwnerDefeat();
                 }
             }
 
