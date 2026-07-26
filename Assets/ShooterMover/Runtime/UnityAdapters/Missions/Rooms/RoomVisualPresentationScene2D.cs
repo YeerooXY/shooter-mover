@@ -102,29 +102,41 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         private void EnsureLayerRoots(Transform presentationRoot)
         {
-            if (generatedRoot != null && configuredParent == presentationRoot)
+            if (generatedRoot != null
+                && backgroundRoot != null
+                && tileRoot != null
+                && foregroundRoot != null
+                && configuredParent == presentationRoot)
             {
                 return;
             }
 
             DestroyOwnedPresentation();
             configuredParent = presentationRoot;
-            generatedRoot = CreateRoot(GeneratedRootName, presentationRoot, null, 0);
-            backgroundRoot = CreateRoot(
-                "Background",
-                generatedRoot,
-                typeof(SortingGroup),
-                BackgroundSortingOrder);
-            tileRoot = CreateRoot(
-                "Tiles",
-                generatedRoot,
-                typeof(SortingGroup),
-                TileSortingOrder);
-            foregroundRoot = CreateRoot(
-                "Foreground",
-                generatedRoot,
-                typeof(SortingGroup),
-                ForegroundSortingOrder);
+            try
+            {
+                generatedRoot = CreateRoot(GeneratedRootName, presentationRoot, null, 0);
+                backgroundRoot = CreateRoot(
+                    "Background",
+                    generatedRoot,
+                    typeof(SortingGroup),
+                    BackgroundSortingOrder);
+                tileRoot = CreateRoot(
+                    "Tiles",
+                    generatedRoot,
+                    typeof(SortingGroup),
+                    TileSortingOrder);
+                foregroundRoot = CreateRoot(
+                    "Foreground",
+                    generatedRoot,
+                    typeof(SortingGroup),
+                    ForegroundSortingOrder);
+            }
+            catch
+            {
+                DestroyOwnedPresentation();
+                throw;
+            }
         }
 
         private void SpawnVisual(
@@ -140,6 +152,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             Transform layerRoot = GetLayerRoot(visual.Layer);
             GameObject instance = UnityEngine.Object.Instantiate(prefab, layerRoot);
+            spawnedVisuals.Add(instance);
             instance.name = visual.InstanceStableId.ToString();
             instance.transform.localPosition = new Vector3(
                 (float)visual.LocalPosition.X,
@@ -150,7 +163,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 0f,
                 (float)visual.LocalRotationDegrees);
             instance.SetActive(true);
-            spawnedVisuals.Add(instance);
         }
 
         private Transform GetLayerRoot(RoomContentVisualLayerV1 layer)
