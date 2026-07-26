@@ -1,230 +1,134 @@
-# WEAPON-CATALOGUE-001 — provisional anchored system-test catalogue
+# WEAPON-CATALOGUE-001 — provisional authored catalogue
 
 ## Status
 
-Implemented on branch:
+The production weapon source is:
 
-`agent/weapon-catalogue-001-dummy-strongbox-catalogue`
+```text
+ProductionWeaponCatalogueV1
+    -> WeaponCatalog
+    -> EquipmentCatalog
+```
 
-Launch `main` SHA:
+`ProductionWeaponCatalogProvider` is a short access point for those two projections. It owns no content and does not seed inventory.
 
-`4fd7392666e4dd66499f36ab59cdc1e835373262`
+The deleted starter catalogue is not retained as an alias, fallback, hidden catalogue, or compatibility authority.
 
-This implementation creates the smallest production catalogue needed to exercise permanent
-family rarity, MK1-MK3 progression, drop anchors, craft unlock metadata, equipment projection,
-production strongbox participation, authoritative simulator input, and representative canonical
-weapon systems.
+## Authored content
 
-It does not approve final combat balance or final family identities.
+The provisional catalogue contains six families with MK1, MK2, and MK3 definitions: eighteen weapons in total.
 
-## Single authority
+| Family | Permanent rarity | Damage channel | System-test identity |
+|---|---|---|---|
+| Rattler | Common | Physical | automatic, semi-auto, then three-shot burst |
+| Ironwake | Common | Physical | simultaneous shotgun spread |
+| Voltspike | Rare | Energy | seeking projectile |
+| Prismata | Epic | Chemical | orb delivery |
+| Crownfall | Legendary | Thermal | contact rocket and area damage |
+| Nullstar | Artifact | Chemical | direct hit plus stacking damage over time |
 
-`ProductionWeaponCatalogueV1` is the only authored source for this provisional dataset.
+The non-Rattler family names and combat values remain provisional.
 
 Each Mark is authored once as:
 
 ```text
 ProductionWeaponFamilyV1
     -> ProductionWeaponMarkV1
-    -> canonical WeaponBlueprint
+    -> WeaponBlueprint
 ```
 
-The catalogue then derives:
+The blueprint owns fire mode, shot pattern, damage channel, delivery, guidance, impact, and effects. The flat `WeaponCatalog` and `EquipmentCatalog` are derived views used by current inventory, strongbox, simulator, presentation, and firing boundaries.
 
-```text
-canonical WeaponBlueprints
-    -> flat WeaponCatalog compatibility projection
-    -> EquipmentCatalog compatibility projection
-```
+## Equipment projection
 
-The canonical blueprint owns fire mode, shot pattern, damage channel, delivery, guidance,
-impact, and effects. The flat catalogue is retained because the current production strongbox
-resolver, inventory cards, shop, and simulator consume `WeaponCatalog` plus `EquipmentCatalog`.
-It is not a second authored combat definition.
-
-`ProductionStarterWeaponCatalogV1` no longer owns weapon content. It delegates to
-`ProductionWeaponCatalogueV1`. Its starter-grant lists remain empty, because catalogue
-membership must not fabricate an owned copy of every weapon.
-
-The unregistered `CanonicalWeaponDefinitionSamples` content was deleted rather than left
-beside the production catalogue.
-
-## Catalogue matrix
-
-| Family | Permanent rarity | Damage channel | System-test identity | MK1 drop / craft | MK2 drop / craft | MK3 drop / craft |
-|---|---|---|---|---:|---:|---:|
-| Rattler | Common | Physical | normal projectile; automatic, semi-auto, then three-shot burst | 1 / 1 | 25 / 25 | 50 / 50 |
-| Ironwake | Common | Physical | semi-auto shotgun spread; 6, 8, then 10 pellets | 60 / 60 | 80 / 80 | 100 / 100 |
-| Voltspike | Rare | Energy | seeking normal projectile; semi-auto, automatic, then burst | 58 / 58 | 79 / 79 | 100 / 100 |
-| Prismata | Epic | Chemical | slow orb delivery; semi-auto, automatic, then burst | 64 / 64 | 84 / 84 | 99 / 99 |
-| Crownfall | Legendary | Thermal | semi-auto contact rocket with increasing explosion radius | 68 / 68 | 88 / 88 | 103 / 100 |
-| Nullstar | Artifact | Chemical | direct hit plus stacking, refreshing damage over time; semi-auto, automatic, then burst | 70 / 70 | 90 / 90 | 110 / 100 |
-
-The non-Rattler names are provisional content names.
-
-Every family contains exactly MK1, MK2, and MK3. Family rarity is supplied once and the
-family constructor rejects a Mark whose canonical drop metadata carries another rarity.
-The flat compatibility projection also rejects a family whose Marks disagree on damage channel.
-
-## Behaviour coverage
-
-Together the eighteen definitions explicitly cover the requested integration cases:
-
-- normal travelling projectile;
-- rocket delivery;
-- orb delivery;
-- semi-automatic fire;
-- automatic fire;
-- sequential burst fire;
-- simultaneous shotgun spread;
-- homing/seeking guidance;
-- contact-triggered explosion;
-- damage over time with tick rate, stack limit, and duration refresh.
-
-The damage model coverage is:
-
-- **Physical direct damage** — Rattler;
-- **Physical multi-projectile direct damage and knockback** — Ironwake;
-- **Energy guided direct damage** — Voltspike;
-- **Chemical orb direct damage** — Prismata;
-- **Thermal direct and area damage** — Crownfall;
-- **Chemical direct damage plus DoT** — Nullstar.
-
-## Provisional combat normalization
-
-Rattler MK1 preserves the confirmed starter identity:
-
-- Physical automatic projectile weapon;
-- rate of fire: `4`;
-- direct damage: `1`;
-- Pierce: `1`;
-- spread: `0`.
-
-The other profiles are intentionally provisional. Their direct-hit values are arranged around
-a simple baseline of roughly `4` direct DPS before explosion or DoT contribution:
-
-```text
-direct damage
-    × firing cycles per second
-    × simultaneous projectiles per shot
-    × sequential shots per burst
-```
-
-This is not final balance. It exists so delivery, fire-mode, guidance, spread, and damage-channel
-behaviour can be compared without every test being dominated by a wildly different direct-hit
-baseline.
-
-Crownfall's area damage and Nullstar's damage over time add output beyond that direct baseline.
-Those effects are deliberately visible for integration testing and are not balance claims.
-
-## Strongbox and equipment projection
-
-Each Mark creates one exact equipment definition:
+Each Mark produces one equipment definition:
 
 ```text
 <family>.mkN
     -> equipment.weapon-<family>-mkN
 ```
 
-The equipment record points back to the exact weapon definition. Each equipment definition
-contains only its family rarity quality, preventing the strongbox quality step from rewriting
-the selected weapon's permanent rarity.
+The equipment definition points back to the exact weapon definition. Catalogue membership never grants ownership.
 
-All definitions are live catalogue candidates with:
+Every projected definition is validated for:
 
-- base selection weight `1`;
-- explicit minimum strongbox tier `1`;
-- no `top_box_only` restriction;
-- drop anchor projected as the legacy `PeakDropLevel`;
-- craft unlock projected into the retained crafting-route metadata.
+- unique weapon and equipment identity;
+- family rarity consistency;
+- damage-channel consistency;
+- valid fire, burst, spread, delivery, guidance, explosion, and damage-over-time structure;
+- a matching flat weapon projection;
+- a matching equipment projection whose runtime reference points to the same weapon.
 
-The flat catalogue now carries each family's real damage-channel label and basic cadence,
-projectile-count, spread, projectile-speed, range, and knockback projection. Typed guidance,
-explosion, and DoT policy remain authoritative on the canonical `WeaponBlueprint`; the old flat
-schema is not promoted into a second mechanics authority.
+## Character onboarding
 
-Final rarity odds, tier gates, anchor-distance weighting, above-cap roll probability,
-duplicate protection, and augment balance remain separate follow-up work.
+New characters enter through `ProductionWeaponOnboardingV1`.
 
-## Production wiring
+The policy:
 
-The existing production loadout runtime already obtains both catalogues through:
+1. resolves the selected character's mount layout;
+2. selects the authored Rattler MK1 starter definition;
+3. creates one fresh exact `EquipmentInstance` per required mount;
+4. grants each instance to the character holdings authority;
+5. binds those exact owned IDs to the required slots;
+6. validates the complete holdings/loadout state before it is published;
+7. relies on the character save transaction to persist holdings and loadout together.
 
-```text
-ProductionStarterWeaponCatalogV1.BuildWeaponCatalog()
-ProductionStarterWeaponCatalogV1.BuildEquipmentCatalog()
-```
+Supported layouts grant exactly:
 
-Those methods now return the single `ProductionWeaponCatalogueV1` projection.
+| Profile | Required mounts | Starter instances |
+|---|---:|---:|
+| Striker | 2 | 2 |
+| Combat Medic | 3 | 3 |
+| Juggernaut | 4 | 4 |
 
-Consequently the selected-character strongbox composition and production-backed simulator
-receive the same eighteen weapon/equipment definitions without a second catalogue loader.
+Generated instance IDs are character-local and distinct. Route payloads may carry unbound navigation positions, but they never manufacture ownership.
 
-The legacy properties named `InitialEquipmentDefinitionStableIds` and
-`AllEquipmentDefinitionStableIds` remain empty. They are starter-grant inputs, not catalogue
-enumeration APIs. `CatalogueEquipmentDefinitionStableIds` exposes the actual catalogue
-membership without causing inventory seeding.
+## Retired save data
 
-## Fail-closed validation
+The pre-authored weapon set is deleted game content. It is not registered in either production catalogue and is not translated into a current weapon.
 
-Static catalogue construction rejects:
+`RetiredWeaponSaveMigrationV1` is the isolated decode-and-delete boundary for old save IDs. For each affected character it:
 
-- a family without exactly MK1, MK2, and MK3;
-- duplicate definition or equipment identities;
-- per-Mark rarity disagreement;
-- per-Mark damage-channel disagreement inside a family;
-- a drop anchor that differs from canonical drop metadata;
-- invalid canonical fire-mode, burst, spread, guidance, delivery, rocket, explosion, or DoT structure;
-- an invalid legacy flat-catalogue projection;
-- a non-travelling definition that cannot be represented by the current flat projection;
-- an invalid equipment catalogue;
-- a canonical definition missing from the flat strongbox projection;
-- a canonical definition missing its exact equipment projection;
-- an equipment runtime reference that does not point back to the same definition.
+- removes retired equipment holdings;
+- clears bindings that no longer point to owned current equipment;
+- removes generated-augment signatures tied to deleted instances;
+- preserves valid current equipment, strongboxes, stacks, XP, currencies, scrap, skills, and unrelated components;
+- runs normal onboarding for required empty mounts;
+- creates fresh exact starter instances;
+- returns a complete migrated account for atomic save before runtime restore.
 
-## Manual inspection matrix
+Running the migration against an already migrated account produces no changes and grants no additional items.
 
-| Inspection target | Suggested definition |
+## Connected systems
+
+The selected-character graph restores holdings before validating exact loadout bindings. Level runtime adopts the same character authorities instead of rebuilding inventory.
+
+The authored catalogue remains connected to:
+
+- inventory/loadout presentation;
+- strongbox equipment generation;
+- durable mission rewards;
+- simulator input;
+- exact equipped-instance resolution;
+- live firing.
+
+Shop, crafting, armour, augments, selling, and general inventory tabs remain outside this cleanup.
+
+## Inspection matrix
+
+| Inspection target | Definition |
 |---|---|
-| confirmed normal automatic starter | Rattler MK1 |
-| semi-automatic trigger behaviour | Rattler MK2 |
-| sequential three-shot burst | Rattler MK3 |
-| simultaneous shotgun spread | Ironwake MK1-MK3 |
+| confirmed starter | Rattler MK1 |
+| semi-automatic trigger | Rattler MK2 |
+| sequential burst | Rattler MK3 |
+| simultaneous spread | Ironwake MK1-MK3 |
 | seeking guidance | Voltspike MK1-MK3 |
-| orb projectile delivery | Prismata MK1-MK3 |
-| contact explosion and thermal area damage | Crownfall MK1-MK3 |
-| chemical DoT stacking and refresh | Nullstar MK1-MK3 |
+| orb delivery | Prismata MK1-MK3 |
+| contact explosion | Crownfall MK1-MK3 |
+| damage-over-time stacking | Nullstar MK1-MK3 |
 
-The authored anchor set still provides these strongbox inspection points:
+## Validation
 
-| Effective loot level | Entries centered at or near the inspection level |
-|---:|---|
-| 50 | Rattler MK3 and earlier Rattler Marks |
-| 70 | Nullstar MK1; Crownfall MK1; late-family MK1 entries |
-| 90 | Nullstar MK2; Crownfall MK2; late-family MK2 entries |
-| 100 | Ironwake MK3, Voltspike MK3, Prismata MK3 |
-| 103 | Crownfall MK3 |
-| 110 | Nullstar MK3 |
+Automated coverage now targets catalogue projection, 2/3/4-mount onboarding, exact identity, character separation, save migration, idempotence, restore, inventory opening, switching, strongbox grants, and live equipped-weapon resolution.
 
-The current strongbox policy uses soft weighting rather than hard anchor eligibility, so
-"near" means favoured by the existing production policy, not guaranteed or exclusively
-available.
-
-## Validation performed
-
-- inspected the canonical fire, shot-pattern, delivery, guidance, explosion, DoT, and damage-channel contracts;
-- matched each authored profile to the merged `WeaponBlueprint` validator requirements;
-- preserved Rattler MK1's confirmed starter values;
-- projected all four supported damage channels into the retained flat catalogue;
-- included sequential burst count in the flat derived direct-DPS invariant;
-- traced production loadout construction to the delegated weapon and equipment catalogues;
-- kept catalogue membership separate from starter inventory seeding;
-- kept the branch limited to runtime catalogue/flow code and architecture documentation.
-
-## Validation not performed
-
-- no automated tests were added or run under the current prototype policy;
-- Unity compilation was not available and is not claimed;
-- no PlayMode, scene, strongbox opening, simulator batch, or in-game firing run was performed;
-- the missing canonical-to-Unity execution bridge remains outside this catalogue task;
-- placeholder presentation references intentionally fall back until exact art is registered.
+Unity compile, EditMode, PlayMode, and runtime execution results must be reported from the actual validation run; this document does not claim them by itself.
