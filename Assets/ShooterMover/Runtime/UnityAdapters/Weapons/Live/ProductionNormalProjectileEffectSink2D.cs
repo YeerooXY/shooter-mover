@@ -279,6 +279,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         }
     }
 
+    public enum ProductionNormalProjectileOwnerDefeatDispositionV1
+    {
+        AlreadyCompleted = 1,
+        UncommittedProjectileTerminated = 2,
+        PendingEnemyImpactRetryRetained = 3,
+    }
+
     [DisallowMultipleComponent]
     public sealed class ProductionNormalProjectile2D : MonoBehaviour
     {
@@ -302,7 +309,53 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private bool launched;
         private bool completed;
         private bool impactCommitted;
+        private bool ownerDefeatShutdownRequested;
         private string lastImpactDiagnostic = string.Empty;
+
+        public bool HasPendingEnemyImpactRetry
+        {
+            get
+            {
+                return impactCommitted
+                    && pendingImpactEnemy != null
+                    && pendingDamageCommand != null;
+            }
+        }
+
+        public bool IsOwnerDefeatShutdownRequested
+        {
+            get { return ownerDefeatShutdownRequested; }
+        }
+
+        public ProductionNormalProjectileOwnerDefeatDispositionV1
+            DisableForOwnerDefeat()
+        {
+            if (completed)
+            {
+                return ProductionNormalProjectileOwnerDefeatDispositionV1
+                    .AlreadyCompleted;
+            }
+
+            ownerDefeatShutdownRequested = true;
+            if (HasPendingEnemyImpactRetry)
+            {
+                StopPhysicalTravelForImpact();
+                if (state != null && state.IsActive)
+                {
+                    // The exact command and occurred-at timestamp remain untouched. Only the
+                    // projectile's future travel lifecycle is closed so a successful retry can
+                    // never resume a surviving-pierce projectile after its owner is defeated.
+                    state = state.Terminate(
+                        ProjectileTerminationReason.EnemyImpact);
+                }
+                return ProductionNormalProjectileOwnerDefeatDispositionV1
+                    .PendingEnemyImpactRetryRetained;
+            }
+
+            Complete();
+            return ProductionNormalProjectileOwnerDefeatDispositionV1
+                .UncommittedProjectileTerminated;
+        }
 
         public bool TryConfigure(
             CanonicalProjectileLaunchEffect configuredEffect,
