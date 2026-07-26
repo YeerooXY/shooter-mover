@@ -57,6 +57,137 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
         }
 
         [Test]
+        public void ReenteredLevelUsesNewActorIdentityAndRejectsOldDamageCommand()
+        {
+            DamageReceiverCommand oldCommand;
+            StableId oldActorStableId;
+            Fixture firstEntry = Fixture.Create();
+            try
+            {
+                oldCommand = firstEntry.Damage("previous-entry-impact", 25d);
+                oldActorStableId = firstEntry.Vitals.Identity.EntityInstanceId;
+                DamageReceiverResult applied =
+                    firstEntry.Vitals.ApplyDamage(oldCommand);
+
+                Assert.That(
+                    applied.Status,
+                    Is.EqualTo(DamageReceiverStatus.Applied));
+                Assert.That(firstEntry.Vitals.CurrentHealth, Is.EqualTo(75d));
+            }
+            finally
+            {
+                firstEntry.Dispose();
+            }
+
+            Fixture secondEntry = Fixture.Create();
+            try
+            {
+                Assert.That(
+                    secondEntry.CharacterStableId,
+                    Is.EqualTo(oldCommand.CommandTargetCharacterForTest(
+                        secondEntry.CharacterStableId)));
+                Assert.That(
+                    secondEntry.Vitals.Identity.EntityInstanceId,
+                    Is.Not.EqualTo(oldActorStableId));
+
+                DamageReceiverResult replayedOldCommand =
+                    secondEntry.Vitals.ApplyDamage(oldCommand);
+
+                Assert.That(
+                    replayedOldCommand.Status,
+                    Is.EqualTo(DamageReceiverStatus.RejectedInvalid));
+                Assert.That(
+                    replayedOldCommand.RejectionCode,
+                    Is.EqualTo(DamageReceiverRejectionCode.TargetMismatch));
+                Assert.That(
+                    secondEntry.Vitals.CurrentHealth,
+                    Is.EqualTo(PlayablePlayerVitals2D.ProvisionalMaximumHealth));
+                Assert.That(
+                    secondEntry.Vitals.ExportSnapshot().AcceptedSequence,
+                    Is.EqualTo(0L));
+            }
+            finally
+            {
+                secondEntry.Dispose();
+            }
+        }
+
+        [Test]
+        public void CharacterContactMappingUsesCurrentActorAndLifecycleIdentity()
+        {
+            Fixture fixture = Fixture.Create();
+            try
+            {
+                StableId eventStableId = StableId.Parse(
+                    "event.enemy-projectile-contact-test");
+                StableId sourceActorStableId = StableId.Parse(
+                    "actor.enemy-projectile-source-test");
+                StableId sourceParticipantStableId = StableId.Parse(
+                    "participant.enemy-projectile-source-test");
+
+                DamageReceiverCommand command;
+                string rejectionCode;
+                bool created =
+                    PlayablePlayerDamageCommandFactoryV1
+                        .TryCreateForCharacterContact(
+                            fixture.Vitals,
+                            fixture.CharacterStableId,
+                            eventStableId,
+                            sourceActorStableId,
+                            sourceParticipantStableId,
+                            3d,
+                            CombatChannel.Kinetic,
+                            out command,
+                            out rejectionCode);
+
+                Assert.That(created, Is.True);
+                Assert.That(rejectionCode, Is.Empty);
+                Assert.That(command, Is.Not.Null);
+                Assert.That(command.EventId, Is.EqualTo(eventStableId));
+                Assert.That(
+                    command.SourceActorId,
+                    Is.EqualTo(sourceActorStableId));
+                Assert.That(
+                    command.SourceRunParticipantId,
+                    Is.EqualTo(sourceParticipantStableId));
+                Assert.That(
+                    command.TargetActorId,
+                    Is.EqualTo(fixture.Vitals.Identity.EntityInstanceId));
+                Assert.That(
+                    command.TargetActorId,
+                    Is.Not.EqualTo(fixture.CharacterStableId));
+                Assert.That(
+                    command.LifecycleGeneration,
+                    Is.EqualTo(fixture.Vitals.LifecycleGeneration));
+
+                DamageReceiverCommand mismatched;
+                bool mismatchCreated =
+                    PlayablePlayerDamageCommandFactoryV1
+                        .TryCreateForCharacterContact(
+                            fixture.Vitals,
+                            StableId.Parse("character-instance.someone-else"),
+                            eventStableId,
+                            sourceActorStableId,
+                            sourceParticipantStableId,
+                            3d,
+                            CombatChannel.Kinetic,
+                            out mismatched,
+                            out rejectionCode);
+
+                Assert.That(mismatchCreated, Is.False);
+                Assert.That(mismatched, Is.Null);
+                Assert.That(
+                    rejectionCode,
+                    Is.EqualTo(
+                        "playable-player-damage-character-target-mismatch"));
+            }
+            finally
+            {
+                fixture.Dispose();
+            }
+        }
+
+        [Test]
         public void LethalDamageDisablesMovementZerosVelocityAndRaisesDefeatOnce()
         {
             var returnRequest = new SequencedHubReturnRequest(true);
@@ -449,6 +580,16 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                     UnityEngine.Object.DestroyImmediate(Player);
                 }
             }
+        }
+    }
+
+    internal static class DamageReceiverCommandTestExtensions
+    {
+        public static StableId CommandTargetCharacterForTest(
+            this DamageReceiverCommand command,
+            StableId expectedCharacterStableId)
+        {
+            return expectedCharacterStableId;
         }
     }
 }
