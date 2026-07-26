@@ -1,0 +1,15 @@
+{
+  "room": "room.combat-loop-staging",
+  "completion": "always",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {"door_id": "staging-to-single"},
+      "open_when": "always"
+    },
+    {
+      "match": {"door_id": "hub-exit"},
+      "open_when": "always"
+    }
+  ]
+}
