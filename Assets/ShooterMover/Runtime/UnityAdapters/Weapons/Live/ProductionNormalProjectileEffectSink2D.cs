@@ -14,8 +14,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 {
     /// <summary>
     /// Scene-owned, fail-closed presentation sink for the first combat-room vertical slice.
-    /// It accepts only baked canonical Normal projectile launches and never reconstructs weapon
-    /// cadence, damage, range, speed, or identities.
+    /// It accepts exactly one baked canonical Normal projectile launch and never reconstructs
+    /// weapon cadence, damage, range, speed, or identities.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ProductionNormalProjectileEffectSink2D :
@@ -57,6 +57,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return WeaponEffectBatchSinkResult.Reject(
                     "player-weapon-projectile-batch-invalid");
             }
+            if (batch.CoreBatch.EffectCount != 1
+                || batch.CoreBatch.Effects.Count != 1)
+            {
+                return WeaponEffectBatchSinkResult.Reject(
+                    "player-weapon-projectile-multi-projectile-unsupported");
+            }
 
             string operationKey = OperationKey(batch.Identity);
             AcceptedBatch existing;
@@ -71,6 +77,15 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         "player-weapon-projectile-conflicting-duplicate");
             }
 
+            CanonicalProjectileLaunchEffect effect =
+                batch.CoreBatch.Effects[0]
+                    as CanonicalProjectileLaunchEffect;
+            string rejectionCode;
+            if (!IsSupported(effect, out rejectionCode))
+            {
+                return WeaponEffectBatchSinkResult.Reject(rejectionCode);
+            }
+
             EnsureRuntimeSprite();
             GameObject batchRoot = new GameObject(
                 "PlayerWeaponProjectileBatch_"
@@ -79,54 +94,33 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 batchRoot,
                 gameObject.scene);
             batchRoot.SetActive(false);
-            var staged = new List<ProductionNormalProjectile2D>(
-                batch.CoreBatch.EffectCount);
 
             try
             {
-                for (int index = 0;
-                    index < batch.CoreBatch.Effects.Count;
-                    index++)
+                GameObject projectileObject = new GameObject(
+                    "PlayerWeaponProjectile_"
+                    + effect.Identity.ShotSequence.ToString(
+                        CultureInfo.InvariantCulture)
+                    + "_"
+                    + effect.Identity.ProjectileOrdinal.Value.ToString(
+                        CultureInfo.InvariantCulture));
+                projectileObject.transform.SetParent(
+                    batchRoot.transform,
+                    false);
+                ProductionNormalProjectile2D projectile =
+                    projectileObject.AddComponent<
+                        ProductionNormalProjectile2D>();
+                if (!projectile.TryConfigure(effect, runtimeSprite))
                 {
-                    CanonicalProjectileLaunchEffect effect =
-                        batch.CoreBatch.Effects[index]
-                            as CanonicalProjectileLaunchEffect;
-                    string rejectionCode;
-                    if (!IsSupported(effect, out rejectionCode))
-                    {
-                        Debug.LogError(rejectionCode, this);
-                        throw new InvalidOperationException(rejectionCode);
-                    }
-
-                    GameObject projectileObject = new GameObject(
-                        "PlayerWeaponProjectile_"
-                        + effect.Identity.ShotSequence.ToString(
-                            CultureInfo.InvariantCulture)
-                        + "_"
-                        + effect.Identity.ProjectileOrdinal.Value.ToString(
-                            CultureInfo.InvariantCulture));
-                    projectileObject.transform.SetParent(
-                        batchRoot.transform,
-                        false);
-                    ProductionNormalProjectile2D projectile =
-                        projectileObject.AddComponent<
-                            ProductionNormalProjectile2D>();
-                    if (!projectile.TryConfigure(effect, runtimeSprite))
-                    {
-                        throw new InvalidOperationException(
-                            "player-weapon-projectile-configuration-rejected");
-                    }
-                    staged.Add(projectile);
+                    throw new InvalidOperationException(
+                        "player-weapon-projectile-configuration-rejected");
                 }
 
                 batchRoot.SetActive(true);
-                for (int index = 0; index < staged.Count; index++)
+                if (!projectile.BeginEmission())
                 {
-                    if (!staged[index].BeginEmission())
-                    {
-                        throw new InvalidOperationException(
-                            "player-weapon-projectile-launch-rejected");
-                    }
+                    throw new InvalidOperationException(
+                        "player-weapon-projectile-launch-rejected");
                 }
 
                 accepted.Add(
