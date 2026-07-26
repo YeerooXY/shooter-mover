@@ -190,11 +190,12 @@ Focused EditMode coverage asserts:
 - ordinary observer isolation and fatal observer propagation;
 - duplicate runtime binding rejection.
 
-Focused PlayMode coverage is authored for the real MonoBehaviour `Update()` retry timer:
+Focused PlayMode coverage is authored for:
 
-- first immediate Hub-return attempt rejects;
-- automatic Update retry later accepts;
-- further Update frames after acceptance do not request another transition.
+- the real MonoBehaviour `Update()` timer: first immediate attempt rejects, automatic retry
+  accepts, and later frames cannot transition twice;
+- `PlayablePlayerVitalsInstallerV1.Start()`: an already-spawned player child is discovered,
+  bound once, and retains the same authority/component on later frames.
 
 Suggested Unity commands using the repository's Unity `6000.3.19f1` baseline:
 
@@ -236,8 +237,9 @@ This connected environment has no Unity Editor or runnable repository checkout. 
 
 - Unity asset import and C# compilation were not run;
 - authored EditMode tests were not executed and no XML exists;
-- authored PlayMode automatic-retry test was not executed and no XML exists;
-- the real production scene/controller/player-spawn installer sequence was not exercised;
+- authored PlayMode tests were not executed and no XML exists;
+- the synthetic installer test does not replace loading the real production scene and
+  observing the actual controller-spawned player sequence;
 - the final Task B-contact-to-Task C-command integration test does not exist on this isolated
   task branch and must be implemented on the integration branch;
 - manual authored-level repeated entry, delayed projectile replay, HUD, defeat, rejected
