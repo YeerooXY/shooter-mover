@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.GameplayEntities;
@@ -91,8 +92,7 @@ namespace ShooterMover.UI.ProductionFlow
             if (!scene.IsValid()
                 || !string.Equals(
                     scene.path,
-                    Content.Definitions.Levels.Selection
-                        .ProductionPlayableLevelCatalogV1.PlayableLevelScenePath,
+                    ProductionPlayableLevelCatalogV1.PlayableLevelScenePath,
                     StringComparison.Ordinal))
             {
                 return;
