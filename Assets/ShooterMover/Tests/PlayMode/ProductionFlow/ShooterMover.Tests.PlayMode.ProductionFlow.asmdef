@@ -1,0 +1,22 @@
+{
+  "name": "ShooterMover.Tests.PlayMode.ProductionFlow",
+  "rootNamespace": "ShooterMover.Tests.PlayMode.ProductionFlow",
+  "references": [
+    "ShooterMover.UI.ProductionFlow",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
