@@ -13,8 +13,8 @@ namespace ShooterMover.UnityAdapters.Enemies
         IEnemyAttackEffectPortV1,
         IEnemyAttackPatternEffectPortV1
     {
-        private readonly Dictionary<StableId, EnemyAttack2D> attacks =
-            new Dictionary<StableId, EnemyAttack2D>();
+        private readonly Dictionary<StableId, EnemyAttackBinding2D> attacks =
+            new Dictionary<StableId, EnemyAttackBinding2D>();
         private readonly Dictionary<StableId, string> dispatches =
             new Dictionary<StableId, string>();
         private readonly Dictionary<StableId, string> cancellations =
@@ -33,7 +33,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return;
             }
 
-            EnemyAttack2D current;
+            EnemyAttackBinding2D current;
             if (attacks.TryGetValue(actor.ActorStableId, out current))
             {
                 if (current == null)
@@ -44,10 +44,10 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return;
             }
 
-            EnemyAttack2D attack = actor.GetComponent<EnemyAttack2D>()
-                ?? actor.gameObject.AddComponent<EnemyAttack2D>();
-            attack.Bind(actor, revision);
-            attacks.Add(actor.ActorStableId, attack);
+            EnemyAttackBinding2D binding = actor.GetComponent<EnemyAttackBinding2D>()
+                ?? actor.gameObject.AddComponent<EnemyAttackBinding2D>();
+            binding.Bind(actor, revision);
+            attacks.Add(actor.ActorStableId, binding);
         }
 
         public void Emit(EnemyAttackExecutionRequestV1 request)
@@ -74,11 +74,13 @@ namespace ShooterMover.UnityAdapters.Enemies
                         EnemyAttackPatternDispatchRejectionCodeV1.ConflictingDuplicate);
             }
 
+            EnemyAttackBinding2D binding;
             EnemyAttack2D attack;
             if (!attacks.TryGetValue(
                     sequence.Execution.Identity.EntityInstanceId,
-                    out attack)
-                || attack == null)
+                    out binding)
+                || binding == null
+                || (attack = binding.CurrentAttack) == null)
             {
                 return EnemyAttackPatternDispatchResultV1.Rejected(
                     sequence.DispatchStableId,
@@ -86,10 +88,26 @@ namespace ShooterMover.UnityAdapters.Enemies
                     EnemyAttackPatternDispatchRejectionCodeV1.UnsupportedPort);
             }
 
-            string diagnostic;
-            if (!attack.TryAccept(sequence, out diagnostic))
+            try
             {
-                attack.Report(diagnostic);
+                string diagnostic;
+                if (!attack.TryAccept(sequence, out diagnostic))
+                {
+                    attack.Report(diagnostic);
+                    return EnemyAttackPatternDispatchResultV1.Rejected(
+                        sequence.DispatchStableId,
+                        sequence.Fingerprint,
+                        EnemyAttackPatternDispatchRejectionCodeV1.InvalidCommand);
+                }
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception)) throw;
+                attack.Report(
+                    "enemy-attack-dispatch-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message);
                 return EnemyAttackPatternDispatchResultV1.Rejected(
                     sequence.DispatchStableId,
                     sequence.Fingerprint,
@@ -120,9 +138,11 @@ namespace ShooterMover.UnityAdapters.Enemies
                         EnemyAttackPatternDispatchRejectionCodeV1.ConflictingDuplicate);
             }
 
+            EnemyAttackBinding2D binding;
             EnemyAttack2D attack;
-            if (!attacks.TryGetValue(cancellation.SourceEntityStableId, out attack)
-                || attack == null)
+            if (!attacks.TryGetValue(cancellation.SourceEntityStableId, out binding)
+                || binding == null
+                || (attack = binding.CurrentAttack) == null)
             {
                 return EnemyAttackPatternDispatchResultV1.Rejected(
                     cancellation.CancellationStableId,
@@ -130,10 +150,26 @@ namespace ShooterMover.UnityAdapters.Enemies
                     EnemyAttackPatternDispatchRejectionCodeV1.UnsupportedPort);
             }
 
-            string diagnostic;
-            if (!attack.TryCancel(cancellation, out diagnostic))
+            try
             {
-                attack.Report(diagnostic);
+                string diagnostic;
+                if (!attack.TryCancel(cancellation, out diagnostic))
+                {
+                    attack.Report(diagnostic);
+                    return EnemyAttackPatternDispatchResultV1.Rejected(
+                        cancellation.CancellationStableId,
+                        cancellation.Fingerprint,
+                        EnemyAttackPatternDispatchRejectionCodeV1.InvalidCommand);
+                }
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception)) throw;
+                attack.Report(
+                    "enemy-attack-cancellation-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message);
                 return EnemyAttackPatternDispatchResultV1.Rejected(
                     cancellation.CancellationStableId,
                     cancellation.Fingerprint,
@@ -145,10 +181,17 @@ namespace ShooterMover.UnityAdapters.Enemies
                 cancellation.CancellationStableId,
                 cancellation.Fingerprint);
         }
+
+        private static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
+        }
     }
 
     /// <summary>
-    /// Compatibility name retained for the existing room spawner.
+    /// Compatibility name retained for the existing room-spawner call site.
     /// </summary>
     public sealed class RoomEnemyAttackPresentationPortV1 : EnemyAttackPortV1
     {
