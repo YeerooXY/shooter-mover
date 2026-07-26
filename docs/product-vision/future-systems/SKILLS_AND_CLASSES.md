@@ -30,6 +30,42 @@ A character may unlock many passive nodes but equips only a small number of acti
 
 The board can contain about twenty nodes while still launching with a much smaller implemented subset. Empty future branches should not be shown as purchasable placeholders.
 
+## General farming and economy skills
+
+### Confirmed direction
+
+The skill system may include general reward-focused passive skills in addition to class-identity skills. Three effects are confirmed; their final names, ranks, caps and placement on the progression boards remain open.
+
+| Working skill name | Intended behaviour |
+|---|---|
+| Cash Yield Bonus | Increases both cash obtained from in-level cash drops and the authored money reward granted at mission end by the stated relative percentage. |
+| Loot Box Drop Chance Bonus | Relatively multiplies the existing chance that an eligible drop becomes a loot box. It does not add percentage points and does not alter the box's tier, rarity contents or opening odds. |
+| Scrap Yield Bonus | Increases scrap quantities collected from the level floor and scrap quantities awarded at mission end. It does not change weapon value, weapon sell or salvage value, other item values, or shop prices. |
+
+### Calculation rules
+
+For a skill bonus written as `+X%`, the affected base value is multiplied by `1 + X`:
+
+```text
+finalCashDrop = baseCashDrop × cashYieldMultiplier
+finalMissionMoney = baseMissionMoney × cashYieldMultiplier
+
+finalLootBoxChance = min(100%, baseLootBoxChance × lootBoxChanceMultiplier)
+
+finalFloorScrap = baseFloorScrap × scrapYieldMultiplier
+finalMissionScrap = baseMissionScrap × scrapYieldMultiplier
+```
+
+The loot-box modifier is explicitly relative. For example, a base drop chance of `20%` with a `+25%` skill becomes:
+
+```text
+20% × 1.25 = 25%
+```
+
+It does **not** become `45%`.
+
+The scrap modifier changes the amount of eligible scrap earned, not the value assigned to weapons or other owned items. Multi-source stacking and integer-rounding policy remain open balance decisions and must be defined before implementation.
+
 ## Striker / Assault ideas
 
 ### Role
