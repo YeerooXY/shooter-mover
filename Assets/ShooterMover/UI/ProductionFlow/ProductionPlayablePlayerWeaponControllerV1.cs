@@ -421,6 +421,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
             catch (Exception exception)
             {
+                if (IsFatal(exception)) throw;
                 Debug.LogError(
                     "player-weapon-live-composition-rejected:"
                     + exception.Message,
@@ -591,6 +592,13 @@ namespace ShooterMover.UI.ProductionFlow
                 hash *= prime;
             }
             return hash.ToString("x16", CultureInfo.InvariantCulture);
+        }
+
+        private static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
 
         private void OnDisable()
