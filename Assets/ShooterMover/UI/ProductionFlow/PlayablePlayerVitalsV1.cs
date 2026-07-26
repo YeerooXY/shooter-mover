@@ -447,16 +447,10 @@ namespace ShooterMover.UI.ProductionFlow
             string runEntryToken = Guid.NewGuid().ToString("N");
             StableId actorStableId = StableId.Create(
                 "actor",
-                "playable-level-"
-                + marker.CharacterInstanceStableId.Value
-                + "-"
-                + runEntryToken);
+                "playable-level-" + runEntryToken);
             StableId participantStableId = StableId.Create(
                 "participant",
-                "playable-level-"
-                + marker.CharacterInstanceStableId.Value
-                + "-"
-                + runEntryToken);
+                "playable-level-" + runEntryToken);
             PlayerActorCreationResult creation = PlayerActorAuthority.TryCreate(
                 new PlayerActorDefinition(
                     actorStableId,
