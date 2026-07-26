@@ -91,7 +91,7 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                 new[]
                 {
                     Definition(
-                        "weapon.blaster-machine-gun",
+                        "rattler.mk1",
                         "Kinetic",
                         10d,
                         1,
@@ -101,7 +101,7 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                         5d,
                         1),
                     Definition(
-                        "weapon.shotgun",
+                        "ironwake.mk1",
                         "Kinetic",
                         2d,
                         7,
@@ -111,8 +111,8 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                         3d,
                         0),
                     Definition(
-                        "weapon.rocket-launcher",
-                        "Kinetic",
+                        "crownfall.mk1",
+                        "Thermal",
                         1d,
                         1,
                         0d,
@@ -123,7 +123,7 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                         20d,
                         3d),
                     Definition(
-                        "weapon.flamethrower",
+                        "nullstar.mk1",
                         "Thermal",
                         5d,
                         4,
