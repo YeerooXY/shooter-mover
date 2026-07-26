@@ -99,17 +99,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 PlayerRouteProfilePayloadV1.Create(
                     Id("character." + suffix),
                     classId,
-                    new[]
-                    {
-                        ProductionStarterWeaponCatalogV1
-                            .BlasterEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ShotgunEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .RocketEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ArcEquipmentInstanceStableId,
-                    });
+                    new StableId[
+                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             return new LegacyCharacterProfileV1(
                 slotIndex,
                 suffix,

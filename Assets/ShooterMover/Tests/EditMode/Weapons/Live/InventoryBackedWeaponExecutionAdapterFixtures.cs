@@ -108,22 +108,22 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         private static StableId RuntimeWeaponId(StableId equipmentDefinitionId)
         {
             string value = equipmentDefinitionId.ToString();
-            if (value.EndsWith("shotgun", StringComparison.Ordinal))
+            if (value.EndsWith("ironwake", StringComparison.Ordinal))
             {
-                return StableId.Parse("weapon.shotgun");
+                return StableId.Parse("ironwake.mk1");
             }
 
-            if (value.EndsWith("rocket", StringComparison.Ordinal))
+            if (value.EndsWith("crownfall", StringComparison.Ordinal))
             {
-                return StableId.Parse("weapon.rocket-launcher");
+                return StableId.Parse("crownfall.mk1");
             }
 
-            if (value.EndsWith("flamethrower", StringComparison.Ordinal))
+            if (value.EndsWith("nullstar", StringComparison.Ordinal))
             {
-                return StableId.Parse("weapon.flamethrower");
+                return StableId.Parse("nullstar.mk1");
             }
 
-            return StableId.Parse("weapon.blaster-machine-gun");
+            return StableId.Parse("rattler.mk1");
         }
 
     }

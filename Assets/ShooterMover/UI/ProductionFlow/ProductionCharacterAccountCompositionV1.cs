@@ -245,6 +245,38 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
+            if (!firstAccount)
+            {
+                RetiredWeaponSaveMigrationResultV1 weaponMigration =
+                    RetiredWeaponSaveMigrationV1.Migrate(account);
+                if (weaponMigration == null || !weaponMigration.Succeeded)
+                {
+                    Fail(
+                        "retired-weapon-save-migration-rejected:"
+                            + (weaponMigration == null
+                                ? "result-null"
+                                : weaponMigration.Diagnostic));
+                    return;
+                }
+                if (weaponMigration.Changed)
+                {
+                    PlayerAccountStoreResultV1 migratedSave =
+                        accountStore.Save(weaponMigration.Account);
+                    if (migratedSave == null
+                        || !migratedSave.Succeeded
+                        || migratedSave.Snapshot == null)
+                    {
+                        Fail(
+                            "retired-weapon-save-migration-store-rejected:"
+                                + (migratedSave == null
+                                    ? "result-null"
+                                    : migratedSave.RejectionCode));
+                        return;
+                    }
+                    account = migratedSave.Snapshot;
+                }
+            }
+
             accountAuthority = new PlayerAccountSaveAuthorityV1(account);
             graphFactory = ProductionCharacterRuntimeGraphFactoryV1
                 .CreateVerticalSliceDefaults();
@@ -308,8 +340,8 @@ namespace ShooterMover.UI.ProductionFlow
             var projection = new ProductionFlowProfileRecordV1[
                 PlayerAccountSnapshotV1.CharacterSlotCount];
             for (int slotIndex = 0;
-                slotIndex < projection.Length;
-                slotIndex++)
+                 slotIndex < projection.Length;
+                 slotIndex++)
             {
                 CharacterInstanceSnapshotV1 character =
                     accountAuthority.Current.CharacterAt(slotIndex);
@@ -370,9 +402,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (!TryProject(
-                character,
-                out authoritativeProfile,
-                out rejectionCode))
+                    character,
+                    out authoritativeProfile,
+                    out rejectionCode))
             {
                 return false;
             }
@@ -622,8 +654,8 @@ namespace ShooterMover.UI.ProductionFlow
         {
             var legacy = new List<LegacyCharacterProfileV1>();
             for (int slotIndex = 0;
-                slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
-                slotIndex++)
+                 slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
+                 slotIndex++)
             {
                 ProductionFlowProfileRecordV1 record;
                 if (legacyStore.TryLoad(slotIndex, out record))
@@ -659,9 +691,9 @@ namespace ShooterMover.UI.ProductionFlow
             rejectionCode = string.Empty;
             SaveComponentSnapshotV1 component;
             if (!character.TryGetComponent(
-                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
-                    .ComponentStableId,
-                out component))
+                    KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
+                        .ComponentStableId,
+                    out component))
             {
                 rejectionCode = "character-projection-loadout-missing";
                 return false;
@@ -669,9 +701,9 @@ namespace ShooterMover.UI.ProductionFlow
 
             InventoryLoadoutAuthoritySnapshotV1 loadout;
             if (!KnownSaveComponentCodecsV1.ExactInstanceLoadout.TryDecode(
-                component.CanonicalPayload,
-                out loadout,
-                out rejectionCode))
+                    component.CanonicalPayload,
+                    out loadout,
+                    out rejectionCode))
             {
                 rejectionCode =
                     "character-projection-loadout-invalid:" + rejectionCode;
@@ -681,8 +713,8 @@ namespace ShooterMover.UI.ProductionFlow
             var instances = new List<StableId>(
                 PlayerRouteProfilePayloadV1.WeaponSlotCount);
             for (int index = 0;
-                index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                index++)
+                 index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                 index++)
             {
                 instances.Add(loadout.GetBinding(
                     InventoryLoadoutSlotsV1.All[index].SlotStableId)

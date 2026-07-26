@@ -246,17 +246,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 PlayerRouteProfilePayloadV1.Create(
                     characterId,
                     classId,
-                    new[]
-                    {
-                        ProductionStarterWeaponCatalogV1
-                            .BlasterEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ShotgunEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .RocketEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ArcEquipmentInstanceStableId,
-                    });
+                    new StableId[
+                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             ICharacterRuntimeGraphV1 graph = factory.CreateStarter(
                 slotIndex,
                 characterId,

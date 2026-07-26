@@ -110,7 +110,9 @@ namespace ShooterMover.Application.Persistence.Components
                 {
                     StableId instanceId = loadout.Bindings[index]
                         .EquipmentInstanceStableId;
-                    if (instanceId != null && !equipmentIds.Contains(instanceId))
+                    if (instanceId != null
+                        && !equipmentIds.Contains(instanceId)
+                        && !IsRetiredWeaponSaveInstance(instanceId))
                     {
                         return SaveComponentValidationResultV1.Reject(
                             "loadout-equipment-instance-absent-from-holdings:"
@@ -356,8 +358,7 @@ namespace ShooterMover.Application.Persistence.Components
                     continue;
                 }
                 for (int payloadIndex = 0;
-                     payloadIndex
-                        < opening.GeneratedOutcome.Payloads.Count;
+                     payloadIndex < opening.GeneratedOutcome.Payloads.Count;
                      payloadIndex++)
                 {
                     for (int equipmentIndex = 0;
@@ -379,6 +380,23 @@ namespace ShooterMover.Application.Persistence.Components
                 }
             }
             return false;
+        }
+
+        private static bool IsRetiredWeaponSaveInstance(StableId instanceId)
+        {
+            if (instanceId == null)
+            {
+                return false;
+            }
+            string value = instanceId.ToString();
+            return value == "equipment-instance.flow-draft-slot-1"
+                || value == "equipment-instance.flow-draft-slot-2"
+                || value == "equipment-instance.flow-draft-slot-3"
+                || value == "equipment-instance.flow-draft-slot-4"
+                || value == "equipment-instance.production-starter-ricochet"
+                || value.StartsWith(
+                    "equipment-instance.retired-starter-",
+                    StringComparison.Ordinal);
         }
     }
 }

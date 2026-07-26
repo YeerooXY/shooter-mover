@@ -15,11 +15,11 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
 {
     public sealed class ProductionExactWeaponInstanceLoadoutTests
     {
-        [TestCase("plain-blaster", "augmented-blaster")]
-        [TestCase("plain-blaster", "rocket")]
-        [TestCase("plain-blaster", "shotgun")]
-        [TestCase("augmented-blaster", "shotgun")]
-        [TestCase("augmented-blaster", "rocket")]
+        [TestCase("plain-rattler", "augmented-rattler")]
+        [TestCase("plain-rattler", "viper")]
+        [TestCase("plain-rattler", "ironclad")]
+        [TestCase("augmented-rattler", "ironclad")]
+        [TestCase("augmented-rattler", "viper")]
         public void DistinctOwnedInstancesCanOccupyBothMounts(
             string leftKey,
             string rightKey)
@@ -68,13 +68,13 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         [Test]
-        public void PlainAndAugmentedBlastersRemainDistinctAndCanSwapPositions()
+        public void PlainAndAugmentedRattlersRemainDistinctAndCanSwapPositions()
         {
             Fixture fixture = Fixture.Create();
             InventoryLoadoutScreenServiceV1 first = fixture.Service();
             first.TrySelect(
                 InventoryLoadoutSlotIdsV1.WeaponFour,
-                fixture.AugmentedBlaster.InstanceId);
+                fixture.AugmentedRattler.InstanceId);
             PlayerRouteProfilePayloadV1 firstPayload =
                 first.Confirm().RoutePayload;
 
@@ -91,13 +91,13 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 second.TrySelect(
                     InventoryLoadoutSlotIdsV1.WeaponOne,
-                    fixture.AugmentedBlaster.InstanceId).Status,
+                    fixture.AugmentedRattler.InstanceId).Status,
                 Is.EqualTo(
                     InventoryLoadoutScreenStatusV1.SelectionChanged));
             Assert.That(
                 second.TrySelect(
                     InventoryLoadoutSlotIdsV1.WeaponFour,
-                    fixture.PlainBlaster.InstanceId).Status,
+                    fixture.PlainRattler.InstanceId).Status,
                 Is.EqualTo(
                     InventoryLoadoutScreenStatusV1.SelectionChanged));
 
@@ -108,21 +108,21 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 swapped.RoutePayload.WeaponSlots[0]
                     .EquipmentInstanceStableId,
-                Is.EqualTo(fixture.AugmentedBlaster.InstanceId));
+                Is.EqualTo(fixture.AugmentedRattler.InstanceId));
             Assert.That(
                 swapped.RoutePayload.WeaponSlots[3]
                     .EquipmentInstanceStableId,
-                Is.EqualTo(fixture.PlainBlaster.InstanceId));
+                Is.EqualTo(fixture.PlainRattler.InstanceId));
             Assert.That(
-                fixture.PlainBlaster.DefinitionId,
-                Is.EqualTo(fixture.AugmentedBlaster.DefinitionId));
-            Assert.That(fixture.PlainBlaster.Augments.Count, Is.EqualTo(0));
+                fixture.PlainRattler.DefinitionId,
+                Is.EqualTo(fixture.AugmentedRattler.DefinitionId));
+            Assert.That(fixture.PlainRattler.Augments.Count, Is.EqualTo(0));
             Assert.That(
-                fixture.AugmentedBlaster.Augments.Count,
+                fixture.AugmentedRattler.Augments.Count,
                 Is.EqualTo(1));
             Assert.That(
-                fixture.PlainBlaster.Fingerprint,
-                Is.Not.EqualTo(fixture.AugmentedBlaster.Fingerprint));
+                fixture.PlainRattler.Fingerprint,
+                Is.Not.EqualTo(fixture.AugmentedRattler.Fingerprint));
         }
 
         [Test]
@@ -133,7 +133,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
 
             InventoryLoadoutScreenResultV1 result = service.TrySelect(
                 InventoryLoadoutSlotIdsV1.WeaponFour,
-                fixture.PlainBlaster.InstanceId);
+                fixture.PlainRattler.InstanceId);
 
             Assert.That(
                 result.Status,
@@ -148,19 +148,19 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 service.Snapshot.GetSelection(
                     InventoryLoadoutSlotIdsV1.WeaponOne)
                     .EquipmentInstanceStableId,
-                Is.EqualTo(fixture.PlainBlaster.InstanceId));
+                Is.EqualTo(fixture.PlainRattler.InstanceId));
         }
 
         private sealed class Fixture
         {
             private static readonly StableId Common =
                 StableId.Parse("equipment-quality.common");
-            private static readonly StableId BlasterDefinition =
-                StableId.Parse("equipment.test-blaster");
-            private static readonly StableId ShotgunDefinition =
-                StableId.Parse("equipment.test-shotgun");
-            private static readonly StableId RocketDefinition =
-                StableId.Parse("equipment.test-rocket");
+            private static readonly StableId RattlerDefinition =
+                StableId.Parse("equipment.test-rattler");
+            private static readonly StableId IroncladDefinition =
+                StableId.Parse("equipment.test-ironclad");
+            private static readonly StableId ViperDefinition =
+                StableId.Parse("equipment.test-viper");
             private static readonly StableId AugmentDefinitionId =
                 StableId.Parse("augment.test-calibrated");
 
@@ -171,24 +171,24 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 ProductionEquipmentCatalogAdapterV1 catalogAdapter,
                 ProductionInventoryLoadoutAuthorityV1 authority,
                 PlayerRouteProfilePayloadV1 route,
-                EquipmentInstance plainBlaster,
-                EquipmentInstance augmentedBlaster,
-                EquipmentInstance shotgun,
-                EquipmentInstance rocket)
+                EquipmentInstance plainRattler,
+                EquipmentInstance augmentedRattler,
+                EquipmentInstance ironclad,
+                EquipmentInstance viper)
             {
                 Holdings = holdings;
                 CatalogAdapter = catalogAdapter;
                 Authority = authority;
                 Route = route;
-                PlainBlaster = plainBlaster;
-                AugmentedBlaster = augmentedBlaster;
+                PlainRattler = plainRattler;
+                AugmentedRattler = augmentedRattler;
                 instanceIds = new Dictionary<string, StableId>(
                     StringComparer.Ordinal)
                 {
-                    { "plain-blaster", plainBlaster.InstanceId },
-                    { "augmented-blaster", augmentedBlaster.InstanceId },
-                    { "shotgun", shotgun.InstanceId },
-                    { "rocket", rocket.InstanceId },
+                    { "plain-rattler", plainRattler.InstanceId },
+                    { "augmented-rattler", augmentedRattler.InstanceId },
+                    { "ironclad", ironclad.InstanceId },
+                    { "viper", viper.InstanceId },
                 };
             }
 
@@ -199,8 +199,8 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             }
             public ProductionInventoryLoadoutAuthorityV1 Authority { get; }
             public PlayerRouteProfilePayloadV1 Route { get; }
-            public EquipmentInstance PlainBlaster { get; }
-            public EquipmentInstance AugmentedBlaster { get; }
+            public EquipmentInstance PlainRattler { get; }
+            public EquipmentInstance AugmentedRattler { get; }
 
             public StableId InstanceId(string key)
             {
@@ -222,20 +222,20 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     new[]
                     {
                         Weapon(
-                            BlasterDefinition,
-                            "family.test-blaster",
-                            "Blaster",
-                            "weapon.blaster-machine-gun"),
+                            RattlerDefinition,
+                            "family.test-rattler",
+                            "Rattler",
+                            "weapon.test-rattler"),
                         Weapon(
-                            ShotgunDefinition,
-                            "family.test-shotgun",
-                            "Shotgun",
-                            "weapon.shotgun"),
+                            IroncladDefinition,
+                            "family.test-ironclad",
+                            "Ironclad",
+                            "weapon.test-ironclad"),
                         Weapon(
-                            RocketDefinition,
-                            "family.test-rocket",
-                            "Rocket Launcher",
-                            "weapon.rocket-launcher"),
+                            ViperDefinition,
+                            "family.test-viper",
+                            "Viper",
+                            "weapon.test-viper"),
                     },
                     new[]
                     {
@@ -250,15 +250,15 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     adapter);
 
                 EquipmentInstance plain = EquipmentInstance.Create(
-                    StableId.Parse("equipment-instance.test-plain-blaster"),
-                    BlasterDefinition,
+                    StableId.Parse("equipment-instance.test-plain-rattler"),
+                    RattlerDefinition,
                     1,
                     Common,
                     Array.Empty<AugmentInstance>());
                 EquipmentInstance augmented = EquipmentInstance.Create(
                     StableId.Parse(
-                        "equipment-instance.test-augmented-blaster"),
-                    BlasterDefinition,
+                        "equipment-instance.test-augmented-rattler"),
+                    RattlerDefinition,
                     1,
                     Common,
                     new[]
@@ -270,23 +270,23 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                             1,
                             1),
                     });
-                EquipmentInstance shotgun = EquipmentInstance.Create(
-                    StableId.Parse("equipment-instance.test-shotgun"),
-                    ShotgunDefinition,
+                EquipmentInstance ironclad = EquipmentInstance.Create(
+                    StableId.Parse("equipment-instance.test-ironclad"),
+                    IroncladDefinition,
                     1,
                     Common,
                     Array.Empty<AugmentInstance>());
-                EquipmentInstance rocket = EquipmentInstance.Create(
-                    StableId.Parse("equipment-instance.test-rocket"),
-                    RocketDefinition,
+                EquipmentInstance viper = EquipmentInstance.Create(
+                    StableId.Parse("equipment-instance.test-viper"),
+                    ViperDefinition,
                     1,
                     Common,
                     Array.Empty<AugmentInstance>());
 
-                Add(holdings, plain, "plain-blaster");
-                Add(holdings, augmented, "augmented-blaster");
-                Add(holdings, shotgun, "shotgun");
-                Add(holdings, rocket, "rocket");
+                Add(holdings, plain, "plain-rattler");
+                Add(holdings, augmented, "augmented-rattler");
+                Add(holdings, ironclad, "ironclad");
+                Add(holdings, viper, "viper");
 
                 PlayerRouteProfilePayloadV1 route =
                     PlayerRouteProfilePayloadV1.Create(
@@ -299,7 +299,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                             plain.InstanceId,
                             null,
                             null,
-                            shotgun.InstanceId,
+                            ironclad.InstanceId,
                         });
                 var authority =
                     new ProductionInventoryLoadoutAuthorityV1(
@@ -313,8 +313,8 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     route,
                     plain,
                     augmented,
-                    shotgun,
-                    rocket);
+                    ironclad,
+                    viper);
             }
 
             private static EquipmentDefinition Weapon(

@@ -81,8 +81,8 @@ namespace ShooterMover.UI.ProductionFlow
             IReadOnlyList<ProductionFlowProfileRecordV1> projection;
             string rejectionCode;
             if (!lifecycle.TryExportProfiles(
-                out projection,
-                out rejectionCode)
+                    out projection,
+                    out rejectionCode)
                 || projection == null
                 || projection.Count != ProfileSlotCount)
             {
@@ -95,8 +95,8 @@ namespace ShooterMover.UI.ProductionFlow
 
             profileLifecycle = lifecycle;
             for (int slotIndex = 0;
-                slotIndex < ProfileSlotCount;
-                slotIndex++)
+                 slotIndex < ProfileSlotCount;
+                 slotIndex++)
             {
                 profiles[slotIndex] = projection[slotIndex];
                 if (profiles[slotIndex] == null)
@@ -200,9 +200,9 @@ namespace ShooterMover.UI.ProductionFlow
             BindScene(scene);
 
             if (string.Equals(
-                scene.path,
-                ProductionFlowScenePathsV1.Bootstrap,
-                StringComparison.Ordinal)
+                    scene.path,
+                    ProductionFlowScenePathsV1.Bootstrap,
+                    StringComparison.Ordinal)
                 && !transitions.IsTransitionPending)
             {
                 transitions.TryLoadSubflow(
@@ -214,9 +214,9 @@ namespace ShooterMover.UI.ProductionFlow
         {
             string path = scene.path;
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.MainMenu,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.MainMenu,
+                    StringComparison.Ordinal))
             {
                 ProductionMainMenuControllerV1 controller =
                     Find<ProductionMainMenuControllerV1>(scene);
@@ -228,9 +228,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.CharacterSelection,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.CharacterSelection,
+                    StringComparison.Ordinal))
             {
                 ProductionCharacterSelectionControllerV1 controller =
                     Find<ProductionCharacterSelectionControllerV1>(scene);
@@ -248,9 +248,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.Hub,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.Hub,
+                    StringComparison.Ordinal))
             {
                 HubFlowControllerV1 controller =
                     Find<HubFlowControllerV1>(scene);
@@ -262,9 +262,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.Inventory,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.Inventory,
+                    StringComparison.Ordinal))
             {
                 InventoryLoadoutScreenControllerV1 controller =
                     Find<InventoryLoadoutScreenControllerV1>(scene);
@@ -279,9 +279,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.Skills,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.Skills,
+                    StringComparison.Ordinal))
             {
                 SkillsSceneController controller =
                     Find<SkillsSceneController>(scene);
@@ -295,9 +295,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.Shop,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.Shop,
+                    StringComparison.Ordinal))
             {
                 ShopScreenControllerV1 controller =
                     Find<ShopScreenControllerV1>(scene);
@@ -312,9 +312,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.Crafting,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.Crafting,
+                    StringComparison.Ordinal))
             {
                 CraftingScreenControllerV1 controller =
                     Find<CraftingScreenControllerV1>(scene);
@@ -329,9 +329,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.PlaySelection,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.PlaySelection,
+                    StringComparison.Ordinal))
             {
                 PlaySelectionControllerV1 controller =
                     Find<PlaySelectionControllerV1>(scene);
@@ -346,9 +346,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.LevelSelection,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.LevelSelection,
+                    StringComparison.Ordinal))
             {
                 LevelSelectionControllerV1 controller =
                     Find<LevelSelectionControllerV1>(scene);
@@ -365,9 +365,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.Results,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.Results,
+                    StringComparison.Ordinal))
             {
                 ProductionResultsControllerV1 controller =
                     Find<ProductionResultsControllerV1>(scene);
@@ -382,9 +382,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (string.Equals(
-                path,
-                ProductionFlowScenePathsV1.StrongboxOpening,
-                StringComparison.Ordinal))
+                    path,
+                    ProductionFlowScenePathsV1.StrongboxOpening,
+                    StringComparison.Ordinal))
             {
                 StrongboxOpeningController controller =
                     Find<StrongboxOpeningController>(scene);
@@ -473,10 +473,10 @@ namespace ShooterMover.UI.ProductionFlow
                 string rejectionCode;
                 ProductionFlowProfileRecordV1 authoritative;
                 if (!profileLifecycle.TryActivate(
-                    slotIndex,
-                    selected,
-                    out authoritative,
-                    out rejectionCode))
+                        slotIndex,
+                        selected,
+                        out authoritative,
+                        out rejectionCode))
                 {
                     Debug.LogError(
                         "Character activation rejected: " + rejectionCode,
@@ -518,10 +518,10 @@ namespace ShooterMover.UI.ProductionFlow
                 string rejectionCode;
                 ProductionFlowProfileRecordV1 authoritative;
                 if (!profileLifecycle.TryActivate(
-                    slotIndex,
-                    candidate,
-                    out authoritative,
-                    out rejectionCode))
+                        slotIndex,
+                        candidate,
+                        out authoritative,
+                        out rejectionCode))
                 {
                     Debug.LogError(
                         "Character creation rejected: " + rejectionCode,
@@ -557,9 +557,9 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 string rejectionCode;
                 if (!profileLifecycle.TryDelete(
-                    slotIndex,
-                    deleting,
-                    out rejectionCode))
+                        slotIndex,
+                        deleting,
+                        out rejectionCode))
                 {
                     Debug.LogError(
                         "Character deletion rejected: " + rejectionCode,
@@ -569,7 +569,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (!transitions.TryLoadSubflow(
-                ProductionFlowScenePathsV1.CharacterSelection))
+                    ProductionFlowScenePathsV1.CharacterSelection))
             {
                 return false;
             }
@@ -635,7 +635,7 @@ namespace ShooterMover.UI.ProductionFlow
             ProductionStrongboxOpeningBindingV1 binding =
                 resultsContext.BindExact(exactStrongbox);
             if (!transitions.TryLoadSubflow(
-                ProductionFlowScenePathsV1.StrongboxOpening))
+                    ProductionFlowScenePathsV1.StrongboxOpening))
             {
                 return false;
             }
@@ -749,17 +749,10 @@ namespace ShooterMover.UI.ProductionFlow
         private static PlayerRouteProfilePayloadV1 CreateDraftPayload()
         {
             var catalog = BuiltInCharacterSelectionCatalogV1.Create();
-            var instances = new List<StableId>
-            {
-                StableId.Parse("equipment-instance.flow-draft-slot-1"),
-                StableId.Parse("equipment-instance.flow-draft-slot-2"),
-                StableId.Parse("equipment-instance.flow-draft-slot-3"),
-                StableId.Parse("equipment-instance.flow-draft-slot-4"),
-            };
             return PlayerRouteProfilePayloadV1.Create(
                 catalog.DefaultCharacter.CharacterStableId,
                 catalog.DefaultCharacter.DefaultLoadoutProfileStableId,
-                instances);
+                new StableId[PlayerRouteProfilePayloadV1.WeaponSlotCount]);
         }
 
         private static T Find<T>(Scene scene)

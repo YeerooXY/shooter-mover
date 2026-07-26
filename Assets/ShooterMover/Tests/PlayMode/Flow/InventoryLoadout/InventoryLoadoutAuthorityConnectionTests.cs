@@ -17,23 +17,15 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         [UnityTest]
         public IEnumerator ConnectingAuthoritiesPreservesProductionReturnCallback()
         {
-            PlayerRouteProfilePayloadV1 route =
+            PlayerRouteProfilePayloadV1 draft =
                 PlayerRouteProfilePayloadV1.Create(
                     StableId.Parse("character.loadout-connect"),
                     StableId.Parse(
-                        "loadout-profile.loadout-connect"),
-                    new[]
-                    {
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-1"),
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-2"),
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-3"),
-                        StableId.Parse(
-                            "equipment-instance.flow-draft-slot-4"),
-                    });
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(route);
+                        ProductionWeaponMountPolicyV1
+                            .DefensiveLoadoutProfileId),
+                    new StableId[
+                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(draft);
             GameObject host = new GameObject("Loadout connection test");
             InventoryLoadoutScreenControllerV1 controller =
                 host.AddComponent<InventoryLoadoutScreenControllerV1>();
@@ -53,7 +45,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                     order.Add("confirmed");
                     confirmed = payload;
                 };
-            controller.Present(HubRouteV1.Inventory, route);
+            controller.Present(
+                HubRouteV1.Inventory,
+                runtime.RoutePayload);
             controller.ConnectAuthorities(
                 runtime.Holdings,
                 runtime.CatalogAdapter,

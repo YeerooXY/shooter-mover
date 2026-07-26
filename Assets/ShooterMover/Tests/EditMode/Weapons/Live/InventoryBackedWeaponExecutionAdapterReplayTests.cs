@@ -22,10 +22,10 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         {
             EquipmentInstance first = Equipment(
                 "equipment-instance.replay-a",
-                "equipment-definition.blaster");
+                "equipment-definition.rattler");
             EquipmentInstance second = Equipment(
                 "equipment-instance.replay-b",
-                "equipment-definition.shotgun");
+                "equipment-definition.ironwake");
             Harness harness = CreateHarness(first, second);
             var active = new MutableActiveWeaponSource(first);
             var factory = new InventoryWeaponFireIntentFactory(active);
@@ -60,19 +60,19 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         [Test]
         public void SameEquipmentConflictingReplay_IsRejected()
         {
-            EquipmentInstance blaster = Equipment(
+            EquipmentInstance rattler = Equipment(
                 "equipment-instance.conflict",
-                "equipment-definition.blaster");
-            Harness harness = CreateHarness(blaster);
+                "equipment-definition.rattler");
+            Harness harness = CreateHarness(rattler);
             const string operation = "fire.same-equipment-conflict";
 
             Assert.That(
                 harness.Adapter.TryExecute(
-                    Request(blaster, operation, 0L, 10UL)).Succeeded,
+                    Request(rattler, operation, 0L, 10UL)).Succeeded,
                 Is.True);
             Assert.That(
                 harness.Adapter.TryExecute(
-                    Request(blaster, operation, 1L, 10UL)).Status,
+                    Request(rattler, operation, 1L, 10UL)).Status,
                 Is.EqualTo(WeaponExecutionStatus.ConflictingDuplicate));
             Assert.That(harness.Sink.Batches.Count, Is.EqualTo(1));
         }
@@ -80,13 +80,13 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         [Test]
         public void UnknownEquipment_FailsClosed()
         {
-            EquipmentInstance blaster = Equipment(
+            EquipmentInstance rattler = Equipment(
                 "equipment-instance.known",
-                "equipment-definition.blaster");
+                "equipment-definition.rattler");
             EquipmentInstance unknown = Equipment(
                 "equipment-instance.unknown",
-                "equipment-definition.blaster");
-            Harness harness = CreateHarness(blaster);
+                "equipment-definition.rattler");
+            Harness harness = CreateHarness(rattler);
 
             InventoryWeaponExecutionResult result = harness.Adapter.TryExecute(
                 Request(unknown, "fire.unknown-equipment", 0L));
@@ -98,15 +98,15 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         }
 
         [Test]
-        public void Flamethrower_DotAndPoolAreCanonicalCoreEffects()
+        public void Nullstar_DotAndPoolAreCanonicalCoreEffects()
         {
-            EquipmentInstance flamethrower = Equipment(
-                "equipment-instance.flame-core",
-                "equipment-definition.flamethrower");
-            Harness harness = CreateHarness(flamethrower);
+            EquipmentInstance nullstar = Equipment(
+                "equipment-instance.nullstar-core",
+                "equipment-definition.nullstar");
+            Harness harness = CreateHarness(nullstar);
 
             InventoryWeaponExecutionResult result = harness.Adapter.TryExecute(
-                Request(flamethrower, "fire.flame-core", 0L));
+                Request(nullstar, "fire.nullstar-core", 0L));
 
             Assert.That(result.Status, Is.EqualTo(WeaponExecutionStatus.Accepted));
             Assert.That(result.EffectBatch.CoreBatch.EffectCount, Is.EqualTo(4));
@@ -126,10 +126,10 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
         {
             EquipmentInstance first = Equipment(
                 "equipment-instance.cache-a",
-                "equipment-definition.blaster");
+                "equipment-definition.rattler");
             EquipmentInstance second = Equipment(
                 "equipment-instance.cache-b",
-                "equipment-definition.shotgun");
+                "equipment-definition.ironwake");
             PlayerHoldingsService service = CreateHoldingsService();
             AddEquipment(service, first, 0L);
             var counted = new CountingHoldingsAuthority(service);
