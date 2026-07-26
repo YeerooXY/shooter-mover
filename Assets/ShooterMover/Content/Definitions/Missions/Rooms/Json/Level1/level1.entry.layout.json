@@ -8,13 +8,15 @@
   },
   "spawns": [
     {
-      "kind": "forward-entry",
+      "id": "player-start",
+      "kind": "player",
       "position": [-10, 0],
       "rotation": 0
     }
   ],
   "doors": [
     {
+      "id": "terminal-route",
       "object": "door.room-standard",
       "position": [11, 0],
       "rotation": 0,
