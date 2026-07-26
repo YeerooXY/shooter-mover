@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Flow.LevelSelection;
-using ShooterMover.Application.Flow.Production;
 using ShooterMover.Domain.Common;
 using UnityEngine;
 
@@ -126,6 +125,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
 
     public static class ProductionPlayableLevelCatalogV1
     {
+        public const string PlayableLevelScenePath =
+            "Assets/ShooterMover/Scenes/Gameplay/PlayableLevel.unity";
         public static readonly StableId FirstLevelStableId =
             StableId.Parse("level.authored-json-1");
 
@@ -135,7 +136,7 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                 FirstLevelStableId,
                 "LEVEL 1",
                 "Traverse the first authored two-room JSON level.",
-                ProductionFlowScenePathsV1.PlayableLevel,
+                PlayableLevelScenePath,
                 "ProductionLevels/Level1RoomContent",
                 "ProductionLevels/Level1EnemyCatalog",
                 StableId.Parse("presentation.player-production-default"),
