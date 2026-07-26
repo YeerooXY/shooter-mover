@@ -646,6 +646,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             IReadOnlyList<RoomEnemyActor2D> actors)
         {
             Exception firstFailure = null;
+            Exception firstFatalFailure = null;
             for (int index = actors.Count - 1; index >= 0; index--)
             {
                 RoomEnemyActor2D actor = actors[index];
@@ -656,10 +657,20 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 }
                 catch (Exception exception)
                 {
-                    if (firstFailure == null) firstFailure = exception;
+                    if (IsFatalException(exception))
+                    {
+                        if (firstFatalFailure == null)
+                        {
+                            firstFatalFailure = exception;
+                        }
+                    }
+                    else if (firstFailure == null)
+                    {
+                        firstFailure = exception;
+                    }
                 }
             }
-            return firstFailure;
+            return firstFatalFailure ?? firstFailure;
         }
 
         private string BuildFailureMessage(
