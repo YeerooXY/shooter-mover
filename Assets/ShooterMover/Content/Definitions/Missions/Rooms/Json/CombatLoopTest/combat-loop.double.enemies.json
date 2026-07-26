@@ -1,0 +1,19 @@
+{
+  "room": "room.combat-loop-double",
+  "enemies": [
+    {
+      "id": "crossfire-droid-a",
+      "object": "enemy.moving-droid",
+      "level": 1,
+      "position": [4, -3],
+      "rotation": 180
+    },
+    {
+      "id": "crossfire-droid-b",
+      "object": "enemy.moving-droid",
+      "level": 1,
+      "position": [4, 3],
+      "rotation": 180
+    }
+  ]
+}

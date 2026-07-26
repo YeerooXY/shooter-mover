@@ -1,0 +1,131 @@
+{
+  "room": "room.combat-loop-staging",
+  "props": [
+    {
+      "id": "divider-01",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -6.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-02",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -5.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-03",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -4.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-04",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -3.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-05",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -2.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-06",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -1.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-07",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        -0.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-08",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        0.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-09",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        1.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-10",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        2.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-11",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        3.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-12",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        4.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-13",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        5.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "divider-14",
+      "object": "prop.level1-cover",
+      "position": [
+        0,
+        6.5
+      ],
+      "rotation": 0
+    }
+  ]
+}
