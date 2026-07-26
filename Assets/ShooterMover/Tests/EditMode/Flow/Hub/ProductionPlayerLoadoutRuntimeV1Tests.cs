@@ -11,6 +11,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons.Catalog;
 
 namespace ShooterMover.Tests.EditMode.Flow.Hub
 {
@@ -120,6 +121,46 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 restored.LoadoutAuthority.ExportSnapshot().Fingerprint,
                 Is.EqualTo(loadout.Fingerprint));
+        }
+
+        [Test]
+        public void EquippedOwnedInstancesResolveIntoLiveWeaponDefinitions()
+        {
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "live-resolution",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
+            PlayerHoldingsSnapshotV1 holdings = runtime.Holdings.ExportSnapshot();
+            Dictionary<StableId, UniqueHoldingSnapshotV1> owned = holdings
+                .UniqueHoldings.ToDictionary(
+                    item => item.InstanceStableId,
+                    item => item);
+
+            foreach (InventoryLoadoutSlotBindingV1 binding in
+                runtime.LoadoutAuthority.ExportSnapshot().Bindings)
+            {
+                if (binding.EquipmentInstanceStableId == null)
+                {
+                    continue;
+                }
+
+                UniqueHoldingSnapshotV1 holding;
+                Assert.That(
+                    owned.TryGetValue(
+                        binding.EquipmentInstanceStableId,
+                        out holding),
+                    Is.True);
+                EquipmentDefinition equipmentDefinition =
+                    runtime.EquipmentCatalog.FindEquipmentDefinition(
+                        holding.DefinitionStableId);
+                Assert.That(equipmentDefinition, Is.Not.Null);
+                WeaponDefinitionData weaponDefinition;
+                Assert.That(
+                    runtime.WeaponCatalog.TryGetDefinition(
+                        equipmentDefinition.RuntimeWeaponReferenceId.ToString(),
+                        out weaponDefinition),
+                    Is.True);
+                Assert.That(weaponDefinition, Is.Not.Null);
+            }
         }
 
         [Test]
