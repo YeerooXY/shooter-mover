@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "layout": "layout.authored-json-combat-loop-test",
+  "start_room": "room.combat-loop-staging",
+  "terminal_room": "room.combat-loop-double",
+  "rooms": [
+    {
+      "layout": "combat-loop.staging.layout",
+      "enemies": "combat-loop.staging.enemies",
+      "props": "combat-loop.staging.props",
+      "decor": "combat-loop.staging.decor",
+      "encounter": "combat-loop.staging.encounter"
+    },
+    {
+      "layout": "combat-loop.single.layout",
+      "enemies": "combat-loop.single.enemies",
+      "props": "combat-loop.single.props",
+      "decor": "combat-loop.single.decor",
+      "encounter": "combat-loop.single.encounter"
+    },
+    {
+      "layout": "combat-loop.double.layout",
+      "enemies": "combat-loop.double.enemies",
+      "props": "combat-loop.double.props",
+      "decor": "combat-loop.double.decor",
+      "encounter": "combat-loop.double.encounter"
+    }
+  ]
+}
