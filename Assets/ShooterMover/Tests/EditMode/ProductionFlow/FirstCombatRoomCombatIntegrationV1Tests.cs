@@ -1,8 +1,10 @@
 using System;
 using System.Reflection;
+using System.Runtime.Serialization;
 using NUnit.Framework;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UI.ProductionFlow;
 using ShooterMover.UnityAdapters.Missions.Rooms;
@@ -45,6 +47,40 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
         }
 
         [Test]
+        public void DefeatTerminatesUncommittedProjectileIdempotently()
+        {
+            GameObject projectileObject = new GameObject(
+                "Uncommitted Defeat Projectile Test Double");
+            try
+            {
+                ProductionNormalProjectile2D projectile =
+                    projectileObject.AddComponent<ProductionNormalProjectile2D>();
+
+                ProductionNormalProjectileOwnerDefeatDispositionV1 first =
+                    projectile.DisableForOwnerDefeat();
+                ProductionNormalProjectileOwnerDefeatDispositionV1 replay =
+                    projectile.DisableForOwnerDefeat();
+
+                Assert.That(
+                    first,
+                    Is.EqualTo(
+                        ProductionNormalProjectileOwnerDefeatDispositionV1
+                            .UncommittedProjectileTerminated));
+                Assert.That(
+                    replay,
+                    Is.EqualTo(
+                        ProductionNormalProjectileOwnerDefeatDispositionV1
+                            .AlreadyCompleted));
+                Assert.That(projectile.IsOwnerDefeatShutdownRequested, Is.True);
+                Assert.That(projectile.HasPendingEnemyImpactRetry, Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(projectileObject);
+            }
+        }
+
+        [Test]
         public void DefeatRetainsExactCommittedLethalEnemyImpactRetryState()
         {
             GameObject enemyObject = new GameObject(
@@ -72,11 +108,19 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                     41L,
                     1,
                     500d);
+#pragma warning disable SYSLIB0050
+                var retainedLifecycleState =
+                    (ProjectileLifecycleState)FormatterServices
+                        .GetUninitializedObject(typeof(ProjectileLifecycleState));
+#pragma warning restore SYSLIB0050
                 const double exactOccurredAtSeconds = 47.125d;
 
                 FieldInfo commandField = RequirePrivateField(
                     typeof(ProductionNormalProjectile2D),
                     "pendingDamageCommand");
+                SetPrivateField(projectile, "configured", true);
+                SetPrivateField(projectile, "launched", true);
+                SetPrivateField(projectile, "state", retainedLifecycleState);
                 SetPrivateField(projectile, "body", body);
                 SetPrivateField(projectile, "trigger", trigger);
                 SetPrivateField(projectile, "impactCommitted", true);
@@ -96,11 +140,17 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
 
                 Assert.That(stopped, Is.EqualTo(1));
                 Assert.That(projectile, Is.Not.Null);
+                Assert.That(projectile.enabled, Is.True);
                 Assert.That(projectileObject.activeSelf, Is.True);
                 Assert.That(projectile.IsOwnerDefeatShutdownRequested, Is.True);
                 Assert.That(projectile.HasPendingEnemyImpactRetry, Is.True);
                 Assert.That(body.simulated, Is.False);
                 Assert.That(trigger.enabled, Is.False);
+                Assert.That(GetPrivateField<bool>(projectile, "configured"), Is.True);
+                Assert.That(GetPrivateField<bool>(projectile, "launched"), Is.True);
+                Assert.That(
+                    GetPrivateField<ProjectileLifecycleState>(projectile, "state"),
+                    Is.SameAs(retainedLifecycleState));
                 Assert.That(
                     commandField.GetValue(projectile),
                     Is.SameAs(exactCommand));
@@ -116,6 +166,11 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                             .PendingEnemyImpactRetryRetained));
                 Assert.That(body.simulated, Is.False);
                 Assert.That(trigger.enabled, Is.False);
+                Assert.That(GetPrivateField<bool>(projectile, "configured"), Is.True);
+                Assert.That(GetPrivateField<bool>(projectile, "launched"), Is.True);
+                Assert.That(
+                    GetPrivateField<ProjectileLifecycleState>(projectile, "state"),
+                    Is.SameAs(retainedLifecycleState));
                 Assert.That(
                     commandField.GetValue(projectile),
                     Is.SameAs(exactCommand));
