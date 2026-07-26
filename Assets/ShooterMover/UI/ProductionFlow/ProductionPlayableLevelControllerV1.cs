@@ -4,6 +4,7 @@ using System.Globalization;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Levels.Selection;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.UI.LevelSelection;
@@ -37,13 +38,11 @@ namespace ShooterMover.UI.ProductionFlow
         private readonly List<GameObject> ownedBindings = new List<GameObject>();
         private ProductionPlayableLevelDefinitionV1 levelDefinition;
         private ProductionCharacterRuntimeGraphV1 characterGraph;
-        private ProductionFlowProfileRecordV1 characterProfile;
         private object exactHoldingsAuthority;
         private object exactLoadoutAuthority;
         private string routeFingerprint;
         private PlayablePlayerMarker2D playerMarker;
         private Rigidbody2D playerBody;
-        private Camera gameplayCamera;
         private Sprite runtimeSprite;
         private Texture2D runtimeTexture;
         private long operationSequence;
@@ -181,13 +180,12 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            Begin(selectedLevel, graph, profile);
+            Begin(selectedLevel, graph);
         }
 
         private void Begin(
             ProductionPlayableLevelDefinitionV1 selectedLevel,
-            ProductionCharacterRuntimeGraphV1 graph,
-            ProductionFlowProfileRecordV1 profile)
+            ProductionCharacterRuntimeGraphV1 graph)
         {
             try
             {
@@ -196,8 +194,6 @@ namespace ShooterMover.UI.ProductionFlow
                     ?? throw new ArgumentNullException(nameof(selectedLevel));
                 characterGraph = graph
                     ?? throw new ArgumentNullException(nameof(graph));
-                characterProfile = profile
-                    ?? throw new ArgumentNullException(nameof(profile));
                 exactHoldingsAuthority = graph.LoadoutRuntime.Holdings;
                 exactLoadoutAuthority = graph.LoadoutRuntime.LoadoutAuthority;
                 routeFingerprint = graph.RoutePayload.Fingerprint;
@@ -409,7 +405,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             GameObject cameraObject = new GameObject("Playable Level Camera");
             cameraObject.transform.SetParent(transform, false);
-            gameplayCamera = cameraObject.AddComponent<Camera>();
+            Camera gameplayCamera = cameraObject.AddComponent<Camera>();
             gameplayCamera.orthographic = true;
             gameplayCamera.orthographicSize = cameraSize;
             gameplayCamera.clearFlags = CameraClearFlags.SolidColor;
@@ -690,6 +686,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
+    [DisallowMultipleComponent]
     public sealed class PlayablePlayerMarker2D : MonoBehaviour
     {
         public StableId CharacterInstanceStableId { get; private set; }
@@ -723,6 +720,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
+    [DisallowMultipleComponent]
     public sealed class PlayableTopDownMovement2D : MonoBehaviour
     {
         private Rigidbody2D body;
@@ -768,6 +766,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
+    [DisallowMultipleComponent]
     public sealed class PlayableCameraFollow2D : MonoBehaviour
     {
         private Transform target;
@@ -796,6 +795,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
+    [DisallowMultipleComponent]
     public sealed class PlayableDoorTrigger2D : MonoBehaviour
     {
         private RoomDoorInstance2D door;
