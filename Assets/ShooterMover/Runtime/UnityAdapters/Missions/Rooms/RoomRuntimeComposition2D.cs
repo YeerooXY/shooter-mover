@@ -151,10 +151,21 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             EnsurePresentationRoot();
             presentationCatalog.ValidateFor(configuredDefinition);
-            authority = new RoomLiveRuntimeAuthorityV1(
+            var candidateAuthority = new RoomLiveRuntimeAuthorityV1(
                 stableRuntimeInstanceId,
                 configuredDefinition);
-            RebuildCurrentRoomPresentation();
+            try
+            {
+                BuildCurrentRoomPresentation(candidateAuthority);
+            }
+            catch (Exception)
+            {
+                ClearFailedInitialPresentation();
+                throw;
+            }
+
+            authority = candidateAuthority;
+            CommitCurrentRoomPresentationRebuild();
         }
 
         public bool TryGetSpawnedPlacement(
@@ -279,12 +290,22 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         private void RebuildCurrentRoomPresentation()
         {
+            BuildCurrentRoomPresentation(authority);
+            CommitCurrentRoomPresentationRebuild();
+        }
+
+        private void BuildCurrentRoomPresentation(IRoomLiveRuntimeQueryV1 query)
+        {
             presentation.BuildCurrentRoom(
                 this,
                 configuredDefinition,
                 presentationCatalog,
                 roomPresentationRoot,
-                authority);
+                query);
+        }
+
+        private void CommitCurrentRoomPresentationRebuild()
+        {
             presentationRevision++;
             PublishCurrentRoomPresentationRebuilt();
         }
@@ -306,6 +327,19 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     if (IsFatalException(exception)) throw;
                     Debug.LogException(exception, this);
                 }
+            }
+        }
+
+        private void ClearFailedInitialPresentation()
+        {
+            try
+            {
+                presentation.Clear();
+            }
+            catch (Exception exception)
+            {
+                if (IsFatalException(exception)) throw;
+                Debug.LogException(exception, this);
             }
         }
 
