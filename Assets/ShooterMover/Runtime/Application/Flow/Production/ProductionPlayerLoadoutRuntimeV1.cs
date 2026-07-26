@@ -7,6 +7,7 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons.Catalog;
 
