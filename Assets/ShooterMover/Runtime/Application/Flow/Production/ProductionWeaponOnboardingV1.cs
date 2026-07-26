@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
