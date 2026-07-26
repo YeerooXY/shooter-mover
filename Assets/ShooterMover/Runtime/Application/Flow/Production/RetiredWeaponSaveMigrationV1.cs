@@ -1,15 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
-using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
 
@@ -42,6 +38,8 @@ namespace ShooterMover.Application.Flow.Production
     /// Versioned decoder and cleanup boundary for deleted weapon content. Retired IDs live
     /// only here so they can be removed from old saves; they are never registered in the
     /// production weapon or equipment catalogues and are never translated to current gear.
+    /// Existing holdings ledger and transaction history are retained so accepted operation
+    /// identities remain replay protected after migration.
     /// </summary>
     public static class RetiredWeaponSaveMigrationV1
     {
@@ -71,9 +69,6 @@ namespace ShooterMover.Application.Flow.Production
                 StableId.Parse("equipment-instance.retired-starter-arc-gun"),
                 StableId.Parse("equipment-instance.retired-starter-ricochet-gun"),
             };
-
-        private static readonly StableId MigrationSourceStableId =
-            StableId.Parse("source.retired-weapon-save-migration-v1");
 
         public static RetiredWeaponSaveMigrationResultV1 Migrate(
             PlayerAccountSnapshotV1 account,
@@ -198,7 +193,7 @@ namespace ShooterMover.Application.Flow.Production
                 FindRetiredEquipmentInstances(holdings);
             PlayerHoldingsSnapshotV1 currentHoldings =
                 retiredInstanceIds.Count > 0
-                    ? RebuildWithoutRetired(character, holdings)
+                    ? RemoveRetiredEquipmentPreservingReplay(holdings)
                     : holdings;
             ProductionWeaponInventoryStateV1 repaired =
                 ProductionWeaponOnboardingV1.Repair(
@@ -278,6 +273,64 @@ namespace ShooterMover.Application.Flow.Production
             return output;
         }
 
+        private static PlayerHoldingsSnapshotV1
+            RemoveRetiredEquipmentPreservingReplay(
+                PlayerHoldingsSnapshotV1 original)
+        {
+            var preserved = new List<UniqueHoldingSnapshotV1>();
+            for (int index = 0;
+                 index < original.UniqueHoldings.Count;
+                 index++)
+            {
+                UniqueHoldingSnapshotV1 holding =
+                    original.UniqueHoldings[index];
+                if (holding == null)
+                {
+                    throw new InvalidOperationException(
+                        "A holdings snapshot contains a null unique holding.");
+                }
+
+                if (holding.RewardKind
+                    == RewardGrantKindV1.EquipmentReference)
+                {
+                    if (IsRetiredDefinition(holding.DefinitionStableId)
+                        || RetiredInstances.Contains(
+                            holding.InstanceStableId))
+                    {
+                        continue;
+                    }
+
+                    EquipmentValidationResult validation =
+                        holding.EquipmentInstance == null
+                            ? null
+                            : ProductionWeaponCatalogProvider.EquipmentCatalog
+                                .ValidateInstance(holding.EquipmentInstance);
+                    if (holding.EquipmentInstance == null
+                        || ProductionWeaponCatalogProvider.EquipmentCatalog
+                            .FindEquipmentDefinition(
+                                holding.DefinitionStableId) == null
+                        || validation == null
+                        || !validation.IsValid)
+                    {
+                        throw new InvalidOperationException(
+                            "A non-retired equipment holding is not valid in the current catalogue: "
+                            + holding.InstanceStableId);
+                    }
+                }
+
+                preserved.Add(holding);
+            }
+
+            return PlayerHoldingsSnapshotV1.CreateCanonical(
+                original.SchemaVersion,
+                original.AuthorityStableId,
+                original.MaximumStackQuantity,
+                original.LedgerSnapshot,
+                preserved,
+                original.StackHoldings,
+                original.Transactions);
+        }
+
         private static bool TryCleanGeneratedSignatures(
             CharacterInstanceSnapshotV1 character,
             HashSet<StableId> retiredInstanceIds,
@@ -345,107 +398,6 @@ namespace ShooterMover.Application.Flow.Production
             return true;
         }
 
-        private static PlayerHoldingsSnapshotV1 RebuildWithoutRetired(
-            CharacterInstanceSnapshotV1 character,
-            PlayerHoldingsSnapshotV1 original)
-        {
-            var adapter = new ProductionEquipmentCatalogAdapterV1(
-                ProductionWeaponCatalogProvider.EquipmentCatalog);
-            var rebuilt = new PlayerHoldingsService(
-                original.AuthorityStableId,
-                original.MaximumStackQuantity,
-                adapter);
-
-            for (int index = 0; index < original.UniqueHoldings.Count; index++)
-            {
-                UniqueHoldingSnapshotV1 holding =
-                    original.UniqueHoldings[index];
-                if (holding.RewardKind
-                    == RewardGrantKindV1.EquipmentReference)
-                {
-                    if (IsRetiredDefinition(holding.DefinitionStableId)
-                        || RetiredInstances.Contains(
-                            holding.InstanceStableId))
-                    {
-                        continue;
-                    }
-                    if (holding.EquipmentInstance == null
-                        || ProductionWeaponCatalogProvider.EquipmentCatalog
-                            .FindEquipmentDefinition(
-                                holding.DefinitionStableId) == null
-                        || !ProductionWeaponCatalogProvider.EquipmentCatalog
-                            .ValidateInstance(holding.EquipmentInstance)
-                            .IsValid)
-                    {
-                        throw new InvalidOperationException(
-                            "A non-retired equipment holding is not valid in the current catalogue: "
-                            + holding.InstanceStableId);
-                    }
-                    Apply(rebuilt, PlayerHoldingsCommandV1.AddEquipment(
-                        TransactionId(character, "equipment", holding.InstanceStableId),
-                        OperationId(character, "equipment", holding.InstanceStableId),
-                        rebuilt.AuthorityStableId,
-                        holding.EquipmentInstance,
-                        holding.Provenance,
-                        rebuilt.Sequence));
-                    continue;
-                }
-
-                Apply(rebuilt, PlayerHoldingsCommandV1.AddStrongbox(
-                    TransactionId(character, "strongbox", holding.InstanceStableId),
-                    OperationId(character, "strongbox", holding.InstanceStableId),
-                    rebuilt.AuthorityStableId,
-                    holding.DefinitionStableId,
-                    holding.InstanceStableId,
-                    holding.Provenance,
-                    rebuilt.Sequence));
-            }
-
-            for (int index = 0; index < original.StackHoldings.Count; index++)
-            {
-                StackHoldingSnapshotV1 stack = original.StackHoldings[index];
-                string token = Token(
-                    character,
-                    "stack",
-                    stack.ItemStableId);
-                Apply(rebuilt, PlayerHoldingsCommandV1.AddStack(
-                    StableId.Parse(
-                        "transaction.retired-weapon-migration-" + token),
-                    StableId.Parse(
-                        "operation.retired-weapon-migration-" + token),
-                    rebuilt.AuthorityStableId,
-                    stack.RewardKind,
-                    stack.ItemStableId,
-                    stack.Quantity,
-                    HoldingProvenanceV1.Create(
-                        StableId.Parse(
-                            "grant.retired-weapon-migration-" + token),
-                        MigrationSourceStableId),
-                    rebuilt.Sequence));
-            }
-
-            return rebuilt.ExportSnapshot();
-        }
-
-        private static void Apply(
-            PlayerHoldingsService holdings,
-            PlayerHoldingsCommandV1 command)
-        {
-            PlayerHoldingsMutationResultV1 result = holdings.Apply(command);
-            if (result == null
-                || (result.Status != PlayerHoldingsMutationStatusV1.Applied
-                    && result.Status
-                        != PlayerHoldingsMutationStatusV1
-                            .ExactDuplicateNoChange))
-            {
-                throw new InvalidOperationException(
-                    "Unable to rebuild a preserved holding: "
-                    + (result == null
-                        ? "result-null"
-                        : result.RejectionCode));
-            }
-        }
-
         private static SaveComponentSnapshotV1 Component(
             SaveComponentDefinitionV1 definition,
             string payload)
@@ -455,56 +407,6 @@ namespace ShooterMover.Application.Flow.Production
                 definition.SchemaVersion,
                 definition.ContentVersion,
                 payload);
-        }
-
-        private static StableId TransactionId(
-            CharacterInstanceSnapshotV1 character,
-            string kind,
-            StableId itemStableId)
-        {
-            return StableId.Parse(
-                "transaction.retired-weapon-migration-"
-                + Token(character, kind, itemStableId));
-        }
-
-        private static StableId OperationId(
-            CharacterInstanceSnapshotV1 character,
-            string kind,
-            StableId itemStableId)
-        {
-            return StableId.Parse(
-                "operation.retired-weapon-migration-"
-                + Token(character, kind, itemStableId));
-        }
-
-        private static string Token(
-            CharacterInstanceSnapshotV1 character,
-            string kind,
-            StableId itemStableId)
-        {
-            return Hash(
-                MigrationVersion
-                    + "|"
-                    + character.CharacterInstanceStableId
-                    + "|"
-                    + kind
-                    + "|"
-                    + itemStableId);
-        }
-
-        private static string Hash(string value)
-        {
-            using (SHA256 sha = SHA256.Create())
-            {
-                byte[] digest = sha.ComputeHash(
-                    Encoding.UTF8.GetBytes(value ?? string.Empty));
-                var builder = new StringBuilder(32);
-                for (int index = 0; index < 16; index++)
-                {
-                    builder.Append(digest[index].ToString("x2"));
-                }
-                return builder.ToString();
-            }
         }
 
         private static RetiredWeaponSaveMigrationResultV1 Failure(
