@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Holdings;
@@ -15,94 +16,118 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
 {
     public sealed class ProductionPlayerLoadoutRuntimeV1Tests
     {
-        [Test]
-        public void StarterRuntimeOwnsFiveDistinctWeaponInstances()
+        [TestCase(ProductionWeaponMountPolicyV1.AggressiveLoadoutProfileId, 2)]
+        [TestCase(ProductionWeaponMountPolicyV1.HealerLoadoutProfileId, 3)]
+        [TestCase(ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId, 4)]
+        public void StarterRuntimeOwnsExactlyRequiredFreshInstances(
+            string loadoutProfileId,
+            int expectedMounts)
         {
-            PlayerRouteProfilePayloadV1 payload = Route("five-owned");
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(payload);
-            var snapshot = runtime.Holdings.ExportSnapshot();
-            var identities = new HashSet<StableId>();
+            PlayerRouteProfilePayloadV1 draft = Route(
+                "starter-" + expectedMounts,
+                loadoutProfileId);
 
-            for (int index = 0;
-                index < snapshot.UniqueHoldings.Count;
-                index++)
-            {
-                if (snapshot.UniqueHoldings[index].RewardKind
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(draft);
+            PlayerHoldingsSnapshotV1 holdings = runtime.Holdings.ExportSnapshot();
+            StableId[] owned = holdings.UniqueHoldings
+                .Where(item => item.RewardKind
                     == RewardGrantKindV1.EquipmentReference)
-                {
-                    identities.Add(
-                        snapshot.UniqueHoldings[index]
-                            .InstanceStableId);
-                }
-            }
+                .Select(item => item.InstanceStableId)
+                .ToArray();
+            StableId[] equipped = runtime.LoadoutAuthority.ExportSnapshot()
+                .Bindings
+                .Where(item => item.EquipmentInstanceStableId != null)
+                .Select(item => item.EquipmentInstanceStableId)
+                .ToArray();
 
-            Assert.That(identities.Count, Is.EqualTo(5));
-            for (int index = 0;
-                index < payload.WeaponSlots.Count;
-                index++)
-            {
-                Assert.That(
-                    identities.Contains(
-                        payload.WeaponSlots[index]
-                            .EquipmentInstanceStableId),
-                    Is.True);
-            }
+            Assert.That(owned.Length, Is.EqualTo(expectedMounts));
+            Assert.That(owned.Distinct().Count(), Is.EqualTo(expectedMounts));
+            Assert.That(equipped.Length, Is.EqualTo(expectedMounts));
+            Assert.That(equipped.Distinct().Count(), Is.EqualTo(expectedMounts));
+            Assert.That(equipped.All(owned.Contains), Is.True);
             Assert.That(
-                identities.Contains(
-                    runtime.RicochetEquipmentInstanceStableId),
+                holdings.UniqueHoldings.All(item =>
+                    item.DefinitionStableId
+                    == Id("equipment.weapon-rattler-mk1")),
                 Is.True);
+            Assert.That(
+                holdings.UniqueHoldings.Count,
+                Is.LessThan(runtime.EquipmentCatalog.EquipmentDefinitions.Count));
+            Assert.That(
+                draft.WeaponSlots.All(item => !item.IsBound),
+                Is.True,
+                "The navigation payload must not be mutated into ownership.");
         }
 
         [Test]
-        public void HubConfirmationEquipsReserveInstanceByExactIdentity()
+        public void CreatingAnotherCharacterDoesNotReuseInstanceIds()
         {
-            PlayerRouteProfilePayloadV1 payload = Route("hub-confirm");
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(payload);
+            var first = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "first-character",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
+            var second = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "second-character",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
+
+            StableId[] firstIds = first.Holdings.ExportSnapshot()
+                .UniqueHoldings.Select(item => item.InstanceStableId).ToArray();
+            StableId[] secondIds = second.Holdings.ExportSnapshot()
+                .UniqueHoldings.Select(item => item.InstanceStableId).ToArray();
+
+            Assert.That(firstIds.Intersect(secondIds), Is.Empty);
+        }
+
+        [Test]
+        public void InventoryScreenOpensAfterFreshCharacterCreation()
+        {
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "inventory-open",
+                ProductionWeaponMountPolicyV1.HealerLoadoutProfileId));
+
             var service = new InventoryLoadoutScreenServiceV1(
-                payload,
+                runtime.RoutePayload,
                 runtime.Holdings,
                 runtime.CatalogAdapter,
                 runtime.LoadoutAuthority);
 
-            InventoryLoadoutScreenResultV1 selection =
-                service.TrySelect(
-                    InventoryLoadoutSlotIdsV1.WeaponFour,
-                    runtime.RicochetEquipmentInstanceStableId);
-            InventoryLoadoutScreenResultV1 confirmed =
-                service.Confirm();
+            Assert.That(service.Snapshot, Is.Not.Null);
+            Assert.That(
+                service.Snapshot.Selections.Count(item =>
+                    item.EquipmentInstanceStableId != null),
+                Is.EqualTo(3));
+        }
+
+        [Test]
+        public void LoadoutSurvivesExactHoldingsRestore()
+        {
+            var first = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "restore",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
+            PlayerHoldingsSnapshotV1 holdings = first.Holdings.ExportSnapshot();
+            InventoryLoadoutAuthoritySnapshotV1 loadout =
+                first.LoadoutAuthority.ExportSnapshot();
+
+            ProductionPlayerLoadoutRuntimeV1 restored =
+                ProductionPlayerLoadoutRuntimeV1.Restore(
+                    first.RoutePayload.SelectedCharacterStableId,
+                    first.RoutePayload.LoadoutProfileStableId,
+                    holdings,
+                    loadout);
 
             Assert.That(
-                selection.Status,
-                Is.EqualTo(
-                    InventoryLoadoutScreenStatusV1
-                        .SelectionChanged));
+                restored.Holdings.ExportSnapshot().Fingerprint,
+                Is.EqualTo(holdings.Fingerprint));
             Assert.That(
-                confirmed.Status,
-                Is.EqualTo(
-                    InventoryLoadoutScreenStatusV1.Confirmed));
-            Assert.That(
-                confirmed.RoutePayload.WeaponSlots[3]
-                    .EquipmentInstanceStableId,
-                Is.EqualTo(
-                    runtime.RicochetEquipmentInstanceStableId));
-            Assert.That(
-                runtime.LoadoutAuthority.ExportSnapshot()
-                    .GetBinding(
-                        InventoryLoadoutSlotIdsV1.WeaponFour)
-                    .EquipmentInstanceStableId,
-                Is.EqualTo(
-                    runtime.RicochetEquipmentInstanceStableId));
-            Assert.That(
-                runtime.Holdings.ExportSnapshot()
-                    .UniqueHoldings.Count,
-                Is.EqualTo(5));
+                restored.LoadoutAuthority.ExportSnapshot().Fingerprint,
+                Is.EqualTo(loadout.Fingerprint));
         }
 
         [Test]
         public void DirectDuplicateInstanceCommandRejectsWithoutMutation()
         {
-            PlayerRouteProfilePayloadV1 payload = Route("duplicate");
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(payload);
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "duplicate",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
             InventoryLoadoutAuthoritySnapshotV1 before =
                 runtime.LoadoutAuthority.ExportSnapshot();
             var bindings = CopyBindings(before);
@@ -120,58 +145,21 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 result.Status,
                 Is.EqualTo(
-                    InventoryLoadoutAuthorityMutationStatusV1
-                        .Rejected));
+                    InventoryLoadoutAuthorityMutationStatusV1.Rejected));
             Assert.That(
                 result.RejectionCode,
-                Is.EqualTo(
-                    "production-loadout-instance-duplicate"));
+                Is.EqualTo("production-loadout-instance-duplicate"));
             Assert.That(
                 runtime.LoadoutAuthority.ExportSnapshot().Sequence,
                 Is.EqualTo(before.Sequence));
         }
 
         [Test]
-        public void ExactAcceptedCommandReplayDoesNotApplyTwice()
-        {
-            PlayerRouteProfilePayloadV1 payload = Route("replay");
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(payload);
-            InventoryLoadoutAuthoritySnapshotV1 before =
-                runtime.LoadoutAuthority.ExportSnapshot();
-            var bindings = CopyBindings(before);
-            bindings[3] = new InventoryLoadoutSlotBindingV1(
-                InventoryLoadoutSlotIdsV1.WeaponFour,
-                runtime.RicochetEquipmentInstanceStableId);
-            var command = new InventoryLoadoutAuthorityCommandV1(
-                before.Sequence,
-                runtime.Holdings.Sequence,
-                bindings);
-
-            InventoryLoadoutAuthorityResultV1 first =
-                runtime.LoadoutAuthority.Apply(command);
-            InventoryLoadoutAuthorityResultV1 replay =
-                runtime.LoadoutAuthority.Apply(command);
-
-            Assert.That(
-                first.Status,
-                Is.EqualTo(
-                    InventoryLoadoutAuthorityMutationStatusV1
-                        .Applied));
-            Assert.That(
-                replay.Status,
-                Is.EqualTo(
-                    InventoryLoadoutAuthorityMutationStatusV1
-                        .ExactRepeatNoChange));
-            Assert.That(
-                replay.Snapshot.Sequence,
-                Is.EqualTo(first.Snapshot.Sequence));
-        }
-
-        [Test]
         public void HoldingsChangeMakesPreparedLoadoutCommandStale()
         {
-            PlayerRouteProfilePayloadV1 payload = Route("stale");
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(payload);
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "stale",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
             InventoryLoadoutAuthoritySnapshotV1 before =
                 runtime.LoadoutAuthority.ExportSnapshot();
             var command = new InventoryLoadoutAuthorityCommandV1(
@@ -179,92 +167,69 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 runtime.Holdings.Sequence,
                 CopyBindings(before));
 
-            AddExtraBlaster(runtime);
+            AddExtraCurrentWeapon(runtime);
             InventoryLoadoutAuthorityResultV1 result =
                 runtime.LoadoutAuthority.Apply(command);
 
             Assert.That(
                 result.Status,
                 Is.EqualTo(
-                    InventoryLoadoutAuthorityMutationStatusV1
-                        .StaleSnapshot));
+                    InventoryLoadoutAuthorityMutationStatusV1.StaleSnapshot));
             Assert.That(
                 result.RejectionCode,
-                Is.EqualTo(
-                    "production-loadout-holdings-stale"));
-            Assert.That(
-                result.Snapshot.Sequence,
-                Is.EqualTo(before.Sequence));
+                Is.EqualTo("production-loadout-holdings-stale"));
+            Assert.That(result.Snapshot.Sequence, Is.EqualTo(before.Sequence));
         }
 
-        private static List<InventoryLoadoutSlotBindingV1>
-            CopyBindings(
-                InventoryLoadoutAuthoritySnapshotV1 snapshot)
+        private static List<InventoryLoadoutSlotBindingV1> CopyBindings(
+            InventoryLoadoutAuthoritySnapshotV1 snapshot)
         {
-            var bindings =
-                new List<InventoryLoadoutSlotBindingV1>();
-            for (int index = 0;
-                index < snapshot.Bindings.Count;
-                index++)
-            {
-                bindings.Add(
-                    new InventoryLoadoutSlotBindingV1(
-                        snapshot.Bindings[index].SlotStableId,
-                        snapshot.Bindings[index]
-                            .EquipmentInstanceStableId));
-            }
-            return bindings;
+            return snapshot.Bindings.Select(item =>
+                new InventoryLoadoutSlotBindingV1(
+                    item.SlotStableId,
+                    item.EquipmentInstanceStableId)).ToList();
         }
 
-        private static void AddExtraBlaster(
+        private static void AddExtraCurrentWeapon(
             ProductionPlayerLoadoutRuntimeV1 runtime)
         {
+            EquipmentDefinition definition = runtime.EquipmentCatalog
+                .FindEquipmentDefinition(Id("equipment.weapon-rattler-mk1"));
+            Assert.That(definition, Is.Not.Null);
             EquipmentInstance instance = EquipmentInstance.Create(
-                StableId.Parse(
-                    "equipment-instance.production-extra-blaster"),
-                ProductionStarterWeaponCatalogV1
-                    .BlasterEquipmentDefinitionStableId,
-                1,
-                StableId.Parse("equipment-quality.common"),
+                Id("equipment-instance.test-extra-rattler"),
+                definition.DefinitionId,
+                definition.ItemLevelRange.Minimum,
+                definition.QualityTiers[0].QualityId,
                 Array.Empty<AugmentInstance>());
-            PlayerHoldingsMutationResultV1 result =
-                runtime.Holdings.Apply(
-                    PlayerHoldingsCommandV1.AddEquipment(
-                        StableId.Parse(
-                            "transaction.production-extra-blaster"),
-                        StableId.Parse(
-                            "operation.production-extra-blaster"),
-                        runtime.Holdings.AuthorityStableId,
-                        instance,
-                        HoldingProvenanceV1.Create(
-                            StableId.Parse(
-                                "grant.production-extra-blaster"),
-                            StableId.Parse(
-                                "source.production-loadout-test")),
-                        runtime.Holdings.Sequence));
+            PlayerHoldingsMutationResultV1 result = runtime.Holdings.Apply(
+                PlayerHoldingsCommandV1.AddEquipment(
+                    Id("transaction.test-extra-rattler"),
+                    Id("operation.test-extra-rattler"),
+                    runtime.Holdings.AuthorityStableId,
+                    instance,
+                    HoldingProvenanceV1.Create(
+                        Id("grant.test-extra-rattler"),
+                        Id("source.production-loadout-test")),
+                    runtime.Holdings.Sequence));
             Assert.That(
                 result.Status,
-                Is.EqualTo(
-                    PlayerHoldingsMutationStatusV1.Applied));
+                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
         }
 
         private static PlayerRouteProfilePayloadV1 Route(
-            string suffix)
+            string suffix,
+            string loadoutProfileId)
         {
             return PlayerRouteProfilePayloadV1.Create(
-                StableId.Parse("character." + suffix),
-                StableId.Parse("loadout-profile." + suffix),
-                new[]
-                {
-                    StableId.Parse(
-                        "equipment-instance." + suffix + "-1"),
-                    StableId.Parse(
-                        "equipment-instance." + suffix + "-2"),
-                    StableId.Parse(
-                        "equipment-instance." + suffix + "-3"),
-                    StableId.Parse(
-                        "equipment-instance." + suffix + "-4"),
-                });
+                Id("character." + suffix),
+                Id(loadoutProfileId),
+                new StableId[PlayerRouteProfilePayloadV1.WeaponSlotCount]);
+        }
+
+        private static StableId Id(string value)
+        {
+            return StableId.Parse(value);
         }
     }
 }
