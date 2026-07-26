@@ -1,13 +1,13 @@
 {
   "room": "room.level1-entry",
-  "completion": "always",
+  "completion": "all-enemies",
   "optional_enemy_ids": [],
   "door_rules": [
     {
       "match": {
         "door_id": "terminal-route"
       },
-      "open_when": "always"
+      "open_when": "room-complete"
     }
   ]
 }
