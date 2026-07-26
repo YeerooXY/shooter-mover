@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
@@ -69,10 +70,9 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     SpawnVisual(catalog, ordered[index]);
                 }
             }
-            catch
+            catch (Exception exception)
             {
-                Clear();
-                throw;
+                CleanupAndRethrow(exception, Clear);
             }
         }
 
@@ -132,10 +132,9 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     typeof(SortingGroup),
                     ForegroundSortingOrder);
             }
-            catch
+            catch (Exception exception)
             {
-                DestroyOwnedPresentation();
-                throw;
+                CleanupAndRethrow(exception, DestroyOwnedPresentation);
             }
         }
 
@@ -220,6 +219,37 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 default:
                     throw new ArgumentOutOfRangeException(nameof(layer));
             }
+        }
+
+        private static void CleanupAndRethrow(
+            Exception constructionException,
+            Action cleanup)
+        {
+            bool constructionWasFatal = IsFatalException(constructionException);
+            try
+            {
+                cleanup();
+            }
+            catch (Exception cleanupException)
+            {
+                if (IsFatalException(cleanupException) && !constructionWasFatal)
+                {
+                    ExceptionDispatchInfo.Capture(cleanupException).Throw();
+                }
+                if (!IsFatalException(cleanupException))
+                {
+                    Debug.LogException(cleanupException);
+                }
+            }
+
+            ExceptionDispatchInfo.Capture(constructionException).Throw();
+        }
+
+        private static bool IsFatalException(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
 
         private static void DestroyObject(GameObject instance)
