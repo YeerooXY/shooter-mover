@@ -13,8 +13,8 @@ namespace ShooterMover.UnityAdapters.Enemies
         IEnemyAttackEffectPortV1,
         IEnemyAttackPatternEffectPortV1
     {
-        private readonly Dictionary<StableId, EnemyAttackBinding2D> attacks =
-            new Dictionary<StableId, EnemyAttackBinding2D>();
+        private readonly Dictionary<StableId, EnemyAttack2D> attacks =
+            new Dictionary<StableId, EnemyAttack2D>();
         private readonly Dictionary<StableId, string> dispatches =
             new Dictionary<StableId, string>();
         private readonly Dictionary<StableId, string> cancellations =
@@ -33,7 +33,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return;
             }
 
-            EnemyAttackBinding2D current;
+            EnemyAttack2D current;
             if (attacks.TryGetValue(actor.ActorStableId, out current))
             {
                 if (current == null)
@@ -44,10 +44,10 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return;
             }
 
-            EnemyAttackBinding2D binding = actor.GetComponent<EnemyAttackBinding2D>()
-                ?? actor.gameObject.AddComponent<EnemyAttackBinding2D>();
-            binding.Bind(actor, revision);
-            attacks.Add(actor.ActorStableId, binding);
+            EnemyAttack2D attack = actor.GetComponent<EnemyAttack2D>()
+                ?? actor.gameObject.AddComponent<EnemyAttack2D>();
+            attack.Bind(actor, revision);
+            attacks.Add(actor.ActorStableId, attack);
         }
 
         public void Emit(EnemyAttackExecutionRequestV1 request)
@@ -74,13 +74,11 @@ namespace ShooterMover.UnityAdapters.Enemies
                         EnemyAttackPatternDispatchRejectionCodeV1.ConflictingDuplicate);
             }
 
-            EnemyAttackBinding2D binding;
             EnemyAttack2D attack;
             if (!attacks.TryGetValue(
                     sequence.Execution.Identity.EntityInstanceId,
-                    out binding)
-                || binding == null
-                || (attack = binding.CurrentAttack) == null)
+                    out attack)
+                || attack == null)
             {
                 return EnemyAttackPatternDispatchResultV1.Rejected(
                     sequence.DispatchStableId,
@@ -138,11 +136,9 @@ namespace ShooterMover.UnityAdapters.Enemies
                         EnemyAttackPatternDispatchRejectionCodeV1.ConflictingDuplicate);
             }
 
-            EnemyAttackBinding2D binding;
             EnemyAttack2D attack;
-            if (!attacks.TryGetValue(cancellation.SourceEntityStableId, out binding)
-                || binding == null
-                || (attack = binding.CurrentAttack) == null)
+            if (!attacks.TryGetValue(cancellation.SourceEntityStableId, out attack)
+                || attack == null)
             {
                 return EnemyAttackPatternDispatchResultV1.Rejected(
                     cancellation.CancellationStableId,
