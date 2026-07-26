@@ -5,6 +5,7 @@ using System.Text;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -193,8 +194,10 @@ namespace ShooterMover.Application.Flow.Production
                 return false;
             }
 
+            HashSet<StableId> retiredInstanceIds =
+                FindRetiredEquipmentInstances(holdings);
             PlayerHoldingsSnapshotV1 currentHoldings =
-                ContainsRetiredEquipment(holdings)
+                retiredInstanceIds.Count > 0
                     ? RebuildWithoutRetired(character, holdings)
                     : holdings;
             ProductionWeaponInventoryStateV1 repaired =
@@ -213,7 +216,18 @@ namespace ShooterMover.Application.Flow.Production
                 repaired.Loadout.Fingerprint,
                 loadout.Fingerprint,
                 StringComparison.Ordinal);
-            if (!holdingsChanged && !loadoutChanged)
+            GeneratedEquipmentAugmentSignatureSnapshotV1 cleanedSignatures;
+            bool signaturesChanged;
+            if (!TryCleanGeneratedSignatures(
+                    character,
+                    retiredInstanceIds,
+                    out cleanedSignatures,
+                    out signaturesChanged,
+                    out diagnostic))
+            {
+                return false;
+            }
+            if (!holdingsChanged && !loadoutChanged && !signaturesChanged)
             {
                 return true;
             }
@@ -232,13 +246,22 @@ namespace ShooterMover.Application.Flow.Production
                     KnownSaveComponentCodecsV1.ExactInstanceLoadout.Encode(
                         repaired.Loadout)));
             }
+            if (signaturesChanged)
+            {
+                migrated = migrated.WithComponent(Component(
+                    GeneratedEquipmentAugmentSignatureSaveComponentV1
+                        .Definition(),
+                    GeneratedEquipmentAugmentSignatureSaveComponentV1
+                        .Codec.Encode(cleanedSignatures)));
+            }
             changed = true;
             return true;
         }
 
-        private static bool ContainsRetiredEquipment(
+        private static HashSet<StableId> FindRetiredEquipmentInstances(
             PlayerHoldingsSnapshotV1 holdings)
         {
+            var output = new HashSet<StableId>();
             for (int index = 0; index < holdings.UniqueHoldings.Count; index++)
             {
                 UniqueHoldingSnapshotV1 holding = holdings.UniqueHoldings[index];
@@ -249,10 +272,77 @@ namespace ShooterMover.Application.Flow.Production
                         || RetiredInstances.Contains(
                             holding.InstanceStableId)))
                 {
-                    return true;
+                    output.Add(holding.InstanceStableId);
                 }
             }
-            return false;
+            return output;
+        }
+
+        private static bool TryCleanGeneratedSignatures(
+            CharacterInstanceSnapshotV1 character,
+            HashSet<StableId> retiredInstanceIds,
+            out GeneratedEquipmentAugmentSignatureSnapshotV1 cleaned,
+            out bool changed,
+            out string diagnostic)
+        {
+            cleaned = null;
+            changed = false;
+            diagnostic = string.Empty;
+            SaveComponentSnapshotV1 component;
+            if (retiredInstanceIds == null
+                || retiredInstanceIds.Count == 0
+                || !character.TryGetComponent(
+                    GeneratedEquipmentAugmentSignatureSaveComponentV1
+                        .Definition().ComponentStableId,
+                    out component))
+            {
+                return true;
+            }
+
+            GeneratedEquipmentAugmentSignatureSnapshotV1 original;
+            if (!GeneratedEquipmentAugmentSignatureSaveComponentV1.Codec
+                .TryDecode(
+                    component.CanonicalPayload,
+                    out original,
+                    out diagnostic))
+            {
+                diagnostic = "generated-signature-decode-failed:"
+                    + diagnostic;
+                return false;
+            }
+
+            var committed =
+                new List<GeneratedEquipmentAugmentSignatureV1>();
+            for (int index = 0; index < original.Committed.Count; index++)
+            {
+                GeneratedEquipmentAugmentSignatureV1 signature =
+                    original.Committed[index];
+                if (!retiredInstanceIds.Contains(
+                        signature.EquipmentInstanceStableId))
+                {
+                    committed.Add(signature);
+                }
+            }
+            var staged = new List<GeneratedEquipmentAugmentSignatureV1>();
+            for (int index = 0; index < original.Staged.Count; index++)
+            {
+                GeneratedEquipmentAugmentSignatureV1 signature =
+                    original.Staged[index];
+                if (!retiredInstanceIds.Contains(
+                        signature.EquipmentInstanceStableId))
+                {
+                    staged.Add(signature);
+                }
+            }
+
+            changed = committed.Count != original.Committed.Count
+                || staged.Count != original.Staged.Count;
+            cleaned = changed
+                ? new GeneratedEquipmentAugmentSignatureSnapshotV1(
+                    committed,
+                    staged)
+                : original;
+            return true;
         }
 
         private static PlayerHoldingsSnapshotV1 RebuildWithoutRetired(
