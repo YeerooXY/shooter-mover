@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.EditMode.ProductionFlow",
+  "rootNamespace": "ShooterMover.Tests.EditMode.ProductionFlow",
+  "references": [
+    "ShooterMover.UI.ProductionFlow",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
