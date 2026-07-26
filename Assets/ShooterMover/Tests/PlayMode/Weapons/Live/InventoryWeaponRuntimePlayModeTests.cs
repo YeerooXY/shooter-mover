@@ -29,14 +29,14 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             Fixture fixture = CreateFixture();
             try
             {
-                InventoryWeaponExecutionResult blaster = fixture.Runtime.TryFire(
-                    new FireOperationId(StableId.Parse("fire.playmode-blaster")),
+                InventoryWeaponExecutionResult rattler = fixture.Runtime.TryFire(
+                    new FireOperationId(StableId.Parse("fire.playmode-rattler")),
                     0L,
                     10UL,
                     new WeaponVector2(0d, 0d),
                     new WeaponVector2(1d, 0d));
                 Assert.That(
-                    blaster.Status,
+                    rattler.Status,
                     Is.EqualTo(WeaponExecutionStatus.Accepted));
                 Assert.That(fixture.Emitter.EmittedEffects.Count, Is.EqualTo(1));
                 Assert.That(
@@ -46,24 +46,24 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 Assert.That(
                     fixture.Runtime.SelectSlot(1),
                     Is.EqualTo(InventoryWeaponSlotSelectionStatus.Selected));
-                InventoryWeaponExecutionResult shotgun = fixture.Runtime.TryFire(
-                    new FireOperationId(StableId.Parse("fire.playmode-shotgun")),
+                InventoryWeaponExecutionResult ironwake = fixture.Runtime.TryFire(
+                    new FireOperationId(StableId.Parse("fire.playmode-ironwake")),
                     0L,
                     11UL,
                     new WeaponVector2(0d, 0d),
                     new WeaponVector2(1d, 0d));
 
                 Assert.That(
-                    shotgun.Status,
+                    ironwake.Status,
                     Is.EqualTo(WeaponExecutionStatus.Accepted));
                 Assert.That(
-                    shotgun.EffectBatch.CoreBatch.EffectCount,
+                    ironwake.EffectBatch.CoreBatch.EffectCount,
                     Is.EqualTo(7));
                 Assert.That(fixture.Emitter.EmittedEffects.Count, Is.EqualTo(8));
                 Assert.That(
                     fixture.Emitter.EmittedEffects[1]
                         .Description.Identity.WeaponDefinitionId.Value,
-                    Is.EqualTo("weapon.shotgun"));
+                    Is.EqualTo("ironwake.mk1"));
                 yield return null;
             }
             finally
@@ -130,7 +130,7 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
         }
 
         [UnityTest]
-        public IEnumerator Flamethrower_EmitsCanonicalPersistentDamagePool()
+        public IEnumerator Nullstar_EmitsCanonicalPersistentDamagePool()
         {
             Fixture fixture = CreateFixture();
             try
@@ -138,7 +138,7 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 fixture.Runtime.SelectSlot(3);
                 InventoryWeaponExecutionResult result = fixture.Runtime.TryFire(
                     new FireOperationId(
-                        StableId.Parse("fire.playmode-flamethrower")),
+                        StableId.Parse("fire.playmode-nullstar")),
                     0L,
                     12UL,
                     new WeaponVector2(0d, 0d),
@@ -177,17 +177,17 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             EquipmentInstance[] equipment =
             {
                 Equipment(
-                    "equipment-instance.play-blaster",
-                    "equipment-definition.blaster"),
+                    "equipment-instance.play-rattler",
+                    "equipment-definition.rattler"),
                 Equipment(
-                    "equipment-instance.play-shotgun",
-                    "equipment-definition.shotgun"),
+                    "equipment-instance.play-ironwake",
+                    "equipment-definition.ironwake"),
                 Equipment(
-                    "equipment-instance.play-rocket",
-                    "equipment-definition.rocket"),
+                    "equipment-instance.play-crownfall",
+                    "equipment-definition.crownfall"),
                 Equipment(
-                    "equipment-instance.play-flame",
-                    "equipment-definition.flamethrower"),
+                    "equipment-instance.play-nullstar",
+                    "equipment-definition.nullstar"),
             };
             PlayerRouteProfilePayloadV1 route =
                 PlayerRouteProfilePayloadV1.Create(
