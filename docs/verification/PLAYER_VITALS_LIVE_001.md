@@ -38,13 +38,16 @@ used as the canonical damage actor identity.
 Every successful `PlayablePlayerVitals2D.Bind(...)` creates one new run-entry token and
 uses it in both canonical identities:
 
-- `actor.playable-level-<character>-<run-entry-token>`;
-- `participant.playable-level-<character>-<run-entry-token>`.
+- `actor.playable-level-<run-entry-token>`;
+- `participant.playable-level-<run-entry-token>`.
 
-The authority still starts at lifecycle generation `0`, but the `(actor identity,
-generation)` pair is now different for every level entry. Destroying and recreating vitals
-for the same character therefore creates a new actor and participant rather than a fresh
-replay table behind the previous externally visible identity.
+The compact token-only values stay below `StableId.MaxValueLength`; the selected character
+remains canonically represented by `GameplayEntityOwnership.SourceCharacterId`.
+
+The authority starts at lifecycle generation `0`, but the `(actor identity, generation)`
+pair is different for every level entry. Destroying and recreating vitals for the same
+character therefore creates a new actor and participant rather than a fresh replay table
+behind the previous externally visible identity.
 
 A delayed command captured from an earlier entry retains the earlier actor in
 `TargetActorId`. The new authority rejects it with `TargetMismatch`; health and accepted
@@ -217,7 +220,8 @@ Static inspection performed:
 
 - required exact merge base retained;
 - canonical `PlayerActorAuthority` still owns health/replay/death/lifecycle state;
-- every binding creates a fresh run-local actor and participant identity;
+- every binding creates a fresh run-local actor and participant identity within StableId
+  limits;
 - previous-entry commands retain the old target and fail against the new actor;
 - contact-command factory validates character identity before projecting actor/generation;
 - accepted Hub-return latch is written only after a true transition result;
