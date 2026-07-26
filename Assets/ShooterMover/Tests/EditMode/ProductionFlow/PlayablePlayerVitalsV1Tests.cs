@@ -61,9 +61,11 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
         {
             DamageReceiverCommand oldCommand;
             StableId oldActorStableId;
+            StableId oldCharacterStableId;
             Fixture firstEntry = Fixture.Create();
             try
             {
+                oldCharacterStableId = firstEntry.CharacterStableId;
                 oldCommand = firstEntry.Damage("previous-entry-impact", 25d);
                 oldActorStableId = firstEntry.Vitals.Identity.EntityInstanceId;
                 DamageReceiverResult applied =
@@ -84,8 +86,7 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
             {
                 Assert.That(
                     secondEntry.CharacterStableId,
-                    Is.EqualTo(oldCommand.CommandTargetCharacterForTest(
-                        secondEntry.CharacterStableId)));
+                    Is.EqualTo(oldCharacterStableId));
                 Assert.That(
                     secondEntry.Vitals.Identity.EntityInstanceId,
                     Is.Not.EqualTo(oldActorStableId));
@@ -580,16 +581,6 @@ namespace ShooterMover.Tests.EditMode.ProductionFlow
                     UnityEngine.Object.DestroyImmediate(Player);
                 }
             }
-        }
-    }
-
-    internal static class DamageReceiverCommandTestExtensions
-    {
-        public static StableId CommandTargetCharacterForTest(
-            this DamageReceiverCommand command,
-            StableId expectedCharacterStableId)
-        {
-            return expectedCharacterStableId;
         }
     }
 }
