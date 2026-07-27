@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
+    /// <summary>
+    /// Compatibility GameObject menus. These callbacks select context only; all topology mutation is
+    /// delegated to LevelGridEditorOperationsV2.
+    /// </summary>
     public static class LevelGridAuthoringV2CreationMenu
     {
         [MenuItem(
@@ -33,17 +36,27 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            GameObject endpointObject = new GameObject("Door Endpoint");
-            Undo.RegisterCreatedObjectUndo(endpointObject, "Create Door Endpoint");
-            endpointObject.transform.SetParent(room.transform, false);
-            LevelDoorEndpointAuthoring2D endpoint =
-                Undo.AddComponent<LevelDoorEndpointAuthoring2D>(endpointObject);
-            endpoint.AssignNewStableId();
-            endpoint.SnapToPlacement();
+            try
+            {
+                LevelGridEditorOperationsV2.CreateDoor(
+                    room,
+                    LevelDoorSideV2.North,
+                    0.5f);
+            }
+            catch (System.Exception exception)
+            {
+                if (exception is System.OutOfMemoryException
+                    || exception is System.StackOverflowException
+                    || exception is System.AccessViolationException)
+                {
+                    throw;
+                }
 
-            Selection.activeGameObject = endpointObject;
-            EditorSceneManager.MarkSceneDirty(room.gameObject.scene);
-            SceneView.RepaintAll();
+                EditorUtility.DisplayDialog(
+                    "Create Door Endpoint Failed",
+                    exception.Message,
+                    "OK");
+            }
         }
 
         [MenuItem(
@@ -62,58 +75,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelRoomAuthoring2D sourceRoom = endpoints[0].OwningRoom;
-            LevelRoomAuthoring2D destinationRoom = endpoints[1].OwningRoom;
-            LevelDesignSceneAuthoringRoot2D sourceRoot = sourceRoom == null
-                ? null
-                : sourceRoom.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            LevelDesignSceneAuthoringRoot2D destinationRoot = destinationRoom == null
-                ? null
-                : destinationRoom.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            if (sourceRoom == null
-                || destinationRoom == null
-                || sourceRoom == destinationRoom
-                || sourceRoot == null
-                || sourceRoot != destinationRoot)
+            LevelDesignSceneAuthoringRoot2D root =
+                LevelGridEditorOperationsV2.ResolveRoot(endpoints[0]);
+            LevelDoorLinkAuthoring2D created;
+            string rejection;
+            if (!LevelGridEditorOperationsV2.TryCreateConnection(
+                    root,
+                    endpoints[0],
+                    endpoints[1],
+                    out created,
+                    out rejection))
             {
                 EditorUtility.DisplayDialog(
                     "Connect Door Endpoints",
-                    "The two endpoints must belong to different rooms under the same level root.",
+                    rejection,
                     "OK");
-                return;
             }
-
-            if (IsConnected(sourceRoot, endpoints[0])
-                || IsConnected(sourceRoot, endpoints[1]))
-            {
-                EditorUtility.DisplayDialog(
-                    "Connect Door Endpoints",
-                    "Each selected endpoint must be unconnected before creating a link.",
-                    "OK");
-                return;
-            }
-
-            GameObject connectionObject = new GameObject("Door Connection");
-            Undo.RegisterCreatedObjectUndo(
-                connectionObject,
-                "Connect Door Endpoints");
-            connectionObject.transform.SetParent(sourceRoot.transform, false);
-            LevelDoorLinkAuthoring2D link =
-                Undo.AddComponent<LevelDoorLinkAuthoring2D>(connectionObject);
-            link.AssignNewStableId();
-            link.ConfigureConnection(
-                link.ConnectionIdText,
-                sourceRoom,
-                endpoints[0],
-                destinationRoom,
-                endpoints[1]);
-
-            LevelGridDoorOperationsV2.ReflowDoor(sourceRoot, endpoints[0]);
-            LevelGridDoorOperationsV2.ReflowDoor(sourceRoot, endpoints[1]);
-            sourceRoot.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            Selection.activeGameObject = connectionObject;
-            EditorSceneManager.MarkSceneDirty(sourceRoot.gameObject.scene);
-            SceneView.RepaintAll();
         }
 
         [MenuItem(
@@ -124,28 +101,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return GetSelectedEndpoints().Length == 2;
         }
 
-        private static bool IsConnected(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D endpoint)
-        {
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (links[index].SourceDoor == endpoint
-                    || links[index].DestinationDoor == endpoint)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         private static LevelDoorEndpointAuthoring2D[] GetSelectedEndpoints()
         {
             GameObject[] selected = Selection.gameObjects;
-            List<LevelDoorEndpointAuthoring2D> endpoints =
-                new List<LevelDoorEndpointAuthoring2D>();
+            var endpoints = new List<LevelDoorEndpointAuthoring2D>();
             for (int index = 0; index < selected.Length; index++)
             {
                 LevelDoorEndpointAuthoring2D endpoint =
