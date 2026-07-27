@@ -18,6 +18,7 @@ namespace ShooterMover.UI.StrongboxOpening
         [SerializeField, Min(1f)] private float fastForwardMultiplier = 6f;
 
         private readonly List<LootPickupVisual2D> galleryViews = new List<LootPickupVisual2D>();
+        private readonly RunLootTotalsPresentationV1 runTotals = new RunLootTotalsPresentationV1(1250L, 84L, 0L);
         private IReadOnlyList<LootPickupPresentationV1> gallery;
         private IReadOnlyList<OwnedStrongboxGroupPresentationV1> groups;
         private ExactStrongboxSelectionV1 selection;
@@ -31,7 +32,6 @@ namespace ShooterMover.UI.StrongboxOpening
         private Vector2 groupScroll;
         private Vector2 rewardScroll;
         private string diagnostic = string.Empty;
-        private RunLootTotalsPresentationV1 runTotals = new RunLootTotalsPresentationV1(1250L, 84L, 0L);
         private DevelopmentPickupAuthorityFixtureV1 pickupFixture;
         private LootPickupVisual2D pickupFixtureView;
         private DevelopmentPickupCollectionResultV1 lastPickupResult;
@@ -162,13 +162,6 @@ namespace ShooterMover.UI.StrongboxOpening
             {
                 return lastPickupResult;
             }
-            if (!lastPickupResult.ExactReplay)
-            {
-                runTotals = new RunLootTotalsPresentationV1(
-                    runTotals.Credits,
-                    runTotals.Scrap,
-                    checked(runTotals.Strongboxes + 1L));
-            }
             if (pickupFixtureView != null)
             {
                 pickupFixtureView.PlayAcceptedCollectionFeedback(Vector3.zero);
@@ -196,7 +189,5 @@ namespace ShooterMover.UI.StrongboxOpening
             camera.orthographicSize = 7.2f;
             camera.backgroundColor = new Color(0.015f, 0.02f, 0.035f, 1f);
         }
-
-
     }
 }
