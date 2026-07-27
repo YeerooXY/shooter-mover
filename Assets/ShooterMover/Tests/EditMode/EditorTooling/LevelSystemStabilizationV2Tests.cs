@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
+using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Editor.LevelDesign.Foundation;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
@@ -24,6 +25,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         {
             Undo.ClearAll();
             LevelGridV2PlayableExporter.BeforeCommitForTests = null;
+            LevelGridV2PlayableExporter.AfterBackupMoveForTests = null;
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             GameObject rootObject = new GameObject("Level Stabilization Test Root");
             root = rootObject.AddComponent<LevelDesignSceneAuthoringRoot2D>();
@@ -39,6 +41,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         public void TearDown()
         {
             LevelGridV2PlayableExporter.BeforeCommitForTests = null;
+            LevelGridV2PlayableExporter.AfterBackupMoveForTests = null;
             Undo.ClearAll();
             if (root != null)
             {
@@ -120,6 +123,34 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         }
 
         [Test]
+        public void FailureAfterBackupMove_RestoresPreviousExactDestination()
+        {
+            ConfigurePlayableGraph();
+            LevelGridV2PlayableExporter.Export(root, outputRoot);
+            string previousLevel = File.ReadAllText(Path.Combine(outputRoot, "level.json"));
+
+            LevelGridV2PlayableExporter.AfterBackupMoveForTests = delegate
+            {
+                throw new IOException("Injected failure after backup move.");
+            };
+
+            IOException exception = Assert.Throws<IOException>(
+                () => LevelGridV2PlayableExporter.Export(root, outputRoot));
+
+            Assert.That(exception.Message, Does.Contain("Injected failure"));
+            Assert.That(Directory.Exists(outputRoot), Is.True);
+            Assert.That(
+                File.ReadAllText(Path.Combine(outputRoot, "level.json")),
+                Is.EqualTo(previousLevel));
+            Assert.That(
+                Directory.GetDirectories(
+                    temporaryParent,
+                    ".PublishedLevel.playable-backup-*",
+                    SearchOption.TopDirectoryOnly),
+                Is.Empty);
+        }
+
+        [Test]
         public void ExactFinalExit_IsAllowedUnconnectedButRejectedAsRoomLink()
         {
             ConfigurePlayableGraph();
@@ -164,6 +195,78 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         }
 
         [Test]
+        public void FinalExitDoorOutsideExactRoot_IsRejectedEvenWhenItClaimsFinalRoom()
+        {
+            ConfigurePlayableGraph();
+            LevelGridPlayableMetadataV2 metadata =
+                root.GetComponent<LevelGridPlayableMetadataV2>();
+            GameObject rogueObject = new GameObject("Rogue Final Door");
+            try
+            {
+                LevelDoorEndpointAuthoring2D rogueDoor =
+                    rogueObject.AddComponent<LevelDoorEndpointAuthoring2D>();
+                rogueDoor.ConfigureForTests(
+                    "door.rogue-final",
+                    metadata.FinalExitRoom,
+                    LevelDoorSideV2.East,
+                    LevelDoorPlacementModeV2.EdgeManaged,
+                    0.5f,
+                    Vector2.zero,
+                    true);
+                metadata.ConfigureForTests(
+                    metadata.StartRoom,
+                    metadata.PlayerStartLocalPosition,
+                    metadata.PlayerStartRotation,
+                    metadata.FinalExitRoom,
+                    rogueDoor,
+                    metadata.RuntimeDoorObjectId);
+
+                InvalidOperationException exception =
+                    Assert.Throws<InvalidOperationException>(
+                        () => metadata.ValidateForPlayableExport(root));
+
+                Assert.That(exception.Message, Does.Contain("this level root"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(rogueObject);
+            }
+        }
+
+        [Test]
+        public void SnapSelected_PlacementChildUsesPlacementGridInsteadOfRoomRedirect()
+        {
+            LevelRoomAuthoring2D room = LevelGridEditorOperationsV2.CreateRoom(
+                root,
+                Vector2Int.zero);
+            GameObject placementObject = new GameObject("Placement");
+            placementObject.transform.SetParent(room.transform, false);
+            LevelPlacementAuthoring2D placement =
+                placementObject.AddComponent<LevelPlacementAuthoring2D>();
+            placement.ConfigureForTests(
+                "spawn.placement-test",
+                "socket.placement-test",
+                LevelPlacementKind.EnemySpawn,
+                room,
+                null,
+                null,
+                placementObject.transform,
+                null,
+                LevelCollisionPolicy.TriggerOnly,
+                string.Empty);
+            placement.transform.position = new Vector3(123f, 456f, 0f);
+            Selection.activeGameObject = placementObject;
+
+            MethodInfo snapSelected = typeof(LevelDesignFoundationMenu).GetMethod(
+                "SnapSelected",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.That(snapSelected, Is.Not.Null);
+            snapSelected.Invoke(null, null);
+
+            Assert.That(placement.transform.position, Is.EqualTo(room.transform.position));
+        }
+
+        [Test]
         public void CompatibilitySurfaces_DelegateOrDisableInsteadOfMutatingDirectly()
         {
             string creationMenu = ReadProjectFile(
@@ -175,9 +278,30 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             string foundationEditor = ReadProjectFile(
                 "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
                 + "LevelDesignFoundationEditor.cs");
+            string playableEditor = ReadProjectFile(
+                "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
+                + "LevelGridEditorWindowV2.Playable.cs");
+            string exporter = ReadProjectFile(
+                "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
+                + "LevelGridV2PlayableExporter.cs");
             string legacyGuards = ReadProjectFile(
                 "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
                 + "LevelGridLegacySurfaceGuardsV2.cs");
+            string rootAuthoring = ReadProjectFile(
+                "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
+                + "LevelDesignSceneAuthoringRoot2D.cs");
+            string roomAuthoring = ReadProjectFile(
+                "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
+                + "LevelRoomAuthoring2D.cs");
+            string doorAuthoring = ReadProjectFile(
+                "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
+                + "LevelDoorEndpointAuthoring2D.cs");
+            string linkAuthoring = ReadProjectFile(
+                "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
+                + "LevelDoorLinkAuthoring2D.cs");
+            string metadata = ReadProjectFile(
+                "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
+                + "LevelGridPlayableMetadataV2.cs");
 
             StringAssert.Contains("LevelGridEditorOperationsV2.CreateDoor", creationMenu);
             StringAssert.Contains("LevelGridEditorOperationsV2.TryCreateConnection", creationMenu);
@@ -187,13 +311,35 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             StringAssert.Contains("LevelGridEditorOperationsV2.DeleteRoom", compatibilityEditor);
             StringAssert.Contains("LevelGridEditorOperationsV2.Validate", compatibilityEditor);
             StringAssert.Contains("LevelGridEditorOperationsV2.IsConnected", compatibilityEditor);
+            StringAssert.Contains("IsExactFinalExit", compatibilityEditor);
             StringAssert.DoesNotContain("Undo.DestroyObjectImmediate(room.gameObject)",
                 compatibilityEditor);
             StringAssert.DoesNotContain("connection.SourceRoom == room", compatibilityEditor);
 
             StringAssert.Contains("LevelGridEditorOperationsV2.Validate", foundationEditor);
             StringAssert.Contains("LevelGridEditorWindowV2.OpenForRoot", foundationEditor);
+            StringAssert.Contains("placement.SnapToGrid()", foundationEditor);
+            StringAssert.Contains("productionValidationRun", foundationEditor);
             StringAssert.DoesNotContain("Runtime importer: not connected", foundationEditor);
+
+            StringAssert.Contains("productionValidationRun", playableEditor);
+            StringAssert.DoesNotContain("Legacy/", playableEditor);
+            StringAssert.DoesNotContain("Create Three-Room Starter Example", playableEditor);
+            StringAssert.DoesNotContain("Export Grid V2 Draft Folder", playableEditor);
+            StringAssert.DoesNotContain("Publish Grid V2 Validated Authoring Folder", playableEditor);
+
+            StringAssert.Contains("AfterBackupMoveForTests", exporter);
+            StringAssert.Contains("TryRestoreBackup", exporter);
+            StringAssert.Contains("StringComparer.Ordinal", exporter);
+            StringAssert.DoesNotContain("StringComparer.OrdinalIgnoreCase", exporter);
+
+            StringAssert.DoesNotContain("[ContextMenu(", rootAuthoring);
+            StringAssert.DoesNotContain("[ContextMenu(", roomAuthoring);
+            StringAssert.DoesNotContain("[ContextMenu(", doorAuthoring);
+            StringAssert.DoesNotContain("[ContextMenu(", linkAuthoring);
+            StringAssert.Contains(
+                "finalExitDoor.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root",
+                metadata);
 
             StringAssert.Contains("DisableThreeRoomStarter", legacyGuards);
             StringAssert.Contains("DisablePhaseOneDraftExport", legacyGuards);
