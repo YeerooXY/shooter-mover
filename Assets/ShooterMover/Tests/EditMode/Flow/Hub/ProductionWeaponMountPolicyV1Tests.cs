@@ -10,56 +10,63 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
     public sealed class ProductionWeaponMountPolicyV1Tests
     {
         [Test]
-        public void ProductionClassesExposeTwoThreeAndFourBaselineMounts()
+        public void ProductionClassesExposeClassCorrectPhysicalAndActiveMounts()
         {
-            Assert.That(
+            ProductionWeaponMountLayoutV1 aggressive =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     StableId.Parse(
                         ProductionWeaponMountPolicyV1
-                            .AggressiveLoadoutProfileId))
-                    .BaselineEnabledMountCount,
-                Is.EqualTo(2));
-            Assert.That(
+                            .AggressiveLoadoutProfileId));
+            ProductionWeaponMountLayoutV1 healer =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     StableId.Parse(
                         ProductionWeaponMountPolicyV1
-                            .HealerLoadoutProfileId))
-                    .BaselineEnabledMountCount,
-                Is.EqualTo(3));
-            Assert.That(
+                            .HealerLoadoutProfileId));
+            ProductionWeaponMountLayoutV1 defensive =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     StableId.Parse(
                         ProductionWeaponMountPolicyV1
-                            .DefensiveLoadoutProfileId))
-                    .BaselineEnabledMountCount,
-                Is.EqualTo(4));
+                            .DefensiveLoadoutProfileId));
+
+            Assert.That(aggressive.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(aggressive.ActiveMountCount, Is.EqualTo(2));
+            Assert.That(aggressive.LockedBySkillMountCount, Is.EqualTo(1));
+            Assert.That(aggressive.BaselineEnabledMountCount, Is.EqualTo(2));
+
+            Assert.That(healer.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(healer.ActiveMountCount, Is.EqualTo(3));
+            Assert.That(healer.LockedBySkillMountCount, Is.EqualTo(0));
+
+            Assert.That(defensive.PhysicalMountCount, Is.EqualTo(4));
+            Assert.That(defensive.ActiveMountCount, Is.EqualTo(4));
+            Assert.That(defensive.LockedBySkillMountCount, Is.EqualTo(0));
         }
 
         [Test]
         public void BuiltInCharacterSpecificProfilesResolveByClassSuffix()
         {
-            Assert.That(
+            ProductionWeaponMountLayoutV1 aggressive =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     StableId.Parse(
-                        "loadout-profile.frontier-vanguard-aggressive"))
-                    .BaselineEnabledMountCount,
-                Is.EqualTo(2));
-            Assert.That(
+                        "loadout-profile.frontier-vanguard-aggressive"));
+            ProductionWeaponMountLayoutV1 healer =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     StableId.Parse(
-                        "loadout-profile.custom-pilot-healer"))
-                    .BaselineEnabledMountCount,
-                Is.EqualTo(3));
-            Assert.That(
+                        "loadout-profile.custom-pilot-healer"));
+            ProductionWeaponMountLayoutV1 defensive =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     StableId.Parse(
-                        "loadout-profile.frontier-vanguard-defensive"))
-                    .BaselineEnabledMountCount,
-                Is.EqualTo(4));
+                        "loadout-profile.frontier-vanguard-defensive"));
+
+            Assert.That(aggressive.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(aggressive.ActiveMountCount, Is.EqualTo(2));
+            Assert.That(aggressive.LockedBySkillMountCount, Is.EqualTo(1));
+            Assert.That(healer.ActiveMountCount, Is.EqualTo(3));
+            Assert.That(defensive.ActiveMountCount, Is.EqualTo(4));
         }
 
         [Test]
-        public void AggressiveKeepsOnlyOuterBindingsAndRoundTripsUnboundPositions()
+        public void AggressiveProjectsTwoActiveAndOneSkillLockedPhysicalMount()
         {
             PlayerRouteProfilePayloadV1 normalized =
                 ProductionWeaponMountPolicyV1.NormalizeRoutePayload(
@@ -81,7 +88,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
 
             ProductionWeaponMountSetV1 mountSet =
                 ProductionWeaponMountPolicyV1.BuildMountSet(normalized);
-            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(2));
+            Assert.That(mountSet.Layout.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(mountSet.Layout.ActiveMountCount, Is.EqualTo(2));
+            Assert.That(
+                mountSet.Layout.LockedBySkillMountCount,
+                Is.EqualTo(1));
+            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(3));
             Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(2));
             Assert.That(
                 mountSet.ConfiguredBindings[0].MountStableId,
@@ -91,12 +103,19 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 mountSet.ConfiguredBindings[1].MountStableId,
                 Is.EqualTo(
+                    ProductionWeaponMountPolicyV1.CenterMountStableId));
+            Assert.That(
+                mountSet.ConfiguredBindings[1].EquipmentInstanceStableId,
+                Is.Null);
+            Assert.That(
+                mountSet.ConfiguredBindings[2].MountStableId,
+                Is.EqualTo(
                     ProductionWeaponMountPolicyV1
                         .OuterRightMountStableId));
         }
 
         [Test]
-        public void AggressiveRuntimeOwnsExactlyTwoConfigurableWeapons()
+        public void AggressiveRuntimeOwnsOnlyItsTwoActiveStarterWeapons()
         {
             var runtime = new ProductionPlayerLoadoutRuntimeV1(
                 Route(
@@ -110,16 +129,22 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 runtime.LoadoutAuthority);
             StableId owned = runtime.Holdings.ExportSnapshot()
                 .UniqueHoldings.First().InstanceStableId;
+            ProductionWeaponMountSetV1 mountSet =
+                ProductionWeaponMountPolicyV1.BuildMountSet(
+                    runtime.RoutePayload);
 
             Assert.That(
                 runtime.Holdings.ExportSnapshot().UniqueHoldings.Count,
                 Is.EqualTo(2));
+            Assert.That(mountSet.Layout.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(2));
             Assert.That(
-                runtime.RoutePayload.WeaponSlots[1].IsBound,
-                Is.False);
-            Assert.That(
-                runtime.RoutePayload.WeaponSlots[2].IsBound,
-                Is.False);
+                mountSet.ConfiguredBindings.Single(value =>
+                    value.MountStableId
+                        == ProductionWeaponMountPolicyV1
+                            .CenterMountStableId)
+                    .EquipmentInstanceStableId,
+                Is.Null);
             Assert.That(service.Snapshot.CanConfirm, Is.True);
             Assert.That(
                 service.TrySelect(
@@ -142,6 +167,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 ProductionWeaponMountPolicyV1.BuildMountSet(normalized);
 
             Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(3));
             Assert.That(
                 mountSet.ConfiguredBindings[0].MountStableId,
                 Is.EqualTo(
