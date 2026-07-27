@@ -261,7 +261,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public bool CanPublish
         {
-            get { return ErrorCount == 0; }
+            get
+            {
+                return ErrorCount == 0
+                    && UnconnectedTraversableDoorCount == 0;
+            }
         }
 
         public static LevelGridValidationResultV2 Empty(
