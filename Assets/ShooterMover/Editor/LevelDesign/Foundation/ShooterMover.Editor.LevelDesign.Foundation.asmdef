@@ -4,6 +4,7 @@
   "references": [
     "ShooterMover.Application",
     "ShooterMover.Content.Definitions",
+    "ShooterMover.Domain",
     "ShooterMover.UnityAdapters"
   ],
   "includePlatforms": [
