@@ -133,7 +133,7 @@ namespace ShooterMover.Tests.EditMode
         }
 
         [Test]
-        public void ExactSourceReplayIsIdempotentAndConflictingMountFailsClosed()
+        public void ExactSourceReplayIsIdempotentAndIdentityConflictsFailClosed()
         {
             GameObject owner = new GameObject("canonical-projectile-source-test");
             try
@@ -142,6 +142,8 @@ namespace ShooterMover.Tests.EditMode
                     owner.AddComponent<CanonicalProjectileSourceIdentity2D>();
                 var actorId = new WeaponActorInstanceId(
                     StableId.Parse("character.test-canonical-source"));
+                var participantId = new RunParticipantId(
+                    StableId.Parse("run-participant.test-canonical-source"));
                 var lifecycle = new LifecycleGeneration(7L);
                 StableId mountId = StableId.Parse("weapon-mount.test-primary");
                 var equipmentId = new EquipmentInstanceId(
@@ -151,6 +153,7 @@ namespace ShooterMover.Tests.EditMode
                 Assert.That(
                     identity.TryBind(
                         actorId,
+                        participantId,
                         lifecycle,
                         mountId,
                         equipmentId,
@@ -159,6 +162,7 @@ namespace ShooterMover.Tests.EditMode
                 Assert.That(
                     identity.TryBind(
                         actorId,
+                        participantId,
                         lifecycle,
                         mountId,
                         equipmentId,
@@ -168,6 +172,18 @@ namespace ShooterMover.Tests.EditMode
                 Assert.That(
                     identity.TryBind(
                         actorId,
+                        new RunParticipantId(
+                            StableId.Parse("run-participant.test-conflict")),
+                        lifecycle,
+                        mountId,
+                        equipmentId,
+                        definitionId),
+                    Is.False,
+                    "A conflicting participant identity must fail closed.");
+                Assert.That(
+                    identity.TryBind(
+                        actorId,
+                        participantId,
                         lifecycle,
                         StableId.Parse("weapon-mount.test-conflict"),
                         equipmentId,
@@ -176,6 +192,7 @@ namespace ShooterMover.Tests.EditMode
                     "A conflicting mount identity must fail closed.");
 
                 Assert.That(identity.ActorId, Is.EqualTo(actorId));
+                Assert.That(identity.ParticipantId, Is.EqualTo(participantId));
                 Assert.That(identity.LifecycleGeneration, Is.EqualTo(lifecycle));
                 Assert.That(identity.MountStableId, Is.EqualTo(mountId));
                 Assert.That(identity.EquipmentInstanceId, Is.EqualTo(equipmentId));
