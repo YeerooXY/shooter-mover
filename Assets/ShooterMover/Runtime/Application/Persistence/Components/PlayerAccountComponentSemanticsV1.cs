@@ -48,6 +48,7 @@ namespace ShooterMover.Application.Persistence.Components
 
             PlayerHoldingsSnapshotV1 holdings = null;
             WeaponHoldingsSnapshotV2 weaponHoldings = null;
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout = null;
             InventoryLoadoutAuthoritySnapshotV1 loadout = null;
             StrongboxOpeningSnapshotV1 strongboxes = null;
             GeneratedEquipmentAugmentSignatureSnapshotV1 augmentSignatures = null;
@@ -74,6 +75,24 @@ namespace ShooterMover.Application.Persistence.Components
             {
                 return SaveComponentValidationResultV1.Reject(
                     weaponHoldingsError);
+            }
+
+            string weaponMountError;
+            bool hasWeaponMountLoadout =
+                WeaponMountLoadoutSaveComponentV2.TryRead(
+                    character,
+                    out weaponMountLoadout,
+                    out weaponMountError);
+            if (!hasWeaponMountLoadout
+                && !string.IsNullOrEmpty(weaponMountError))
+            {
+                return SaveComponentValidationResultV1.Reject(
+                    weaponMountError);
+            }
+            if (hasWeaponMountLoadout && !hasWeaponHoldings)
+            {
+                return SaveComponentValidationResultV1.Reject(
+                    "weapon-mount-loadout-v2-requires-canonical-holdings");
             }
 
             if (character.TryGetComponent(
@@ -109,6 +128,20 @@ namespace ShooterMover.Application.Persistence.Components
                 return SaveComponentValidationResultV1.Reject(error);
             }
 
+            if (hasWeaponMountLoadout)
+            {
+                SaveComponentValidationResultV1 mountValidation =
+                    ValidateCanonicalMountLoadout(
+                        character,
+                        weaponHoldings,
+                        weaponMountLoadout,
+                        loadout);
+                if (!mountValidation.Succeeded)
+                {
+                    return mountValidation;
+                }
+            }
+
             if (loadout != null)
             {
                 if (holdings == null)
@@ -125,14 +158,25 @@ namespace ShooterMover.Application.Persistence.Components
                 {
                     StableId instanceId = loadout.Bindings[index]
                         .EquipmentInstanceStableId;
+                    bool weaponSlot = index < InventoryLoadoutSlotsV1.All.Count
+                        && InventoryLoadoutSlotsV1.All[index].Kind
+                            == InventoryLoadoutSlotKindV1.Weapon;
+
+                    if (hasWeaponMountLoadout && weaponSlot)
+                    {
+                        if (instanceId != null)
+                        {
+                            return SaveComponentValidationResultV1.Reject(
+                                "legacy-weapon-slot-must-be-empty-when-mount-v2-present:"
+                                    + loadout.Bindings[index].SlotStableId);
+                        }
+                        continue;
+                    }
                     if (instanceId == null)
                     {
                         continue;
                     }
 
-                    bool weaponSlot = index < InventoryLoadoutSlotsV1.All.Count
-                        && InventoryLoadoutSlotsV1.All[index].Kind
-                            == InventoryLoadoutSlotKindV1.Weapon;
                     bool present = weaponSlot && weaponHoldings != null
                         ? weaponHoldings.Find(instanceId) != null
                         : equipmentIds.Contains(instanceId);
@@ -170,6 +214,47 @@ namespace ShooterMover.Application.Persistence.Components
                 holdings,
                 strongboxes,
                 augmentSignatures);
+        }
+
+        private static SaveComponentValidationResultV1
+            ValidateCanonicalMountLoadout(
+                CharacterInstanceSnapshotV1 character,
+                WeaponHoldingsSnapshotV2 weaponHoldings,
+                WeaponMountLoadoutSnapshotV2 weaponMountLoadout,
+                InventoryLoadoutAuthoritySnapshotV1 legacyArmorLoadout)
+        {
+            if (legacyArmorLoadout == null)
+            {
+                return SaveComponentValidationResultV1.Reject(
+                    "weapon-mount-loadout-v2-requires-armor-loadout-component");
+            }
+            try
+            {
+                var holdingsAuthority =
+                    new ProductionWeaponHoldingsAuthorityV2(weaponHoldings);
+                ProductionWeaponMountLayoutV1 layout =
+                    ProductionWeaponMountPolicyV1.ResolveLayout(
+                        character.ClassDefinitionStableId);
+                var authority = new ProductionWeaponMountLoadoutAuthorityV2(
+                    layout,
+                    holdingsAuthority,
+                    weaponMountLoadout);
+                if (authority.ExportSnapshot().Fingerprint
+                    != weaponMountLoadout.Fingerprint)
+                {
+                    return SaveComponentValidationResultV1.Reject(
+                        "weapon-mount-loadout-v2-semantic-fingerprint-mismatch");
+                }
+            }
+            catch (Exception exception)
+                when (exception is ArgumentException
+                    || exception is InvalidOperationException)
+            {
+                return SaveComponentValidationResultV1.Reject(
+                    "weapon-mount-loadout-v2-semantic-invalid:"
+                        + exception.Message);
+            }
+            return SaveComponentValidationResultV1.Accept();
         }
 
         private static SaveComponentValidationResultV1 ValidateStrongboxes(
@@ -249,8 +334,8 @@ namespace ShooterMover.Application.Persistence.Components
 
                 StrongboxOpeningRecordSnapshotV1 opening;
                 if (!openingsByBox.TryGetValue(
-                        context.InstanceStableId,
-                        out opening))
+                    context.InstanceStableId,
+                    out opening))
                 {
                     if (!heldBoxes.ContainsKey(context.InstanceStableId))
                     {
