@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
