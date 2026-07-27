@@ -1,16 +1,10 @@
 {
-  "name": "ShooterMover.Tests.EditMode",
-  "rootNamespace": "ShooterMover.Tests.EditMode",
+  "name": "ShooterMover.Tests.EditorTooling",
+  "rootNamespace": "ShooterMover.Tests.EditorTooling",
   "references": [
-    "ShooterMover.Domain",
-    "ShooterMover.Contracts",
     "ShooterMover.Application",
-    "ShooterMover.UnityAdapters",
-    "ShooterMover.Presentation",
-    "ShooterMover.GameplayEntities",
-    "ShooterMover.EnemyRuntimeComposition",
     "ShooterMover.Content.Definitions",
-    "ShooterMover.Bootstrap",
+    "ShooterMover.UnityAdapters",
     "ShooterMover.Editor.LevelDesign.Foundation"
   ],
   "includePlatforms": [

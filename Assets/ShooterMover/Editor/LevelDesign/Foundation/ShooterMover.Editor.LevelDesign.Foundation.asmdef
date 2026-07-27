@@ -1,0 +1,20 @@
+{
+  "name": "ShooterMover.Editor.LevelDesign.Foundation",
+  "rootNamespace": "ShooterMover.Editor.LevelDesign.Foundation",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.UnityAdapters"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
