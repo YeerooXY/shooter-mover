@@ -38,6 +38,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
+            root.ValidateHierarchy();
             root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
             Open(root);
         }
@@ -73,12 +74,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Validate Draft"))
             {
+                currentRoot.ValidateHierarchy();
                 currentRoot.ValidateGridAuthoring(
                     LevelGridValidationPurposeV2.Draft);
                 SceneView.RepaintAll();
             }
             if (GUILayout.Button("Validate Production"))
             {
+                currentRoot.ValidateHierarchy();
                 currentRoot.ValidateGridAuthoring(
                     LevelGridValidationPurposeV2.ProductionPublish);
                 SceneView.RepaintAll();
@@ -86,25 +89,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.EndHorizontal();
 
             LevelGridValidationResultV2 result = currentRoot.LastGridValidation;
-            MessageType summaryType = result.ErrorCount > 0
+            LevelDesignValidationResult foundation = currentRoot.LastValidation;
+            bool combinedPublishAllowed = foundation.IsValid && result.CanPublish;
+            MessageType summaryType = !foundation.IsValid || result.ErrorCount > 0
                 ? MessageType.Error
                 : result.WarningCount > 0
                     ? MessageType.Warning
                     : MessageType.Info;
             EditorGUILayout.HelpBox(
                 "Mode: " + result.Purpose
-                + "\nErrors: " + result.ErrorCount
-                + " | Warnings: " + result.WarningCount
+                + "\nFoundation errors: " + foundation.ErrorCount
+                + " | V2 errors: " + result.ErrorCount
+                + " | V2 warnings: " + result.WarningCount
                 + " | Unconnected traversable doors: "
                 + result.UnconnectedTraversableDoorCount
-                + "\nDraft saving remains allowed. Production publishing is "
-                + (result.CanPublish ? "allowed." : "blocked."),
+                + "\nDraft saving remains allowed. Validated authoring publish is "
+                + (combinedPublishAllowed ? "allowed." : "blocked."),
                 summaryType);
 
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             if (result.Problems.Count == 0)
             {
-                EditorGUILayout.LabelField("No grid problems.");
+                EditorGUILayout.LabelField("No V2 grid problems.");
             }
             else
             {
@@ -124,6 +130,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 problem.Code.ToString(),
                 EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
+            if (problem.Code == LevelGridProblemCodeV2.EdgeManagedDoorFacingMismatch)
+            {
+                if (GUILayout.Button("Reflow", GUILayout.Width(64f)))
+                {
+                    ReflowProblemDoor(problem);
+                }
+                if (GUILayout.Button("Keep", GUILayout.Width(52f)))
+                {
+                    KeepProblemDoor(problem);
+                }
+            }
             if (GUILayout.Button("Select", GUILayout.Width(64f)))
             {
                 SelectProblemObject(problem);
@@ -132,17 +149,150 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.LabelField(
                 problem.AuthoredId,
                 EditorStyles.miniLabel);
+            if (!string.IsNullOrEmpty(problem.DiagnosticLocation))
+            {
+                EditorGUILayout.LabelField(
+                    problem.DiagnosticLocation,
+                    EditorStyles.miniLabel);
+            }
             EditorGUILayout.LabelField(
                 problem.Message,
                 EditorStyles.wordWrappedLabel);
             EditorGUILayout.EndVertical();
         }
 
+        private static void ReflowProblemDoor(LevelGridProblemV2 problem)
+        {
+            LevelDoorEndpointAuthoring2D door = FindProblemDoor(problem);
+            if (door == null || currentRoot == null)
+            {
+                return;
+            }
+
+            Undo.IncrementCurrentGroup();
+            int group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Reflow Edge-Managed Door");
+            Undo.RecordObject(door, "Reflow Edge-Managed Door");
+            Undo.RecordObject(door.transform, "Reflow Edge-Managed Door");
+            door.SetAutoFaceConnectionForAuthoring(true);
+            LevelGridDoorOperationsV2.ReflowDoor(currentRoot, door);
+            Undo.CollapseUndoOperations(group);
+            EditorUtility.SetDirty(door);
+            EditorSceneManager.MarkSceneDirty(currentRoot.gameObject.scene);
+            currentRoot.ValidateGridAuthoring(currentRoot.LastGridValidation.Purpose);
+            SceneView.RepaintAll();
+        }
+
+        private static void KeepProblemDoor(LevelGridProblemV2 problem)
+        {
+            LevelDoorEndpointAuthoring2D door = FindProblemDoor(problem);
+            if (door == null || currentRoot == null)
+            {
+                return;
+            }
+
+            Undo.RecordObject(door, "Keep Edge Door Placement");
+            door.SetAutoFaceConnectionForAuthoring(false);
+            EditorUtility.SetDirty(door);
+            EditorSceneManager.MarkSceneDirty(currentRoot.gameObject.scene);
+            currentRoot.ValidateGridAuthoring(currentRoot.LastGridValidation.Purpose);
+            SceneView.RepaintAll();
+        }
+
         private static void SelectProblemObject(LevelGridProblemV2 problem)
+        {
+            Component exact = FindExactProblemObject(problem);
+            if (exact != null)
+            {
+                Selection.activeGameObject = exact.gameObject;
+                EditorGUIUtility.PingObject(exact);
+                return;
+            }
+
+            Component fallback = FindFirstProblemObjectById(problem);
+            if (fallback != null)
+            {
+                Selection.activeGameObject = fallback.gameObject;
+                EditorGUIUtility.PingObject(fallback);
+                return;
+            }
+
+            Selection.activeObject = currentRoot;
+            EditorGUIUtility.PingObject(currentRoot);
+        }
+
+        private static LevelDoorEndpointAuthoring2D FindProblemDoor(
+            LevelGridProblemV2 problem)
+        {
+            Component exact = FindExactProblemObject(problem);
+            LevelDoorEndpointAuthoring2D exactDoor =
+                exact as LevelDoorEndpointAuthoring2D;
+            if (exactDoor != null)
+            {
+                return exactDoor;
+            }
+
+            Component fallback = FindFirstProblemObjectById(problem);
+            return fallback as LevelDoorEndpointAuthoring2D;
+        }
+
+        private static Component FindExactProblemObject(LevelGridProblemV2 problem)
+        {
+            if (currentRoot == null || string.IsNullOrEmpty(problem.DiagnosticLocation))
+            {
+                return null;
+            }
+
+            LevelRoomAuthoring2D[] rooms =
+                currentRoot.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            for (int index = 0; index < rooms.Length; index++)
+            {
+                if (string.Equals(rooms[index].RoomIdText, problem.AuthoredId, StringComparison.Ordinal)
+                    && string.Equals(
+                        BuildDiagnosticLocation(rooms[index].transform),
+                        problem.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return rooms[index];
+                }
+            }
+
+            LevelDoorEndpointAuthoring2D[] doors =
+                currentRoot.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            for (int index = 0; index < doors.Length; index++)
+            {
+                if (string.Equals(doors[index].DoorIdText, problem.AuthoredId, StringComparison.Ordinal)
+                    && string.Equals(
+                        BuildDiagnosticLocation(doors[index].transform),
+                        problem.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return doors[index];
+                }
+            }
+
+            LevelDoorLinkAuthoring2D[] links =
+                currentRoot.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            for (int index = 0; index < links.Length; index++)
+            {
+                if (string.Equals(links[index].ConnectionIdText, problem.AuthoredId, StringComparison.Ordinal)
+                    && string.Equals(
+                        BuildDiagnosticLocation(links[index].transform),
+                        problem.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return links[index];
+                }
+            }
+
+            return null;
+        }
+
+        private static Component FindFirstProblemObjectById(LevelGridProblemV2 problem)
         {
             if (currentRoot == null)
             {
-                return;
+                return null;
             }
 
             LevelRoomAuthoring2D[] rooms =
@@ -154,9 +304,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     problem.AuthoredId,
                     StringComparison.Ordinal))
                 {
-                    Selection.activeGameObject = rooms[index].gameObject;
-                    EditorGUIUtility.PingObject(rooms[index]);
-                    return;
+                    return rooms[index];
                 }
             }
 
@@ -169,9 +317,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     problem.AuthoredId,
                     StringComparison.Ordinal))
                 {
-                    Selection.activeGameObject = doors[index].gameObject;
-                    EditorGUIUtility.PingObject(doors[index]);
-                    return;
+                    return doors[index];
                 }
             }
 
@@ -184,14 +330,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     problem.AuthoredId,
                     StringComparison.Ordinal))
                 {
-                    Selection.activeGameObject = links[index].gameObject;
-                    EditorGUIUtility.PingObject(links[index]);
-                    return;
+                    return links[index];
                 }
             }
 
-            Selection.activeObject = currentRoot;
-            EditorGUIUtility.PingObject(currentRoot);
+            return null;
         }
 
         private void RefreshAfterAuthoringChange()
@@ -201,9 +344,27 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
+            LevelGridDoorOperationsV2.ReflowAll(currentRoot);
+            currentRoot.ValidateHierarchy();
             currentRoot.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
             Repaint();
             SceneView.RepaintAll();
+        }
+
+        private static string BuildDiagnosticLocation(Transform transform)
+        {
+            return transform.gameObject.scene.name + ":" + GetHierarchyPath(transform);
+        }
+
+        private static string GetHierarchyPath(Transform current)
+        {
+            string path = current.name;
+            while (current.parent != null)
+            {
+                current = current.parent;
+                path = current.name + "/" + path;
+            }
+            return path;
         }
 
         private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
@@ -290,6 +451,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
+            Undo.IncrementCurrentGroup();
             int undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Delete Level Room");
             for (int index = 0; index < attachedLinks.Count; index++)
@@ -329,7 +491,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
+            LevelGridDoorOperationsV2.ReflowAll(root);
+            LevelDesignValidationResult foundation = root.ValidateHierarchy();
             LevelGridValidationResultV2 result = root.ValidateGridAuthoring(purpose);
+            LevelDesignSceneAuthoringRoot2DEditor.LogResult(root, foundation);
             LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(root, result);
             LevelGridProblemsWindowV2.Open(root);
             SceneView.RepaintAll();
