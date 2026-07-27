@@ -72,7 +72,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             EditorUtility.SetDirty(door);
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
+            LevelGridAuthoringV2LiveValidation.ValidateNow(
+                root,
+                LevelGridValidationPurposeV2.Draft,
+                false);
             SceneView.RepaintAll();
         }
 
@@ -94,7 +97,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
             if (root != null)
             {
-                root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
+                LevelGridAuthoringV2LiveValidation.ValidateNow(
+                    root,
+                    LevelGridValidationPurposeV2.Draft,
+                    false);
                 EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             }
             SceneView.RepaintAll();
@@ -118,7 +124,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
             if (root != null)
             {
-                root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
+                LevelGridAuthoringV2LiveValidation.ValidateNow(
+                    root,
+                    LevelGridValidationPurposeV2.Draft,
+                    false);
                 EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             }
             SceneView.RepaintAll();
@@ -186,6 +195,81 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return true;
         }
 
+        public static int DeleteDoorUndoable(
+            LevelDoorEndpointAuthoring2D door,
+            bool openProblemsWindow = true)
+        {
+            if (door == null)
+            {
+                return 0;
+            }
+
+            LevelDesignSceneAuthoringRoot2D root =
+                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+            if (root == null)
+            {
+                return 0;
+            }
+
+            List<LevelDoorLinkAuthoring2D> attached =
+                FindAttachedConnections(root, door);
+
+            Undo.IncrementCurrentGroup();
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Delete Level Door");
+            for (int index = 0; index < attached.Count; index++)
+            {
+                DestroyConnectionWithUndo(attached[index]);
+            }
+            Undo.DestroyObjectImmediate(door.gameObject);
+            Undo.CollapseUndoOperations(undoGroup);
+
+            Selection.activeObject = root;
+            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+            LevelGridAuthoringV2LiveValidation.ValidateNow(
+                root,
+                LevelGridValidationPurposeV2.Draft,
+                false);
+            if (openProblemsWindow)
+            {
+                LevelGridProblemsWindowV2.Open(root);
+            }
+            SceneView.RepaintAll();
+
+            SceneView sceneView = SceneView.lastActiveSceneView;
+            if (sceneView != null)
+            {
+                sceneView.ShowNotification(new GUIContent(
+                    "Door deleted; " + attached.Count
+                    + " connection(s) removed. Ctrl+Z to undo."));
+            }
+            return attached.Count;
+        }
+
+        public static List<LevelDoorLinkAuthoring2D> FindAttachedConnections(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDoorEndpointAuthoring2D door)
+        {
+            List<LevelDoorLinkAuthoring2D> attached =
+                new List<LevelDoorLinkAuthoring2D>();
+            if (root == null || door == null)
+            {
+                return attached;
+            }
+
+            LevelDoorLinkAuthoring2D[] links =
+                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            for (int index = 0; index < links.Length; index++)
+            {
+                if (links[index].SourceDoor == door
+                    || links[index].DestinationDoor == door)
+                {
+                    attached.Add(links[index]);
+                }
+            }
+            return attached;
+        }
+
         private static bool TryResolveExpectedSide(
             LevelDesignSceneAuthoringRoot2D root,
             LevelDoorEndpointAuthoring2D door,
@@ -245,55 +329,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return door.transform.localPosition;
         }
 
-        private static void DeleteDoorUndoable(LevelDoorEndpointAuthoring2D door)
+        private static void DestroyConnectionWithUndo(LevelDoorLinkAuthoring2D link)
         {
-            LevelDesignSceneAuthoringRoot2D root =
-                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            if (root == null)
+            if (link == null)
             {
                 return;
             }
 
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            List<LevelDoorLinkAuthoring2D> attached =
-                new List<LevelDoorLinkAuthoring2D>();
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (links[index].SourceDoor == door
-                    || links[index].DestinationDoor == door)
-                {
-                    attached.Add(links[index]);
-                }
-            }
-
-            Undo.IncrementCurrentGroup();
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Delete Level Door");
-            for (int index = 0; index < attached.Count; index++)
-            {
-                DestroyConnectionWithUndo(attached[index]);
-            }
-            Undo.DestroyObjectImmediate(door.gameObject);
-            Undo.CollapseUndoOperations(undoGroup);
-
-            Selection.activeObject = root;
-            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            LevelGridProblemsWindowV2.Open(root);
-            SceneView.RepaintAll();
-
-            SceneView sceneView = SceneView.lastActiveSceneView;
-            if (sceneView != null)
-            {
-                sceneView.ShowNotification(new GUIContent(
-                    "Door deleted; " + attached.Count
-                    + " connection(s) removed. Ctrl+Z to undo."));
-            }
-        }
-
-        private static void DestroyConnectionWithUndo(LevelDoorLinkAuthoring2D link)
-        {
             Component[] components = link.GetComponents<Component>();
             if (components.Length <= 2)
             {

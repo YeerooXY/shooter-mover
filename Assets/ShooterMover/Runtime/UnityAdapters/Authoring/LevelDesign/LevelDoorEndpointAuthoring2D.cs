@@ -5,6 +5,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     [DisallowMultipleComponent]
     public sealed class LevelDoorEndpointAuthoring2D : MonoBehaviour
     {
+        private const int OwningRoomFixedPositionSpaceVersion = 1;
+
         [Header("Stable identity")]
         [SerializeField] private string doorId = "door.unassigned";
 
@@ -16,7 +18,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private LevelDoorPlacementModeV2 placementMode =
             LevelDoorPlacementModeV2.EdgeManaged;
         [SerializeField] [Range(0f, 1f)] private float edgeOffset = 0.5f;
+        [Tooltip(
+            "Stored relative to the owning room. Legacy parent-relative values are "
+                + "migrated without moving the endpoint.")]
         [SerializeField] private Vector2 fixedLocalPosition = Vector2.zero;
+        [SerializeField] [HideInInspector] private int fixedPositionSpaceVersion;
         [Tooltip("When enabled, connected edge-managed doors follow the relative room direction.")]
         [SerializeField] private bool autoFaceConnection = true;
 
@@ -54,6 +60,15 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return fixedLocalPosition; }
         }
 
+        public bool UsesOwningRoomFixedPositionSpace
+        {
+            get
+            {
+                return fixedPositionSpaceVersion
+                    >= OwningRoomFixedPositionSpaceVersion;
+            }
+        }
+
         public bool AutoFaceConnection
         {
             get { return autoFaceConnection; }
@@ -71,13 +86,17 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public LevelGridDoorRecordV2 BuildRecord()
         {
+            Vector2 recordFixedPosition = placementMode == LevelDoorPlacementModeV2.Fixed
+                    && !UsesOwningRoomFixedPositionSpace
+                ? ResolveCurrentRoomRelativePosition()
+                : fixedLocalPosition;
             return new LevelGridDoorRecordV2(
                 doorId,
                 owningRoom == null ? null : owningRoom.RoomIdText,
                 side,
                 placementMode,
                 edgeOffset,
-                fixedLocalPosition,
+                recordFixedPosition,
                 traversable,
                 visibleOnMap,
                 autoFaceConnection,
@@ -88,10 +107,26 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         {
             if (placementMode == LevelDoorPlacementModeV2.Fixed)
             {
-                return new Vector3(
+                if (!UsesOwningRoomFixedPositionSpace)
+                {
+                    return new Vector3(
+                        fixedLocalPosition.x,
+                        fixedLocalPosition.y,
+                        transform.localPosition.z);
+                }
+
+                Vector3 roomRelative = new Vector3(
                     fixedLocalPosition.x,
                     fixedLocalPosition.y,
-                    transform.localPosition.z);
+                    0f);
+                Vector3 worldPosition = owningRoom == null
+                    ? roomRelative
+                    : owningRoom.transform.TransformPoint(roomRelative);
+                worldPosition.z = transform.position.z;
+                Transform localParent = transform.parent;
+                return localParent == null
+                    ? worldPosition
+                    : localParent.InverseTransformPoint(worldPosition);
             }
 
             if (owningRoom == null || owningRoom.RoomBounds == null)
@@ -151,15 +186,31 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void CaptureCurrentPositionAsFixedPlacement()
         {
             placementMode = LevelDoorPlacementModeV2.Fixed;
-            fixedLocalPosition = transform.localPosition;
+            fixedLocalPosition = ResolveCurrentRoomRelativePosition();
+            fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
         }
 
         public void CaptureCurrentFixedPosition()
         {
             if (placementMode == LevelDoorPlacementModeV2.Fixed)
             {
-                fixedLocalPosition = transform.localPosition;
+                fixedLocalPosition = ResolveCurrentRoomRelativePosition();
+                fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
             }
+        }
+
+        public bool MigrateFixedPositionSpaceForAuthoring()
+        {
+            if (placementMode != LevelDoorPlacementModeV2.Fixed
+                || UsesOwningRoomFixedPositionSpace
+                || owningRoom == null)
+            {
+                return false;
+            }
+
+            fixedLocalPosition = ResolveCurrentRoomRelativePosition();
+            fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
+            return true;
         }
 
         public void ConfigureAuthoring(
@@ -178,6 +229,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             placementMode = configuredPlacementMode;
             edgeOffset = configuredEdgeOffset;
             fixedLocalPosition = configuredFixedLocalPosition;
+            fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
             traversable = configuredTraversable;
             autoFaceConnection = configuredAutoFaceConnection;
         }
@@ -217,10 +269,23 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 configuredTraversable);
         }
 
+        public void ConfigureLegacyFixedPositionForTests(
+            Vector2 legacyParentRelativePosition)
+        {
+            placementMode = LevelDoorPlacementModeV2.Fixed;
+            fixedLocalPosition = legacyParentRelativePosition;
+            fixedPositionSpaceVersion = 0;
+            transform.localPosition = new Vector3(
+                legacyParentRelativePosition.x,
+                legacyParentRelativePosition.y,
+                transform.localPosition.z);
+        }
+
         private void Reset()
         {
             owningRoom = GetComponentInParent<LevelRoomAuthoring2D>();
-            fixedLocalPosition = transform.localPosition;
+            fixedLocalPosition = ResolveCurrentRoomRelativePosition();
+            fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
         }
 
         private void OnValidate()
@@ -230,6 +295,18 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             {
                 owningRoom = GetComponentInParent<LevelRoomAuthoring2D>();
             }
+        }
+
+        private Vector2 ResolveCurrentRoomRelativePosition()
+        {
+            if (owningRoom == null)
+            {
+                return transform.localPosition;
+            }
+
+            Vector3 roomRelative =
+                owningRoom.transform.InverseTransformPoint(transform.position);
+            return new Vector2(roomRelative.x, roomRelative.y);
         }
 
         private string BuildDiagnosticLocation()
