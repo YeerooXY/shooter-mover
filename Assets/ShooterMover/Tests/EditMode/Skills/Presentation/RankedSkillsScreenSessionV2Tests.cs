@@ -186,6 +186,78 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         }
 
         [Test]
+        public void UnverifiedCommit_DoesNotRollBackOrRetryInSameSession()
+        {
+            PlayerExperienceAuthorityV1 experience = CreateExperience(2);
+            RankedSkillCatalogV2 catalog = RankedSkillSampleCatalogV2.Create();
+            RankedSkillAllocationAuthorityV2 authority = CreateAuthority(catalog);
+            var persistence = new RecordingPersistence
+            {
+                ReturnUnverifiedCommitNext = true,
+            };
+            RankedSkillsScreenSessionV2 session = CreateSession(
+                experience,
+                authority,
+                persistence);
+
+            SkillsScreenAllocationResultV1 uncertain = session.Allocate(
+                "generic.movement_speed");
+
+            Assert.That(uncertain.Changed, Is.False);
+            Assert.That(uncertain.MutationFact.Status, Is.EqualTo(
+                SkillMutationStatusV1.InvalidRequest));
+            Assert.That(uncertain.MutationFact.RejectionCode, Does.Contain(
+                "skills-v2-persistence-commit-unverified"));
+            Assert.That(authority.Get("profile.skills-v2-tests")
+                .RankOf("generic.movement_speed"), Is.EqualTo(1));
+            Assert.That(session.MutationBlocked, Is.True);
+
+            SkillsScreenAllocationResultV1 blocked = session.Allocate(
+                "generic.armor");
+            Assert.That(blocked.Changed, Is.False);
+            Assert.That(blocked.MutationFact.RejectionCode, Does.Contain(
+                "skills-v2-persistence-commit-unverified"));
+            Assert.That(authority.Get("profile.skills-v2-tests")
+                .RankOf("generic.armor"), Is.Zero);
+            Assert.That(persistence.CallCount, Is.EqualTo(1));
+            Assert.That(authority.IsCommitUnverified(
+                "profile.skills-v2-tests"), Is.True);
+            SkillAllocationResultV2 direct = authority.Allocate(
+                new AllocateSkillRankCommandV2(
+                    "operation.skills-v2-quarantine-proof",
+                    "profile.skills-v2-tests",
+                    "generic.armor",
+                    authority.Get("profile.skills-v2-tests").Version,
+                    experience.CurrentState.TotalSkillPointsAwarded));
+            Assert.That(direct.Accepted, Is.False);
+            Assert.That(direct.Rejection, Is.EqualTo(
+                SkillAllocationRejectionV2.CommitUnverified));
+
+            RankedSkillsScreenSessionV2 reopened;
+            string reopenCode;
+            Assert.That(RankedSkillsScreenSessionV2.TryCreate(
+                CreateRoute(),
+                experience,
+                authority,
+                "profile.skills-v2-tests",
+                new RecordingPersistence(),
+                out reopened,
+                out reopenCode),
+                Is.False);
+            Assert.That(reopened, Is.Null);
+            Assert.That(reopenCode, Is.EqualTo(
+                "skills-v2-persistence-commit-unverified"));
+
+            authority.Seed(authority.Get("profile.skills-v2-tests"));
+            Assert.That(authority.IsCommitUnverified(
+                "profile.skills-v2-tests"), Is.False);
+            Assert.That(CreateSession(
+                experience,
+                authority,
+                new RecordingPersistence()), Is.Not.Null);
+        }
+
+        [Test]
         public void StaleCatalogVersion_FailsClosedWithoutSession()
         {
             PlayerExperienceAuthorityV1 experience = CreateExperience(2);
@@ -291,6 +363,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             public int CallCount { get; private set; }
             public bool RejectNext { get; set; }
             public bool ThrowNext { get; set; }
+            public bool ReturnUnverifiedCommitNext { get; set; }
 
             public RankedSkillsPersistenceResultV2 Persist(
                 string mutationScope,
@@ -301,6 +374,14 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
                 {
                     ThrowNext = false;
                     throw new InvalidOperationException("simulated-store-failure");
+                }
+                if (ReturnUnverifiedCommitNext)
+                {
+                    ReturnUnverifiedCommitNext = false;
+                    return new RankedSkillsPersistenceResultV2(
+                        false,
+                        "simulated-post-commit-verification-failure",
+                        false);
                 }
                 if (RejectNext)
                 {
