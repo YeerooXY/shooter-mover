@@ -68,7 +68,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             connectionId = LevelDesignAuthoringId.New("connection");
         }
 
-        public void ConfigureForTests(
+        public void ConfigureConnection(
             string configuredConnectionId,
             LevelRoomAuthoring2D configuredSourceRoom,
             LevelDoorEndpointAuthoring2D configuredSourceDoor,
@@ -83,6 +83,24 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             destinationRoom = configuredDestinationRoom;
             destinationDoor = configuredDestinationDoor;
             travelPolicy = configuredTravelPolicy;
+        }
+
+        public void ConfigureForTests(
+            string configuredConnectionId,
+            LevelRoomAuthoring2D configuredSourceRoom,
+            LevelDoorEndpointAuthoring2D configuredSourceDoor,
+            LevelRoomAuthoring2D configuredDestinationRoom,
+            LevelDoorEndpointAuthoring2D configuredDestinationDoor,
+            LevelDoorTravelPolicy configuredTravelPolicy =
+                LevelDoorTravelPolicy.Bidirectional)
+        {
+            ConfigureConnection(
+                configuredConnectionId,
+                configuredSourceRoom,
+                configuredSourceDoor,
+                configuredDestinationRoom,
+                configuredDestinationDoor,
+                configuredTravelPolicy);
         }
 
         private string BuildDiagnosticLocation()
