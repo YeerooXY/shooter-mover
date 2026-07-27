@@ -14,7 +14,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private LevelGridPlayableStatusV2 playableStatus;
         private string playableSceneFingerprint = string.Empty;
         private string playableSourceSnapshot = string.Empty;
-        private double nextPlayableStatusCheck;
         private string playableOperationMessage = string.Empty;
         private MessageType playableOperationMessageType = MessageType.Info;
 
@@ -548,6 +547,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 case LevelGridPlayableStatusKindV2.NotConfigured:
                     return "Not configured";
+                case LevelGridPlayableStatusKindV2.Valid:
+                    return "Valid";
                 case LevelGridPlayableStatusKindV2.ValidButNotExported:
                     return "Valid but not exported";
                 case LevelGridPlayableStatusKindV2.ExportedButStale:
@@ -571,7 +572,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void EnsurePlayableStatus()
         {
-            double now = EditorApplication.timeSinceStartup;
             if (activeRoot == null)
             {
                 playableStatus = null;
@@ -592,7 +592,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 sourceSnapshot = "invalid";
             }
             if (playableStatus == null
-                || now >= nextPlayableStatusCheck
                 || !string.Equals(
                     sceneFingerprint,
                     playableSceneFingerprint,
@@ -605,7 +604,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 playableSceneFingerprint = sceneFingerprint;
                 playableSourceSnapshot = sourceSnapshot;
                 playableStatus = LevelGridPlayableStatusEvaluatorV2.Evaluate(activeRoot);
-                nextPlayableStatusCheck = now + 1d;
             }
         }
 
@@ -614,7 +612,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             playableStatus = null;
             playableSceneFingerprint = string.Empty;
             playableSourceSnapshot = string.Empty;
-            nextPlayableStatusCheck = 0d;
             Repaint();
         }
 
