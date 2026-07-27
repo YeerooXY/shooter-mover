@@ -2,16 +2,13 @@ using System;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
-using ShooterMover.Application.Weapons.Presentation;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Holdings;
-using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
-using ShooterMover.UnityAdapters.Presentation.Weapons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -25,17 +22,13 @@ namespace ShooterMover.UI.InventoryLoadout
         private IPlayerHoldingsAuthorityV1 holdingsAuthority;
         private IEquipmentCatalogProvider equipmentCatalogProvider;
         private IInventoryLoadoutAuthorityPortV1 loadoutAuthority;
-        private EquipmentCatalog presentationEquipmentCatalog;
-        private WeaponCatalog presentationWeaponCatalog;
-        private readonly System.Collections.Generic.Dictionary<
-            string,
-            WeaponArtSpriteResolutionV1> weaponArtCache =
-                new System.Collections.Generic.Dictionary<
-                    string,
-                    WeaponArtSpriteResolutionV1>(
-                        StringComparer.Ordinal);
+        private ProductionWeaponHoldingsAuthorityV2 canonicalWeaponHoldings;
+        private ProductionInventoryLoadoutAuthorityV1 canonicalLoadoutAuthority;
+        private ProductionWeaponMountLayoutV1 canonicalMountLayout;
+        private WeaponCatalog canonicalWeaponCatalog;
+        private InventoryLoadoutScreenServiceV1 legacyService;
+        private CanonicalWeaponInventoryScreenServiceV2 canonicalService;
         private Action<PlayerRouteProfilePayloadV1> returnToHub;
-        private InventoryLoadoutScreenServiceV1 service;
         private PlayerRouteProfilePayloadV1 incomingPayload;
         private InventoryLoadoutScreenResultV1 lastResult;
         private StableId activeSlotStableId =
@@ -43,6 +36,7 @@ namespace ShooterMover.UI.InventoryLoadout
         private bool returnDispatched;
         private Vector2 equipmentScroll;
         private Vector2 slotScroll;
+        private Vector2 selectedScroll;
         private GUIStyle titleStyle;
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
@@ -53,7 +47,19 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public InventoryLoadoutScreenSnapshotV1 Snapshot
         {
-            get { return service == null ? null : service.Snapshot; }
+            get
+            {
+                if (canonicalService != null)
+                {
+                    return canonicalService.CompatibilitySnapshot;
+                }
+                return legacyService == null ? null : legacyService.Snapshot;
+            }
+        }
+
+        public CanonicalWeaponInventorySnapshotV2 CanonicalSnapshot
+        {
+            get { return canonicalService == null ? null : canonicalService.Snapshot; }
         }
 
         public InventoryLoadoutScreenResultV1 LastResult
@@ -83,7 +89,11 @@ namespace ShooterMover.UI.InventoryLoadout
         {
             get
             {
-                return holdingsAuthority != null
+                return canonicalWeaponHoldings != null
+                    && canonicalLoadoutAuthority != null
+                    && canonicalMountLayout != null
+                    && canonicalWeaponCatalog != null
+                    || holdingsAuthority != null
                     && equipmentCatalogProvider != null
                     && loadoutAuthority != null;
             }
@@ -102,10 +112,6 @@ namespace ShooterMover.UI.InventoryLoadout
             this.returnToHub = returnToHub;
         }
 
-        /// <summary>
-        /// Replaces only the disconnected authority ports while preserving the route
-        /// callback already supplied by the production-flow owner.
-        /// </summary>
         public void ConnectAuthorities(
             IPlayerHoldingsAuthorityV1 holdingsAuthority,
             IEquipmentCatalogProvider equipmentCatalogProvider,
@@ -118,6 +124,40 @@ namespace ShooterMover.UI.InventoryLoadout
                     nameof(equipmentCatalogProvider));
             this.loadoutAuthority = loadoutAuthority
                 ?? throw new ArgumentNullException(nameof(loadoutAuthority));
+            canonicalWeaponHoldings = null;
+            canonicalLoadoutAuthority = null;
+            canonicalMountLayout = null;
+            canonicalWeaponCatalog = null;
+            canonicalService = null;
+            if (incomingPayload != null)
+            {
+                BuildService(incomingPayload);
+            }
+        }
+
+        public void ConnectCanonicalAuthorities(
+            IPlayerHoldingsAuthorityV1 genericHoldings,
+            IEquipmentCatalogProvider equipmentCatalogProvider,
+            ProductionWeaponHoldingsAuthorityV2 weaponHoldings,
+            ProductionInventoryLoadoutAuthorityV1 loadoutAuthority,
+            ProductionWeaponMountLayoutV1 mountLayout,
+            WeaponCatalog weaponCatalog)
+        {
+            holdingsAuthority = genericHoldings
+                ?? throw new ArgumentNullException(nameof(genericHoldings));
+            this.equipmentCatalogProvider = equipmentCatalogProvider
+                ?? throw new ArgumentNullException(
+                    nameof(equipmentCatalogProvider));
+            this.loadoutAuthority = loadoutAuthority
+                ?? throw new ArgumentNullException(nameof(loadoutAuthority));
+            canonicalWeaponHoldings = weaponHoldings
+                ?? throw new ArgumentNullException(nameof(weaponHoldings));
+            canonicalLoadoutAuthority = loadoutAuthority;
+            canonicalMountLayout = mountLayout
+                ?? throw new ArgumentNullException(nameof(mountLayout));
+            canonicalWeaponCatalog = weaponCatalog
+                ?? throw new ArgumentNullException(nameof(weaponCatalog));
+            legacyService = null;
             if (incomingPayload != null)
             {
                 BuildService(incomingPayload);
@@ -128,9 +168,10 @@ namespace ShooterMover.UI.InventoryLoadout
             EquipmentCatalog equipmentCatalog,
             WeaponCatalog weaponCatalog)
         {
-            presentationEquipmentCatalog = equipmentCatalog;
-            presentationWeaponCatalog = weaponCatalog;
-            weaponArtCache.Clear();
+            if (canonicalWeaponCatalog == null)
+            {
+                canonicalWeaponCatalog = weaponCatalog;
+            }
         }
 
         public void ConfigureDisconnected(
@@ -139,7 +180,12 @@ namespace ShooterMover.UI.InventoryLoadout
             holdingsAuthority = null;
             equipmentCatalogProvider = null;
             loadoutAuthority = null;
-            service = null;
+            canonicalWeaponHoldings = null;
+            canonicalLoadoutAuthority = null;
+            canonicalMountLayout = null;
+            canonicalWeaponCatalog = null;
+            legacyService = null;
+            canonicalService = null;
             this.returnToHub = returnToHub
                 ?? throw new ArgumentNullException(nameof(returnToHub));
         }
@@ -182,54 +228,79 @@ namespace ShooterMover.UI.InventoryLoadout
             ProductionWeaponMountLayoutV1 layout =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     payload.LoadoutProfileStableId);
-            activeSlotStableId = layout.ConfigurablePositions[0]
-                .LoadoutSlotStableId;
-            service = IsConfigured
-                ? new InventoryLoadoutScreenServiceV1(
-                    payload,
-                    holdingsAuthority,
-                    equipmentCatalogProvider,
-                    loadoutAuthority)
-                : null;
+            activeSlotStableId = layout.Positions[0].LoadoutSlotStableId;
+            BuildService(payload);
         }
 
         public bool SelectSlot(StableId slotStableId)
         {
-            InventoryLoadoutSlotDescriptorV1 descriptor;
-            if (!InventoryLoadoutSlotsV1.TryFind(
-                slotStableId,
-                out descriptor)
-                || !IsSlotAvailable(descriptor))
+            if (incomingPayload == null || slotStableId == null)
             {
                 return false;
             }
-
-            if (activeSlotStableId == descriptor.SlotStableId)
+            ProductionWeaponMountLayoutV1 layout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    incomingPayload.LoadoutProfileStableId);
+            bool physical = false;
+            for (int index = 0; index < layout.Positions.Count; index++)
+            {
+                if (layout.Positions[index].LoadoutSlotStableId == slotStableId)
+                {
+                    physical = true;
+                    break;
+                }
+            }
+            if (!physical || activeSlotStableId == slotStableId)
             {
                 return false;
             }
-            activeSlotStableId = descriptor.SlotStableId;
+            activeSlotStableId = slotStableId;
             return true;
         }
 
         public bool SelectSlotByIndex(int index)
         {
-            if (index < 0 || index >= InventoryLoadoutSlotsV1.All.Count)
+            if (incomingPayload == null)
             {
                 return false;
             }
-            return SelectSlot(
-                InventoryLoadoutSlotsV1.All[index].SlotStableId);
+            ProductionWeaponMountLayoutV1 layout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    incomingPayload.LoadoutProfileStableId);
+            if (index < 0 || index >= layout.Positions.Count)
+            {
+                return false;
+            }
+            return SelectSlot(layout.Positions[index].LoadoutSlotStableId);
         }
 
+        /// <summary>
+        /// Compatibility action: in canonical mode this selects and equips the exact instance.
+        /// The UI itself separates selection from the explicit Equip action.
+        /// </summary>
         public InventoryLoadoutScreenResultV1 SelectInstance(
             StableId equipmentInstanceStableId)
         {
-            if (service == null)
+            if (canonicalService != null)
+            {
+                lastResult = canonicalService.SelectWeapon(
+                    equipmentInstanceStableId);
+                if (lastResult.Status
+                    != InventoryLoadoutScreenStatusV1.SelectionChanged
+                    && lastResult.Status
+                        != InventoryLoadoutScreenStatusV1.NoChange)
+                {
+                    return lastResult;
+                }
+                lastResult = canonicalService.EquipSelected(
+                    activeSlotStableId);
+                return lastResult;
+            }
+            if (legacyService == null)
             {
                 return null;
             }
-            lastResult = service.TrySelect(
+            lastResult = legacyService.TrySelect(
                 activeSlotStableId,
                 equipmentInstanceStableId);
             return lastResult;
@@ -237,31 +308,49 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public InventoryLoadoutScreenResultV1 UnequipActiveSlot()
         {
-            if (service == null)
+            if (canonicalService != null)
+            {
+                lastResult = canonicalService.Unequip(activeSlotStableId);
+                return lastResult;
+            }
+            if (legacyService == null)
             {
                 return null;
             }
-            lastResult = service.TryUnequip(activeSlotStableId);
+            lastResult = legacyService.TryUnequip(activeSlotStableId);
             return lastResult;
         }
 
         public InventoryLoadoutScreenResultV1 Refresh()
         {
-            if (service == null)
+            if (canonicalService != null)
+            {
+                lastResult = canonicalService.Refresh();
+                return lastResult;
+            }
+            if (legacyService == null)
             {
                 return null;
             }
-            lastResult = service.Refresh();
+            lastResult = legacyService.Refresh();
             return lastResult;
         }
 
         public InventoryLoadoutScreenResultV1 Confirm()
         {
-            if (service == null)
+            if (canonicalService != null)
+            {
+                lastResult = canonicalService.Confirm();
+            }
+            else if (legacyService != null)
+            {
+                lastResult = legacyService.Confirm();
+            }
+            else
             {
                 return null;
             }
-            lastResult = service.Confirm();
+
             if (lastResult.Status
                 == InventoryLoadoutScreenStatusV1.Confirmed)
             {
@@ -277,13 +366,20 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public InventoryLoadoutScreenResultV1 Back()
         {
-            if (service == null)
+            if (canonicalService != null)
+            {
+                lastResult = canonicalService.Back();
+            }
+            else if (legacyService != null)
+            {
+                lastResult = legacyService.Back();
+            }
+            else
             {
                 DispatchReturn(incomingPayload);
                 return null;
             }
 
-            lastResult = service.Back();
             if (lastResult.Status
                 == InventoryLoadoutScreenStatusV1.Cancelled)
             {
@@ -322,11 +418,11 @@ namespace ShooterMover.UI.InventoryLoadout
                 new Rect(0f, 0f, Screen.width, Screen.height),
                 GUIContent.none);
             float width = Mathf.Min(
-                1180f,
-                Mathf.Max(460f, Screen.width - 24f));
+                1320f,
+                Mathf.Max(520f, Screen.width - 24f));
             float height = Mathf.Min(
-                820f,
-                Mathf.Max(360f, Screen.height - 24f));
+                860f,
+                Mathf.Max(400f, Screen.height - 24f));
             GUILayout.BeginArea(
                 new Rect(
                     (Screen.width - width) * 0.5f,
@@ -337,26 +433,24 @@ namespace ShooterMover.UI.InventoryLoadout
             GUILayout.Label("INVENTORY / LOADOUT", titleStyle);
             if (incomingPayload != null)
             {
-                ProductionWeaponMountLayoutV1 layout =
-                    ProductionWeaponMountPolicyV1.ResolveLayout(
-                        incomingPayload.LoadoutProfileStableId);
                 GUILayout.Label(
                     incomingPayload.SelectedCharacterStableId
                     + " / "
-                    + incomingPayload.LoadoutProfileStableId
-                    + " / "
-                    + layout.BaselineEnabledMountCount
-                    + " mounted weapons",
+                    + incomingPayload.LoadoutProfileStableId,
                     smallStyle);
             }
 
-            if (service == null)
+            if (canonicalService != null)
             {
-                DrawDisconnected();
+                DrawCanonical();
+            }
+            else if (legacyService != null)
+            {
+                DrawLegacy();
             }
             else
             {
-                DrawConnected();
+                DrawDisconnected();
             }
             GUILayout.EndArea();
         }
@@ -368,8 +462,7 @@ namespace ShooterMover.UI.InventoryLoadout
                 "AWAITING INVENTORY AUTHORITY COMPOSITION",
                 headingStyle);
             GUILayout.Label(
-                "The real Inventory screen is active. No fallback holdings or "
-                + "loadout authority was created.",
+                "No fallback holdings, starter grant or loadout authority was created.",
                 bodyStyle);
             if (GUILayout.Button(
                 "BACK TO HUB",
@@ -380,310 +473,289 @@ namespace ShooterMover.UI.InventoryLoadout
             GUILayout.FlexibleSpace();
         }
 
-        private void DrawConnected()
+        private void DrawCanonical()
         {
-            InventoryLoadoutScreenSnapshotV1 current = service.Snapshot;
-            PlayerHoldingsSnapshotV1 holdingsSnapshot =
-                holdingsAuthority.ExportSnapshot();
+            CanonicalWeaponInventorySnapshotV2 current =
+                canonicalService.Snapshot;
             GUILayout.BeginHorizontal();
-            GUILayout.BeginVertical(
-                GUILayout.Width(
-                    Mathf.Min(360f, Screen.width * 0.34f)));
-            GUILayout.Label("PHYSICAL MOUNTS", headingStyle);
+
+            GUILayout.BeginVertical(GUILayout.Width(340f));
+            GUILayout.Label("EQUIPPED WEAPONS", headingStyle);
             slotScroll = GUILayout.BeginScrollView(slotScroll);
-            for (int index = 0; index < current.Selections.Count; index++)
+            for (int index = 0; index < current.Mounts.Count; index++)
             {
-                InventoryLoadoutSelectionProjectionV1 selection =
-                    current.Selections[index];
-                if (!IsSlotAvailable(selection.Slot))
-                {
-                    continue;
-                }
-                DrawSlot(selection, current, holdingsSnapshot);
+                DrawCanonicalMount(current.Mounts[index]);
             }
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
-            GUILayout.Space(12f);
-            GUILayout.BeginVertical();
-            GUILayout.Label("OWNED EQUIPMENT INSTANCES", headingStyle);
+
+            GUILayout.Space(10f);
+            GUILayout.BeginVertical(GUILayout.Width(420f));
+            GUILayout.Label("OWNED WEAPONS", headingStyle);
             equipmentScroll = GUILayout.BeginScrollView(equipmentScroll);
-            InventoryLoadoutSlotDescriptorV1 activeSlot;
-            InventoryLoadoutSlotsV1.TryFind(
-                activeSlotStableId,
-                out activeSlot);
-            for (int index = 0; index < current.Equipment.Count; index++)
+            for (int index = 0;
+                 index < current.OwnedWeapons.Count;
+                 index++)
             {
-                InventoryLoadoutEquipmentProjectionV1 equipment =
-                    current.Equipment[index];
-                if (activeSlot != null
-                    && equipment.SlotKind.HasValue
-                    && equipment.SlotKind.Value != activeSlot.Kind)
-                {
-                    continue;
-                }
-                DrawEquipment(equipment, holdingsSnapshot);
+                DrawCanonicalOwnedWeapon(current.OwnedWeapons[index]);
             }
+            GUILayout.EndScrollView();
+            GUILayout.EndVertical();
+
+            GUILayout.Space(10f);
+            GUILayout.BeginVertical();
+            GUILayout.Label("SELECTED WEAPON", headingStyle);
+            selectedScroll = GUILayout.BeginScrollView(selectedScroll);
+            DrawSelectedWeapon(current.SelectedWeapon, current);
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
-            GUILayout.Space(10f);
+
+            GUILayout.Space(8f);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(
-                "REFRESH HOLDINGS",
-                GUILayout.MinHeight(42f)))
+            if (GUILayout.Button("REFRESH", GUILayout.MinHeight(42f)))
             {
                 Refresh();
             }
-            if (GUILayout.Button(
-                "UNEQUIP MOUNT",
-                GUILayout.MinHeight(42f)))
-            {
-                UnequipActiveSlot();
-            }
             GUI.enabled = current.CanConfirm;
-            if (GUILayout.Button(
-                "CONFIRM",
-                GUILayout.MinHeight(42f)))
+            if (GUILayout.Button("CONFIRM", GUILayout.MinHeight(42f)))
             {
                 Confirm();
             }
             GUI.enabled = true;
-            if (GUILayout.Button(
-                "BACK",
-                GUILayout.MinHeight(42f)))
+            if (GUILayout.Button("BACK", GUILayout.MinHeight(42f)))
             {
                 Back();
             }
             GUILayout.EndHorizontal();
-            if (lastResult != null
-                && !string.IsNullOrEmpty(lastResult.RejectionCode))
-            {
-                GUILayout.Label(
-                    lastResult.RejectionCode,
-                    invalidStyle);
-            }
+            DrawLastDiagnostic();
             GUILayout.Label(
-                "Holdings sequence " + current.HoldingsSequence
+                "Weapon holdings sequence "
+                + current.WeaponHoldingsSequence
                 + "  •  Loadout sequence "
                 + current.LoadoutSequence,
                 smallStyle);
         }
 
-        private void DrawSlot(
-            InventoryLoadoutSelectionProjectionV1 selection,
-            InventoryLoadoutScreenSnapshotV1 snapshot,
-            PlayerHoldingsSnapshotV1 holdingsSnapshot)
+        private void DrawCanonicalMount(
+            CanonicalWeaponInventoryMountV2 mount)
         {
-            bool active =
-                selection.Slot.SlotStableId == activeSlotStableId;
-            string equipmentText = "UNEQUIPPED";
-            if (selection.EquipmentInstanceStableId != null)
-            {
-                InventoryLoadoutEquipmentProjectionV1 projection =
-                    snapshot.FindEquipment(
-                        selection.EquipmentInstanceStableId);
-                EquipmentInstance instance = FindOwnedEquipment(
-                    holdingsSnapshot,
-                    selection.EquipmentInstanceStableId);
-                equipmentText = projection == null
-                    ? "MISSING ITEM\n"
-                        + ShortIdentity(
-                            selection.EquipmentInstanceStableId)
-                    : projection.DisplayName
-                        + "  •  "
-                        + AugmentSummary(instance)
-                        + "\n"
-                        + ShortIdentity(
-                            selection.EquipmentInstanceStableId);
-            }
-
-            string label = (active ? "▶ " : string.Empty)
-                + SlotDisplayName(selection.Slot)
+            bool selected = mount.Position.LoadoutSlotStableId
+                == activeSlotStableId;
+            bool locked = mount.Position.Availability
+                != ProductionWeaponMountAvailabilityV1.Active;
+            string value = mount.EquippedCard == null
+                ? "EMPTY"
+                : mount.EquippedCard.DisplayName
+                    + "\n"
+                    + ShortIdentity(mount.EquippedInstanceId);
+            string label = (selected ? "▶ " : string.Empty)
+                + mount.Position.DisplayName
                 + "\n"
-                + equipmentText;
-            if (GUILayout.Button(
-                label,
-                GUILayout.MinHeight(72f)))
+                + (locked
+                    ? "LOCKED — SKILL REQUIRED"
+                    : value);
+            if (GUILayout.Button(label, GUILayout.MinHeight(78f)))
             {
-                SelectSlot(selection.Slot.SlotStableId);
+                activeSlotStableId = mount.Position.LoadoutSlotStableId;
             }
-            if (!selection.IsValid)
+            if (locked)
             {
                 GUILayout.Label(
-                    selection.RejectionCode,
+                    string.IsNullOrWhiteSpace(mount.Position.LockReason)
+                        ? "A skill is required to activate this mount."
+                        : mount.Position.LockReason,
                     invalidStyle);
             }
         }
 
-        private void DrawEquipment(
-            InventoryLoadoutEquipmentProjectionV1 equipment,
-            PlayerHoldingsSnapshotV1 holdingsSnapshot)
+        private void DrawCanonicalOwnedWeapon(
+            CanonicalWeaponInventoryCardV2 card)
         {
-            EquipmentInstance instance = FindOwnedEquipment(
-                holdingsSnapshot,
-                equipment.InstanceStableId);
+            bool selected = canonicalService.Snapshot.SelectedInstanceId
+                == card.Instance.InstanceId;
             GUILayout.BeginVertical(GUI.skin.box);
-            DrawWeaponArt(instance);
-            GUILayout.Label(equipment.DisplayName, headingStyle);
             GUILayout.Label(
-                "Level " + equipment.ItemLevel
-                + "  •  " + equipment.DefinitionStableId,
+                (selected ? "▶ " : string.Empty) + card.DisplayName,
+                headingStyle);
+            GUILayout.Label(
+                card.Instance.WeaponDefinitionId.Value
+                + (string.IsNullOrEmpty(card.Family)
+                    ? string.Empty
+                    : "  •  " + card.Family),
                 smallStyle);
             GUILayout.Label(
-                AugmentSummary(instance)
-                + "  •  Instance: "
-                + ShortIdentity(equipment.InstanceStableId),
+                "Exact instance: " + ShortIdentity(card.Instance.InstanceId),
                 smallStyle);
-            if (!equipment.IsSelectable)
-            {
-                GUILayout.Label(
-                    equipment.RejectionCode,
-                    invalidStyle);
-            }
-            GUI.enabled = equipment.IsSelectable;
+            GUILayout.Label(
+                card.IsEquipped
+                    ? "Equipped on " + card.EquippedMountId
+                    : "Unequipped",
+                smallStyle);
             if (GUILayout.Button(
-                "EQUIP THIS INSTANCE",
-                GUILayout.MinHeight(36f)))
+                "SELECT THIS INSTANCE",
+                GUILayout.MinHeight(34f)))
             {
-                SelectInstance(equipment.InstanceStableId);
+                lastResult = canonicalService.SelectWeapon(
+                    card.Instance.InstanceId);
             }
-            GUI.enabled = true;
             GUILayout.EndVertical();
             GUILayout.Space(4f);
         }
 
-        private void DrawWeaponArt(EquipmentInstance instance)
+        private void DrawSelectedWeapon(
+            CanonicalWeaponInventoryCardV2 card,
+            CanonicalWeaponInventorySnapshotV2 snapshot)
         {
-            WeaponArtReferenceProjectionV1 artProjection;
-            string rejectionCode;
-            if (!WeaponArtReferenceResolverV1.TryResolve(
-                instance,
-                presentationEquipmentCatalog,
-                presentationWeaponCatalog,
-                out artProjection,
-                out rejectionCode))
+            if (card == null)
             {
+                GUILayout.Label("No weapon selected.", bodyStyle);
                 return;
             }
 
-            WeaponArtSpriteResolutionV1 resolution;
-            if (!weaponArtCache.TryGetValue(
-                artProjection.ArtReferenceId,
-                out resolution))
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label(card.DisplayName, headingStyle);
+            GUILayout.Label(
+                "Definition: " + card.Instance.WeaponDefinitionId.Value,
+                bodyStyle);
+            GUILayout.Label(
+                "Family: "
+                + (string.IsNullOrEmpty(card.Family)
+                    ? "Unresolved"
+                    : card.Family),
+                bodyStyle);
+            GUILayout.Space(8f);
+            GUILayout.Label("AUGMENTS", headingStyle);
+            DrawAssignments(card.Instance.AugmentAssignments, "No augments assigned");
+            GUILayout.Label("OVERCLOCKS", headingStyle);
+            DrawAssignments(
+                card.Instance.OverclockAssignments,
+                "No overclocks assigned");
+            GUILayout.Space(8f);
+            GUILayout.Label(
+                "[DEBUG] EXACT INSTANCE ID\n" + card.Instance.InstanceId,
+                smallStyle);
+            GUILayout.EndVertical();
+
+            CanonicalWeaponInventoryMountV2 activeMount =
+                snapshot.FindMount(activeSlotStableId);
+            bool active = activeMount != null
+                && activeMount.Position.Availability
+                    == ProductionWeaponMountAvailabilityV1.Active;
+            GUI.enabled = active;
+            if (GUILayout.Button(
+                "EQUIP SELECTED INSTANCE",
+                GUILayout.MinHeight(42f)))
             {
-                resolution = WeaponArtSpriteRegistryV1.Preload(
-                    artProjection.ArtReferenceId);
-                weaponArtCache.Add(
-                    artProjection.ArtReferenceId,
-                    resolution);
+                lastResult = canonicalService.EquipSelected(
+                    activeSlotStableId);
             }
-            if (resolution.Sprite == null
-                || resolution.Sprite.texture == null)
+            bool canUnequip = active
+                && activeMount.EquippedInstanceId != null;
+            GUI.enabled = canUnequip;
+            if (GUILayout.Button(
+                "UNEQUIP ACTIVE MOUNT",
+                GUILayout.MinHeight(42f)))
             {
+                UnequipActiveSlot();
+            }
+            GUI.enabled = true;
+
+            if (activeMount != null
+                && activeMount.Position.Availability
+                    != ProductionWeaponMountAvailabilityV1.Active)
+            {
+                GUILayout.Label(
+                    "Equip rejected: this mount requires a skill.",
+                    invalidStyle);
+            }
+        }
+
+        private void DrawLegacy()
+        {
+            InventoryLoadoutScreenSnapshotV1 current = legacyService.Snapshot;
+            GUILayout.Label(
+                "LEGACY GENERIC EQUIPMENT COMPATIBILITY VIEW",
+                headingStyle);
+            GUILayout.Label(
+                "Production weapon ownership uses the canonical exact-instance view.",
+                bodyStyle);
+            GUILayout.Label(
+                "Held equipment: " + current.Equipment.Count
+                + "  •  Loadout sequence " + current.LoadoutSequence,
+                bodyStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("REFRESH", GUILayout.MinHeight(42f)))
+            {
+                Refresh();
+            }
+            if (GUILayout.Button("CONFIRM", GUILayout.MinHeight(42f)))
+            {
+                Confirm();
+            }
+            if (GUILayout.Button("BACK", GUILayout.MinHeight(42f)))
+            {
+                Back();
+            }
+            GUILayout.EndHorizontal();
+            DrawLastDiagnostic();
+        }
+
+        private static void DrawAssignments(
+            System.Collections.Generic.IReadOnlyList<StableId> assignments,
+            string emptyText)
+        {
+            if (assignments == null || assignments.Count == 0)
+            {
+                GUILayout.Label(emptyText);
                 return;
             }
-
-            Rect artRect = GUILayoutUtility.GetRect(
-                280f,
-                104f,
-                GUILayout.ExpandWidth(true),
-                GUILayout.Height(104f));
-            GUI.DrawTexture(
-                artRect,
-                resolution.Sprite.texture,
-                ScaleMode.ScaleToFit,
-                true);
+            for (int index = 0; index < assignments.Count; index++)
+            {
+                GUILayout.Label("• " + assignments[index]);
+            }
         }
 
-        private static EquipmentInstance FindOwnedEquipment(
-            PlayerHoldingsSnapshotV1 snapshot,
-            StableId instanceStableId)
+        private void DrawLastDiagnostic()
         {
-            if (snapshot == null || instanceStableId == null)
+            if (lastResult != null
+                && !string.IsNullOrEmpty(lastResult.RejectionCode))
             {
-                return null;
+                GUILayout.Label(lastResult.RejectionCode, invalidStyle);
             }
-
-            for (int index = 0;
-                index < snapshot.UniqueHoldings.Count;
-                index++)
-            {
-                UniqueHoldingSnapshotV1 holding =
-                    snapshot.UniqueHoldings[index];
-                if (holding != null
-                    && holding.RewardKind
-                        == RewardGrantKindV1.EquipmentReference
-                    && holding.InstanceStableId == instanceStableId)
-                {
-                    return holding.EquipmentInstance;
-                }
-            }
-            return null;
-        }
-
-        private static string AugmentSummary(
-            EquipmentInstance instance)
-        {
-            int count = instance == null || instance.Augments == null
-                ? 0
-                : instance.Augments.Count;
-            if (count == 0)
-            {
-                return "No augments";
-            }
-            return count == 1
-                ? "1 augment"
-                : count + " augments";
-        }
-
-        private bool IsSlotAvailable(
-            InventoryLoadoutSlotDescriptorV1 descriptor)
-        {
-            if (descriptor == null || incomingPayload == null)
-            {
-                return false;
-            }
-            return descriptor.Kind != InventoryLoadoutSlotKindV1.Weapon
-                || ProductionWeaponMountPolicyV1
-                    .IsConfigurableLoadoutSlot(
-                        incomingPayload.LoadoutProfileStableId,
-                        descriptor.SlotStableId);
-        }
-
-        private string SlotDisplayName(
-            InventoryLoadoutSlotDescriptorV1 descriptor)
-        {
-            if (descriptor.Kind != InventoryLoadoutSlotKindV1.Weapon
-                || incomingPayload == null)
-            {
-                return descriptor.DisplayName;
-            }
-
-            ProductionWeaponMountLayoutV1 layout =
-                ProductionWeaponMountPolicyV1.ResolveLayout(
-                    incomingPayload.LoadoutProfileStableId);
-            for (int index = 0;
-                index < layout.ConfigurablePositions.Count;
-                index++)
-            {
-                ProductionWeaponMountPositionV1 position =
-                    layout.ConfigurablePositions[index];
-                if (position.LoadoutSlotStableId
-                    == descriptor.SlotStableId)
-                {
-                    return position.DisplayName;
-                }
-            }
-            return descriptor.DisplayName;
         }
 
         private void BuildService(PlayerRouteProfilePayloadV1 payload)
         {
-            service = new InventoryLoadoutScreenServiceV1(
-                payload,
-                holdingsAuthority,
-                equipmentCatalogProvider,
-                loadoutAuthority);
+            canonicalService = null;
+            legacyService = null;
+            if (canonicalWeaponHoldings != null
+                && canonicalLoadoutAuthority != null
+                && canonicalMountLayout != null
+                && canonicalWeaponCatalog != null
+                && holdingsAuthority != null)
+            {
+                canonicalService =
+                    new CanonicalWeaponInventoryScreenServiceV2(
+                        payload,
+                        holdingsAuthority,
+                        canonicalWeaponHoldings,
+                        canonicalLoadoutAuthority,
+                        canonicalMountLayout,
+                        canonicalWeaponCatalog);
+                return;
+            }
+            if (holdingsAuthority != null
+                && equipmentCatalogProvider != null
+                && loadoutAuthority != null)
+            {
+                legacyService = new InventoryLoadoutScreenServiceV1(
+                    payload,
+                    holdingsAuthority,
+                    equipmentCatalogProvider,
+                    loadoutAuthority);
+            }
         }
 
         private void DispatchReturn(PlayerRouteProfilePayloadV1 payload)
@@ -746,9 +818,9 @@ namespace ShooterMover.UI.InventoryLoadout
             string text = stableId == null
                 ? string.Empty
                 : stableId.ToString();
-            return text.Length <= 24
+            return text.Length <= 28
                 ? text
-                : "…" + text.Substring(text.Length - 23);
+                : "…" + text.Substring(text.Length - 27);
         }
     }
 }
