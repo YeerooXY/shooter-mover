@@ -170,19 +170,16 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 : localParent.InverseTransformPoint(worldPosition);
         }
 
-        [ContextMenu("Assign New Stable ID")]
         public void AssignNewStableId()
         {
             doorId = LevelDesignAuthoringId.New("door");
         }
 
-        [ContextMenu("Snap Door To Placement")]
         public void SnapToPlacement()
         {
             transform.localPosition = ResolveTargetLocalPosition();
         }
 
-        [ContextMenu("Capture Current Position As Fixed Placement")]
         public void CaptureCurrentPositionAsFixedPlacement()
         {
             placementMode = LevelDoorPlacementModeV2.Fixed;
