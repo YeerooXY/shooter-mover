@@ -138,21 +138,23 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 ValidateStagedPackage(stage);
                 if (existed) Directory.Move(absoluteOutput, backup);
                 Directory.Move(stage, absoluteOutput);
-                DeleteSiblingMeta(stage);
-                if (Directory.Exists(backup)) Directory.Delete(backup, true);
-                DeleteSiblingMeta(backup);
             }
             catch
             {
-                if (Directory.Exists(stage)) Directory.Delete(stage, true);
-                DeleteSiblingMeta(stage);
+                TryDeleteDirectoryAndMeta(stage);
                 if (Directory.Exists(backup) && !Directory.Exists(absoluteOutput))
                 {
                     Directory.Move(backup, absoluteOutput);
                 }
-                DeleteSiblingMeta(backup);
+                TryDeleteSiblingMeta(backup);
                 throw;
             }
+
+            // The new package is committed once the stage occupies the destination. Cleanup is
+            // deliberately best-effort so an orphaned backup cannot turn a successful export into
+            // a reported failure after the authoritative package has already changed.
+            TryDeleteSiblingMeta(stage);
+            TryDeleteDirectoryAndMeta(backup);
         }
 
         private static void ValidateStagedPackage(string stage)
@@ -254,6 +256,47 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             string metaPath = directoryPath + ".meta";
             if (File.Exists(metaPath)) File.Delete(metaPath);
+        }
+
+        private static void TryDeleteSiblingMeta(string directoryPath)
+        {
+            try
+            {
+                DeleteSiblingMeta(directoryPath);
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Debug.LogWarning(
+                    "Playable Grid V2 cleanup could not delete metadata '"
+                    + directoryPath + ".meta': " + exception.Message);
+            }
+        }
+
+        private static void TryDeleteDirectoryAndMeta(string directoryPath)
+        {
+            try
+            {
+                if (Directory.Exists(directoryPath)) Directory.Delete(directoryPath, true);
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Debug.LogWarning(
+                    "Playable Grid V2 cleanup could not delete directory '"
+                    + directoryPath + "': " + exception.Message);
+            }
+            TryDeleteSiblingMeta(directoryPath);
         }
 
     }
