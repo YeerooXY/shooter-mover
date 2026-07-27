@@ -236,6 +236,78 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 EditorStyles.toolbarButton);
         }
 
+        internal void ReconcileSelectedDiagnosticsAfterValidation()
+        {
+            if (activeRoot == null)
+            {
+                selectedProblem = null;
+                selectedFoundationIssue = null;
+                return;
+            }
+
+            selectedProblem = FindCurrentGridProblem(selectedProblem);
+            selectedFoundationIssue =
+                FindCurrentFoundationIssue(selectedFoundationIssue);
+        }
+
+        private LevelGridProblemV2 FindCurrentGridProblem(
+            LevelGridProblemV2 selected)
+        {
+            if (selected == null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<LevelGridProblemV2> problems =
+                activeRoot.LastGridValidation.Problems;
+            for (int index = 0; index < problems.Count; index++)
+            {
+                LevelGridProblemV2 candidate = problems[index];
+                if (candidate.Code == selected.Code
+                    && string.Equals(
+                        candidate.AuthoredId,
+                        selected.AuthoredId,
+                        StringComparison.Ordinal)
+                    && string.Equals(
+                        candidate.DiagnosticLocation,
+                        selected.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        private LevelDesignValidationIssue FindCurrentFoundationIssue(
+            LevelDesignValidationIssue selected)
+        {
+            if (selected == null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<LevelDesignValidationIssue> issues =
+                activeRoot.LastValidation.Issues;
+            for (int index = 0; index < issues.Count; index++)
+            {
+                LevelDesignValidationIssue candidate = issues[index];
+                if (candidate.Code == selected.Code
+                    && string.Equals(
+                        candidate.AuthoredId,
+                        selected.AuthoredId,
+                        StringComparison.Ordinal)
+                    && string.Equals(
+                        candidate.DiagnosticLocation,
+                        selected.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
         private void DrawToolbarStatus()
         {
             if (activeRoot == null)
