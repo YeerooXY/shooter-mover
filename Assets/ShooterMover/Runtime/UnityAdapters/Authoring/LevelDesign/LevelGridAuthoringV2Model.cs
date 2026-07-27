@@ -38,6 +38,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         SelfConnection = 9,
         DoorUsedByMultipleConnections = 10,
         UnconnectedTraversableDoor = 11,
+        InvalidRoomIdentity = 12,
+        DuplicateRoomIdentity = 13,
+        OverlappingRoomGridFootprint = 14,
     }
 
     public sealed class LevelGridDoorRecordV2
