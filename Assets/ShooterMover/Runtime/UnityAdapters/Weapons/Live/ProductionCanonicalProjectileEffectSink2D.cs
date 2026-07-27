@@ -18,6 +18,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     public sealed class CanonicalProjectileSourceIdentity2D : MonoBehaviour
     {
         public WeaponActorInstanceId ActorId { get; private set; }
+        public RunParticipantId ParticipantId { get; private set; }
         public LifecycleGeneration LifecycleGeneration { get; private set; }
         public StableId MountStableId { get; private set; }
         public EquipmentInstanceId EquipmentInstanceId { get; private set; }
@@ -26,12 +27,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public bool TryBind(
             WeaponActorInstanceId actorId,
+            RunParticipantId participantId,
             LifecycleGeneration lifecycleGeneration,
             StableId mountStableId,
             EquipmentInstanceId equipmentInstanceId,
             WeaponDefinitionId weaponDefinitionId)
         {
             if (actorId == null
+                || participantId == null
                 || lifecycleGeneration == null
                 || mountStableId == null
                 || equipmentInstanceId == null
@@ -42,6 +45,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (IsBound)
             {
                 return ActorId.Equals(actorId)
+                    && ParticipantId.Equals(participantId)
                     && LifecycleGeneration.Equals(lifecycleGeneration)
                     && MountStableId == mountStableId
                     && EquipmentInstanceId.Equals(equipmentInstanceId)
@@ -49,6 +53,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             ActorId = actorId;
+            ParticipantId = participantId;
             LifecycleGeneration = lifecycleGeneration;
             MountStableId = mountStableId;
             EquipmentInstanceId = equipmentInstanceId;
@@ -77,6 +82,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private readonly HashSet<ProductionCanonicalNormalProjectile2D> active =
             new HashSet<ProductionCanonicalNormalProjectile2D>();
         private WeaponActorInstanceId sourceActorId;
+        private RunParticipantId sourceParticipantId;
         private LifecycleGeneration sourceLifecycle;
         private StableId sourceMountStableId;
         private EquipmentInstanceId sourceEquipmentInstanceId;
@@ -89,6 +95,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         public int AcceptedBatchCount { get { return accepted.Count; } }
         public int ActiveProjectileCount { get { return active.Count; } }
         public bool IsSourceBound { get { return sourceBound; } }
+        public RunParticipantId SourceParticipantId { get { return sourceParticipantId; } }
         public StableId SourceMountStableId { get { return sourceMountStableId; } }
         public bool IsRetired { get { return retired; } }
 
@@ -142,6 +149,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (batch == null
                 || batch.CoreBatch == null
                 || batch.Identity == null
+                || batch.Identity.ParticipantId == null
                 || batch.CoreBatch.EffectCount != 1
                 || batch.CoreBatch.Effects.Count != 1)
             {
@@ -152,6 +160,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-source-identity-mismatch");
+            }
+            if (sourceParticipantId != null
+                && !sourceParticipantId.Equals(batch.Identity.ParticipantId))
+            {
+                return WeaponEffectBatchSinkResult.Reject(
+                    "canonical-projectile-participant-identity-mismatch");
             }
 
             string key = batch.Identity.ToCanonicalString();
@@ -169,16 +183,27 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             CanonicalProjectileLaunchEffect effect =
                 batch.CoreBatch.Effects[0] as CanonicalProjectileLaunchEffect;
+            if (effect == null
+                || effect.Identity == null
+                || !string.Equals(
+                    effect.Identity.ToCanonicalString(),
+                    key,
+                    StringComparison.Ordinal))
+            {
+                return WeaponEffectBatchSinkResult.Reject(
+                    "canonical-projectile-effect-identity-mismatch");
+            }
+
             string rejectionCode;
             if (!IsSupported(effect, out rejectionCode))
             {
                 return WeaponEffectBatchSinkResult.Reject(rejectionCode);
             }
 
-            EnsureSprite();
             GameObject projectileObject = null;
             try
             {
+                EnsureSprite();
                 projectileObject = new GameObject(
                     "CanonicalPlayerProjectile_"
                     + effect.Identity.ShotSequence.ToString(
@@ -195,6 +220,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         CanonicalProjectileSourceIdentity2D>();
                 if (!identityProjection.TryBind(
                         sourceActorId,
+                        batch.Identity.ParticipantId,
                         sourceLifecycle,
                         sourceMountStableId,
                         sourceEquipmentInstanceId,
@@ -225,6 +251,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
 
                 RetainAccepted(key, batch.Fingerprint);
+                if (sourceParticipantId == null)
+                {
+                    sourceParticipantId = batch.Identity.ParticipantId;
+                }
                 return WeaponEffectBatchSinkResult.Accept();
             }
             catch (Exception exception)
