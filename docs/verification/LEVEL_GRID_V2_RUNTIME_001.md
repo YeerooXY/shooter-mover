@@ -75,9 +75,19 @@ A hostile self-review identified two gameplay blockers and several strictness ga
 
 ## PlayMode coverage authored
 
-`LevelGridV2CompiledAssetPlayModeTests` loads the tracked resource after a runtime frame, imports it through `JsonRoomContentDefinition2D`, and verifies the build-included package contains the exact three authored Droid placements.
+`LevelGridV2CompiledAssetPlayModeTests` now performs two checks against the tracked build-included resource:
 
-This test remains an asset/import smoke test. The full traversal, combat gating, final completion and restart route still requires the manual and broader runtime acceptance below.
+1. imports the package after a runtime frame and verifies the exact three-room, three-Droid graph;
+2. constructs the existing `RoomLiveRuntimeAuthorityV1` and exercises the compiled route:
+   - zero-enemy starter completion and first door availability;
+   - exact destination arrivals;
+   - always-open return doors;
+   - one-Droid progression gating;
+   - two-Droid final-exit gating after the first and second terminal reports;
+   - final-exit traversal;
+   - a fresh authority instance restoring the initial `0 / 1 / 2` occupant state.
+
+These tests exercise the existing imported room authority, but they do not replace scene-level presentation, collision, weapon combat or full application restart acceptance.
 
 ## Unity validation status
 
