@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Economy;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
@@ -140,6 +141,20 @@ namespace ShooterMover.Application.Flow.Production
                         + "WeaponEquipmentInstance contract: "
                         + command.EquipmentInstance.InstanceId);
                 }
+
+                ProductionWeaponMarkV1 mark;
+                bool definitionResolved = ProductionWeaponCatalogProvider.Current
+                    .TryGetMark(canonical.WeaponDefinitionId.Value, out mark)
+                    && mark != null;
+                CanonicalWeaponOperationAvailabilityV1 availability =
+                    CanonicalWeaponSafetyPolicyV1.EvaluateRewardAcceptance(
+                        canonical,
+                        definitionResolved);
+                if (!availability.IsAvailable)
+                {
+                    throw new InvalidOperationException(
+                        availability.RejectionCode + ": " + availability.Message);
+                }
                 return true;
             }
 
@@ -153,6 +168,16 @@ namespace ShooterMover.Application.Flow.Production
             canonical = weapons.Find(command.Transaction.InstanceStableId);
             if (canonical != null)
             {
+                ProductionWeaponMarkV1 mark;
+                if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+                        canonical.WeaponDefinitionId.Value,
+                        out mark)
+                    || mark == null)
+                {
+                    throw new InvalidOperationException(
+                        "canonical-weapon-definition-unresolved: "
+                        + canonical.WeaponDefinitionId.Value);
+                }
                 return true;
             }
 
