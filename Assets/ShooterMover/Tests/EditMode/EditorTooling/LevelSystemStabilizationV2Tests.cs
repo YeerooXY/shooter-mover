@@ -15,6 +15,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
     public sealed class LevelSystemStabilizationV2Tests
     {
         private LevelDesignSceneAuthoringRoot2D root;
+        private LevelDoorEndpointAuthoring2D configuredFinalExitDoor;
         private string temporaryParent;
         private string outputRoot;
 
@@ -119,6 +120,50 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         }
 
         [Test]
+        public void ExactFinalExit_IsAllowedUnconnectedButRejectedAsRoomLink()
+        {
+            ConfigurePlayableGraph();
+            LevelRoomAuthoring2D extraRoom = LevelGridEditorOperationsV2.CreateRoom(
+                root,
+                new Vector2Int(2, 0));
+            LevelDoorEndpointAuthoring2D extraDoor =
+                LevelGridEditorOperationsV2.CreateDoor(
+                    extraRoom,
+                    LevelDoorSideV2.West,
+                    0.5f);
+
+            LevelDoorLinkAuthoring2D invalidLink;
+            string rejection;
+            Assert.That(
+                LevelGridEditorOperationsV2.TryCreateConnection(
+                    root,
+                    configuredFinalExitDoor,
+                    extraDoor,
+                    out invalidLink,
+                    out rejection),
+                Is.True,
+                rejection);
+
+            LevelGridEditorOperationsV2.Validate(
+                root,
+                LevelGridValidationPurposeV2.ProductionPublish);
+
+            Assert.That(root.LastGridValidation.CanPublish, Is.False);
+            bool foundExactFailure = false;
+            for (int index = 0; index < root.LastGridValidation.Problems.Count; index++)
+            {
+                LevelGridProblemV2 problem = root.LastGridValidation.Problems[index];
+                if (problem.AuthoredId == invalidLink.ConnectionIdText
+                    && problem.Message.Contains(configuredFinalExitDoor.DoorIdText))
+                {
+                    foundExactFailure = true;
+                    break;
+                }
+            }
+            Assert.That(foundExactFailure, Is.True);
+        }
+
+        [Test]
         public void CompatibilitySurfaces_DelegateOrDisableInsteadOfMutatingDirectly()
         {
             string creationMenu = ReadProjectFile(
@@ -176,11 +221,10 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                     finalRoom,
                     LevelDoorSideV2.West,
                     0.5f);
-            LevelDoorEndpointAuthoring2D finalExitDoor =
-                LevelGridEditorOperationsV2.CreateDoor(
-                    finalRoom,
-                    LevelDoorSideV2.East,
-                    0.5f);
+            configuredFinalExitDoor = LevelGridEditorOperationsV2.CreateDoor(
+                finalRoom,
+                LevelDoorSideV2.East,
+                0.5f);
 
             LevelDoorLinkAuthoring2D link;
             string rejection;
@@ -204,7 +248,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             LevelGridPlayableMetadataOperationsV2.UseDoorAsFinalExit(
                 root,
                 metadata,
-                finalExitDoor);
+                configuredFinalExitDoor);
             LevelGridEditorOperationsV2.Validate(
                 root,
                 LevelGridValidationPurposeV2.ProductionPublish);
