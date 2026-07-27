@@ -123,7 +123,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 connections.Add(connectionComponents[index].BuildRecord());
             }
 
-            lastGridValidation = LevelGridAuthoringV2Validator.Validate(
+            lastGridValidation = LevelGridAuthoringV2CompositeValidator.Validate(
                 rooms,
                 doors,
                 connections,
