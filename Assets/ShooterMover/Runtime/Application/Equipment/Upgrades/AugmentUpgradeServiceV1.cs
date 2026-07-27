@@ -194,15 +194,24 @@ namespace ShooterMover.Application.Equipment.Upgrades
                     && mark != null;
             }
 
-            // Synthetic/legacy generic equipment remains on the old route. Only an exact receipt
-            // that resolves to the production canonical weapon catalogue is safety-gated here.
-            if (!isWeaponReceipt || !canonicalDefinitionResolved)
+            if (!isWeaponReceipt)
             {
                 return CanonicalWeaponOperationAvailabilityV1.Available();
             }
+
+            bool authoritativeProductionCatalog = ReferenceEquals(
+                catalog,
+                ProductionWeaponCatalogProvider.EquipmentCatalog);
+            if (!authoritativeProductionCatalog && !canonicalDefinitionResolved)
+            {
+                // Isolated synthetic/legacy catalogues keep the historical generic route. They do
+                // not identify an exact production canonical weapon receipt.
+                return CanonicalWeaponOperationAvailabilityV1.Available();
+            }
+
             return CanonicalWeaponSafetyPolicyV1.EvaluateGenericUpgrade(
                 true,
-                true);
+                canonicalDefinitionResolved);
         }
     }
 }
