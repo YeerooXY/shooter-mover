@@ -162,13 +162,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 BuildDiagnosticLocation());
         }
 
-        [ContextMenu("Assign New Stable ID")]
         public void AssignNewStableId()
         {
             roomId = LevelDesignAuthoringId.New("room");
         }
 
-        [ContextMenu("Snap Room To Authored Grid")]
         public void SnapToAuthoredGrid()
         {
             transform.position = GridAlignedWorldPosition;
