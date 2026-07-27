@@ -107,6 +107,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             ValidateGraphAllowingFinalExit(rooms, doors, links, metadata);
 
             string absoluteOutput = Path.GetFullPath(outputRoot);
+            LevelGridV2RoomFolderMigration.ValidateDestinationRoot(
+                absoluteOutput,
+                root.LevelIdText);
             string parent = Directory.GetParent(absoluteOutput) == null
                 ? null
                 : Directory.GetParent(absoluteOutput).FullName;
