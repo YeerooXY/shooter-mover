@@ -23,16 +23,16 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             Directory.CreateDirectory(outputRoot);
             string roomsRoot = Path.Combine(outputRoot, "Rooms");
-            Directory.CreateDirectory(roomsRoot);
+            IReadOnlyDictionary<string, string> foldersByRoom =
+                LevelGridV2RoomFolderMigration.Prepare(rooms, roomsRoot);
 
             var roomIndex = new RoomIndexDto[rooms.Length];
             var roomIds = new string[rooms.Length];
             var nodes = new MapNodeDto[rooms.Length];
-            var foldersByRoom = new Dictionary<string, string>(StringComparer.Ordinal);
             for (int i = 0; i < rooms.Length; i++)
             {
                 LevelRoomAuthoring2D room = rooms[i];
-                string folder = BuildRoomFolderName(room);
+                string folder = Path.GetFileName(foldersByRoom[room.RoomIdText]);
                 roomIds[i] = room.RoomIdText;
                 roomIndex[i] = new RoomIndexDto
                 {
@@ -49,7 +49,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     label = room.EditorLabel,
                     visible_on_map = room.VisibleOnMap,
                 };
-                foldersByRoom.Add(room.RoomIdText, Path.Combine(roomsRoot, folder));
             }
 
             var connections = new ConnectionDto[links.Length];
