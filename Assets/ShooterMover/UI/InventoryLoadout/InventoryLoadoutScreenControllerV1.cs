@@ -2,6 +2,7 @@ using System;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -631,6 +632,7 @@ namespace ShooterMover.UI.InventoryLoadout
             DrawAssignments(
                 card.Instance.OverclockAssignments,
                 "No overclocks assigned");
+            DrawCanonicalSafety(card.Instance);
             GUILayout.Space(8f);
             GUILayout.Label(
                 "[DEBUG] EXACT INSTANCE ID\n" + card.Instance.InstanceId,
@@ -700,6 +702,55 @@ namespace ShooterMover.UI.InventoryLoadout
             }
             GUILayout.EndHorizontal();
             DrawLastDiagnostic();
+        }
+
+        private void DrawCanonicalSafety(WeaponEquipmentInstance instance)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            ProductionWeaponMarkV1 mark;
+            bool definitionResolved = ProductionWeaponCatalogProvider.Current
+                .TryGetMark(instance.WeaponDefinitionId.Value, out mark)
+                && mark != null;
+            CanonicalWeaponOperationAvailabilityV1 upgrade =
+                CanonicalWeaponSafetyPolicyV1.EvaluateGenericUpgrade(
+                    true,
+                    definitionResolved);
+            CanonicalWeaponOperationAvailabilityV1 live =
+                CanonicalWeaponSafetyPolicyV1.EvaluateLiveExecution(
+                    instance,
+                    definitionResolved);
+            CanonicalWeaponOperationAvailabilityV1 overclock =
+                CanonicalWeaponSafetyPolicyV1.EvaluateOverclockInstallation();
+
+            GUILayout.Space(10f);
+            GUILayout.Label("WEAPON SAFETY GATE", headingStyle);
+            GUI.enabled = false;
+            GUILayout.Button(
+                "AUGMENT UPGRADE — BLOCKED",
+                GUILayout.MinHeight(30f));
+            GUI.enabled = true;
+            GUILayout.Label(
+                upgrade.RejectionCode + " — " + upgrade.Message,
+                invalidStyle);
+
+            if (instance.OverclockAssignments.Count == 0)
+            {
+                GUILayout.Label(
+                    "OVERCLOCK INSTALLATION — NOT AVAILABLE\n"
+                    + overclock.RejectionCode,
+                    invalidStyle);
+            }
+            else
+            {
+                GUILayout.Label(
+                    "LIVE EXECUTION — BLOCKED\n"
+                    + live.RejectionCode + " — " + live.Message,
+                    invalidStyle);
+            }
         }
 
         private static void DrawAssignments(
