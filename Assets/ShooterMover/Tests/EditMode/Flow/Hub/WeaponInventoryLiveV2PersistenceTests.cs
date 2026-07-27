@@ -144,7 +144,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         [Test]
-        public void CharacterSemanticsAcceptMountV2AndRequireLegacyWeaponSlotsEmpty()
+        public void AccountAggregateAcceptsMountV2AndRequiresLegacyWeaponSlotsEmpty()
         {
             var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
                 "account-semantics",
@@ -189,6 +189,34 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 PlayerAccountComponentSemanticsV1.ValidateCharacter(
                     validCharacter);
             Assert.That(valid.Succeeded, Is.True, valid.RejectionCode);
+
+            var slots = new CharacterInstanceSnapshotV1[
+                PlayerAccountSnapshotV1.CharacterSlotCount];
+            slots[0] = validCharacter;
+            var account = new PlayerAccountSnapshotV1(
+                StableId.Parse("account.weapon-mount-v2"),
+                0L,
+                slots,
+                null);
+            string accountPayload = PlayerAccountAggregateCodecV1.Encode(account);
+            PlayerAccountSnapshotV1 decodedAccount;
+            string accountError;
+            Assert.That(
+                PlayerAccountAggregateCodecV1.TryDecode(
+                    accountPayload,
+                    out decodedAccount,
+                    out accountError),
+                Is.True,
+                accountError);
+            SaveComponentValidationResultV1 accountSemantics =
+                PlayerAccountComponentSemanticsV1.Validate(decodedAccount);
+            Assert.That(
+                accountSemantics.Succeeded,
+                Is.True,
+                accountSemantics.RejectionCode);
+            Assert.That(
+                decodedAccount.CharacterAt(0).Fingerprint,
+                Is.EqualTo(validCharacter.Fingerprint));
 
             InventoryLoadoutAuthoritySnapshotV1 invalidLegacyWeapons =
                 runtime.LoadoutAuthority.ExportSnapshot();
