@@ -66,12 +66,19 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EnsurePlayableStatus();
             LevelDesignValidationResult foundation = activeRoot.LastValidation;
             LevelGridValidationResultV2 grid = activeRoot.LastGridValidation;
-            bool publishAllowed = foundation.IsValid && grid.CanPublish;
+            bool productionValidationRun = grid.Purpose
+                == LevelGridValidationPurposeV2.ProductionPublish;
+            bool publishAllowed = productionValidationRun
+                && foundation.IsValid
+                && grid.CanPublish;
             MessageType summaryType = !foundation.IsValid || grid.ErrorCount > 0
                 ? MessageType.Error
                 : foundation.WarningCount > 0 || grid.WarningCount > 0
                     ? MessageType.Warning
                     : MessageType.Info;
+            string productionStatus = !productionValidationRun
+                ? "not run"
+                : publishAllowed ? "allowed" : "blocked";
             EditorGUILayout.HelpBox(
                 "Foundation errors: " + foundation.ErrorCount
                     + " | Foundation warnings: " + foundation.WarningCount
@@ -81,7 +88,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     + grid.UnconnectedTraversableDoorCount
                     + "\nDraft status: save allowed"
                     + " | Production publish: "
-                    + (publishAllowed ? "allowed" : "blocked")
+                    + productionStatus
                     + " | Playable pipeline: "
                     + GetPlayableProblemsSummary(),
                 summaryType);
@@ -443,22 +450,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 () => RunPlayableOperation(
                     () => LevelGridPlayableBuildFacadeV2.CopyRegistrationValues(activeRoot),
                     "Copied exact registration values."));
-            menu.AddSeparator(string.Empty);
-            menu.AddItem(
-                new GUIContent("Legacy/Create Three-Room Starter Example"),
-                false,
-                () => ExecuteExistingCommand(
-                    MenuPrefix + "Create Three-Room Starter Example"));
-            menu.AddItem(
-                new GUIContent("Legacy/Export Grid V2 Draft Folder"),
-                false,
-                () => ExecuteExistingCommand(
-                    MenuPrefix + "Export Grid V2 Draft Folder..."));
-            menu.AddItem(
-                new GUIContent("Legacy/Publish Validated Authoring Folder"),
-                false,
-                () => ExecuteExistingCommand(
-                    MenuPrefix + "Publish Grid V2 Validated Authoring Folder..."));
             menu.ShowAsContext();
         }
 
