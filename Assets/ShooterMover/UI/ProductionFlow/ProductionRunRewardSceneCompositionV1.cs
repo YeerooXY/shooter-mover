@@ -10,88 +10,79 @@ using ShooterMover.UI.LevelSelection;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UI.ProductionFlow
 {
-    [DefaultExecutionOrder(20000)]
+    /// <summary>
+    /// Scene-owned bridge that composes the selected-character Run Session synchronously
+    /// at the accepted room-build boundary. Enemy downstream ports are therefore frozen
+    /// before the production controller performs its first enemy synchronization.
+    /// </summary>
+    [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
     public sealed class ProductionRunRewardSceneCompositionV1 : MonoBehaviour
     {
+        private ProductionPlayableLevelControllerV1 controller;
+        private JsonRoomRuntimeBootstrap2D roomBootstrap;
+        private RoomRuntimeComposition2D rooms;
+        private RoomEnemySpawner2D spawner;
         private ProductionRunRewardRuntimeV1 runtime;
         private string diagnostic = string.Empty;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetHook()
-        {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-        }
+        public string Diagnostic { get { return diagnostic; } }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallHook()
+        private void Awake()
         {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-            InstallForScene(SceneManager.GetActiveScene());
-        }
-
-        private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            InstallForScene(scene);
-        }
-
-        private static void InstallForScene(Scene scene)
-        {
-            if (!scene.IsValid()
-                || !string.Equals(
-                    scene.path,
-                    ProductionPlayableLevelCatalogV1.PlayableLevelScenePath,
-                    StringComparison.Ordinal))
+            controller = GetComponent<ProductionPlayableLevelControllerV1>();
+            roomBootstrap = GetComponent<JsonRoomRuntimeBootstrap2D>();
+            rooms = GetComponent<RoomRuntimeComposition2D>();
+            spawner = GetComponent<RoomEnemySpawner2D>();
+            if (controller == null || roomBootstrap == null || rooms == null || spawner == null)
             {
+                diagnostic = "run-reward-scene-composition-references-missing";
+                Debug.LogError(diagnostic, this);
                 return;
             }
 
-            ProductionPlayableLevelControllerV1 controller =
-                FindInScene<ProductionPlayableLevelControllerV1>(scene);
-            if (controller != null
-                && controller.GetComponent<ProductionRunRewardSceneCompositionV1>() == null)
+            roomBootstrap.BuildAccepted += HandleRoomBuildAccepted;
+            if (roomBootstrap.IsBuilt && roomBootstrap.ImportedBundle != null)
             {
-                controller.gameObject.AddComponent<ProductionRunRewardSceneCompositionV1>();
+                HandleRoomBuildAccepted(roomBootstrap.ImportedBundle);
             }
         }
 
-        private void Start()
+        private void HandleRoomBuildAccepted(RoomContentBundleV1 acceptedBundle)
         {
-            try
-            {
-                Compose();
-            }
-            catch (Exception exception)
-            {
-                diagnostic = exception.GetType().Name + ": " + exception.Message;
-                Debug.LogException(exception, this);
-            }
-        }
-
-        private void Compose()
-        {
-            ProductionPlayableLevelControllerV1 controller =
-                GetComponent<ProductionPlayableLevelControllerV1>();
-            if (controller == null || !controller.IsConfigured)
+            if (runtime != null)
             {
                 throw new InvalidOperationException(
-                    "The production playable level must be configured before run rewards compose.");
+                    "The production run/reward composition is already frozen.");
+            }
+            Compose(acceptedBundle);
+        }
+
+        private void Compose(RoomContentBundleV1 acceptedBundle)
+        {
+            if (acceptedBundle == null
+                || !roomBootstrap.IsBuilt
+                || !ReferenceEquals(roomBootstrap.ImportedBundle, acceptedBundle)
+                || !rooms.IsBuilt)
+            {
+                throw new InvalidOperationException(
+                    "The accepted authored room bundle is unavailable for run/reward composition.");
             }
 
             PlayerRouteProfilePayloadV1 route;
             StableId modeId;
             StableId levelId;
             if (!LevelSelectionRouteContextV1.TryRead(out route, out modeId, out levelId)
+                || route == null
+                || modeId == null
                 || levelId == null
                 || controller.LevelStableId != levelId)
             {
                 throw new InvalidOperationException(
-                    "The selected level route is missing or does not match the configured scene.");
+                    "The selected mode/level route is missing or does not match the composing scene.");
             }
 
             ProductionPlayableLevelDefinitionV1 level;
@@ -113,33 +104,18 @@ namespace ShooterMover.UI.ProductionFlow
                 || profile == null
                 || coordinator == null
                 || graph.IsDisposed
-                || route == null
-                || !graph.RoutePayload.Equals(route))
+                || !route.HasValidFingerprint()
+                || !graph.RoutePayload.Equals(route)
+                || !profile.Payload.Equals(route)
+                || controller.CharacterInstanceStableId
+                    != graph.Character.CharacterInstanceStableId)
             {
                 throw new InvalidOperationException(
                     "The exact selected account-backed character graph is unavailable.");
             }
 
-            JsonRoomRuntimeBootstrap2D roomBootstrap =
-                FindInScene<JsonRoomRuntimeBootstrap2D>(gameObject.scene);
-            RoomRuntimeComposition2D rooms =
-                FindInScene<RoomRuntimeComposition2D>(gameObject.scene);
-            RoomEnemySpawner2D spawner =
-                FindInScene<RoomEnemySpawner2D>(gameObject.scene);
-            if (roomBootstrap == null
-                || !roomBootstrap.IsBuilt
-                || roomBootstrap.ImportedBundle == null
-                || rooms == null
-                || !rooms.IsBuilt
-                || spawner == null)
-            {
-                throw new InvalidOperationException(
-                    "The authored room runtime is not ready for run/reward composition.");
-            }
-
             StableId proofRoomId = StableId.Parse("room.level1-entry");
-            List<RoomEnemyPlacementContentV1> proofRows = roomBootstrap.ImportedBundle
-                .Enemies
+            List<RoomEnemyPlacementContentV1> proofRows = acceptedBundle.Enemies
                 .Where(row => row != null && row.RoomStableId == proofRoomId)
                 .ToList();
             if (levelId != ProductionPlayableLevelCatalogV1.FirstLevelStableId
@@ -167,6 +143,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             runtime = ProductionRunRewardRuntimeV1.Create(
                 level,
+                modeId,
                 graph,
                 coordinator,
                 rooms,
@@ -178,12 +155,7 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime.ExperienceConsumer,
                 runtime.DropConsumer,
                 runtime.KillStatisticsConsumer);
-            if (!spawner.Synchronize())
-            {
-                throw new InvalidOperationException(
-                    "The authored room enemy runtime rejected the selected-character run composition: "
-                    + spawner.LastBuildError);
-            }
+            diagnostic = string.Empty;
         }
 
         private void OnGUI()
@@ -202,18 +174,11 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void OnDestroy()
         {
-            runtime = null;
-        }
-
-        private static T FindInScene<T>(Scene scene) where T : Component
-        {
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int index = 0; index < roots.Length; index++)
+            if (roomBootstrap != null)
             {
-                T value = roots[index].GetComponentInChildren<T>(true);
-                if (value != null) return value;
+                roomBootstrap.BuildAccepted -= HandleRoomBuildAccepted;
             }
-            return null;
+            runtime = null;
         }
     }
 }
