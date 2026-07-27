@@ -40,7 +40,7 @@ namespace ShooterMover.UI.ProductionFlow
                     "No authored run-stat baseline exists for level " + level.LevelStableId);
             }
             ProgressionContext progression = characterGraph.ExperienceAuthority.CurrentContext;
-            if (progression == null || progression.PlayerLevel < 1)
+            if (progression == null || progression.CharacterLevel < 1)
             {
                 throw new InvalidOperationException(
                     "The selected character progression context is unavailable.");
@@ -56,7 +56,7 @@ namespace ShooterMover.UI.ProductionFlow
                     new CharacterBaseStatProfileV1(
                         "base-profile.production-playable-level-1",
                         character.ClassDefinitionStableId.ToString(),
-                        progression.PlayerLevel,
+                        progression.CharacterLevel,
                         ProductionRunFingerprintV1.Hash(
                             "production-playable-level-1-base-v1|"
                             + character.ClassDefinitionStableId),
