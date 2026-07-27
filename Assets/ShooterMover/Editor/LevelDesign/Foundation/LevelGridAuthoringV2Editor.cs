@@ -3,24 +3,27 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
+    /// <summary>
+    /// Retained compatibility type for callers that previously opened a separate Problems window.
+    /// Problems are now presented by the canonical Level Grid editor for the exact selected root.
+    /// </summary>
     public sealed class LevelGridProblemsWindowV2 : EditorWindow
     {
         private static LevelDesignSceneAuthoringRoot2D currentRoot;
-        private Vector2 scrollPosition;
 
         public static void Open(LevelDesignSceneAuthoringRoot2D root)
         {
+            if (root == null)
+            {
+                throw new ArgumentNullException(nameof(root));
+            }
+
             currentRoot = root;
-            LevelGridProblemsWindowV2 window = GetWindow<LevelGridProblemsWindowV2>();
-            window.titleContent = new GUIContent("Level Problems");
-            window.minSize = new Vector2(420f, 240f);
-            window.Show();
-            window.Repaint();
+            LevelGridEditorWindowV2.OpenForRoot(root);
         }
 
         [MenuItem(
@@ -38,333 +41,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            root.ValidateHierarchy();
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
             Open(root);
-        }
-
-        private void OnEnable()
-        {
-            Undo.undoRedoPerformed += RefreshAfterAuthoringChange;
-            EditorApplication.hierarchyChanged += RefreshAfterAuthoringChange;
-        }
-
-        private void OnDisable()
-        {
-            Undo.undoRedoPerformed -= RefreshAfterAuthoringChange;
-            EditorApplication.hierarchyChanged -= RefreshAfterAuthoringChange;
         }
 
         private void OnGUI()
         {
-            if (currentRoot == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Select a level authoring root and open this panel again.",
-                    MessageType.Info);
-                return;
-            }
-
-            EditorGUILayout.ObjectField(
-                "Level root",
-                currentRoot,
-                typeof(LevelDesignSceneAuthoringRoot2D),
-                true);
-
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Validate Draft"))
-            {
-                currentRoot.ValidateHierarchy();
-                currentRoot.ValidateGridAuthoring(
-                    LevelGridValidationPurposeV2.Draft);
-                SceneView.RepaintAll();
-            }
-            if (GUILayout.Button("Validate Production"))
-            {
-                currentRoot.ValidateHierarchy();
-                currentRoot.ValidateGridAuthoring(
-                    LevelGridValidationPurposeV2.ProductionPublish);
-                SceneView.RepaintAll();
-            }
-            EditorGUILayout.EndHorizontal();
-
-            LevelGridValidationResultV2 result = currentRoot.LastGridValidation;
-            LevelDesignValidationResult foundation = currentRoot.LastValidation;
-            bool combinedPublishAllowed = foundation.IsValid && result.CanPublish;
-            MessageType summaryType = !foundation.IsValid || result.ErrorCount > 0
-                ? MessageType.Error
-                : result.WarningCount > 0
-                    ? MessageType.Warning
-                    : MessageType.Info;
             EditorGUILayout.HelpBox(
-                "Mode: " + result.Purpose
-                + "\nFoundation errors: " + foundation.ErrorCount
-                + " | V2 errors: " + result.ErrorCount
-                + " | V2 warnings: " + result.WarningCount
-                + " | Unconnected traversable doors: "
-                + result.UnconnectedTraversableDoorCount
-                + "\nDraft saving remains allowed. Validated authoring publish is "
-                + (combinedPublishAllowed ? "allowed." : "blocked."),
-                summaryType);
-
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
-            if (result.Problems.Count == 0)
+                "The separate Problems window is retired. Validation, object-specific problems, "
+                    + "playable status and Build now live in the canonical Level Grid editor.",
+                MessageType.Info);
+            EditorGUI.BeginDisabledGroup(currentRoot == null);
+            if (GUILayout.Button("Open Canonical Level Grid Editor"))
             {
-                EditorGUILayout.LabelField("No V2 grid problems.");
+                LevelGridEditorWindowV2.OpenForRoot(currentRoot);
+                Close();
             }
-            else
-            {
-                for (int index = 0; index < result.Problems.Count; index++)
-                {
-                    DrawProblem(result.Problems[index]);
-                }
-            }
-            EditorGUILayout.EndScrollView();
-        }
-
-        private static void DrawProblem(LevelGridProblemV2 problem)
-        {
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(
-                problem.Code.ToString(),
-                EditorStyles.boldLabel);
-            GUILayout.FlexibleSpace();
-            if (problem.Code == LevelGridProblemCodeV2.EdgeManagedDoorFacingMismatch)
-            {
-                if (GUILayout.Button("Reflow", GUILayout.Width(64f)))
-                {
-                    ReflowProblemDoor(problem);
-                }
-                if (GUILayout.Button("Keep", GUILayout.Width(52f)))
-                {
-                    KeepProblemDoor(problem);
-                }
-            }
-            if (GUILayout.Button("Select", GUILayout.Width(64f)))
-            {
-                SelectProblemObject(problem);
-            }
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.LabelField(
-                problem.AuthoredId,
-                EditorStyles.miniLabel);
-            if (!string.IsNullOrEmpty(problem.DiagnosticLocation))
-            {
-                EditorGUILayout.LabelField(
-                    problem.DiagnosticLocation,
-                    EditorStyles.miniLabel);
-            }
-            EditorGUILayout.LabelField(
-                problem.Message,
-                EditorStyles.wordWrappedLabel);
-            EditorGUILayout.EndVertical();
-        }
-
-        private static void ReflowProblemDoor(LevelGridProblemV2 problem)
-        {
-            LevelDoorEndpointAuthoring2D door = FindProblemDoor(problem);
-            if (door == null || currentRoot == null)
-            {
-                return;
-            }
-
-            Undo.IncrementCurrentGroup();
-            int group = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Reflow Edge-Managed Door");
-            Undo.RecordObject(door, "Reflow Edge-Managed Door");
-            Undo.RecordObject(door.transform, "Reflow Edge-Managed Door");
-            door.SetAutoFaceConnectionForAuthoring(true);
-            LevelGridDoorOperationsV2.ReflowDoor(currentRoot, door);
-            Undo.CollapseUndoOperations(group);
-            EditorUtility.SetDirty(door);
-            EditorSceneManager.MarkSceneDirty(currentRoot.gameObject.scene);
-            currentRoot.ValidateGridAuthoring(currentRoot.LastGridValidation.Purpose);
-            SceneView.RepaintAll();
-        }
-
-        private static void KeepProblemDoor(LevelGridProblemV2 problem)
-        {
-            LevelDoorEndpointAuthoring2D door = FindProblemDoor(problem);
-            if (door == null || currentRoot == null)
-            {
-                return;
-            }
-
-            Undo.RecordObject(door, "Keep Edge Door Placement");
-            door.SetAutoFaceConnectionForAuthoring(false);
-            EditorUtility.SetDirty(door);
-            EditorSceneManager.MarkSceneDirty(currentRoot.gameObject.scene);
-            currentRoot.ValidateGridAuthoring(currentRoot.LastGridValidation.Purpose);
-            SceneView.RepaintAll();
-        }
-
-        private static void SelectProblemObject(LevelGridProblemV2 problem)
-        {
-            Component exact = FindExactProblemObject(problem);
-            if (exact != null)
-            {
-                Selection.activeGameObject = exact.gameObject;
-                EditorGUIUtility.PingObject(exact);
-                return;
-            }
-
-            Component fallback = FindFirstProblemObjectById(problem);
-            if (fallback != null)
-            {
-                Selection.activeGameObject = fallback.gameObject;
-                EditorGUIUtility.PingObject(fallback);
-                return;
-            }
-
-            Selection.activeObject = currentRoot;
-            EditorGUIUtility.PingObject(currentRoot);
-        }
-
-        private static LevelDoorEndpointAuthoring2D FindProblemDoor(
-            LevelGridProblemV2 problem)
-        {
-            Component exact = FindExactProblemObject(problem);
-            LevelDoorEndpointAuthoring2D exactDoor =
-                exact as LevelDoorEndpointAuthoring2D;
-            if (exactDoor != null)
-            {
-                return exactDoor;
-            }
-
-            Component fallback = FindFirstProblemObjectById(problem);
-            return fallback as LevelDoorEndpointAuthoring2D;
-        }
-
-        private static Component FindExactProblemObject(LevelGridProblemV2 problem)
-        {
-            if (currentRoot == null || string.IsNullOrEmpty(problem.DiagnosticLocation))
-            {
-                return null;
-            }
-
-            LevelRoomAuthoring2D[] rooms =
-                currentRoot.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
-            for (int index = 0; index < rooms.Length; index++)
-            {
-                if (string.Equals(rooms[index].RoomIdText, problem.AuthoredId, StringComparison.Ordinal)
-                    && string.Equals(
-                        BuildDiagnosticLocation(rooms[index].transform),
-                        problem.DiagnosticLocation,
-                        StringComparison.Ordinal))
-                {
-                    return rooms[index];
-                }
-            }
-
-            LevelDoorEndpointAuthoring2D[] doors =
-                currentRoot.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
-            for (int index = 0; index < doors.Length; index++)
-            {
-                if (string.Equals(doors[index].DoorIdText, problem.AuthoredId, StringComparison.Ordinal)
-                    && string.Equals(
-                        BuildDiagnosticLocation(doors[index].transform),
-                        problem.DiagnosticLocation,
-                        StringComparison.Ordinal))
-                {
-                    return doors[index];
-                }
-            }
-
-            LevelDoorLinkAuthoring2D[] links =
-                currentRoot.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (string.Equals(links[index].ConnectionIdText, problem.AuthoredId, StringComparison.Ordinal)
-                    && string.Equals(
-                        BuildDiagnosticLocation(links[index].transform),
-                        problem.DiagnosticLocation,
-                        StringComparison.Ordinal))
-                {
-                    return links[index];
-                }
-            }
-
-            return null;
-        }
-
-        private static Component FindFirstProblemObjectById(LevelGridProblemV2 problem)
-        {
-            if (currentRoot == null)
-            {
-                return null;
-            }
-
-            LevelRoomAuthoring2D[] rooms =
-                currentRoot.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
-            for (int index = 0; index < rooms.Length; index++)
-            {
-                if (string.Equals(
-                    rooms[index].RoomIdText,
-                    problem.AuthoredId,
-                    StringComparison.Ordinal))
-                {
-                    return rooms[index];
-                }
-            }
-
-            LevelDoorEndpointAuthoring2D[] doors =
-                currentRoot.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
-            for (int index = 0; index < doors.Length; index++)
-            {
-                if (string.Equals(
-                    doors[index].DoorIdText,
-                    problem.AuthoredId,
-                    StringComparison.Ordinal))
-                {
-                    return doors[index];
-                }
-            }
-
-            LevelDoorLinkAuthoring2D[] links =
-                currentRoot.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (string.Equals(
-                    links[index].ConnectionIdText,
-                    problem.AuthoredId,
-                    StringComparison.Ordinal))
-                {
-                    return links[index];
-                }
-            }
-
-            return null;
-        }
-
-        private void RefreshAfterAuthoringChange()
-        {
-            if (currentRoot == null)
-            {
-                return;
-            }
-
-            LevelGridDoorOperationsV2.ReflowAll(currentRoot);
-            currentRoot.ValidateHierarchy();
-            currentRoot.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            Repaint();
-            SceneView.RepaintAll();
-        }
-
-        private static string BuildDiagnosticLocation(Transform transform)
-        {
-            return transform.gameObject.scene.name + ":" + GetHierarchyPath(transform);
-        }
-
-        private static string GetHierarchyPath(Transform current)
-        {
-            string path = current.name;
-            while (current.parent != null)
-            {
-                current = current.parent;
-                path = current.name + "/" + path;
-            }
-            return path;
+            EditorGUI.EndDisabledGroup();
         }
 
         private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
@@ -376,11 +68,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
     }
 
+    /// <summary>
+    /// Compatibility menu callbacks. They resolve context and delegate every Grid V2 operation to
+    /// LevelGridEditorOperationsV2; they do not own topology mutation or validation.
+    /// </summary>
     public static class LevelGridAuthoringV2Menu
     {
-        private const int DestructiveLinkThreshold = 8;
-        private const int DestructiveObjectThreshold = 100;
-
         [MenuItem(
             "Tools/Shooter Mover/Level Design/Validate Grid Draft",
             priority = 231)]
@@ -416,72 +109,25 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             LevelDesignSceneAuthoringRoot2D root =
-                room.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                LevelGridEditorOperationsV2.ResolveRoot(room);
             if (root == null)
             {
+                EditorUtility.DisplayDialog(
+                    "Delete Room",
+                    "The selected room does not belong to a level authoring root.",
+                    "OK");
                 return;
             }
 
-            LevelDoorLinkAuthoring2D[] allLinks =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            List<LevelDoorLinkAuthoring2D> attachedLinks =
-                new List<LevelDoorLinkAuthoring2D>();
-            for (int index = 0; index < allLinks.Length; index++)
+            if (LevelGridEditorOperationsV2.DeleteRoom(room, true))
             {
-                LevelDoorLinkAuthoring2D link = allLinks[index];
-                if (link.SourceRoom == room || link.DestinationRoom == room)
-                {
-                    attachedLinks.Add(link);
-                }
-            }
-
-            int objectCount = room.GetComponentsInChildren<Transform>(true).Length;
-            bool unusuallyDestructive =
-                attachedLinks.Count > DestructiveLinkThreshold
-                || objectCount > DestructiveObjectThreshold;
-            if (unusuallyDestructive
-                && !EditorUtility.DisplayDialog(
-                    "Delete unusually large room?",
-                    "This undoable deletion removes " + objectCount
-                        + " room objects and " + attachedLinks.Count
-                        + " connections. Continue?",
-                    "Delete",
-                    "Cancel"))
-            {
-                return;
-            }
-
-            Undo.IncrementCurrentGroup();
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Delete Level Room");
-            for (int index = 0; index < attachedLinks.Count; index++)
-            {
-                DestroyConnectionWithUndo(attachedLinks[index]);
-            }
-            Undo.DestroyObjectImmediate(room.gameObject);
-            Undo.CollapseUndoOperations(undoGroup);
-
-            Selection.activeObject = root;
-            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            LevelGridProblemsWindowV2.Open(root);
-            SceneView.RepaintAll();
-
-            SceneView sceneView = SceneView.lastActiveSceneView;
-            if (sceneView != null)
-            {
-                sceneView.ShowNotification(new GUIContent(
-                    "Room deleted; " + attachedLinks.Count
-                    + " connection(s) removed. Ctrl+Z to undo."));
+                LevelGridEditorWindowV2.OpenForRoot(root);
             }
         }
 
         private static void ValidateSelected(LevelGridValidationPurposeV2 purpose)
         {
-            GameObject selected = Selection.activeGameObject;
-            LevelDesignSceneAuthoringRoot2D root = selected == null
-                ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
@@ -491,26 +137,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelGridDoorOperationsV2.ReflowAll(root);
-            LevelDesignValidationResult foundation = root.ValidateHierarchy();
-            LevelGridValidationResultV2 result = root.ValidateGridAuthoring(purpose);
-            LevelDesignSceneAuthoringRoot2DEditor.LogResult(root, foundation);
-            LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(root, result);
-            LevelGridProblemsWindowV2.Open(root);
-            SceneView.RepaintAll();
+            LevelGridEditorOperationsV2.Validate(root, purpose);
+            LevelDesignSceneAuthoringRoot2DEditor.LogResult(root, root.LastValidation);
+            LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
+                root,
+                root.LastGridValidation);
+            LevelGridEditorWindowV2.OpenForRoot(root);
         }
 
-        private static void DestroyConnectionWithUndo(LevelDoorLinkAuthoring2D link)
+        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
         {
-            Component[] components = link.GetComponents<Component>();
-            if (components.Length <= 2)
-            {
-                Undo.DestroyObjectImmediate(link.gameObject);
-            }
-            else
-            {
-                Undo.DestroyObjectImmediate(link);
-            }
+            GameObject selected = Selection.activeGameObject;
+            return selected == null
+                ? null
+                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
         }
     }
 
@@ -523,8 +163,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             GizmoType gizmoType)
         {
             LevelDesignSceneAuthoringRoot2D root =
-                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            bool connected = IsConnected(root, door);
+                LevelGridEditorOperationsV2.ResolveRoot(door);
+            bool connected = LevelGridEditorOperationsV2.IsConnected(root, door);
             Color previous = Handles.color;
             if (door.Traversable && !connected)
             {
@@ -565,29 +205,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     connection.DestinationDoor.transform.position,
                     0.5f),
                 connection.ConnectionIdText);
-        }
-
-        private static bool IsConnected(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
-        {
-            if (root == null)
-            {
-                return false;
-            }
-
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (links[index].SourceDoor == door
-                    || links[index].DestinationDoor == door)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static bool HasProductionProblem(
