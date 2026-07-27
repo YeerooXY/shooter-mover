@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -70,6 +71,8 @@ namespace ShooterMover.Tests.EditMode.Weapons
                     StableId.Parse("overclock-instance.aggressive-cycle"),
                 });
 
+            Assert.That(plain.AugmentAssignments, Is.Not.Null);
+            Assert.That(plain.OverclockAssignments, Is.Not.Null);
             Assert.That(plain.AugmentAssignments, Is.Empty);
             Assert.That(plain.OverclockAssignments, Is.Empty);
             Assert.That(modified.AugmentAssignments.Count, Is.EqualTo(1));
@@ -133,6 +136,85 @@ namespace ShooterMover.Tests.EditMode.Weapons
                     new WeaponDefinitionId("rattler.mk1"),
                     new[] { duplicate, duplicate },
                     Array.Empty<StableId>()));
+        }
+
+        [Test]
+        public void NullAssignmentEnumerablesAreRejected()
+        {
+            StableId instanceId =
+                StableId.Parse("instance.77777777777777777777777777777777");
+            var definitionId = new WeaponDefinitionId("rattler.mk1");
+
+            Assert.Throws<ArgumentNullException>(() =>
+                WeaponEquipmentInstance.Create(
+                    instanceId,
+                    definitionId,
+                    null,
+                    Array.Empty<StableId>()));
+            Assert.Throws<ArgumentNullException>(() =>
+                WeaponEquipmentInstance.Create(
+                    instanceId,
+                    definitionId,
+                    Array.Empty<StableId>(),
+                    null));
+        }
+
+        [Test]
+        public void NullAssignmentEntriesAreRejected()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                WeaponEquipmentInstance.Create(
+                    StableId.Parse(
+                        "instance.88888888888888888888888888888888"),
+                    new WeaponDefinitionId("rattler.mk1"),
+                    new StableId[] { null },
+                    Array.Empty<StableId>()));
+        }
+
+        [Test]
+        public void AssignmentCollectionsAreSortedDeterministically()
+        {
+            StableId augmentA = StableId.Parse("augment-instance.alpha");
+            StableId augmentZ = StableId.Parse("augment-instance.zulu");
+            StableId overclockA = StableId.Parse("overclock-instance.alpha");
+            StableId overclockZ = StableId.Parse("overclock-instance.zulu");
+
+            WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
+                StableId.Parse("instance.99999999999999999999999999999999"),
+                new WeaponDefinitionId("rattler.mk1"),
+                new[] { augmentZ, augmentA },
+                new[] { overclockZ, overclockA });
+
+            Assert.That(
+                instance.AugmentAssignments,
+                Is.EqualTo(new[] { augmentA, augmentZ }));
+            Assert.That(
+                instance.OverclockAssignments,
+                Is.EqualTo(new[] { overclockA, overclockZ }));
+        }
+
+        [Test]
+        public void AssignmentCollectionsCopyInputsAndRejectMutation()
+        {
+            StableId original = StableId.Parse("augment-instance.original");
+            StableId later = StableId.Parse("augment-instance.later");
+            var source = new List<StableId> { original };
+            WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
+                StableId.Parse("instance.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+                new WeaponDefinitionId("rattler.mk1"),
+                source,
+                Array.Empty<StableId>());
+
+            source.Add(later);
+
+            Assert.That(
+                instance.AugmentAssignments,
+                Is.EqualTo(new[] { original }));
+            Assert.Throws<NotSupportedException>(() =>
+                ((IList<StableId>)instance.AugmentAssignments).Add(later));
+            Assert.Throws<NotSupportedException>(() =>
+                ((IList<StableId>)instance.OverclockAssignments).Add(
+                    StableId.Parse("overclock-instance.later")));
         }
     }
 }
