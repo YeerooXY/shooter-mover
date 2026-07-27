@@ -165,8 +165,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelDesignSceneAuthoringRoot2D root =
                 LevelGridEditorOperationsV2.ResolveRoot(door);
             bool connected = LevelGridEditorOperationsV2.IsConnected(root, door);
+            bool exactFinalExit = IsExactFinalExit(root, door);
             Color previous = Handles.color;
-            if (door.Traversable && !connected)
+            if (door.Traversable && !connected && !exactFinalExit)
             {
                 bool productionError = HasProductionProblem(root, door.DoorIdText);
                 Handles.color = productionError
@@ -205,6 +206,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     connection.DestinationDoor.transform.position,
                     0.5f),
                 connection.ConnectionIdText);
+        }
+
+        private static bool IsExactFinalExit(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDoorEndpointAuthoring2D door)
+        {
+            if (root == null || door == null)
+            {
+                return false;
+            }
+
+            LevelGridPlayableMetadataV2 metadata =
+                root.GetComponent<LevelGridPlayableMetadataV2>();
+            return metadata != null
+                && metadata.FinalExitRoom == door.OwningRoom
+                && metadata.FinalExitDoor == door;
         }
 
         private static bool HasProductionProblem(
