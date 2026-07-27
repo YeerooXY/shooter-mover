@@ -2,11 +2,14 @@ using System.Collections;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.UI.ProductionFlow;
 using ShooterMover.UnityAdapters.Weapons.Live;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Weapons.Live
@@ -14,7 +17,7 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
     public sealed class CanonicalWeaponGameplayResolutionPlayModeTests
     {
         [UnityTest]
-        public IEnumerator ReplacedFirstMountResolvesTheExactCanonicalInstance()
+        public IEnumerator ReplacedFirstMountBindsExactInstanceToSpawnedPlayer()
         {
             var runtime = new ProductionPlayerLoadoutRuntimeV1(
                 PlayerRouteProfilePayloadV1.Create(
@@ -24,12 +27,17 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                             .DefensiveLoadoutProfileId),
                     new StableId[
                         PlayerRouteProfilePayloadV1.WeaponSlotCount]));
-            StableId firstMount = runtime.MountLayout.Positions[0]
-                .LoadoutSlotStableId;
-            StableId secondMount = runtime.MountLayout.Positions[1]
-                .LoadoutSlotStableId;
-            StableId replacement = runtime.LoadoutAuthority.ExportSnapshot()
-                .GetBinding(secondMount).EquipmentInstanceStableId;
+            ProductionWeaponMountLoadoutRegistryV2.Register(
+                runtime.WeaponHoldings,
+                runtime.MountLoadoutAuthority);
+            ProductionWeaponMountPositionV1 firstPosition =
+                runtime.MountLayout.Positions[0];
+            ProductionWeaponMountPositionV1 secondPosition =
+                runtime.MountLayout.Positions[1];
+            StableId firstMount = firstPosition.LoadoutSlotStableId;
+            StableId secondMount = secondPosition.LoadoutSlotStableId;
+            StableId replacement = runtime.MountLoadoutAuthority.ExportSnapshot()
+                .Find(secondPosition.MountStableId).InstanceId;
             var inventory = new CanonicalWeaponInventoryScreenServiceV2(
                 runtime.CurrentRoutePayload,
                 runtime.Holdings,
@@ -48,6 +56,10 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             Assert.That(
                 inventory.Confirm().Status,
                 Is.EqualTo(InventoryLoadoutScreenStatusV1.Confirmed));
+            Assert.That(
+                runtime.MountLoadoutAuthority.ExportSnapshot()
+                    .Find(firstPosition.MountStableId).InstanceId,
+                Is.EqualTo(replacement));
 
             WeaponEquipmentInstance exact;
             string rejectionCode;
@@ -59,22 +71,50 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 rejectionCode);
             Assert.That(exact.InstanceId, Is.EqualTo(replacement));
 
+            ProductionWeaponMarkV1 mark;
+            Assert.That(
+                ProductionWeaponCatalogProvider.Current.TryGetMark(
+                    exact.WeaponDefinitionId.Value,
+                    out mark),
+                Is.True);
+            var player = new GameObject("Canonical Player Test");
+            try
+            {
+                PlayablePlayerMarker2D marker =
+                    player.AddComponent<PlayablePlayerMarker2D>();
+                marker.Bind(
+                    runtime.RoutePayload.SelectedCharacterStableId,
+                    runtime.RoutePayload.LoadoutProfileStableId,
+                    runtime.CurrentRoutePayload,
+                    runtime.Holdings,
+                    runtime.LoadoutAuthority);
+                CanonicalPlayerWeaponSourceV2 source =
+                    player.AddComponent<CanonicalPlayerWeaponSourceV2>();
+                source.Bind(marker, runtime, exact, mark);
+
+                EquipmentInstance projected;
+                Assert.That(
+                    source.TryResolveLiveEquipment(
+                        out projected,
+                        out rejectionCode),
+                    Is.True,
+                    rejectionCode);
+                Assert.That(source.ExactWeaponInstanceId, Is.EqualTo(replacement));
+                Assert.That(projected.InstanceId, Is.EqualTo(replacement));
+                Assert.That(
+                    runtime.EquipmentCatalog.FindEquipmentDefinition(
+                        projected.DefinitionId).RuntimeWeaponReferenceId.ToString(),
+                    Is.EqualTo(exact.WeaponDefinitionId.Value));
+            }
+            finally
+            {
+                Object.Destroy(player);
+            }
+
             var lookup = new CanonicalWeaponEquipmentProjectionLookupV2(
                 runtime.WeaponHoldings,
                 runtime.EquipmentCatalog,
                 runtime.Holdings);
-            EquipmentInstance projected;
-            Assert.That(
-                lookup.TryResolve(
-                    new EquipmentInstanceId(exact.InstanceId),
-                    out projected),
-                Is.True);
-            Assert.That(projected.InstanceId, Is.EqualTo(exact.InstanceId));
-            Assert.That(
-                runtime.EquipmentCatalog.FindEquipmentDefinition(
-                    projected.DefinitionId).RuntimeWeaponReferenceId.ToString(),
-                Is.EqualTo(exact.WeaponDefinitionId.Value));
-
             EquipmentInstance missing;
             Assert.That(
                 lookup.TryResolve(
