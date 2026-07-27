@@ -11,6 +11,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     {
         private static readonly HashSet<LevelDesignSceneAuthoringRoot2D> PendingRoots =
             new HashSet<LevelDesignSceneAuthoringRoot2D>();
+        private static readonly HashSet<LevelDoorEndpointAuthoring2D> MovedFixedDoors =
+            new HashSet<LevelDoorEndpointAuthoring2D>();
         private static bool refreshScheduled;
 
         static LevelGridAuthoringV2LiveValidation()
@@ -23,12 +25,26 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             for (int index = 0; index < modifications.Length; index++)
             {
-                Object target = modifications[index].currentValue.target;
+                UndoPropertyModification modification = modifications[index];
+                Object target = modification.currentValue.target;
                 GameObject gameObject = target as GameObject;
                 Component component = target as Component;
                 if (gameObject == null && component != null)
                 {
                     gameObject = component.gameObject;
+                }
+
+                Transform movedTransform = target as Transform;
+                if (movedTransform != null
+                    && IsPositionModification(modification.currentValue.propertyPath))
+                {
+                    LevelDoorEndpointAuthoring2D fixedDoor =
+                        movedTransform.GetComponent<LevelDoorEndpointAuthoring2D>();
+                    if (fixedDoor != null
+                        && fixedDoor.PlacementMode == LevelDoorPlacementModeV2.Fixed)
+                    {
+                        MovedFixedDoors.Add(fixedDoor);
+                    }
                 }
 
                 LevelDesignSceneAuthoringRoot2D root = gameObject == null
@@ -40,7 +56,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
             }
 
-            if (PendingRoots.Count > 0 && !refreshScheduled)
+            if ((PendingRoots.Count > 0 || MovedFixedDoors.Count > 0)
+                && !refreshScheduled)
             {
                 refreshScheduled = true;
                 EditorApplication.delayCall += RefreshPendingRoots;
@@ -52,6 +69,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static void RefreshPendingRoots()
         {
             refreshScheduled = false;
+
+            foreach (LevelDoorEndpointAuthoring2D door in MovedFixedDoors)
+            {
+                if (door == null
+                    || door.PlacementMode != LevelDoorPlacementModeV2.Fixed)
+                {
+                    continue;
+                }
+
+                door.CaptureCurrentFixedPosition();
+                EditorUtility.SetDirty(door);
+            }
+            MovedFixedDoors.Clear();
+
             foreach (LevelDesignSceneAuthoringRoot2D root in PendingRoots)
             {
                 if (root == null)
@@ -59,6 +90,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     continue;
                 }
 
+                LevelGridDoorOperationsV2.ReflowAll(root);
                 root.ValidateGridAuthoring(root.LastGridValidation.Purpose);
             }
             PendingRoots.Clear();
@@ -70,6 +102,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 windows[index].Repaint();
             }
             SceneView.RepaintAll();
+        }
+
+        private static bool IsPositionModification(string propertyPath)
+        {
+            return !string.IsNullOrEmpty(propertyPath)
+                && propertyPath.StartsWith("m_LocalPosition");
         }
     }
 }
