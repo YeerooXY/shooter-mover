@@ -10,7 +10,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public sealed partial class LevelGridEditorWindowV2 : EditorWindow
     {
         private const float ToolbarHeight = 44f;
-        private const float BottomPanelHeight = 238f;
+        private const float BottomPanelHeight = 310f;
         private const float PanelGap = 3f;
         private const float RoomCellWidth = 190f;
         private const float RoomCellHeight = 128f;
@@ -128,21 +128,29 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 ToolbarHeight,
                 position.width,
                 bottomY - ToolbarHeight - PanelGap);
+            float problemsWidth = position.width * 0.36f;
+            float inspectorWidth = position.width * 0.29f;
             Rect problemsRect = new Rect(
                 0f,
                 bottomY,
-                position.width * 0.52f - PanelGap,
+                problemsWidth - PanelGap,
                 position.height - bottomY);
             Rect inspectorRect = new Rect(
                 problemsRect.xMax + PanelGap,
                 bottomY,
-                position.width - problemsRect.xMax - PanelGap,
+                inspectorWidth - PanelGap,
+                position.height - bottomY);
+            Rect playableRect = new Rect(
+                inspectorRect.xMax + PanelGap,
+                bottomY,
+                position.width - inspectorRect.xMax - PanelGap,
                 position.height - bottomY);
 
             EnsureProjection();
             DrawCanvas(canvasRect);
-            DrawProblemsPanel(problemsRect);
+            DrawIntegratedProblemsPanel(problemsRect);
             DrawSelectionInspector(inspectorRect);
+            DrawPlayablePanel(playableRect);
             // Draw the toolbar last so panned canvas visuals cannot paint over it.
             DrawToolbar();
         }
@@ -196,35 +204,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 FrameSelection();
             }
-            if (ToolbarButton("Draft", "Run foundation and V2 draft validation."))
-            {
-                Validate(LevelGridValidationPurposeV2.Draft);
-            }
-            if (ToolbarButton("Production", "Run the production authoring gate."))
-            {
-                Validate(LevelGridValidationPurposeV2.ProductionPublish);
-            }
-            if (ToolbarButton("Problems", "Open the existing Problems window."))
-            {
-                LevelGridProblemsWindowV2.Open(activeRoot);
-            }
-            if (ToolbarButton("Example", "Reuse the existing three-room example command."))
-            {
-                ExecuteExistingCommand(
-                    MenuPrefix + "Create Three-Room Starter Example");
-            }
-            if (ToolbarButton("Export Draft", "Reuse the transactional draft exporter."))
-            {
-                ExecuteExistingCommand(
-                    MenuPrefix + "Export Grid V2 Draft Folder...");
-            }
-            if (ToolbarButton(
-                "Publish",
-                "Reuse validated-authoring transactional publish."))
-            {
-                ExecuteExistingCommand(
-                    MenuPrefix + "Publish Grid V2 Validated Authoring Folder...");
-            }
+            DrawPlayableToolbarControls();
             GUI.enabled = true;
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
