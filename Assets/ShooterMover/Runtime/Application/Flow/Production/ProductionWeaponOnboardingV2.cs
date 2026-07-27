@@ -74,7 +74,7 @@ namespace ShooterMover.Application.Flow.Production
             var bindings = EmptyBindings();
             var used = new HashSet<StableId>();
             Func<StableId> factory = instanceIdFactory
-                ?? OwnedEquipmentInstanceIdFactory.Create;
+                ?? new Func<StableId>(OwnedEquipmentInstanceIdFactory.Create);
 
             for (int index = 0;
                  index < layout.ConfigurablePositions.Count;
