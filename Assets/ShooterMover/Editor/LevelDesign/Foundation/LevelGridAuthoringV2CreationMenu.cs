@@ -83,6 +83,16 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
+            if (IsConnected(sourceRoot, endpoints[0])
+                || IsConnected(sourceRoot, endpoints[1]))
+            {
+                EditorUtility.DisplayDialog(
+                    "Connect Door Endpoints",
+                    "Each selected endpoint must be unconnected before creating a link.",
+                    "OK");
+                return;
+            }
+
             GameObject connectionObject = new GameObject("Door Connection");
             Undo.RegisterCreatedObjectUndo(
                 connectionObject,
@@ -91,13 +101,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelDoorLinkAuthoring2D link =
                 Undo.AddComponent<LevelDoorLinkAuthoring2D>(connectionObject);
             link.AssignNewStableId();
-            link.ConfigureForTests(
+            link.ConfigureConnection(
                 link.ConnectionIdText,
                 sourceRoom,
                 endpoints[0],
                 destinationRoom,
                 endpoints[1]);
 
+            LevelGridDoorOperationsV2.ReflowDoor(sourceRoot, endpoints[0]);
+            LevelGridDoorOperationsV2.ReflowDoor(sourceRoot, endpoints[1]);
             sourceRoot.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
             Selection.activeGameObject = connectionObject;
             EditorSceneManager.MarkSceneDirty(sourceRoot.gameObject.scene);
@@ -110,6 +122,23 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static bool ValidateConnectSelectedDoorEndpoints()
         {
             return GetSelectedEndpoints().Length == 2;
+        }
+
+        private static bool IsConnected(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDoorEndpointAuthoring2D endpoint)
+        {
+            LevelDoorLinkAuthoring2D[] links =
+                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            for (int index = 0; index < links.Length; index++)
+            {
+                if (links[index].SourceDoor == endpoint
+                    || links[index].DestinationDoor == endpoint)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static LevelDoorEndpointAuthoring2D[] GetSelectedEndpoints()
