@@ -1,19 +1,17 @@
 using System;
+using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Application.Weapons.Execution;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.UnityAdapters.Weapons.Live;
 
 namespace ShooterMover.UnityAdapters.Players
 {
-    /// <summary>
-    /// Trusted weapon identity/lifecycle projection over the existing live player runtime.
-    /// It creates no second player or participant authority.
-    /// </summary>
     public sealed class PlayerRuntimeWeaponStateAdapter :
         IInventoryWeaponActorStateSource,
         IWeaponActorOwnershipResolver
@@ -98,8 +96,9 @@ namespace ShooterMover.UnityAdapters.Players
     }
 
     /// <summary>
-    /// Production composition root for inventory-backed player weapons. Runtime is the sole public
-    /// firing and delivery surface; the concrete execution adapter remains private composition detail.
+    /// Production composition root for inventory-backed player weapons. The canonical overload
+    /// resolves the exact instance in the first active equipped class mount before constructing the
+    /// retained scheduler adapter. No scene-local weapon fallback is created.
     /// </summary>
     public sealed class PlayerInventoryWeaponRuntimeCompositionRoot : IDisposable
     {
@@ -116,6 +115,67 @@ namespace ShooterMover.UnityAdapters.Players
         public PlayerRuntimeWeaponStateAdapter PlayerState { get; }
         public RouteProfileActiveWeaponSource ActiveWeapon { get; }
         public InventoryWeaponRuntimeComposition Runtime { get; }
+
+        public static PlayerInventoryWeaponRuntimeCompositionRoot CreateCanonical(
+            PlayerRuntimeComposition playerRuntime,
+            ProductionPlayerLoadoutRuntimeV1 loadoutRuntime,
+            IInventoryWeaponEffectBatchSink effectSink,
+            int simulationTicksPerSecond,
+            IWeaponBlueprintMappingPolicyResolver mappingPolicyResolver,
+            IWeaponAugmentModifierSetResolver augmentModifierResolver)
+        {
+            if (loadoutRuntime == null)
+            {
+                throw new ArgumentNullException(nameof(loadoutRuntime));
+            }
+
+            WeaponEquipmentInstance exact;
+            string rejectionCode;
+            if (!loadoutRuntime.TryResolveFirstActiveEquippedWeapon(
+                    out exact,
+                    out rejectionCode)
+                || exact == null)
+            {
+                throw new InvalidOperationException(
+                    "The playable character has no exact active equipped weapon: "
+                    + rejectionCode);
+            }
+
+            PlayerRouteProfilePayloadV1 route =
+                loadoutRuntime.CurrentRoutePayload;
+            int activeSlotIndex = FindExactRouteSlot(
+                route,
+                exact.InstanceId);
+            var playerState = new PlayerRuntimeWeaponStateAdapter(
+                playerRuntime ?? throw new ArgumentNullException(nameof(playerRuntime)));
+            var activeWeapon = new RouteProfileActiveWeaponSource(
+                route,
+                activeSlotIndex);
+            var executionAdapter = new InventoryBackedWeaponExecutionAdapter(
+                new CanonicalWeaponEquipmentProjectionLookupV2(
+                    loadoutRuntime.WeaponHoldings,
+                    loadoutRuntime.EquipmentCatalog,
+                    loadoutRuntime.Holdings),
+                loadoutRuntime.EquipmentCatalog,
+                loadoutRuntime.WeaponCatalog,
+                playerState,
+                effectSink ?? throw new ArgumentNullException(nameof(effectSink)),
+                simulationTicksPerSecond,
+                mappingPolicyResolver
+                    ?? throw new ArgumentNullException(
+                        nameof(mappingPolicyResolver)),
+                augmentModifierResolver
+                    ?? throw new ArgumentNullException(
+                        nameof(augmentModifierResolver)));
+            var runtime = new InventoryWeaponRuntimeComposition(
+                playerState,
+                activeWeapon,
+                executionAdapter);
+            return new PlayerInventoryWeaponRuntimeCompositionRoot(
+                playerState,
+                activeWeapon,
+                runtime);
+        }
 
         public static PlayerInventoryWeaponRuntimeCompositionRoot Create(
             PlayerRuntimeComposition playerRuntime,
@@ -155,11 +215,6 @@ namespace ShooterMover.UnityAdapters.Players
                 runtime);
         }
 
-        /// <summary>
-        /// Retained source-compatible construction. It uses an empty mapping registry and therefore
-        /// rejects every fire request explicitly until the caller supplies production mapping policy.
-        /// It never falls back to WeaponExecutionCore or legacy behavior inference.
-        /// </summary>
         public static PlayerInventoryWeaponRuntimeCompositionRoot Create(
             PlayerRuntimeComposition playerRuntime,
             PlayerRouteProfilePayloadV1 routeProfile,
@@ -187,6 +242,23 @@ namespace ShooterMover.UnityAdapters.Players
         public void Dispose()
         {
             Runtime.Dispose();
+        }
+
+        private static int FindExactRouteSlot(
+            PlayerRouteProfilePayloadV1 route,
+            ShooterMover.Domain.Common.StableId instanceId)
+        {
+            for (int index = 0; index < route.WeaponSlots.Count; index++)
+            {
+                if (route.WeaponSlots[index].EquipmentInstanceStableId
+                    == instanceId)
+                {
+                    return index;
+                }
+            }
+            throw new InvalidOperationException(
+                "The exact canonical gameplay instance is absent from the route projection: "
+                + instanceId);
         }
     }
 }

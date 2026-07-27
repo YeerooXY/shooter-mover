@@ -23,11 +23,6 @@ using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.Application.Flow.Production
 {
-    /// <summary>
-    /// One selected-character graph over existing production authorities. This graph
-    /// coordinates lifecycle only; XP, holdings, money, scrap, skills, loadout and BOX
-    /// remain the sole owners of their respective state.
-    /// </summary>
     public sealed class ProductionCharacterRuntimeGraphV1 :
         ICharacterRuntimeGraphV1
     {
@@ -49,8 +44,10 @@ namespace ShooterMover.Application.Flow.Production
         {
             this.character = character
                 ?? throw new ArgumentNullException(nameof(character));
-            RoutePayload = routePayload
-                ?? throw new ArgumentNullException(nameof(routePayload));
+            if (routePayload == null)
+            {
+                throw new ArgumentNullException(nameof(routePayload));
+            }
             LoadoutRuntime = loadoutRuntime
                 ?? throw new ArgumentNullException(nameof(loadoutRuntime));
             ExperienceAuthority = experienceAuthority
@@ -92,7 +89,10 @@ namespace ShooterMover.Application.Flow.Production
             get { return character; }
         }
 
-        public PlayerRouteProfilePayloadV1 RoutePayload { get; }
+        public PlayerRouteProfilePayloadV1 RoutePayload
+        {
+            get { return LoadoutRuntime.CurrentRoutePayload; }
+        }
         public ProductionPlayerLoadoutRuntimeV1 LoadoutRuntime { get; }
         public PlayerExperienceAuthorityV1 ExperienceAuthority { get; }
         public MoneyWalletService MoneyWallet { get; }
@@ -133,11 +133,6 @@ namespace ShooterMover.Application.Flow.Production
         }
     }
 
-    /// <summary>
-    /// Builds fresh instances of the merged XP, holdings, money, scrap, ranked-skill,
-    /// exact-loadout and BOX authorities, then exposes their SAVE-ADAPTERS-001 bindings.
-    /// No subsystem authority is reimplemented here.
-    /// </summary>
     public sealed class ProductionCharacterRuntimeGraphFactoryV1 :
         ICharacterRuntimeGraphFactoryV1,
         IStarterCharacterRuntimeGraphFactoryV1
@@ -198,11 +193,43 @@ namespace ShooterMover.Application.Flow.Production
                     KnownSaveComponentDefinitionsV1.ScrapWallet(),
                     KnownSaveComponentCodecsV1.ScrapWallet);
 
+            WeaponHoldingsSnapshotV2 weaponHoldings;
+            string weaponError;
+            bool hasWeaponHoldings = WeaponHoldingsSaveComponentV2.TryRead(
+                character,
+                out weaponHoldings,
+                out weaponError);
+            if (!hasWeaponHoldings && !string.IsNullOrEmpty(weaponError))
+            {
+                throw new InvalidOperationException(
+                    "Canonical weapon holdings are corrupt: " + weaponError);
+            }
+
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout;
+            string mountError;
+            bool hasWeaponMountLoadout =
+                WeaponMountLoadoutSaveComponentV2.TryRead(
+                    character,
+                    out weaponMountLoadout,
+                    out mountError);
+            if (!hasWeaponMountLoadout && !string.IsNullOrEmpty(mountError))
+            {
+                throw new InvalidOperationException(
+                    "Canonical weapon mount loadout is corrupt: " + mountError);
+            }
+            if (hasWeaponMountLoadout && !hasWeaponHoldings)
+            {
+                throw new InvalidOperationException(
+                    "Canonical weapon mount loadout requires canonical holdings.");
+            }
+
             ProductionPlayerLoadoutRuntimeV1 inventory =
                 ProductionPlayerLoadoutRuntimeV1.Restore(
                     character.CharacterInstanceStableId,
                     character.ClassDefinitionStableId,
                     holdings,
+                    weaponHoldings,
+                    weaponMountLoadout,
                     loadout);
             return CreateGraph(
                 character,
@@ -322,7 +349,7 @@ namespace ShooterMover.Application.Flow.Production
 
             var core = new ProductionCharacterRuntimeGraphV1(
                 character,
-                loadout.RoutePayload,
+                loadout.CurrentRoutePayload,
                 loadout,
                 experience,
                 money,
@@ -344,10 +371,11 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return core;
             }
+
             adapters.AddRange(additional);
             return new ProductionCharacterRuntimeGraphV1(
                 character,
-                loadout.RoutePayload,
+                loadout.CurrentRoutePayload,
                 loadout,
                 experience,
                 money,

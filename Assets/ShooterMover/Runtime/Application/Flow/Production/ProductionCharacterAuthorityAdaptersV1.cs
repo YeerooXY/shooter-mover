@@ -44,6 +44,10 @@ namespace ShooterMover.Application.Flow.Production
                     experienceCurve,
                     progressionContext),
                 Holdings(loadout),
+                WeaponHoldingsSaveComponentV2.CreateAdapter(
+                    loadout.WeaponHoldings),
+                WeaponMountLoadoutSaveComponentV2.CreateAdapter(
+                    loadout.MountLoadoutAuthority),
                 Money(money),
                 Scrap(scrap, scrapAuthorityId, scrapCurrencyId),
                 Skills(skills, skillProfileId),
@@ -228,13 +232,20 @@ namespace ShooterMover.Application.Flow.Production
             ProductionPlayerLoadoutRuntimeV1 runtime)
         {
             return KnownSaveComponentAdaptersV1.ExactInstanceLoadout(
-                runtime.LoadoutAuthority.ExportSnapshot,
+                () => ProductionWeaponMountLoadoutProjectionV2.ArmorOnly(
+                    runtime.LoadoutAuthority.ExportSnapshot()),
                 snapshot => KnownSaveComponentCodecsV1.ExactInstanceLoadout
                     .Validate(snapshot),
                 snapshot =>
                 {
+                    InventoryLoadoutAuthoritySnapshotV1 compatibility =
+                        ProductionWeaponMountLoadoutProjectionV2
+                            .ToLegacyProjection(
+                                runtime.MountLayout,
+                                runtime.MountLoadoutAuthority.ExportSnapshot(),
+                                snapshot);
                     ProductionInventoryLoadoutImportResultV1 result =
-                        runtime.LoadoutAuthority.ImportSnapshot(snapshot);
+                        runtime.LoadoutAuthority.ImportSnapshot(compatibility);
                     return result.Succeeded
                         ? SaveComponentApplyResultV1.Applied()
                         : SaveComponentApplyResultV1.Rejected(

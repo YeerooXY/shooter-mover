@@ -15,7 +15,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
     public sealed class InventoryLoadoutAuthorityConnectionTests
     {
         [UnityTest]
-        public IEnumerator ConnectingAuthoritiesPreservesProductionReturnCallback()
+        public IEnumerator ConnectingCanonicalAuthoritiesPreservesProductionReturnCallback()
         {
             PlayerRouteProfilePayloadV1 draft =
                 PlayerRouteProfilePayloadV1.Create(
@@ -26,6 +26,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                     new StableId[
                         PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             var runtime = new ProductionPlayerLoadoutRuntimeV1(draft);
+            ProductionWeaponMountLoadoutRegistryV2.Register(
+                runtime.WeaponHoldings,
+                runtime.MountLoadoutAuthority);
             GameObject host = new GameObject("Loadout connection test");
             InventoryLoadoutScreenControllerV1 controller =
                 host.AddComponent<InventoryLoadoutScreenControllerV1>();
@@ -47,11 +50,14 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 };
             controller.Present(
                 HubRouteV1.Inventory,
-                runtime.RoutePayload);
-            controller.ConnectAuthorities(
+                runtime.CurrentRoutePayload);
+            controller.ConnectCanonicalAuthorities(
                 runtime.Holdings,
                 runtime.CatalogAdapter,
-                runtime.LoadoutAuthority);
+                runtime.WeaponHoldings,
+                runtime.LoadoutAuthority,
+                runtime.MountLayout,
+                runtime.WeaponCatalog);
             InventoryLoadoutScreenResultV1 result =
                 controller.Confirm();
 
@@ -65,6 +71,11 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 order,
                 Is.EqualTo(new[] { "confirmed", "returned" }));
             Assert.That(controller.ReturnCount, Is.EqualTo(1));
+            Assert.That(controller.CanonicalSnapshot, Is.Not.Null);
+            Assert.That(controller.CanonicalSnapshot.OwnedWeapons.Count, Is.EqualTo(4));
+            Assert.That(
+                runtime.MountLoadoutAuthority.ExportSnapshot().Bindings.Count,
+                Is.EqualTo(4));
 
             Object.Destroy(host);
             yield return null;

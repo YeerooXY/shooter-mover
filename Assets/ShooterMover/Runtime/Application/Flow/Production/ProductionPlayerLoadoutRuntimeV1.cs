@@ -9,14 +9,15 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
 
 namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
-    /// Profile-local production inventory and loadout composition. New characters enter
-    /// through explicit onboarding; restored characters enter with persisted holdings and
-    /// exact-instance bindings. Route payloads never manufacture ownership.
+    /// Character-local production inventory composition. Generic holdings retain reward receipts
+    /// and non-weapon inventory; WeaponHoldings and MountLoadoutAuthority are the sole canonical
+    /// weapon ownership and equipped-state authorities.
     /// </summary>
     public sealed class ProductionPlayerLoadoutRuntimeV1
     {
@@ -27,7 +28,7 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         private ProductionPlayerLoadoutRuntimeV1(
-            ProductionWeaponInventoryStateV1 state)
+            ProductionWeaponInventoryStateV2 state)
         {
             if (state == null)
             {
@@ -41,32 +42,54 @@ namespace ShooterMover.Application.Flow.Production
             CatalogAdapter = new ProductionEquipmentCatalogAdapterV1(
                 EquipmentCatalog);
             WeaponCatalog = ProductionWeaponCatalogProvider.WeaponCatalog;
-            Holdings = new PlayerHoldingsService(
-                state.Holdings.AuthorityStableId,
-                state.Holdings.MaximumStackQuantity,
-                CatalogAdapter);
 
+            LegacyHoldings = new PlayerHoldingsService(
+                state.GenericHoldings.AuthorityStableId,
+                state.GenericHoldings.MaximumStackQuantity,
+                CatalogAdapter);
             PlayerHoldingsImportResultV1 holdingsImport =
-                Holdings.ImportSnapshot(state.Holdings);
+                LegacyHoldings.ImportSnapshot(state.GenericHoldings);
             if (holdingsImport == null || !holdingsImport.Succeeded)
             {
                 throw new InvalidOperationException(
-                    "Unable to restore production holdings: "
+                    "Unable to restore production generic holdings: "
                     + (holdingsImport == null
                         ? "result-null"
                         : holdingsImport.RejectionCode));
             }
 
+            WeaponHoldings = new ProductionWeaponHoldingsAuthorityV2(
+                state.WeaponHoldings);
+            Holdings = new CanonicalFirstPlayerHoldingsAuthorityV2(
+                LegacyHoldings,
+                WeaponHoldings);
+            MountLoadoutAuthority = new ProductionWeaponMountLoadoutAuthorityV2(
+                MountLayout,
+                WeaponHoldings,
+                state.WeaponMountLoadout);
+
+            InventoryLoadoutAuthoritySnapshotV1 compatibilityLoadout =
+                ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
+                    MountLayout,
+                    MountLoadoutAuthority.ExportSnapshot(),
+                    state.Loadout);
             LoadoutAuthority = new ProductionInventoryLoadoutAuthorityV1(
-                RoutePayload,
+                ProductionWeaponMountLoadoutProjectionV2.Route(
+                    RoutePayload.SelectedCharacterStableId,
+                    RoutePayload.LoadoutProfileStableId,
+                    MountLayout,
+                    MountLoadoutAuthority.ExportSnapshot()),
                 Holdings,
-                CatalogAdapter);
+                CatalogAdapter,
+                WeaponHoldings,
+                WeaponCatalog);
+
             ProductionInventoryLoadoutImportResultV1 loadoutImport =
-                LoadoutAuthority.ImportSnapshot(state.Loadout);
+                LoadoutAuthority.ImportSnapshot(compatibilityLoadout);
             if (loadoutImport == null || !loadoutImport.Succeeded)
             {
                 throw new InvalidOperationException(
-                    "Unable to restore production loadout: "
+                    "Unable to restore production loadout projection: "
                     + (loadoutImport == null
                         ? "result-null"
                         : loadoutImport.RejectionCode));
@@ -74,8 +97,25 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         public PlayerRouteProfilePayloadV1 RoutePayload { get; }
+        public PlayerRouteProfilePayloadV1 CurrentRoutePayload
+        {
+            get
+            {
+                return ProductionWeaponMountLoadoutProjectionV2.Route(
+                    RoutePayload.SelectedCharacterStableId,
+                    RoutePayload.LoadoutProfileStableId,
+                    MountLayout,
+                    MountLoadoutAuthority.ExportSnapshot());
+            }
+        }
         public ProductionWeaponMountLayoutV1 MountLayout { get; }
-        public PlayerHoldingsService Holdings { get; }
+        public PlayerHoldingsService LegacyHoldings { get; }
+        public IPlayerHoldingsAuthorityV1 Holdings { get; }
+        public ProductionWeaponHoldingsAuthorityV2 WeaponHoldings { get; }
+        public ProductionWeaponMountLoadoutAuthorityV2 MountLoadoutAuthority
+        {
+            get;
+        }
         public EquipmentCatalog EquipmentCatalog { get; }
         public ProductionEquipmentCatalogAdapterV1 CatalogAdapter { get; }
         public WeaponCatalog WeaponCatalog { get; }
@@ -87,26 +127,92 @@ namespace ShooterMover.Application.Flow.Production
             PlayerHoldingsSnapshotV1 holdings,
             InventoryLoadoutAuthoritySnapshotV1 loadout)
         {
-            if (holdings == null)
-            {
-                throw new ArgumentNullException(nameof(holdings));
-            }
-            if (loadout == null)
-            {
-                throw new ArgumentNullException(nameof(loadout));
-            }
+            return Restore(
+                characterInstanceStableId,
+                loadoutProfileStableId,
+                holdings,
+                null,
+                null,
+                loadout);
+        }
 
+        public static ProductionPlayerLoadoutRuntimeV1 Restore(
+            StableId characterInstanceStableId,
+            StableId loadoutProfileStableId,
+            PlayerHoldingsSnapshotV1 genericHoldings,
+            WeaponHoldingsSnapshotV2 weaponHoldings,
+            InventoryLoadoutAuthoritySnapshotV1 loadout)
+        {
+            return Restore(
+                characterInstanceStableId,
+                loadoutProfileStableId,
+                genericHoldings,
+                weaponHoldings,
+                null,
+                loadout);
+        }
+
+        public static ProductionPlayerLoadoutRuntimeV1 Restore(
+            StableId characterInstanceStableId,
+            StableId loadoutProfileStableId,
+            PlayerHoldingsSnapshotV1 genericHoldings,
+            WeaponHoldingsSnapshotV2 weaponHoldings,
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout,
+            InventoryLoadoutAuthoritySnapshotV1 loadout)
+        {
             return new ProductionPlayerLoadoutRuntimeV1(
-                new ProductionWeaponInventoryStateV1(
-                    ProductionWeaponOnboardingV1.RouteFromLoadout(
-                        characterInstanceStableId,
-                        loadoutProfileStableId,
-                        loadout),
-                    holdings,
+                ProductionWeaponOnboardingV2.Restore(
+                    characterInstanceStableId,
+                    loadoutProfileStableId,
+                    genericHoldings,
+                    weaponHoldings,
+                    weaponMountLoadout,
                     loadout));
         }
 
-        private static ProductionWeaponInventoryStateV1 CreateStarterState(
+        public bool TryResolveFirstActiveEquippedWeapon(
+            out WeaponEquipmentInstance instance,
+            out string rejectionCode)
+        {
+            instance = null;
+            rejectionCode = string.Empty;
+            WeaponMountLoadoutSnapshotV2 mounts =
+                MountLoadoutAuthority.ExportSnapshot();
+            for (int index = 0; index < MountLayout.Positions.Count; index++)
+            {
+                ProductionWeaponMountPositionV1 position =
+                    MountLayout.Positions[index];
+                if (!position.IsActive)
+                {
+                    continue;
+                }
+
+                WeaponMountBindingV2 binding = mounts.Find(
+                    position.MountStableId);
+                StableId instanceId = binding == null
+                    ? null
+                    : binding.InstanceId;
+                if (instanceId == null)
+                {
+                    continue;
+                }
+
+                instance = WeaponHoldings.Find(instanceId);
+                if (instance == null)
+                {
+                    rejectionCode =
+                        "production-first-active-weapon-not-owned:"
+                        + instanceId;
+                    return false;
+                }
+                return true;
+            }
+
+            rejectionCode = "production-first-active-weapon-empty";
+            return false;
+        }
+
+        private static ProductionWeaponInventoryStateV2 CreateStarterState(
             PlayerRouteProfilePayloadV1 routePayload)
         {
             if (routePayload == null)
@@ -120,7 +226,7 @@ namespace ShooterMover.Application.Flow.Production
                     nameof(routePayload));
             }
 
-            return ProductionWeaponOnboardingV1.CreateStarter(
+            return ProductionWeaponOnboardingV2.CreateStarter(
                 routePayload.SelectedCharacterStableId,
                 routePayload.LoadoutProfileStableId);
         }
@@ -170,14 +276,16 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Exact-instance equipped truth for one profile. The class mount layout determines
-    /// which weapon positions are required; unavailable positions must remain unbound.
+    /// Compatibility projection for generic armor and fixed route slots. Canonical weapon equipped
+    /// truth is owned by ProductionWeaponMountLoadoutAuthorityV2.
     /// </summary>
     public sealed class ProductionInventoryLoadoutAuthorityV1 :
         IInventoryLoadoutAuthorityPortV1
     {
-        private readonly IPlayerHoldingsAuthorityV1 holdings;
+        private readonly IPlayerHoldingsAuthorityV1 genericHoldings;
         private readonly IEquipmentCatalogProvider catalogProvider;
+        private readonly ProductionWeaponHoldingsAuthorityV2 weaponHoldings;
+        private readonly WeaponCatalog weaponCatalog;
         private readonly ProductionWeaponMountLayoutV1 mountLayout;
         private InventoryLoadoutAuthoritySnapshotV1 snapshot;
         private string lastAcceptedCommandFingerprint = string.Empty;
@@ -185,7 +293,26 @@ namespace ShooterMover.Application.Flow.Production
         public ProductionInventoryLoadoutAuthorityV1(
             PlayerRouteProfilePayloadV1 routePayload,
             IPlayerHoldingsAuthorityV1 holdings,
-            IEquipmentCatalogProvider catalogProvider)
+            IEquipmentCatalogProvider equipmentCatalogProvider)
+            : this(
+                routePayload,
+                holdings,
+                equipmentCatalogProvider,
+                new ProductionWeaponHoldingsAuthorityV2(
+                    ProductionWeaponHoldingsMigrationV2.ConvertLegacy(
+                        holdings == null
+                            ? throw new ArgumentNullException(nameof(holdings))
+                            : holdings.ExportSnapshot())),
+                ProductionWeaponCatalogProvider.WeaponCatalog)
+        {
+        }
+
+        public ProductionInventoryLoadoutAuthorityV1(
+            PlayerRouteProfilePayloadV1 routePayload,
+            IPlayerHoldingsAuthorityV1 holdings,
+            IEquipmentCatalogProvider equipmentCatalogProvider,
+            ProductionWeaponHoldingsAuthorityV2 canonicalWeaponHoldings,
+            WeaponCatalog canonicalWeaponCatalog)
         {
             if (routePayload == null)
             {
@@ -198,10 +325,17 @@ namespace ShooterMover.Application.Flow.Production
                     nameof(routePayload));
             }
 
-            this.holdings = holdings
+            genericHoldings = holdings
                 ?? throw new ArgumentNullException(nameof(holdings));
-            this.catalogProvider = catalogProvider
-                ?? throw new ArgumentNullException(nameof(catalogProvider));
+            catalogProvider = equipmentCatalogProvider
+                ?? throw new ArgumentNullException(
+                    nameof(equipmentCatalogProvider));
+            weaponHoldings = canonicalWeaponHoldings
+                ?? throw new ArgumentNullException(
+                    nameof(canonicalWeaponHoldings));
+            weaponCatalog = canonicalWeaponCatalog
+                ?? throw new ArgumentNullException(
+                    nameof(canonicalWeaponCatalog));
             mountLayout = ProductionWeaponMountPolicyV1.ResolveLayout(
                 routePayload.LoadoutProfileStableId);
 
@@ -225,10 +359,7 @@ namespace ShooterMover.Application.Flow.Production
                 0L,
                 bindings);
             string rejectionCode;
-            if (!ValidateBindings(
-                    snapshot.Bindings,
-                    holdings.ExportSnapshot(),
-                    out rejectionCode))
+            if (!ValidateBindings(snapshot.Bindings, out rejectionCode))
             {
                 throw new ArgumentException(
                     "The initial route payload cannot seed the loadout: "
@@ -260,13 +391,8 @@ namespace ShooterMover.Application.Flow.Production
                     "production-loadout-import-fingerprint-invalid");
             }
 
-            PlayerHoldingsSnapshotV1 holdingsSnapshot =
-                holdings.ExportSnapshot();
             string rejectionCode;
-            if (!ValidateBindings(
-                    imported.Bindings,
-                    holdingsSnapshot,
-                    out rejectionCode))
+            if (!ValidateBindings(imported.Bindings, out rejectionCode))
             {
                 return ImportRejected(rejectionCode);
             }
@@ -305,10 +431,11 @@ namespace ShooterMover.Application.Flow.Production
                     snapshot);
             }
 
-            PlayerHoldingsSnapshotV1 holdingsSnapshot =
-                holdings.ExportSnapshot();
-            if (holdingsSnapshot == null
-                || command.ExpectedHoldingsSequence != holdings.Sequence)
+            PlayerHoldingsSnapshotV1 genericSnapshot =
+                genericHoldings.ExportSnapshot();
+            if (genericSnapshot == null
+                || command.ExpectedHoldingsSequence
+                    != genericHoldings.Sequence)
             {
                 return new InventoryLoadoutAuthorityResultV1(
                     InventoryLoadoutAuthorityMutationStatusV1.StaleSnapshot,
@@ -317,10 +444,7 @@ namespace ShooterMover.Application.Flow.Production
             }
 
             string rejectionCode;
-            if (!ValidateBindings(
-                    command.Bindings,
-                    holdingsSnapshot,
-                    out rejectionCode))
+            if (!ValidateBindings(command.Bindings, out rejectionCode))
             {
                 return Reject(rejectionCode);
             }
@@ -334,7 +458,7 @@ namespace ShooterMover.Application.Flow.Production
             }
 
             snapshot = InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(
-                snapshot.Sequence + 1L,
+                checked(snapshot.Sequence + 1L),
                 command.Bindings);
             lastAcceptedCommandFingerprint = command.Fingerprint;
             return new InventoryLoadoutAuthorityResultV1(
@@ -363,7 +487,6 @@ namespace ShooterMover.Application.Flow.Production
 
         private bool ValidateBindings(
             IReadOnlyList<InventoryLoadoutSlotBindingV1> bindings,
-            PlayerHoldingsSnapshotV1 holdingsSnapshot,
             out string rejectionCode)
         {
             rejectionCode = string.Empty;
@@ -373,37 +496,39 @@ namespace ShooterMover.Application.Flow.Production
                 rejectionCode = "production-loadout-binding-count-invalid";
                 return false;
             }
-            if (holdingsSnapshot == null)
-            {
-                rejectionCode = "production-loadout-holdings-missing";
-                return false;
-            }
 
-            EquipmentCatalog catalog = catalogProvider.Catalog;
-            if (catalog == null)
+            EquipmentCatalog equipmentCatalog = catalogProvider.Catalog;
+            if (equipmentCatalog == null)
             {
                 rejectionCode = "production-loadout-catalog-missing";
                 return false;
             }
 
-            var equipmentByInstance =
+            PlayerHoldingsSnapshotV1 genericSnapshot =
+                genericHoldings.ExportSnapshot();
+            if (genericSnapshot == null)
+            {
+                rejectionCode = "production-loadout-holdings-missing";
+                return false;
+            }
+
+            var genericEquipment =
                 new Dictionary<StableId, EquipmentInstance>();
             for (int index = 0;
-                 index < holdingsSnapshot.UniqueHoldings.Count;
+                 index < genericSnapshot.UniqueHoldings.Count;
                  index++)
             {
                 UniqueHoldingSnapshotV1 holding =
-                    holdingsSnapshot.UniqueHoldings[index];
-                if (holding == null
-                    || holding.RewardKind
-                        != RewardGrantKindV1.EquipmentReference
-                    || holding.InstanceStableId == null
-                    || holding.EquipmentInstance == null)
+                    genericSnapshot.UniqueHoldings[index];
+                if (holding != null
+                    && holding.RewardKind
+                        == RewardGrantKindV1.EquipmentReference
+                    && holding.InstanceStableId != null
+                    && holding.EquipmentInstance != null)
                 {
-                    continue;
+                    genericEquipment[holding.InstanceStableId] =
+                        holding.EquipmentInstance;
                 }
-                equipmentByInstance[holding.InstanceStableId] =
-                    holding.EquipmentInstance;
             }
 
             var selectedInstances = new HashSet<StableId>();
@@ -420,78 +545,89 @@ namespace ShooterMover.Application.Flow.Production
                     return false;
                 }
 
-                bool configurableWeapon = expectedSlot.Kind
-                        == InventoryLoadoutSlotKindV1.Weapon
-                    && mountLayout.ContainsLoadoutSlot(
+                StableId instanceId = binding.EquipmentInstanceStableId;
+                if (expectedSlot.Kind == InventoryLoadoutSlotKindV1.Weapon)
+                {
+                    bool activePhysicalMount = mountLayout.ContainsLoadoutSlot(
                         expectedSlot.SlotStableId);
-                bool unavailableWeapon = expectedSlot.Kind
-                        == InventoryLoadoutSlotKindV1.Weapon
-                    && !configurableWeapon;
-                StableId instanceStableId =
-                    binding.EquipmentInstanceStableId;
+                    if (!activePhysicalMount)
+                    {
+                        if (instanceId != null)
+                        {
+                            rejectionCode =
+                                "production-loadout-slot-unavailable-for-profile";
+                            return false;
+                        }
+                        continue;
+                    }
 
-                if (unavailableWeapon)
-                {
-                    if (instanceStableId != null)
+                    if (instanceId == null)
+                    {
+                        continue;
+                    }
+                    if (!selectedInstances.Add(instanceId))
                     {
                         rejectionCode =
-                            "production-loadout-slot-unavailable-for-profile";
+                            "production-loadout-instance-duplicate";
+                        return false;
+                    }
+
+                    WeaponEquipmentInstance weapon =
+                        weaponHoldings.Find(instanceId);
+                    if (weapon == null)
+                    {
+                        rejectionCode =
+                            "production-loadout-instance-not-owned";
+                        return false;
+                    }
+
+                    WeaponDefinitionData definition;
+                    if (!weaponCatalog.TryGetDefinition(
+                            weapon.WeaponDefinitionId.Value,
+                            out definition)
+                        || definition == null)
+                    {
+                        rejectionCode =
+                            "production-loadout-instance-invalid";
                         return false;
                     }
                     continue;
                 }
-                if (instanceStableId == null)
+
+                if (instanceId == null)
                 {
-                    if (configurableWeapon)
-                    {
-                        rejectionCode =
-                            "production-loadout-weapon-slot-empty";
-                        return false;
-                    }
                     continue;
                 }
-                if (!selectedInstances.Add(instanceStableId))
+                if (!selectedInstances.Add(instanceId))
                 {
                     rejectionCode =
                         "production-loadout-instance-duplicate";
                     return false;
                 }
 
-                EquipmentInstance instance;
-                if (!equipmentByInstance.TryGetValue(
-                        instanceStableId,
-                        out instance))
+                EquipmentInstance armor;
+                if (!genericEquipment.TryGetValue(instanceId, out armor))
                 {
                     rejectionCode =
                         "production-loadout-instance-not-owned";
                     return false;
                 }
-
-                EquipmentDefinition definition =
-                    catalog.FindEquipmentDefinition(instance.DefinitionId);
-                EquipmentValidationResult validation =
-                    catalog.ValidateInstance(instance);
-                if (definition == null
-                    || validation == null
-                    || !validation.IsValid)
-                {
-                    rejectionCode =
-                        "production-loadout-instance-invalid";
-                    return false;
-                }
-
-                bool correctKind = expectedSlot.Kind
-                    == InventoryLoadoutSlotKindV1.Weapon
-                        ? definition.CategoryId == EquipmentCategoryIds.Weapon
-                        : definition.CategoryId == EquipmentCategoryIds.Armor;
-                if (!correctKind)
+                EquipmentDefinition armorDefinition =
+                    equipmentCatalog.FindEquipmentDefinition(
+                        armor.DefinitionId);
+                EquipmentValidationResult armorValidation =
+                    equipmentCatalog.ValidateInstance(armor);
+                if (armorDefinition == null
+                    || armorValidation == null
+                    || !armorValidation.IsValid
+                    || armorDefinition.CategoryId
+                        != EquipmentCategoryIds.Armor)
                 {
                     rejectionCode =
                         "production-loadout-instance-wrong-slot-kind";
                     return false;
                 }
             }
-
             return true;
         }
 

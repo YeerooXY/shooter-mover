@@ -1,6 +1,5 @@
 using System;
 using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.UI.InventoryLoadout;
@@ -10,10 +9,9 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
-    /// Hub adapter over the selected account-backed character graph. It does not cache or
-    /// reconstruct starter authorities. Inventory confirmation explicitly asks the account
-    /// composition to export the real authorities through SAVE-ADAPTERS-001 and atomically
-    /// persist the selected exact character slot.
+    /// Hub adapter over the selected account-backed character graph. Inventory binds the exact
+    /// canonical weapon-holdings and physical mount authorities; opening the screen never creates
+    /// or repairs weapons.
     /// </summary>
     [DefaultExecutionOrder(-31900)]
     [DisallowMultipleComponent]
@@ -46,10 +44,6 @@ namespace ShooterMover.UI.ProductionFlow
             return currentRuntime != null && profile != null;
         }
 
-        /// <summary>
-        /// Resolves the current selected-character graph synchronously. Scene consumers
-        /// use this before their first Update; no fallback authority is constructed.
-        /// </summary>
         public static bool TryResolveCurrent(
             out ProductionPlayerLoadoutRuntimeV1 currentRuntime,
             out ProductionFlowProfileRecordV1 profile)
@@ -216,7 +210,8 @@ namespace ShooterMover.UI.ProductionFlow
             if (boundController == null
                 || boundController.LastResult == null
                 || boundController.LastResult.Status
-                    != InventoryLoadoutScreenStatusV1.Confirmed
+                    != ShooterMover.Application.Inventory.LoadoutScreen
+                        .InventoryLoadoutScreenStatusV1.Confirmed
                 || boundController.LastResult.RoutePayload == null)
             {
                 return;
@@ -247,7 +242,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            PlayerRouteProfilePayloadV1 payload = currentProfile.Payload;
+            PlayerRouteProfilePayloadV1 payload = runtime.CurrentRoutePayload;
             if (ReferenceEquals(boundController, controller)
                 && string.Equals(
                     boundPayloadFingerprint,
@@ -259,10 +254,16 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             DetachBoundController();
-            controller.ConnectAuthorities(
+            ProductionWeaponMountLoadoutRegistryV2.Register(
+                runtime.WeaponHoldings,
+                runtime.MountLoadoutAuthority);
+            controller.ConnectCanonicalAuthorities(
                 runtime.Holdings,
                 runtime.CatalogAdapter,
-                runtime.LoadoutAuthority);
+                runtime.WeaponHoldings,
+                runtime.LoadoutAuthority,
+                runtime.MountLayout,
+                runtime.WeaponCatalog);
             controller.ConfigureWeaponPresentation(
                 runtime.EquipmentCatalog,
                 runtime.WeaponCatalog);
