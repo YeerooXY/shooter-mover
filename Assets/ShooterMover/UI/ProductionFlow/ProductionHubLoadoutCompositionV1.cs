@@ -10,7 +10,8 @@ namespace ShooterMover.UI.ProductionFlow
 {
     /// <summary>
     /// Hub adapter over the selected account-backed character graph. Inventory binds the exact
-    /// canonical weapon-holdings authority; opening the screen never creates or repairs weapons.
+    /// canonical weapon-holdings and physical mount authorities; opening the screen never creates
+    /// or repairs weapons.
     /// </summary>
     [DefaultExecutionOrder(-31900)]
     [DisallowMultipleComponent]
@@ -253,6 +254,9 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             DetachBoundController();
+            ProductionWeaponMountLoadoutRegistryV2.Register(
+                runtime.WeaponHoldings,
+                runtime.MountLoadoutAuthority);
             controller.ConnectCanonicalAuthorities(
                 runtime.Holdings,
                 runtime.CatalogAdapter,
