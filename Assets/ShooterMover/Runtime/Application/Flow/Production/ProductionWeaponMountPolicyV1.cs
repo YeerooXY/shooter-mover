@@ -265,6 +265,8 @@ namespace ShooterMover.Application.Flow.Production
     public sealed class ProductionWeaponMountSetV1
     {
         private readonly ReadOnlyCollection<ProductionWeaponMountBindingV1>
+            physicalBindings;
+        private readonly ReadOnlyCollection<ProductionWeaponMountBindingV1>
             configuredBindings;
         private readonly ReadOnlyCollection<ProductionWeaponMountBindingV1>
             enabledBindings;
@@ -274,21 +276,21 @@ namespace ShooterMover.Application.Flow.Production
             IEnumerable<ProductionWeaponMountBindingV1> bindings)
         {
             Layout = layout ?? throw new ArgumentNullException(nameof(layout));
-            var configured = new List<ProductionWeaponMountBindingV1>(
+            var physical = new List<ProductionWeaponMountBindingV1>(
                 bindings ?? throw new ArgumentNullException(nameof(bindings)));
-            if (configured.Count != layout.PhysicalPositions.Count)
+            if (physical.Count != layout.PhysicalPositions.Count)
             {
                 throw new ArgumentException(
                     "Every physical mount requires one projection binding.",
                     nameof(bindings));
             }
 
-            var enabled = new List<ProductionWeaponMountBindingV1>();
-            for (int index = 0; index < configured.Count; index++)
+            var active = new List<ProductionWeaponMountBindingV1>();
+            for (int index = 0; index < physical.Count; index++)
             {
                 ProductionWeaponMountPositionV1 position =
                     layout.PhysicalPositions[index];
-                ProductionWeaponMountBindingV1 binding = configured[index];
+                ProductionWeaponMountBindingV1 binding = physical[index];
                 if (binding == null
                     || binding.MountStableId != position.MountStableId)
                 {
@@ -310,20 +312,31 @@ namespace ShooterMover.Application.Flow.Production
                 }
                 if (position.IsActive)
                 {
-                    enabled.Add(binding);
+                    active.Add(binding);
                 }
             }
 
+            physicalBindings =
+                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(physical);
             configuredBindings =
-                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(configured);
+                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(
+                    new List<ProductionWeaponMountBindingV1>(active));
             enabledBindings =
-                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(enabled);
+                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(active);
         }
 
         public ProductionWeaponMountLayoutV1 Layout { get; }
 
         /// <summary>
         /// One projection per physical class mount, including locked mounts with null instance IDs.
+        /// </summary>
+        public IReadOnlyList<ProductionWeaponMountBindingV1> PhysicalBindings
+        {
+            get { return physicalBindings; }
+        }
+
+        /// <summary>
+        /// Compatibility projection containing only currently configurable active bindings.
         /// </summary>
         public IReadOnlyList<ProductionWeaponMountBindingV1>
             ConfiguredBindings
