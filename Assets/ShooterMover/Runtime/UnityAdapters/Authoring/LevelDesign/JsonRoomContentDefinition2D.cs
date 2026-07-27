@@ -12,20 +12,27 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private string key = string.Empty;
         [SerializeField] private TextAsset document;
 
-        public string Key
-        {
-            get { return key; }
-        }
+        public string Key { get { return key; } }
+        public TextAsset Document { get { return document; } }
 
-        public TextAsset Document
+        public void ConfigureCompiledAsset(
+            string configuredKey,
+            TextAsset configuredDocument)
         {
-            get { return document; }
+            if (string.IsNullOrWhiteSpace(configuredKey))
+            {
+                throw new ArgumentException(
+                    "A compiled room-content document key is required.",
+                    nameof(configuredKey));
+            }
+            key = configuredKey.Trim();
+            document = configuredDocument
+                ?? throw new ArgumentNullException(nameof(configuredDocument));
         }
 
         public void ConfigureForTests(string configuredKey, TextAsset configuredDocument)
         {
-            key = configuredKey;
-            document = configuredDocument;
+            ConfigureCompiledAsset(configuredKey, configuredDocument);
         }
     }
 
@@ -99,14 +106,22 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 objectCatalog);
         }
 
+        public void ConfigureCompiledAssets(
+            TextAsset configuredManifest,
+            params RoomContentJsonDocumentAsset2D[] configuredDocuments)
+        {
+            manifest = configuredManifest
+                ?? throw new ArgumentNullException(nameof(configuredManifest));
+            documents = configuredDocuments == null
+                ? Array.Empty<RoomContentJsonDocumentAsset2D>()
+                : (RoomContentJsonDocumentAsset2D[])configuredDocuments.Clone();
+        }
+
         public void ConfigureForTests(
             TextAsset configuredManifest,
             params RoomContentJsonDocumentAsset2D[] configuredDocuments)
         {
-            manifest = configuredManifest;
-            documents = configuredDocuments == null
-                ? Array.Empty<RoomContentJsonDocumentAsset2D>()
-                : (RoomContentJsonDocumentAsset2D[])configuredDocuments.Clone();
+            ConfigureCompiledAssets(configuredManifest, configuredDocuments);
         }
     }
 }

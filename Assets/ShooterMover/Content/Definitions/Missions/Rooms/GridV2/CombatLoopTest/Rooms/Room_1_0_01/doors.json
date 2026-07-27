@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "room_id": "room.combat-loop-single",
+  "doors": [
+    {
+      "door_id": "door.combat-loop-single-west",
+      "side": "West",
+      "placement_mode": "Fixed",
+      "current_local_position": [
+        -11,
+        0
+      ],
+      "traversable": true,
+      "visible_on_map": true,
+      "runtime_object": "door.room-standard"
+    },
+    {
+      "door_id": "door.combat-loop-single-east",
+      "side": "East",
+      "placement_mode": "Fixed",
+      "current_local_position": [
+        11,
+        0
+      ],
+      "traversable": true,
+      "visible_on_map": true,
+      "runtime_object": "door.room-standard"
+    }
+  ]
+}

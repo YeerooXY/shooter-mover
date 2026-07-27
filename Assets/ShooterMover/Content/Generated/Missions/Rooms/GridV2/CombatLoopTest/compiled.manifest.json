@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "layout": "layout.grid-v2-level-authored-json-combat-loop-test",
+  "start_room": "room.combat-loop-starter",
+  "terminal_room": "room.combat-loop-double",
+  "rooms": [
+    {
+      "layout": "grid-v2.00.room-combat-loop-starter.layout",
+      "enemies": "grid-v2.00.room-combat-loop-starter.enemies",
+      "props": "grid-v2.00.room-combat-loop-starter.props",
+      "decor": "grid-v2.00.room-combat-loop-starter.decor",
+      "encounter": "grid-v2.00.room-combat-loop-starter.encounter"
+    },
+    {
+      "layout": "grid-v2.01.room-combat-loop-single.layout",
+      "enemies": "grid-v2.01.room-combat-loop-single.enemies",
+      "props": "grid-v2.01.room-combat-loop-single.props",
+      "decor": "grid-v2.01.room-combat-loop-single.decor",
+      "encounter": "grid-v2.01.room-combat-loop-single.encounter"
+    },
+    {
+      "layout": "grid-v2.02.room-combat-loop-double.layout",
+      "enemies": "grid-v2.02.room-combat-loop-double.enemies",
+      "props": "grid-v2.02.room-combat-loop-double.props",
+      "decor": "grid-v2.02.room-combat-loop-double.decor",
+      "encounter": "grid-v2.02.room-combat-loop-double.encounter"
+    }
+  ]
+}

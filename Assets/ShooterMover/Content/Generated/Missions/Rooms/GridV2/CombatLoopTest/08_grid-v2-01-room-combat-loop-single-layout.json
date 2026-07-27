@@ -1,0 +1,67 @@
+{
+  "room": "room.combat-loop-single",
+  "order": 1,
+  "display_name": "SINGLE CONTACT",
+  "bounds": {
+    "center": [
+      0,
+      0
+    ],
+    "size": [
+      24,
+      14
+    ]
+  },
+  "spawns": [
+    {
+      "id": "arrival-door-combat-loop-single-west",
+      "kind": "auxiliary",
+      "position": [
+        -10,
+        0
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "arrival-door-combat-loop-single-east",
+      "kind": "auxiliary",
+      "position": [
+        10,
+        0
+      ],
+      "rotation": 180
+    }
+  ],
+  "doors": [
+    {
+      "id": "door.combat-loop-single-west",
+      "object": "door.room-standard",
+      "position": [
+        -11,
+        0
+      ],
+      "rotation": 180,
+      "link": {
+        "kind": "room",
+        "exit_type": "return",
+        "target_room": "room.combat-loop-starter",
+        "target_spawn": "arrival-door-combat-loop-starter-east"
+      }
+    },
+    {
+      "id": "door.combat-loop-single-east",
+      "object": "door.room-standard",
+      "position": [
+        11,
+        0
+      ],
+      "rotation": 0,
+      "link": {
+        "kind": "room",
+        "exit_type": "progression",
+        "target_room": "room.combat-loop-double",
+        "target_spawn": "arrival-door-combat-loop-double-west"
+      }
+    }
+  ]
+}

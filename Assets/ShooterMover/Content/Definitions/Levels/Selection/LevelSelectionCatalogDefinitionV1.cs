@@ -129,6 +129,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
             "Assets/ShooterMover/Scenes/Gameplay/PlayableLevel.unity";
         public static readonly StableId FirstLevelStableId =
             StableId.Parse("level.authored-json-1");
+        public static readonly StableId AuthoredCombatLoopTestLevelStableId =
+            StableId.Parse("level.authored-json-combat-loop-test");
 
         private static readonly ProductionPlayableLevelDefinitionV1[] Entries =
         {
@@ -142,6 +144,16 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                 StableId.Parse("presentation.player-production-default"),
                 new LevelRecommendationV1(1, 1, 1, "STANDARD"),
                 10),
+            new ProductionPlayableLevelDefinitionV1(
+                AuthoredCombatLoopTestLevelStableId,
+                "COMBAT LOOP TEST",
+                "Traverse the compiled Level Grid V2 starter and two combat rooms.",
+                PlayableLevelScenePath,
+                "ProductionLevels/CombatLoopTestRoomContent",
+                "ProductionLevels/Level1EnemyCatalog",
+                StableId.Parse("presentation.player-production-default"),
+                new LevelRecommendationV1(1, 1, 1, "TEST"),
+                20),
         };
 
         public static IReadOnlyList<ProductionPlayableLevelDefinitionV1> All

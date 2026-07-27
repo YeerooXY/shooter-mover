@@ -1,0 +1,56 @@
+{
+  "room": "room.combat-loop-double",
+  "order": 2,
+  "display_name": "CROSSFIRE",
+  "bounds": {
+    "center": [
+      0,
+      0
+    ],
+    "size": [
+      24,
+      14
+    ]
+  },
+  "spawns": [
+    {
+      "id": "arrival-door-combat-loop-double-west",
+      "kind": "auxiliary",
+      "position": [
+        -10,
+        0
+      ],
+      "rotation": 0
+    }
+  ],
+  "doors": [
+    {
+      "id": "door.combat-loop-double-west",
+      "object": "door.room-standard",
+      "position": [
+        -11,
+        0
+      ],
+      "rotation": 180,
+      "link": {
+        "kind": "room",
+        "exit_type": "return",
+        "target_room": "room.combat-loop-single",
+        "target_spawn": "arrival-door-combat-loop-single-east"
+      }
+    },
+    {
+      "id": "door.combat-loop-double-exit",
+      "object": "door.room-standard",
+      "position": [
+        11,
+        0
+      ],
+      "rotation": 0,
+      "link": {
+        "kind": "final-exit",
+        "exit_type": "progression"
+      }
+    }
+  ]
+}

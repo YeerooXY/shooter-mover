@@ -1,0 +1,19 @@
+{
+  "room": "room.combat-loop-single",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {
+        "door_id": "door.combat-loop-single-west"
+      },
+      "open_when": "always"
+    },
+    {
+      "match": {
+        "door_id": "door.combat-loop-single-east"
+      },
+      "open_when": "room-complete"
+    }
+  ]
+}
