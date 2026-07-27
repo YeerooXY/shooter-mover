@@ -71,15 +71,15 @@ The remaining assembly-level uncertainty is the actual Editor compilation produc
 
 ## Why the pull request is large
 
-At the current audit point, the pull request contains 6,133 added lines across 125 changed files. The additions break down as:
+At the current audit point, the pull request contains 6,183 added lines across 125 changed files. The additions break down as:
 
 ```text
-3,323  production C# compiler/export/runtime integration
+3,311  production C# compiler/export/runtime integration
 1,112  EditMode and PlayMode tests
-1,351  authored/generated JSON, Unity assets and .meta files
-  347  authoring and verification documentation
+1,363  authored/generated JSON, Unity assets and .meta files
+  397  authoring and verification documentation
 -----
-6,133  total additions
+6,183  total additions
 ```
 
 The production C# itself is large because this PR combines five distinct responsibilities: V2 schema/validation, V2→V1 compilation, editor export and folder migration, generated-asset publication, and one registered playable sample. The test code also duplicates sizeable JSON fixture builders, while Unity doubles many authored/generated files with required `.meta` companions.
@@ -101,7 +101,7 @@ The strongest preventive gates would have been:
 3. **A failure-mode matrix written before implementation** — move, swap, delete, coordinate reuse, wrong destination, stale `.meta`, broad-rule overlap, malformed sidecars and extra player starts.
 4. **Fault-injected filesystem tests** — simulate failures during copy, move, replacement and cleanup so transaction commit points are explicit.
 5. **Roslyn/style analysis** — unused-import and dead-code diagnostics elevated from IDE hints before review.
-6. **Smaller PRs with generated files visually separated** — reviewers can inspect compiler semantics without 1,351 lines of JSON/Unity metadata competing for attention.
+6. **Smaller PRs with generated files visually separated** — reviewers can inspect compiler semantics without 1,363 lines of JSON/Unity metadata competing for attention.
 7. **Invariant/property tests** — permuting room coordinates must never alter compiled progression, gates or stable sidecar ownership.
 
 ## Static verification performed in the connected environment
