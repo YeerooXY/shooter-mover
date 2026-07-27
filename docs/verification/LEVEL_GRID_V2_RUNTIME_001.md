@@ -21,9 +21,9 @@ level.authored-json-combat-loop-test
 
 Authored enemy counts are exactly `0 / 1 / 2`, using the existing `enemy.moving-droid` content definition and the existing Level 1 enemy catalogue.
 
-## Targeted self-audit repairs
+## First targeted self-audit repairs
 
-A hostile self-review identified two gameplay blockers and several strictness gaps. The branch now repairs them as follows:
+The first hostile self-review identified two gameplay blockers and several strictness gaps. The branch repairs them as follows:
 
 - progression/return and default door gating no longer depend on room coordinates;
 - the stable connection `from` endpoint is progression and the `to` endpoint is return, so moving rooms cannot reverse gameplay;
@@ -35,10 +35,21 @@ A hostile self-review identified two gameplay blockers and several strictness ga
 - null required sidecar arrays are rejected instead of normalized to empty;
 - map-node coordinates and slots must match the authoritative room index.
 
+## Second hostile re-audit repairs
+
+A complete second pass found four additional real edge cases and repaired them:
+
+1. **Unrelated destination overwrite** — playable export previously accepted any existing folder, even one whose `level.json` belonged to another level. The exporter now checks exact `level_id` ownership before staging or mutation.
+2. **Deleted-coordinate reuse** — a surviving room could not move into a coordinate+slot vacated by a deleted room because the stale folder was removed too late. Deleted-room folders are now removed from the disposable stage before active room folders are assigned.
+3. **Broad encounter-rule ambiguity** — a rule matching by `exit_type` or `link_kind` could overlap an automatically generated exact-door default and then be rejected by the retained V1 importer. The compiler now resolves authored matches first, generates defaults only for unmatched doors, rejects overlapping rules and rejects rules that match no traversable runtime door.
+4. **Silently ignored player starts** — non-start rooms could contain `player_start` and the compiler silently ignored them; the authoritative start could also be outside room bounds. The compiler now requires exactly one player start on the configured start room and validates that it lies inside the authored bounds.
+
+The same pass also moved optional-enemy validation, finite rotation checks and background/foreground placement validation into the V2 compiler rather than relying only on the downstream compatibility importer.
+
 ## Static verification performed in the connected environment
 
 - inspected merged PR #333 and current `main` authoring/runtime boundaries;
-- inspected `RoomContentJsonImporterV1`, its DTO contract, object catalogue boundary, `JsonRoomContentDefinition2D`, `JsonRoomRuntimeBootstrap2D`, the generic playable-level controller and production level catalogue;
+- inspected `RoomContentJsonImporterV1`, including exact door-rule matching and ambiguity behavior;
 - confirmed the compiler output remains a `RoomContentJsonPackageV1` and is validated through the existing importer before Unity assets are written;
 - generated and parsed every tracked V2 and generated V1 JSON document;
 - verified the V2 room index is `room ID → coordinate+slot folder`, while runtime links use only stable room ID + door ID;
@@ -47,9 +58,11 @@ A hostile self-review identified two gameplay blockers and several strictness ga
 - verified generated arrivals are one unit inward at `x = 10` or `x = -10`, inside 24×14 room bounds;
 - verified the generated V1 route targets exact arrival IDs rather than spawn kinds;
 - verified default encounter compilation produces `all-enemies`, source/final `room-complete` gates and destination `always` gates;
+- verified authored broad door rules are matched before defaults using the retained importer’s selector semantics;
 - verified the compiled runtime asset references the manifest and all 15 generated room documents;
 - verified the production catalogue selects the existing gameplay scene and `Level1EnemyCatalog`;
-- inspected the stable-ID folder migration and transactional staged compile/import gate.
+- inspected stable-ID folder migration, deleted-coordinate reuse, destination ownership and the transactional staged compile/import gate;
+- confirmed PR #336 has no submitted reviews, inline review threads or discussion comments at the time of this audit.
 
 ## EditMode coverage authored
 
@@ -73,9 +86,19 @@ A hostile self-review identified two gameplay blockers and several strictness ga
 - stable-ID folder migration with sidecar preservation;
 - nested endpoint hierarchy resolving relative to the owning room.
 
+`LevelGridV2SecondAuditRegressionTests` adds focused coverage for:
+
+- broad authored rules replacing defaults without V1 ambiguity;
+- unmatched authored rules being rejected;
+- non-start-room player starts being rejected;
+- out-of-bounds start positions being rejected;
+- unknown optional enemy IDs being rejected by the V2 compiler;
+- export destination level-ownership rejection;
+- a surviving room reusing a coordinate vacated by a deleted room while retaining only its own sidecars.
+
 ## PlayMode coverage authored
 
-`LevelGridV2CompiledAssetPlayModeTests` now performs two checks against the tracked build-included resource:
+`LevelGridV2CompiledAssetPlayModeTests` performs two checks against the tracked build-included resource:
 
 1. imports the package after a runtime frame and verifies the exact three-room, three-Droid graph;
 2. constructs the existing `RoomLiveRuntimeAuthorityV1` and exercises the compiled route:
@@ -107,16 +130,18 @@ The pull request must remain draft until these checks run in a real Unity checko
 1. Open the three-room graph in Unity.
 2. Move at least one connected room to the opposite side of its neighbour, export, and confirm the same progression/return doors remain gated.
 3. Confirm that room's enemies, props, decor and encounter sidecars remain attached after the move.
-4. Compile the tracked compiler-ready V2 package.
-5. Enter **COMBAT LOOP TEST** through normal Level Selection.
-6. Confirm spawn in `STARTER ROOM` at `[-9, 0]`.
-7. Traverse the exact east door into `SINGLE CONTACT` and arrive at its west-door anchor `[-10, 0]`.
-8. Confirm one Mobile Blaster Droid and that the east progression door is closed before clear.
-9. Defeat the Droid and confirm the east door opens through existing room-complete authority.
-10. Enter `CROSSFIRE` at its west-door anchor `[-10, 0]`.
-11. Confirm two Mobile Blaster Droids and final-exit gating.
-12. Defeat both and trigger the final exit exactly once.
-13. Restart the application and repeat without exporting or regenerating scene-local content.
+4. Delete a different room, move a surviving room into the deleted room’s old coordinate+slot, export, and confirm only the survivor’s sidecars remain.
+5. Attempt export into another level’s non-empty folder and confirm the operation is blocked before replacement.
+6. Compile the tracked compiler-ready V2 package.
+7. Enter **COMBAT LOOP TEST** through normal Level Selection.
+8. Confirm spawn in `STARTER ROOM` at `[-9, 0]`.
+9. Traverse the exact east door into `SINGLE CONTACT` and arrive at its west-door anchor `[-10, 0]`.
+10. Confirm one Mobile Blaster Droid and that the east progression door is closed before clear.
+11. Defeat the Droid and confirm the east door opens through existing room-complete authority.
+12. Enter `CROSSFIRE` at its west-door anchor `[-10, 0]`.
+13. Confirm two Mobile Blaster Droids and final-exit gating.
+14. Defeat both and trigger the final exit exactly once.
+15. Restart the application and repeat without exporting or regenerating scene-local content.
 
 ## No replacement authorities
 
