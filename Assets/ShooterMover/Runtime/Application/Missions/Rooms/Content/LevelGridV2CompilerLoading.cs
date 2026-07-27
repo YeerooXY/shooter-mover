@@ -38,27 +38,40 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 {
                     return DefaultEncounter(roomId);
                 }
-                EncounterDto encounter = Deserialize<EncounterDto>(json, "$documents[\"" + path + "\"]");
-                bool empty = string.IsNullOrWhiteSpace(encounter.Room)
-                    && string.IsNullOrWhiteSpace(encounter.Completion)
-                    && encounter.OptionalEnemyIds == null
-                    && encounter.DoorRules == null;
-                if (empty) return DefaultEncounter(roomId);
-                if (encounter.SchemaVersion != 0)
+                if (IsEmptyJsonObject(json))
                 {
-                    RequireVersion(encounter.SchemaVersion, path + ".schema_version");
+                    return DefaultEncounter(roomId);
                 }
+
+                EncounterDto encounter = Deserialize<EncounterDto>(json, "$documents[\"" + path + "\"]");
+                RequireVersion(encounter.SchemaVersion, path + ".schema_version");
                 ValidateSidecarRoom(roomId, encounter.Room, path + ".room");
                 encounter.Completion = RequireText(encounter.Completion, path + ".completion");
-                encounter.OptionalEnemyIds = encounter.OptionalEnemyIds ?? new List<string>();
-                encounter.DoorRules = encounter.DoorRules ?? new List<DoorRuleDto>();
+                encounter.OptionalEnemyIds = RequireList(
+                    encounter.OptionalEnemyIds,
+                    path + ".optional_enemy_ids");
+                encounter.DoorRules = RequireList(encounter.DoorRules, path + ".door_rules");
                 return encounter;
+            }
+
+            private static bool IsEmptyJsonObject(string json)
+            {
+                int index = 0;
+                while (index < json.Length && char.IsWhiteSpace(json[index])) index++;
+                if (index >= json.Length || json[index] != '{') return false;
+                index++;
+                while (index < json.Length && char.IsWhiteSpace(json[index])) index++;
+                if (index >= json.Length || json[index] != '}') return false;
+                index++;
+                while (index < json.Length && char.IsWhiteSpace(json[index])) index++;
+                return index == json.Length;
             }
 
             private static EncounterDto DefaultEncounter(string roomId)
             {
                 return new EncounterDto
                 {
+                    SchemaVersion = CurrentVersion,
                     Room = roomId,
                     Completion = "all-enemies",
                     OptionalEnemyIds = new List<string>(),
