@@ -38,17 +38,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 exampleRoot.transform,
                 "Starter Room",
                 "Starter Room",
-                new Vector2Int(0, 0));
+                new Vector2Int(0, 0),
+                1);
             LevelRoomAuthoring2D rightOne = CreateRoom(
                 exampleRoot.transform,
                 "Room 1,0",
                 string.Empty,
-                new Vector2Int(1, 0));
+                new Vector2Int(1, 0),
+                1);
             LevelRoomAuthoring2D rightTwo = CreateRoom(
                 exampleRoot.transform,
                 "Room 2,0",
                 string.Empty,
-                new Vector2Int(2, 0));
+                new Vector2Int(2, 0),
+                1);
 
             LevelDoorEndpointAuthoring2D starterEast = CreateDoor(
                 starter,
@@ -82,19 +85,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 rightTwo,
                 rightTwoWest);
 
+            LevelGridDoorOperationsV2.ReflowAll(root);
             Undo.CollapseUndoOperations(undoGroup);
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
 
-            LevelGridValidationResultV2 validation = root.ValidateGridAuthoring(
+            LevelDesignValidationResult foundation = root.ValidateHierarchy();
+            LevelGridValidationResultV2 graph = root.ValidateGridAuthoring(
                 LevelGridValidationPurposeV2.ProductionPublish);
             Selection.activeGameObject = exampleRoot;
             SceneView.RepaintAll();
 
-            if (!validation.CanPublish)
+            if (!foundation.IsValid || !graph.CanPublish)
             {
-                Debug.LogError(
-                    "The generated three-room example did not pass production "
-                        + "validation. Inspect the Level Problems panel.",
+                Debug.LogWarning(
+                    "The generated three-room Phase 1 example exists, but the current "
+                        + "level root does not pass the combined validated-authoring gate. "
+                        + "Inspect Foundation validation and the Level Problems panel.",
                     root);
                 LevelGridProblemsWindowV2.Open(root);
                 return;
@@ -113,7 +119,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Transform parent,
             string hierarchyName,
             string optionalDisplayName,
-            Vector2Int gridCoordinate)
+            Vector2Int gridCoordinate,
+            int folderSlot)
         {
             GameObject roomObject = CreateObject(hierarchyName, parent);
             BoxCollider2D bounds = Undo.AddComponent<BoxCollider2D>(roomObject);
@@ -128,6 +135,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             SerializedObject serialized = new SerializedObject(room);
             serialized.FindProperty("displayName").stringValue = optionalDisplayName;
             serialized.FindProperty("gridCoordinate").vector2IntValue = gridCoordinate;
+            serialized.FindProperty("folderSlot").intValue = folderSlot;
             serialized.FindProperty("cellSize").vector2Value = RoomCellSize;
             serialized.FindProperty("footprintCells").vector2IntValue = RoomFootprint;
             serialized.FindProperty("roomBounds").objectReferenceValue = bounds;
@@ -147,17 +155,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelDoorEndpointAuthoring2D door =
                 Undo.AddComponent<LevelDoorEndpointAuthoring2D>(doorObject);
             door.AssignNewStableId();
-
-            SerializedObject serialized = new SerializedObject(door);
-            serialized.FindProperty("owningRoom").objectReferenceValue = room;
-            serialized.FindProperty("side").enumValueIndex = (int)side - 1;
-            serialized.FindProperty("placementMode").enumValueIndex =
-                (int)LevelDoorPlacementModeV2.EdgeManaged - 1;
-            serialized.FindProperty("edgeOffset").floatValue = 0.5f;
-            serialized.FindProperty("traversable").boolValue = true;
-            serialized.FindProperty("visibleOnMap").boolValue = true;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
+            door.ConfigureAuthoring(
+                door.DoorIdText,
+                room,
+                side,
+                LevelDoorPlacementModeV2.EdgeManaged,
+                0.5f,
+                Vector2.zero,
+                true,
+                true);
             door.SnapToPlacement();
             return door;
         }
@@ -174,17 +180,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelDoorLinkAuthoring2D connection =
                 Undo.AddComponent<LevelDoorLinkAuthoring2D>(connectionObject);
             connection.AssignNewStableId();
-
-            SerializedObject serialized = new SerializedObject(connection);
-            serialized.FindProperty("sourceRoom").objectReferenceValue = sourceRoom;
-            serialized.FindProperty("sourceDoor").objectReferenceValue = sourceDoor;
-            serialized.FindProperty("destinationRoom").objectReferenceValue =
-                destinationRoom;
-            serialized.FindProperty("destinationDoor").objectReferenceValue =
-                destinationDoor;
-            serialized.FindProperty("travelPolicy").enumValueIndex =
-                (int)LevelDoorTravelPolicy.Bidirectional - 1;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            connection.ConfigureConnection(
+                connection.ConnectionIdText,
+                sourceRoom,
+                sourceDoor,
+                destinationRoom,
+                destinationDoor,
+                LevelDoorTravelPolicy.Bidirectional);
             return connection;
         }
 
