@@ -44,6 +44,8 @@ namespace ShooterMover.Application.Flow.Production
                     experienceCurve,
                     progressionContext),
                 Holdings(loadout),
+                WeaponHoldingsSaveComponentV2.CreateAdapter(
+                    loadout.WeaponHoldings),
                 Money(money),
                 Scrap(scrap, scrapAuthorityId, scrapCurrencyId),
                 Skills(skills, skillProfileId),
