@@ -54,7 +54,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private string notificationMessage = string.Empty;
         private Vector2 notificationPosition;
         private double notificationUntil;
-        private bool validationQueued;
 
         public LevelDesignSceneAuthoringRoot2D ActiveRoot
         {
@@ -99,9 +98,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             titleContent = new GUIContent("Level Grid Editor");
             minSize = new Vector2(780f, 520f);
-            Undo.undoRedoPerformed += OnUndoRedo;
-            EditorApplication.hierarchyChanged += OnHierarchyChanged;
-            ObjectChangeEvents.changesPublished += OnObjectChangesPublished;
             Selection.selectionChanged += OnUnitySelectionChanged;
             EditorApplication.update += OnEditorUpdate;
             RestorePersistedRoot();
@@ -116,13 +112,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private void OnDisable()
         {
             SaveViewState();
-            Undo.undoRedoPerformed -= OnUndoRedo;
-            EditorApplication.hierarchyChanged -= OnHierarchyChanged;
-            ObjectChangeEvents.changesPublished -= OnObjectChangesPublished;
             Selection.selectionChanged -= OnUnitySelectionChanged;
             EditorApplication.update -= OnEditorUpdate;
-            EditorApplication.delayCall -= RunQueuedDraftValidation;
-            validationQueued = false;
         }
 
         private void OnGUI()
