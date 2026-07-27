@@ -9,9 +9,9 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
-    internal static class WeaponLiveExceptionPolicyV1
+    public static class WeaponLiveExceptionPolicyV1
     {
-        internal static bool IsFatal(Exception exception)
+        public static bool IsFatal(Exception exception)
         {
             return exception is OutOfMemoryException
                 || exception is StackOverflowException
