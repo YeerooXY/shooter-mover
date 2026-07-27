@@ -72,6 +72,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         private float windUpSeconds;
         private float windUpDuration;
         private float muzzleSeconds;
+        private float explicitMovementSeconds;
 
         public Transform ShotOrigin { get { return shotOrigin; } }
 
@@ -139,9 +140,8 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         public void SetMovementIntent(Vector2 worldDirection)
         {
             if (bodyKind != EnemyPresentationBodyKind2D.MobileBlasterDroid) return;
-            bool moving = !terminal && worldDirection.sqrMagnitude > 0.000001f;
-            movementMarker.enabled = moving;
-            if (moving) SetFacing(worldDirection);
+            explicitMovementSeconds = 0.10f;
+            ApplyMovementIntent(worldDirection);
         }
 
         public void BeginAttackWindUp(float durationSeconds)
@@ -186,6 +186,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 observedHealth = state.Health;
                 observedActive = state.IsActive;
                 ResetPresentation();
+                if (!state.IsActive) EnterTerminal();
                 return;
             }
 
@@ -198,17 +199,26 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         private void ObserveMovement()
         {
             Vector3 current = transform.position;
-            if (bodyKind == EnemyPresentationBodyKind2D.MobileBlasterDroid)
+            if (bodyKind == EnemyPresentationBodyKind2D.MobileBlasterDroid
+                && explicitMovementSeconds <= 0f)
             {
-                SetMovementIntent(current - previousPosition);
+                ApplyMovementIntent(current - previousPosition);
             }
             previousPosition = current;
+        }
+
+        private void ApplyMovementIntent(Vector2 worldDirection)
+        {
+            bool moving = !terminal && worldDirection.sqrMagnitude > 0.000001f;
+            movementMarker.enabled = moving;
+            if (moving) SetFacing(worldDirection);
         }
 
         private void Animate(float deltaTime)
         {
             if (terminal) return;
 
+            explicitMovementSeconds = Mathf.Max(0f, explicitMovementSeconds - deltaTime);
             hitSeconds = Mathf.Max(0f, hitSeconds - deltaTime);
             for (int index = 0; index < renderers.Length; index++)
             {
@@ -243,6 +253,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
             hitSeconds = 0f;
             windUpSeconds = 0f;
             muzzleSeconds = 0f;
+            explicitMovementSeconds = 0f;
             visualRoot.localRotation = Quaternion.identity;
             facingRoot.localRotation = Quaternion.identity;
             movementMarker.enabled = false;
