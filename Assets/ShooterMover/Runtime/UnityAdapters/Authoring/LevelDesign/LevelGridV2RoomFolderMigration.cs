@@ -10,6 +10,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     /// Validates a playable export destination and migrates exported room folders by stable room
     /// identity before coordinate-derived folder names are rewritten. The caller operates on a
     /// staged copy, so any failure can discard the stage without mutating the published package.
+    /// Unity folder metadata is moved and deleted with its owning folder so room moves preserve
+    /// folder GUIDs and deleted rooms cannot donate stale GUID metadata to surviving rooms.
     /// </summary>
     public static class LevelGridV2RoomFolderMigration
     {
@@ -96,13 +98,12 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
             // The destination is a disposable staged copy. Remove folders owned by deleted rooms
             // before assigning desired paths so a surviving room may safely move into a vacated
-            // coordinate+slot without adopting the deleted room's sidecars.
+            // coordinate+slot without adopting the deleted room's sidecars or folder GUID.
             foreach (KeyValuePair<string, string> existing in existingByRoomId)
             {
-                if (!activeByRoomId.ContainsKey(existing.Key)
-                    && Directory.Exists(existing.Value))
+                if (!activeByRoomId.ContainsKey(existing.Key))
                 {
-                    Directory.Delete(existing.Value, true);
+                    DeleteDirectoryAndMeta(existing.Value);
                 }
             }
 
@@ -119,7 +120,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 string temporaryPath = Path.Combine(
                     roomsRoot,
                     ".__playable_migrate__" + Guid.NewGuid().ToString("N"));
-                Directory.Move(existingPath, temporaryPath);
+                MoveDirectoryAndMeta(existingPath, temporaryPath);
                 temporaryByRoomId.Add(pair.Key, temporaryPath);
             }
 
@@ -139,10 +140,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                             + "'. It will not be adopted by '" + pair.Key + "'.");
                 }
 
+                // A folder-less .meta file has no remaining owner in this staged package. Remove it
+                // before assigning the path so Unity cannot attach a stale or deleted room GUID.
+                DeleteFileIfPresent(MetaPath(desiredPath));
+
                 string temporaryPath;
                 if (temporaryByRoomId.TryGetValue(pair.Key, out temporaryPath))
                 {
-                    Directory.Move(temporaryPath, desiredPath);
+                    MoveDirectoryAndMeta(temporaryPath, desiredPath);
                 }
                 else
                 {
@@ -179,6 +184,33 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 result.Add(identity.room_id, folders[index]);
             }
             return result;
+        }
+
+        private static void MoveDirectoryAndMeta(string sourcePath, string destinationPath)
+        {
+            Directory.Move(sourcePath, destinationPath);
+            string sourceMeta = MetaPath(sourcePath);
+            if (!File.Exists(sourceMeta)) return;
+
+            string destinationMeta = MetaPath(destinationPath);
+            DeleteFileIfPresent(destinationMeta);
+            File.Move(sourceMeta, destinationMeta);
+        }
+
+        private static void DeleteDirectoryAndMeta(string path)
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, true);
+            DeleteFileIfPresent(MetaPath(path));
+        }
+
+        private static void DeleteFileIfPresent(string path)
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        private static string MetaPath(string directoryPath)
+        {
+            return directoryPath + ".meta";
         }
 
         private static LevelIdentityDto ReadLevelIdentity(string path)
