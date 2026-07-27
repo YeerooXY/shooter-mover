@@ -6,10 +6,79 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Enemies.Presentation
 {
-    public enum EnemyPresentationBodyKind2D
+    public enum EnemyPresentationPartParent2D
     {
-        MobileBlasterDroid = 1,
-        BlasterTurret = 2,
+        VisualRoot = 0,
+        FacingRoot = 1,
+        ShotOrigin = 2,
+    }
+
+    [Serializable]
+    public sealed class EnemyPresentationPartDefinition2D
+    {
+        [SerializeField] private string partName = "Part";
+        [SerializeField] private EnemyPresentationPartParent2D parent =
+            EnemyPresentationPartParent2D.FacingRoot;
+        [SerializeField] private Vector2 localPosition = Vector2.zero;
+        [SerializeField] private Vector2 localScale = Vector2.one;
+        [SerializeField] private float localRotationDegrees;
+        [SerializeField] private Color color = Color.white;
+        [SerializeField] private int sortingOrder;
+
+        public string PartName { get { return partName; } }
+
+        public EnemyPresentationPartParent2D Parent { get { return parent; } }
+
+        public Vector2 LocalPosition { get { return localPosition; } }
+
+        public Vector2 LocalScale { get { return localScale; } }
+
+        public float LocalRotationDegrees { get { return localRotationDegrees; } }
+
+        public Color Color { get { return color; } }
+
+        public int SortingOrder { get { return sortingOrder; } }
+
+        public bool TryValidate(string path, out string reason)
+        {
+            if (string.IsNullOrWhiteSpace(partName))
+            {
+                reason = path + " requires a part name.";
+                return false;
+            }
+            if (!Enum.IsDefined(typeof(EnemyPresentationPartParent2D), parent))
+            {
+                reason = path + " has an unsupported parent.";
+                return false;
+            }
+            if (!IsFinite(localPosition.x)
+                || !IsFinite(localPosition.y)
+                || !IsFinite(localScale.x)
+                || !IsFinite(localScale.y)
+                || !IsFinite(localRotationDegrees)
+                || !IsFinite(color.r)
+                || !IsFinite(color.g)
+                || !IsFinite(color.b)
+                || !IsFinite(color.a))
+            {
+                reason = path + " contains a non-finite visual value.";
+                return false;
+            }
+            if (Mathf.Abs(localScale.x) <= 0.000001f
+                || Mathf.Abs(localScale.y) <= 0.000001f)
+            {
+                reason = path + " requires non-zero scale.";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
     }
 
     public interface IEnemyPresentationCommandSink2D
@@ -40,8 +109,9 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
     }
 
     /// <summary>
-    /// Presentation-only projection over RoomEnemyActor2D. Health, decisions, attacks,
-    /// rewards, room completion, and persistence remain owned by existing authorities.
+    /// Presentation-only projection over RoomEnemyActor2D. Enemy-specific appearance and
+    /// physics are authored in prefab data. Health, decisions, attacks, rewards, room
+    /// completion, and persistence remain owned by existing authorities.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class EnemyPresentationAdapter2D :
@@ -49,8 +119,20 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         IEnemyPresentationCommandSink2D
     {
         [SerializeField] private string runtimeDefinitionStableId = "enemy.unassigned";
-        [SerializeField] private EnemyPresentationBodyKind2D bodyKind =
-            EnemyPresentationBodyKind2D.MobileBlasterDroid;
+        [SerializeField] private bool supportsMovementIntent;
+        [SerializeField] private bool inferMovementFromTransform;
+        [SerializeField] private RigidbodyType2D physicsBodyType = RigidbodyType2D.Kinematic;
+        [SerializeField] private bool freezeBodyRotation = true;
+        [SerializeField] private Vector2 colliderSize = Vector2.one;
+        [SerializeField] private Vector2 shotOriginLocalPosition = Vector2.right;
+        [SerializeField] private EnemyPresentationPartDefinition2D[] visualParts =
+            Array.Empty<EnemyPresentationPartDefinition2D>();
+        [SerializeField] private EnemyPresentationPartDefinition2D movementMarkerPart;
+        [SerializeField] private EnemyPresentationPartDefinition2D attackTelegraphPart;
+        [SerializeField] private EnemyPresentationPartDefinition2D originPulsePart;
+        [SerializeField] private float telegraphEndScaleMultiplier = 0.47f;
+        [SerializeField] private float telegraphStartAlpha = 0.12f;
+        [SerializeField] private float telegraphEndAlpha = 0.72f;
 
         private static Sprite squareSprite;
 
@@ -62,6 +144,8 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         private SpriteRenderer muzzle;
         private SpriteRenderer[] renderers;
         private Color[] baseColors;
+        private Vector3 telegraphBaseScale;
+        private Color telegraphBaseColor;
         private Vector3 previousPosition;
         private RoomEnemyActor2D observedActor;
         private long observedGeneration = long.MinValue;
@@ -85,8 +169,6 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         }
 
         public string RuntimeDefinitionStableId { get { return runtimeDefinitionStableId; } }
-
-        public EnemyPresentationBodyKind2D BodyKind { get { return bodyKind; } }
 
         private void Awake()
         {
@@ -120,14 +202,10 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 return false;
             }
 
+            StableId configured;
             try
             {
-                StableId configured = StableId.Parse(runtimeDefinitionStableId);
-                if (configured != expectedDefinitionId)
-                {
-                    reason = "Registered for " + configured + ", not " + expectedDefinitionId + ".";
-                    return false;
-                }
+                configured = StableId.Parse(runtimeDefinitionStableId);
             }
             catch (Exception exception)
             {
@@ -135,14 +213,13 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(EnemyPresentationBodyKind2D), bodyKind))
+            if (configured != expectedDefinitionId)
             {
-                reason = "Unsupported presentation body kind.";
+                reason = "Registered for " + configured + ", not " + expectedDefinitionId + ".";
                 return false;
             }
 
-            reason = string.Empty;
-            return true;
+            return TryValidateConfiguration(out reason);
         }
 
         public void SetFacing(Vector2 worldDirection)
@@ -159,7 +236,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         public void SetMovementIntent(Vector2 worldDirection)
         {
             EnsureInitialized();
-            if (bodyKind != EnemyPresentationBodyKind2D.MobileBlasterDroid) return;
+            if (!supportsMovementIntent) return;
             explicitMovementSeconds = 0.10f;
             ApplyMovementIntent(worldDirection);
         }
@@ -177,9 +254,9 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
             windUpDuration = durationSeconds;
             windUpSeconds = durationSeconds;
-            telegraph.transform.localScale = Vector3.one * 1.7f;
-            Color color = telegraph.color;
-            color.a = 0.12f;
+            telegraph.transform.localScale = telegraphBaseScale;
+            Color color = telegraphBaseColor;
+            color.a = telegraphStartAlpha;
             telegraph.color = color;
             telegraph.enabled = true;
         }
@@ -241,7 +318,8 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 return;
             }
 
-            if (bodyKind == EnemyPresentationBodyKind2D.MobileBlasterDroid
+            if (supportsMovementIntent
+                && inferMovementFromTransform
                 && explicitMovementSeconds <= 0f)
             {
                 ApplyMovementIntent(current - previousPosition);
@@ -275,9 +353,10 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 windUpSeconds = Mathf.Max(0f, windUpSeconds - deltaTime);
                 float progress = 1f - (windUpSeconds / windUpDuration);
                 telegraph.enabled = true;
-                telegraph.transform.localScale = Vector3.one * Mathf.Lerp(1.7f, 0.8f, progress);
-                Color color = telegraph.color;
-                color.a = Mathf.Lerp(0.12f, 0.72f, progress);
+                telegraph.transform.localScale = telegraphBaseScale
+                    * Mathf.Lerp(1f, telegraphEndScaleMultiplier, progress);
+                Color color = telegraphBaseColor;
+                color.a = Mathf.Lerp(telegraphStartAlpha, telegraphEndAlpha, progress);
                 telegraph.color = color;
             }
             else
@@ -300,6 +379,8 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
             facingRoot.localRotation = Quaternion.identity;
             movementMarker.enabled = false;
             telegraph.enabled = false;
+            telegraph.transform.localScale = telegraphBaseScale;
+            telegraph.color = telegraphBaseColor;
             muzzle.enabled = false;
             SetColors(1f);
         }
@@ -318,8 +399,127 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         private void EnsureInitialized()
         {
             if (visualRoot != null) return;
+            string reason;
+            if (!TryValidateConfiguration(out reason))
+            {
+                throw new InvalidOperationException(
+                    "Enemy presentation configuration is invalid: " + reason);
+            }
             BuildVisuals();
             ConfigurePhysics();
+        }
+
+        private bool TryValidateConfiguration(out string reason)
+        {
+            try
+            {
+                StableId.Parse(runtimeDefinitionStableId);
+            }
+            catch (Exception exception)
+            {
+                reason = "Invalid presentation identity: " + exception.Message;
+                return false;
+            }
+
+            if (!Enum.IsDefined(typeof(RigidbodyType2D), physicsBodyType))
+            {
+                reason = "Unsupported Rigidbody body type.";
+                return false;
+            }
+            if (!IsFinite(colliderSize.x)
+                || !IsFinite(colliderSize.y)
+                || colliderSize.x <= 0f
+                || colliderSize.y <= 0f)
+            {
+                reason = "Collider size must be finite and positive.";
+                return false;
+            }
+            if (!IsFinite(shotOriginLocalPosition.x)
+                || !IsFinite(shotOriginLocalPosition.y))
+            {
+                reason = "Shot origin must be finite.";
+                return false;
+            }
+            if (inferMovementFromTransform && !supportsMovementIntent)
+            {
+                reason = "Transform movement inference requires movement-intent support.";
+                return false;
+            }
+            if (visualParts == null || visualParts.Length == 0)
+            {
+                reason = "At least one authored visual part is required.";
+                return false;
+            }
+            for (int index = 0; index < visualParts.Length; index++)
+            {
+                if (visualParts[index] == null)
+                {
+                    reason = "Visual part " + index + " is missing.";
+                    return false;
+                }
+                if (!visualParts[index].TryValidate(
+                    "visualParts[" + index + "]",
+                    out reason))
+                {
+                    return false;
+                }
+            }
+            if (!ValidateSpecialPart(
+                movementMarkerPart,
+                EnemyPresentationPartParent2D.FacingRoot,
+                "movement marker",
+                out reason)
+                || !ValidateSpecialPart(
+                    attackTelegraphPart,
+                    EnemyPresentationPartParent2D.VisualRoot,
+                    "attack telegraph",
+                    out reason)
+                || !ValidateSpecialPart(
+                    originPulsePart,
+                    EnemyPresentationPartParent2D.ShotOrigin,
+                    "origin pulse",
+                    out reason))
+            {
+                return false;
+            }
+            if (!IsFinite(telegraphEndScaleMultiplier)
+                || telegraphEndScaleMultiplier <= 0f
+                || !IsFinite(telegraphStartAlpha)
+                || !IsFinite(telegraphEndAlpha)
+                || telegraphStartAlpha < 0f
+                || telegraphStartAlpha > 1f
+                || telegraphEndAlpha < 0f
+                || telegraphEndAlpha > 1f)
+            {
+                reason = "Attack telegraph animation values are invalid.";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
+        private static bool ValidateSpecialPart(
+            EnemyPresentationPartDefinition2D definition,
+            EnemyPresentationPartParent2D requiredParent,
+            string label,
+            out string reason)
+        {
+            if (definition == null)
+            {
+                reason = "The " + label + " definition is missing.";
+                return false;
+            }
+            if (!definition.TryValidate(label, out reason))
+            {
+                return false;
+            }
+            if (definition.Parent != requiredParent)
+            {
+                reason = "The " + label + " must use parent " + requiredParent + ".";
+                return false;
+            }
+            return true;
         }
 
         private void BuildVisuals()
@@ -328,39 +528,20 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
             visualRoot.SetParent(transform, false);
             facingRoot = new GameObject("Facing").transform;
             facingRoot.SetParent(visualRoot, false);
-
-            if (bodyKind == EnemyPresentationBodyKind2D.BlasterTurret)
-            {
-                Part("StationaryBase", visualRoot, Vector2.zero, new Vector2(1.2f, 1.2f),
-                    new Color(0.22f, 0.22f, 0.27f, 1f), 0);
-                Transform brace = Part("Brace", visualRoot, Vector2.zero, new Vector2(1.4f, 0.18f),
-                    new Color(0.52f, 0.31f, 0.14f, 1f), 1).transform;
-                brace.localRotation = Quaternion.Euler(0f, 0f, 45f);
-                Part("AimHead", facingRoot, Vector2.zero, new Vector2(0.78f, 0.78f),
-                    new Color(0.58f, 0.18f, 0.13f, 1f), 2);
-                Part("Barrel", facingRoot, new Vector2(0.72f, 0f), new Vector2(0.92f, 0.2f),
-                    new Color(0.92f, 0.56f, 0.18f, 1f), 3);
-            }
-            else
-            {
-                Part("Chassis", facingRoot, Vector2.zero, new Vector2(1.25f, 0.72f),
-                    new Color(0.13f, 0.25f, 0.39f, 1f), 0);
-                Part("ForwardArmor", facingRoot, new Vector2(0.48f, 0f), new Vector2(0.55f, 0.54f),
-                    new Color(0.17f, 0.64f, 0.8f, 1f), 1);
-                Part("Blaster", facingRoot, new Vector2(0.84f, 0f), new Vector2(0.72f, 0.16f),
-                    new Color(0.77f, 0.89f, 0.94f, 1f), 2);
-            }
-
-            movementMarker = Part("MovementIntent", facingRoot, new Vector2(-0.82f, 0f),
-                new Vector2(0.42f, 0.2f), new Color(0.15f, 0.86f, 1f, 0.9f), -1);
-            telegraph = Part("AttackTelegraph", visualRoot, Vector2.zero, new Vector2(1.7f, 1.7f),
-                new Color(1f, 0.42f, 0.06f, 0.45f), -2);
-
             shotOrigin = new GameObject("ShotOrigin").transform;
             shotOrigin.SetParent(facingRoot, false);
-            shotOrigin.localPosition = new Vector3(1.18f, 0f, 0f);
-            muzzle = Part("OriginPulse", shotOrigin, Vector2.zero, new Vector2(0.28f, 0.28f),
-                new Color(1f, 0.86f, 0.2f, 0.95f), 4);
+            shotOrigin.localPosition = new Vector3(
+                shotOriginLocalPosition.x,
+                shotOriginLocalPosition.y,
+                0f);
+
+            for (int index = 0; index < visualParts.Length; index++)
+            {
+                Part(visualParts[index]);
+            }
+            movementMarker = Part(movementMarkerPart);
+            telegraph = Part(attackTelegraphPart);
+            muzzle = Part(originPulsePart);
 
             renderers = visualRoot.GetComponentsInChildren<SpriteRenderer>(true);
             baseColors = new Color[renderers.Length];
@@ -369,6 +550,8 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 baseColors[index] = renderers[index].color;
             }
 
+            telegraphBaseScale = telegraph.transform.localScale;
+            telegraphBaseColor = telegraph.color;
             movementMarker.enabled = false;
             telegraph.enabled = false;
             muzzle.enabled = false;
@@ -378,36 +561,54 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         {
             BoxCollider2D collider = GetComponent<BoxCollider2D>();
             if (collider == null) collider = gameObject.AddComponent<BoxCollider2D>();
-            collider.size = bodyKind == EnemyPresentationBodyKind2D.BlasterTurret
-                ? new Vector2(1.2f, 1.2f)
-                : new Vector2(1.25f, 0.75f);
+            collider.size = colliderSize;
 
             Rigidbody2D body = GetComponent<Rigidbody2D>();
             if (body == null) body = gameObject.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
-            body.freezeRotation = true;
-            body.bodyType = bodyKind == EnemyPresentationBodyKind2D.BlasterTurret
-                ? RigidbodyType2D.Static
-                : RigidbodyType2D.Kinematic;
+            body.bodyType = physicsBodyType;
+            body.constraints = freezeBodyRotation
+                ? RigidbodyConstraints2D.FreezeRotation
+                : RigidbodyConstraints2D.None;
         }
 
-        private static SpriteRenderer Part(
-            string name,
-            Transform parent,
-            Vector2 position,
-            Vector2 scale,
-            Color color,
-            int order)
+        private SpriteRenderer Part(EnemyPresentationPartDefinition2D definition)
         {
-            GameObject part = new GameObject(name);
-            part.transform.SetParent(parent, false);
-            part.transform.localPosition = position;
-            part.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+            GameObject part = new GameObject(definition.PartName);
+            part.transform.SetParent(ResolveParent(definition.Parent), false);
+            part.transform.localPosition = new Vector3(
+                definition.LocalPosition.x,
+                definition.LocalPosition.y,
+                0f);
+            part.transform.localScale = new Vector3(
+                definition.LocalScale.x,
+                definition.LocalScale.y,
+                1f);
+            part.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                definition.LocalRotationDegrees);
             SpriteRenderer renderer = part.AddComponent<SpriteRenderer>();
             renderer.sprite = SquareSprite;
-            renderer.color = color;
-            renderer.sortingOrder = order;
+            renderer.color = definition.Color;
+            renderer.sortingOrder = definition.SortingOrder;
             return renderer;
+        }
+
+        private Transform ResolveParent(EnemyPresentationPartParent2D parent)
+        {
+            switch (parent)
+            {
+                case EnemyPresentationPartParent2D.VisualRoot:
+                    return visualRoot;
+                case EnemyPresentationPartParent2D.FacingRoot:
+                    return facingRoot;
+                case EnemyPresentationPartParent2D.ShotOrigin:
+                    return shotOrigin;
+                default:
+                    throw new InvalidOperationException(
+                        "Unsupported presentation part parent: " + parent + ".");
+            }
         }
 
         private void SetColors(float alphaMultiplier)
@@ -415,10 +616,16 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
             if (renderers == null || baseColors == null) return;
             for (int index = 0; index < renderers.Length; index++)
             {
+                if (renderers[index] == null) continue;
                 Color color = baseColors[index];
                 color.a *= alphaMultiplier;
                 renderers[index].color = color;
             }
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private static Sprite SquareSprite
