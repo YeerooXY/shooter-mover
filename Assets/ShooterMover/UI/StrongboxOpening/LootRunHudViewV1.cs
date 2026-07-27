@@ -12,13 +12,11 @@ namespace ShooterMover.UI.StrongboxOpening
     public sealed class LootRunHudViewV1 : MonoBehaviour
     {
         public RunLootTotalsPresentationV1 Projection { get; private set; }
-
         public void Bind(RunLootTotalsPresentationV1 immutableProjection)
         {
             Projection = immutableProjection
                 ?? throw new ArgumentNullException(nameof(immutableProjection));
         }
-
         public void DrawImGui(GUIStyle headingStyle, GUIStyle bodyStyle)
         {
             if (Projection == null)
@@ -26,7 +24,6 @@ namespace ShooterMover.UI.StrongboxOpening
                 GUILayout.Label("RUN HUD UNBOUND", headingStyle ?? GUI.skin.label);
                 return;
             }
-
             GUILayout.BeginHorizontal(GUI.skin.box);
             GUILayout.Label(
                 "RUN HUD",
