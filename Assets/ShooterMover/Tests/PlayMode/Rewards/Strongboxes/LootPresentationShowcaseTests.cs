@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using ShooterMover.Application.Rewards.Strongboxes;
-using ShooterMover.Application.Runs.Session;
-using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.UI.StrongboxOpening;
@@ -12,20 +9,18 @@ using UnityEngine;
 
 namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
 {
-    public sealed partial class LootPresentationTests
+    public sealed class LootPresentationShowcaseTests
     {
         [Test]
-        public void ShowcaseSourceContainsNoProductionMutationAuthority()
+        public void ShowcaseSourcesContainNoProductionMutationAuthority()
         {
-            string sourcePath = Path.Combine(
-                UnityEngine.Application.dataPath,
-                "ShooterMover/UI/StrongboxOpening/LootPresentationShowcaseController.cs");
-            string source = File.ReadAllText(sourcePath);
+            string source = ReadShowcaseSources();
 
             StringAssert.DoesNotContain("StrongboxOpeningServiceV1", source);
             StringAssert.DoesNotContain("RewardApplicationServiceV1", source);
             StringAssert.DoesNotContain("PlayerHoldings", source);
             StringAssert.DoesNotContain("ProductionGameSave", source);
+            StringAssert.DoesNotContain("RunLocalPickupAuthorityV1", source);
             StringAssert.Contains("DevelopmentPickupAuthorityFixtureV1", source);
             StringAssert.Contains("immutableFixtureResult", source);
         }
@@ -80,6 +75,27 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             {
                 UnityEngine.Object.DestroyImmediate(gameObject);
             }
+        }
+
+        private static string ReadShowcaseSources()
+        {
+            string root = Path.Combine(
+                UnityEngine.Application.dataPath,
+                "ShooterMover/UI/StrongboxOpening");
+            string[] paths =
+            {
+                "LootPresentationShowcaseController.cs",
+                "LootPresentationShowcaseController.Data.cs",
+                "LootPresentationShowcaseController.GUI.cs",
+                "LootPresentationDevelopmentPickupFixtureV1.cs",
+                "LootPickupVisual2D.cs",
+            };
+            var combined = new System.Text.StringBuilder();
+            for (int index = 0; index < paths.Length; index++)
+            {
+                combined.AppendLine(File.ReadAllText(Path.Combine(root, paths[index])));
+            }
+            return combined.ToString();
         }
 
         private static LootPickupPresentationV1 Pickup(string suffix)
