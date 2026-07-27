@@ -221,15 +221,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelPlacementAuthoring2D placement =
-                selected.GetComponent<LevelPlacementAuthoring2D>();
-            if (placement != null)
+            if (TrySnapSelectedPlacement(selected))
             {
-                Undo.RecordObject(
-                    placement.transform,
-                    "Snap Placement To Room Grid");
-                placement.SnapToGrid();
-                EditorSceneManager.MarkSceneDirty(placement.gameObject.scene);
                 return;
             }
 
@@ -254,6 +247,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
                 return;
             }
+        }
+
+        internal static bool TrySnapSelectedPlacement(GameObject selected)
+        {
+            if (selected == null)
+            {
+                return false;
+            }
+
+            LevelPlacementAuthoring2D placement =
+                selected.GetComponent<LevelPlacementAuthoring2D>();
+            if (placement == null)
+            {
+                return false;
+            }
+
+            Undo.RecordObject(
+                placement.transform,
+                "Snap Placement To Room Grid");
+            placement.SnapToGrid();
+            EditorSceneManager.MarkSceneDirty(placement.gameObject.scene);
+            return true;
         }
 
         private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
