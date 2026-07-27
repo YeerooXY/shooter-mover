@@ -45,4 +45,65 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   runtimeDefinitionStableId: enemy.blaster-turret
-  bodyKind: 2
+  supportsMovementIntent: 0
+  inferMovementFromTransform: 0
+  physicsBodyType: 2
+  freezeBodyRotation: 1
+  colliderSize: {x: 1.2, y: 1.2}
+  shotOriginLocalPosition: {x: 1.18, y: 0}
+  visualParts:
+  - partName: StationaryBase
+    parent: 0
+    localPosition: {x: 0, y: 0}
+    localScale: {x: 1.2, y: 1.2}
+    localRotationDegrees: 0
+    color: {r: 0.22, g: 0.22, b: 0.27, a: 1}
+    sortingOrder: 0
+  - partName: Brace
+    parent: 0
+    localPosition: {x: 0, y: 0}
+    localScale: {x: 1.4, y: 0.18}
+    localRotationDegrees: 45
+    color: {r: 0.52, g: 0.31, b: 0.14, a: 1}
+    sortingOrder: 1
+  - partName: AimHead
+    parent: 1
+    localPosition: {x: 0, y: 0}
+    localScale: {x: 0.78, y: 0.78}
+    localRotationDegrees: 0
+    color: {r: 0.58, g: 0.18, b: 0.13, a: 1}
+    sortingOrder: 2
+  - partName: Barrel
+    parent: 1
+    localPosition: {x: 0.72, y: 0}
+    localScale: {x: 0.92, y: 0.2}
+    localRotationDegrees: 0
+    color: {r: 0.92, g: 0.56, b: 0.18, a: 1}
+    sortingOrder: 3
+  movementMarkerPart:
+    partName: MovementIntent
+    parent: 1
+    localPosition: {x: -0.82, y: 0}
+    localScale: {x: 0.42, y: 0.2}
+    localRotationDegrees: 0
+    color: {r: 0.15, g: 0.86, b: 1, a: 0.9}
+    sortingOrder: -1
+  attackTelegraphPart:
+    partName: AttackTelegraph
+    parent: 0
+    localPosition: {x: 0, y: 0}
+    localScale: {x: 1.7, y: 1.7}
+    localRotationDegrees: 0
+    color: {r: 1, g: 0.42, b: 0.06, a: 0.45}
+    sortingOrder: -2
+  originPulsePart:
+    partName: OriginPulse
+    parent: 2
+    localPosition: {x: 0, y: 0}
+    localScale: {x: 0.28, y: 0.28}
+    localRotationDegrees: 0
+    color: {r: 1, g: 0.86, b: 0.2, a: 0.95}
+    sortingOrder: 4
+  telegraphEndScaleMultiplier: 0.47058824
+  telegraphStartAlpha: 0.12
+  telegraphEndAlpha: 0.72
