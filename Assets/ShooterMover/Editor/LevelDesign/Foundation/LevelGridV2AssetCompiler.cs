@@ -126,7 +126,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 expectedJsonPaths.Add(path);
             }
 
-            DeleteStaleGeneratedJson(generatedAssetFolder, expectedJsonPaths);
             WriteAssetText(manifestPath, compile.Package.ManifestJson);
             for (int index = 0; index < keys.Count; index++)
             {
@@ -174,6 +173,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             AssetDatabase.ImportAsset(
                 roomContentAssetPath,
                 ImportAssetOptions.ForceSynchronousImport);
+            DeleteStaleGeneratedJson(generatedAssetFolder, expectedJsonPaths);
             return asset;
         }
 
