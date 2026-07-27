@@ -54,6 +54,56 @@ A separate assembly/API-focused pass checked the new tests and editor code again
 
 The migration now moves the room folder and its sibling `.meta` as one ownership unit, deletes deleted-room folder metadata, and removes folder-less stale metadata before assigning a path. Dedicated EditMode tests verify both ordinary room moves and deleted-coordinate reuse preserve only the surviving room’s folder GUID.
 
+## Namespace, assembly and editor-hygiene pass
+
+The next pass focused on the code paths most likely to fail only after Unity generates its project references:
+
+- `ShooterMover.Application` remains `noEngineReferences` and the pure compiler references only system libraries plus existing Domain/Contracts dependencies;
+- `ShooterMover.UnityAdapters` directly references Application and Content Definitions for the runtime asset and editor-conditional migration helpers;
+- both EditMode and PlayMode test assemblies directly reference Application, UnityAdapters and Content Definitions, and the new APIs they call are public;
+- every new Editor implementation file remains under `Assets/.../Editor` and is guarded by `UNITY_EDITOR`;
+- fourteen stale namespace imports and one dead folder-name helper were removed;
+- generated output now deletes stale JSON files only after the new manifest, TextAssets and runtime asset have been successfully written;
+- transaction stage/backup `.meta` files are cleaned up;
+- post-commit cleanup is best-effort so a failed backup deletion cannot report failure after the new package is already authoritative.
+
+The remaining assembly-level uncertainty is the actual Editor compilation produced by Unity. The existing EditMode test assembly does not directly execute `LevelGridV2PlayableExporter` or `LevelGridV2AssetCompiler`; it exercises the pure compiler and the migration helper. A dedicated Editor tooling assembly plus Editor test assembly would make those classes compile-testable and fault-testable without relying on manual inspection.
+
+## Why the pull request is large
+
+At the current audit point, the pull request contains 6,133 added lines across 125 changed files. The additions break down as:
+
+```text
+3,323  production C# compiler/export/runtime integration
+1,112  EditMode and PlayMode tests
+1,351  authored/generated JSON, Unity assets and .meta files
+  347  authoring and verification documentation
+-----
+6,133  total additions
+```
+
+The production C# itself is large because this PR combines five distinct responsibilities: V2 schema/validation, V2→V1 compilation, editor export and folder migration, generated-asset publication, and one registered playable sample. The test code also duplicates sizeable JSON fixture builders, while Unity doubles many authored/generated files with required `.meta` companions.
+
+A more reviewable delivery would have split this into at least three PRs:
+
+1. pure V2 compiler and schema validation;
+2. editor export/migration and transactional filesystem behavior;
+3. generated sample assets, catalogue registration and gameplay acceptance.
+
+A shared test-package builder and shared schema DTO layer would also remove several hundred lines without reducing coverage.
+
+## What would have caught the audit findings earlier
+
+The strongest preventive gates would have been:
+
+1. **Unity batchmode CI on every push** — project import/C# compile, EditMode tests and PlayMode tests using Unity 6000.3.19f1.
+2. **A dedicated Editor asmdef and Editor test asmdef** — direct compilation and tests for the exporter and asset compiler, rather than testing only the runtime compiler/migration seam.
+3. **A failure-mode matrix written before implementation** — move, swap, delete, coordinate reuse, wrong destination, stale `.meta`, broad-rule overlap, malformed sidecars and extra player starts.
+4. **Fault-injected filesystem tests** — simulate failures during copy, move, replacement and cleanup so transaction commit points are explicit.
+5. **Roslyn/style analysis** — unused-import and dead-code diagnostics elevated from IDE hints before review.
+6. **Smaller PRs with generated files visually separated** — reviewers can inspect compiler semantics without 1,351 lines of JSON/Unity metadata competing for attention.
+7. **Invariant/property tests** — permuting room coordinates must never alter compiled progression, gates or stable sidecar ownership.
+
 ## Static verification performed in the connected environment
 
 - inspected merged PR #333 and current `main` authoring/runtime boundaries;
