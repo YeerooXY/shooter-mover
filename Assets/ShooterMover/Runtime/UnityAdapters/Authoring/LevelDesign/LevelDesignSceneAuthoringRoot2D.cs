@@ -126,12 +126,31 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 connections.Add(connectionComponents[index].BuildRecord());
             }
 
-            lastGridValidation = LevelGridAuthoringV2CompositeValidator.Validate(
+            string finalExitRoomId = string.Empty;
+            string finalExitDoorId = string.Empty;
+            LevelGridPlayableMetadataV2 metadata =
+                GetComponent<LevelGridPlayableMetadataV2>();
+            if (metadata != null
+                && metadata.FinalExitRoom != null
+                && metadata.FinalExitDoor != null
+                && metadata.FinalExitRoom.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>()
+                    == this
+                && metadata.FinalExitDoor.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>()
+                    == this
+                && metadata.FinalExitDoor.OwningRoom == metadata.FinalExitRoom)
+            {
+                finalExitRoomId = metadata.FinalExitRoom.RoomIdText;
+                finalExitDoorId = metadata.FinalExitDoor.DoorIdText;
+            }
+
+            lastGridValidation = LevelGridPlayableValidationV2.Validate(
                 rooms,
                 gridRooms,
                 doors,
                 connections,
-                purpose);
+                purpose,
+                finalExitRoomId,
+                finalExitDoorId);
             return lastGridValidation;
         }
 
