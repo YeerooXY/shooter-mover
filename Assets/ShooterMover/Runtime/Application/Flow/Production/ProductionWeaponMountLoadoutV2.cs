@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Persistence.Accounts;
 
@@ -45,13 +46,12 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Canonical weapon loadout persistence. It stores exactly one record per physical class mount
-    /// and never stores legacy generic weapon-slot placeholders.
+    /// Canonical weapon loadout persistence. It contains exactly one record per physical class
+    /// mount and never stores legacy generic weapon-slot placeholders.
     /// </summary>
     public sealed class WeaponMountLoadoutSnapshotV2
     {
         public const int CurrentSchemaVersion = 2;
-
         private readonly ReadOnlyCollection<WeaponMountBindingV2> bindings;
 
         private WeaponMountLoadoutSnapshotV2(
@@ -59,10 +59,7 @@ namespace ShooterMover.Application.Flow.Production
             IEnumerable<WeaponMountBindingV2> values,
             string fingerprint)
         {
-            if (sequence < 0L)
-            {
-                throw new ArgumentOutOfRangeException(nameof(sequence));
-            }
+            if (sequence < 0L) throw new ArgumentOutOfRangeException(nameof(sequence));
             Sequence = sequence;
             bindings = Canonicalize(values);
             Fingerprint = fingerprint ?? string.Empty;
@@ -97,16 +94,10 @@ namespace ShooterMover.Application.Flow.Production
 
         public WeaponMountBindingV2 Find(StableId mountId)
         {
-            if (mountId == null)
-            {
-                return null;
-            }
+            if (mountId == null) return null;
             for (int index = 0; index < bindings.Count; index++)
             {
-                if (bindings[index].MountId == mountId)
-                {
-                    return bindings[index];
-                }
+                if (bindings[index].MountId == mountId) return bindings[index];
             }
             return null;
         }
@@ -234,11 +225,7 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         public long Sequence { get { return snapshot.Sequence; } }
-
-        public WeaponMountLoadoutSnapshotV2 ExportSnapshot()
-        {
-            return snapshot;
-        }
+        public WeaponMountLoadoutSnapshotV2 ExportSnapshot() { return snapshot; }
 
         public WeaponMountLoadoutImportResultV2 ImportSnapshot(
             WeaponMountLoadoutSnapshotV2 imported)
@@ -254,10 +241,7 @@ namespace ShooterMover.Application.Flow.Production
             snapshot = WeaponMountLoadoutSnapshotV2.CreateCanonical(
                 imported.Sequence,
                 imported.Bindings);
-            return new WeaponMountLoadoutImportResultV2(
-                true,
-                string.Empty,
-                snapshot);
+            return new WeaponMountLoadoutImportResultV2(true, string.Empty, snapshot);
         }
 
         public WeaponMountLoadoutImportResultV2 Apply(
@@ -280,9 +264,7 @@ namespace ShooterMover.Application.Flow.Production
                     bindings);
             }
             catch (Exception exception)
-                when (exception is ArgumentException
-                    || exception is ArgumentOutOfRangeException
-                    || exception is OverflowException)
+                when (exception is ArgumentException || exception is OverflowException)
             {
                 return new WeaponMountLoadoutImportResultV2(
                     false,
@@ -305,12 +287,8 @@ namespace ShooterMover.Application.Flow.Production
                     string.Empty,
                     snapshot);
             }
-
             snapshot = candidate;
-            return new WeaponMountLoadoutImportResultV2(
-                true,
-                string.Empty,
-                snapshot);
+            return new WeaponMountLoadoutImportResultV2(true, string.Empty, snapshot);
         }
 
         private bool Validate(
@@ -337,7 +315,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 expectedMountIds.Add(layout.PhysicalPositions[index].MountStableId);
             }
-
             for (int index = 0; index < candidate.Bindings.Count; index++)
             {
                 WeaponMountBindingV2 binding = candidate.Bindings[index];
@@ -347,9 +324,7 @@ namespace ShooterMover.Application.Flow.Production
                     return false;
                 }
                 ProductionWeaponMountPositionV1 position =
-                    ProductionWeaponMountPolicyV1.FindPosition(
-                        layout,
-                        binding.MountId);
+                    ProductionWeaponMountPolicyV1.FindPosition(layout, binding.MountId);
                 if (position == null)
                 {
                     rejectionCode = "weapon-mount-loadout-v2-mount-unresolved";
@@ -379,16 +354,10 @@ namespace ShooterMover.Application.Flow.Production
             IReadOnlyList<WeaponMountBindingV2> left,
             IReadOnlyList<WeaponMountBindingV2> right)
         {
-            if (left == null || right == null || left.Count != right.Count)
-            {
-                return false;
-            }
+            if (left == null || right == null || left.Count != right.Count) return false;
             for (int index = 0; index < left.Count; index++)
             {
-                if (!left[index].Equals(right[index]))
-                {
-                    return false;
-                }
+                if (!left[index].Equals(right[index])) return false;
             }
             return true;
         }
@@ -396,8 +365,7 @@ namespace ShooterMover.Application.Flow.Production
         private static IEnumerable<WeaponMountBindingV2> EmptyPhysicalBindings(
             ProductionWeaponMountLayoutV1 source)
         {
-            var values = new List<WeaponMountBindingV2>(
-                source.PhysicalPositions.Count);
+            var values = new List<WeaponMountBindingV2>(source.PhysicalPositions.Count);
             for (int index = 0; index < source.PhysicalPositions.Count; index++)
             {
                 values.Add(new WeaponMountBindingV2(
@@ -552,17 +520,13 @@ namespace ShooterMover.Application.Flow.Production
         {
             for (int index = 0; index < InventoryLoadoutSlotsV1.All.Count; index++)
             {
-                if (InventoryLoadoutSlotsV1.All[index].SlotStableId == slotId)
-                {
-                    return index;
-                }
+                if (InventoryLoadoutSlotsV1.All[index].SlotStableId == slotId) return index;
             }
             throw new InvalidOperationException(
                 "A physical mount has no legacy route projection slot.");
         }
 
-        private static IEnumerable<InventoryLoadoutSlotBindingV1>
-            EmptyLegacyBindings()
+        private static IEnumerable<InventoryLoadoutSlotBindingV1> EmptyLegacyBindings()
         {
             var values = new List<InventoryLoadoutSlotBindingV1>(
                 InventoryLoadoutSlotsV1.All.Count);
@@ -581,7 +545,6 @@ namespace ShooterMover.Application.Flow.Production
     {
         private const string Prefix = "weapon-mount-loadout-v2:";
         private const int MaximumMounts = 4;
-
         public string ContractId { get { return "weapon-mount-loadout-explicit-v2"; } }
 
         public string Encode(WeaponMountLoadoutSnapshotV2 snapshot)
@@ -727,8 +690,7 @@ namespace ShooterMover.Application.Flow.Production
                         authority.ImportSnapshot(snapshot);
                     return result.Succeeded
                         ? SaveComponentApplyResultV1.Applied()
-                        : SaveComponentApplyResultV1.Rejected(
-                            result.RejectionCode);
+                        : SaveComponentApplyResultV1.Rejected(result.RejectionCode);
                 });
         }
 
@@ -745,10 +707,7 @@ namespace ShooterMover.Application.Flow.Production
                 return false;
             }
             SaveComponentSnapshotV1 component;
-            if (!character.TryGetComponent(ComponentId, out component))
-            {
-                return false;
-            }
+            if (!character.TryGetComponent(ComponentId, out component)) return false;
             if (component.SchemaVersion != 2
                 || !string.Equals(
                     component.ContentVersion,
