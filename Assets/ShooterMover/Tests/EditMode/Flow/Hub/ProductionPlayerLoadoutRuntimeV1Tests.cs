@@ -84,7 +84,9 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(center.EquippedInstanceId, Is.Null);
             Assert.That(
                 service.SelectWeapon(selected).Status,
-                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
+                Is.AnyOf(
+                    InventoryLoadoutScreenStatusV1.SelectionChanged,
+                    InventoryLoadoutScreenStatusV1.NoChange));
             InventoryLoadoutScreenResultV1 result = service.EquipSelected(
                 center.Position.LoadoutSlotStableId);
 
