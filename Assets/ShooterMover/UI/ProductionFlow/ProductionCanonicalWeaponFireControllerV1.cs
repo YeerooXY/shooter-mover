@@ -78,8 +78,7 @@ namespace ShooterMover.UI.ProductionFlow
             participantId = new RunParticipantId(
                 StableId.Create(
                     "run-participant",
-                    "canonical-player-"
-                    + Hash64(actorId + "|" + lifecycle)));
+                    "canonical-player-" + Hash64(actorId + "|" + lifecycle)));
         }
 
         internal WeaponActorInstanceId ActorId { get { return actorId; } }
@@ -133,6 +132,7 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private const int MaximumStartupFrames = 600;
         private int attempts;
+        private bool resolutionFailed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetHook()
@@ -183,9 +183,20 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void Update()
         {
+            if (resolutionFailed)
+            {
+                enabled = false;
+                return;
+            }
+
             attempts++;
             CanonicalPlayerWeaponSourceV2 source = FindExactSource();
             Camera gameplayCamera = FindExactCamera();
+            if (resolutionFailed)
+            {
+                enabled = false;
+                return;
+            }
             if (source == null || !source.IsBound || gameplayCamera == null)
             {
                 if (attempts >= MaximumStartupFrames)
@@ -226,16 +237,20 @@ namespace ShooterMover.UI.ProductionFlow
                     .GetComponentsInChildren<CanonicalPlayerWeaponSourceV2>(true);
                 for (int valueIndex = 0; valueIndex < values.Length; valueIndex++)
                 {
-                    if (!values[valueIndex].gameObject.activeInHierarchy) continue;
-                    if (found != null && !ReferenceEquals(found, values[valueIndex]))
+                    CanonicalPlayerWeaponSourceV2 candidate = values[valueIndex];
+                    if (candidate == null || !candidate.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+                    if (found != null && !ReferenceEquals(found, candidate))
                     {
                         Debug.LogError(
                             "canonical-weapon-fire-player-source-duplicated",
                             this);
-                        enabled = false;
+                        resolutionFailed = true;
                         return null;
                     }
-                    found = values[valueIndex];
+                    found = candidate;
                 }
             }
             return found;
@@ -251,7 +266,9 @@ namespace ShooterMover.UI.ProductionFlow
                 for (int valueIndex = 0; valueIndex < values.Length; valueIndex++)
                 {
                     Camera candidate = values[valueIndex];
-                    if (!candidate.enabled || !candidate.gameObject.activeInHierarchy)
+                    if (candidate == null
+                        || !candidate.enabled
+                        || !candidate.gameObject.activeInHierarchy)
                     {
                         continue;
                     }
@@ -260,7 +277,7 @@ namespace ShooterMover.UI.ProductionFlow
                         Debug.LogError(
                             "canonical-weapon-fire-gameplay-camera-duplicated",
                             this);
-                        enabled = false;
+                        resolutionFailed = true;
                         return null;
                     }
                     found = candidate;
@@ -276,6 +293,7 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private static long nextLifecycleGeneration;
 
+        private ProductionCharacterRuntimeGraphV1 graph;
         private CanonicalPlayerWeaponSourceV2 source;
         private Camera gameplayCamera;
         private ProductionCanonicalWeaponActorStateV1 actorState;
@@ -330,23 +348,30 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionCharacterRuntimeGraphV1 configuredGraph;
             ProductionFlowProfileRecordV1 profile;
             if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
-                    out graph,
+                    out configuredGraph,
                     out profile)
-                || graph == null
+                || configuredGraph == null
                 || profile == null
-                || graph.IsDisposed
-                || graph.Character.CharacterInstanceStableId
-                    != configuredSource.CharacterInstanceId)
+                || configuredGraph.IsDisposed
+                || configuredGraph.Character.CharacterInstanceStableId
+                    != configuredSource.CharacterInstanceId
+                || configuredSource.ExactInstance.InstanceId
+                    != configuredSource.ExactWeaponInstanceId
+                || !configuredSource.ExactInstance.WeaponDefinitionId.Value.Equals(
+                    configuredSource.WeaponDefinitionId,
+                    StringComparison.Ordinal)
+                || !configuredSource.ResolvedMark.Blueprint.DefinitionId.Equals(
+                    configuredSource.ExactInstance.WeaponDefinitionId))
             {
                 return false;
             }
 
             ProductionWeaponMountPositionV1 exactMount;
             if (!TryResolveExactFirstActiveMount(
-                    graph.LoadoutRuntime,
+                    configuredGraph.LoadoutRuntime,
                     configuredSource.ExactWeaponInstanceId,
                     out exactMount))
             {
@@ -362,28 +387,56 @@ namespace ShooterMover.UI.ProductionFlow
                 || liveEquipment.InstanceId
                     != configuredSource.ExactWeaponInstanceId)
             {
-                Report("canonical-weapon-fire-live-equipment-unresolved:" + rejectionCode);
+                Report("canonical-weapon-fire-live-equipment-unresolved:"
+                    + rejectionCode);
                 return false;
             }
 
+            ProductionCanonicalWeaponActorStateV1 stagedActor = null;
+            InventoryWeaponRuntimeComposition stagedRuntime = null;
             ProductionCanonicalProjectileEffectSink2D stagedSink = null;
+            bool sinkAdded = false;
             try
             {
                 var exactDefinition = new WeaponDefinitionId(
                     configuredSource.WeaponDefinitionId);
                 var exactEquipmentInstanceId = new EquipmentInstanceId(
                     configuredSource.ExactWeaponInstanceId);
+                var exactLookup = new CanonicalWeaponEquipmentProjectionLookupV2(
+                    configuredGraph.LoadoutRuntime.WeaponHoldings,
+                    configuredGraph.LoadoutRuntime.EquipmentCatalog,
+                    configuredGraph.LoadoutRuntime.Holdings);
+                EquipmentInstance exactProjection;
+                if (!exactLookup.TryResolve(
+                        exactEquipmentInstanceId,
+                        out exactProjection)
+                    || exactProjection == null
+                    || exactProjection.InstanceId
+                        != configuredSource.ExactWeaponInstanceId
+                    || exactProjection.DefinitionId != liveEquipment.DefinitionId)
+                {
+                    throw new InvalidOperationException(
+                        "canonical-weapon-fire-exact-projection-rejected");
+                }
+
                 var resolver = new BoundCanonicalWeaponBlueprintResolverV1(
                     exactDefinition,
                     configuredSource.ResolvedMark.Blueprint);
                 long lifecycle = checked(++nextLifecycleGeneration);
-                var stagedActor = new ProductionCanonicalWeaponActorStateV1(
+                stagedActor = new ProductionCanonicalWeaponActorStateV1(
                     configuredSource.CharacterInstanceId,
                     lifecycle);
+
                 stagedSink = GetComponent<
-                    ProductionCanonicalProjectileEffectSink2D>()
-                    ?? gameObject.AddComponent<
-                        ProductionCanonicalProjectileEffectSink2D>();
+                    ProductionCanonicalProjectileEffectSink2D>();
+                if (stagedSink != null)
+                {
+                    throw new InvalidOperationException(
+                        "canonical-weapon-fire-unowned-effect-sink-present");
+                }
+                stagedSink = gameObject.AddComponent<
+                    ProductionCanonicalProjectileEffectSink2D>();
+                sinkAdded = true;
                 if (!stagedSink.TryBindSource(
                         stagedActor.ActorId,
                         stagedActor.Lifecycle,
@@ -399,15 +452,15 @@ namespace ShooterMover.UI.ProductionFlow
                     1,
                     Mathf.RoundToInt(1f / Time.fixedDeltaTime));
                 var adapter = new InventoryBackedWeaponExecutionAdapter(
-                    graph.LoadoutRuntime.Holdings,
-                    graph.LoadoutRuntime.EquipmentCatalog,
-                    graph.LoadoutRuntime.WeaponCatalog,
+                    exactLookup,
+                    configuredGraph.LoadoutRuntime.EquipmentCatalog,
+                    configuredGraph.LoadoutRuntime.WeaponCatalog,
                     stagedActor,
                     stagedSink,
                     ticksPerSecond,
                     resolver,
                     new UnaugmentedWeaponModifierSetResolver());
-                var stagedRuntime = new InventoryWeaponRuntimeComposition(
+                stagedRuntime = new InventoryWeaponRuntimeComposition(
                     stagedActor,
                     new[]
                     {
@@ -418,6 +471,7 @@ namespace ShooterMover.UI.ProductionFlow
                     },
                     adapter);
 
+                graph = configuredGraph;
                 source = configuredSource;
                 gameplayCamera = configuredCamera;
                 actorState = stagedActor;
@@ -430,8 +484,12 @@ namespace ShooterMover.UI.ProductionFlow
             catch (Exception exception)
             {
                 if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
-                Report("canonical-weapon-fire-composition-rejected:" + exception.Message);
+                if (stagedRuntime != null) stagedRuntime.Dispose();
+                if (stagedActor != null) stagedActor.Deactivate();
                 if (stagedSink != null) stagedSink.RetireOwnerPresentation();
+                if (sinkAdded && stagedSink != null) Destroy(stagedSink);
+                Report("canonical-weapon-fire-composition-rejected:"
+                    + exception.Message);
                 return false;
             }
         }
@@ -461,6 +519,15 @@ namespace ShooterMover.UI.ProductionFlow
         private void FixedUpdate()
         {
             if (!bound || runtime == null || actorState == null) return;
+            string authorityRejection;
+            if (!HasCurrentExactAuthority(out authorityRejection))
+            {
+                Report(authorityRejection);
+                Shutdown();
+                enabled = false;
+                return;
+            }
+
             simulationTick = checked(simulationTick + 1L);
             Vector2 origin = ResolveOrigin();
             var operationId = new FireOperationId(
@@ -485,6 +552,73 @@ namespace ShooterMover.UI.ProductionFlow
                 weaponAim);
             ReportResult(input);
             ReportResult(runtime.Advance(simulationTick));
+        }
+
+        private bool HasCurrentExactAuthority(out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            ProductionCharacterRuntimeGraphV1 currentGraph;
+            ProductionFlowProfileRecordV1 profile;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out currentGraph,
+                    out profile)
+                || currentGraph == null
+                || profile == null
+                || currentGraph.IsDisposed
+                || !ReferenceEquals(currentGraph, graph))
+            {
+                rejectionCode =
+                    "canonical-weapon-fire-current-character-authority-stale";
+                return false;
+            }
+            if (source == null
+                || !source.IsBound
+                || source.CharacterInstanceId
+                    != graph.Character.CharacterInstanceStableId)
+            {
+                rejectionCode = "canonical-weapon-fire-player-source-stale";
+                return false;
+            }
+
+            WeaponEquipmentInstance held = graph.LoadoutRuntime.WeaponHoldings.Find(
+                source.ExactWeaponInstanceId);
+            if (held == null
+                || held.InstanceId != source.ExactWeaponInstanceId
+                || !held.WeaponDefinitionId.Value.Equals(
+                    source.WeaponDefinitionId,
+                    StringComparison.Ordinal))
+            {
+                rejectionCode = "canonical-weapon-fire-exact-ownership-stale";
+                return false;
+            }
+
+            ProductionWeaponMountPositionV1 currentMount;
+            if (!TryResolveExactFirstActiveMount(
+                    graph.LoadoutRuntime,
+                    source.ExactWeaponInstanceId,
+                    out currentMount)
+                || currentMount == null
+                || mountPosition == null
+                || currentMount.MountStableId != mountPosition.MountStableId)
+            {
+                rejectionCode = "canonical-weapon-fire-exact-mount-stale";
+                return false;
+            }
+
+            EquipmentInstance liveEquipment;
+            string projectionRejection;
+            if (!source.TryResolveLiveEquipment(
+                    out liveEquipment,
+                    out projectionRejection)
+                || liveEquipment == null
+                || liveEquipment.InstanceId != source.ExactWeaponInstanceId)
+            {
+                rejectionCode = string.IsNullOrWhiteSpace(projectionRejection)
+                    ? "canonical-weapon-fire-live-projection-stale"
+                    : projectionRejection;
+                return false;
+            }
+            return true;
         }
 
         private Vector2 ResolveOrigin()
@@ -588,6 +722,11 @@ namespace ShooterMover.UI.ProductionFlow
             if (effectSink != null) effectSink.RetireOwnerPresentation();
             runtime = null;
             actorState = null;
+            effectSink = null;
+            mountPosition = null;
+            gameplayCamera = null;
+            source = null;
+            graph = null;
         }
     }
 }
