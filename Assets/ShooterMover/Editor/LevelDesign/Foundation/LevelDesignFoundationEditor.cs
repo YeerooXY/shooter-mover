@@ -58,23 +58,29 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                "Level Grid Authoring V2",
+                "Level Grid Authoring V2 — Phase 1",
                 EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Validate Draft"))
             {
+                LevelGridDoorOperationsV2.ReflowAll(root);
+                LevelDesignValidationResult foundation = root.ValidateHierarchy();
                 LevelGridValidationResultV2 result = root.ValidateGridAuthoring(
                     LevelGridValidationPurposeV2.Draft);
                 EditorUtility.SetDirty(root);
                 SceneView.RepaintAll();
+                LogResult(root, foundation);
                 LogGridResult(root, result);
             }
             if (GUILayout.Button("Validate Production"))
             {
+                LevelGridDoorOperationsV2.ReflowAll(root);
+                LevelDesignValidationResult foundation = root.ValidateHierarchy();
                 LevelGridValidationResultV2 result = root.ValidateGridAuthoring(
                     LevelGridValidationPurposeV2.ProductionPublish);
                 EditorUtility.SetDirty(root);
                 SceneView.RepaintAll();
+                LogResult(root, foundation);
                 LogGridResult(root, result);
             }
             EditorGUILayout.EndHorizontal();
@@ -85,18 +91,21 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             LevelGridValidationResultV2 grid = root.LastGridValidation;
-            MessageType gridType = grid.ErrorCount > 0
+            bool combinedPublishAllowed = last.IsValid && grid.CanPublish;
+            MessageType gridType = !last.IsValid || grid.ErrorCount > 0
                 ? MessageType.Error
                 : grid.WarningCount > 0
                     ? MessageType.Warning
                     : MessageType.Info;
             EditorGUILayout.HelpBox(
                 "Mode: " + grid.Purpose
-                + " | Errors: " + grid.ErrorCount
-                + " | Warnings: " + grid.WarningCount
+                + " | Foundation errors: " + last.ErrorCount
+                + " | V2 errors: " + grid.ErrorCount
+                + " | V2 warnings: " + grid.WarningCount
                 + "\nDraft save: allowed"
-                + "\nProduction publish: "
-                + (grid.CanPublish ? "allowed" : "blocked"),
+                + "\nValidated authoring publish: "
+                + (combinedPublishAllowed ? "allowed" : "blocked")
+                + "\nRuntime importer: not connected in Phase 1",
                 gridType);
         }
 
@@ -278,7 +287,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Handles.Label(
                 bounds.bounds.center,
                 room.EditorLabel + "\n" + room.RoomIdText
-                    + "  grid " + room.GridCoordinate);
+                    + "  grid " + room.GridCoordinate
+                    + " slot " + room.FolderSlot.ToString("00"));
         }
 
         [DrawGizmo(
