@@ -8,7 +8,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
     public sealed class ProductionOpaqueWeaponInstanceIdentityTests
     {
         [Test]
-        public void AggressiveStarterCreatesTwoOpaqueInstancesAndLeavesOtherMountsEmpty()
+        public void AggressiveStarterCreatesTwoOpaqueInstancesForTwoActiveMounts()
         {
             ProductionWeaponInventoryStateV1 state =
                 ProductionWeaponOnboardingV1.CreateStarter(
@@ -16,22 +16,33 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     StableId.Parse(
                         ProductionWeaponMountPolicyV1
                             .AggressiveLoadoutProfileId));
+            ProductionWeaponMountSetV1 mountSet =
+                ProductionWeaponMountPolicyV1.BuildMountSet(
+                    state.RoutePayload);
 
             StableId[] owned = state.Holdings.UniqueHoldings
                 .Select(value => value.InstanceStableId)
                 .ToArray();
-            StableId[] equipped = state.Loadout.Bindings
-                .Where(value => value.EquipmentInstanceStableId != null)
+            StableId[] equipped = mountSet.EnabledBindings
                 .Select(value => value.EquipmentInstanceStableId)
                 .ToArray();
+            ProductionWeaponMountBindingV1 locked = mountSet
+                .ConfiguredBindings.Single(value =>
+                    ProductionWeaponMountPolicyV1.FindPosition(
+                        mountSet.Layout,
+                        value.MountStableId).IsLockedBySkill);
 
+            Assert.That(mountSet.Layout.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(mountSet.Layout.ActiveMountCount, Is.EqualTo(2));
+            Assert.That(
+                mountSet.Layout.LockedBySkillMountCount,
+                Is.EqualTo(1));
+            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(2));
             Assert.That(owned.Length, Is.EqualTo(2));
             Assert.That(owned.Distinct().Count(), Is.EqualTo(2));
             Assert.That(equipped, Is.EquivalentTo(owned));
-            Assert.That(
-                state.Loadout.Bindings.Count(value =>
-                    value.EquipmentInstanceStableId == null),
-                Is.EqualTo(2));
+            Assert.That(locked.EquipmentInstanceStableId, Is.Null);
 
             foreach (StableId instanceId in owned)
             {
