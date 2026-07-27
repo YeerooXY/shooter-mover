@@ -9,7 +9,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 {
     public sealed partial class LevelGridEditorWindowV2 : EditorWindow
     {
-
         private void ShowRootMenu()
         {
             GenericMenu menu = new GenericMenu();
@@ -58,6 +57,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             SaveViewState();
             activeRoot = root;
             selectedProblem = null;
+            selectedFoundationIssue = null;
             selectedAuthoringObject = root;
             projectionDirty = true;
             if (root == null)
@@ -70,6 +70,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 EditorPrefs.SetString(RootPreferenceKey, globalId.ToString());
             }
             LoadViewState();
+            ValidateActiveRootDraft();
             EnsureProjection();
             Repaint();
         }
@@ -96,28 +97,46 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (string.IsNullOrEmpty(persisted)
                 || !GlobalObjectId.TryParse(persisted, out globalId))
             {
+                ValidateActiveRootDraft();
                 return;
             }
 
             activeRoot = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(globalId)
                 as LevelDesignSceneAuthoringRoot2D;
+            if (activeRoot != null)
+            {
+                selectedAuthoringObject = activeRoot;
+                ValidateActiveRootDraft();
+            }
+        }
+
+        private void ValidateActiveRootDraft()
+        {
+            if (activeRoot == null)
+            {
+                return;
+            }
+
+            activeRoot.ValidateHierarchy();
+            activeRoot.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
+            projectionDirty = true;
         }
 
         private void OnUndoRedo()
         {
-            RequestRefresh(true);
+            RequestRefresh(false);
         }
 
         private void OnHierarchyChanged()
         {
-            RequestRefresh(true);
+            RequestRefresh(false);
         }
 
         private void OnObjectChangesPublished(ref ObjectChangeEventStream stream)
         {
             if (activeRoot != null)
             {
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
         }
 
@@ -127,6 +146,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 return;
             }
+            if (pendingProblemSelectionObject != null
+                && Selection.activeObject == pendingProblemSelectionObject)
+            {
+                pendingProblemSelectionObject = null;
+                Repaint();
+                return;
+            }
+            pendingProblemSelectionObject = null;
 
             UnityEngine.Object selected = ResolveAuthoringSelection(Selection.activeObject);
             Component selectedComponent = selected as Component;
@@ -135,6 +162,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 selectedAuthoringObject = selected;
                 selectedProblem = null;
+                selectedFoundationIssue = null;
                 Repaint();
                 return;
             }
@@ -159,25 +187,19 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private void RequestRefresh(bool queueValidation)
         {
             projectionDirty = true;
-            if (queueValidation && activeRoot != null && !validationQueued)
-            {
-                validationQueued = true;
-                EditorApplication.delayCall += RunQueuedDraftValidation;
-            }
+            Repaint();
+        }
+
+        internal void RefreshAfterExternalValidation()
+        {
+            projectionDirty = true;
             Repaint();
         }
 
         private void RunQueuedDraftValidation()
         {
             validationQueued = false;
-            if (activeRoot == null)
-            {
-                return;
-            }
-            activeRoot.ValidateHierarchy();
-            activeRoot.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            projectionDirty = true;
-            Repaint();
+            RequestRefresh(false);
         }
 
         private void EnsureProjection()
@@ -194,6 +216,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             selectedAuthoringObject = selected;
             selectedProblem = null;
+            selectedFoundationIssue = null;
             suppressSelectionSync = true;
             Selection.activeObject = selected;
             suppressSelectionSync = false;
@@ -205,7 +228,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (selected is LevelDoorEndpointAuthoring2D
                 || selected is LevelDoorLinkAuthoring2D
                 || selected is LevelRoomAuthoring2D
-                || selected is LevelDesignSceneAuthoringRoot2D)
+                || selected is LevelDesignSceneAuthoringRoot2D
+                || selected is LevelPlacementAuthoring2D
+                || selected is LevelDoorConnectionAuthoring2D
+                || selected is LevelVoidRegionAuthoring2D)
             {
                 return selected;
             }
@@ -232,6 +258,24 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (connection != null)
             {
                 return connection;
+            }
+            LevelPlacementAuthoring2D placement =
+                gameObject.GetComponent<LevelPlacementAuthoring2D>();
+            if (placement != null)
+            {
+                return placement;
+            }
+            LevelDoorConnectionAuthoring2D legacyDoor =
+                gameObject.GetComponent<LevelDoorConnectionAuthoring2D>();
+            if (legacyDoor != null)
+            {
+                return legacyDoor;
+            }
+            LevelVoidRegionAuthoring2D voidRegion =
+                gameObject.GetComponent<LevelVoidRegionAuthoring2D>();
+            if (voidRegion != null)
+            {
+                return voidRegion;
             }
             LevelRoomAuthoring2D room =
                 gameObject.GetComponentInParent<LevelRoomAuthoring2D>();
@@ -265,16 +309,24 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Rect roomRect)
         {
             if (door.PlacementMode == LevelDoorPlacementModeV2.Fixed
-                && door.OwningRoom != null
-                && door.OwningRoom.RoomBounds != null)
+                && door.OwningRoom != null)
             {
-                Bounds bounds = door.OwningRoom.RoomBounds.bounds;
-                Vector3 world = door.transform.position;
-                float x = Mathf.InverseLerp(bounds.min.x, bounds.max.x, world.x);
-                float y = Mathf.InverseLerp(bounds.min.y, bounds.max.y, world.y);
-                return new Vector2(
-                    Mathf.Lerp(roomRect.xMin, roomRect.xMax, x),
-                    Mathf.Lerp(roomRect.yMax, roomRect.yMin, y));
+                Rect roomLocalBounds;
+                if (TryResolveRoomLocalBounds(door.OwningRoom, out roomLocalBounds))
+                {
+                    Vector2 fixedPosition = door.FixedLocalPosition;
+                    float x = UnclampedInverseLerp(
+                        roomLocalBounds.xMin,
+                        roomLocalBounds.xMax,
+                        fixedPosition.x);
+                    float y = UnclampedInverseLerp(
+                        roomLocalBounds.yMin,
+                        roomLocalBounds.yMax,
+                        fixedPosition.y);
+                    return new Vector2(
+                        Mathf.LerpUnclamped(roomRect.xMin, roomRect.xMax, x),
+                        Mathf.LerpUnclamped(roomRect.yMax, roomRect.yMin, y));
+                }
             }
 
             float offset = Mathf.Clamp01(door.EdgeOffset);
@@ -297,6 +349,110 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         roomRect.xMin,
                         Mathf.Lerp(roomRect.yMax, roomRect.yMin, offset));
             }
+        }
+
+        private static bool TryResolveRoomLocalBounds(
+            LevelRoomAuthoring2D room,
+            out Rect localBounds)
+        {
+            localBounds = default(Rect);
+            if (room == null || room.RoomBounds == null)
+            {
+                return false;
+            }
+
+            BoxCollider2D box = room.RoomBounds as BoxCollider2D;
+            if (box != null)
+            {
+                Vector2 half = box.size * 0.5f;
+                Vector2 min = box.offset - half;
+                Vector2 max = box.offset + half;
+                Vector3[] corners =
+                {
+                    new Vector3(min.x, min.y, 0f),
+                    new Vector3(min.x, max.y, 0f),
+                    new Vector3(max.x, min.y, 0f),
+                    new Vector3(max.x, max.y, 0f),
+                };
+                return TryBuildRoomLocalRect(
+                    room.transform,
+                    box.transform,
+                    corners,
+                    out localBounds);
+            }
+
+            Bounds worldBounds = room.RoomBounds.bounds;
+            Vector3[] worldCorners =
+            {
+                new Vector3(worldBounds.min.x, worldBounds.min.y, 0f),
+                new Vector3(worldBounds.min.x, worldBounds.max.y, 0f),
+                new Vector3(worldBounds.max.x, worldBounds.min.y, 0f),
+                new Vector3(worldBounds.max.x, worldBounds.max.y, 0f),
+            };
+            return TryBuildRoomLocalRectFromWorld(
+                room.transform,
+                worldCorners,
+                out localBounds);
+        }
+
+        private static bool TryBuildRoomLocalRect(
+            Transform roomTransform,
+            Transform sourceTransform,
+            Vector3[] sourceCorners,
+            out Rect localBounds)
+        {
+            Vector3[] worldCorners = new Vector3[sourceCorners.Length];
+            for (int index = 0; index < sourceCorners.Length; index++)
+            {
+                worldCorners[index] = sourceTransform.TransformPoint(sourceCorners[index]);
+            }
+            return TryBuildRoomLocalRectFromWorld(
+                roomTransform,
+                worldCorners,
+                out localBounds);
+        }
+
+        private static bool TryBuildRoomLocalRectFromWorld(
+            Transform roomTransform,
+            Vector3[] worldCorners,
+            out Rect localBounds)
+        {
+            localBounds = default(Rect);
+            if (roomTransform == null || worldCorners == null || worldCorners.Length == 0)
+            {
+                return false;
+            }
+
+            Vector3 first = roomTransform.InverseTransformPoint(worldCorners[0]);
+            float minX = first.x;
+            float maxX = first.x;
+            float minY = first.y;
+            float maxY = first.y;
+            for (int index = 1; index < worldCorners.Length; index++)
+            {
+                Vector3 local = roomTransform.InverseTransformPoint(worldCorners[index]);
+                minX = Mathf.Min(minX, local.x);
+                maxX = Mathf.Max(maxX, local.x);
+                minY = Mathf.Min(minY, local.y);
+                maxY = Mathf.Max(maxY, local.y);
+            }
+
+            if (Mathf.Approximately(minX, maxX) || Mathf.Approximately(minY, maxY))
+            {
+                return false;
+            }
+
+            localBounds = Rect.MinMaxRect(minX, minY, maxX, maxY);
+            return true;
+        }
+
+        private static float UnclampedInverseLerp(float start, float end, float value)
+        {
+            if (Mathf.Approximately(start, end))
+            {
+                return 0.5f;
+            }
+            return (value - start) / (end - start);
         }
 
         private void ResolveNearestEdge(
@@ -531,30 +687,46 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 room = door.OwningRoom;
             }
+
             LevelDoorLinkAuthoring2D link =
                 selectedAuthoringObject as LevelDoorLinkAuthoring2D;
-            if (link != null)
+            if (link != null
+                && TryFrameRoomPair(link.SourceRoom, link.DestinationRoom))
             {
-                LevelRoomAuthoring2D source = link.SourceRoom;
-                LevelRoomAuthoring2D destination = link.DestinationRoom;
-                if (source != null && destination != null)
+                return;
+            }
+
+            LevelDoorConnectionAuthoring2D legacyDoor =
+                selectedAuthoringObject as LevelDoorConnectionAuthoring2D;
+            if (legacyDoor != null
+                && TryFrameRoomPair(legacyDoor.SourceRoom, legacyDoor.DestinationRoom))
+            {
+                return;
+            }
+
+            LevelPlacementAuthoring2D placement =
+                selectedAuthoringObject as LevelPlacementAuthoring2D;
+            if (placement != null)
+            {
+                room = placement.Room;
+            }
+
+            LevelVoidRegionAuthoring2D voidRegion =
+                selectedAuthoringObject as LevelVoidRegionAuthoring2D;
+            if (voidRegion != null)
+            {
+                room = voidRegion.Room;
+            }
+
+            if (room == null)
+            {
+                Component component = selectedAuthoringObject as Component;
+                if (component != null)
                 {
-                    int minX = Mathf.Min(
-                        source.GridCoordinate.x,
-                        destination.GridCoordinate.x);
-                    int minY = Mathf.Min(
-                        source.GridCoordinate.y,
-                        destination.GridCoordinate.y);
-                    int maxX = Mathf.Max(
-                        source.GridCoordinate.x + source.FootprintCells.x,
-                        destination.GridCoordinate.x + destination.FootprintCells.x);
-                    int maxY = Mathf.Max(
-                        source.GridCoordinate.y + source.FootprintCells.y,
-                        destination.GridCoordinate.y + destination.FootprintCells.y);
-                    FrameGridBounds(minX, minY, maxX, maxY);
-                    return;
+                    room = component.GetComponentInParent<LevelRoomAuthoring2D>();
                 }
             }
+
             if (room == null)
             {
                 FrameAll();
@@ -565,6 +737,31 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 room.GridCoordinate.y,
                 room.GridCoordinate.x + room.FootprintCells.x,
                 room.GridCoordinate.y + room.FootprintCells.y);
+        }
+
+        private bool TryFrameRoomPair(
+            LevelRoomAuthoring2D source,
+            LevelRoomAuthoring2D destination)
+        {
+            if (source == null || destination == null)
+            {
+                return false;
+            }
+
+            int minX = Mathf.Min(
+                source.GridCoordinate.x,
+                destination.GridCoordinate.x);
+            int minY = Mathf.Min(
+                source.GridCoordinate.y,
+                destination.GridCoordinate.y);
+            int maxX = Mathf.Max(
+                source.GridCoordinate.x + source.FootprintCells.x,
+                destination.GridCoordinate.x + destination.FootprintCells.x);
+            int maxY = Mathf.Max(
+                source.GridCoordinate.y + source.FootprintCells.y,
+                destination.GridCoordinate.y + destination.FootprintCells.y);
+            FrameGridBounds(minX, minY, maxX, maxY);
+            return true;
         }
 
         private void FrameGridBounds(int minX, int minY, int maxX, int maxY)
