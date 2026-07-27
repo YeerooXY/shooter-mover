@@ -62,7 +62,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 BuildDiagnosticLocation());
         }
 
-        [ContextMenu("Assign New Stable ID")]
         public void AssignNewStableId()
         {
             connectionId = LevelDesignAuthoringId.New("connection");
