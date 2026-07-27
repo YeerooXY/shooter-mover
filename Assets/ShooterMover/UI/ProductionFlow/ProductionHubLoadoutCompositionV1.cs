@@ -1,7 +1,9 @@
 using System;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Weapons;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -268,6 +270,16 @@ namespace ShooterMover.UI.ProductionFlow
                 runtime.EquipmentCatalog,
                 runtime.WeaponCatalog);
             controller.Present(HubRouteV1.Inventory, payload);
+
+            InventoryEconomySafetyOverlayV1 safetyOverlay =
+                controller.GetComponent<InventoryEconomySafetyOverlayV1>();
+            if (safetyOverlay == null)
+            {
+                safetyOverlay = controller.gameObject
+                    .AddComponent<InventoryEconomySafetyOverlayV1>();
+            }
+            safetyOverlay.Configure(controller);
+
             controller.Confirmed -= HandleConfirmed;
             controller.Confirmed += HandleConfirmed;
             boundController = controller;
@@ -299,6 +311,110 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 instance = null;
             }
+        }
+    }
+
+    /// <summary>
+    /// Read-only Inventory projection for unsupported canonical weapon operations. It consumes the
+    /// shared structured policy and never writes wallet, receipt, holdings, assignment or mount state.
+    /// </summary>
+    [DefaultExecutionOrder(31900)]
+    [DisallowMultipleComponent]
+    public sealed class InventoryEconomySafetyOverlayV1 : MonoBehaviour
+    {
+        private InventoryLoadoutScreenControllerV1 controller;
+        private GUIStyle warningStyle;
+        private GUIStyle detailStyle;
+
+        public void Configure(InventoryLoadoutScreenControllerV1 inventoryController)
+        {
+            controller = inventoryController
+                ?? throw new ArgumentNullException(nameof(inventoryController));
+        }
+
+        private void OnGUI()
+        {
+            if (controller == null
+                || controller.CanonicalSnapshot == null
+                || controller.CanonicalSnapshot.SelectedWeapon == null
+                || !string.Equals(
+                    SceneManager.GetActiveScene().path,
+                    ProductionFlowScenePathsV1.Inventory,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            EnsureStyles();
+            WeaponEquipmentInstance instance =
+                controller.CanonicalSnapshot.SelectedWeapon.Instance;
+            ProductionWeaponMarkV1 mark;
+            bool definitionResolved = ProductionWeaponCatalogProvider.Current
+                .TryGetMark(instance.WeaponDefinitionId.Value, out mark)
+                && mark != null;
+            CanonicalWeaponOperationAvailabilityV1 upgrade =
+                CanonicalWeaponSafetyPolicyV1.EvaluateGenericUpgrade(
+                    true,
+                    definitionResolved);
+            CanonicalWeaponOperationAvailabilityV1 live =
+                CanonicalWeaponSafetyPolicyV1.EvaluateLiveExecution(
+                    instance,
+                    definitionResolved);
+            CanonicalWeaponOperationAvailabilityV1 overclock =
+                CanonicalWeaponSafetyPolicyV1.EvaluateOverclockInstallation();
+
+            float width = Mathf.Min(470f, Mathf.Max(300f, Screen.width - 32f));
+            float height = instance.OverclockAssignments.Count == 0 ? 150f : 185f;
+            GUILayout.BeginArea(
+                new Rect(
+                    Screen.width - width - 16f,
+                    Screen.height - height - 16f,
+                    width,
+                    height),
+                GUI.skin.window);
+            GUILayout.Label("WEAPON SAFETY GATE", warningStyle);
+            GUI.enabled = false;
+            GUILayout.Button(
+                "AUGMENT UPGRADE — BLOCKED",
+                GUILayout.MinHeight(30f));
+            GUI.enabled = true;
+            GUILayout.Label(
+                upgrade.RejectionCode + " — " + upgrade.Message,
+                detailStyle);
+
+            if (instance.OverclockAssignments.Count == 0)
+            {
+                GUILayout.Label(
+                    "OVERCLOCK INSTALLATION — NOT AVAILABLE\n"
+                    + overclock.RejectionCode,
+                    detailStyle);
+            }
+            else
+            {
+                GUILayout.Label(
+                    "LIVE EXECUTION — BLOCKED\n"
+                    + live.RejectionCode + " — " + live.Message,
+                    warningStyle);
+            }
+            GUILayout.EndArea();
+        }
+
+        private void EnsureStyles()
+        {
+            if (warningStyle != null)
+            {
+                return;
+            }
+            warningStyle = new GUIStyle(GUI.skin.label)
+            {
+                wordWrap = true,
+                fontStyle = FontStyle.Bold,
+            };
+            detailStyle = new GUIStyle(GUI.skin.label)
+            {
+                wordWrap = true,
+                fontSize = 11,
+            };
         }
     }
 }
