@@ -23,6 +23,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             StringAssert.DoesNotContain("RunLocalPickupAuthorityV1", source);
             StringAssert.Contains("DevelopmentPickupAuthorityFixtureV1", source);
             StringAssert.Contains("immutableFixtureResult", source);
+            StringAssert.Contains("private readonly RunLootTotalsPresentationV1 runTotals", source);
         }
 
         [Test]
