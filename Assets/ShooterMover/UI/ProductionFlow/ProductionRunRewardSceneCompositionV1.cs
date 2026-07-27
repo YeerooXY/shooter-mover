@@ -22,6 +22,11 @@ namespace ShooterMover.UI.ProductionFlow
     [DisallowMultipleComponent]
     public sealed class ProductionRunRewardSceneCompositionV1 : MonoBehaviour
     {
+        private static readonly StableId SoloPlayModeId =
+            StableId.Parse("play-mode.solo");
+        private static readonly StableId CampaignRewardGameModeId =
+            StableId.Parse("game-mode.campaign");
+
         private ProductionPlayableLevelControllerV1 controller;
         private JsonRoomRuntimeBootstrap2D roomBootstrap;
         private RoomRuntimeComposition2D rooms;
@@ -84,6 +89,11 @@ namespace ShooterMover.UI.ProductionFlow
                 throw new InvalidOperationException(
                     "The selected mode/level route is missing or does not match the composing scene.");
             }
+            if (modeId != SoloPlayModeId)
+            {
+                throw new InvalidOperationException(
+                    "No production reward game-mode mapping exists for play mode " + modeId);
+            }
 
             ProductionPlayableLevelDefinitionV1 level;
             if (!ProductionPlayableLevelCatalogV1.TryResolve(levelId, out level)
@@ -143,7 +153,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             runtime = ProductionRunRewardRuntimeV1.Create(
                 level,
-                modeId,
+                CampaignRewardGameModeId,
                 graph,
                 coordinator,
                 rooms,
