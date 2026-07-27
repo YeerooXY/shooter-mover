@@ -57,7 +57,7 @@ namespace ShooterMover.UI.ProductionFlow
                         "base-profile.production-playable-level-1",
                         character.ClassDefinitionStableId.ToString(),
                         progression.PlayerLevel,
-                        RunSessionFingerprintV1.Hash(
+                        ProductionRunFingerprintV1.Hash(
                             "production-playable-level-1-base-v1|"
                             + character.ClassDefinitionStableId),
                         values),
@@ -113,7 +113,7 @@ namespace ShooterMover.UI.ProductionFlow
         public long LifecycleGeneration { get; }
         public virtual string SnapshotFingerprint
         {
-            get { return RunSessionFingerprintV1.Hash(PortId + "|" + LifecycleGeneration); }
+            get { return ProductionRunFingerprintV1.Hash(PortId + "|" + LifecycleGeneration); }
         }
         public string ValidateRestart(long retiring, long replacement, long tick)
         {
@@ -200,7 +200,7 @@ namespace ShooterMover.UI.ProductionFlow
         {
             get
             {
-                return RunSessionFingerprintV1.Hash(
+                return ProductionRunFingerprintV1.Hash(
                     PortId + "|" + LifecycleGeneration + "|" + CurrentRoomStableId);
             }
         }
