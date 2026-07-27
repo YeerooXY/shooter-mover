@@ -20,6 +20,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Undo.postprocessModifications += OnPostprocessModifications;
         }
 
+        internal static void MarkSynchronouslyValidated(
+            LevelDesignSceneAuthoringRoot2D root)
+        {
+            if (root != null)
+            {
+                PendingRoots.Remove(root);
+            }
+        }
+
         private static UndoPropertyModification[] OnPostprocessModifications(
             UndoPropertyModification[] modifications)
         {
@@ -91,6 +100,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
 
                 LevelGridDoorOperationsV2.ReflowAll(root);
+                root.ValidateHierarchy();
                 root.ValidateGridAuthoring(root.LastGridValidation.Purpose);
             }
             PendingRoots.Clear();
@@ -100,6 +110,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             for (int index = 0; index < windows.Length; index++)
             {
                 windows[index].Repaint();
+            }
+
+            LevelGridEditorWindowV2[] gridEditors =
+                Resources.FindObjectsOfTypeAll<LevelGridEditorWindowV2>();
+            for (int index = 0; index < gridEditors.Length; index++)
+            {
+                gridEditors[index].RefreshAfterExternalValidation();
             }
             SceneView.RepaintAll();
         }
