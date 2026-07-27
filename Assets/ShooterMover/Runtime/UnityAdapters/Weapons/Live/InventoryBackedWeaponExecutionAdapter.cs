@@ -289,8 +289,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 effectiveRejection =
                     "weapon-live-effective-resolution-numerical-exception";
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                 effectiveResolved = false;
                 effectiveWeapon = null;
                 effectiveRejection = "weapon-live-effective-resolution-exception";
@@ -328,8 +329,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 decision = scheduler.Schedule(firingRequest, previousState);
             }
-            catch
+            catch (Exception exception)
             {
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                 return RejectTransition(
                     request.EquipmentInstanceId,
                     previousState,
@@ -535,8 +537,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 sinkResult = effectSink.TryAccept(entry.ProjectedBatch);
             }
-            catch
+            catch (Exception exception)
             {
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                 return InventoryWeaponPendingDeliveryAttempt.Retry(
                     "weapon-live-retryable-sink-exception");
             }
