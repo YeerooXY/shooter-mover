@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
@@ -79,7 +81,7 @@ namespace ShooterMover.UI.ProductionFlow
                 StableId.Parse("difficulty.normal"),
                 seed,
                 0L,
-                RunSessionFingerprintV1.Hash(
+                ProductionRunFingerprintV1.Hash(
                     "playable-level-event-context-v1|" + level.LevelStableId));
             RunSessionStartResultV1 start = authority.Start(command);
             RunSessionAggregateV1 run;
@@ -256,7 +258,7 @@ namespace ShooterMover.UI.ProductionFlow
                 fact.Identity.EntityInstanceId,
                 fact.Identity.PlacementStableId,
                 fact.LifecycleGeneration,
-                RunSessionFingerprintV1.Hash(
+                ProductionRunFingerprintV1.Hash(
                     "enemy-source-context-v1|" + run.FrozenInputs.Fingerprint + "|"
                     + fact.Identity.RoomStableId + "|" + fact.Identity.PlacementStableId
                     + "|" + fact.Identity.EntityInstanceId + "|"
@@ -407,6 +409,21 @@ namespace ShooterMover.UI.ProductionFlow
                             Array.Empty<RewardScalingInputDescriptorV1>()),
                         1UL),
                 });
+        }
+    }
+
+    internal static class ProductionRunFingerprintV1
+    {
+        public static string Hash(string material)
+        {
+            using (SHA256 hash = SHA256.Create())
+            {
+                byte[] digest = hash.ComputeHash(
+                    Encoding.UTF8.GetBytes(material ?? string.Empty));
+                return BitConverter.ToString(digest)
+                    .Replace("-", string.Empty)
+                    .ToLowerInvariant();
+            }
         }
     }
 }
