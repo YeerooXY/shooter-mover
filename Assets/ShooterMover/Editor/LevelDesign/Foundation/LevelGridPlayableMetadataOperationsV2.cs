@@ -104,13 +104,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (door != null)
             {
                 RequireOwnedDoor(root, door, nameof(door));
+                if (metadata.FinalExitRoom == null)
+                {
+                    throw new InvalidOperationException(
+                        "Select the exact final-exit room before assigning its door.");
+                }
                 if (!door.Traversable)
                 {
                     throw new InvalidOperationException(
                         "The final-exit door must be traversable.");
                 }
-                if (metadata.FinalExitRoom != null
-                    && door.OwningRoom != metadata.FinalExitRoom)
+                if (door.OwningRoom != metadata.FinalExitRoom)
                 {
                     throw new InvalidOperationException(
                         "The final-exit door must belong to the selected final room.");
