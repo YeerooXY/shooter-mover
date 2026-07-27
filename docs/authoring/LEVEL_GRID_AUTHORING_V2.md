@@ -1,46 +1,68 @@
-# Level Grid Authoring V2
+# Level Grid Authoring V2 — Phase 1 Editor Foundation
 
-## Status
+## Status and scope
 
-Track A adds the stable room-grid and door-endpoint authoring workflow on top of
-the existing Level Design Foundation.
+This PR implements **Track A Phase 1**:
 
-The central rule is that **identity, placement, presentation, and connectivity
-are separate concerns**:
+- stable room-grid authoring;
+- stable room-owned door endpoints;
+- stable endpoint-to-endpoint connections;
+- safe room and door editing;
+- non-modal validation;
+- transactional authoring-folder export.
 
-- moving a room changes its grid position, not its identity;
-- moving or re-placing a door changes placement metadata, not its identity;
-- a connection stores exact `room ID + door ID` endpoint references;
-- folder names, GameObject names, coordinates, labels, and hierarchy paths are
-  never persistent identity.
+It does **not** complete the playable-room cutover. The exported package is not
+currently consumed by `RoomContentJsonImporterV1`, `RoomContentBundleV1`, or the
+COMBAT LOOP TEST runtime path. Exported `level.json` states:
 
-## No mandatory room naming
+```json
+{
+  "milestone_scope": "track-a-phase-1-editor-foundation",
+  "runtime_import_status": "not-connected"
+}
+```
 
-Designers are **not required to manually name every room**.
+The runtime compiler/import migration belongs in a follow-up PR with its own
+playable acceptance evidence.
 
-`LevelRoomAuthoring2D.displayName` is optional. When it is empty, the editor and
-map export use an automatic coordinate label such as:
+## Identity and naming
+
+Identity, placement, presentation and connectivity are separate:
+
+- moving a room changes its grid coordinate, not its stable `roomId`;
+- moving a door changes placement metadata, not its stable `doorId`;
+- connections reference exact `room ID + door ID` endpoints;
+- GameObject names, optional labels, folders and hierarchy paths are never
+  persistent identity.
+
+Room display names remain optional. An unnamed room automatically appears as:
 
 ```text
 Room 50,51
 ```
 
-The generated room folder also requires no authored name:
+## Coordinate and slot folder model
+
+Every room stores:
+
+```text
+grid = [50, 51]
+slot = 1
+```
+
+Its deterministic folder is:
 
 ```text
 Room_50_51_01
 ```
 
-That folder name is only a readable export path. The stable `room_id` inside
-`room.json` remains authoritative and does not change when the room moves or the
-folder is regenerated.
+The suffix is not a global room ordinal. Two draft rooms at the same coordinate
+must use distinct slots such as `_01` and `_02`.
 
-Meaningful names may still be supplied for unusual rooms, boss arenas, hubs, or
-other places where a human label is genuinely useful.
+When a room moves, the exporter finds the old folder by stable `room_id`, migrates
+it to the new coordinate+slot path, and moves all sidecars with it.
 
-## Exported level folder
-
-The draft exporter and production publisher create:
+## Exported authoring folder
 
 ```text
 Level folder
@@ -57,61 +79,95 @@ Level folder
         └── encounter.json
 ```
 
-`level.json`, `map.json`, `room.json`, and `doors.json` are regenerated from the
-current authoring graph.
+`level.json`, `map.json`, `room.json` and `doors.json` are generated from the
+current editor graph. Sidecars are created only when missing and are preserved on
+later exports.
 
-The five room-content sidecars are scaffolded only when missing. Existing
-`floor.json`, `enemies.json`, `props.json`, `decor.json`, and `encounter.json`
-files are preserved so a grid export cannot silently erase separately authored
-room content.
+The initial encounter sidecar uses the agreed authoring default:
+
+```json
+{
+  "room": "room.example",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": []
+}
+```
+
+These Phase 1 sidecars are authoring placeholders, not the current V1 runtime
+import schema.
+
+## Transactional export and folder ownership
+
+Export is staged beside the destination and committed only after staged
+validation succeeds.
+
+The exporter blocks instead of writing when:
+
+- the destination is a non-empty unrelated folder;
+- `level.json` belongs to another level;
+- a room folder has no `room.json`;
+- a room identity file is malformed or lacks `room_id`;
+- multiple folders claim one room ID;
+- a desired coordinate+slot folder is owned by another or orphaned room;
+- current rooms have duplicated IDs or coordinate+slot pairs.
+
+It never silently attaches unknown enemies, props, decor or encounter files to a
+new room. A failed export leaves the destination unchanged.
 
 ## Rooms
 
-The existing `LevelRoomAuthoring2D` remains the room authority and stores:
+`LevelRoomAuthoring2D` stores:
 
-- canonical stable room ID;
+- stable room ID;
 - editable grid coordinate;
+- explicit per-coordinate folder slot;
 - cell size and footprint;
-- alignment and bounds;
-- map position/visibility metadata;
+- alignment and collider bounds;
+- map metadata;
 - optional display name.
-
-Changing the transform, hierarchy position, GameObject name, display name, or
-grid coordinate does not change `roomId`.
 
 ## Door endpoints
 
-`LevelDoorEndpointAuthoring2D` represents one physical endpoint owned by one
-room.
-
+`LevelDoorEndpointAuthoring2D` represents one room-owned physical endpoint.
 Each endpoint stores:
 
-- canonical stable door ID;
-- owning room reference;
-- side: north, east, south, or west;
-- placement mode;
-- traversable state;
-- map visibility.
+- stable door ID;
+- owning room;
+- north/east/south/west side;
+- edge-managed or fixed placement;
+- traversable and map-visible state;
+- automatic connection-facing policy.
 
-A room may have any number of doors on the same side. Door side and offset are
-placement metadata, not identity.
+A room may have multiple doors on any side.
 
-### Edge-managed doors
+### Edge-managed placement and reflow
 
-An edge-managed door stores a normalized offset from `0` to `1` along the
-selected room edge. **Snap Door To Placement** recomputes its local position
-from the room bounds.
+An edge-managed door stores a normalized edge offset. When connected rooms move,
+auto-facing endpoints reflow toward the connected room. Fixed doors are never
+auto-reflowed.
 
-### Fixed doors
+A facing mismatch appears non-modally with:
 
-A fixed door stores an explicit local position. Resizing or redistributing room
-edges does not automatically move it.
+```text
+[Reflow] [Keep]
+```
 
-Changing between edge-managed and fixed placement does not change the door ID.
+`Keep` disables automatic facing for that endpoint.
+
+### Fixed placement
+
+Fixed doors export their captured local position. Dragging a fixed door in the
+Scene view updates the stored fixed position through the live authoring loop.
+An explicit command also exists:
+
+```text
+Tools > Shooter Mover > Level Design > Capture Selected Door As Fixed
+```
 
 ## Connections
 
-`LevelDoorLinkAuthoring2D` represents one graph connection. It stores:
+`LevelDoorLinkAuthoring2D` stores stable endpoint references:
 
 ```json
 {
@@ -127,10 +183,8 @@ Changing between edge-managed and fixed placement does not change the door ID.
 }
 ```
 
-Coordinates and labels are never connection keys. A room can therefore move
-without invalidating its connections.
-
-Each door endpoint may participate in at most one connection.
+Each endpoint may participate in at most one connection. The ordinary creation
+command refuses to connect an already connected endpoint.
 
 ## Problems panel
 
@@ -140,120 +194,97 @@ Open:
 Tools > Shooter Mover > Level Design > Open Grid Problems
 ```
 
-The panel is non-modal and refreshes after hierarchy edits and undo/redo. It
-shows:
+The panel refreshes after hierarchy changes, Undo/Redo and normal Inspector or
+Scene property edits. It reports room identities and slots, door identities and
+placement, connection integrity, facing mismatches and unresolved traversable
+doors.
 
-- invalid or duplicated door IDs;
-- invalid or duplicated connection IDs;
-- doors without owning rooms;
-- missing room/door endpoints;
-- endpoint/room mismatches;
-- self-connections;
-- door endpoints used by multiple connections;
-- unconnected traversable doors.
+Problem selection matches both stable ID and diagnostic hierarchy path, so a
+duplicate-ID problem focuses the correct object rather than always selecting the
+first duplicate.
 
-Each problem has a **Select** action that focuses the relevant room, door, or
-connection.
+## Combined validated-authoring gate
 
-Unconnected traversable endpoints are orange during draft validation and red
-after production validation.
+Draft saving remains permissive.
 
-## Draft save and production publish
-
-Two validation purposes are intentionally different.
-
-### Draft
+Validated authoring publish requires **both**:
 
 ```text
-Tools > Shooter Mover > Level Design > Validate Grid Draft
+existing Level Design Foundation validation has zero errors
+AND
+Level Grid V2 graph validation has zero errors
 ```
 
-Unconnected traversable doors are warnings. Draft work remains saveable even
-when the graph is incomplete.
+The existing foundation gate therefore still rejects invalid level IDs, invalid
+or duplicated room IDs, missing room bounds, bad grid metadata, overlaps,
+broken placements and voids, and invalid legacy door composition.
 
-### Production publish
+V2 additionally rejects invalid room slots, endpoint/link failures, multiple
+connection use, unresolved traversable doors, and automatic-facing mismatches.
+
+Command:
 
 ```text
-Tools > Shooter Mover > Level Design > Publish Grid V2 Production Folder...
+Tools > Shooter Mover > Level Design > Publish Grid V2 Validated Authoring Folder...
 ```
 
-Every traversable door must resolve to exactly one connection. An unresolved
-traversable endpoint becomes an error and publishing is blocked. The Problems
-panel opens instead of presenting a repetitive modal confirmation.
+This is a validated **authoring** package, not a playable runtime publish.
 
-A deliberately sealed, decorative, or disabled endpoint must be marked
-non-traversable and does not block publishing.
+## Safe deletion
 
-## Room deletion
-
-Use:
+### Room
 
 ```text
 Tools > Shooter Mover > Level Design > Delete Selected Room (Undoable)
 ```
 
-The command performs one atomic Unity Undo transaction:
+One Undo transaction removes the room and attached links while preserving
+neighbouring endpoints as unresolved. Routine deletion is non-modal; only an
+unusually large deletion asks for confirmation.
+
+### Door
 
 ```text
-Delete room
-→ room and its owned door endpoints disappear
-→ attached connection records are removed
-→ connection lines disappear
-→ neighbouring door endpoints remain and become visibly unconnected
-→ Problems panel lists those endpoints
-→ Scene view shows a small Ctrl+Z undo notification
+Tools > Shooter Mover > Level Design > Delete Selected Door (Undoable)
 ```
 
-Ordinary room deletion has no confirmation dialog. A dialog appears only when
-the room exceeds the explicit unusual-destruction threshold: more than 100
-objects or more than 8 attached connections. The operation remains undoable.
-
-## JSON export commands
-
-Draft export:
+One Undo transaction:
 
 ```text
-Tools > Shooter Mover > Level Design > Export Grid V2 Draft Folder...
+delete door
+→ delete its attached connection, when present
+→ preserve the opposite endpoint
+→ mark the opposite endpoint unresolved
+→ revalidate and open Problems
 ```
 
-Production publish:
+## Three-room example
 
 ```text
-Tools > Shooter Mover > Level Design > Publish Grid V2 Production Folder...
+Tools > Shooter Mover > Level Design > Create Three-Room Starter Example
 ```
 
-Room directories are ordered deterministically by grid coordinate and stable ID.
-Manual room names are not used to create paths.
+Creates:
 
-## Robokill-style map foundation
-
-The generated `map.json` directly supports the later gameplay map:
-
-| Authoring data | Gameplay-map use |
-|---|---|
-| room grid coordinate | node position |
-| stable room ID | persistent node identity |
-| door connection | line between nodes |
-| optional/automatic room label | editor or map presentation |
-| map visibility | initial presentation rule |
-| future visit state | discovered-node presentation |
-| future completion state | cleared/completed-node presentation |
-
-Visit and completion state remain runtime/profile data and are deliberately not
-stored as mutable authoring identity.
-
-## Focused tests
-
-Run the existing Level Design Foundation EditMode filter; V2 tests share the
-same namespace:
-
-```powershell
-$Unity = "C:\Program Files\Unity\Hub\Editor\6000.3.19f1\Editor\Unity.exe"
-& $Unity -batchmode -nographics -projectPath "$PWD" `
-  -runTests -testPlatform EditMode `
-  -testFilter "ShooterMover.Tests.EditMode.LevelDesign.Foundation" `
-  -testResults "artifacts/test-results/LEVEL-GRID-V2-EditMode.xml" `
-  -logFile "artifacts/logs/LEVEL-GRID-V2-EditMode.log" -quit
+```text
+[Starter Room (0,0)/01]──[Room 1,0/01]──[Room 2,0/01]
 ```
 
-A passing claim requires the generated XML to report zero failures.
+See `LEVEL_GRID_AUTHORING_V2_THREE_ROOM_EXAMPLE.md` for the exact folder and JSON
+representation.
+
+## Verification
+
+Focused EditMode coverage includes:
+
+- optional labels and stable movement identity;
+- duplicate coordinate+slot detection;
+- foundation + graph publish source gate;
+- transactional folder migration with sidecar preservation;
+- deleted-room folder ownership rejection;
+- malformed identity blocking;
+- atomic door deletion and Undo;
+- fixed-door position capture;
+- connection-aware edge reflow.
+
+Unity execution remains required before this draft may be marked ready.
