@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
@@ -11,31 +13,62 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     {
         private static readonly HashSet<LevelDesignSceneAuthoringRoot2D> PendingRoots =
             new HashSet<LevelDesignSceneAuthoringRoot2D>();
-        private static readonly HashSet<LevelDoorEndpointAuthoring2D> MovedFixedDoors =
-            new HashSet<LevelDoorEndpointAuthoring2D>();
+        private static readonly HashSet<LevelDesignSceneAuthoringRoot2D> ReflowRoots =
+            new HashSet<LevelDesignSceneAuthoringRoot2D>();
+        private static readonly Dictionary<int, int> HierarchySignatureByRoot =
+            new Dictionary<int, int>();
         private static bool refreshScheduled;
 
         static LevelGridAuthoringV2LiveValidation()
         {
             Undo.postprocessModifications += OnPostprocessModifications;
+            Undo.undoRedoPerformed += OnUndoRedoPerformed;
+            EditorApplication.hierarchyChanged += OnHierarchyChanged;
+            EditorApplication.delayCall += QueueAllLoadedRootsInitially;
+        }
+
+        internal static void ValidateNow(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelGridValidationPurposeV2 purpose,
+            bool reflow = true)
+        {
+            if (!IsSceneRoot(root))
+            {
+                return;
+            }
+
+            MigrateLegacyFixedDoorPositions(root);
+            if (reflow)
+            {
+                LevelGridDoorOperationsV2.ReflowAll(root);
+            }
+            root.ValidateHierarchy();
+            root.ValidateGridAuthoring(purpose);
+            MarkSynchronouslyValidated(root);
         }
 
         internal static void MarkSynchronouslyValidated(
             LevelDesignSceneAuthoringRoot2D root)
         {
-            if (root != null)
+            if (root == null)
             {
-                PendingRoots.Remove(root);
+                return;
             }
+
+            PendingRoots.Remove(root);
+            ReflowRoots.Remove(root);
+            UpdateHierarchySignature(root);
         }
 
         private static UndoPropertyModification[] OnPostprocessModifications(
             UndoPropertyModification[] modifications)
         {
+            HashSet<LevelDoorEndpointAuthoring2D> capturedFixedDoors =
+                new HashSet<LevelDoorEndpointAuthoring2D>();
             for (int index = 0; index < modifications.Length; index++)
             {
                 UndoPropertyModification modification = modifications[index];
-                Object target = modification.currentValue.target;
+                UnityEngine.Object target = modification.currentValue.target;
                 GameObject gameObject = target as GameObject;
                 Component component = target as Component;
                 if (gameObject == null && component != null)
@@ -50,60 +83,111 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     LevelDoorEndpointAuthoring2D fixedDoor =
                         movedTransform.GetComponent<LevelDoorEndpointAuthoring2D>();
                     if (fixedDoor != null
-                        && fixedDoor.PlacementMode == LevelDoorPlacementModeV2.Fixed)
+                        && fixedDoor.PlacementMode == LevelDoorPlacementModeV2.Fixed
+                        && capturedFixedDoors.Add(fixedDoor))
                     {
-                        MovedFixedDoors.Add(fixedDoor);
+                        CaptureFixedDoorPositionWithUndo(fixedDoor);
                     }
                 }
 
                 LevelDesignSceneAuthoringRoot2D root = gameObject == null
                     ? null
                     : gameObject.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-                if (root != null)
-                {
-                    PendingRoots.Add(root);
-                }
-            }
-
-            if ((PendingRoots.Count > 0 || MovedFixedDoors.Count > 0)
-                && !refreshScheduled)
-            {
-                refreshScheduled = true;
-                EditorApplication.delayCall += RefreshPendingRoots;
+                QueueRoot(root, true);
             }
 
             return modifications;
         }
 
+        private static void OnUndoRedoPerformed()
+        {
+            QueueAllLoadedRoots(true, false);
+        }
+
+        private static void OnHierarchyChanged()
+        {
+            QueueAllLoadedRoots(false, true);
+        }
+
+        private static void QueueAllLoadedRootsInitially()
+        {
+            QueueAllLoadedRoots(true, true);
+        }
+
+        private static void QueueAllLoadedRoots(bool force, bool reflow)
+        {
+            LevelDesignSceneAuthoringRoot2D[] roots =
+                Resources.FindObjectsOfTypeAll<LevelDesignSceneAuthoringRoot2D>();
+            for (int index = 0; index < roots.Length; index++)
+            {
+                LevelDesignSceneAuthoringRoot2D root = roots[index];
+                if (!IsSceneRoot(root))
+                {
+                    continue;
+                }
+
+                if (!force && !HasHierarchyChanged(root))
+                {
+                    continue;
+                }
+                QueueRoot(root, reflow);
+            }
+        }
+
+        private static void QueueRoot(
+            LevelDesignSceneAuthoringRoot2D root,
+            bool reflow)
+        {
+            if (!IsSceneRoot(root))
+            {
+                return;
+            }
+
+            PendingRoots.Add(root);
+            if (reflow)
+            {
+                ReflowRoots.Add(root);
+            }
+            ScheduleRefresh();
+        }
+
+        private static void ScheduleRefresh()
+        {
+            if (refreshScheduled)
+            {
+                return;
+            }
+
+            refreshScheduled = true;
+            EditorApplication.delayCall += RefreshPendingRoots;
+        }
+
         private static void RefreshPendingRoots()
         {
+            EditorApplication.delayCall -= RefreshPendingRoots;
             refreshScheduled = false;
-
-            foreach (LevelDoorEndpointAuthoring2D door in MovedFixedDoors)
-            {
-                if (door == null
-                    || door.PlacementMode != LevelDoorPlacementModeV2.Fixed)
-                {
-                    continue;
-                }
-
-                door.CaptureCurrentFixedPosition();
-                EditorUtility.SetDirty(door);
-            }
-            MovedFixedDoors.Clear();
-
-            foreach (LevelDesignSceneAuthoringRoot2D root in PendingRoots)
-            {
-                if (root == null)
-                {
-                    continue;
-                }
-
-                LevelGridDoorOperationsV2.ReflowAll(root);
-                root.ValidateHierarchy();
-                root.ValidateGridAuthoring(root.LastGridValidation.Purpose);
-            }
+            LevelDesignSceneAuthoringRoot2D[] roots =
+                new LevelDesignSceneAuthoringRoot2D[PendingRoots.Count];
+            PendingRoots.CopyTo(roots);
             PendingRoots.Clear();
+
+            for (int index = 0; index < roots.Length; index++)
+            {
+                LevelDesignSceneAuthoringRoot2D root = roots[index];
+                if (!IsSceneRoot(root))
+                {
+                    continue;
+                }
+
+                bool reflow = ReflowRoots.Remove(root);
+                LevelGridValidationPurposeV2 purpose =
+                    root.LastGridValidation.Purpose
+                        == LevelGridValidationPurposeV2.ProductionPublish
+                    ? LevelGridValidationPurposeV2.ProductionPublish
+                    : LevelGridValidationPurposeV2.Draft;
+                ValidateNow(root, purpose, reflow);
+            }
+            ReflowRoots.Clear();
 
             LevelGridProblemsWindowV2[] windows =
                 Resources.FindObjectsOfTypeAll<LevelGridProblemsWindowV2>();
@@ -119,6 +203,134 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 gridEditors[index].RefreshAfterExternalValidation();
             }
             SceneView.RepaintAll();
+        }
+
+        private static void CaptureFixedDoorPositionWithUndo(
+            LevelDoorEndpointAuthoring2D door)
+        {
+            if (door == null
+                || door.PlacementMode != LevelDoorPlacementModeV2.Fixed)
+            {
+                return;
+            }
+
+            Undo.RecordObject(door, "Move Fixed Level Door");
+            door.CaptureCurrentFixedPosition();
+            EditorUtility.SetDirty(door);
+        }
+
+        private static int MigrateLegacyFixedDoorPositions(
+            LevelDesignSceneAuthoringRoot2D root)
+        {
+            if (!IsSceneRoot(root) || EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return 0;
+            }
+
+            LevelDoorEndpointAuthoring2D[] doors =
+                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            int changed = 0;
+            int undoGroup = -1;
+            for (int index = 0; index < doors.Length; index++)
+            {
+                LevelDoorEndpointAuthoring2D door = doors[index];
+                if (door == null
+                    || door.PlacementMode != LevelDoorPlacementModeV2.Fixed
+                    || door.UsesOwningRoomFixedPositionSpace
+                    || door.OwningRoom == null)
+                {
+                    continue;
+                }
+
+                if (undoGroup < 0)
+                {
+                    Undo.IncrementCurrentGroup();
+                    undoGroup = Undo.GetCurrentGroup();
+                    Undo.SetCurrentGroupName("Migrate Fixed Door Position Space");
+                }
+                Undo.RecordObject(door, "Migrate Fixed Door Position Space");
+                if (!door.MigrateFixedPositionSpaceForAuthoring())
+                {
+                    continue;
+                }
+
+                EditorUtility.SetDirty(door);
+                changed++;
+            }
+
+            if (undoGroup >= 0)
+            {
+                Undo.CollapseUndoOperations(undoGroup);
+            }
+            if (changed > 0)
+            {
+                EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+            }
+            return changed;
+        }
+
+        private static bool HasHierarchyChanged(
+            LevelDesignSceneAuthoringRoot2D root)
+        {
+            int rootId = root.GetInstanceID();
+            int current = ComputeHierarchySignature(root);
+            int previous;
+            if (!HierarchySignatureByRoot.TryGetValue(rootId, out previous)
+                || previous != current)
+            {
+                HierarchySignatureByRoot[rootId] = current;
+                return true;
+            }
+            return false;
+        }
+
+        private static void UpdateHierarchySignature(
+            LevelDesignSceneAuthoringRoot2D root)
+        {
+            if (!IsSceneRoot(root))
+            {
+                return;
+            }
+            HierarchySignatureByRoot[root.GetInstanceID()] =
+                ComputeHierarchySignature(root);
+        }
+
+        private static int ComputeHierarchySignature(
+            LevelDesignSceneAuthoringRoot2D root)
+        {
+            Component[] components = root.GetComponentsInChildren<Component>(true);
+            Array.Sort(
+                components,
+                delegate(Component left, Component right)
+                {
+                    int leftId = left == null ? 0 : left.GetInstanceID();
+                    int rightId = right == null ? 0 : right.GetInstanceID();
+                    return leftId.CompareTo(rightId);
+                });
+
+            unchecked
+            {
+                int hash = 17;
+                for (int index = 0; index < components.Length; index++)
+                {
+                    Component component = components[index];
+                    if (component == null)
+                    {
+                        continue;
+                    }
+                    hash = hash * 31 + component.GetInstanceID();
+                    Transform parent = component.transform.parent;
+                    hash = hash * 31 + (parent == null ? 0 : parent.GetInstanceID());
+                }
+                return hash;
+            }
+        }
+
+        private static bool IsSceneRoot(LevelDesignSceneAuthoringRoot2D root)
+        {
+            return root != null
+                && root.gameObject.scene.IsValid()
+                && !EditorUtility.IsPersistent(root);
         }
 
         private static bool IsPositionModification(string propertyPath)
