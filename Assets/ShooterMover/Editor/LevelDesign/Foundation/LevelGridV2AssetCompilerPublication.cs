@@ -104,6 +104,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     faultInjector,
                     LevelGridV2AssetCompilerPublishStep.AfterStagedRuntimeAssetValidated);
 
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                LoadAndValidateVersion(
+                    package,
+                    version.FolderPath,
+                    version.CreatedByTransaction);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.ImportAsset(
                     runtimeStageAssetPath,
