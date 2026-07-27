@@ -87,11 +87,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 0f,
                 0f,
                 Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
-            SpriteRenderer renderer = gameObject.AddComponent<SpriteRenderer>();
+            GameObject visualObject = new GameObject("Visual");
+            visualObject.transform.SetParent(transform, false);
+            visualObject.transform.localScale = new Vector3(0.28f, 0.1f, 1f);
+            SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
             renderer.sprite = projectileSprite;
             renderer.color = new Color(1f, 0.82f, 0.2f, 1f);
             renderer.sortingOrder = 100;
-            renderer.transform.localScale = new Vector3(0.28f, 0.1f, 1f);
 
             body = gameObject.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Kinematic;
