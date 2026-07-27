@@ -11,6 +11,54 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
     /// <summary>
+    /// Immutable scene projection of the exact source identity already accepted by the firing
+    /// composition. It is diagnostic/presentation state only and never selects or mutates a weapon.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class CanonicalProjectileSourceIdentity2D : MonoBehaviour
+    {
+        public WeaponActorInstanceId ActorId { get; private set; }
+        public LifecycleGeneration LifecycleGeneration { get; private set; }
+        public StableId MountStableId { get; private set; }
+        public EquipmentInstanceId EquipmentInstanceId { get; private set; }
+        public WeaponDefinitionId WeaponDefinitionId { get; private set; }
+        public bool IsBound { get; private set; }
+
+        public bool TryBind(
+            WeaponActorInstanceId actorId,
+            LifecycleGeneration lifecycleGeneration,
+            StableId mountStableId,
+            EquipmentInstanceId equipmentInstanceId,
+            WeaponDefinitionId weaponDefinitionId)
+        {
+            if (actorId == null
+                || lifecycleGeneration == null
+                || mountStableId == null
+                || equipmentInstanceId == null
+                || weaponDefinitionId == null)
+            {
+                return false;
+            }
+            if (IsBound)
+            {
+                return ActorId.Equals(actorId)
+                    && LifecycleGeneration.Equals(lifecycleGeneration)
+                    && MountStableId == mountStableId
+                    && EquipmentInstanceId.Equals(equipmentInstanceId)
+                    && WeaponDefinitionId.Equals(weaponDefinitionId);
+            }
+
+            ActorId = actorId;
+            LifecycleGeneration = lifecycleGeneration;
+            MountStableId = mountStableId;
+            EquipmentInstanceId = equipmentInstanceId;
+            WeaponDefinitionId = weaponDefinitionId;
+            IsBound = true;
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Generic scene effect sink for canonical launch batches. The first production slice supports
     /// one unguided Normal projectile per scheduler emission and rejects every unsupported mechanic
     /// without reconstructing weapon data or fabricating a substitute launch.
@@ -141,12 +189,26 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     projectileObject,
                     gameObject.scene);
                 projectileObject.SetActive(false);
+
+                CanonicalProjectileSourceIdentity2D identityProjection =
+                    projectileObject.AddComponent<
+                        CanonicalProjectileSourceIdentity2D>();
+                if (!identityProjection.TryBind(
+                        sourceActorId,
+                        sourceLifecycle,
+                        sourceMountStableId,
+                        sourceEquipmentInstanceId,
+                        sourceWeaponDefinitionId))
+                {
+                    throw new InvalidOperationException(
+                        "canonical-projectile-source-projection-rejected");
+                }
+
                 ProductionCanonicalNormalProjectile2D projectile =
                     projectileObject.AddComponent<
                         ProductionCanonicalNormalProjectile2D>();
                 if (!projectile.TryConfigure(
                         effect,
-                        sourceMountStableId,
                         sprite,
                         transform,
                         HandleProjectileCompleted))
