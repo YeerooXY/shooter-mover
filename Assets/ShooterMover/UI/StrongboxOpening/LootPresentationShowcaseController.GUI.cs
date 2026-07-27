@@ -13,110 +13,109 @@ namespace ShooterMover.UI.StrongboxOpening
             {
                 return;
             }
+
             EnsureInitialized();
             EnsureStyles();
 
-            GUILayout.BeginArea(new Rect(12f, 12f, 430f, Screen.height - 24f), GUI.skin.window);
+            GUILayout.BeginArea(
+                new Rect(12f, 12f, 430f, Screen.height - 24f),
+                GUI.skin.window);
             GUILayout.Label("LOOT PRESENTATION LAB", titleStyle);
-            GUILayout.Label("DEVELOPMENT PREVIEW ONLY — no holdings, BOX, RAP or save mutation", warningStyle);
-            DrawRunHud();
-            DrawGroups();
+            GUILayout.Label(
+                "DEVELOPMENT FIXTURE — reusable views, no holdings, BOX, RAP or save mutation",
+                warningStyle);
+            runHudView.DrawImGui(headingStyle, bodyStyle);
+            ownedGroupsView.DrawImGui(headingStyle);
             GUILayout.EndArea();
 
-            GUILayout.BeginArea(new Rect(Screen.width - 486f, 12f, 474f, Screen.height - 24f), GUI.skin.window);
+            GUILayout.BeginArea(
+                new Rect(
+                    Screen.width - 486f,
+                    12f,
+                    474f,
+                    Screen.height - 24f),
+                GUI.skin.window);
             DrawOpeningControls();
             GUILayout.Space(8f);
             DrawAuthoritativePickupFixture();
             GUILayout.EndArea();
         }
 
-        private void DrawRunHud()
-        {
-            GUILayout.BeginHorizontal(GUI.skin.box);
-            GUILayout.Label("RUN HUD", headingStyle, GUILayout.Width(90f));
-            GUILayout.Label("Credits " + runTotals.Credits.ToString(CultureInfo.InvariantCulture), bodyStyle);
-            GUILayout.Label("Scrap " + runTotals.Scrap.ToString(CultureInfo.InvariantCulture), bodyStyle);
-            GUILayout.Label("Boxes " + runTotals.Strongboxes.ToString(CultureInfo.InvariantCulture), bodyStyle);
-            GUILayout.EndHorizontal();
-        }
-
-        private void DrawGroups()
-        {
-            GUILayout.Label("OWNED BOX GROUPS — exact identities remain selectable", headingStyle);
-            groupScroll = GUILayout.BeginScrollView(groupScroll);
-            for (int groupIndex = 0; groupIndex < groups.Count; groupIndex++)
-            {
-                OwnedStrongboxGroupPresentationV1 group = groups[groupIndex];
-                GUILayout.BeginVertical(GUI.skin.box);
-                GUILayout.Label(
-                    "T" + group.TierNumber.ToString(CultureInfo.InvariantCulture)
-                    + "  " + group.TierLabel
-                    + " x " + group.Quantity.ToString(CultureInfo.InvariantCulture),
-                    headingStyle);
-                for (int instanceIndex = 0; instanceIndex < group.Instances.Count; instanceIndex++)
-                {
-                    StableId instanceId = group.Instances[instanceIndex].InstanceStableId;
-                    bool selected = instanceId == selection.SelectedInstanceStableId;
-                    if (GUILayout.Button((selected ? "> " : "  ") + instanceId, GUILayout.Height(24f)))
-                    {
-                        selection.TrySelectExact(instanceId, out diagnostic);
-                    }
-                }
-                GUILayout.EndVertical();
-            }
-            GUILayout.EndScrollView();
-        }
-
         private void DrawOpeningControls()
         {
             GUILayout.Label("EXACT BOX OPENING PRESENTATION", titleStyle);
-            GUILayout.Label("Selected: " + selection.SelectedInstanceStableId, bodyStyle);
+            GUILayout.Label(
+                "Selected: " + ownedGroupsView.SelectedInstanceStableId,
+                bodyStyle);
             GUILayout.BeginHorizontal();
             GUI.enabled = openCount != 1;
-            if (GUILayout.Button("OPEN 1 LAYOUT")) openCount = 1;
+            if (GUILayout.Button("OPEN 1 LAYOUT"))
+            {
+                openCount = 1;
+            }
             GUI.enabled = openCount != 5;
-            if (GUILayout.Button("OPEN 5 LAYOUT")) openCount = 5;
+            if (GUILayout.Button("OPEN 5 LAYOUT"))
+            {
+                openCount = 5;
+            }
             GUI.enabled = true;
             GUILayout.EndHorizontal();
 
-            IReadOnlyList<StableId> previewBatch = selection.ResolveBatch(openCount);
-            GUILayout.Label("Frozen batch preview: " + JoinIds(previewBatch), bodyStyle);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("PLAY", GUILayout.Height(36f))) PlayOpening();
-            if (GUILayout.Button("REPLAY SAME RESULT", GUILayout.Height(36f))) ReplayPresentation();
-            if (GUILayout.Button("SKIP", GUILayout.Height(36f))) SkipPresentation();
-            GUILayout.EndHorizontal();
-            fastForward = GUILayout.Toggle(fastForward, "FAST-FORWARD VISUAL TIME x" + fastForwardMultiplier.ToString("0.#", CultureInfo.InvariantCulture));
-
-            GUILayout.Label("Stage: " + openingSession.Stage, headingStyle);
+            IReadOnlyList<StableId> previewBatch;
+            string previewDiagnostic;
+            bool exactBatchAvailable =
+                ownedGroupsView.TryResolveBatchExact(
+                    openCount,
+                    out previewBatch,
+                    out previewDiagnostic);
             GUILayout.Label(
-                "Result object is frozen and reused: " + immutableFixtureResult.StatusText,
-                warningStyle);
+                exactBatchAvailable
+                    ? "Frozen batch preview: " + JoinIds(previewBatch)
+                    : "Batch unavailable: " + previewDiagnostic,
+                exactBatchAvailable ? bodyStyle : warningStyle);
+
+            GUILayout.BeginHorizontal();
+            GUI.enabled = exactBatchAvailable;
+            if (GUILayout.Button("PLAY", GUILayout.Height(36f)))
+            {
+                PlayOpening();
+            }
+            GUI.enabled = true;
+            if (GUILayout.Button(
+                "REPLAY SAME RESULT",
+                GUILayout.Height(36f)))
+            {
+                ReplayPresentation();
+            }
+            if (GUILayout.Button("SKIP", GUILayout.Height(36f)))
+            {
+                SkipPresentation();
+            }
+            GUILayout.EndHorizontal();
+
+            fastForward = GUILayout.Toggle(
+                fastForward,
+                "FAST-FORWARD VISUAL TIME x"
+                + fastForwardMultiplier.ToString(
+                    "0.#",
+                    CultureInfo.InvariantCulture));
+
             if (lastOpeningBatch.Count > 0)
             {
-                GUILayout.Label("Last exact batch: " + JoinIds(lastOpeningBatch), bodyStyle);
+                GUILayout.Label(
+                    "Last exact batch: " + JoinIds(lastOpeningBatch),
+                    bodyStyle);
             }
 
-            rewardScroll = GUILayout.BeginScrollView(rewardScroll, GUILayout.Height(210f));
-            if (openingSession.Result != null)
-            {
-                int visible = Mathf.Min(openingSession.VisibleRewardCount, openingSession.Result.Items.Count);
-                for (int index = 0; index < visible; index++)
-                {
-                    StrongboxRewardRevealItemV1 item = openingSession.Result.Items[index];
-                    GUILayout.Label(
-                        item.Kind + " — " + item.Title
-                        + (item.Quantity == 1L ? string.Empty : " x" + item.Quantity.ToString(CultureInfo.InvariantCulture))
-                        + "\nContent: " + item.ContentStableId
-                        + (item.IsUniqueInstance ? "\nInstance: " + item.InstanceStableId : string.Empty)
-                        + "\n" + item.Detail,
-                        GUI.skin.box);
-                }
-            }
-            GUILayout.EndScrollView();
+            openingPresentationView.DrawImGui(
+                headingStyle,
+                bodyStyle,
+                warningStyle);
             if (!string.IsNullOrEmpty(diagnostic))
             {
-                GUILayout.Label("Diagnostic: " + diagnostic, warningStyle);
+                GUILayout.Label(
+                    "Diagnostic: " + diagnostic,
+                    warningStyle);
             }
         }
 
@@ -127,37 +126,73 @@ namespace ShooterMover.UI.StrongboxOpening
                 "Disposable run-local truth only. Destroying the view does not collect it.",
                 bodyStyle);
             GUILayout.Label(
-                "Available: " + (pickupFixture.ExportAvailable() == null ? "no" : "yes")
-                + " | View: " + (IsPickupFixtureViewVisible ? "visible" : "absent")
-                + " | Collected: " + pickupFixture.IsCollected,
+                "Available: "
+                + (pickupFixture.ExportAvailable() == null ? "no" : "yes")
+                + " | View: "
+                + (IsPickupFixtureViewVisible ? "visible" : "absent")
+                + " | Collected: "
+                + pickupFixture.IsCollected,
                 bodyStyle);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("REJECT NEXT")) RejectNextPickupCollection();
-            if (GUILayout.Button("COLLECT")) CollectPickupFixture();
-            if (GUILayout.Button("DESTROY VIEW")) DestroyPickupFixtureView();
-            if (GUILayout.Button("RECONSTRUCT")) ReconstructPickupFixtureView();
+            if (GUILayout.Button("REJECT NEXT"))
+            {
+                RejectNextPickupCollection();
+            }
+            if (GUILayout.Button("COLLECT"))
+            {
+                CollectPickupFixture();
+            }
+            if (GUILayout.Button("DESTROY VIEW"))
+            {
+                DestroyPickupFixtureView();
+            }
+            if (GUILayout.Button("RECONSTRUCT"))
+            {
+                ReconstructPickupFixtureView();
+            }
             GUILayout.EndHorizontal();
+
             if (lastPickupResult != null)
             {
                 GUILayout.Label(
-                    "Last collection: " + (lastPickupResult.Accepted ? "ACCEPTED" : "REJECTED")
-                    + (lastPickupResult.ExactReplay ? " (EXACT REPLAY)" : string.Empty)
-                    + (lastPickupResult.Diagnostic.Length == 0 ? string.Empty : " — " + lastPickupResult.Diagnostic),
-                    lastPickupResult.Accepted ? bodyStyle : warningStyle);
+                    "Last collection: "
+                    + (lastPickupResult.Accepted
+                        ? "ACCEPTED"
+                        : "REJECTED")
+                    + (lastPickupResult.ExactReplay
+                        ? " (EXACT REPLAY)"
+                        : string.Empty)
+                    + (lastPickupResult.Diagnostic.Length == 0
+                        ? string.Empty
+                        : " — " + lastPickupResult.Diagnostic),
+                    lastPickupResult.Accepted
+                        ? bodyStyle
+                        : warningStyle);
             }
         }
 
         private static string JoinIds(IReadOnlyList<StableId> ids)
         {
-            if (ids == null || ids.Count == 0) return "none";
+            if (ids == null || ids.Count == 0)
+            {
+                return "none";
+            }
+
             var values = new string[ids.Count];
-            for (int index = 0; index < ids.Count; index++) values[index] = ids[index].ToString();
+            for (int index = 0; index < ids.Count; index++)
+            {
+                values[index] = ids[index].ToString();
+            }
             return string.Join(", ", values);
         }
 
         private void EnsureStyles()
         {
-            if (titleStyle != null) return;
+            if (titleStyle != null)
+            {
+                return;
+            }
+
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
