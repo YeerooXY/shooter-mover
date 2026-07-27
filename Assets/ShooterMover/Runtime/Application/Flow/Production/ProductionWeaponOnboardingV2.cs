@@ -16,6 +16,7 @@ namespace ShooterMover.Application.Flow.Production
             PlayerRouteProfilePayloadV1 routePayload,
             PlayerHoldingsSnapshotV1 genericHoldings,
             WeaponHoldingsSnapshotV2 weaponHoldings,
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout,
             InventoryLoadoutAuthoritySnapshotV1 loadout)
         {
             RoutePayload = routePayload
@@ -24,12 +25,15 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(genericHoldings));
             WeaponHoldings = weaponHoldings
                 ?? throw new ArgumentNullException(nameof(weaponHoldings));
+            WeaponMountLoadout = weaponMountLoadout
+                ?? throw new ArgumentNullException(nameof(weaponMountLoadout));
             Loadout = loadout ?? throw new ArgumentNullException(nameof(loadout));
         }
 
         public PlayerRouteProfilePayloadV1 RoutePayload { get; }
         public PlayerHoldingsSnapshotV1 GenericHoldings { get; }
         public WeaponHoldingsSnapshotV2 WeaponHoldings { get; }
+        public WeaponMountLoadoutSnapshotV2 WeaponMountLoadout { get; }
         public InventoryLoadoutAuthoritySnapshotV1 Loadout { get; }
     }
 
@@ -71,10 +75,13 @@ namespace ShooterMover.Application.Flow.Production
                     classDefinitionStableId);
             var owned = new List<WeaponEquipmentInstance>(
                 layout.ConfigurablePositions.Count);
-            var bindings = EmptyBindings();
+            var equippedByMount = new Dictionary<StableId, StableId>();
             var used = new HashSet<StableId>();
-            Func<StableId> factory = instanceIdFactory
-                ?? new Func<StableId>(OwnedEquipmentInstanceIdFactory.Create);
+            Func<StableId> factory = instanceIdFactory;
+            if (factory == null)
+            {
+                factory = OwnedEquipmentInstanceIdFactory.Create;
+            }
 
             for (int index = 0;
                  index < layout.ConfigurablePositions.Count;
@@ -87,21 +94,43 @@ namespace ShooterMover.Application.Flow.Production
                 owned.Add(WeaponEquipmentInstance.CreateUnmodified(
                     instanceId,
                     starter.Blueprint.DefinitionId));
-                int slotIndex = FindSlotIndex(position.LoadoutSlotStableId);
-                bindings[slotIndex] = new InventoryLoadoutSlotBindingV1(
-                    position.LoadoutSlotStableId,
-                    instanceId);
+                equippedByMount.Add(position.MountStableId, instanceId);
             }
 
-            InventoryLoadoutAuthoritySnapshotV1 loadout =
-                InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(
+            var mountBindings = new List<WeaponMountBindingV2>(
+                layout.PhysicalPositions.Count);
+            for (int index = 0;
+                 index < layout.PhysicalPositions.Count;
+                 index++)
+            {
+                ProductionWeaponMountPositionV1 position =
+                    layout.PhysicalPositions[index];
+                StableId instanceId;
+                equippedByMount.TryGetValue(position.MountStableId, out instanceId);
+                mountBindings.Add(new WeaponMountBindingV2(
+                    position.MountStableId,
+                    position.IsActive ? instanceId : null));
+            }
+
+            WeaponHoldingsSnapshotV2 weaponHoldings =
+                WeaponHoldingsSnapshotV2.CreateCanonical(0L, owned);
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout =
+                WeaponMountLoadoutSnapshotV2.CreateCanonical(
                     0L,
-                    bindings);
+                    mountBindings);
+            InventoryLoadoutAuthoritySnapshotV1 loadout =
+                ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
+                    layout,
+                    weaponMountLoadout,
+                    InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(
+                        0L,
+                        EmptyBindings()));
             PlayerRouteProfilePayloadV1 route =
-                ProductionWeaponOnboardingV1.RouteFromLoadout(
+                ProductionWeaponMountLoadoutProjectionV2.Route(
                     characterInstanceStableId,
                     classDefinitionStableId,
-                    loadout);
+                    layout,
+                    weaponMountLoadout);
             var genericHoldings = new PlayerHoldingsService(
                 HoldingsAuthorityStableId,
                 999L,
@@ -111,7 +140,8 @@ namespace ShooterMover.Application.Flow.Production
             return new ProductionWeaponInventoryStateV2(
                 route,
                 genericHoldings.ExportSnapshot(),
-                WeaponHoldingsSnapshotV2.CreateCanonical(0L, owned),
+                weaponHoldings,
+                weaponMountLoadout,
                 loadout);
         }
 
@@ -122,78 +152,85 @@ namespace ShooterMover.Application.Flow.Production
             WeaponHoldingsSnapshotV2 canonicalWeaponHoldings,
             InventoryLoadoutAuthoritySnapshotV1 loadout)
         {
+            return Restore(
+                characterInstanceStableId,
+                classDefinitionStableId,
+                genericHoldings,
+                canonicalWeaponHoldings,
+                null,
+                loadout);
+        }
+
+        public static ProductionWeaponInventoryStateV2 Restore(
+            StableId characterInstanceStableId,
+            StableId classDefinitionStableId,
+            PlayerHoldingsSnapshotV1 genericHoldings,
+            WeaponHoldingsSnapshotV2 canonicalWeaponHoldings,
+            WeaponMountLoadoutSnapshotV2 canonicalWeaponMountLoadout,
+            InventoryLoadoutAuthoritySnapshotV1 loadout)
+        {
+            if (characterInstanceStableId == null)
+            {
+                throw new ArgumentNullException(nameof(characterInstanceStableId));
+            }
+            if (classDefinitionStableId == null)
+            {
+                throw new ArgumentNullException(nameof(classDefinitionStableId));
+            }
             if (genericHoldings == null)
             {
                 throw new ArgumentNullException(nameof(genericHoldings));
             }
-            if (loadout == null)
+            if (loadout == null || !loadout.HasValidFingerprint())
             {
-                throw new ArgumentNullException(nameof(loadout));
+                throw new ArgumentException(
+                    "A valid legacy loadout/armor projection is required.",
+                    nameof(loadout));
             }
 
             WeaponHoldingsSnapshotV2 weapons = canonicalWeaponHoldings
                 ?? ProductionWeaponHoldingsMigrationV2.ConvertLegacy(
                     genericHoldings);
-            IReadOnlyList<InventoryLoadoutSlotBindingV1> normalized =
-                NormalizeLoadout(classDefinitionStableId, weapons, loadout);
-            InventoryLoadoutAuthoritySnapshotV1 normalizedLoadout =
-                InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(
-                    BindingsEqual(loadout.Bindings, normalized)
-                        ? loadout.Sequence
-                        : checked(loadout.Sequence + 1L),
-                    normalized);
+            var weaponAuthority = new ProductionWeaponHoldingsAuthorityV2(weapons);
+            ProductionWeaponMountLayoutV1 layout =
+                ProductionWeaponMountPolicyV1.ResolveLayout(
+                    classDefinitionStableId);
+            WeaponMountLoadoutSnapshotV2 mounts = canonicalWeaponMountLoadout
+                ?? ProductionWeaponMountLoadoutProjectionV2.MigrateLegacy(
+                    layout,
+                    weaponAuthority,
+                    loadout);
+
+            // V2 is strict: unknown, missing, locked, duplicate or unowned mount bindings reject
+            // restore instead of being silently repaired. Only the V1 conversion normalizes legacy
+            // placeholders as part of deterministic dual-read migration.
+            var mountAuthority = new ProductionWeaponMountLoadoutAuthorityV2(
+                layout,
+                weaponAuthority,
+                mounts);
+            WeaponMountLoadoutSnapshotV2 canonicalMounts =
+                mountAuthority.ExportSnapshot();
+            InventoryLoadoutAuthoritySnapshotV1 compatibilityLoadout =
+                ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
+                    layout,
+                    canonicalMounts,
+                    loadout);
             PlayerRouteProfilePayloadV1 route =
-                ProductionWeaponOnboardingV1.RouteFromLoadout(
+                ProductionWeaponMountLoadoutProjectionV2.Route(
                     characterInstanceStableId,
                     classDefinitionStableId,
-                    normalizedLoadout);
+                    layout,
+                    canonicalMounts);
+
             return new ProductionWeaponInventoryStateV2(
                 route,
                 genericHoldings,
                 weapons,
-                normalizedLoadout);
+                canonicalMounts,
+                compatibilityLoadout);
         }
 
-        private static IReadOnlyList<InventoryLoadoutSlotBindingV1>
-            NormalizeLoadout(
-                StableId classDefinitionStableId,
-                WeaponHoldingsSnapshotV2 holdings,
-                InventoryLoadoutAuthoritySnapshotV1 loadout)
-        {
-            ProductionWeaponMountLayoutV1 layout =
-                ProductionWeaponMountPolicyV1.ResolveLayout(
-                    classDefinitionStableId);
-            var selected = new HashSet<StableId>();
-            var bindings = new List<InventoryLoadoutSlotBindingV1>(
-                InventoryLoadoutSlotsV1.All.Count);
-
-            for (int index = 0;
-                 index < InventoryLoadoutSlotsV1.All.Count;
-                 index++)
-            {
-                InventoryLoadoutSlotDescriptorV1 slot =
-                    InventoryLoadoutSlotsV1.All[index];
-                StableId instanceId = loadout.GetBinding(slot.SlotStableId)
-                    .EquipmentInstanceStableId;
-
-                if (slot.Kind == InventoryLoadoutSlotKindV1.Weapon)
-                {
-                    if (!layout.ContainsLoadoutSlot(slot.SlotStableId)
-                        || instanceId == null
-                        || holdings.Find(instanceId) == null
-                        || !selected.Add(instanceId))
-                    {
-                        instanceId = null;
-                    }
-                }
-                bindings.Add(new InventoryLoadoutSlotBindingV1(
-                    slot.SlotStableId,
-                    instanceId));
-            }
-            return bindings;
-        }
-
-        private static List<InventoryLoadoutSlotBindingV1> EmptyBindings()
+        private static IEnumerable<InventoryLoadoutSlotBindingV1> EmptyBindings()
         {
             var bindings = new List<InventoryLoadoutSlotBindingV1>(
                 InventoryLoadoutSlotsV1.All.Count);
@@ -201,28 +238,11 @@ namespace ShooterMover.Application.Flow.Production
                  index < InventoryLoadoutSlotsV1.All.Count;
                  index++)
             {
-                InventoryLoadoutSlotDescriptorV1 slot =
-                    InventoryLoadoutSlotsV1.All[index];
                 bindings.Add(new InventoryLoadoutSlotBindingV1(
-                    slot.SlotStableId,
+                    InventoryLoadoutSlotsV1.All[index].SlotStableId,
                     null));
             }
             return bindings;
-        }
-
-        private static int FindSlotIndex(StableId slotId)
-        {
-            for (int index = 0;
-                 index < InventoryLoadoutSlotsV1.All.Count;
-                 index++)
-            {
-                if (InventoryLoadoutSlotsV1.All[index].SlotStableId == slotId)
-                {
-                    return index;
-                }
-            }
-            throw new InvalidOperationException(
-                "The physical weapon mount does not bridge to a loadout slot.");
         }
 
         private static StableId NextOpaqueId(
@@ -239,26 +259,6 @@ namespace ShooterMover.Application.Flow.Production
             }
             throw new InvalidOperationException(
                 "Unable to allocate a unique opaque weapon instance ID.");
-        }
-
-        private static bool BindingsEqual(
-            IReadOnlyList<InventoryLoadoutSlotBindingV1> left,
-            IReadOnlyList<InventoryLoadoutSlotBindingV1> right)
-        {
-            if (left == null
-                || right == null
-                || left.Count != right.Count)
-            {
-                return false;
-            }
-            for (int index = 0; index < left.Count; index++)
-            {
-                if (!left[index].Equals(right[index]))
-                {
-                    return false;
-                }
-            }
-            return true;
         }
     }
 }
