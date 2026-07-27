@@ -194,9 +194,15 @@ namespace ShooterMover.Application.Equipment.Upgrades
                     && mark != null;
             }
 
+            // Synthetic/legacy generic equipment remains on the old route. Only an exact receipt
+            // that resolves to the production canonical weapon catalogue is safety-gated here.
+            if (!isWeaponReceipt || !canonicalDefinitionResolved)
+            {
+                return CanonicalWeaponOperationAvailabilityV1.Available();
+            }
             return CanonicalWeaponSafetyPolicyV1.EvaluateGenericUpgrade(
-                isWeaponReceipt,
-                canonicalDefinitionResolved);
+                true,
+                true);
         }
     }
 }
