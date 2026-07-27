@@ -25,18 +25,24 @@ namespace ShooterMover.Application.Progression.Skills
     {
         private readonly RankedSkillCatalogV2 catalog; private readonly SkillEffectProjectorV2 projector; private readonly Dictionary<string, RankedSkillAllocationSnapshotV2> snapshots = new Dictionary<string, RankedSkillAllocationSnapshotV2>(StringComparer.Ordinal); private readonly Dictionary<string, SkillAllocationResultV2> replay = new Dictionary<string, SkillAllocationResultV2>(StringComparer.Ordinal);
         public RankedSkillAllocationAuthorityV2(RankedSkillCatalogV2 catalog, SkillEffectProjectorV2 projector = null) { this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog)); this.projector = projector ?? new SkillEffectProjectorV2(); }
-        public void Seed(RankedSkillAllocationSnapshotV2 snapshot) { snapshots[snapshot.ProfileId] = snapshot; }
+        public RankedSkillCatalogV2 Catalog => catalog;
+        public void Seed(RankedSkillAllocationSnapshotV2 snapshot) { if (snapshot == null) throw new ArgumentNullException(nameof(snapshot)); snapshots[snapshot.ProfileId] = snapshot; }
         public RankedSkillAllocationSnapshotV2 Get(string profileId) => snapshots[profileId];
+        public bool TryGet(string profileId, out RankedSkillAllocationSnapshotV2 snapshot) => snapshots.TryGetValue(profileId ?? string.Empty, out snapshot);
         public SkillAllocationResultV2 Allocate(AllocateSkillRankCommandV2 command)
         {
-            SkillAllocationResultV2 previous; if (replay.TryGetValue(command.OperationId, out previous)) return previous.CommandFingerprint == command.Fingerprint ? previous : Result(command, false, SkillAllocationRejectionV2.DuplicateConflict, snapshots[command.ProfileId], false);
-            var current = snapshots[command.ProfileId]; var rejection = Validate(command, current); if (rejection != SkillAllocationRejectionV2.None) return Result(command, false, rejection, current, true);
+            if (command == null) throw new ArgumentNullException(nameof(command));
+            RankedSkillAllocationSnapshotV2 current;
+            if (!snapshots.TryGetValue(command.ProfileId, out current)) throw new InvalidOperationException("The ranked-skill profile is not seeded.");
+            SkillAllocationResultV2 previous; if (replay.TryGetValue(command.OperationId, out previous)) return previous.CommandFingerprint == command.Fingerprint ? previous : Result(command, false, SkillAllocationRejectionV2.DuplicateConflict, current, false);
+            var rejection = Validate(command, current); if (rejection != SkillAllocationRejectionV2.None) return Result(command, false, rejection, current, true);
             var ranks = current.Ranks.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal); ranks[command.SkillId] = current.RankOf(command.SkillId) + 1;
             var next = new RankedSkillAllocationSnapshotV2(current.ProfileId, current.ClassId, current.Version + 1, catalog.SchemaVersion, catalog.ContentVersion, ranks); snapshots[current.ProfileId] = next; return Result(command, true, SkillAllocationRejectionV2.None, next, true);
         }
         private SkillAllocationRejectionV2 Validate(AllocateSkillRankCommandV2 command, RankedSkillAllocationSnapshotV2 current)
         {
             if (command.ExpectedVersion != current.Version) return SkillAllocationRejectionV2.StaleVersion;
+            if (!string.Equals(current.SchemaVersion, catalog.SchemaVersion, StringComparison.Ordinal) || !string.Equals(current.ContentVersion, catalog.ContentVersion, StringComparison.Ordinal)) return SkillAllocationRejectionV2.StaleVersion;
             RankedSkillDefinitionV2 skill; if (!catalog.TryGet(command.SkillId, out skill)) return SkillAllocationRejectionV2.UnknownSkill;
             if (!skill.IsEligible(current.ClassId)) return SkillAllocationRejectionV2.WrongClass;
             if (current.RankOf(skill.Id) >= skill.EffectiveMaximumRank(current.ClassId)) return SkillAllocationRejectionV2.MaximumRank;
@@ -48,6 +54,14 @@ namespace ShooterMover.Application.Progression.Skills
         }
         private SkillAllocationResultV2 Result(AllocateSkillRankCommandV2 command, bool accepted, SkillAllocationRejectionV2 rejection, RankedSkillAllocationSnapshotV2 snapshot, bool remember) { var result = new SkillAllocationResultV2(command, accepted, rejection, snapshot, projector.Project(catalog, snapshot)); if (remember) replay[command.OperationId] = result; return result; }
         internal void Replace(RankedSkillAllocationSnapshotV2 snapshot) { snapshots[snapshot.ProfileId] = snapshot; }
+        internal bool RollBackAccepted(string operationId, RankedSkillAllocationSnapshotV2 accepted, RankedSkillAllocationSnapshotV2 restore)
+        {
+            if (string.IsNullOrWhiteSpace(operationId) || accepted == null || restore == null || !string.Equals(accepted.ProfileId, restore.ProfileId, StringComparison.Ordinal)) return false;
+            RankedSkillAllocationSnapshotV2 current; SkillAllocationResultV2 receipt;
+            if (!snapshots.TryGetValue(restore.ProfileId, out current) || !string.Equals(current.Fingerprint, accepted.Fingerprint, StringComparison.Ordinal)) return false;
+            if (!replay.TryGetValue(operationId, out receipt) || !receipt.Accepted || !string.Equals(receipt.Snapshot.Fingerprint, accepted.Fingerprint, StringComparison.Ordinal)) return false;
+            snapshots[restore.ProfileId] = restore; replay.Remove(operationId); return true;
+        }
     }
 
     public interface ISkillRespecPaymentAuthorityV2 { string CurrencyId { get; } string PaymentStateFingerprint(string profileId); SkillRespecPaymentResultV2 TryCharge(string operationId, string profileId, long amount, string expectedPaymentStateFingerprint); }
