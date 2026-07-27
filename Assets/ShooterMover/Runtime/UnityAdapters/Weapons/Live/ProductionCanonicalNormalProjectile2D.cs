@@ -39,6 +39,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private bool completed;
         private bool impactCommitted;
         private bool ownerRetired;
+        private bool rangeExpiryPending;
         private string lastDiagnostic = string.Empty;
 
         public bool HasPendingEnemyImpactRetry
@@ -144,6 +145,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 TryResolvePendingImpact();
                 return;
             }
+            if (rangeExpiryPending)
+            {
+                rangeExpiryPending = false;
+                ResolveRangeExpiry();
+                return;
+            }
             if (!state.IsActive)
             {
                 Complete();
@@ -160,7 +167,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 next,
                 state.DistanceTravelled + distance);
             body.MovePosition(ToUnity(state.Position));
-            if (state.RemainingRange <= 0.0000001d) ResolveRangeExpiry();
+
+            // MovePosition is simulated after FixedUpdate. Defer canonical range expiry until the
+            // following fixed tick so the final swept segment can still report an enemy or wall hit.
+            if (state.RemainingRange <= 0.0000001d)
+            {
+                rangeExpiryPending = true;
+            }
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -168,6 +181,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (completed
                 || impactCommitted
                 || other == null
+                || other.isTrigger
                 || state == null
                 || !state.IsActive
                 || IsSourceCollider(other))
@@ -180,7 +194,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 TryBeginEnemyImpact(enemy);
             }
-            else if (!other.isTrigger)
+            else
             {
                 ResolveBlockingWallImpact();
             }
@@ -506,6 +520,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             if (completed) return;
             completed = true;
+            rangeExpiryPending = false;
             StopTravel();
             Action<ProductionCanonicalNormalProjectile2D> callback =
                 completedCallback;
