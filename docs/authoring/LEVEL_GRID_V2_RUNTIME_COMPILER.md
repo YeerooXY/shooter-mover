@@ -48,11 +48,11 @@ For the currently supported bidirectional connection policy, endpoint orientatio
 - the `from` endpoint compiles as `progression` and defaults to `room-complete`;
 - the `to` endpoint compiles as `return` and defaults to `always`.
 
-Moving either room does not reverse these semantics. Designers change progression by changing the stable connection orientation or by authoring an exact door rule—not by moving a room left, right, above or below another room.
+Moving either room does not reverse these semantics. Designers change progression by changing the stable connection orientation or by authoring a door rule—not by moving a room left, right, above or below another room.
 
 Coordinates, slots, labels and folder names are validated authoring metadata. They never become runtime identity or gameplay direction. Every `map.json` node coordinate and slot must match the authoritative room index.
 
-`room.json` contains room-local `runtime_bounds` and an optional `player_start`. Only the configured start room may supply the initial player start.
+`room.json` contains room-local `runtime_bounds` and an optional `player_start`. Exactly the configured start room must provide `player_start`; every other room must omit it. The start position must be finite and lie inside the start-room bounds.
 
 `doors.json` contains the exact stable door ID, side, traversability, runtime presentation object and `current_local_position`. The playable exporter computes this position with:
 
@@ -73,7 +73,9 @@ room.moved in Room_1_0_01
 → enemies/props/decor/encounter sidecars move with room.moved
 ```
 
-The migration rejects malformed identity files, duplicate owners and attempted adoption of a folder owned by another room. Folders belonging to deleted rooms are removed from the disposable stage. The staged package must compile and pass the existing V1 importer before it replaces the previous destination.
+Folders belonging to deleted rooms are removed from the disposable stage before active rooms receive their desired paths. A surviving room may therefore move into a coordinate+slot vacated by a deleted room without adopting the deleted room's sidecars.
+
+The migration rejects malformed identity files, duplicate owners and attempted adoption of a folder owned by another active room. Before staging begins, the exporter also rejects any non-empty destination whose `level.json.level_id` belongs to another level. The staged package must compile and pass the existing V1 importer before it replaces the previous destination.
 
 ## Deterministic arrival placement
 
@@ -94,7 +96,7 @@ This keeps the player:
 
 Every compiled room link targets the exact generated arrival ID. No target-spawn-kind ambiguity is used.
 
-## Encounter defaults
+## Encounter defaults and authored rules
 
 The compiler applies:
 
@@ -114,7 +116,14 @@ The compiler then supplies deterministic default door rules:
 
 A no-enemy room therefore satisfies `all-enemies` immediately through the existing room runtime.
 
-Any present non-empty encounter must include schema version 2, the owning room, completion, `optional_enemy_ids` and `door_rules`. Malformed or partial encounters, null required arrays, unknown exact door IDs and duplicate exact-door rules are rejected rather than interpreted as defaults.
+Any present non-empty encounter must include schema version 2, the owning room, completion, `optional_enemy_ids` and `door_rules`. Authored door rules may select by exact `door_id`, `exit_type`, `link_kind`, or a conjunction of those selectors. Before defaults are generated, each authored rule is matched against the compiled traversable doors using the same semantics as the retained V1 importer:
+
+- a door with exactly one authored match receives no generated default;
+- a door with no authored match receives its deterministic default;
+- overlapping authored rules for one door are rejected as ambiguous;
+- authored rules that match no traversable runtime door are rejected as stale or ineffective.
+
+Malformed or partial encounters, null required arrays, unknown exact door IDs, duplicate exact-door rules, unsupported completion/gate values, duplicate optional enemy IDs and optional IDs that reference no enemy placement are rejected rather than interpreted as defaults.
 
 ## Validation gate
 
@@ -122,17 +131,19 @@ A playable compile rejects:
 
 - unsupported schema versions;
 - unknown room or door references;
-- unknown encounter door references;
+- unknown, unmatched or ambiguous encounter door rules;
 - duplicate room, door, placement or connection stable IDs;
 - duplicate coordinate+slot room folders;
 - unsafe or mismatched folder names;
 - disagreement between map-node and room-index coordinates or slots;
 - malformed required sidecars or null required arrays;
 - malformed or partial non-empty encounters;
+- invalid or unknown optional enemy IDs;
+- non-finite authored positions or rotations;
 - an endpoint used by multiple connections;
 - traversable endpoints that are neither connected nor the exact final exit;
 - a missing or unknown start room;
-- a missing deterministic player start;
+- a missing, duplicated or out-of-bounds deterministic player start;
 - inaccessible indexed rooms;
 - a final exit that is missing, non-traversable, connected as a room endpoint, or owned by another room;
 - compiled output rejected by the existing V1 importer/object catalogue.
@@ -143,7 +154,7 @@ A playable compile rejects:
 2. Assign the exact start room, player start, final-exit room and final-exit door.
 3. Orient each bidirectional link from progression endpoint to return endpoint.
 4. Use **Tools → Shooter Mover → Level Design → Export Compiler-Ready Grid V2 Package...**.
-5. The exporter migrates existing room folders by stable `room_id`, writes into a staged copy, and compiles/import-validates that stage before replacing the destination.
+5. The exporter verifies destination level ownership, migrates existing room folders by stable `room_id`, writes into a staged copy, and compiles/import-validates that stage before replacing the destination.
 6. Edit tracked room sidecars as required for enemies, props, decor and encounter behavior.
 7. Use **Compile Grid V2 Folder...**, or **Compile Tracked Combat Loop Grid V2** for the checked-in sample.
 8. The compiler writes generated JSON TextAssets and creates/updates one `JsonRoomContentDefinition2D` asset automatically. No per-room TextAsset assignment is required.
