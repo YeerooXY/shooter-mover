@@ -385,9 +385,8 @@ namespace ShooterMover.Application.Flow.Production
             Func<StableId> factory = instanceIdFactory
                 ?? delegate
                 {
-                    return StableId.Parse(
-                        "equipment-instance.onboarding-"
-                        + Guid.NewGuid().ToString("N"));
+                    return ShooterMover.Domain.Weapons
+                        .OwnedEquipmentInstanceIdFactory.Create();
                 };
             for (int attempt = 0; attempt < 64; attempt++)
             {
