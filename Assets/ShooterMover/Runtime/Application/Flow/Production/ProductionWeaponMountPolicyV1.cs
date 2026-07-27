@@ -415,7 +415,10 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return Defensive;
             }
-            return Defensive;
+            throw new ArgumentException(
+                "Unsupported production weapon mount profile: "
+                    + (string.IsNullOrEmpty(value) ? "<null>" : value),
+                nameof(loadoutProfileStableId));
         }
 
         public static bool IsConfigurableLoadoutSlot(
