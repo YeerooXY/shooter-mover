@@ -107,11 +107,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             EnsureAssetFolder(generatedAssetFolder);
             string manifestPath = generatedAssetFolder + "/compiled.manifest.json";
-            WriteAssetText(manifestPath, compile.Package.ManifestJson);
-
             var keys = new List<string>(compile.Package.Documents.Keys);
             keys.Sort(StringComparer.Ordinal);
             var documentPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+            var expectedJsonPaths = new HashSet<string>(StringComparer.Ordinal)
+            {
+                manifestPath,
+            };
             for (int index = 0; index < keys.Count; index++)
             {
                 string path = generatedAssetFolder
@@ -120,8 +122,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     + "_"
                     + SanitizeFileName(keys[index])
                     + ".json";
-                WriteAssetText(path, compile.Package.Documents[keys[index]]);
                 documentPaths.Add(keys[index], path);
+                expectedJsonPaths.Add(path);
+            }
+
+            DeleteStaleGeneratedJson(generatedAssetFolder, expectedJsonPaths);
+            WriteAssetText(manifestPath, compile.Package.ManifestJson);
+            for (int index = 0; index < keys.Count; index++)
+            {
+                WriteAssetText(
+                    documentPaths[keys[index]],
+                    compile.Package.Documents[keys[index]]);
             }
 
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
@@ -223,6 +234,33 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Level Grid V2 Compilation Failed",
                     exception.Message,
                     "OK");
+            }
+        }
+
+        private static void DeleteStaleGeneratedJson(
+            string generatedAssetFolder,
+            ISet<string> expectedAssetPaths)
+        {
+            string absoluteFolder = ToAbsolutePath(generatedAssetFolder);
+            if (!Directory.Exists(absoluteFolder)) return;
+
+            string[] existing = Directory.GetFiles(
+                absoluteFolder,
+                "*.json",
+                SearchOption.TopDirectoryOnly);
+            for (int index = 0; index < existing.Length; index++)
+            {
+                string assetPath = generatedAssetFolder
+                    + "/"
+                    + Path.GetFileName(existing[index]);
+                if (expectedAssetPaths.Contains(assetPath)) continue;
+
+                if (!AssetDatabase.DeleteAsset(assetPath))
+                {
+                    File.Delete(existing[index]);
+                    string meta = existing[index] + ".meta";
+                    if (File.Exists(meta)) File.Delete(meta);
+                }
             }
         }
 
