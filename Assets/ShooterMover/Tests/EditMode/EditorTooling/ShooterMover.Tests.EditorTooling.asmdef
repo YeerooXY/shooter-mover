@@ -1,0 +1,24 @@
+{
+  "name": "ShooterMover.Tests.EditorTooling",
+  "rootNamespace": "ShooterMover.Tests.EditorTooling",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.Editor.LevelDesign.Foundation"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
