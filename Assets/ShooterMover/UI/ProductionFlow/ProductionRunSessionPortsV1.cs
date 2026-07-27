@@ -9,6 +9,7 @@ using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 
