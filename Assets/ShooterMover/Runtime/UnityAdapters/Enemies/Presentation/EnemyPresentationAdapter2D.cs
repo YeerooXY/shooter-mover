@@ -68,13 +68,21 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         private double observedHealth;
         private bool observedActive;
         private bool terminal;
+        private bool hasPositionSample;
         private float hitSeconds;
         private float windUpSeconds;
         private float windUpDuration;
         private float muzzleSeconds;
         private float explicitMovementSeconds;
 
-        public Transform ShotOrigin { get { return shotOrigin; } }
+        public Transform ShotOrigin
+        {
+            get
+            {
+                EnsureInitialized();
+                return shotOrigin;
+            }
+        }
 
         public string RuntimeDefinitionStableId { get { return runtimeDefinitionStableId; } }
 
@@ -82,9 +90,19 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
         private void Awake()
         {
-            BuildVisuals();
-            ConfigurePhysics();
-            previousPosition = transform.position;
+            EnsureInitialized();
+            hasPositionSample = false;
+        }
+
+        private void OnDisable()
+        {
+            observedActor = null;
+            observedGeneration = long.MinValue;
+            hasPositionSample = false;
+            if (visualRoot != null)
+            {
+                ResetPresentation();
+            }
         }
 
         private void Update()
@@ -129,6 +147,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
         public void SetFacing(Vector2 worldDirection)
         {
+            EnsureInitialized();
             if (terminal || worldDirection.sqrMagnitude <= 0.000001f) return;
             Vector3 local = transform.InverseTransformDirection(worldDirection.normalized);
             facingRoot.localRotation = Quaternion.Euler(
@@ -139,6 +158,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
         public void SetMovementIntent(Vector2 worldDirection)
         {
+            EnsureInitialized();
             if (bodyKind != EnemyPresentationBodyKind2D.MobileBlasterDroid) return;
             explicitMovementSeconds = 0.10f;
             ApplyMovementIntent(worldDirection);
@@ -146,6 +166,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
         public void BeginAttackWindUp(float durationSeconds)
         {
+            EnsureInitialized();
             if (terminal
                 || float.IsNaN(durationSeconds)
                 || float.IsInfinity(durationSeconds)
@@ -156,11 +177,16 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
             windUpDuration = durationSeconds;
             windUpSeconds = durationSeconds;
+            telegraph.transform.localScale = Vector3.one * 1.7f;
+            Color color = telegraph.color;
+            color.a = 0.12f;
+            telegraph.color = color;
             telegraph.enabled = true;
         }
 
         public void SignalAttackOrigin()
         {
+            EnsureInitialized();
             if (terminal) return;
             windUpSeconds = 0f;
             telegraph.enabled = false;
@@ -173,8 +199,15 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
             RoomEnemyActor2D actor = GetComponentInParent<RoomEnemyActor2D>();
             if (actor == null || !actor.IsBound || actor.Runtime == null)
             {
+                bool lostBinding = observedActor != null
+                    || observedGeneration != long.MinValue;
                 observedActor = null;
                 observedGeneration = long.MinValue;
+                hasPositionSample = false;
+                if (lostBinding)
+                {
+                    ResetPresentation();
+                }
                 return;
             }
 
@@ -186,6 +219,8 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 observedHealth = state.Health;
                 observedActive = state.IsActive;
                 ResetPresentation();
+                previousPosition = transform.position;
+                hasPositionSample = true;
                 if (!state.IsActive) EnterTerminal();
                 return;
             }
@@ -199,6 +234,13 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
         private void ObserveMovement()
         {
             Vector3 current = transform.position;
+            if (!hasPositionSample)
+            {
+                previousPosition = current;
+                hasPositionSample = true;
+                return;
+            }
+
             if (bodyKind == EnemyPresentationBodyKind2D.MobileBlasterDroid
                 && explicitMovementSeconds <= 0f)
             {
@@ -271,6 +313,13 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
             muzzle.enabled = false;
             visualRoot.localRotation = Quaternion.Euler(0f, 0f, 35f);
             SetColors(0.28f);
+        }
+
+        private void EnsureInitialized()
+        {
+            if (visualRoot != null) return;
+            BuildVisuals();
+            ConfigurePhysics();
         }
 
         private void BuildVisuals()
@@ -363,6 +412,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
 
         private void SetColors(float alphaMultiplier)
         {
+            if (renderers == null || baseColors == null) return;
             for (int index = 0; index < renderers.Length; index++)
             {
                 Color color = baseColors[index];
