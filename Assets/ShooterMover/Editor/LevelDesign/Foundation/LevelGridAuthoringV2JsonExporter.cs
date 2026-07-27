@@ -57,8 +57,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 purpose == LevelGridValidationPurposeV2.ProductionPublish
                     ? "Publish Level Grid V2"
                     : "Export Level Grid V2 Draft",
-                Application.dataPath,
-                root.LevelIdText.Replace('.', '_'));
+                UnityEngine.Application.dataPath,
+                (root.LevelIdText ?? "level").Replace('.', '_'));
             if (string.IsNullOrEmpty(outputRoot))
             {
                 return;
@@ -160,11 +160,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string roomsRoot,
             int ordinal)
         {
-            string folderName = "Room_"
+            string preferredFolderName = "Room_"
                 + room.GridCoordinate.x + "_"
                 + room.GridCoordinate.y + "_"
                 + ordinal.ToString("00");
-            string roomRoot = Path.Combine(roomsRoot, folderName);
+            string roomRoot = ResolveRoomFolder(
+                roomsRoot,
+                room.RoomIdText,
+                preferredFolderName);
             Directory.CreateDirectory(roomRoot);
 
             WriteJson(
@@ -252,6 +255,44 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Path.Combine(roomRoot, "encounter.json"),
                 room.RoomIdText,
                 "encounter");
+        }
+
+        private static string ResolveRoomFolder(
+            string roomsRoot,
+            string roomId,
+            string preferredFolderName)
+        {
+            string[] existingFolders = Directory.GetDirectories(roomsRoot);
+            for (int index = 0; index < existingFolders.Length; index++)
+            {
+                string roomJsonPath = Path.Combine(existingFolders[index], "room.json");
+                if (!File.Exists(roomJsonPath))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    RoomIdentityDtoV2 identity = JsonUtility.FromJson<RoomIdentityDtoV2>(
+                        File.ReadAllText(roomJsonPath));
+                    if (identity != null
+                        && string.Equals(
+                            identity.room_id,
+                            roomId,
+                            StringComparison.Ordinal))
+                    {
+                        return existingFolders[index];
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning(
+                        "Could not inspect existing room folder '"
+                            + existingFolders[index] + "': " + exception.Message);
+                }
+            }
+
+            return Path.Combine(roomsRoot, preferredFolderName);
         }
 
         private static EndpointDtoV2 BuildEndpoint(
@@ -374,6 +415,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             public string room_id;
             public string door_id;
+        }
+
+        [Serializable]
+        private sealed class RoomIdentityDtoV2
+        {
+            public string room_id;
         }
 
         [Serializable]
