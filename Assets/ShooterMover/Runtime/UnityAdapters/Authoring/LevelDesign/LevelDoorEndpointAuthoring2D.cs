@@ -17,6 +17,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             LevelDoorPlacementModeV2.EdgeManaged;
         [SerializeField] [Range(0f, 1f)] private float edgeOffset = 0.5f;
         [SerializeField] private Vector2 fixedLocalPosition = Vector2.zero;
+        [Tooltip("When enabled, connected edge-managed doors follow the relative room direction.")]
+        [SerializeField] private bool autoFaceConnection = true;
 
         [Header("Traversal and map")]
         [SerializeField] private bool traversable = true;
@@ -52,6 +54,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return fixedLocalPosition; }
         }
 
+        public bool AutoFaceConnection
+        {
+            get { return autoFaceConnection; }
+        }
+
         public bool Traversable
         {
             get { return traversable; }
@@ -73,6 +80,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 fixedLocalPosition,
                 traversable,
                 visibleOnMap,
+                autoFaceConnection,
                 BuildDiagnosticLocation());
         }
 
@@ -139,6 +147,57 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             transform.localPosition = ResolveTargetLocalPosition();
         }
 
+        [ContextMenu("Capture Current Position As Fixed Placement")]
+        public void CaptureCurrentPositionAsFixedPlacement()
+        {
+            placementMode = LevelDoorPlacementModeV2.Fixed;
+            fixedLocalPosition = transform.localPosition;
+        }
+
+        public void CaptureCurrentFixedPosition()
+        {
+            if (placementMode == LevelDoorPlacementModeV2.Fixed)
+            {
+                fixedLocalPosition = transform.localPosition;
+            }
+        }
+
+        public void ConfigureAuthoring(
+            string configuredDoorId,
+            LevelRoomAuthoring2D configuredOwningRoom,
+            LevelDoorSideV2 configuredSide,
+            LevelDoorPlacementModeV2 configuredPlacementMode,
+            float configuredEdgeOffset,
+            Vector2 configuredFixedLocalPosition,
+            bool configuredTraversable,
+            bool configuredAutoFaceConnection = true)
+        {
+            doorId = configuredDoorId;
+            owningRoom = configuredOwningRoom;
+            side = configuredSide;
+            placementMode = configuredPlacementMode;
+            edgeOffset = configuredEdgeOffset;
+            fixedLocalPosition = configuredFixedLocalPosition;
+            traversable = configuredTraversable;
+            autoFaceConnection = configuredAutoFaceConnection;
+        }
+
+        public void SetEdgeSideForAuthoring(LevelDoorSideV2 configuredSide)
+        {
+            if (placementMode != LevelDoorPlacementModeV2.EdgeManaged)
+            {
+                return;
+            }
+
+            side = configuredSide;
+            SnapToPlacement();
+        }
+
+        public void SetAutoFaceConnectionForAuthoring(bool enabled)
+        {
+            autoFaceConnection = enabled;
+        }
+
         public void ConfigureForTests(
             string configuredDoorId,
             LevelRoomAuthoring2D configuredOwningRoom,
@@ -148,13 +207,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             Vector2 configuredFixedLocalPosition,
             bool configuredTraversable)
         {
-            doorId = configuredDoorId;
-            owningRoom = configuredOwningRoom;
-            side = configuredSide;
-            placementMode = configuredPlacementMode;
-            edgeOffset = configuredEdgeOffset;
-            fixedLocalPosition = configuredFixedLocalPosition;
-            traversable = configuredTraversable;
+            ConfigureAuthoring(
+                configuredDoorId,
+                configuredOwningRoom,
+                configuredSide,
+                configuredPlacementMode,
+                configuredEdgeOffset,
+                configuredFixedLocalPosition,
+                configuredTraversable);
         }
 
         private void Reset()
