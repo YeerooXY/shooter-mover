@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using ShooterMover.Application.Missions.Rooms.Content;
+using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
 using UnityEngine;
@@ -128,6 +130,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 if (existed) CopyDirectory(absoluteOutput, stage);
                 else Directory.CreateDirectory(stage);
                 WritePackage(root, metadata, rooms, doors, links, stage);
+                ValidateStagedPackage(stage);
                 if (existed) Directory.Move(absoluteOutput, backup);
                 Directory.Move(stage, absoluteOutput);
                 if (Directory.Exists(backup)) Directory.Delete(backup, true);
@@ -140,6 +143,32 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     Directory.Move(backup, absoluteOutput);
                 }
                 throw;
+            }
+        }
+
+        private static void ValidateStagedPackage(string stage)
+        {
+            LevelGridV2CompileResult compile = LevelGridV2AssetCompiler.CompileFolder(stage);
+            if (compile == null || !compile.IsValid)
+            {
+                string detail = compile != null && compile.Issues.Count > 0
+                    ? compile.Issues[0].ToString()
+                    : "Compilation failed without a structured issue.";
+                throw new InvalidOperationException(
+                    "The staged playable package did not compile: " + detail);
+            }
+
+            RoomContentImportResultV1 imported = RoomContentJsonImporterV1.Import(
+                compile.Package,
+                BuiltInRoomContentObjectCatalogV1.Create());
+            if (imported == null || !imported.IsValid)
+            {
+                string detail = imported != null && imported.Issues.Count > 0
+                    ? imported.Issues[0].Code + " at " + imported.Issues[0].Path
+                        + ": " + imported.Issues[0].Message
+                    : "The existing V1 importer rejected the staged package.";
+                throw new InvalidOperationException(
+                    "The staged playable package failed runtime import validation: " + detail);
             }
         }
 
