@@ -125,21 +125,27 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            string normalized = displayName ?? string.Empty;
-            if (string.Equals(room.DisplayName, normalized.Trim(), StringComparison.Ordinal))
+            string normalized = string.IsNullOrWhiteSpace(displayName)
+                ? string.Empty
+                : displayName.Trim();
+            if (string.Equals(room.DisplayName, normalized, StringComparison.Ordinal))
             {
                 return;
             }
 
             LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            Undo.IncrementCurrentGroup();
+            int group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Rename Level Grid Room");
             Undo.RecordObject(room, "Rename Level Grid Room");
             Undo.RecordObject(room.gameObject, "Rename Level Grid Room");
             SerializedObject serialized = new SerializedObject(room);
             serialized.FindProperty("displayName").stringValue = normalized;
             serialized.ApplyModifiedProperties();
-            room.gameObject.name = string.IsNullOrWhiteSpace(normalized)
+            room.gameObject.name = string.IsNullOrEmpty(normalized)
                 ? "Room " + room.GridCoordinate.x + "," + room.GridCoordinate.y
-                : normalized.Trim();
+                : normalized;
+            Undo.CollapseUndoOperations(group);
             MarkChanged(root, room);
         }
 
@@ -301,6 +307,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             serialized.FindProperty("edgeOffset").floatValue = Mathf.Clamp01(edgeOffset);
             serialized.FindProperty("fixedLocalPosition").vector2Value =
                 fixedRoomRelativePosition;
+            SerializedProperty version =
+                serialized.FindProperty("fixedPositionSpaceVersion");
+            if (version != null)
+            {
+                version.intValue = 1;
+            }
             serialized.FindProperty("traversable").boolValue = traversable;
             serialized.FindProperty("visibleOnMap").boolValue = visibleOnMap;
             serialized.FindProperty("autoFaceConnection").boolValue = automaticFacing;
@@ -422,17 +434,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return null;
             }
 
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (links[index].SourceDoor == door
-                    || links[index].DestinationDoor == door)
-                {
-                    return links[index];
-                }
-            }
-            return null;
+            List<LevelDoorLinkAuthoring2D> links =
+                LevelGridDoorOperationsV2.FindAttachedConnections(root, door);
+            return links.Count == 0 ? null : links[0];
         }
 
         public static void DeleteConnection(LevelDoorLinkAuthoring2D connection)
@@ -460,30 +464,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         public static void DeleteDoor(LevelDoorEndpointAuthoring2D door)
         {
-            if (door == null)
-            {
-                return;
-            }
-
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(door);
-            LevelDoorLinkAuthoring2D link = FindAttachedConnection(root, door);
-            Undo.IncrementCurrentGroup();
-            int group = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Delete Level Grid Door");
-            if (link != null)
-            {
-                DestroyComponentOrObjectWithUndo(link);
-            }
-            DestroyComponentOrObjectWithUndo(door);
-            Undo.CollapseUndoOperations(group);
-            Selection.activeObject = root;
-            MarkChanged(root, root);
-            SceneView sceneView = SceneView.lastActiveSceneView;
-            if (sceneView != null)
-            {
-                sceneView.ShowNotification(new GUIContent(
-                    "Door deleted; the opposite endpoint remains. Ctrl+Z to undo."));
-            }
+            LevelGridDoorOperationsV2.DeleteDoorUndoable(door, false);
         }
 
         public static bool DeleteRoom(LevelRoomAuthoring2D room, bool allowModalWarning)
@@ -592,6 +573,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelGridDoorOperationsV2.ReflowAll(root);
             root.ValidateHierarchy();
             root.ValidateGridAuthoring(purpose);
+            LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
             EditorUtility.SetDirty(root);
             SceneView.RepaintAll();
         }
@@ -673,6 +655,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             root.ValidateHierarchy();
             root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
+            LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
             SceneView.RepaintAll();
         }
     }
