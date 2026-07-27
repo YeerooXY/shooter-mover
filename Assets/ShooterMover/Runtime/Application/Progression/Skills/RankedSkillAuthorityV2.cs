@@ -5,7 +5,7 @@ using ShooterMover.Domain.Progression.Skills;
 
 namespace ShooterMover.Application.Progression.Skills
 {
-    public enum SkillAllocationRejectionV2 { None, UnknownSkill, WrongClass, MaximumRank, InsufficientPoints, MissingPrerequisite, CategoryGate, StaleVersion, DuplicateConflict }
+    public enum SkillAllocationRejectionV2 { None, UnknownSkill, WrongClass, MaximumRank, InsufficientPoints, MissingPrerequisite, CategoryGate, StaleVersion, DuplicateConflict, CommitUnverified }
 
     public sealed class AllocateSkillRankCommandV2
     {
@@ -23,17 +23,19 @@ namespace ShooterMover.Application.Progression.Skills
 
     public sealed class RankedSkillAllocationAuthorityV2
     {
-        private readonly RankedSkillCatalogV2 catalog; private readonly SkillEffectProjectorV2 projector; private readonly Dictionary<string, RankedSkillAllocationSnapshotV2> snapshots = new Dictionary<string, RankedSkillAllocationSnapshotV2>(StringComparer.Ordinal); private readonly Dictionary<string, SkillAllocationResultV2> replay = new Dictionary<string, SkillAllocationResultV2>(StringComparer.Ordinal);
+        private readonly RankedSkillCatalogV2 catalog; private readonly SkillEffectProjectorV2 projector; private readonly Dictionary<string, RankedSkillAllocationSnapshotV2> snapshots = new Dictionary<string, RankedSkillAllocationSnapshotV2>(StringComparer.Ordinal); private readonly Dictionary<string, SkillAllocationResultV2> replay = new Dictionary<string, SkillAllocationResultV2>(StringComparer.Ordinal); private readonly Dictionary<string, string> commitUnverified = new Dictionary<string, string>(StringComparer.Ordinal);
         public RankedSkillAllocationAuthorityV2(RankedSkillCatalogV2 catalog, SkillEffectProjectorV2 projector = null) { this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog)); this.projector = projector ?? new SkillEffectProjectorV2(); }
         public RankedSkillCatalogV2 Catalog => catalog;
-        public void Seed(RankedSkillAllocationSnapshotV2 snapshot) { if (snapshot == null) throw new ArgumentNullException(nameof(snapshot)); snapshots[snapshot.ProfileId] = snapshot; }
+        public void Seed(RankedSkillAllocationSnapshotV2 snapshot) { if (snapshot == null) throw new ArgumentNullException(nameof(snapshot)); snapshots[snapshot.ProfileId] = snapshot; commitUnverified.Remove(snapshot.ProfileId); }
         public RankedSkillAllocationSnapshotV2 Get(string profileId) => snapshots[profileId];
         public bool TryGet(string profileId, out RankedSkillAllocationSnapshotV2 snapshot) => snapshots.TryGetValue(profileId ?? string.Empty, out snapshot);
+        public bool IsCommitUnverified(string profileId) => !string.IsNullOrWhiteSpace(profileId) && commitUnverified.ContainsKey(profileId.Trim());
         public SkillAllocationResultV2 Allocate(AllocateSkillRankCommandV2 command)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));
             RankedSkillAllocationSnapshotV2 current;
             if (!snapshots.TryGetValue(command.ProfileId, out current)) throw new InvalidOperationException("The ranked-skill profile is not seeded.");
+            if (commitUnverified.ContainsKey(command.ProfileId)) return Result(command, false, SkillAllocationRejectionV2.CommitUnverified, current, false);
             SkillAllocationResultV2 previous; if (replay.TryGetValue(command.OperationId, out previous)) return previous.CommandFingerprint == command.Fingerprint ? previous : Result(command, false, SkillAllocationRejectionV2.DuplicateConflict, current, false);
             var rejection = Validate(command, current); if (rejection != SkillAllocationRejectionV2.None) return Result(command, false, rejection, current, true);
             var ranks = current.Ranks.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal); ranks[command.SkillId] = current.RankOf(command.SkillId) + 1;
@@ -53,7 +55,15 @@ namespace ShooterMover.Application.Progression.Skills
             return SkillAllocationRejectionV2.None;
         }
         private SkillAllocationResultV2 Result(AllocateSkillRankCommandV2 command, bool accepted, SkillAllocationRejectionV2 rejection, RankedSkillAllocationSnapshotV2 snapshot, bool remember) { var result = new SkillAllocationResultV2(command, accepted, rejection, snapshot, projector.Project(catalog, snapshot)); if (remember) replay[command.OperationId] = result; return result; }
-        internal void Replace(RankedSkillAllocationSnapshotV2 snapshot) { snapshots[snapshot.ProfileId] = snapshot; }
+        internal void Replace(RankedSkillAllocationSnapshotV2 snapshot) { if (snapshot == null) throw new ArgumentNullException(nameof(snapshot)); if (IsCommitUnverified(snapshot.ProfileId)) throw new InvalidOperationException("The ranked-skill profile has an unverified persistence commit."); snapshots[snapshot.ProfileId] = snapshot; }
+        internal bool MarkCommitUnverified(string profileId, string snapshotFingerprint)
+        {
+            RankedSkillAllocationSnapshotV2 current;
+            if (string.IsNullOrWhiteSpace(profileId) || string.IsNullOrWhiteSpace(snapshotFingerprint)
+                || !snapshots.TryGetValue(profileId.Trim(), out current)
+                || !string.Equals(current.Fingerprint, snapshotFingerprint.Trim(), StringComparison.Ordinal)) return false;
+            commitUnverified[current.ProfileId] = current.Fingerprint; return true;
+        }
         internal bool RollBackAccepted(string operationId, RankedSkillAllocationSnapshotV2 accepted, RankedSkillAllocationSnapshotV2 restore)
         {
             if (string.IsNullOrWhiteSpace(operationId) || accepted == null || restore == null || !string.Equals(accepted.ProfileId, restore.ProfileId, StringComparison.Ordinal)) return false;
@@ -91,7 +101,7 @@ namespace ShooterMover.Application.Progression.Skills
         public SkillRespecReceiptV2 Execute(string operationId, SkillRespecQuoteV2 quote)
         {
             string command = SkillFingerprintV2.Hash(operationId + "|" + quote.Fingerprint); SkillRespecReceiptV2 prior; if (replay.TryGetValue(operationId, out prior)) return commands[operationId] == command ? prior : Reject(operationId, quote, SkillRespecRejectionV2.DuplicateConflict);
-            var current = allocation.Get(quote.ProfileId); if (current.Version != quote.AllocationVersion || current.AllocatedPoints != quote.AllocatedPoints || payment.PaymentStateFingerprint(quote.ProfileId) != quote.PaymentStateFingerprint || policy.CalculateCost(quote.ProfileId, current.AllocatedPoints, current.Version) != quote.ExactCost) return Remember(operationId, command, Reject(operationId, quote, SkillRespecRejectionV2.StaleQuote));
+            var current = allocation.Get(quote.ProfileId); if (allocation.IsCommitUnverified(quote.ProfileId) || current.Version != quote.AllocationVersion || current.AllocatedPoints != quote.AllocatedPoints || payment.PaymentStateFingerprint(quote.ProfileId) != quote.PaymentStateFingerprint || policy.CalculateCost(quote.ProfileId, current.AllocatedPoints, current.Version) != quote.ExactCost) return Remember(operationId, command, Reject(operationId, quote, SkillRespecRejectionV2.StaleQuote));
             var charged = payment.TryCharge(operationId, quote.ProfileId, quote.ExactCost, quote.PaymentStateFingerprint); if (!charged.Succeeded) return Remember(operationId, command, Reject(operationId, quote, SkillRespecRejectionV2.PaymentFailed));
             var empty = new RankedSkillAllocationSnapshotV2(current.ProfileId, current.ClassId, current.Version + 1, catalog.SchemaVersion, catalog.ContentVersion, null); allocation.Replace(empty); return Remember(operationId, command, new SkillRespecReceiptV2(operationId, true, SkillRespecRejectionV2.None, quote, current, empty, projector.Project(catalog, empty), charged.ReceiptId));
         }
