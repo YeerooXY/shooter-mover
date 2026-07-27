@@ -86,13 +86,17 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public LevelGridDoorRecordV2 BuildRecord()
         {
+            Vector2 recordFixedPosition = placementMode == LevelDoorPlacementModeV2.Fixed
+                    && !UsesOwningRoomFixedPositionSpace
+                ? ResolveCurrentRoomRelativePosition()
+                : fixedLocalPosition;
             return new LevelGridDoorRecordV2(
                 doorId,
                 owningRoom == null ? null : owningRoom.RoomIdText,
                 side,
                 placementMode,
                 edgeOffset,
-                fixedLocalPosition,
+                recordFixedPosition,
                 traversable,
                 visibleOnMap,
                 autoFaceConnection,
@@ -197,7 +201,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public bool MigrateFixedPositionSpaceForAuthoring()
         {
-            if (UsesOwningRoomFixedPositionSpace || owningRoom == null)
+            if (placementMode != LevelDoorPlacementModeV2.Fixed
+                || UsesOwningRoomFixedPositionSpace
+                || owningRoom == null)
             {
                 return false;
             }
@@ -289,7 +295,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             {
                 owningRoom = GetComponentInParent<LevelRoomAuthoring2D>();
             }
-            MigrateFixedPositionSpaceForAuthoring();
         }
 
         private Vector2 ResolveCurrentRoomRelativePosition()
