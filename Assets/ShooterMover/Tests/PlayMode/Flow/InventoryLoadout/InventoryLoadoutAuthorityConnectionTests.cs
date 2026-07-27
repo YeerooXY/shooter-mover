@@ -26,6 +26,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                     new StableId[
                         PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             var runtime = new ProductionPlayerLoadoutRuntimeV1(draft);
+            ProductionWeaponMountLoadoutRegistryV2.Register(
+                runtime.WeaponHoldings,
+                runtime.MountLoadoutAuthority);
             GameObject host = new GameObject("Loadout connection test");
             InventoryLoadoutScreenControllerV1 controller =
                 host.AddComponent<InventoryLoadoutScreenControllerV1>();
@@ -70,6 +73,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             Assert.That(controller.ReturnCount, Is.EqualTo(1));
             Assert.That(controller.CanonicalSnapshot, Is.Not.Null);
             Assert.That(controller.CanonicalSnapshot.OwnedWeapons.Count, Is.EqualTo(4));
+            Assert.That(
+                runtime.MountLoadoutAuthority.ExportSnapshot().Bindings.Count,
+                Is.EqualTo(4));
 
             Object.Destroy(host);
             yield return null;
