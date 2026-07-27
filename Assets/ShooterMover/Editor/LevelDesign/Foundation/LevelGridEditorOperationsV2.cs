@@ -486,8 +486,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
             for (int index = 0; index < links.Length; index++)
             {
-                if (links[index].SourceRoom == room
-                    || links[index].DestinationRoom == room)
+                if (ConnectionTouchesRoom(links[index], room))
                 {
                     attached.Add(links[index]);
                 }
@@ -570,10 +569,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelGridDoorOperationsV2.ReflowAll(root);
-            root.ValidateHierarchy();
-            root.ValidateGridAuthoring(purpose);
-            LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
+            LevelGridAuthoringV2LiveValidation.ValidateNow(root, purpose);
             EditorUtility.SetDirty(root);
             SceneView.RepaintAll();
         }
@@ -583,6 +579,30 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return component == null
                 ? null
                 : component.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+        }
+
+
+        private static bool ConnectionTouchesRoom(
+            LevelDoorLinkAuthoring2D connection,
+            LevelRoomAuthoring2D room)
+        {
+            if (connection == null || room == null)
+            {
+                return false;
+            }
+            return connection.SourceRoom == room
+                || connection.DestinationRoom == room
+                || DoorTouchesRoom(connection.SourceDoor, room)
+                || DoorTouchesRoom(connection.DestinationDoor, room);
+        }
+
+        private static bool DoorTouchesRoom(
+            LevelDoorEndpointAuthoring2D door,
+            LevelRoomAuthoring2D room)
+        {
+            return door != null
+                && (door.OwningRoom == room
+                    || door.transform.IsChildOf(room.transform));
         }
 
         private static bool HasDuplicateLink(
@@ -653,9 +673,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             EditorUtility.SetDirty(root);
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            root.ValidateHierarchy();
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
+            LevelGridAuthoringV2LiveValidation.ValidateNow(
+                root,
+                LevelGridValidationPurposeV2.Draft);
             SceneView.RepaintAll();
         }
     }
