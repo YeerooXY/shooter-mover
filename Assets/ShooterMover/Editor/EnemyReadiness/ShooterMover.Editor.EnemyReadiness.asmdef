@@ -1,0 +1,21 @@
+{
+  "name": "ShooterMover.Editor.EnemyReadiness",
+  "rootNamespace": "ShooterMover.Editor.Enemies",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.Domain",
+    "ShooterMover.UnityAdapters"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
