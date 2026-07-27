@@ -121,7 +121,10 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                     break;
             }
 
-            return owningRoom.transform.InverseTransformPoint(worldPosition);
+            Transform localParent = transform.parent;
+            return localParent == null
+                ? worldPosition
+                : localParent.InverseTransformPoint(worldPosition);
         }
 
         [ContextMenu("Assign New Stable ID")]
