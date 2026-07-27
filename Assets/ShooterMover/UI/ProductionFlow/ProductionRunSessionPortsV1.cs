@@ -19,10 +19,15 @@ namespace ShooterMover.UI.ProductionFlow
         IProductionRunStatInputResolverV1
     {
         private readonly ProductionPlayableLevelDefinitionV1 level;
+        private readonly ProgressionContext frozenProgression;
+
         public ProductionPlayableLevelStatInputResolverV1(
-            ProductionPlayableLevelDefinitionV1 level)
+            ProductionPlayableLevelDefinitionV1 level,
+            ProgressionContext frozenProgression)
         {
             this.level = level ?? throw new ArgumentNullException(nameof(level));
+            this.frozenProgression = frozenProgression
+                ?? throw new ArgumentNullException(nameof(frozenProgression));
         }
 
         public ProductionRunStatInputResolutionV1 Resolve(
@@ -39,11 +44,15 @@ namespace ShooterMover.UI.ProductionFlow
                 throw new InvalidOperationException(
                     "No authored run-stat baseline exists for level " + level.LevelStableId);
             }
-            ProgressionContext progression = characterGraph.ExperienceAuthority.CurrentContext;
-            if (progression == null || progression.CharacterLevel < 1)
+            if (command == null
+                || resolvedRunStableId == null
+                || characterGraph == null
+                || character == null
+                || frozenProgression.CharacterLevel < 1
+                || frozenProgression.DifficultyId != command.DifficultyStableId)
             {
                 throw new InvalidOperationException(
-                    "The selected character progression context is unavailable.");
+                    "The frozen selected-character run context is unavailable or mismatched.");
             }
             var values = new Dictionary<string, decimal>
             {
@@ -56,10 +65,11 @@ namespace ShooterMover.UI.ProductionFlow
                     new CharacterBaseStatProfileV1(
                         "base-profile.production-playable-level-1",
                         character.ClassDefinitionStableId.ToString(),
-                        progression.CharacterLevel,
+                        frozenProgression.CharacterLevel,
                         ProductionRunFingerprintV1.Hash(
                             "production-playable-level-1-base-v1|"
-                            + character.ClassDefinitionStableId),
+                            + character.ClassDefinitionStableId + "|"
+                            + frozenProgression.Fingerprint),
                         values),
                     Array.Empty<DerivedStatModifierSourceV1>(),
                     DerivedStatPolicyV1.CreateDefault()),
