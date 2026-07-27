@@ -205,12 +205,31 @@ namespace ShooterMover.Application.Flow.Production
                     "Canonical weapon holdings are corrupt: " + weaponError);
             }
 
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout;
+            string mountError;
+            bool hasWeaponMountLoadout =
+                WeaponMountLoadoutSaveComponentV2.TryRead(
+                    character,
+                    out weaponMountLoadout,
+                    out mountError);
+            if (!hasWeaponMountLoadout && !string.IsNullOrEmpty(mountError))
+            {
+                throw new InvalidOperationException(
+                    "Canonical weapon mount loadout is corrupt: " + mountError);
+            }
+            if (hasWeaponMountLoadout && !hasWeaponHoldings)
+            {
+                throw new InvalidOperationException(
+                    "Canonical weapon mount loadout requires canonical holdings.");
+            }
+
             ProductionPlayerLoadoutRuntimeV1 inventory =
                 ProductionPlayerLoadoutRuntimeV1.Restore(
                     character.CharacterInstanceStableId,
                     character.ClassDefinitionStableId,
                     holdings,
                     weaponHoldings,
+                    weaponMountLoadout,
                     loadout);
             return CreateGraph(
                 character,
