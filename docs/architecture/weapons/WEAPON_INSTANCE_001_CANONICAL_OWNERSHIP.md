@@ -1,12 +1,33 @@
-# WEAPON-INSTANCE-001 — Canonical Owned Weapon Identity
+# WEAPON-INSTANCE-001 — Canonical Weapon Instance Foundation, Phase 1
 
 ## Status
 
-Accepted target model. This change introduces the canonical domain value and cuts newly generated starter identities over to the opaque format.
+This phase introduces the future canonical owned-weapon value, opaque instance-ID generation, and explicit physical mount availability.
 
-The existing generic `EquipmentInstance` persistence payload remains a compatibility boundary until the holdings schema is migrated with dual-read support. It must not be treated as the final weapon ownership model.
+It does **not** make `WeaponEquipmentInstance` authoritative in the current production holdings, persistence, loadout, Inventory, or live weapon-resolution paths.
 
-## Canonical owned weapon
+The existing schema-v1 production route remains:
+
+```text
+opaque InstanceId
+→ legacy EquipmentInstance
+→ legacy item level / quality / augment payload
+→ schema-v1 holdings and replay receipts
+```
+
+The target route remains future work:
+
+```text
+InstanceId
+→ WeaponEquipmentInstance
+→ WeaponDefinitionId
+→ augment / overclock assignments
+→ authoritative WeaponBlueprint
+```
+
+This PR is therefore a reusable domain foundation, not completion of the Inventory milestone or Track B.
+
+## Canonical future owned weapon
 
 Each exact owned weapon contains only:
 
@@ -37,18 +58,9 @@ The value must not encode:
 - owner;
 - acquisition source;
 - creation order;
-- the number of previously owned copies.
+- number of previously owned copies.
 
-Rejected identity styles include:
-
-```text
-rattler10
-rattler-slot-2
-aggressive-rattler-3
-equipment-instance.onboarding-...
-```
-
-Old persisted identities are not silently rewritten because identity replacement would produce a different owned object. Migration may preserve a legacy opaque value while all newly generated identities use the canonical factory.
+Old persisted identities are not silently rewritten. Identity replacement would create a different owned object.
 
 ### `WeaponDefinitionId`
 
@@ -61,35 +73,24 @@ InstanceId: instance.8d72c6c438eb4cd29a4dc24765a61420
 WeaponDefinitionId: rattler.mk1
 ```
 
-The definition resolves:
+The definition resolves display name, family, Mark, rarity, authored mechanics, statistics, presentation, and firing behaviour. Those facts are not copied into the canonical owned instance.
 
-- display name;
-- weapon family;
-- Mark;
-- rarity;
-- base mechanics and statistics;
-- presentation;
-- firing behaviour.
+### Assignment collections
 
-This authored data is not copied into the owned instance.
+`AugmentAssignments` and `OverclockAssignments` currently retain stable references only. The collections are copied, sorted, non-null, immutable, and duplicate-free.
 
-The compatibility `EquipmentDefinitionId` projection may remain at legacy API boundaries during migration, but it is not the authoritative weapon-type identity.
+This representation is provisional until augment and overclock ownership contracts are finalized. If the final mechanic requires positional facts such as:
 
-### `AugmentAssignments`
+```text
+augment slot → augment instance
+overclock socket → overclock instance
+```
 
-`AugmentAssignments` stores references to the augments installed on this exact weapon. Assignment references follow the augment ownership model and do not copy augment display or definition data.
-
-Two weapons using the same `WeaponDefinitionId` may have different augment assignments.
-
-### `OverclockAssignments`
-
-`OverclockAssignments` stores references to the overclocks installed on this exact weapon.
-
-Two weapons using the same `WeaponDefinitionId` may have different overclock assignments.
+then a typed assignment object must replace the bare stable-ID list. Do not infer slot or socket identity from list order.
 
 ## Explicit exclusions
 
-Do not add speculative instance metadata. The following fields are excluded unless a real mechanic later proves they belong to the exact persistent weapon object:
+Do not add speculative instance metadata merely to preserve the legacy generic equipment shape. Excluded fields include:
 
 - acquisition source;
 - obtained timestamp;
@@ -99,109 +100,92 @@ Do not add speculative instance metadata. The following fields are excluded unle
 - mission source;
 - creation sequence;
 - number of identical weapons owned;
-- copied user-facing weapon name.
+- copied weapon name or authored combat statistics.
 
-Acquisition receipts and replay-safety facts remain in reward, transaction, ledger, or persistence operations.
+Acquisition receipts and replay-safety facts belong to reward, transaction, ledger, or persistence operations.
 
-## Holdings
+## Class-correct physical mounts
 
-The target authoritative holdings shape is:
+A class layout is not a universal four-slot weapon array.
 
-```text
-InstanceId → WeaponEquipmentInstance
-```
-
-Two Rattler MK1 weapons remain separate because they have different instance IDs:
+Every physical mount has explicit availability:
 
 ```text
-ID A
-├── definition: rattler.mk1
-├── augments: [...]
-└── overclocks: [...]
-
-ID B
-├── definition: rattler.mk1
-├── augments: [...]
-└── overclocks: [...]
+Active
+LockedBySkill
 ```
 
-`Rattler MK1 × 2` is permitted only as a derived UI grouping. It is never authoritative ownership state.
-
-## Loadout
-
-A weapon mount stores only:
+Aggressive is currently:
 
 ```text
-MountId → InstanceId
+Aggressive
+├── Outer Left: Active
+├── Center: LockedBySkill
+└── Outer Right: Active
 ```
 
-The mount does not copy weapon names, authored definition data, assignments, or combat statistics.
+Therefore:
 
-Runtime resolution follows:
+- physical mount count: `3`;
+- active mount count: `2`;
+- locked-by-skill mount count: `1`;
+- starter instance count: `2`;
+- locked mount instance ID: `null`.
 
-```text
-mount
-→ InstanceId
-→ character holdings
-→ exact WeaponEquipmentInstance
-→ WeaponDefinitionId
-→ authoritative WeaponBlueprint
-→ augment and overclock composition
-→ effective live weapon
-```
+There is no fourth Aggressive physical weapon mount.
 
-## Starter weapons
+The current four-record route/loadout payload remains only a legacy persistence and input bridge. Empty records outside the class layout are not physical mounts and must not be counted or presented as such.
 
-Each active starter mount receives one independently created exact weapon instance:
+## Starter boundary delivered in Phase 1
 
-```text
-Instance A
-├── unique opaque ID
-├── definition: rattler.mk1
-├── augments: empty
-└── overclocks: empty
+The current production starter grant still constructs the legacy generic `EquipmentInstance`. Phase 1 changes only its generated identity and the class mount projection:
 
-Instance B
-├── different unique opaque ID
-├── definition: rattler.mk1
-├── augments: empty
-└── overclocks: empty
-```
+- each active starter mount receives one independent opaque ID;
+- a skill-locked mount receives no starter instance;
+- locked mounts remain unbound and disabled;
+- the legacy schema-v1 payload remains unchanged for save compatibility.
 
-Unavailable or locked mounts receive no instance.
+The onboarding test in this phase proves opaque identity allocation and class-correct active/locked mount projection. It does **not** prove production construction or resolution of `WeaponEquipmentInstance`.
 
-## Kept weapon creation
+## Required schema-v2 production cutover
 
-When a generated weapon is accepted:
+The schema-v1 holdings ledger embeds legacy `EquipmentInstance` payloads in current projections and immutable replay receipts. Replacing them in place would invalidate fingerprints and transaction history.
 
-1. create one opaque unique `InstanceId`;
-2. retain its `WeaponDefinitionId`;
-3. retain its augment assignments;
-4. retain its overclock assignments;
-5. add that exact instance to character holdings.
+The authoritative cutover requires a separate migration phase:
 
-The resulting weapon does not retain whether it came from an enemy, strongbox, crafting, shop, starter grant, or mission reward.
-
-## Persistence migration boundary
-
-The current schema-v1 holdings ledger embeds the legacy generic `EquipmentInstance` in command receipts and current projections. Replacing that payload in place would invalidate existing fingerprints and replay records.
-
-The production cutover therefore requires a dedicated schema migration:
-
-1. introduce a schema-v2 weapon payload containing `WeaponEquipmentInstance`;
-2. retain schema-v1 dual-read and deterministic conversion for existing saves;
-3. keep original transaction receipts immutable;
+1. add a schema-v2 weapon payload containing `WeaponEquipmentInstance`;
+2. retain deterministic schema-v1 dual-read conversion;
+3. preserve existing transaction receipts and replay facts unchanged;
 4. write only schema-v2 canonical weapon instances after migration;
-5. update holdings lookup, loadout validation, and live weapon resolution to consume `WeaponDefinitionId` directly;
-6. remove the generic weapon `EquipmentInstance` compatibility path only after save migration has shipped and been verified.
+5. migrate holdings lookup to `InstanceId → WeaponEquipmentInstance`;
+6. resolve loadouts and live weapons from `WeaponDefinitionId` directly;
+7. remove generic weapon `EquipmentInstance` compatibility only after migration verification.
 
-Do not fake this migration by assigning default item level or quality to canonical weapons. Those values are not legitimate weapon-instance state.
+Do not fake this cutover by inserting default item level or quality into the canonical weapon object.
+
+## Inventory milestone not delivered here
+
+Phase 1 does not implement:
+
+- owned-weapon cards;
+- exact-instance Inventory listing;
+- equip or unequip;
+- occupied-slot replacement;
+- class-correct visible Inventory slots;
+- locked-slot presentation or skill unlock;
+- persistence of Inventory equipment changes beyond existing schema-v1 behaviour;
+- gameplay rebinding after an Inventory change;
+- schema-v2 holdings;
+- loadout lookup through `WeaponEquipmentInstance`.
+
+Those items remain Track B work.
 
 ## Guardrails delivered here
 
-- `WeaponEquipmentInstance` exposes exactly the four canonical data properties.
-- assignment collections are immutable, sorted, non-null, and duplicate-free.
-- `OwnedEquipmentInstanceIdFactory` generates source-free random identities.
-- production starter onboarding uses the opaque identity factory.
-- tests prove same-definition weapons remain distinct and may carry different assignments.
-- tests prove the Aggressive starter layout creates two distinct instances and leaves unavailable positions unbound.
+- future `WeaponEquipmentInstance` exposes only the four canonical data properties;
+- assignment collection contracts are directly tested;
+- new owned-equipment IDs are opaque and source-free;
+- starter onboarding uses opaque IDs while retaining schema-v1 payload compatibility;
+- Aggressive exposes three physical mounts: two active and one skill-locked;
+- the locked mount is unbound and receives no starter instance;
+- no claim is made that the canonical value is production-authoritative.
