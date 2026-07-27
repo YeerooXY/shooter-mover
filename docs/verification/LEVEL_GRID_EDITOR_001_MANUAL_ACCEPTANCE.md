@@ -85,11 +85,27 @@ Run the following in Unity `6000.3.19f1` on a scene containing a valid
 12. Exercise a scene with approximately 100 rooms, 300 endpoints, and 150 links and
     confirm ordinary selection, panning, and unrelated project edits do not repeatedly
     trigger full draft validation.
+13. Delete or create a room, door, or connection, then use Undo and Redo. Confirm the
+    canvas, Problems panel, room-card state, endpoint colors, and publish status all
+    refresh to the restored topology.
+14. Create a deliberately malformed link whose room reference disagrees with an endpoint
+    physically owned by a room. Delete that room and confirm the malformed link is also
+    removed while the opposite endpoint remains.
+15. Move a fixed endpoint in Scene view, then press Undo once. Confirm both its Transform
+    and stored room-relative fixed coordinate return together and remain stable after
+    snapping or reopening the scene.
+16. Load legacy fixed-door data and confirm migration occurs during the editor validation
+    pass on the main thread, not from `OnValidate`, while preserving world position.
+17. Add or remove authoring components directly in the Hierarchy and confirm validation
+    refreshes. Then edit an unrelated hierarchy outside every level root and confirm no
+    level validation pass is triggered.
+18. Fix the currently selected validation problem and confirm the embedded inspector
+    clears it or remaps it to the current diagnostic rather than displaying stale text.
 
 ## Focused EditMode coverage
 
-`LevelGridEditorWindowV2Tests` and
-`LevelGridEditorTargetedFixesV2Tests` cover:
+`LevelGridEditorWindowV2Tests`, `LevelGridEditorTargetedFixesV2Tests`, and
+`LevelGridEditorSecondAuditV2Tests` cover:
 
 - opening with no selected root;
 - projection of existing scene rooms and doors;
@@ -106,7 +122,13 @@ Run the following in Unity `6000.3.19f1` on a scene containing a valid
 - foundation problems reflected on room cards;
 - absence of an independent JSON/runtime graph across every editor partial;
 - fixed door positions stored relative to the owning room;
-- position-preserving migration from legacy parent-relative fixed-door data.
+- position-preserving migration from legacy parent-relative fixed-door data;
+- validation refresh after Undo/Redo and direct Hierarchy changes;
+- malformed room-link cleanup based on both room and endpoint ownership;
+- one-step Undo for Scene-view fixed-door movement and stored-position capture;
+- main-thread migration routing with no spatial migration from `OnValidate`;
+- clearing resolved diagnostics from the embedded inspector;
+- removal of global object-change projection invalidation.
 
 ## Targeted self-audit repairs
 
@@ -115,9 +137,10 @@ Run the following in Unity `6000.3.19f1` on a scene containing a valid
 - Fixed-door coordinates carry an explicit serialized space version. Legacy values are
   migrated from the current world position without moving the endpoint.
 - Root selection performs one immediate draft validation.
-- Ordinary object-change callbacks only invalidate the cached projection. The existing
-  live validator owns change-driven validation and now refreshes both foundation and
-  Grid V2 results while preserving the current validation purpose.
+- Broad object-change callbacks were removed. Ordinary Inspector edits flow through
+  Unity Undo postprocessing, while hierarchy changes use a cached per-root signature;
+  the live validator refreshes foundation and Grid V2 together while preserving the
+  current validation purpose.
 - Foundation issues participate in room-card state, exact selection, framing, and the
   embedded problem inspector.
 - Validation-problem selection survives the Unity Selection synchronization needed to
@@ -126,13 +149,24 @@ Run the following in Unity `6000.3.19f1` on a scene containing a valid
   out-of-bounds positions.
 - Text and numeric inspector fields use delayed commit behavior to avoid per-keystroke
   mutation and validation.
+- Undo/Redo now queues one validation pass and preserves the current Draft or Production
+  purpose without reflowing the restored state.
+- Direct Hierarchy edits are detected through a cached per-root hierarchy signature;
+  unrelated hierarchy changes outside level roots do not run full validation.
+- Room deletion removes malformed links when either stored room references or actual
+  endpoint ownership touches the deleted room.
+- Fixed-door Scene-view movement records the Transform and stored room-relative position
+  in the same Undo group.
+- Legacy spatial migration runs from the main-thread editor validation path; record
+  building remains backward-safe before the migrated scene is saved.
+- Resolved diagnostics are cleared or remapped after every validation refresh.
 
 ## Validation record
 
 | Check | Result | Notes |
 |---|---|---|
 | Static source review | Completed | Re-audited safe deletion reuse, fixed-position migration, validation ownership, foundation diagnostics, selection synchronization, projection math, Undo grouping, and scope boundaries. |
-| Structural source checks | Completed | Balanced delimiters/preprocessor guards and scanned editor sources for forbidden independent graph/runtime-import dependencies. |
+| Structural source checks | Completed | Balanced delimiters/preprocessor guards and scanned editor sources for forbidden independent graph/runtime-import dependencies, unsafe `OnValidate` migration, and broad object-change subscriptions. |
 | Unity compilation/domain reload | Not run | Unity Editor is not available in the connector-only implementation environment. |
 | EditMode tests | Not run | Requires Unity `6000.3.19f1`. |
 | Manual editor acceptance | Not run | Follow the main and targeted regression procedures above. |
