@@ -9,6 +9,10 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [Header("Stable identity")]
         [SerializeField] private string roomId = "room.unassigned";
 
+        [Header("Optional presentation")]
+        [Tooltip("Optional designer-facing label. Leave empty for an automatic coordinate label.")]
+        [SerializeField] private string displayName = string.Empty;
+
         [Header("Grid and alignment")]
         [SerializeField] private Vector2Int gridCoordinate = Vector2Int.zero;
         [SerializeField] private Vector2 cellSize = Vector2.one;
@@ -26,6 +30,21 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public string RoomIdText
         {
             get { return roomId; }
+        }
+
+        public string DisplayName
+        {
+            get { return string.IsNullOrWhiteSpace(displayName) ? string.Empty : displayName.Trim(); }
+        }
+
+        public string EditorLabel
+        {
+            get
+            {
+                return string.IsNullOrWhiteSpace(displayName)
+                    ? "Room " + gridCoordinate.x + "," + gridCoordinate.y
+                    : displayName.Trim();
+            }
         }
 
         public Vector2Int GridCoordinate
@@ -139,6 +158,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             cellSize = configuredCellSize;
             footprintCells = configuredFootprintCells;
             roomBounds = configuredRoomBounds;
+        }
+
+        public void ConfigureDisplayNameForTests(string configuredDisplayName)
+        {
+            displayName = configuredDisplayName ?? string.Empty;
         }
 
         private void Reset()
