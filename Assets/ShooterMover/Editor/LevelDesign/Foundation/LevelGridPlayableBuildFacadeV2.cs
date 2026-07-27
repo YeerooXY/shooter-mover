@@ -87,6 +87,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 LevelGridPlayableBuildPathsV2 paths = ValidateOrThrow(root);
                 result.ValidationPassed = true;
                 RequireCurrentExport(root);
+                paths.ClaimGeneratedDestination();
                 result.CompiledAsset = LevelGridV2AssetCompiler.CompileToAsset(
                     paths.SourcePackagePath,
                     paths.GeneratedAssetFolder,
@@ -122,6 +123,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 result.ExportCommitted = true;
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
+                paths.ClaimGeneratedDestination();
                 result.CompiledAsset = LevelGridV2AssetCompiler.CompileToAsset(
                     paths.SourcePackagePath,
                     paths.GeneratedAssetFolder,
