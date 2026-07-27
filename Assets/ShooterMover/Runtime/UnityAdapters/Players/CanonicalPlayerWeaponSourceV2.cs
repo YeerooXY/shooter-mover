@@ -98,20 +98,41 @@ namespace ShooterMover.UnityAdapters.Players
             if (!IsBound || projectionLookup == null)
             {
                 rejectionCode = "gameplay-canonical-player-source-unbound";
+                Diagnostic = rejectionCode;
                 return false;
             }
-            if (!projectionLookup.TryResolve(
-                    new EquipmentInstanceId(ExactWeaponInstanceId),
-                    out equipmentInstance)
+
+            bool resolved = projectionLookup.TryResolve(
+                new EquipmentInstanceId(ExactWeaponInstanceId),
+                out equipmentInstance);
+            if (!resolved
                 || equipmentInstance == null
                 || equipmentInstance.InstanceId != ExactWeaponInstanceId)
             {
                 equipmentInstance = null;
+                CanonicalWeaponOperationAvailabilityV1 availability =
+                    projectionLookup.LastAvailability;
+                if (!resolved
+                    && availability != null
+                    && !availability.IsAvailable
+                    && !string.IsNullOrEmpty(availability.RejectionCode))
+                {
+                    rejectionCode = availability.RejectionCode;
+                    Diagnostic = rejectionCode
+                        + (string.IsNullOrEmpty(availability.Message)
+                            ? string.Empty
+                            : ": " + availability.Message);
+                    return false;
+                }
+
                 rejectionCode =
                     "gameplay-canonical-live-equipment-unresolved:"
                     + ExactWeaponInstanceId;
+                Diagnostic = rejectionCode;
                 return false;
             }
+
+            Diagnostic = string.Empty;
             return true;
         }
     }
