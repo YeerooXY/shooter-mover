@@ -173,7 +173,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             AssetDatabase.ImportAsset(
                 roomContentAssetPath,
                 ImportAssetOptions.ForceSynchronousImport);
-            DeleteStaleGeneratedJson(generatedAssetFolder, expectedJsonPaths);
+
+            // The new asset is authoritative at this point. Stale generated files are cleanup, so
+            // inability to delete one must not turn a successful compile into a false failure.
+            TryDeleteStaleGeneratedJson(generatedAssetFolder, expectedJsonPaths);
             return asset;
         }
 
@@ -234,6 +237,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Level Grid V2 Compilation Failed",
                     exception.Message,
                     "OK");
+            }
+        }
+
+        private static void TryDeleteStaleGeneratedJson(
+            string generatedAssetFolder,
+            ISet<string> expectedAssetPaths)
+        {
+            try
+            {
+                DeleteStaleGeneratedJson(generatedAssetFolder, expectedAssetPaths);
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Debug.LogWarning(
+                    "Level Grid V2 compiled successfully, but stale generated JSON cleanup failed: "
+                    + exception.Message);
             }
         }
 
