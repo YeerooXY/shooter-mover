@@ -33,6 +33,8 @@ namespace ShooterMover.Application.Missions.Rooms.Content
         [DataContract] private sealed class MapNodeDto
         {
             [DataMember(Name = "room_id", IsRequired = true)] public string RoomId { get; set; }
+            [DataMember(Name = "grid_position", IsRequired = true)] public int[] GridPosition { get; set; }
+            [DataMember(Name = "slot", IsRequired = true)] public int Slot { get; set; }
         }
 
         [DataContract] private sealed class ConnectionDto
@@ -119,11 +121,11 @@ namespace ShooterMover.Application.Missions.Rooms.Content
 
         [DataContract] private sealed class EncounterDto
         {
-            [DataMember(Name = "schema_version", EmitDefaultValue = false)] public int SchemaVersion { get; set; }
-            [DataMember(Name = "room", EmitDefaultValue = false)] public string Room { get; set; }
-            [DataMember(Name = "completion", EmitDefaultValue = false)] public string Completion { get; set; }
-            [DataMember(Name = "optional_enemy_ids", EmitDefaultValue = false)] public List<string> OptionalEnemyIds { get; set; }
-            [DataMember(Name = "door_rules", EmitDefaultValue = false)] public List<DoorRuleDto> DoorRules { get; set; }
+            [DataMember(Name = "schema_version", IsRequired = true)] public int SchemaVersion { get; set; }
+            [DataMember(Name = "room", IsRequired = true)] public string Room { get; set; }
+            [DataMember(Name = "completion", IsRequired = true)] public string Completion { get; set; }
+            [DataMember(Name = "optional_enemy_ids", IsRequired = true)] public List<string> OptionalEnemyIds { get; set; }
+            [DataMember(Name = "door_rules", IsRequired = true)] public List<DoorRuleDto> DoorRules { get; set; }
         }
 
         [DataContract] private sealed class EnemyDto
