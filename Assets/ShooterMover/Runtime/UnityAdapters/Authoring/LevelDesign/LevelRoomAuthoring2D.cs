@@ -48,10 +48,15 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         {
             get
             {
-                return string.IsNullOrWhiteSpace(displayName)
-                    ? "Room " + gridCoordinate.x + "," + gridCoordinate.y
-                        + " [" + folderSlot.ToString("00") + "]"
-                    : displayName.Trim();
+                if (!string.IsNullOrWhiteSpace(displayName))
+                {
+                    return displayName.Trim();
+                }
+
+                string automatic = "Room " + gridCoordinate.x + "," + gridCoordinate.y;
+                return folderSlot <= 1
+                    ? automatic
+                    : automatic + " [" + folderSlot.ToString("00") + "]";
             }
         }
 
