@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
@@ -56,6 +57,13 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 Assert.That(
                     ReferenceEquals(observed, bootstrap.ImportedBundle),
                     Is.True);
+                Assert.That(
+                    observed.Enemies.Count(row => row != null
+                        && string.Equals(
+                            row.AuthoredId,
+                            "run-reward-proof",
+                            StringComparison.Ordinal)),
+                    Is.EqualTo(1));
             }
             finally
             {
