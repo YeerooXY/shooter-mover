@@ -21,6 +21,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             "Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity";
         public const string CatalogueSourcePath =
             "Assets/ShooterMover/Content/Definitions/Levels/Selection/LevelSelectionCatalogDefinitionV1.cs";
+        internal const string GeneratedOwnerMarkerFileName = ".level-grid-owner";
 
         private LevelGridPlayableBuildPathsV2(
             string levelId,
@@ -48,6 +49,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         public string SourcePackageAbsolutePath
         {
             get { return ToAbsoluteProjectPath(SourcePackagePath); }
+        }
+
+        internal string GeneratedOwnerMarkerPath
+        {
+            get { return GeneratedAssetFolder + "/" + GeneratedOwnerMarkerFileName; }
         }
 
         public static LevelGridPlayableBuildPathsV2 Resolve(
@@ -98,6 +104,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     LevelId);
             }
 
+            ValidateGeneratedDestinationOwnership();
+
             string compiledAbsolute = ToAbsoluteProjectPath(CompiledAssetPath);
             if (!File.Exists(compiledAbsolute)) return;
 
@@ -139,6 +147,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
+        /// <summary>
+        /// Claims a previously absent or empty generic generated destination. The marker is a
+        /// narrow, idempotent ownership record; it is not compiled content and does not replace the
+        /// canonical asset-publication transaction.
+        /// </summary>
+        public void ClaimGeneratedDestination()
+        {
+            ValidateGeneratedDestinationOwnership();
+            EnsureAssetFolder(GeneratedAssetFolder);
+            string markerAbsolute = ToAbsoluteProjectPath(GeneratedOwnerMarkerPath);
+            if (!File.Exists(markerAbsolute))
+            {
+                File.WriteAllText(
+                    markerAbsolute,
+                    LevelId + Environment.NewLine,
+                    new UTF8Encoding(false));
+                AssetDatabase.ImportAsset(
+                    GeneratedOwnerMarkerPath,
+                    ImportAssetOptions.ForceSynchronousImport);
+            }
+        }
+
         public static string ToAbsoluteProjectPath(string projectPath)
         {
             if (string.IsNullOrWhiteSpace(projectPath))
@@ -148,6 +178,67 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (Path.IsPathRooted(projectPath)) return Path.GetFullPath(projectPath);
             string projectRoot = Directory.GetParent(Application.dataPath).FullName;
             return Path.GetFullPath(Path.Combine(projectRoot, projectPath));
+        }
+
+        private void ValidateGeneratedDestinationOwnership()
+        {
+            string absoluteFolder = ToAbsoluteProjectPath(GeneratedAssetFolder);
+            if (!Directory.Exists(absoluteFolder)) return;
+
+            string markerAbsolute = ToAbsoluteProjectPath(GeneratedOwnerMarkerPath);
+            if (File.Exists(markerAbsolute))
+            {
+                string owner = File.ReadAllText(markerAbsolute).Trim();
+                if (!string.Equals(owner, LevelId, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "The configured generated destination belongs to another level ID: '"
+                        + owner
+                        + "'. Expected '"
+                        + LevelId
+                        + "'.");
+                }
+                return;
+            }
+
+            string[] entries = Directory.GetFileSystemEntries(absoluteFolder);
+            if (entries.Length == 0 || IsTrackedCombatLoop)
+            {
+                // The tracked sample predates ownership markers and is bound by an exact known ID.
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "The configured generated destination is non-empty but has no stable level-owner "
+                + "marker: "
+                + GeneratedAssetFolder);
+        }
+
+        private static void EnsureAssetFolder(string assetFolder)
+        {
+            if (AssetDatabase.IsValidFolder(assetFolder)) return;
+            string[] segments = assetFolder.Split('/');
+            if (segments.Length == 0
+                || !string.Equals(segments[0], "Assets", StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "Generated destinations must be below Assets/.",
+                    nameof(assetFolder));
+            }
+            string current = segments[0];
+            for (int index = 1; index < segments.Length; index++)
+            {
+                string next = current + "/" + segments[index];
+                if (!AssetDatabase.IsValidFolder(next))
+                {
+                    string guid = AssetDatabase.CreateFolder(current, segments[index]);
+                    if (string.IsNullOrEmpty(guid))
+                    {
+                        throw new IOException("Could not create generated folder: " + next);
+                    }
+                }
+                current = next;
+            }
         }
 
         private static string RequireLevelId(string value)
