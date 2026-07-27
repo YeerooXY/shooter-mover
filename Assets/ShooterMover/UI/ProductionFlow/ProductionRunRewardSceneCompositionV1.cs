@@ -22,6 +22,7 @@ namespace ShooterMover.UI.ProductionFlow
     [DisallowMultipleComponent]
     public sealed class ProductionRunRewardSceneCompositionV1 : MonoBehaviour
     {
+        private const string ProofAuthoredId = "run-reward-proof";
         private static readonly StableId SoloPlayModeId =
             StableId.Parse("play-mode.solo");
         private static readonly StableId CampaignRewardGameModeId =
@@ -126,15 +127,20 @@ namespace ShooterMover.UI.ProductionFlow
 
             StableId proofRoomId = StableId.Parse("room.level1-entry");
             List<RoomEnemyPlacementContentV1> proofRows = acceptedBundle.Enemies
-                .Where(row => row != null && row.RoomStableId == proofRoomId)
+                .Where(row => row != null
+                    && row.RoomStableId == proofRoomId
+                    && string.Equals(
+                        row.AuthoredId,
+                        ProofAuthoredId,
+                        StringComparison.Ordinal))
                 .ToList();
             if (levelId != ProductionPlayableLevelCatalogV1.FirstLevelStableId
                 || proofRows.Count != 1
                 || proofRows[0].InstanceStableId == null)
             {
                 throw new InvalidOperationException(
-                    "RUN-REWARD-COMPOSITION-001 requires exactly one stable proof enemy "
-                    + "in the authored Level 1 entry room.");
+                    "RUN-REWARD-COMPOSITION-001 requires one exact authored proof enemy "
+                    + ProofAuthoredId + " in the Level 1 entry room.");
             }
 
             EnemyCatalogAsset2D enemyAsset = Resources.Load<EnemyCatalogAsset2D>(
