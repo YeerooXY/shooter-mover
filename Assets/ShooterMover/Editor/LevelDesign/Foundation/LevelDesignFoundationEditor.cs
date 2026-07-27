@@ -47,12 +47,19 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             LevelDesignValidationResult foundation = root.LastValidation;
             LevelGridValidationResultV2 grid = root.LastGridValidation;
-            bool combinedPublishAllowed = foundation.IsValid && grid.CanPublish;
+            bool productionValidationRun = grid.Purpose
+                == LevelGridValidationPurposeV2.ProductionPublish;
+            bool combinedPublishAllowed = productionValidationRun
+                && foundation.IsValid
+                && grid.CanPublish;
             MessageType type = !foundation.IsValid || grid.ErrorCount > 0
                 ? MessageType.Error
                 : foundation.WarningCount > 0 || grid.WarningCount > 0
                     ? MessageType.Warning
                     : MessageType.Info;
+            string productionStatus = !productionValidationRun
+                ? "not run"
+                : combinedPublishAllowed ? "allowed" : "blocked";
             EditorGUILayout.HelpBox(
                 "Mode: " + grid.Purpose
                     + " | Foundation errors: " + foundation.ErrorCount
@@ -60,7 +67,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     + " | V2 errors: " + grid.ErrorCount
                     + " | V2 warnings: " + grid.WarningCount
                     + "\nProduction validation: "
-                    + (combinedPublishAllowed ? "allowed" : "blocked")
+                    + productionStatus
                     + "\nRuntime pipeline: compiler-ready source → transactional publication "
                     + "→ exact catalogue registration → production Level Selection.",
                 type);
@@ -198,8 +205,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorUtility.DisplayDialog(
                 "Level Design Validation",
                 "Foundations: " + roots.Length
-                + "\nCombined errors: " + errors
-                + "\nCombined warnings: " + warnings,
+                    + "\nCombined errors: " + errors
+                    + "\nCombined warnings: " + warnings,
                 "OK");
         }
 
@@ -214,10 +221,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelRoomAuthoring2D room =
-                selected.GetComponentInParent<LevelRoomAuthoring2D>();
+            LevelPlacementAuthoring2D placement =
+                selected.GetComponent<LevelPlacementAuthoring2D>();
+            if (placement != null)
+            {
+                Undo.RecordObject(
+                    placement.transform,
+                    "Snap Placement To Room Grid");
+                placement.SnapToGrid();
+                EditorSceneManager.MarkSceneDirty(placement.gameObject.scene);
+                return;
+            }
+
             LevelDoorEndpointAuthoring2D door =
                 selected.GetComponent<LevelDoorEndpointAuthoring2D>();
+            LevelRoomAuthoring2D room =
+                selected.GetComponentInParent<LevelRoomAuthoring2D>();
             Component gridObject = door != null ? (Component)door : room;
             if (gridObject != null)
             {
@@ -234,17 +253,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         "OK");
                 }
                 return;
-            }
-
-            LevelPlacementAuthoring2D placement =
-                selected.GetComponent<LevelPlacementAuthoring2D>();
-            if (placement != null)
-            {
-                Undo.RecordObject(
-                    placement.transform,
-                    "Snap Placement To Room Grid");
-                placement.SnapToGrid();
-                EditorSceneManager.MarkSceneDirty(placement.gameObject.scene);
             }
         }
 
