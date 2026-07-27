@@ -10,7 +10,8 @@
     "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
     "ShooterMover.Content.Definitions",
-    "ShooterMover.Bootstrap"
+    "ShooterMover.Bootstrap",
+    "ShooterMover.Editor.LevelDesign.Foundation"
   ],
   "includePlatforms": [
     "Editor"
