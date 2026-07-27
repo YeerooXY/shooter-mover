@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Generic;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
 using UnityEngine;
@@ -9,6 +8,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 {
     public sealed partial class LevelGridEditorWindowV2 : EditorWindow
     {
+        private LevelDesignValidationIssue selectedFoundationIssue;
+        private UnityEngine.Object pendingProblemSelectionObject;
 
         private void DrawProblemsPanel(Rect rect)
         {
@@ -28,11 +29,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             bool publishAllowed = foundation.IsValid && grid.CanPublish;
             MessageType summaryType = !foundation.IsValid || grid.ErrorCount > 0
                 ? MessageType.Error
-                : grid.WarningCount > 0
+                : foundation.WarningCount > 0 || grid.WarningCount > 0
                     ? MessageType.Warning
                     : MessageType.Info;
             EditorGUILayout.HelpBox(
                 "Foundation errors: " + foundation.ErrorCount
+                    + " | Foundation warnings: " + foundation.WarningCount
                     + " | V2 errors: " + grid.ErrorCount
                     + " | V2 warnings: " + grid.WarningCount
                     + " | Unconnected traversable: "
@@ -46,12 +48,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             problemsScroll = EditorGUILayout.BeginScrollView(problemsScroll);
             for (int index = 0; index < foundation.Issues.Count; index++)
             {
-                LevelDesignValidationIssue issue = foundation.Issues[index];
-                EditorGUILayout.HelpBox(
-                    issue.ToString(),
-                    issue.Severity == LevelDesignValidationSeverity.Error
-                        ? MessageType.Error
-                        : MessageType.Warning);
+                DrawFoundationIssue(foundation.Issues[index]);
             }
 
             for (int index = 0; index < grid.Problems.Count; index++)
@@ -67,14 +64,45 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             GUILayout.EndArea();
         }
 
+        private void DrawFoundationIssue(LevelDesignValidationIssue issue)
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(
+                "Foundation · " + issue.Code,
+                EditorStyles.boldLabel,
+                GUILayout.MinWidth(150f));
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Select", GUILayout.Width(54f)))
+            {
+                SelectFoundationIssue(issue, false);
+            }
+            if (GUILayout.Button("Frame", GUILayout.Width(52f)))
+            {
+                SelectFoundationIssue(issue, true);
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.LabelField(issue.AuthoredId, EditorStyles.miniLabel);
+            if (!string.IsNullOrEmpty(issue.DiagnosticLocation))
+            {
+                EditorGUILayout.LabelField(
+                    issue.DiagnosticLocation,
+                    EditorStyles.miniLabel);
+            }
+            EditorGUILayout.HelpBox(
+                issue.Message,
+                ToMessageType(issue.Severity));
+            EditorGUILayout.EndVertical();
+        }
+
         private void DrawGridProblem(LevelGridProblemV2 problem)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(
-                problem.Code.ToString(),
+                "Grid V2 · " + problem.Code,
                 EditorStyles.boldLabel,
-                GUILayout.MinWidth(130f));
+                GUILayout.MinWidth(150f));
             GUILayout.FlexibleSpace();
             if (problem.Code == LevelGridProblemCodeV2.EdgeManagedDoorFacingMismatch)
             {
@@ -84,7 +112,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         LevelGridEditorProblemLocatorV2.FindExact(activeRoot, problem)
                             as LevelDoorEndpointAuthoring2D;
                     LevelGridEditorOperationsV2.ReflowDoor(door);
-                    RequestRefresh(true);
+                    RequestRefresh(false);
                 }
                 if (GUILayout.Button("Keep Placement", GUILayout.Width(96f)))
                 {
@@ -92,7 +120,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         LevelGridEditorProblemLocatorV2.FindExact(activeRoot, problem)
                             as LevelDoorEndpointAuthoring2D;
                     LevelGridEditorOperationsV2.KeepDoorPlacement(door);
-                    RequestRefresh(true);
+                    RequestRefresh(false);
                 }
             }
             if (GUILayout.Button("Select", GUILayout.Width(54f)))
@@ -111,9 +139,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     problem.DiagnosticLocation,
                     EditorStyles.miniLabel);
             }
-            EditorGUILayout.LabelField(
+            EditorGUILayout.HelpBox(
                 problem.Message,
-                EditorStyles.wordWrappedLabel);
+                ToMessageType(problem.Severity));
             EditorGUILayout.EndVertical();
         }
 
@@ -123,7 +151,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.LabelField("Selection Inspector", EditorStyles.boldLabel);
             inspectorScroll = EditorGUILayout.BeginScrollView(inspectorScroll);
 
-            if (selectedProblem != null)
+            if (selectedFoundationIssue != null)
+            {
+                DrawFoundationIssueInspector(selectedFoundationIssue);
+            }
+            else if (selectedProblem != null)
             {
                 DrawProblemInspector(selectedProblem);
             }
@@ -142,6 +174,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             else if (selectedAuthoringObject is LevelDesignSceneAuthoringRoot2D)
             {
                 DrawRootInspector((LevelDesignSceneAuthoringRoot2D)selectedAuthoringObject);
+            }
+            else if (selectedAuthoringObject is Component)
+            {
+                DrawFoundationComponentInspector((Component)selectedAuthoringObject);
             }
             else
             {
@@ -171,34 +207,40 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.LabelField("Room", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Stable room ID", room.RoomIdText);
 
-            string displayName = EditorGUILayout.TextField("Display label", room.DisplayName);
+            string displayName = EditorGUILayout.DelayedTextField(
+                "Display label",
+                room.DisplayName);
             if (!string.Equals(displayName, room.DisplayName, StringComparison.Ordinal))
             {
                 LevelGridEditorOperationsV2.SetRoomDisplayName(room, displayName);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
 
-            Vector2Int coordinate =
-                EditorGUILayout.Vector2IntField("Grid coordinate", room.GridCoordinate);
+            Vector2Int coordinate = DelayedVector2IntField(
+                "Grid coordinate",
+                room.GridCoordinate);
             if (coordinate != room.GridCoordinate)
             {
                 LevelGridEditorOperationsV2.MoveRoom(room, coordinate);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
 
-            int folderSlot = EditorGUILayout.IntField("Folder slot", room.FolderSlot);
+            int folderSlot = EditorGUILayout.DelayedIntField(
+                "Folder slot",
+                room.FolderSlot);
             if (folderSlot != room.FolderSlot)
             {
                 LevelGridEditorOperationsV2.SetFolderSlot(room, folderSlot);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
 
-            Vector2Int footprint =
-                EditorGUILayout.Vector2IntField("Footprint", room.FootprintCells);
+            Vector2Int footprint = DelayedVector2IntField(
+                "Footprint",
+                room.FootprintCells);
             if (footprint != room.FootprintCells)
             {
                 LevelGridEditorOperationsV2.ResizeRoom(room, footprint);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
 
             EditorGUI.BeginDisabledGroup(true);
@@ -214,7 +256,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (GUILayout.Button("Delete Room"))
             {
                 LevelGridEditorOperationsV2.DeleteRoom(room, true);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
         }
 
@@ -237,12 +279,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 (LevelDoorPlacementModeV2)EditorGUILayout.EnumPopup(
                     "Placement mode",
                     door.PlacementMode);
-            float edgeOffset = EditorGUILayout.Slider(
+            float edgeOffset = Mathf.Clamp01(EditorGUILayout.DelayedFloatField(
                 "Edge offset",
-                door.EdgeOffset,
-                0f,
-                1f);
-            Vector2 fixedPosition = EditorGUILayout.Vector2Field(
+                door.EdgeOffset));
+            Vector2 fixedPosition = DelayedVector2Field(
                 "Fixed room-relative position",
                 door.FixedLocalPosition);
             bool traversable = EditorGUILayout.Toggle("Traversable", door.Traversable);
@@ -268,26 +308,26 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     traversable,
                     mapVisible,
                     autoFacing);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Reflow"))
             {
                 LevelGridEditorOperationsV2.ReflowDoor(door);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
             if (GUILayout.Button("Keep Placement"))
             {
                 LevelGridEditorOperationsV2.KeepDoorPlacement(door);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
             EditorGUILayout.EndHorizontal();
             DrawRevealButtons(door);
             if (GUILayout.Button("Delete Door"))
             {
                 LevelGridEditorOperationsV2.DeleteDoor(door);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
         }
 
@@ -327,20 +367,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 LevelGridEditorOperationsV2.SetConnectionTravelPolicy(
                     connection,
                     travelPolicy);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
 
             DrawRevealButtons(connection);
             if (GUILayout.Button("Delete Connection"))
             {
                 LevelGridEditorOperationsV2.DeleteConnection(connection);
-                RequestRefresh(true);
+                RequestRefresh(false);
             }
         }
 
         private void DrawProblemInspector(LevelGridProblemV2 problem)
         {
-            EditorGUILayout.LabelField("Validation problem", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Grid V2 validation problem", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Code", problem.Code.ToString());
             EditorGUILayout.LabelField("Severity", problem.Severity.ToString());
             EditorGUILayout.LabelField("Stable ID", problem.AuthoredId);
@@ -364,29 +404,70 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.EndHorizontal();
         }
 
+        private void DrawFoundationIssueInspector(LevelDesignValidationIssue issue)
+        {
+            EditorGUILayout.LabelField(
+                "Foundation validation problem",
+                EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Code", issue.Code.ToString());
+            EditorGUILayout.LabelField("Severity", issue.Severity.ToString());
+            EditorGUILayout.LabelField("Stable ID", issue.AuthoredId);
+            EditorGUILayout.LabelField(
+                "Hierarchy path",
+                issue.DiagnosticLocation,
+                EditorStyles.wordWrappedLabel);
+            EditorGUILayout.LabelField(
+                "Message",
+                issue.Message,
+                EditorStyles.wordWrappedLabel);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Select"))
+            {
+                SelectFoundationIssue(issue, false);
+            }
+            if (GUILayout.Button("Frame"))
+            {
+                SelectFoundationIssue(issue, true);
+            }
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawFoundationComponentInspector(Component component)
+        {
+            EditorGUILayout.LabelField(
+                "Foundation authoring object",
+                EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Type", component.GetType().Name);
+            EditorGUILayout.ObjectField(
+                "Scene object",
+                component,
+                component.GetType(),
+                true);
+            DrawRevealButtons(component);
+        }
+
         private void DrawRevealButtons(Component component)
         {
+            if (component == null)
+            {
+                return;
+            }
+
             EditorGUILayout.Space();
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Hierarchy"))
             {
-                suppressSelectionSync = true;
-                Selection.activeGameObject = component.gameObject;
-                suppressSelectionSync = false;
+                SetUnitySelectionWithoutClearingProblem(component.gameObject);
                 EditorGUIUtility.PingObject(component.gameObject);
             }
             if (GUILayout.Button("Unity Inspector"))
             {
-                suppressSelectionSync = true;
-                Selection.activeObject = component;
-                suppressSelectionSync = false;
+                SetUnitySelectionWithoutClearingProblem(component);
                 EditorGUIUtility.PingObject(component);
             }
             if (GUILayout.Button("Scene View"))
             {
-                suppressSelectionSync = true;
-                Selection.activeGameObject = component.gameObject;
-                suppressSelectionSync = false;
+                SetUnitySelectionWithoutClearingProblem(component.gameObject);
                 SceneView sceneView = SceneView.lastActiveSceneView;
                 if (sceneView != null)
                 {
@@ -399,19 +480,69 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void SelectProblem(LevelGridProblemV2 problem, bool frame)
         {
-            selectedProblem = problem;
-            Component selected = LevelGridEditorProblemLocatorV2.SelectExact(
+            Component selected = LevelGridEditorProblemLocatorV2.FindExact(
                 activeRoot,
                 problem);
+            if (selected == null)
+            {
+                selected = LevelGridEditorProblemLocatorV2.FindByStableId(
+                    activeRoot,
+                    problem == null ? null : problem.AuthoredId);
+            }
+
+            selectedProblem = problem;
+            selectedFoundationIssue = null;
             if (selected != null)
             {
                 selectedAuthoringObject = selected;
+                SetUnitySelectionWithoutClearingProblem(selected);
+                selectedProblem = problem;
+                selectedFoundationIssue = null;
                 if (frame)
                 {
                     FrameSelection();
                 }
             }
             Repaint();
+        }
+
+        private void SelectFoundationIssue(
+            LevelDesignValidationIssue issue,
+            bool frame)
+        {
+            Component selected = LevelGridEditorProblemLocatorV2.FindExact(
+                activeRoot,
+                issue);
+            if (selected == null)
+            {
+                selected = LevelGridEditorProblemLocatorV2.FindFoundationByStableId(
+                    activeRoot,
+                    issue == null ? null : issue.AuthoredId);
+            }
+
+            selectedFoundationIssue = issue;
+            selectedProblem = null;
+            if (selected != null)
+            {
+                selectedAuthoringObject = selected;
+                SetUnitySelectionWithoutClearingProblem(selected);
+                selectedFoundationIssue = issue;
+                selectedProblem = null;
+                if (frame)
+                {
+                    FrameSelection();
+                }
+            }
+            Repaint();
+        }
+
+        private void SetUnitySelectionWithoutClearingProblem(
+            UnityEngine.Object selected)
+        {
+            pendingProblemSelectionObject = selected;
+            suppressSelectionSync = true;
+            Selection.activeObject = selected;
+            suppressSelectionSync = false;
         }
 
         private void DeleteSelection()
@@ -438,7 +569,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
             selectedAuthoringObject = activeRoot;
             selectedProblem = null;
-            RequestRefresh(true);
+            selectedFoundationIssue = null;
+            RequestRefresh(false);
         }
 
         private void Validate(LevelGridValidationPurposeV2 purpose)
@@ -465,7 +597,43 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Unity could not execute the existing command: " + menuPath,
                     lastCanvasMouse);
             }
-            RequestRefresh(true);
+            RequestRefresh(false);
+        }
+
+        private static Vector2Int DelayedVector2IntField(
+            string label,
+            Vector2Int value)
+        {
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel(label);
+            int x = EditorGUILayout.DelayedIntField(value.x);
+            int y = EditorGUILayout.DelayedIntField(value.y);
+            EditorGUILayout.EndHorizontal();
+            return new Vector2Int(x, y);
+        }
+
+        private static Vector2 DelayedVector2Field(string label, Vector2 value)
+        {
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel(label);
+            float x = EditorGUILayout.DelayedFloatField(value.x);
+            float y = EditorGUILayout.DelayedFloatField(value.y);
+            EditorGUILayout.EndHorizontal();
+            return new Vector2(x, y);
+        }
+
+        private static MessageType ToMessageType(
+            LevelDesignValidationSeverity severity)
+        {
+            switch (severity)
+            {
+                case LevelDesignValidationSeverity.Error:
+                    return MessageType.Error;
+                case LevelDesignValidationSeverity.Warning:
+                    return MessageType.Warning;
+                default:
+                    return MessageType.Info;
+            }
         }
     }
 }
