@@ -163,7 +163,6 @@ namespace ShooterMover.Application.Flow.Production
             PlayerRouteProfilePayloadV1 incomingRoute,
             IPlayerHoldingsAuthorityV1 genericHoldings,
             ProductionWeaponHoldingsAuthorityV2 weaponHoldings,
-            ProductionWeaponMountLoadoutAuthorityV2 mountLoadoutAuthority,
             ProductionInventoryLoadoutAuthorityV1 loadoutAuthority,
             ProductionWeaponMountLayoutV1 layout,
             WeaponCatalog weaponCatalog)
@@ -180,13 +179,29 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(genericHoldings));
             this.weaponHoldings = weaponHoldings
                 ?? throw new ArgumentNullException(nameof(weaponHoldings));
-            this.mountLoadoutAuthority = mountLoadoutAuthority
-                ?? throw new ArgumentNullException(nameof(mountLoadoutAuthority));
             this.loadoutAuthority = loadoutAuthority
                 ?? throw new ArgumentNullException(nameof(loadoutAuthority));
             this.layout = layout ?? throw new ArgumentNullException(nameof(layout));
             this.weaponCatalog = weaponCatalog
                 ?? throw new ArgumentNullException(nameof(weaponCatalog));
+
+            ProductionWeaponMountLoadoutAuthorityV2 resolvedMounts;
+            if (!ProductionWeaponMountLoadoutRegistryV2.TryResolve(
+                    weaponHoldings,
+                    out resolvedMounts))
+            {
+                resolvedMounts = new ProductionWeaponMountLoadoutAuthorityV2(
+                    layout,
+                    weaponHoldings,
+                    ProductionWeaponMountLoadoutProjectionV2.MigrateLegacy(
+                        layout,
+                        weaponHoldings,
+                        loadoutAuthority.ExportSnapshot()));
+                ProductionWeaponMountLoadoutRegistryV2.Register(
+                    weaponHoldings,
+                    resolvedMounts);
+            }
+            mountLoadoutAuthority = resolvedMounts;
 
             InventoryLoadoutAuthoritySnapshotV1 compatibility =
                 ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
