@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
@@ -148,9 +149,16 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             string roomsRoot = Path.Combine(outputRoot, "Rooms");
             Directory.CreateDirectory(roomsRoot);
+            HashSet<string> claimedRoomFolders = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase);
             for (int index = 0; index < rooms.Length; index++)
             {
-                WriteRoomFolder(rooms[index], doors, roomsRoot, index + 1);
+                WriteRoomFolder(
+                    rooms[index],
+                    doors,
+                    roomsRoot,
+                    index + 1,
+                    claimedRoomFolders);
             }
         }
 
@@ -158,7 +166,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelRoomAuthoring2D room,
             LevelDoorEndpointAuthoring2D[] allDoors,
             string roomsRoot,
-            int ordinal)
+            int ordinal,
+            ISet<string> claimedRoomFolders)
         {
             string preferredFolderName = "Room_"
                 + room.GridCoordinate.x + "_"
@@ -167,7 +176,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string roomRoot = ResolveRoomFolder(
                 roomsRoot,
                 room.RoomIdText,
-                preferredFolderName);
+                preferredFolderName,
+                claimedRoomFolders);
             Directory.CreateDirectory(roomRoot);
 
             WriteJson(
@@ -260,9 +270,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static string ResolveRoomFolder(
             string roomsRoot,
             string roomId,
-            string preferredFolderName)
+            string preferredFolderName,
+            ISet<string> claimedRoomFolders)
         {
             string[] existingFolders = Directory.GetDirectories(roomsRoot);
+            Array.Sort(existingFolders, StringComparer.OrdinalIgnoreCase);
             for (int index = 0; index < existingFolders.Length; index++)
             {
                 string roomJsonPath = Path.Combine(existingFolders[index], "room.json");
@@ -279,7 +291,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         && string.Equals(
                             identity.room_id,
                             roomId,
-                            StringComparison.Ordinal))
+                            StringComparison.Ordinal)
+                        && claimedRoomFolders.Add(existingFolders[index]))
                     {
                         return existingFolders[index];
                     }
@@ -292,7 +305,19 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
             }
 
-            return Path.Combine(roomsRoot, preferredFolderName);
+            string candidate = Path.Combine(roomsRoot, preferredFolderName);
+            int suffix = 2;
+            while (Directory.Exists(candidate)
+                || claimedRoomFolders.Contains(candidate))
+            {
+                candidate = Path.Combine(
+                    roomsRoot,
+                    preferredFolderName + "_" + suffix.ToString("00"));
+                suffix++;
+            }
+
+            claimedRoomFolders.Add(candidate);
+            return candidate;
         }
 
         private static EndpointDtoV2 BuildEndpoint(
