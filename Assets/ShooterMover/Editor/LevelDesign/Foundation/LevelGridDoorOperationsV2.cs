@@ -61,10 +61,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
+            Undo.IncrementCurrentGroup();
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Reflow Edge-Managed Door");
             Undo.RecordObject(door, "Reflow Edge-Managed Door");
             Undo.RecordObject(door.transform, "Reflow Edge-Managed Door");
             door.SetAutoFaceConnectionForAuthoring(true);
             ReflowDoor(root, door);
+            Undo.CollapseUndoOperations(undoGroup);
+
             EditorUtility.SetDirty(door);
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
@@ -139,14 +144,25 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     continue;
                 }
 
-                LevelDoorSideV2 before = door.Side;
-                Vector3 positionBefore = door.transform.localPosition;
-                ReflowDoor(root, door);
-                if (door.Side != before || door.transform.localPosition != positionBefore)
+                LevelDoorSideV2 expected;
+                if (!TryResolveExpectedSide(root, door, out expected))
                 {
-                    EditorUtility.SetDirty(door);
-                    changed++;
+                    continue;
                 }
+
+                Vector3 expectedPosition = ResolvePositionForSide(door, expected);
+                bool sideChanged = door.Side != expected;
+                bool positionChanged = door.transform.localPosition != expectedPosition;
+                if (!sideChanged && !positionChanged)
+                {
+                    continue;
+                }
+
+                Undo.RecordObject(door, "Auto-Reflow Edge Door");
+                Undo.RecordObject(door.transform, "Auto-Reflow Edge Door");
+                door.SetEdgeSideForAuthoring(expected);
+                EditorUtility.SetDirty(door);
+                changed++;
             }
 
             if (changed > 0)
@@ -160,6 +176,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelDesignSceneAuthoringRoot2D root,
             LevelDoorEndpointAuthoring2D door)
         {
+            LevelDoorSideV2 expected;
+            if (!TryResolveExpectedSide(root, door, out expected))
+            {
+                return false;
+            }
+
+            door.SetEdgeSideForAuthoring(expected);
+            return true;
+        }
+
+        private static bool TryResolveExpectedSide(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDoorEndpointAuthoring2D door,
+            out LevelDoorSideV2 expected)
+        {
+            expected = LevelDoorSideV2.North;
             if (root == null
                 || door == null
                 || door.PlacementMode != LevelDoorPlacementModeV2.EdgeManaged
@@ -189,20 +221,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     continue;
                 }
 
-                LevelDoorSideV2 expected;
-                if (!LevelGridAuthoringV2CompositeValidator.TryResolveFacingSide(
+                return LevelGridAuthoringV2CompositeValidator.TryResolveFacingSide(
                     door.OwningRoom.GridCoordinate,
                     otherRoom.GridCoordinate,
-                    out expected))
-                {
-                    return false;
-                }
-
-                door.SetEdgeSideForAuthoring(expected);
-                return true;
+                    out expected);
             }
 
             return false;
+        }
+
+        private static Vector3 ResolvePositionForSide(
+            LevelDoorEndpointAuthoring2D door,
+            LevelDoorSideV2 expected)
+        {
+            LevelDoorSideV2 original = door.Side;
+            if (original == expected)
+            {
+                return door.ResolveTargetLocalPosition();
+            }
+
+            // The public authoring setter also snaps. Use current position as a conservative
+            // comparison and let the recorded setter perform the authoritative reflow.
+            return door.transform.localPosition;
         }
 
         private static void DeleteDoorUndoable(LevelDoorEndpointAuthoring2D door)
