@@ -22,7 +22,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Publish Grid V2 Production Folder...",
+            "Tools/Shooter Mover/Level Design/Publish Grid V2 Validated Authoring Folder...",
             priority = 251)]
         private static void PublishProduction()
         {
@@ -41,22 +41,43 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelGridValidationResultV2 validation =
+            LevelGridDoorOperationsV2.ReflowAll(root);
+            LevelGridValidationResultV2 gridValidation =
                 root.ValidateGridAuthoring(purpose);
+            LevelDesignValidationResult foundationValidation =
+                purpose == LevelGridValidationPurposeV2.ProductionPublish
+                    ? root.ValidateHierarchy()
+                    : null;
+
             if (purpose == LevelGridValidationPurposeV2.ProductionPublish
-                && !validation.CanPublish)
+                && (foundationValidation == null
+                    || !foundationValidation.IsValid
+                    || !gridValidation.CanPublish))
             {
+                int foundationErrors = foundationValidation == null
+                    ? 1
+                    : foundationValidation.ErrorCount;
                 Debug.LogError(
-                    "Production publishing is blocked by " + validation.ErrorCount
-                        + " level-grid problem(s).",
+                    "Validated authoring publish is blocked. Foundation errors: "
+                        + foundationErrors + "; V2 graph errors: "
+                        + gridValidation.ErrorCount + ".",
                     root);
+                if (foundationValidation != null)
+                {
+                    LevelDesignSceneAuthoringRoot2DEditor.LogResult(
+                        root,
+                        foundationValidation);
+                }
+                LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
+                    root,
+                    gridValidation);
                 LevelGridProblemsWindowV2.Open(root);
                 return;
             }
 
             string outputRoot = EditorUtility.OpenFolderPanel(
                 purpose == LevelGridValidationPurposeV2.ProductionPublish
-                    ? "Publish Level Grid V2"
+                    ? "Publish Validated Level Grid V2 Authoring Folder"
                     : "Export Level Grid V2 Draft",
                 UnityEngine.Application.dataPath,
                 (root.LevelIdText ?? "level").Replace('.', '_'));
@@ -65,13 +86,120 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            Directory.CreateDirectory(outputRoot);
-            WriteLevelFolder(root, outputRoot, purpose);
+            try
+            {
+                ExportTransaction(root, outputRoot, purpose);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    "Level Grid V2 export failed without modifying the destination: "
+                        + exception.Message,
+                    root);
+                EditorUtility.DisplayDialog(
+                    "Level Grid Export Blocked",
+                    exception.Message,
+                    "OK");
+                return;
+            }
+
             AssetDatabase.Refresh();
             EditorUtility.RevealInFinder(outputRoot);
             Debug.Log(
-                "Level Grid Authoring V2 " + purpose + " written to " + outputRoot,
+                "Level Grid Authoring V2 " + purpose + " written transactionally to "
+                    + outputRoot,
                 root);
+        }
+
+        private static void ExportTransaction(
+            LevelDesignSceneAuthoringRoot2D root,
+            string outputRoot,
+            LevelGridValidationPurposeV2 purpose)
+        {
+            ValidateDestinationRoot(outputRoot, root.LevelIdText);
+
+            DirectoryInfo outputInfo = new DirectoryInfo(outputRoot);
+            string parent = outputInfo.Parent == null
+                ? null
+                : outputInfo.Parent.FullName;
+            if (string.IsNullOrEmpty(parent))
+            {
+                throw new InvalidOperationException(
+                    "Choose a dedicated level folder below a writable parent directory.");
+            }
+
+            string transactionId = Guid.NewGuid().ToString("N");
+            string stageRoot = Path.Combine(
+                parent,
+                "." + outputInfo.Name + ".stage-" + transactionId);
+            string backupRoot = Path.Combine(
+                parent,
+                "." + outputInfo.Name + ".backup-" + transactionId);
+
+            bool outputExisted = Directory.Exists(outputRoot);
+            try
+            {
+                if (outputExisted)
+                {
+                    CopyDirectory(outputRoot, stageRoot);
+                }
+                else
+                {
+                    Directory.CreateDirectory(stageRoot);
+                }
+
+                WriteLevelFolder(root, stageRoot, purpose);
+                ValidateStagedPackage(root, stageRoot);
+                CommitStagedDirectory(
+                    outputRoot,
+                    stageRoot,
+                    backupRoot,
+                    outputExisted);
+            }
+            catch
+            {
+                DeleteDirectoryIfExists(stageRoot);
+                if (Directory.Exists(backupRoot) && !Directory.Exists(outputRoot))
+                {
+                    Directory.Move(backupRoot, outputRoot);
+                }
+                throw;
+            }
+            finally
+            {
+                DeleteDirectoryIfExists(stageRoot);
+                DeleteDirectoryIfExists(backupRoot);
+            }
+        }
+
+        private static void ValidateDestinationRoot(string outputRoot, string levelId)
+        {
+            if (!Directory.Exists(outputRoot))
+            {
+                return;
+            }
+
+            string[] entries = Directory.GetFileSystemEntries(outputRoot);
+            if (entries.Length == 0)
+            {
+                return;
+            }
+
+            string levelPath = Path.Combine(outputRoot, "level.json");
+            if (!File.Exists(levelPath))
+            {
+                throw new InvalidOperationException(
+                    "The selected folder is not empty and has no Level Grid V2 level.json. "
+                    + "Choose an empty or previously exported dedicated level folder.");
+            }
+
+            LevelIdentityDtoV2 identity = ReadLevelIdentity(levelPath);
+            if (!string.Equals(identity.level_id, levelId, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The selected folder belongs to level '" + identity.level_id
+                        + "', not '" + levelId + "'.");
+            }
         }
 
         private static void WriteLevelFolder(
@@ -91,8 +219,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
             Array.Sort(connections, CompareConnections);
 
+            Dictionary<string, string> roomFolders = PrepareRoomFolders(
+                rooms,
+                Path.Combine(outputRoot, "Rooms"));
+
             string[] roomIds = new string[rooms.Length];
             MapNodeDtoV2[] nodes = new MapNodeDtoV2[rooms.Length];
+            RoomIndexDtoV2[] roomIndex = new RoomIndexDtoV2[rooms.Length];
             for (int index = 0; index < rooms.Length; index++)
             {
                 LevelRoomAuthoring2D room = rooms[index];
@@ -105,8 +238,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         room.GridCoordinate.x,
                         room.GridCoordinate.y,
                     },
+                    slot = room.FolderSlot,
                     label = room.EditorLabel,
                     visible_on_map = room.VisibleOnMap,
+                };
+                roomIndex[index] = new RoomIndexDtoV2
+                {
+                    room_id = room.RoomIdText,
+                    grid_position = new[]
+                    {
+                        room.GridCoordinate.x,
+                        room.GridCoordinate.y,
+                    },
+                    slot = room.FolderSlot,
+                    folder = Path.GetFileName(roomFolders[room.RoomIdText]),
                 };
             }
 
@@ -134,9 +279,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     level_id = root.LevelIdText,
                     authoring_state =
                         purpose == LevelGridValidationPurposeV2.ProductionPublish
-                            ? "production"
+                            ? "validated-authoring"
                             : "draft",
+                    milestone_scope = "track-a-phase-1-editor-foundation",
+                    runtime_import_status = "not-connected",
                     room_ids = roomIds,
+                    rooms = roomIndex,
                 });
             WriteJson(
                 Path.Combine(outputRoot, "map.json"),
@@ -147,39 +295,130 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     connections = mapConnections,
                 });
 
-            string roomsRoot = Path.Combine(outputRoot, "Rooms");
-            Directory.CreateDirectory(roomsRoot);
-            HashSet<string> claimedRoomFolders = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase);
             for (int index = 0; index < rooms.Length; index++)
             {
                 WriteRoomFolder(
                     rooms[index],
                     doors,
-                    roomsRoot,
-                    index + 1,
-                    claimedRoomFolders);
+                    roomFolders[rooms[index].RoomIdText]);
             }
+        }
+
+        private static Dictionary<string, string> PrepareRoomFolders(
+            LevelRoomAuthoring2D[] rooms,
+            string roomsRoot)
+        {
+            Directory.CreateDirectory(roomsRoot);
+            Dictionary<string, string> existingByRoomId =
+                ScanExistingRoomFolders(roomsRoot);
+            Dictionary<string, LevelRoomAuthoring2D> activeByRoomId =
+                new Dictionary<string, LevelRoomAuthoring2D>(StringComparer.Ordinal);
+            HashSet<string> desiredNames = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase);
+
+            for (int index = 0; index < rooms.Length; index++)
+            {
+                LevelRoomAuthoring2D room = rooms[index];
+                if (string.IsNullOrWhiteSpace(room.RoomIdText)
+                    || activeByRoomId.ContainsKey(room.RoomIdText))
+                {
+                    throw new InvalidOperationException(
+                        "Draft export cannot allocate folders while room IDs are blank or duplicated.");
+                }
+                activeByRoomId.Add(room.RoomIdText, room);
+
+                string desiredName = BuildRoomFolderName(room);
+                if (!desiredNames.Add(desiredName))
+                {
+                    throw new InvalidOperationException(
+                        "Multiple rooms request folder '" + desiredName
+                            + "'. Assign a unique slot at that coordinate.");
+                }
+            }
+
+            Dictionary<string, string> temporaryByRoomId =
+                new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, LevelRoomAuthoring2D> pair in activeByRoomId)
+            {
+                string existingPath;
+                if (!existingByRoomId.TryGetValue(pair.Key, out existingPath))
+                {
+                    continue;
+                }
+
+                string temporaryPath = Path.Combine(
+                    roomsRoot,
+                    ".__migrate__" + Guid.NewGuid().ToString("N"));
+                Directory.Move(existingPath, temporaryPath);
+                temporaryByRoomId.Add(pair.Key, temporaryPath);
+            }
+
+            Dictionary<string, string> result =
+                new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, LevelRoomAuthoring2D> pair in activeByRoomId)
+            {
+                string desiredPath = Path.Combine(
+                    roomsRoot,
+                    BuildRoomFolderName(pair.Value));
+                if (Directory.Exists(desiredPath))
+                {
+                    RoomIdentityDtoV2 owner = ReadRoomIdentity(
+                        Path.Combine(desiredPath, "room.json"));
+                    throw new InvalidOperationException(
+                        "Room folder '" + Path.GetFileName(desiredPath)
+                            + "' already belongs to room '" + owner.room_id
+                            + "'. It will not be adopted by '" + pair.Key + "'.");
+                }
+
+                string temporaryPath;
+                if (temporaryByRoomId.TryGetValue(pair.Key, out temporaryPath))
+                {
+                    Directory.Move(temporaryPath, desiredPath);
+                }
+                else
+                {
+                    Directory.CreateDirectory(desiredPath);
+                }
+                result.Add(pair.Key, desiredPath);
+            }
+
+            return result;
+        }
+
+        private static Dictionary<string, string> ScanExistingRoomFolders(
+            string roomsRoot)
+        {
+            Dictionary<string, string> result =
+                new Dictionary<string, string>(StringComparer.Ordinal);
+            string[] folders = Directory.GetDirectories(roomsRoot);
+            Array.Sort(folders, StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < folders.Length; index++)
+            {
+                string roomJson = Path.Combine(folders[index], "room.json");
+                if (!File.Exists(roomJson))
+                {
+                    throw new InvalidOperationException(
+                        "Room folder '" + Path.GetFileName(folders[index])
+                            + "' has no room.json. Unknown sidecars will not be adopted.");
+                }
+
+                RoomIdentityDtoV2 identity = ReadRoomIdentity(roomJson);
+                if (result.ContainsKey(identity.room_id))
+                {
+                    throw new InvalidOperationException(
+                        "Room ID '" + identity.room_id
+                            + "' is owned by more than one existing folder.");
+                }
+                result.Add(identity.room_id, folders[index]);
+            }
+            return result;
         }
 
         private static void WriteRoomFolder(
             LevelRoomAuthoring2D room,
             LevelDoorEndpointAuthoring2D[] allDoors,
-            string roomsRoot,
-            int ordinal,
-            ISet<string> claimedRoomFolders)
+            string roomRoot)
         {
-            string preferredFolderName = "Room_"
-                + room.GridCoordinate.x + "_"
-                + room.GridCoordinate.y + "_"
-                + ordinal.ToString("00");
-            string roomRoot = ResolveRoomFolder(
-                roomsRoot,
-                room.RoomIdText,
-                preferredFolderName,
-                claimedRoomFolders);
-            Directory.CreateDirectory(roomRoot);
-
             WriteJson(
                 Path.Combine(roomRoot, "room.json"),
                 new RoomDtoV2
@@ -193,6 +432,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         room.GridCoordinate.x,
                         room.GridCoordinate.y,
                     },
+                    slot = room.FolderSlot,
                     footprint_cells = new[]
                     {
                         room.FootprintCells.x,
@@ -220,6 +460,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     continue;
                 }
 
+                Vector3 localPosition = door.transform.localPosition;
                 roomDoors[targetIndex++] = new DoorDtoV2
                 {
                     door_id = door.DoorIdText,
@@ -231,6 +472,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         door.FixedLocalPosition.x,
                         door.FixedLocalPosition.y,
                     },
+                    current_local_position = new[]
+                    {
+                        localPosition.x,
+                        localPosition.y,
+                    },
+                    auto_face_connection = door.AutoFaceConnection,
                     traversable = door.Traversable,
                     visible_on_map = door.VisibleOnMap,
                 };
@@ -245,79 +492,184 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     doors = roomDoors,
                 });
 
-            WriteScaffoldIfMissing(
+            WriteSidecarIfMissing(
                 Path.Combine(roomRoot, "floor.json"),
-                room.RoomIdText,
-                "floor");
-            WriteScaffoldIfMissing(
+                new FloorScaffoldDtoV2
+                {
+                    schema_version = 2,
+                    room = room.RoomIdText,
+                    tiles = Array.Empty<string>(),
+                });
+            WriteSidecarIfMissing(
                 Path.Combine(roomRoot, "enemies.json"),
-                room.RoomIdText,
-                "enemies");
-            WriteScaffoldIfMissing(
+                new EnemiesScaffoldDtoV2
+                {
+                    schema_version = 2,
+                    room = room.RoomIdText,
+                    enemies = Array.Empty<string>(),
+                });
+            WriteSidecarIfMissing(
                 Path.Combine(roomRoot, "props.json"),
-                room.RoomIdText,
-                "props");
-            WriteScaffoldIfMissing(
+                new PropsScaffoldDtoV2
+                {
+                    schema_version = 2,
+                    room = room.RoomIdText,
+                    props = Array.Empty<string>(),
+                });
+            WriteSidecarIfMissing(
                 Path.Combine(roomRoot, "decor.json"),
-                room.RoomIdText,
-                "decor");
-            WriteScaffoldIfMissing(
+                new DecorScaffoldDtoV2
+                {
+                    schema_version = 2,
+                    room = room.RoomIdText,
+                    background = Array.Empty<string>(),
+                    foreground = Array.Empty<string>(),
+                });
+            WriteSidecarIfMissing(
                 Path.Combine(roomRoot, "encounter.json"),
-                room.RoomIdText,
-                "encounter");
+                new EncounterScaffoldDtoV2
+                {
+                    schema_version = 2,
+                    room = room.RoomIdText,
+                    completion = "all-enemies",
+                    optional_enemy_ids = Array.Empty<string>(),
+                    door_rules = Array.Empty<string>(),
+                });
         }
 
-        private static string ResolveRoomFolder(
-            string roomsRoot,
-            string roomId,
-            string preferredFolderName,
-            ISet<string> claimedRoomFolders)
+        private static void ValidateStagedPackage(
+            LevelDesignSceneAuthoringRoot2D root,
+            string stageRoot)
         {
-            string[] existingFolders = Directory.GetDirectories(roomsRoot);
-            Array.Sort(existingFolders, StringComparer.OrdinalIgnoreCase);
-            for (int index = 0; index < existingFolders.Length; index++)
+            LevelIdentityDtoV2 levelIdentity = ReadLevelIdentity(
+                Path.Combine(stageRoot, "level.json"));
+            if (!string.Equals(
+                levelIdentity.level_id,
+                root.LevelIdText,
+                StringComparison.Ordinal))
             {
-                string roomJsonPath = Path.Combine(existingFolders[index], "room.json");
-                if (!File.Exists(roomJsonPath))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    RoomIdentityDtoV2 identity = JsonUtility.FromJson<RoomIdentityDtoV2>(
-                        File.ReadAllText(roomJsonPath));
-                    if (identity != null
-                        && string.Equals(
-                            identity.room_id,
-                            roomId,
-                            StringComparison.Ordinal)
-                        && claimedRoomFolders.Add(existingFolders[index]))
-                    {
-                        return existingFolders[index];
-                    }
-                }
-                catch (Exception exception)
-                {
-                    Debug.LogWarning(
-                        "Could not inspect existing room folder '"
-                            + existingFolders[index] + "': " + exception.Message);
-                }
+                throw new InvalidOperationException(
+                    "Staged level identity changed unexpectedly.");
             }
 
-            string candidate = Path.Combine(roomsRoot, preferredFolderName);
-            int suffix = 2;
-            while (Directory.Exists(candidate)
-                || claimedRoomFolders.Contains(candidate))
+            string roomsRoot = Path.Combine(stageRoot, "Rooms");
+            Dictionary<string, string> existing = ScanExistingRoomFolders(roomsRoot);
+            LevelRoomAuthoring2D[] rooms =
+                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            for (int index = 0; index < rooms.Length; index++)
             {
-                candidate = Path.Combine(
-                    roomsRoot,
-                    preferredFolderName + "_" + suffix.ToString("00"));
-                suffix++;
+                LevelRoomAuthoring2D room = rooms[index];
+                string path;
+                if (!existing.TryGetValue(room.RoomIdText, out path))
+                {
+                    throw new InvalidOperationException(
+                        "Staged export is missing room '" + room.RoomIdText + "'.");
+                }
+
+                string expectedName = BuildRoomFolderName(room);
+                if (!string.Equals(
+                    Path.GetFileName(path),
+                    expectedName,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "Room '" + room.RoomIdText + "' was not migrated to '"
+                            + expectedName + "'.");
+                }
+            }
+        }
+
+        private static void CommitStagedDirectory(
+            string outputRoot,
+            string stageRoot,
+            string backupRoot,
+            bool outputExisted)
+        {
+            bool destinationMoved = false;
+            try
+            {
+                if (outputExisted)
+                {
+                    Directory.Move(outputRoot, backupRoot);
+                    destinationMoved = true;
+                }
+
+                Directory.Move(stageRoot, outputRoot);
+                if (destinationMoved)
+                {
+                    DeleteDirectoryIfExists(backupRoot);
+                }
+            }
+            catch
+            {
+                if (Directory.Exists(outputRoot))
+                {
+                    DeleteDirectoryIfExists(outputRoot);
+                }
+                if (destinationMoved && Directory.Exists(backupRoot))
+                {
+                    Directory.Move(backupRoot, outputRoot);
+                }
+                throw;
+            }
+        }
+
+        private static string BuildRoomFolderName(LevelRoomAuthoring2D room)
+        {
+            return "Room_" + room.GridCoordinate.x + "_" + room.GridCoordinate.y
+                + "_" + room.FolderSlot.ToString("00");
+        }
+
+        private static LevelIdentityDtoV2 ReadLevelIdentity(string path)
+        {
+            if (!File.Exists(path))
+            {
+                throw new InvalidOperationException("Missing level.json: " + path);
             }
 
-            claimedRoomFolders.Add(candidate);
-            return candidate;
+            try
+            {
+                LevelIdentityDtoV2 identity = JsonUtility.FromJson<LevelIdentityDtoV2>(
+                    File.ReadAllText(path));
+                if (identity == null || string.IsNullOrWhiteSpace(identity.level_id))
+                {
+                    throw new InvalidDataException("level_id is missing.");
+                }
+                return identity;
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    "Malformed level identity file '" + path + "': "
+                        + exception.Message,
+                    exception);
+            }
+        }
+
+        private static RoomIdentityDtoV2 ReadRoomIdentity(string path)
+        {
+            if (!File.Exists(path))
+            {
+                throw new InvalidOperationException("Missing room identity file: " + path);
+            }
+
+            try
+            {
+                RoomIdentityDtoV2 identity = JsonUtility.FromJson<RoomIdentityDtoV2>(
+                    File.ReadAllText(path));
+                if (identity == null || string.IsNullOrWhiteSpace(identity.room_id))
+                {
+                    throw new InvalidDataException("room_id is missing.");
+                }
+                return identity;
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    "Malformed room identity file '" + path + "': "
+                        + exception.Message,
+                    exception);
+            }
         }
 
         private static EndpointDtoV2 BuildEndpoint(
@@ -331,25 +683,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             };
         }
 
-        private static void WriteScaffoldIfMissing(
-            string path,
-            string roomId,
-            string contentKind)
+        private static void WriteSidecarIfMissing(string path, object value)
         {
-            if (File.Exists(path))
+            if (!File.Exists(path))
             {
-                return;
+                WriteJson(path, value);
             }
-
-            WriteJson(
-                path,
-                new RoomSidecarScaffoldDtoV2
-                {
-                    schema_version = 2,
-                    room_id = roomId,
-                    content_kind = contentKind,
-                    items = Array.Empty<string>(),
-                });
         }
 
         private static void WriteJson(string path, object value)
@@ -360,6 +699,35 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Utf8WithoutBom);
         }
 
+        private static void CopyDirectory(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+            string[] files = Directory.GetFiles(source);
+            for (int index = 0; index < files.Length; index++)
+            {
+                File.Copy(
+                    files[index],
+                    Path.Combine(destination, Path.GetFileName(files[index])),
+                    true);
+            }
+
+            string[] directories = Directory.GetDirectories(source);
+            for (int index = 0; index < directories.Length; index++)
+            {
+                CopyDirectory(
+                    directories[index],
+                    Path.Combine(destination, Path.GetFileName(directories[index])));
+            }
+        }
+
+        private static void DeleteDirectoryIfExists(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+        }
+
         private static int CompareRooms(
             LevelRoomAuthoring2D left,
             LevelRoomAuthoring2D right)
@@ -368,6 +736,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (x != 0) return x;
             int y = left.GridCoordinate.y.CompareTo(right.GridCoordinate.y);
             if (y != 0) return y;
+            int slot = left.FolderSlot.CompareTo(right.FolderSlot);
+            if (slot != 0) return slot;
             return string.CompareOrdinal(left.RoomIdText, right.RoomIdText);
         }
 
@@ -401,12 +771,30 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [Serializable]
+        private sealed class LevelIdentityDtoV2
+        {
+            public string level_id;
+        }
+
+        [Serializable]
         private sealed class LevelDtoV2
         {
             public int schema_version;
             public string level_id;
             public string authoring_state;
+            public string milestone_scope;
+            public string runtime_import_status;
             public string[] room_ids;
+            public RoomIndexDtoV2[] rooms;
+        }
+
+        [Serializable]
+        private sealed class RoomIndexDtoV2
+        {
+            public string room_id;
+            public int[] grid_position;
+            public int slot;
+            public string folder;
         }
 
         [Serializable]
@@ -422,6 +810,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             public string room_id;
             public int[] grid_position;
+            public int slot;
             public string label;
             public bool visible_on_map;
         }
@@ -456,6 +845,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             public string display_name;
             public string automatic_label;
             public int[] grid_position;
+            public int slot;
             public int[] footprint_cells;
             public bool visible_on_map;
         }
@@ -476,17 +866,53 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             public string placement_mode;
             public float edge_offset;
             public float[] fixed_local_position;
+            public float[] current_local_position;
+            public bool auto_face_connection;
             public bool traversable;
             public bool visible_on_map;
         }
 
         [Serializable]
-        private sealed class RoomSidecarScaffoldDtoV2
+        private sealed class FloorScaffoldDtoV2
         {
             public int schema_version;
-            public string room_id;
-            public string content_kind;
-            public string[] items;
+            public string room;
+            public string[] tiles;
+        }
+
+        [Serializable]
+        private sealed class EnemiesScaffoldDtoV2
+        {
+            public int schema_version;
+            public string room;
+            public string[] enemies;
+        }
+
+        [Serializable]
+        private sealed class PropsScaffoldDtoV2
+        {
+            public int schema_version;
+            public string room;
+            public string[] props;
+        }
+
+        [Serializable]
+        private sealed class DecorScaffoldDtoV2
+        {
+            public int schema_version;
+            public string room;
+            public string[] background;
+            public string[] foreground;
+        }
+
+        [Serializable]
+        private sealed class EncounterScaffoldDtoV2
+        {
+            public int schema_version;
+            public string room;
+            public string completion;
+            public string[] optional_enemy_ids;
+            public string[] door_rules;
         }
     }
 }
