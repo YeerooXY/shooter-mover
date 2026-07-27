@@ -177,6 +177,124 @@ namespace ShooterMover.Domain.Weapons
     }
 
     /// <summary>
+    /// Structured fail-closed result shared by trusted weapon boundaries and Inventory presentation.
+    /// It reports availability only; it never mutates weapon, receipt, wallet or mount state.
+    /// </summary>
+    public sealed class CanonicalWeaponOperationAvailabilityV1
+    {
+        private CanonicalWeaponOperationAvailabilityV1(
+            bool isAvailable,
+            string rejectionCode,
+            string message)
+        {
+            IsAvailable = isAvailable;
+            RejectionCode = rejectionCode ?? string.Empty;
+            Message = message ?? string.Empty;
+        }
+
+        public bool IsAvailable { get; }
+        public string RejectionCode { get; }
+        public string Message { get; }
+
+        public static CanonicalWeaponOperationAvailabilityV1 Available()
+        {
+            return new CanonicalWeaponOperationAvailabilityV1(
+                true,
+                string.Empty,
+                string.Empty);
+        }
+
+        public static CanonicalWeaponOperationAvailabilityV1 Rejected(
+            string rejectionCode,
+            string message)
+        {
+            if (string.IsNullOrWhiteSpace(rejectionCode))
+            {
+                throw new ArgumentException(
+                    "A rejected canonical weapon operation requires a code.",
+                    nameof(rejectionCode));
+            }
+            return new CanonicalWeaponOperationAvailabilityV1(
+                false,
+                rejectionCode.Trim(),
+                message);
+        }
+    }
+
+    /// <summary>
+    /// Safety policy for canonical weapon operations whose product contract is not implemented yet.
+    /// Compatibility receipts are observations only and never make an operation available.
+    /// </summary>
+    public static class CanonicalWeaponSafetyPolicyV1
+    {
+        public static CanonicalWeaponOperationAvailabilityV1 EvaluateGenericUpgrade(
+            bool isWeaponReceipt,
+            bool canonicalDefinitionResolved)
+        {
+            if (!isWeaponReceipt)
+            {
+                return CanonicalWeaponOperationAvailabilityV1.Available();
+            }
+            if (!canonicalDefinitionResolved)
+            {
+                return DefinitionUnresolved();
+            }
+            return CanonicalWeaponOperationAvailabilityV1.Rejected(
+                "canonical-weapon-upgrade-route-unsupported",
+                "Canonical weapon upgrades require the future canonical transaction; the generic equipment replacement route is disabled.");
+        }
+
+        public static CanonicalWeaponOperationAvailabilityV1 EvaluateRewardAcceptance(
+            WeaponEquipmentInstance instance,
+            bool canonicalDefinitionResolved)
+        {
+            if (instance == null || !canonicalDefinitionResolved)
+            {
+                return DefinitionUnresolved();
+            }
+            if (instance.OverclockAssignments.Count != 0)
+            {
+                return OverclockUnsupported();
+            }
+            return CanonicalWeaponOperationAvailabilityV1.Available();
+        }
+
+        public static CanonicalWeaponOperationAvailabilityV1 EvaluateLiveExecution(
+            WeaponEquipmentInstance instance,
+            bool canonicalDefinitionResolved)
+        {
+            if (instance == null || !canonicalDefinitionResolved)
+            {
+                return DefinitionUnresolved();
+            }
+            if (instance.OverclockAssignments.Count != 0)
+            {
+                return OverclockUnsupported();
+            }
+            return CanonicalWeaponOperationAvailabilityV1.Available();
+        }
+
+        public static CanonicalWeaponOperationAvailabilityV1 EvaluateOverclockInstallation()
+        {
+            return OverclockUnsupported();
+        }
+
+        private static CanonicalWeaponOperationAvailabilityV1 DefinitionUnresolved()
+        {
+            return CanonicalWeaponOperationAvailabilityV1.Rejected(
+                "canonical-weapon-definition-unresolved",
+                "The canonical weapon definition could not be resolved; destructive or replacement operations are blocked.");
+        }
+
+        private static CanonicalWeaponOperationAvailabilityV1 OverclockUnsupported()
+        {
+            return CanonicalWeaponOperationAvailabilityV1.Rejected(
+                "canonical-weapon-overclock-policy-unsupported",
+                "Overclock installation and live execution are not available until a canonical ownership, slot/capacity and runtime policy exists.");
+        }
+    }
+
+    /// <summary>
     /// Creates opaque globally unique identities for newly accepted owned instances.
     /// The value deliberately carries no weapon, owner, source, slot, or ordering semantics.
     /// </summary>
