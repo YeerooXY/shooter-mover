@@ -67,6 +67,18 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         [Test]
+        public void UnknownProfilesFailClosedInsteadOfReceivingDefensiveMounts()
+        {
+            Assert.That(
+                () => ProductionWeaponMountPolicyV1.ResolveLayout(
+                    Id("loadout-profile.recon")),
+                Throws.ArgumentException.With.Message.Contains("Unsupported"));
+            Assert.That(
+                () => ProductionWeaponMountPolicyV1.ResolveLayout(null),
+                Throws.ArgumentException.With.Message.Contains("Unsupported"));
+        }
+
+        [Test]
         public void AggressiveLockedCenterIsProjectedVisibleAndUnbound()
         {
             PlayerRouteProfilePayloadV1 normalized =
