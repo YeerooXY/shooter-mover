@@ -122,13 +122,41 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             HashSet<LevelRoomAuthoring2D> overlapping = FindOverlappingRooms(rooms);
             HashSet<string> problemIds = new HashSet<string>(StringComparer.Ordinal);
-            IReadOnlyList<LevelGridProblemV2> problems = root.LastGridValidation.Problems;
-            for (int index = 0; index < problems.Count; index++)
+            HashSet<LevelRoomAuthoring2D> problemRooms =
+                new HashSet<LevelRoomAuthoring2D>();
+
+            IReadOnlyList<LevelGridProblemV2> gridProblems =
+                root.LastGridValidation.Problems;
+            for (int index = 0; index < gridProblems.Count; index++)
             {
-                if (!string.IsNullOrEmpty(problems[index].AuthoredId))
+                LevelGridProblemV2 problem = gridProblems[index];
+                if (!string.IsNullOrEmpty(problem.AuthoredId))
                 {
-                    problemIds.Add(problems[index].AuthoredId);
+                    problemIds.Add(problem.AuthoredId);
                 }
+                Component affected =
+                    LevelGridEditorProblemLocatorV2.FindExact(root, problem)
+                    ?? LevelGridEditorProblemLocatorV2.FindByStableId(
+                        root,
+                        problem.AuthoredId);
+                AddRelatedRooms(affected, problemRooms);
+            }
+
+            IReadOnlyList<LevelDesignValidationIssue> foundationIssues =
+                root.LastValidation.Issues;
+            for (int index = 0; index < foundationIssues.Count; index++)
+            {
+                LevelDesignValidationIssue issue = foundationIssues[index];
+                if (!string.IsNullOrEmpty(issue.AuthoredId))
+                {
+                    problemIds.Add(issue.AuthoredId);
+                }
+                Component affected =
+                    LevelGridEditorProblemLocatorV2.FindExact(root, issue)
+                    ?? LevelGridEditorProblemLocatorV2.FindFoundationByStableId(
+                        root,
+                        issue.AuthoredId);
+                AddRelatedRooms(affected, problemRooms);
             }
 
             List<LevelGridEditorRoomProjectionV2> roomProjections =
@@ -138,7 +166,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 LevelRoomAuthoring2D room = rooms[roomIndex];
                 List<LevelDoorEndpointAuthoring2D> ownedDoors =
                     new List<LevelDoorEndpointAuthoring2D>();
-                bool hasProblem = problemIds.Contains(room.RoomIdText);
+                bool hasProblem = problemIds.Contains(room.RoomIdText)
+                    || problemRooms.Contains(room);
                 for (int doorIndex = 0; doorIndex < doors.Length; doorIndex++)
                 {
                     if (doors[doorIndex].OwningRoom == room)
@@ -160,6 +189,83 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 doors,
                 links,
                 connectionByDoor);
+        }
+
+        private static void AddRelatedRooms(
+            Component affected,
+            HashSet<LevelRoomAuthoring2D> rooms)
+        {
+            if (affected == null)
+            {
+                return;
+            }
+
+            LevelRoomAuthoring2D room = affected as LevelRoomAuthoring2D;
+            if (room != null)
+            {
+                rooms.Add(room);
+                return;
+            }
+
+            LevelDoorEndpointAuthoring2D endpoint =
+                affected as LevelDoorEndpointAuthoring2D;
+            if (endpoint != null && endpoint.OwningRoom != null)
+            {
+                rooms.Add(endpoint.OwningRoom);
+                return;
+            }
+
+            LevelDoorLinkAuthoring2D link = affected as LevelDoorLinkAuthoring2D;
+            if (link != null)
+            {
+                if (link.SourceRoom != null)
+                {
+                    rooms.Add(link.SourceRoom);
+                }
+                if (link.DestinationRoom != null)
+                {
+                    rooms.Add(link.DestinationRoom);
+                }
+                return;
+            }
+
+            LevelPlacementAuthoring2D placement =
+                affected as LevelPlacementAuthoring2D;
+            if (placement != null && placement.Room != null)
+            {
+                rooms.Add(placement.Room);
+                return;
+            }
+
+            LevelVoidRegionAuthoring2D voidRegion =
+                affected as LevelVoidRegionAuthoring2D;
+            if (voidRegion != null && voidRegion.Room != null)
+            {
+                rooms.Add(voidRegion.Room);
+                return;
+            }
+
+            LevelDoorConnectionAuthoring2D legacyDoor =
+                affected as LevelDoorConnectionAuthoring2D;
+            if (legacyDoor != null)
+            {
+                if (legacyDoor.SourceRoom != null)
+                {
+                    rooms.Add(legacyDoor.SourceRoom);
+                }
+                if (legacyDoor.DestinationRoom != null)
+                {
+                    rooms.Add(legacyDoor.DestinationRoom);
+                }
+                return;
+            }
+
+            LevelRoomAuthoring2D parentRoom =
+                affected.GetComponentInParent<LevelRoomAuthoring2D>();
+            if (parentRoom != null)
+            {
+                rooms.Add(parentRoom);
+            }
         }
 
         private static HashSet<LevelRoomAuthoring2D> FindOverlappingRooms(
@@ -247,8 +353,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             Component exact = FindExactByType<LevelRoomAuthoring2D>(
                 root,
-                problem,
-                delegate(LevelRoomAuthoring2D room) { return room.RoomIdText; });
+                problem.AuthoredId,
+                problem.DiagnosticLocation,
+                delegate(LevelRoomAuthoring2D room)
+                {
+                    return string.Equals(
+                        room.RoomIdText,
+                        problem.AuthoredId,
+                        StringComparison.Ordinal);
+                });
             if (exact != null)
             {
                 return exact;
@@ -256,8 +369,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             exact = FindExactByType<LevelDoorEndpointAuthoring2D>(
                 root,
-                problem,
-                delegate(LevelDoorEndpointAuthoring2D door) { return door.DoorIdText; });
+                problem.AuthoredId,
+                problem.DiagnosticLocation,
+                delegate(LevelDoorEndpointAuthoring2D door)
+                {
+                    return string.Equals(
+                        door.DoorIdText,
+                        problem.AuthoredId,
+                        StringComparison.Ordinal);
+                });
             if (exact != null)
             {
                 return exact;
@@ -265,10 +385,107 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             return FindExactByType<LevelDoorLinkAuthoring2D>(
                 root,
-                problem,
+                problem.AuthoredId,
+                problem.DiagnosticLocation,
                 delegate(LevelDoorLinkAuthoring2D link)
                 {
-                    return link.ConnectionIdText;
+                    return string.Equals(
+                        link.ConnectionIdText,
+                        problem.AuthoredId,
+                        StringComparison.Ordinal);
+                });
+        }
+
+        public static Component FindExact(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDesignValidationIssue issue)
+        {
+            if (root == null || issue == null)
+            {
+                return null;
+            }
+
+            if (string.Equals(
+                    root.LevelIdText,
+                    issue.AuthoredId,
+                    StringComparison.Ordinal)
+                && LocationMatches(
+                    issue.DiagnosticLocation,
+                    BuildDiagnosticLocation(root.transform)))
+            {
+                return root;
+            }
+
+            Component exact = FindExactByType<LevelRoomAuthoring2D>(
+                root,
+                issue.AuthoredId,
+                issue.DiagnosticLocation,
+                delegate(LevelRoomAuthoring2D room)
+                {
+                    return string.Equals(
+                        room.RoomIdText,
+                        issue.AuthoredId,
+                        StringComparison.Ordinal);
+                });
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            exact = FindExactByType<LevelPlacementAuthoring2D>(
+                root,
+                issue.AuthoredId,
+                issue.DiagnosticLocation,
+                delegate(LevelPlacementAuthoring2D placement)
+                {
+                    return string.Equals(
+                            placement.AuthoredIdText,
+                            issue.AuthoredId,
+                            StringComparison.Ordinal)
+                        || string.Equals(
+                            placement.SocketIdText,
+                            issue.AuthoredId,
+                            StringComparison.Ordinal);
+                });
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            exact = FindExactByType<LevelDoorConnectionAuthoring2D>(
+                root,
+                issue.AuthoredId,
+                issue.DiagnosticLocation,
+                delegate(LevelDoorConnectionAuthoring2D door)
+                {
+                    return string.Equals(
+                            door.DoorIdText,
+                            issue.AuthoredId,
+                            StringComparison.Ordinal)
+                        || string.Equals(
+                            door.SourceSocketIdText,
+                            issue.AuthoredId,
+                            StringComparison.Ordinal)
+                        || string.Equals(
+                            door.DestinationSocketIdText,
+                            issue.AuthoredId,
+                            StringComparison.Ordinal);
+                });
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            return FindExactByType<LevelVoidRegionAuthoring2D>(
+                root,
+                issue.AuthoredId,
+                issue.DiagnosticLocation,
+                delegate(LevelVoidRegionAuthoring2D voidRegion)
+                {
+                    return string.Equals(
+                        voidRegion.VoidRegionIdText,
+                        issue.AuthoredId,
+                        StringComparison.Ordinal);
                 });
         }
 
@@ -323,6 +540,86 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return null;
         }
 
+        public static Component FindFoundationByStableId(
+            LevelDesignSceneAuthoringRoot2D root,
+            string authoredId)
+        {
+            if (root == null || string.IsNullOrEmpty(authoredId))
+            {
+                return null;
+            }
+            if (string.Equals(root.LevelIdText, authoredId, StringComparison.Ordinal))
+            {
+                return root;
+            }
+
+            LevelRoomAuthoring2D[] rooms =
+                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            for (int index = 0; index < rooms.Length; index++)
+            {
+                if (string.Equals(
+                    rooms[index].RoomIdText,
+                    authoredId,
+                    StringComparison.Ordinal))
+                {
+                    return rooms[index];
+                }
+            }
+
+            LevelPlacementAuthoring2D[] placements =
+                root.GetComponentsInChildren<LevelPlacementAuthoring2D>(true);
+            for (int index = 0; index < placements.Length; index++)
+            {
+                if (string.Equals(
+                        placements[index].AuthoredIdText,
+                        authoredId,
+                        StringComparison.Ordinal)
+                    || string.Equals(
+                        placements[index].SocketIdText,
+                        authoredId,
+                        StringComparison.Ordinal))
+                {
+                    return placements[index];
+                }
+            }
+
+            LevelDoorConnectionAuthoring2D[] legacyDoors =
+                root.GetComponentsInChildren<LevelDoorConnectionAuthoring2D>(true);
+            for (int index = 0; index < legacyDoors.Length; index++)
+            {
+                if (string.Equals(
+                        legacyDoors[index].DoorIdText,
+                        authoredId,
+                        StringComparison.Ordinal)
+                    || string.Equals(
+                        legacyDoors[index].SourceSocketIdText,
+                        authoredId,
+                        StringComparison.Ordinal)
+                    || string.Equals(
+                        legacyDoors[index].DestinationSocketIdText,
+                        authoredId,
+                        StringComparison.Ordinal))
+                {
+                    return legacyDoors[index];
+                }
+            }
+
+            LevelVoidRegionAuthoring2D[] voids =
+                root.GetComponentsInChildren<LevelVoidRegionAuthoring2D>(true);
+            for (int index = 0; index < voids.Length; index++)
+            {
+                if (string.Equals(
+                    voids[index].VoidRegionIdText,
+                    authoredId,
+                    StringComparison.Ordinal))
+                {
+                    return voids[index];
+                }
+            }
+
+            return null;
+        }
+
         public static Component SelectExact(
             LevelDesignSceneAuthoringRoot2D root,
             LevelGridProblemV2 problem)
@@ -331,6 +628,25 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (exact == null)
             {
                 exact = FindByStableId(root, problem == null ? null : problem.AuthoredId);
+            }
+            if (exact != null)
+            {
+                Selection.activeGameObject = exact.gameObject;
+                EditorGUIUtility.PingObject(exact);
+            }
+            return exact;
+        }
+
+        public static Component SelectExact(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDesignValidationIssue issue)
+        {
+            Component exact = FindExact(root, issue);
+            if (exact == null)
+            {
+                exact = FindFoundationByStableId(
+                    root,
+                    issue == null ? null : issue.AuthoredId);
             }
             if (exact != null)
             {
@@ -352,27 +668,35 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static Component FindExactByType<T>(
             LevelDesignSceneAuthoringRoot2D root,
-            LevelGridProblemV2 problem,
-            Func<T, string> getId)
+            string authoredId,
+            string diagnosticLocation,
+            Func<T, bool> matchesId)
             where T : Component
         {
+            if (string.IsNullOrEmpty(authoredId))
+            {
+                return null;
+            }
+
             T[] components = root.GetComponentsInChildren<T>(true);
             for (int index = 0; index < components.Length; index++)
             {
                 T component = components[index];
-                if (string.Equals(
-                        getId(component),
-                        problem.AuthoredId,
-                        StringComparison.Ordinal)
-                    && string.Equals(
-                        BuildDiagnosticLocation(component.transform),
-                        problem.DiagnosticLocation,
-                        StringComparison.Ordinal))
+                if (matchesId(component)
+                    && LocationMatches(
+                        diagnosticLocation,
+                        BuildDiagnosticLocation(component.transform)))
                 {
                     return component;
                 }
             }
             return null;
+        }
+
+        private static bool LocationMatches(string expected, string actual)
+        {
+            return string.IsNullOrEmpty(expected)
+                || string.Equals(expected, actual, StringComparison.Ordinal);
         }
 
         private static string GetHierarchyPath(Transform current)
