@@ -7,7 +7,7 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons;
-using ShooterMover.UI.ProductionFlow;
+using ShooterMover.UnityAdapters.Players;
 using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -80,17 +80,13 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             var player = new GameObject("Canonical Player Test");
             try
             {
-                PlayablePlayerMarker2D marker =
-                    player.AddComponent<PlayablePlayerMarker2D>();
-                marker.Bind(
-                    runtime.RoutePayload.SelectedCharacterStableId,
-                    runtime.RoutePayload.LoadoutProfileStableId,
-                    runtime.CurrentRoutePayload,
-                    runtime.Holdings,
-                    runtime.LoadoutAuthority);
                 CanonicalPlayerWeaponSourceV2 source =
                     player.AddComponent<CanonicalPlayerWeaponSourceV2>();
-                source.Bind(marker, runtime, exact, mark);
+                source.Bind(
+                    runtime.RoutePayload.SelectedCharacterStableId,
+                    runtime,
+                    exact,
+                    mark);
 
                 EquipmentInstance projected;
                 Assert.That(
