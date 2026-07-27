@@ -270,7 +270,27 @@ namespace ShooterMover.UI.ProductionFlow
                     Find<InventoryLoadoutScreenControllerV1>(scene);
                 if (controller != null)
                 {
-                    controller.ConfigureDisconnected(ReturnToHub);
+                    ProductionPlayerLoadoutRuntimeV1 loadoutRuntime;
+                    ProductionFlowProfileRecordV1 loadoutProfile;
+                    if (ProductionHubLoadoutCompositionV1.TryResolveCurrent(
+                            out loadoutRuntime,
+                            out loadoutProfile)
+                        && loadoutRuntime != null
+                        && loadoutProfile != null)
+                    {
+                        controller.Configure(
+                            loadoutRuntime.Holdings,
+                            loadoutRuntime.CatalogAdapter,
+                            loadoutRuntime.LoadoutAuthority,
+                            ReturnToHub);
+                        controller.ConfigureWeaponPresentation(
+                            loadoutRuntime.EquipmentCatalog,
+                            loadoutRuntime.WeaponCatalog);
+                    }
+                    else
+                    {
+                        controller.ConfigureDisconnected(ReturnToHub);
+                    }
                     controller.Present(
                         HubRouteV1.Inventory,
                         transitions.Navigation.Payload);

@@ -198,11 +198,30 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         menuName = "Shooter Mover/Flow/Level Selection Catalog V1")]
     public sealed class LevelSelectionCatalogDefinitionV1 : ScriptableObject
     {
+        // Temporary source-compatibility constants for the retained level-selection
+        // checks. The live catalog remains owned by ProductionPlayableLevelCatalogV1.
+        public const string Stage1ScenePath =
+            ProductionPlayableLevelCatalogV1.PlayableLevelScenePath;
+        public const string Level2PrototypeScenePath =
+            ProductionPlayableLevelCatalogV1.PlayableLevelScenePath;
+        public const string Level1StableIdText = "level.authored-json-1";
+        public const string Level2StableIdText =
+            "level.authored-json-combat-loop-test";
+
         [SerializeField] private List<LevelSelectionDefinitionRecordV1> levels =
             new List<LevelSelectionDefinitionRecordV1>();
 
         public LevelSelectionCatalogV1 BuildCatalog()
         {
+            // A scene may contain the catalog asset with no serialized entries while
+            // the production catalog is still the canonical source of playable
+            // levels. Keep the authored asset optional instead of constructing an
+            // invalid empty runtime catalog.
+            if (levels == null || levels.Count == 0)
+            {
+                return ProductionPlayableLevelCatalogV1.CreateSelectionCatalog();
+            }
+
             var definitions = new List<LevelSelectionDefinitionV1>(levels.Count);
             for (int index = 0; index < levels.Count; index++)
             {
