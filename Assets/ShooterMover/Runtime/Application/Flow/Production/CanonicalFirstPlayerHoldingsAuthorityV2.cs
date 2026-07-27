@@ -2,6 +2,8 @@ using System;
 using ShooterMover.Contracts.Economy;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons;
 
@@ -100,7 +102,6 @@ namespace ShooterMover.Application.Flow.Production
         {
             canonical = null;
             if (command == null
-                || command.Transaction == null
                 || command.RewardKind != RewardGrantKindV1.EquipmentReference)
             {
                 return false;
@@ -109,18 +110,74 @@ namespace ShooterMover.Application.Flow.Production
             if (command.Transaction.Operation
                 == EconomyTransactionOperationV1.AddUnique)
             {
-                return command.EquipmentInstance != null
-                    && ProductionWeaponHoldingsMigrationV2.TryConvertEquipment(
+                if (command.EquipmentInstance == null)
+                {
+                    return false;
+                }
+                EquipmentDefinition definition =
+                    ProductionWeaponCatalogProvider.EquipmentCatalog
+                        .FindEquipmentDefinition(
+                            command.EquipmentInstance.DefinitionId);
+                if (definition == null
+                    || definition.CategoryId != EquipmentCategoryIds.Weapon)
+                {
+                    return false;
+                }
+                if (!ProductionWeaponHoldingsMigrationV2.TryConvertEquipment(
                         command.EquipmentInstance,
-                        out canonical);
+                        out canonical)
+                    || canonical == null)
+                {
+                    throw new InvalidOperationException(
+                        "A production weapon reward cannot be represented by the canonical "
+                        + "WeaponEquipmentInstance contract: "
+                        + command.EquipmentInstance.InstanceId);
+                }
+                return true;
             }
 
             if (command.Transaction.Operation
-                    == EconomyTransactionOperationV1.RemoveUnique
-                && command.Transaction.InstanceStableId != null)
+                    != EconomyTransactionOperationV1.RemoveUnique
+                || command.Transaction.InstanceStableId == null)
             {
-                canonical = weapons.Find(command.Transaction.InstanceStableId);
-                return canonical != null;
+                return false;
+            }
+
+            canonical = weapons.Find(command.Transaction.InstanceStableId);
+            if (canonical != null)
+            {
+                return true;
+            }
+
+            // An exact duplicate removal after both authorities accepted the original command may
+            // legitimately find neither record. A retained weapon receipt without canonical
+            // ownership is inconsistent and must never be mutated further as if it were armor.
+            PlayerHoldingsSnapshotV1 snapshot = receipts.ExportSnapshot();
+            if (snapshot != null)
+            {
+                for (int index = 0; index < snapshot.UniqueHoldings.Count; index++)
+                {
+                    UniqueHoldingSnapshotV1 holding = snapshot.UniqueHoldings[index];
+                    if (holding == null
+                        || holding.InstanceStableId
+                            != command.Transaction.InstanceStableId
+                        || holding.EquipmentInstance == null)
+                    {
+                        continue;
+                    }
+                    EquipmentDefinition definition =
+                        ProductionWeaponCatalogProvider.EquipmentCatalog
+                            .FindEquipmentDefinition(
+                                holding.EquipmentInstance.DefinitionId);
+                    if (definition != null
+                        && definition.CategoryId == EquipmentCategoryIds.Weapon)
+                    {
+                        throw new InvalidOperationException(
+                            "A retained weapon receipt is missing canonical ownership: "
+                            + command.Transaction.InstanceStableId);
+                    }
+                    break;
+                }
             }
             return false;
         }
