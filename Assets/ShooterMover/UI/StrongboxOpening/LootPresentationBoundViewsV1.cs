@@ -354,7 +354,7 @@ namespace ShooterMover.UI.StrongboxOpening
             float openingOffset = Session.Stage == StrongboxRevealStageV1.BoxClosed
                 ? 0f
                 : 28f * progress;
-            if (Session.Stage >= StrongboxRevealStageV1.RewardReveal)
+            if ((int)Session.Stage >= (int)StrongboxRevealStageV1.RewardReveal)
             {
                 openingOffset = 28f;
             }
