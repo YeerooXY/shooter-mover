@@ -13,12 +13,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 {
     /// <summary>
     /// Editor/build-time bridge from an exported Level Grid V2 folder to the existing runtime
-    /// JSON asset boundary. The player build consumes only the generated TextAssets and
-    /// JsonRoomContentDefinition2D; it never reads the authoring filesystem.
+    /// JSON asset boundary. Generated TextAssets are published immutably and the build-included
+    /// resource asset is switched only after the complete replacement has imported and validated.
     /// </summary>
-    public static class LevelGridV2AssetCompiler
+    public static partial class LevelGridV2AssetCompiler
     {
+        private static readonly object PublishGate = new object();
         private static readonly UTF8Encoding Utf8WithoutBom = new UTF8Encoding(false);
+
         public const string TrackedCombatLoopSource =
             "Assets/ShooterMover/Content/Definitions/Missions/Rooms/GridV2/CombatLoopTest";
         public const string TrackedCombatLoopGenerated =
@@ -68,8 +70,40 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string generatedAssetFolder,
             string roomContentAssetPath)
         {
+            return CompileToAssetInternal(
+                sourceRoot,
+                generatedAssetFolder,
+                roomContentAssetPath,
+                null);
+        }
+
+        internal static JsonRoomContentDefinition2D CompileToAssetForTests(
+            string sourceRoot,
+            string generatedAssetFolder,
+            string roomContentAssetPath,
+            ILevelGridV2AssetCompilerFaultInjector faultInjector)
+        {
+            return CompileToAssetInternal(
+                sourceRoot,
+                generatedAssetFolder,
+                roomContentAssetPath,
+                faultInjector);
+        }
+
+        private static JsonRoomContentDefinition2D CompileToAssetInternal(
+            string sourceRoot,
+            string generatedAssetFolder,
+            string roomContentAssetPath,
+            ILevelGridV2AssetCompilerFaultInjector faultInjector)
+        {
             ValidateAssetPath(generatedAssetFolder, nameof(generatedAssetFolder));
             ValidateAssetPath(roomContentAssetPath, nameof(roomContentAssetPath));
+            if (!roomContentAssetPath.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException(
+                    "The room-content destination must be a Unity .asset path.",
+                    nameof(roomContentAssetPath));
+            }
             if (string.IsNullOrWhiteSpace(sourceRoot)
                 || !Directory.Exists(ToAbsolutePath(sourceRoot)))
             {
@@ -77,107 +111,18 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Level Grid V2 source folder does not exist: " + sourceRoot);
             }
 
-            LevelGridV2CompileResult compile = CompileFolder(sourceRoot);
-            if (!compile.IsValid)
+            lock (PublishGate)
             {
-                LevelGridV2CompileIssue issue = compile.Issues.Count == 0
-                    ? new LevelGridV2CompileIssue(
-                        "level-grid-v2-compile-invalid",
-                        "$",
-                        "Compilation failed without a structured issue.")
-                    : compile.Issues[0];
-                throw new InvalidOperationException(issue.ToString());
+                DestinationSnapshot destinationSnapshot =
+                    ValidateExistingDestination(roomContentAssetPath);
+                LevelGridV2CompileResult compile = CompileAndValidate(sourceRoot);
+                return PublishCompiledPackage(
+                    compile.Package,
+                    generatedAssetFolder,
+                    roomContentAssetPath,
+                    destinationSnapshot,
+                    faultInjector);
             }
-
-            RoomContentImportResultV1 validation = RoomContentJsonImporterV1.Import(
-                compile.Package,
-                BuiltInRoomContentObjectCatalogV1.Create());
-            if (validation == null || !validation.IsValid)
-            {
-                RoomContentImportIssueV1 issue = validation != null
-                    && validation.Issues.Count > 0
-                    ? validation.Issues[0]
-                    : new RoomContentImportIssueV1(
-                        "level-grid-v2-runtime-validation-missing",
-                        "$",
-                        "The existing room importer rejected the compiled result.");
-                throw new InvalidOperationException(
-                    issue.Code + " at " + issue.Path + ": " + issue.Message);
-            }
-
-            EnsureAssetFolder(generatedAssetFolder);
-            string manifestPath = generatedAssetFolder + "/compiled.manifest.json";
-            var keys = new List<string>(compile.Package.Documents.Keys);
-            keys.Sort(StringComparer.Ordinal);
-            var documentPaths = new Dictionary<string, string>(StringComparer.Ordinal);
-            var expectedJsonPaths = new HashSet<string>(StringComparer.Ordinal)
-            {
-                manifestPath,
-            };
-            for (int index = 0; index < keys.Count; index++)
-            {
-                string path = generatedAssetFolder
-                    + "/"
-                    + index.ToString("00")
-                    + "_"
-                    + SanitizeFileName(keys[index])
-                    + ".json";
-                documentPaths.Add(keys[index], path);
-                expectedJsonPaths.Add(path);
-            }
-
-            WriteAssetText(manifestPath, compile.Package.ManifestJson);
-            for (int index = 0; index < keys.Count; index++)
-            {
-                WriteAssetText(
-                    documentPaths[keys[index]],
-                    compile.Package.Documents[keys[index]]);
-            }
-
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            TextAsset manifest = AssetDatabase.LoadAssetAtPath<TextAsset>(manifestPath);
-            if (manifest == null)
-            {
-                throw new InvalidOperationException(
-                    "Generated manifest did not import as a TextAsset: " + manifestPath);
-            }
-
-            var documents = new RoomContentJsonDocumentAsset2D[keys.Count];
-            for (int index = 0; index < keys.Count; index++)
-            {
-                TextAsset text = AssetDatabase.LoadAssetAtPath<TextAsset>(
-                    documentPaths[keys[index]]);
-                if (text == null)
-                {
-                    throw new InvalidOperationException(
-                        "Generated document did not import as a TextAsset: "
-                        + documentPaths[keys[index]]);
-                }
-                var entry = new RoomContentJsonDocumentAsset2D();
-                entry.ConfigureCompiledAsset(keys[index], text);
-                documents[index] = entry;
-            }
-
-            EnsureAssetFolder(Path.GetDirectoryName(roomContentAssetPath).Replace('\\', '/'));
-            JsonRoomContentDefinition2D asset =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(
-                    roomContentAssetPath);
-            if (asset == null)
-            {
-                asset = ScriptableObject.CreateInstance<JsonRoomContentDefinition2D>();
-                AssetDatabase.CreateAsset(asset, roomContentAssetPath);
-            }
-            asset.ConfigureCompiledAssets(manifest, documents);
-            EditorUtility.SetDirty(asset);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(
-                roomContentAssetPath,
-                ImportAssetOptions.ForceSynchronousImport);
-
-            // The new asset is authoritative at this point. Stale generated files are cleanup, so
-            // inability to delete one must not turn a successful compile into a false failure.
-            TryDeleteStaleGeneratedJson(generatedAssetFolder, expectedJsonPaths);
-            return asset;
         }
 
         public static LevelGridV2CompileResult CompileFolder(string sourceRoot)
@@ -206,6 +151,29 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return LevelGridV2Compiler.Compile(new LevelGridV2SourcePackage(documents));
         }
 
+        private static LevelGridV2CompileResult CompileAndValidate(string sourceRoot)
+        {
+            LevelGridV2CompileResult compile = CompileFolder(sourceRoot);
+            if (compile == null || !compile.IsValid)
+            {
+                LevelGridV2CompileIssue issue = compile == null || compile.Issues.Count == 0
+                    ? new LevelGridV2CompileIssue(
+                        "level-grid-v2-compile-invalid",
+                        "$",
+                        "Compilation failed without a structured issue.")
+                    : compile.Issues[0];
+                throw new InvalidOperationException(issue.ToString());
+            }
+
+            RoomContentImportResultV1 validation = RoomContentJsonImporterV1.Import(
+                compile.Package,
+                BuiltInRoomContentObjectCatalogV1.Create());
+            ThrowIfImportInvalid(
+                validation,
+                "The existing room importer rejected the compiled result.");
+            return compile;
+        }
+
         private static void CompileAndReport(
             string sourceRoot,
             string generatedAssetFolder,
@@ -218,7 +186,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     generatedAssetFolder,
                     roomContentAssetPath);
                 Debug.Log(
-                    "Level Grid V2 compiled and validated into build-included asset '"
+                    "Level Grid V2 compiled and transactionally published into build-included asset '"
                     + AssetDatabase.GetAssetPath(asset)
                     + "'.",
                     asset);
@@ -226,12 +194,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
             catch (Exception exception)
             {
-                if (exception is OutOfMemoryException
-                    || exception is StackOverflowException
-                    || exception is AccessViolationException)
-                {
-                    throw;
-                }
+                if (IsFatal(exception)) throw;
                 Debug.LogError("Level Grid V2 compilation failed: " + exception.Message);
                 EditorUtility.DisplayDialog(
                     "Level Grid V2 Compilation Failed",
@@ -240,75 +203,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private static void TryDeleteStaleGeneratedJson(
-            string generatedAssetFolder,
-            ISet<string> expectedAssetPaths)
+        private static bool IsFatal(Exception exception)
         {
-            try
-            {
-                DeleteStaleGeneratedJson(generatedAssetFolder, expectedAssetPaths);
-            }
-            catch (Exception exception)
-            {
-                if (exception is OutOfMemoryException
-                    || exception is StackOverflowException
-                    || exception is AccessViolationException)
-                {
-                    throw;
-                }
-                Debug.LogWarning(
-                    "Level Grid V2 compiled successfully, but stale generated JSON cleanup failed: "
-                    + exception.Message);
-            }
-        }
-
-        private static void DeleteStaleGeneratedJson(
-            string generatedAssetFolder,
-            ISet<string> expectedAssetPaths)
-        {
-            string absoluteFolder = ToAbsolutePath(generatedAssetFolder);
-            if (!Directory.Exists(absoluteFolder)) return;
-
-            string[] existing = Directory.GetFiles(
-                absoluteFolder,
-                "*.json",
-                SearchOption.TopDirectoryOnly);
-            for (int index = 0; index < existing.Length; index++)
-            {
-                string assetPath = generatedAssetFolder
-                    + "/"
-                    + Path.GetFileName(existing[index]);
-                if (expectedAssetPaths.Contains(assetPath)) continue;
-
-                if (!AssetDatabase.DeleteAsset(assetPath))
-                {
-                    File.Delete(existing[index]);
-                    string meta = existing[index] + ".meta";
-                    if (File.Exists(meta)) File.Delete(meta);
-                }
-            }
-        }
-
-        private static void WriteAssetText(string assetPath, string content)
-        {
-            EnsureAssetFolder(Path.GetDirectoryName(assetPath).Replace('\\', '/'));
-            File.WriteAllText(ToAbsolutePath(assetPath), content + Environment.NewLine, Utf8WithoutBom);
-        }
-
-        private static void EnsureAssetFolder(string assetFolder)
-        {
-            ValidateAssetPath(assetFolder, nameof(assetFolder));
-            string[] segments = assetFolder.Split('/');
-            string current = segments[0];
-            for (int index = 1; index < segments.Length; index++)
-            {
-                string next = current + "/" + segments[index];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(current, segments[index]);
-                }
-                current = next;
-            }
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
 
         private static string ToAbsolutePath(string path)
