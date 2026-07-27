@@ -16,6 +16,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelDesignSceneAuthoringRoot2D root =
                 (LevelDesignSceneAuthoringRoot2D)target;
             EditorGUILayout.Space();
+            EditorGUILayout.LabelField(
+                "Foundation validation",
+                EditorStyles.boldLabel);
             if (GUILayout.Button("Validate Level Design Foundation"))
             {
                 LevelDesignValidationResult result = root.ValidateHierarchy();
@@ -52,6 +55,58 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "... and " + (last.Issues.Count - maxIssues)
                     + " more issue(s).");
             }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField(
+                "Level Grid Authoring V2 — Phase 1",
+                EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Validate Draft"))
+            {
+                LevelGridDoorOperationsV2.ReflowAll(root);
+                LevelDesignValidationResult foundation = root.ValidateHierarchy();
+                LevelGridValidationResultV2 result = root.ValidateGridAuthoring(
+                    LevelGridValidationPurposeV2.Draft);
+                EditorUtility.SetDirty(root);
+                SceneView.RepaintAll();
+                LogResult(root, foundation);
+                LogGridResult(root, result);
+            }
+            if (GUILayout.Button("Validate Production"))
+            {
+                LevelGridDoorOperationsV2.ReflowAll(root);
+                LevelDesignValidationResult foundation = root.ValidateHierarchy();
+                LevelGridValidationResultV2 result = root.ValidateGridAuthoring(
+                    LevelGridValidationPurposeV2.ProductionPublish);
+                EditorUtility.SetDirty(root);
+                SceneView.RepaintAll();
+                LogResult(root, foundation);
+                LogGridResult(root, result);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Open Problems Panel"))
+            {
+                LevelGridProblemsWindowV2.Open(root);
+            }
+
+            LevelGridValidationResultV2 grid = root.LastGridValidation;
+            bool combinedPublishAllowed = last.IsValid && grid.CanPublish;
+            MessageType gridType = !last.IsValid || grid.ErrorCount > 0
+                ? MessageType.Error
+                : grid.WarningCount > 0
+                    ? MessageType.Warning
+                    : MessageType.Info;
+            EditorGUILayout.HelpBox(
+                "Mode: " + grid.Purpose
+                + " | Foundation errors: " + last.ErrorCount
+                + " | V2 errors: " + grid.ErrorCount
+                + " | V2 warnings: " + grid.WarningCount
+                + "\nDraft save: allowed"
+                + "\nValidated authoring publish: "
+                + (combinedPublishAllowed ? "allowed" : "blocked")
+                + "\nRuntime importer: not connected in Phase 1",
+                gridType);
         }
 
         internal static void LogResult(
@@ -77,6 +132,33 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 else
                 {
                     Debug.LogWarning(issue.ToString(), root);
+                }
+            }
+        }
+
+        internal static void LogGridResult(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelGridValidationResultV2 result)
+        {
+            if (result.Problems.Count == 0)
+            {
+                Debug.Log(
+                    "Level Grid Authoring V2 " + result.Purpose
+                    + " validation passed.",
+                    root);
+                return;
+            }
+
+            for (int index = 0; index < result.Problems.Count; index++)
+            {
+                LevelGridProblemV2 problem = result.Problems[index];
+                if (problem.Severity == LevelDesignValidationSeverity.Error)
+                {
+                    Debug.LogError(problem.ToString(), root);
+                }
+                else
+                {
+                    Debug.LogWarning(problem.ToString(), root);
                 }
             }
         }
@@ -175,6 +257,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 placement.SnapToGrid();
                 EditorSceneManager.MarkSceneDirty(placement.gameObject.scene);
             }
+
+            LevelDoorEndpointAuthoring2D door =
+                selected.GetComponent<LevelDoorEndpointAuthoring2D>();
+            if (door != null)
+            {
+                Undo.RecordObject(door.transform, "Snap Door To Placement");
+                door.SnapToPlacement();
+                EditorSceneManager.MarkSceneDirty(door.gameObject.scene);
+            }
         }
     }
 
@@ -195,7 +286,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Gizmos.DrawWireCube(bounds.bounds.center, bounds.bounds.size);
             Handles.Label(
                 bounds.bounds.center,
-                room.RoomIdText + "  grid " + room.GridCoordinate);
+                room.EditorLabel + "\n" + room.RoomIdText
+                    + "  grid " + room.GridCoordinate
+                    + " slot " + room.FolderSlot.ToString("00"));
         }
 
         [DrawGizmo(
@@ -246,6 +339,5 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Handles.Label(bounds.center, "VOID\n" + region.VoidRegionIdText);
         }
     }
-
 }
 #endif

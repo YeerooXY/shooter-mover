@@ -9,8 +9,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [Header("Stable identity")]
         [SerializeField] private string roomId = "room.unassigned";
 
-        [Header("Grid and alignment")]
+        [Header("Optional presentation")]
+        [Tooltip("Optional designer-facing label. Leave empty for an automatic coordinate label.")]
+        [SerializeField] private string displayName = string.Empty;
+
+        [Header("Grid and folder placement")]
         [SerializeField] private Vector2Int gridCoordinate = Vector2Int.zero;
+        [Tooltip("Per-coordinate room slot used by Room_X_Y_01 folder naming.")]
+        [SerializeField] [Min(1)] private int folderSlot = 1;
         [SerializeField] private Vector2 cellSize = Vector2.one;
         [SerializeField] private Vector2Int footprintCells = Vector2Int.one;
         [SerializeField] private LevelRoomAlignment alignment =
@@ -28,9 +34,40 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return roomId; }
         }
 
+        public string DisplayName
+        {
+            get
+            {
+                return string.IsNullOrWhiteSpace(displayName)
+                    ? string.Empty
+                    : displayName.Trim();
+            }
+        }
+
+        public string EditorLabel
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(displayName))
+                {
+                    return displayName.Trim();
+                }
+
+                string automatic = "Room " + gridCoordinate.x + "," + gridCoordinate.y;
+                return folderSlot <= 1
+                    ? automatic
+                    : automatic + " [" + folderSlot.ToString("00") + "]";
+            }
+        }
+
         public Vector2Int GridCoordinate
         {
             get { return gridCoordinate; }
+        }
+
+        public int FolderSlot
+        {
+            get { return folderSlot; }
         }
 
         public Vector2 CellSize
@@ -115,6 +152,16 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 BuildDiagnosticLocation());
         }
 
+        public LevelGridRoomRecordV2 BuildGridRecord()
+        {
+            return new LevelGridRoomRecordV2(
+                roomId,
+                gridCoordinate,
+                footprintCells,
+                folderSlot,
+                BuildDiagnosticLocation());
+        }
+
         [ContextMenu("Assign New Stable ID")]
         public void AssignNewStableId()
         {
@@ -136,9 +183,20 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         {
             roomId = configuredRoomId;
             gridCoordinate = configuredGridCoordinate;
+            folderSlot = 1;
             cellSize = configuredCellSize;
             footprintCells = configuredFootprintCells;
             roomBounds = configuredRoomBounds;
+        }
+
+        public void ConfigureDisplayNameForTests(string configuredDisplayName)
+        {
+            displayName = configuredDisplayName ?? string.Empty;
+        }
+
+        public void ConfigureFolderSlotForTests(int configuredFolderSlot)
+        {
+            folderSlot = configuredFolderSlot;
         }
 
         private void Reset()
@@ -148,6 +206,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         private void OnValidate()
         {
+            folderSlot = Mathf.Max(1, folderSlot);
             cellSize.x = Mathf.Max(0.01f, cellSize.x);
             cellSize.y = Mathf.Max(0.01f, cellSize.y);
             footprintCells.x = Mathf.Max(1, footprintCells.x);
