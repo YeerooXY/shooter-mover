@@ -6,6 +6,8 @@
     "ShooterMover.Content.Definitions",
     "ShooterMover.Contracts",
     "ShooterMover.Domain",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.TerminalDropBinding",
     "ShooterMover.UnityAdapters",
     "ShooterMover.UI.Hub",
     "ShooterMover.UI.InventoryLoadout",
