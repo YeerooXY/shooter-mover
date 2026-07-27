@@ -2,6 +2,7 @@
   "room": "room.level1-entry",
   "enemies": [
     {
+      "id": "run-reward-proof",
       "object": "enemy.moving-droid",
       "level": 1,
       "position": [4, 0],
