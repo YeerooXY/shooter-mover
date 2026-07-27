@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -17,6 +18,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             new HashSet<LevelDesignSceneAuthoringRoot2D>();
         private static readonly Dictionary<int, int> HierarchySignatureByRoot =
             new Dictionary<int, int>();
+        private static readonly FieldInfo SelectedGridProblemField =
+            typeof(LevelGridEditorWindowV2).GetField(
+                "selectedProblem",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo SelectedFoundationIssueField =
+            typeof(LevelGridEditorWindowV2).GetField(
+                "selectedFoundationIssue",
+                BindingFlags.Instance | BindingFlags.NonPublic);
         private static bool refreshScheduled;
 
         static LevelGridAuthoringV2LiveValidation()
@@ -30,7 +39,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         internal static void ValidateNow(
             LevelDesignSceneAuthoringRoot2D root,
             LevelGridValidationPurposeV2 purpose,
-            bool reflow = true)
+            bool reflow = true,
+            bool notifyWindows = true)
         {
             if (!IsSceneRoot(root))
             {
@@ -45,6 +55,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             root.ValidateHierarchy();
             root.ValidateGridAuthoring(purpose);
             MarkSynchronouslyValidated(root);
+            if (notifyWindows)
+            {
+                NotifyOpenWindows();
+            }
         }
 
         internal static void MarkSynchronouslyValidated(
@@ -185,10 +199,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         == LevelGridValidationPurposeV2.ProductionPublish
                     ? LevelGridValidationPurposeV2.ProductionPublish
                     : LevelGridValidationPurposeV2.Draft;
-                ValidateNow(root, purpose, reflow);
+                ValidateNow(root, purpose, reflow, false);
             }
             ReflowRoots.Clear();
+            NotifyOpenWindows();
+        }
 
+        private static void NotifyOpenWindows()
+        {
             LevelGridProblemsWindowV2[] windows =
                 Resources.FindObjectsOfTypeAll<LevelGridProblemsWindowV2>();
             for (int index = 0; index < windows.Length; index++)
@@ -200,9 +218,98 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Resources.FindObjectsOfTypeAll<LevelGridEditorWindowV2>();
             for (int index = 0; index < gridEditors.Length; index++)
             {
+                RefreshSelectedDiagnostic(gridEditors[index]);
                 gridEditors[index].RefreshAfterExternalValidation();
             }
             SceneView.RepaintAll();
+        }
+
+        private static void RefreshSelectedDiagnostic(
+            LevelGridEditorWindowV2 window)
+        {
+            if (window == null)
+            {
+                return;
+            }
+
+            LevelDesignSceneAuthoringRoot2D root = window.ActiveRoot;
+            if (SelectedGridProblemField != null)
+            {
+                LevelGridProblemV2 selected =
+                    SelectedGridProblemField.GetValue(window) as LevelGridProblemV2;
+                SelectedGridProblemField.SetValue(
+                    window,
+                    FindCurrentGridProblem(root, selected));
+            }
+            if (SelectedFoundationIssueField != null)
+            {
+                LevelDesignValidationIssue selected =
+                    SelectedFoundationIssueField.GetValue(window)
+                        as LevelDesignValidationIssue;
+                SelectedFoundationIssueField.SetValue(
+                    window,
+                    FindCurrentFoundationIssue(root, selected));
+            }
+        }
+
+        private static LevelGridProblemV2 FindCurrentGridProblem(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelGridProblemV2 selected)
+        {
+            if (root == null || selected == null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<LevelGridProblemV2> problems =
+                root.LastGridValidation.Problems;
+            for (int index = 0; index < problems.Count; index++)
+            {
+                LevelGridProblemV2 candidate = problems[index];
+                if (candidate.Code == selected.Code
+                    && string.Equals(
+                        candidate.AuthoredId,
+                        selected.AuthoredId,
+                        StringComparison.Ordinal)
+                    && string.Equals(
+                        candidate.DiagnosticLocation,
+                        selected.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        private static LevelDesignValidationIssue FindCurrentFoundationIssue(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDesignValidationIssue selected)
+        {
+            if (root == null || selected == null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<LevelDesignValidationIssue> issues =
+                root.LastValidation.Issues;
+            for (int index = 0; index < issues.Count; index++)
+            {
+                LevelDesignValidationIssue candidate = issues[index];
+                if (candidate.Code == selected.Code
+                    && string.Equals(
+                        candidate.AuthoredId,
+                        selected.AuthoredId,
+                        StringComparison.Ordinal)
+                    && string.Equals(
+                        candidate.DiagnosticLocation,
+                        selected.DiagnosticLocation,
+                        StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+            return null;
         }
 
         private static void CaptureFixedDoorPositionWithUndo(
