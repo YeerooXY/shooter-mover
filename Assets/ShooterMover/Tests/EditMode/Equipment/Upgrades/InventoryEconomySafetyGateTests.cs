@@ -132,9 +132,135 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             Assert.That(decision.RejectionCode, Is.Empty);
         }
 
+        [Test]
+        public void DirectCanonicalAddRejectsUnsupportedOverclockWithoutMutation()
+        {
+            ProductionWeaponMarkV1 mark = FirstProductionMark();
+            WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
+                StableId.Parse("instance.direct-overclock-add"),
+                mark.Blueprint.DefinitionId,
+                Array.Empty<StableId>(),
+                new[] { StableId.Parse("overclock-instance.direct-add") });
+            var holdings = new ProductionWeaponHoldingsAuthorityV2();
+            long sequenceBefore = holdings.Sequence;
+
+            string rejectionCode;
+            bool accepted = holdings.TryAdd(instance, out rejectionCode);
+
+            Assert.That(accepted, Is.False);
+            Assert.That(rejectionCode,
+                Is.EqualTo("canonical-weapon-overclock-policy-unsupported"));
+            Assert.That(holdings.Sequence, Is.EqualTo(sequenceBefore));
+            Assert.That(holdings.Count, Is.Zero);
+            Assert.That(holdings.Contains(instance.InstanceId), Is.False);
+        }
+
+        [Test]
+        public void DirectCanonicalRemoveRejectsUnresolvedDefinitionWithoutMutation()
+        {
+            WeaponEquipmentInstance unresolved = WeaponEquipmentInstance.CreateUnmodified(
+                StableId.Parse("instance.direct-unresolved-remove"),
+                new WeaponDefinitionId("weapon-definition.missing"));
+            var holdings = new ProductionWeaponHoldingsAuthorityV2(
+                WeaponHoldingsSnapshotV2.CreateCanonical(
+                    7L,
+                    new[] { unresolved }));
+            long sequenceBefore = holdings.Sequence;
+
+            string rejectionCode;
+            bool accepted = holdings.TryRemove(
+                unresolved.InstanceId,
+                out rejectionCode);
+
+            Assert.That(accepted, Is.False);
+            Assert.That(rejectionCode,
+                Is.EqualTo("canonical-weapon-definition-unresolved"));
+            Assert.That(holdings.Sequence, Is.EqualTo(sequenceBefore));
+            Assert.That(holdings.Count, Is.EqualTo(1));
+            Assert.That(holdings.Contains(unresolved.InstanceId), Is.True);
+        }
+
+        [Test]
+        public void AmbiguousRetainedReceiptCannotFallThroughToGenericRemoval()
+        {
+            StableId authorityId = StableId.Parse("holdings.ambiguous-receipt");
+            EquipmentCatalog syntheticCatalog = BuildSyntheticUnknownWeaponCatalog();
+            EquipmentDefinition definition = syntheticCatalog.FindEquipmentDefinition(
+                StableId.Parse("equipment.synthetic-unresolved"));
+            Assert.That(definition, Is.Not.Null);
+            EquipmentInstance receipt = EquipmentInstance.Create(
+                StableId.Parse("instance.synthetic-unresolved"),
+                definition.DefinitionId,
+                definition.ItemLevelRange.Minimum,
+                definition.QualityTiers[0].QualityId,
+                Array.Empty<AugmentInstance>());
+            var validator = new CatalogValidator(syntheticCatalog);
+            var receipts = new PlayerHoldingsService(authorityId, 10L, validator);
+            HoldingProvenanceV1 provenance = HoldingProvenanceV1.Create(
+                StableId.Parse("grant.synthetic-unresolved"),
+                StableId.Parse("source.synthetic-unresolved"));
+            PlayerHoldingsMutationResultV1 added = receipts.Apply(
+                PlayerHoldingsCommandV1.AddEquipment(
+                    StableId.Parse("transaction.synthetic-unresolved-add"),
+                    StableId.Parse("operation.synthetic-unresolved-add"),
+                    authorityId,
+                    receipt,
+                    provenance));
+            Assert.That(added.Status,
+                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+            var canonical = new ProductionWeaponHoldingsAuthorityV2();
+            var boundary = new CanonicalFirstPlayerHoldingsAuthorityV2(
+                receipts,
+                canonical);
+            long receiptSequenceBefore = receipts.Sequence;
+            long canonicalSequenceBefore = canonical.Sequence;
+            PlayerHoldingsCommandV1 remove = PlayerHoldingsCommandV1.RemoveEquipment(
+                StableId.Parse("transaction.synthetic-unresolved-remove"),
+                StableId.Parse("operation.synthetic-unresolved-remove"),
+                authorityId,
+                receipt.DefinitionId,
+                receipt.InstanceId,
+                provenance);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                delegate { boundary.Apply(remove); });
+
+            Assert.That(exception.Message,
+                Does.StartWith("canonical-weapon-definition-unresolved:"));
+            Assert.That(receipts.Sequence, Is.EqualTo(receiptSequenceBefore));
+            Assert.That(canonical.Sequence, Is.EqualTo(canonicalSequenceBefore));
+            UniqueHoldingSnapshotV1 retained;
+            Assert.That(receipts.TryGetUnique(receipt.InstanceId, out retained), Is.True);
+            Assert.That(retained, Is.Not.Null);
+        }
+
         private static ProductionWeaponMarkV1 FirstProductionMark()
         {
             return ProductionWeaponCatalogProvider.Current.Families[0].Marks[0];
+        }
+
+        private static EquipmentCatalog BuildSyntheticUnknownWeaponCatalog()
+        {
+            EquipmentQualityTier quality = EquipmentQualityTier.Create(
+                StableId.Parse("quality.synthetic-unresolved"),
+                "Synthetic",
+                1);
+            EquipmentDefinition definition = EquipmentDefinition.Create(
+                StableId.Parse("equipment.synthetic-unresolved"),
+                EquipmentCategoryIds.Weapon,
+                StableId.Parse("equipment-archetype.synthetic-unresolved"),
+                "Synthetic unresolved weapon",
+                StableId.Parse("weapon-definition.synthetic-unresolved"),
+                InclusiveIntRange.Create(1, 1),
+                0,
+                new[] { quality },
+                Array.Empty<StableId>());
+            EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
+                new[] { definition },
+                Array.Empty<AugmentDefinition>());
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(result.Catalog, Is.Not.Null);
+            return result.Catalog;
         }
 
         private sealed class CanonicalReceiptFixture
