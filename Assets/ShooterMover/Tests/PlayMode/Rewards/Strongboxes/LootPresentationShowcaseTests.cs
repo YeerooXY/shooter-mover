@@ -210,7 +210,10 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 "LootPresentationShowcaseController.GUI.cs",
                 "LootPresentationDevelopmentPickupFixtureV1.cs",
                 "LootPickupVisual2D.cs",
-                "LootPresentationBoundViewsV1.cs",
+                "LootRunHudViewV1.cs",
+                "OwnedStrongboxGroupsViewV1.cs",
+                "StrongboxRewardCardsViewV1.cs",
+                "StrongboxOpeningPresentationViewV1.cs",
             };
             var combined = new System.Text.StringBuilder();
             for (int index = 0; index < paths.Length; index++)
