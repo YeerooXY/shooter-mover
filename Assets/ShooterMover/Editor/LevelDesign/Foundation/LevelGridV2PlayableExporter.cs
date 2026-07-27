@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Content.Definitions.Missions.Rooms;
@@ -19,6 +21,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public static partial class LevelGridV2PlayableExporter
     {
         private static readonly UTF8Encoding Utf8WithoutBom = new UTF8Encoding(false);
+
+        internal static Action BeforeCommitForTests;
 
         [MenuItem(
             "Tools/Shooter Mover/Level Design/Export Compiler-Ready Grid V2 Package...",
@@ -106,10 +110,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Array.Sort(links, CompareLinks);
             ValidateGraphAllowingFinalExit(rooms, doors, links, metadata);
 
+            string initialSceneFingerprint =
+                LevelGridPlayableProvenanceV2.ComputeSceneFingerprint(root);
             string absoluteOutput = Path.GetFullPath(outputRoot);
             LevelGridV2RoomFolderMigration.ValidateDestinationRoot(
                 absoluteOutput,
                 root.LevelIdText);
+            string initialDestinationSnapshot = ComputeDirectorySnapshot(absoluteOutput);
             string parent = Directory.GetParent(absoluteOutput) == null
                 ? null
                 : Directory.GetParent(absoluteOutput).FullName;
@@ -137,7 +144,40 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 WritePackage(root, metadata, rooms, doors, links, stage);
                 LevelGridPlayableProvenanceV2.Write(root, stage);
                 ValidateStagedPackage(stage);
-                if (existed) Directory.Move(absoluteOutput, backup);
+
+                Action beforeCommit = BeforeCommitForTests;
+                if (beforeCommit != null)
+                {
+                    beforeCommit();
+                }
+
+                EnsureSourceAndDestinationUnchanged(
+                    root,
+                    absoluteOutput,
+                    initialSceneFingerprint,
+                    initialDestinationSnapshot);
+                LevelGridV2RoomFolderMigration.ValidateDestinationRoot(
+                    absoluteOutput,
+                    root.LevelIdText);
+
+                if (existed)
+                {
+                    Directory.Move(absoluteOutput, backup);
+                    string movedDestinationSnapshot = ComputeDirectorySnapshot(backup);
+                    if (!string.Equals(
+                            movedDestinationSnapshot,
+                            initialDestinationSnapshot,
+                            StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            "Playable export aborted before commit because the exact destination '"
+                            + absoluteOutput
+                            + "' changed while it was being moved to the rollback backup. "
+                            + "The staged package was not published.");
+                    }
+                }
+
+                // Commit point: the fully validated stage becomes the authoritative source package.
                 Directory.Move(stage, absoluteOutput);
             }
             catch
@@ -156,6 +196,134 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             // a reported failure after the authoritative package has already changed.
             TryDeleteSiblingMeta(stage);
             TryDeleteDirectoryAndMeta(backup);
+        }
+
+        private static void EnsureSourceAndDestinationUnchanged(
+            LevelDesignSceneAuthoringRoot2D root,
+            string absoluteOutput,
+            string initialSceneFingerprint,
+            string initialDestinationSnapshot)
+        {
+            string currentSceneFingerprint =
+                LevelGridPlayableProvenanceV2.ComputeSceneFingerprint(root);
+            if (!string.Equals(
+                    currentSceneFingerprint,
+                    initialSceneFingerprint,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Playable export aborted before commit because the scene authoring source for "
+                    + "exact level '"
+                    + root.LevelIdText
+                    + "' changed while its staged package was being validated. Re-run Build from "
+                    + "the current Level Grid editor state.");
+            }
+
+            string currentDestinationSnapshot = ComputeDirectorySnapshot(absoluteOutput);
+            if (!string.Equals(
+                    currentDestinationSnapshot,
+                    initialDestinationSnapshot,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Playable export aborted before commit because the exact destination '"
+                    + absoluteOutput
+                    + "' changed while its staged package was being validated. The external change "
+                    + "was preserved; reconcile it explicitly and retry Build.");
+            }
+        }
+
+        private static string ComputeDirectorySnapshot(string directoryPath)
+        {
+            if (string.IsNullOrWhiteSpace(directoryPath)
+                || !Directory.Exists(directoryPath))
+            {
+                return "missing";
+            }
+
+            string root = Path.GetFullPath(directoryPath).TrimEnd(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar);
+            var canonical = new StringBuilder(4096);
+            AppendSnapshot(canonical, "state", "directory");
+
+            string[] directories = Directory.GetDirectories(
+                root,
+                "*",
+                SearchOption.AllDirectories);
+            Array.Sort(directories, StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < directories.Length; index++)
+            {
+                AppendSnapshot(
+                    canonical,
+                    "directory",
+                    RelativeSnapshotPath(root, directories[index]));
+            }
+
+            string[] files = Directory.GetFiles(
+                root,
+                "*",
+                SearchOption.AllDirectories);
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < files.Length; index++)
+            {
+                string relative = RelativeSnapshotPath(root, files[index]);
+                var info = new FileInfo(files[index]);
+                AppendSnapshot(canonical, "file", relative);
+                AppendSnapshot(
+                    canonical,
+                    "length",
+                    info.Length.ToString(CultureInfo.InvariantCulture));
+                AppendSnapshot(canonical, "sha256", ComputeFileHash(files[index]));
+            }
+
+            return ComputeTextHash(canonical.ToString());
+        }
+
+        private static string RelativeSnapshotPath(string root, string path)
+        {
+            return Path.GetFullPath(path).Substring(root.Length)
+                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Replace('\\', '/');
+        }
+
+        private static string ComputeFileHash(string path)
+        {
+            using (SHA256 sha = SHA256.Create())
+            using (FileStream stream = File.OpenRead(path))
+            {
+                return BytesToHex(sha.ComputeHash(stream));
+            }
+        }
+
+        private static string ComputeTextHash(string value)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                return BytesToHex(sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(value ?? string.Empty)));
+            }
+        }
+
+        private static string BytesToHex(byte[] bytes)
+        {
+            var builder = new StringBuilder(bytes.Length * 2);
+            for (int index = 0; index < bytes.Length; index++)
+            {
+                builder.Append(bytes[index].ToString("x2"));
+            }
+            return builder.ToString();
+        }
+
+        private static void AppendSnapshot(
+            StringBuilder builder,
+            string key,
+            string value)
+        {
+            string safeKey = key ?? string.Empty;
+            string safeValue = value ?? string.Empty;
+            builder.Append(safeKey.Length).Append(':').Append(safeKey);
+            builder.Append(safeValue.Length).Append(':').Append(safeValue);
         }
 
         private static void ValidateStagedPackage(string stage)
