@@ -12,8 +12,8 @@ namespace ShooterMover.Application.Flow.Production
     /// <summary>
     /// Compatibility boundary for reward systems that still emit generic equipment commands.
     /// Weapon ownership is committed to the canonical authority first. The generic authority is
-    /// retained only as the immutable reward/strongbox receipt ledger. A rejected or exceptional
-    /// receipt write restores the exact canonical snapshot, preventing ghost weapons.
+    /// retained only as the immutable reward/strongbox receipt ledger. Any rejection or exception
+    /// compensates both authorities from captured immutable snapshots, preventing ghost weapons.
     /// </summary>
     public sealed class CanonicalFirstPlayerHoldingsAuthorityV2 :
         IPlayerHoldingsAuthorityV1
@@ -56,7 +56,14 @@ namespace ShooterMover.Application.Flow.Production
                 return receipts.Apply(command);
             }
 
-            WeaponHoldingsSnapshotV2 before = weapons.ExportSnapshot();
+            WeaponHoldingsSnapshotV2 weaponsBefore = weapons.ExportSnapshot();
+            PlayerHoldingsSnapshotV1 receiptsBefore = receipts.ExportSnapshot();
+            if (receiptsBefore == null)
+            {
+                throw new InvalidOperationException(
+                    "Canonical weapon receipt authority exported a null snapshot.");
+            }
+
             string rejectionCode;
             bool canonicalAccepted;
             if (command.Transaction.Operation
@@ -85,13 +92,13 @@ namespace ShooterMover.Application.Flow.Production
                 PlayerHoldingsMutationResultV1 result = receipts.Apply(command);
                 if (!IsReceiptAcceptance(result))
                 {
-                    RollBack(before);
+                    RollBack(weaponsBefore, receiptsBefore);
                 }
                 return result;
             }
             catch
             {
-                RollBack(before);
+                RollBack(weaponsBefore, receiptsBefore);
                 throw;
             }
         }
@@ -191,16 +198,28 @@ namespace ShooterMover.Application.Flow.Production
                         == PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange);
         }
 
-        private void RollBack(WeaponHoldingsSnapshotV2 before)
+        private void RollBack(
+            WeaponHoldingsSnapshotV2 weaponsBefore,
+            PlayerHoldingsSnapshotV1 receiptsBefore)
         {
-            WeaponHoldingsImportResultV2 rollback = weapons.ImportSnapshot(before);
-            if (rollback == null || !rollback.Succeeded)
+            WeaponHoldingsImportResultV2 weaponRollback =
+                weapons.ImportSnapshot(weaponsBefore);
+            PlayerHoldingsImportResultV1 receiptRollback =
+                receipts.ImportSnapshot(receiptsBefore);
+            if (weaponRollback == null
+                || !weaponRollback.Succeeded
+                || receiptRollback == null
+                || !receiptRollback.Succeeded)
             {
                 throw new InvalidOperationException(
-                    "Canonical weapon ownership rollback failed: "
-                    + (rollback == null
-                        ? "result-null"
-                        : rollback.RejectionCode));
+                    "Canonical weapon ownership/receipt compensation failed: "
+                    + (weaponRollback == null
+                            ? "weapon-result-null"
+                            : weaponRollback.RejectionCode)
+                    + ";"
+                    + (receiptRollback == null
+                            ? "receipt-result-null"
+                            : receiptRollback.RejectionCode));
             }
         }
     }
