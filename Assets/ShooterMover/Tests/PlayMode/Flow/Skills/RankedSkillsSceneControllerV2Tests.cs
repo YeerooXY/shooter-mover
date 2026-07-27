@@ -86,6 +86,31 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator InvalidRouteUnavailableState_UsesSanitizedNullPayload()
+        {
+            GameObject host = new GameObject(
+                "SKILLS-V2-LIVE-001 invalid route unavailable test");
+            SkillsSceneController controller = host.AddComponent<SkillsSceneController>();
+            var navigation = new CaptureNavigationPort();
+
+            Assert.DoesNotThrow(() => controller.ShowUnavailable(
+                null,
+                navigation,
+                "skills-v2-route-invalid"));
+
+            Assert.That(controller.IsDisconnected, Is.True);
+            Assert.That(controller.CurrentProjection, Is.Null);
+            Assert.That(controller.UnavailableReason, Is.EqualTo(
+                "skills-v2-route-invalid"));
+            Assert.That(controller.Back(), Is.True);
+            Assert.That(navigation.ReturnCount, Is.EqualTo(1));
+            Assert.That(navigation.LastPayload, Is.Null);
+
+            Object.Destroy(host);
+            yield return null;
+        }
+
         private sealed class SuccessfulPersistence :
             IRankedSkillsPersistencePortV2
         {
