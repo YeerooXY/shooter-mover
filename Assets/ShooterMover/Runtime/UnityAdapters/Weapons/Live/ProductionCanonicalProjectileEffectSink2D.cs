@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using ShooterMover.Application.Weapons.Execution;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Execution;
 using UnityEngine;
@@ -27,13 +28,55 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private readonly Queue<string> acceptedOrder = new Queue<string>();
         private readonly HashSet<ProductionCanonicalNormalProjectile2D> active =
             new HashSet<ProductionCanonicalNormalProjectile2D>();
+        private WeaponActorInstanceId sourceActorId;
+        private LifecycleGeneration sourceLifecycle;
+        private StableId sourceMountStableId;
+        private EquipmentInstanceId sourceEquipmentInstanceId;
+        private WeaponDefinitionId sourceWeaponDefinitionId;
         private Texture2D texture;
         private Sprite sprite;
+        private bool sourceBound;
         private bool retired;
 
         public int AcceptedBatchCount { get { return accepted.Count; } }
         public int ActiveProjectileCount { get { return active.Count; } }
+        public bool IsSourceBound { get { return sourceBound; } }
+        public StableId SourceMountStableId { get { return sourceMountStableId; } }
         public bool IsRetired { get { return retired; } }
+
+        public bool TryBindSource(
+            WeaponActorInstanceId actorId,
+            LifecycleGeneration lifecycle,
+            StableId mountStableId,
+            EquipmentInstanceId equipmentInstanceId,
+            WeaponDefinitionId weaponDefinitionId)
+        {
+            if (retired
+                || actorId == null
+                || lifecycle == null
+                || mountStableId == null
+                || equipmentInstanceId == null
+                || weaponDefinitionId == null)
+            {
+                return false;
+            }
+            if (sourceBound)
+            {
+                return sourceActorId.Equals(actorId)
+                    && sourceLifecycle.Equals(lifecycle)
+                    && sourceMountStableId == mountStableId
+                    && sourceEquipmentInstanceId.Equals(equipmentInstanceId)
+                    && sourceWeaponDefinitionId.Equals(weaponDefinitionId);
+            }
+
+            sourceActorId = actorId;
+            sourceLifecycle = lifecycle;
+            sourceMountStableId = mountStableId;
+            sourceEquipmentInstanceId = equipmentInstanceId;
+            sourceWeaponDefinitionId = weaponDefinitionId;
+            sourceBound = true;
+            return true;
+        }
 
         public WeaponEffectBatchSinkResult TryAccept(
             InventoryWeaponEffectBatch batch)
@@ -43,6 +86,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-sink-retired");
             }
+            if (!sourceBound)
+            {
+                return WeaponEffectBatchSinkResult.Reject(
+                    "canonical-projectile-source-unbound");
+            }
             if (batch == null
                 || batch.CoreBatch == null
                 || batch.Identity == null
@@ -51,6 +99,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-batch-single-effect-required");
+            }
+            if (!MatchesBoundSource(batch.Identity))
+            {
+                return WeaponEffectBatchSinkResult.Reject(
+                    "canonical-projectile-source-identity-mismatch");
             }
 
             string key = batch.Identity.ToCanonicalString();
@@ -93,6 +146,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         ProductionCanonicalNormalProjectile2D>();
                 if (!projectile.TryConfigure(
                         effect,
+                        sourceMountStableId,
                         sprite,
                         transform,
                         HandleProjectileCompleted))
@@ -141,6 +195,15 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 if (snapshot[index] != null) snapshot[index].RetireOwner();
             }
+        }
+
+        private bool MatchesBoundSource(WeaponEffectIdentity identity)
+        {
+            return identity != null
+                && sourceActorId.Equals(identity.ActorId)
+                && sourceLifecycle.Equals(identity.LifecycleGeneration)
+                && sourceEquipmentInstanceId.Equals(identity.EquipmentInstanceId)
+                && sourceWeaponDefinitionId.Equals(identity.WeaponDefinitionId);
         }
 
         private void RetainAccepted(string key, string fingerprint)
