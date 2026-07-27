@@ -5,7 +5,9 @@ using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.LevelSelection;
 using ShooterMover.Application.Flow.PlaySelection;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Shops.Presentation;
+using ShooterMover.Application.Skills.Presentation;
 using ShooterMover.Content.Definitions.Characters.Selection;
 using ShooterMover.Content.Definitions.Flow.PlayModes;
 using ShooterMover.Content.Definitions.Levels.Selection;
@@ -287,9 +289,7 @@ namespace ShooterMover.UI.ProductionFlow
                     Find<SkillsSceneController>(scene);
                 if (controller != null)
                 {
-                    controller.ShowDisconnected(
-                        transitions.Navigation.Payload,
-                        new SkillsNavigationAdapter(this));
+                    ConfigureRankedSkills(controller);
                 }
                 return;
             }
@@ -438,6 +438,67 @@ namespace ShooterMover.UI.ProductionFlow
                 out profile)
                 ? runtime.WeaponCatalog
                 : null;
+        }
+
+        private void ConfigureRankedSkills(SkillsSceneController controller)
+        {
+            PlayerRouteProfilePayloadV1 payload = transitions.Navigation.Payload;
+            var navigation = new SkillsNavigationAdapter(this);
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 authoritativeProfile;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out authoritativeProfile)
+                || graph == null
+                || graph.IsDisposed
+                || payload == null
+                || !payload.HasValidFingerprint())
+            {
+                controller.ShowUnavailable(
+                    payload,
+                    navigation,
+                    "skills-v2-active-character-graph-unavailable");
+                return;
+            }
+
+            bool exactCharacter = graph.Character != null
+                && graph.Character.CharacterInstanceStableId
+                    == payload.SelectedCharacterStableId
+                && graph.Character.ClassDefinitionStableId
+                    == payload.LoadoutProfileStableId;
+            bool exactRoute = graph.RoutePayload != null
+                && string.Equals(
+                    graph.RoutePayload.Fingerprint,
+                    payload.Fingerprint,
+                    StringComparison.Ordinal);
+            if (!exactCharacter || !exactRoute)
+            {
+                controller.ShowUnavailable(
+                    payload,
+                    navigation,
+                    "skills-v2-active-character-identity-mismatch");
+                return;
+            }
+
+            RankedSkillsScreenSessionV2 session;
+            string rejectionCode;
+            if (!RankedSkillsScreenSessionV2.TryCreate(
+                    payload,
+                    graph.ExperienceAuthority,
+                    graph.SkillAuthority,
+                    graph.SkillProfileId,
+                    new RankedSkillsPersistenceAdapterV2(),
+                    out session,
+                    out rejectionCode))
+            {
+                controller.ShowUnavailable(
+                    payload,
+                    navigation,
+                    rejectionCode);
+                return;
+            }
+
+            controller.ShowRankedV2(session, navigation);
         }
 
         private static void ConfigureShopWeaponPresentation(
@@ -777,6 +838,25 @@ namespace ShooterMover.UI.ProductionFlow
                     scenePath,
                     LoadSceneMode.Single);
                 return operation != null;
+            }
+        }
+
+        private sealed class RankedSkillsPersistenceAdapterV2 :
+            IRankedSkillsPersistencePortV2
+        {
+            public RankedSkillsPersistenceResultV2 Persist(
+                string mutationScope,
+                string immutableMutationFingerprint)
+            {
+                CharacterCompositionResultV1 result =
+                    ProductionCharacterAccountCompositionV1.PersistCurrent(
+                        mutationScope,
+                        immutableMutationFingerprint);
+                return new RankedSkillsPersistenceResultV2(
+                    result != null && result.Succeeded,
+                    result == null
+                        ? "character-composition-save-result-null"
+                        : result.Diagnostic);
             }
         }
 
