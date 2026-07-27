@@ -93,7 +93,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             catch (Exception exception)
             {
                 Debug.LogError(
-                    "Level Grid V2 export failed without modifying the destination: "
+                    "Level Grid V2 export failed. The destination was rolled back when "
+                        + "possible, and any retained backup was left beside it. "
                         + exception.Message,
                     root);
                 EditorUtility.DisplayDialog(
@@ -167,8 +168,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
             finally
             {
+                // Stage data is disposable. A backup is not: if rollback could not
+                // complete, leave it in place for manual recovery rather than deleting it.
                 DeleteDirectoryIfExists(stageRoot);
-                DeleteDirectoryIfExists(backupRoot);
             }
         }
 
