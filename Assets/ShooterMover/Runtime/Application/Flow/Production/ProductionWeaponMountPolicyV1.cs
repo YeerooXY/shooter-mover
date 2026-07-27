@@ -14,8 +14,8 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// One physical class-owned weapon mount. Availability is explicit so a mount may exist in
-    /// the class layout without being configurable, equipped, or enabled yet.
+    /// One physical class-owned weapon mount. A physical mount may be active and empty, or visible
+    /// but skill-locked. Nonexistent mounts are absent from the layout entirely.
     /// </summary>
     public sealed class ProductionWeaponMountPositionV1
     {
@@ -65,21 +65,18 @@ namespace ShooterMover.Application.Flow.Production
             DisplayName = displayName.Trim();
             Availability = availability;
             LateralOffset = lateralOffset;
+            LockReason = availability
+                    == ProductionWeaponMountAvailabilityV1.LockedBySkill
+                ? "A skill is required to activate this mount."
+                : string.Empty;
         }
 
         public StableId MountStableId { get; }
-
-        /// <summary>
-        /// Temporary persistence/input bridge to the legacy loadout record. It is not evidence
-        /// that every class owns four physical weapon mounts.
-        /// </summary>
         public StableId LoadoutSlotStableId { get; }
-
         public string DisplayName { get; }
-
         public ProductionWeaponMountAvailabilityV1 Availability { get; }
-
         public double LateralOffset { get; }
+        public string LockReason { get; }
 
         public bool IsActive
         {
@@ -100,10 +97,6 @@ namespace ShooterMover.Application.Flow.Production
         }
     }
 
-    /// <summary>
-    /// Current projection for one physical mount. Locked mounts deliberately retain a null
-    /// equipment identity until their owning skill makes them active.
-    /// </summary>
     public sealed class ProductionWeaponMountBindingV1
     {
         public ProductionWeaponMountBindingV1(
@@ -116,13 +109,8 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         public StableId MountStableId { get; }
-
         public StableId EquipmentInstanceStableId { get; }
-
-        public bool IsBound
-        {
-            get { return EquipmentInstanceStableId != null; }
-        }
+        public bool IsBound { get { return EquipmentInstanceStableId != null; } }
     }
 
     public sealed class ProductionWeaponMountLayoutV1
@@ -140,7 +128,6 @@ namespace ShooterMover.Application.Flow.Production
         {
             LoadoutProfileStableId = loadoutProfileStableId
                 ?? throw new ArgumentNullException(nameof(loadoutProfileStableId));
-
             var physical = new List<ProductionWeaponMountPositionV1>(
                 positions ?? throw new ArgumentNullException(nameof(positions)));
             if (physical.Count < 2 || physical.Count > 4)
@@ -149,7 +136,7 @@ namespace ShooterMover.Application.Flow.Production
             }
 
             var mountIds = new HashSet<StableId>();
-            var loadoutSlotIds = new HashSet<StableId>();
+            var slotIds = new HashSet<StableId>();
             var active = new List<ProductionWeaponMountPositionV1>();
             var locked = new List<ProductionWeaponMountPositionV1>();
             for (int index = 0; index < physical.Count; index++)
@@ -157,18 +144,17 @@ namespace ShooterMover.Application.Flow.Production
                 ProductionWeaponMountPositionV1 position = physical[index];
                 if (position == null
                     || !mountIds.Add(position.MountStableId)
-                    || !loadoutSlotIds.Add(position.LoadoutSlotStableId))
+                    || !slotIds.Add(position.LoadoutSlotStableId))
                 {
                     throw new ArgumentException(
                         "Physical mount and loadout bridge identities must be unique.",
                         nameof(positions));
                 }
-
                 if (position.IsActive)
                 {
                     active.Add(position);
                 }
-                else if (position.IsLockedBySkill)
+                else
                 {
                     locked.Add(position);
                 }
@@ -189,47 +175,29 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         public StableId LoadoutProfileStableId { get; }
-
         public IReadOnlyList<ProductionWeaponMountPositionV1> PhysicalPositions
         {
             get { return physicalPositions; }
         }
-
-        /// <summary>
-        /// Compatibility name retained for callers that configure or grant only currently active
-        /// mounts. Locked physical mounts are intentionally excluded.
-        /// </summary>
-        public IReadOnlyList<ProductionWeaponMountPositionV1>
-            ConfigurablePositions
+        public IReadOnlyList<ProductionWeaponMountPositionV1> Positions
+        {
+            get { return physicalPositions; }
+        }
+        public IReadOnlyList<ProductionWeaponMountPositionV1> ConfigurablePositions
         {
             get { return activePositions; }
         }
-
-        public IReadOnlyList<ProductionWeaponMountPositionV1>
-            LockedBySkillPositions
+        public IReadOnlyList<ProductionWeaponMountPositionV1> LockedBySkillPositions
         {
             get { return lockedBySkillPositions; }
         }
-
-        public int PhysicalMountCount
-        {
-            get { return physicalPositions.Count; }
-        }
-
-        public int ActiveMountCount
-        {
-            get { return activePositions.Count; }
-        }
-
+        public int PhysicalMountCount { get { return physicalPositions.Count; } }
+        public int ActiveMountCount { get { return activePositions.Count; } }
         public int LockedBySkillMountCount
         {
             get { return lockedBySkillPositions.Count; }
         }
-
-        public int BaselineEnabledMountCount
-        {
-            get { return ActiveMountCount; }
-        }
+        public int BaselineEnabledMountCount { get { return ActiveMountCount; } }
 
         public bool ContainsLoadoutSlot(StableId slotStableId)
         {
@@ -249,7 +217,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return false;
             }
-
             for (int index = 0; index < positions.Count; index++)
             {
                 if (positions[index].LoadoutSlotStableId == slotStableId)
@@ -257,11 +224,14 @@ namespace ShooterMover.Application.Flow.Production
                     return true;
                 }
             }
-
             return false;
         }
     }
 
+    /// <summary>
+    /// One projection per physical mount. Active mounts may be empty. EnabledBindings contains
+    /// only active mounts that currently hold an exact instance ID.
+    /// </summary>
     public sealed class ProductionWeaponMountSetV1
     {
         private readonly ReadOnlyCollection<ProductionWeaponMountBindingV1>
@@ -286,6 +256,7 @@ namespace ShooterMover.Application.Flow.Production
             }
 
             var active = new List<ProductionWeaponMountBindingV1>();
+            var enabled = new List<ProductionWeaponMountBindingV1>();
             for (int index = 0; index < physical.Count; index++)
             {
                 ProductionWeaponMountPositionV1 position =
@@ -298,12 +269,6 @@ namespace ShooterMover.Application.Flow.Production
                         "Mount bindings must follow the physical layout order.",
                         nameof(bindings));
                 }
-                if (position.IsActive && !binding.IsBound)
-                {
-                    throw new ArgumentException(
-                        "An active weapon mount must be bound.",
-                        nameof(bindings));
-                }
                 if (position.IsLockedBySkill && binding.IsBound)
                 {
                     throw new ArgumentException(
@@ -313,37 +278,30 @@ namespace ShooterMover.Application.Flow.Production
                 if (position.IsActive)
                 {
                     active.Add(binding);
+                    if (binding.IsBound)
+                    {
+                        enabled.Add(binding);
+                    }
                 }
             }
 
             physicalBindings =
                 new ReadOnlyCollection<ProductionWeaponMountBindingV1>(physical);
             configuredBindings =
-                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(
-                    new List<ProductionWeaponMountBindingV1>(active));
-            enabledBindings =
                 new ReadOnlyCollection<ProductionWeaponMountBindingV1>(active);
+            enabledBindings =
+                new ReadOnlyCollection<ProductionWeaponMountBindingV1>(enabled);
         }
 
         public ProductionWeaponMountLayoutV1 Layout { get; }
-
-        /// <summary>
-        /// One projection per physical class mount, including locked mounts with null instance IDs.
-        /// </summary>
         public IReadOnlyList<ProductionWeaponMountBindingV1> PhysicalBindings
         {
             get { return physicalBindings; }
         }
-
-        /// <summary>
-        /// Compatibility projection containing only currently configurable active bindings.
-        /// </summary>
-        public IReadOnlyList<ProductionWeaponMountBindingV1>
-            ConfiguredBindings
+        public IReadOnlyList<ProductionWeaponMountBindingV1> ConfiguredBindings
         {
             get { return configuredBindings; }
         }
-
         public IReadOnlyList<ProductionWeaponMountBindingV1> EnabledBindings
         {
             get { return enabledBindings; }
@@ -457,8 +415,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return Defensive;
             }
-
-            // Non-production and test profiles retain the legacy four-active-position behavior.
             return Defensive;
         }
 
@@ -477,7 +433,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 throw new ArgumentNullException(nameof(payload));
             }
-
             ProductionWeaponMountLayoutV1 layout = ResolveLayout(
                 payload.LoadoutProfileStableId);
             var instances = new List<StableId>(
@@ -492,7 +447,6 @@ namespace ShooterMover.Application.Flow.Production
                         ? slot.EquipmentInstanceStableId
                         : null);
             }
-
             return PlayerRouteProfilePayloadV1.Create(
                 payload.SelectedCharacterStableId,
                 payload.LoadoutProfileStableId,
@@ -506,7 +460,6 @@ namespace ShooterMover.Application.Flow.Production
             {
                 throw new ArgumentNullException(nameof(payload));
             }
-
             ProductionWeaponMountLayoutV1 layout = ResolveLayout(
                 payload.LoadoutProfileStableId);
             var bindings = new List<ProductionWeaponMountBindingV1>(
@@ -517,41 +470,29 @@ namespace ShooterMover.Application.Flow.Production
             {
                 ProductionWeaponMountPositionV1 position =
                     layout.PhysicalPositions[positionIndex];
-                StableId equipmentInstanceStableId = null;
+                StableId instanceId = null;
                 for (int slotIndex = 0;
                      slotIndex < payload.WeaponSlots.Count;
                      slotIndex++)
                 {
-                    PlayerRouteWeaponSlotV1 slot =
-                        payload.WeaponSlots[slotIndex];
+                    PlayerRouteWeaponSlotV1 slot = payload.WeaponSlots[slotIndex];
                     if (slot.WeaponSlotStableId
                         == position.LoadoutSlotStableId)
                     {
-                        equipmentInstanceStableId =
-                            slot.EquipmentInstanceStableId;
+                        instanceId = slot.EquipmentInstanceStableId;
                         break;
                     }
                 }
-
-                if (position.IsActive && equipmentInstanceStableId == null)
-                {
-                    throw new InvalidOperationException(
-                        "An active weapon mount is unbound: "
-                        + position.MountStableId);
-                }
-                if (position.IsLockedBySkill
-                    && equipmentInstanceStableId != null)
+                if (position.IsLockedBySkill && instanceId != null)
                 {
                     throw new InvalidOperationException(
                         "A skill-locked weapon mount is bound: "
                         + position.MountStableId);
                 }
-
                 bindings.Add(new ProductionWeaponMountBindingV1(
                     position.MountStableId,
-                    equipmentInstanceStableId));
+                    instanceId));
             }
-
             return new ProductionWeaponMountSetV1(layout, bindings);
         }
 
@@ -563,10 +504,7 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return null;
             }
-
-            for (int index = 0;
-                 index < layout.PhysicalPositions.Count;
-                 index++)
+            for (int index = 0; index < layout.PhysicalPositions.Count; index++)
             {
                 ProductionWeaponMountPositionV1 position =
                     layout.PhysicalPositions[index];
@@ -575,7 +513,6 @@ namespace ShooterMover.Application.Flow.Production
                     return position;
                 }
             }
-
             return null;
         }
 
@@ -587,9 +524,7 @@ namespace ShooterMover.Application.Flow.Production
                 && value.StartsWith(
                     LoadoutProfilePrefix,
                     StringComparison.Ordinal)
-                && value.EndsWith(
-                    classSuffix,
-                    StringComparison.Ordinal);
+                && value.EndsWith(classSuffix, StringComparison.Ordinal);
         }
     }
 }
