@@ -136,8 +136,14 @@ namespace ShooterMover.UI.ProductionFlow
                     out selectedLevelStableId)
                 || selectedLevelStableId == null)
             {
-                FailAndReturn("playable-level-selection-context-missing");
-                return;
+                if (!TryRecoverEditorDirectLaunchContext(
+                        out routePayload,
+                        out selectedModeStableId,
+                        out selectedLevelStableId))
+                {
+                    FailAndReturn("playable-level-selection-context-missing");
+                    return;
+                }
             }
 
             ProductionPlayableLevelDefinitionV1 selectedLevel;
@@ -181,6 +187,51 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             Begin(selectedLevel, graph);
+        }
+
+        private static bool TryRecoverEditorDirectLaunchContext(
+            out PlayerRouteProfilePayloadV1 routePayload,
+            out StableId selectedModeStableId,
+            out StableId selectedLevelStableId)
+        {
+            routePayload = null;
+            selectedModeStableId = null;
+            selectedLevelStableId = null;
+
+            // PlayableLevel is frequently opened directly from the Unity editor while
+            // iterating on combat. The normal menu route stores this handoff in a
+            // process-local context, which is naturally absent after a direct scene
+            // launch or an editor scene reload. Keep production builds fail-closed;
+            // only the editor demo may recover through the existing character account
+            // authority and the canonical first playable level.
+            if (!UnityEngine.Application.isEditor)
+            {
+                return false;
+            }
+
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 profile;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out profile)
+                || graph == null
+                || profile == null
+                || graph.IsDisposed
+                || profile.Payload == null
+                || !profile.Payload.HasValidFingerprint())
+            {
+                return false;
+            }
+
+            routePayload = profile.Payload;
+            selectedModeStableId = StableId.Parse("play-mode.solo");
+            selectedLevelStableId =
+                ProductionPlayableLevelCatalogV1.FirstLevelStableId;
+            Debug.LogWarning(
+                "playable-level-direct-editor-fallback: "
+                + "using the existing character profile and Level 1 because "
+                + "no level-selection route context was present.");
+            return true;
         }
 
         private void Begin(
