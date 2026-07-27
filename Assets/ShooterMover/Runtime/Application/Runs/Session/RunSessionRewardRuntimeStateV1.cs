@@ -381,7 +381,7 @@ namespace ShooterMover.Application.Runs.Session
                     player.ParticipantStableId,
                     new RunRewardParticipantStateV1(
                         player.ParticipantStableId,
-                        FrozenInputs.Character.CharacterLevel,
+                        FrozenInputs.CharacterStats.Level,
                         true,
                         true,
                         true,
