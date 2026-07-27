@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Editor.LevelDesign.Foundation;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
@@ -255,13 +254,10 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                 LevelCollisionPolicy.TriggerOnly,
                 string.Empty);
             placement.transform.position = new Vector3(123f, 456f, 0f);
-            Selection.activeGameObject = placementObject;
 
-            MethodInfo snapSelected = typeof(LevelDesignFoundationMenu).GetMethod(
-                "SnapSelected",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.That(snapSelected, Is.Not.Null);
-            snapSelected.Invoke(null, null);
+            Assert.That(
+                LevelDesignFoundationMenu.TrySnapSelectedPlacement(placementObject),
+                Is.True);
 
             Assert.That(placement.transform.position, Is.EqualTo(room.transform.position));
         }
@@ -318,7 +314,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 
             StringAssert.Contains("LevelGridEditorOperationsV2.Validate", foundationEditor);
             StringAssert.Contains("LevelGridEditorWindowV2.OpenForRoot", foundationEditor);
-            StringAssert.Contains("placement.SnapToGrid()", foundationEditor);
+            StringAssert.Contains("TrySnapSelectedPlacement", foundationEditor);
             StringAssert.Contains("productionValidationRun", foundationEditor);
             StringAssert.DoesNotContain("Runtime importer: not connected", foundationEditor);
 
