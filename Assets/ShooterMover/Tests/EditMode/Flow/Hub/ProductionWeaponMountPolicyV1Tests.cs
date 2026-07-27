@@ -93,22 +93,23 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 mountSet.Layout.LockedBySkillMountCount,
                 Is.EqualTo(1));
-            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.PhysicalBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(2));
             Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(2));
             Assert.That(
-                mountSet.ConfiguredBindings[0].MountStableId,
+                mountSet.PhysicalBindings[0].MountStableId,
                 Is.EqualTo(
                     ProductionWeaponMountPolicyV1
                         .OuterLeftMountStableId));
             Assert.That(
-                mountSet.ConfiguredBindings[1].MountStableId,
+                mountSet.PhysicalBindings[1].MountStableId,
                 Is.EqualTo(
                     ProductionWeaponMountPolicyV1.CenterMountStableId));
             Assert.That(
-                mountSet.ConfiguredBindings[1].EquipmentInstanceStableId,
+                mountSet.PhysicalBindings[1].EquipmentInstanceStableId,
                 Is.Null);
             Assert.That(
-                mountSet.ConfiguredBindings[2].MountStableId,
+                mountSet.PhysicalBindings[2].MountStableId,
                 Is.EqualTo(
                     ProductionWeaponMountPolicyV1
                         .OuterRightMountStableId));
@@ -137,9 +138,11 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 runtime.Holdings.ExportSnapshot().UniqueHoldings.Count,
                 Is.EqualTo(2));
             Assert.That(mountSet.Layout.PhysicalMountCount, Is.EqualTo(3));
+            Assert.That(mountSet.PhysicalBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(2));
             Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(2));
             Assert.That(
-                mountSet.ConfiguredBindings.Single(value =>
+                mountSet.PhysicalBindings.Single(value =>
                     value.MountStableId
                         == ProductionWeaponMountPolicyV1
                             .CenterMountStableId)
@@ -166,6 +169,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             ProductionWeaponMountSetV1 mountSet =
                 ProductionWeaponMountPolicyV1.BuildMountSet(normalized);
 
+            Assert.That(mountSet.PhysicalBindings.Count, Is.EqualTo(3));
             Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(3));
             Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(3));
             Assert.That(
@@ -194,6 +198,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             ProductionWeaponMountSetV1 mountSet =
                 ProductionWeaponMountPolicyV1.BuildMountSet(route);
 
+            Assert.That(mountSet.PhysicalBindings.Count, Is.EqualTo(4));
             Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(4));
             Assert.That(
                 mountSet.ConfiguredBindings[0]
