@@ -9,12 +9,23 @@ namespace ShooterMover.Application.Missions.Rooms.Content
         {
             private void ValidateRoomSidecars(RoomSource room)
             {
-                room.Floor.Tiles = room.Floor.Tiles ?? new List<TileDto>();
-                room.Enemies.Enemies = room.Enemies.Enemies ?? new List<EnemyDto>();
-                room.Props.Props = room.Props.Props ?? new List<PropDto>();
-                room.Decor.Background = room.Decor.Background ?? new List<VisualDto>();
-                room.Decor.Foreground = room.Decor.Foreground ?? new List<VisualDto>();
+                room.Floor.Tiles = RequireList(
+                    room.Floor.Tiles,
+                    room.Root + "floor.json.tiles");
+                room.Enemies.Enemies = RequireList(
+                    room.Enemies.Enemies,
+                    room.Root + "enemies.json.enemies");
+                room.Props.Props = RequireList(
+                    room.Props.Props,
+                    room.Root + "props.json.props");
+                room.Decor.Background = RequireList(
+                    room.Decor.Background,
+                    room.Root + "decor.json.background");
+                room.Decor.Foreground = RequireList(
+                    room.Decor.Foreground,
+                    room.Root + "decor.json.foreground");
                 ValidateAuthoredIds(room.Enemies.Enemies, room.Props.Props, room.Root);
+                ValidateEncounterRules(room);
                 for (int i = 0; i < room.Enemies.Enemies.Count; i++)
                 {
                     EnemyDto enemy = Require(room.Enemies.Enemies[i], room.Root + "enemies.json.enemies[" + i + "]");
@@ -56,6 +67,101 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 }
             }
 
+            private void ValidateEncounterRules(RoomSource room)
+            {
+                List<DoorRuleDto> rules = RequireList(
+                    room.Encounter.DoorRules,
+                    room.Root + "encounter.json.door_rules");
+                var directDoorRules = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < rules.Count; i++)
+                {
+                    string path = room.Root + "encounter.json.door_rules[" + i + "]";
+                    DoorRuleDto rule = Require(rules[i], path);
+                    DoorMatchDto match = Require(rule.Match, path + ".match");
+                    bool hasDoor = !string.IsNullOrWhiteSpace(match.DoorId);
+                    bool hasExitType = !string.IsNullOrWhiteSpace(match.ExitType);
+                    bool hasLinkKind = !string.IsNullOrWhiteSpace(match.LinkKind);
+                    if (!hasDoor && !hasExitType && !hasLinkKind)
+                    {
+                        throw Error(
+                            "level-grid-v2-door-rule-selector-empty",
+                            path + ".match",
+                            "A door rule must select by door_id, exit_type, or link_kind.");
+                    }
+
+                    if (hasDoor)
+                    {
+                        string doorId = match.DoorId.Trim();
+                        bool found = false;
+                        for (int doorIndex = 0; doorIndex < room.Doors.Count; doorIndex++)
+                        {
+                            if (string.Equals(
+                                room.Doors[doorIndex].DoorId,
+                                doorId,
+                                StringComparison.Ordinal))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            throw Error(
+                                "level-grid-v2-encounter-door-unknown",
+                                path + ".match.door_id",
+                                "Encounter rule references a door not owned by this room: " + doorId);
+                        }
+                        if (!directDoorRules.Add(doorId))
+                        {
+                            throw Error(
+                                "level-grid-v2-encounter-door-rule-duplicate",
+                                path + ".match.door_id",
+                                "More than one explicit encounter rule references door: " + doorId);
+                        }
+                        match.DoorId = doorId;
+                    }
+
+                    if (hasExitType)
+                    {
+                        string exitType = match.ExitType.Trim();
+                        if (!string.Equals(exitType, "progression", StringComparison.Ordinal)
+                            && !string.Equals(exitType, "return", StringComparison.Ordinal))
+                        {
+                            throw Error(
+                                "level-grid-v2-door-rule-exit-type-invalid",
+                                path + ".match.exit_type",
+                                "Door-rule exit_type must be progression or return.");
+                        }
+                        match.ExitType = exitType;
+                    }
+                    if (hasLinkKind)
+                    {
+                        string linkKind = match.LinkKind.Trim();
+                        if (!string.Equals(linkKind, "room", StringComparison.Ordinal)
+                            && !string.Equals(linkKind, "final-exit", StringComparison.Ordinal))
+                        {
+                            throw Error(
+                                "level-grid-v2-door-rule-link-kind-invalid",
+                                path + ".match.link_kind",
+                                "Door-rule link_kind must be room or final-exit.");
+                        }
+                        match.LinkKind = linkKind;
+                    }
+
+                    string openWhen = RequireText(rule.OpenWhen, path + ".open_when");
+                    if (!string.Equals(openWhen, "room-complete", StringComparison.Ordinal)
+                        && !string.Equals(openWhen, "room-entered", StringComparison.Ordinal)
+                        && !string.Equals(openWhen, "always", StringComparison.Ordinal))
+                    {
+                        throw Error(
+                            "level-grid-v2-door-rule-gate-invalid",
+                            path + ".open_when",
+                            "Door-rule open_when must be room-complete, room-entered, or always.");
+                    }
+                    rule.OpenWhen = openWhen;
+                }
+            }
+
             private void ValidateLevelRoomLists()
             {
                 List<string> ids = RequireList(level.RoomIds, "$.level.room_ids");
@@ -81,8 +187,20 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     string path = "$.map.nodes[" + i + "]";
                     MapNodeDto node = Require(nodes[i], path);
                     string roomId = RequireText(node.RoomId, path + ".room_id");
-                    if (!rooms.ContainsKey(roomId)) throw Error("level-grid-v2-map-room-unknown", path + ".room_id", "Unknown room: " + roomId);
+                    RoomSource room;
+                    if (!rooms.TryGetValue(roomId, out room))
+                    {
+                        throw Error("level-grid-v2-map-room-unknown", path + ".room_id", "Unknown room: " + roomId);
+                    }
                     if (!nodeIds.Add(roomId)) throw Error("level-grid-v2-map-room-duplicate", path + ".room_id", "Duplicate map node: " + roomId);
+                    RequireSameVector(room.Entry.GridPosition, node.GridPosition, path + ".grid_position");
+                    if (node.Slot != room.Entry.Slot)
+                    {
+                        throw Error(
+                            "level-grid-v2-map-slot-mismatch",
+                            path + ".slot",
+                            "Map node slot must match the authoritative room index.");
+                    }
                 }
                 if (nodeIds.Count != rooms.Count) throw Error("level-grid-v2-map-incomplete", "$.map.nodes", "Map nodes must contain every room exactly once.");
             }
