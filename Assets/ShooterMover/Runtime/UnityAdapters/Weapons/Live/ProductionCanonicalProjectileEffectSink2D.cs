@@ -101,6 +101,40 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public bool TryBindSource(
             WeaponActorInstanceId actorId,
+            LifecycleGeneration lifecycle,
+            StableId mountStableId,
+            EquipmentInstanceId equipmentInstanceId,
+            WeaponDefinitionId weaponDefinitionId)
+        {
+            return TryBindSourceCore(
+                actorId,
+                null,
+                lifecycle,
+                mountStableId,
+                equipmentInstanceId,
+                weaponDefinitionId);
+        }
+
+        public bool TryBindSource(
+            WeaponActorInstanceId actorId,
+            RunParticipantId participantId,
+            LifecycleGeneration lifecycle,
+            StableId mountStableId,
+            EquipmentInstanceId equipmentInstanceId,
+            WeaponDefinitionId weaponDefinitionId)
+        {
+            if (participantId == null) return false;
+            return TryBindSourceCore(
+                actorId,
+                participantId,
+                lifecycle,
+                mountStableId,
+                equipmentInstanceId,
+                weaponDefinitionId);
+        }
+
+        private bool TryBindSourceCore(
+            WeaponActorInstanceId actorId,
             RunParticipantId participantId,
             LifecycleGeneration lifecycle,
             StableId mountStableId,
@@ -109,7 +143,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             if (retired
                 || actorId == null
-                || participantId == null
                 || lifecycle == null
                 || mountStableId == null
                 || equipmentInstanceId == null
@@ -120,7 +153,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (sourceBound)
             {
                 return sourceActorId.Equals(actorId)
-                    && sourceParticipantId.Equals(participantId)
+                    && (sourceParticipantId == null
+                        || participantId == null
+                        || sourceParticipantId.Equals(participantId))
                     && sourceLifecycle.Equals(lifecycle)
                     && sourceMountStableId == mountStableId
                     && sourceEquipmentInstanceId.Equals(equipmentInstanceId)
@@ -165,7 +200,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-source-identity-mismatch");
             }
-
             string key = batch.Identity.ToCanonicalString();
             string retainedFingerprint;
             if (accepted.TryGetValue(key, out retainedFingerprint))
@@ -218,7 +252,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         CanonicalProjectileSourceIdentity2D>();
                 if (!identityProjection.TryBind(
                         sourceActorId,
-                        sourceParticipantId,
+                        sourceParticipantId ?? batch.Identity.ParticipantId,
                         sourceLifecycle,
                         sourceMountStableId,
                         sourceEquipmentInstanceId,
@@ -249,6 +283,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
 
                 RetainAccepted(key, batch.Fingerprint);
+                if (sourceParticipantId == null)
+                {
+                    sourceParticipantId = batch.Identity.ParticipantId;
+                }
                 return WeaponEffectBatchSinkResult.Accept();
             }
             catch (Exception exception)
@@ -287,7 +325,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             return identity != null
                 && sourceActorId.Equals(identity.ActorId)
-                && sourceParticipantId.Equals(identity.ParticipantId)
+                && (sourceParticipantId == null
+                    || sourceParticipantId.Equals(identity.ParticipantId))
                 && sourceLifecycle.Equals(identity.LifecycleGeneration)
                 && sourceEquipmentInstanceId.Equals(identity.EquipmentInstanceId)
                 && sourceWeaponDefinitionId.Equals(identity.WeaponDefinitionId);
