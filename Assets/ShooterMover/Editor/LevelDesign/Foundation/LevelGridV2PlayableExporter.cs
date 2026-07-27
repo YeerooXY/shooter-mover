@@ -127,6 +127,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 parent,
                 "." + Path.GetFileName(absoluteOutput) + ".playable-backup-"
                 + Guid.NewGuid().ToString("N"));
+            DeleteSiblingMeta(stage);
+            DeleteSiblingMeta(backup);
             bool existed = Directory.Exists(absoluteOutput);
             try
             {
@@ -136,15 +138,19 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 ValidateStagedPackage(stage);
                 if (existed) Directory.Move(absoluteOutput, backup);
                 Directory.Move(stage, absoluteOutput);
+                DeleteSiblingMeta(stage);
                 if (Directory.Exists(backup)) Directory.Delete(backup, true);
+                DeleteSiblingMeta(backup);
             }
             catch
             {
                 if (Directory.Exists(stage)) Directory.Delete(stage, true);
+                DeleteSiblingMeta(stage);
                 if (Directory.Exists(backup) && !Directory.Exists(absoluteOutput))
                 {
                     Directory.Move(backup, absoluteOutput);
                 }
+                DeleteSiblingMeta(backup);
                 throw;
             }
         }
@@ -214,10 +220,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             for (int i = 0; i < links.Length; i++)
             {
                 LevelGridConnectionRecordV2 record = links[i].BuildRecord();
-                if (string.Equals(record.SourceRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
-                    && string.Equals(record.SourceDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal)
-                    || string.Equals(record.DestinationRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
-                    && string.Equals(record.DestinationDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal))
+                if ((string.Equals(record.SourceRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
+                        && string.Equals(record.SourceDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal))
+                    || (string.Equals(record.DestinationRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
+                        && string.Equals(record.DestinationDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal)))
                 {
                     throw new InvalidOperationException(
                         "The exact final-exit endpoint cannot also participate in a room connection.");
@@ -242,6 +248,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         ? "Level Grid V2 production validation failed."
                         : issue.ToString());
             }
+        }
+
+        private static void DeleteSiblingMeta(string directoryPath)
+        {
+            string metaPath = directoryPath + ".meta";
+            if (File.Exists(metaPath)) File.Delete(metaPath);
         }
 
     }
