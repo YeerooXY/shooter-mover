@@ -154,51 +154,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             return lastGridValidation;
         }
 
-        [ContextMenu("Assign New Stable ID")]
         public void AssignNewStableId()
         {
             levelId = LevelDesignAuthoringId.New("level");
-        }
-
-        [ContextMenu("Validate Level Design Foundation")]
-        private void ValidateFromContextMenu()
-        {
-            LevelDesignValidationResult result = ValidateHierarchy();
-            if (result.IsValid)
-            {
-                Debug.Log(
-                    "Level design foundation validation passed with "
-                    + result.WarningCount + " warning(s).",
-                    this);
-                return;
-            }
-
-            for (int index = 0; index < result.Issues.Count; index++)
-            {
-                LevelDesignValidationIssue issue = result.Issues[index];
-                if (issue.Severity == LevelDesignValidationSeverity.Error)
-                {
-                    Debug.LogError(issue.ToString(), this);
-                }
-                else
-                {
-                    Debug.LogWarning(issue.ToString(), this);
-                }
-            }
-        }
-
-        [ContextMenu("Validate Grid Draft")]
-        private void ValidateGridDraftFromContextMenu()
-        {
-            LogGridResult(ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft));
-        }
-
-        [ContextMenu("Validate Grid Production Publish")]
-        private void ValidateGridProductionFromContextMenu()
-        {
-            LogGridResult(
-                ValidateGridAuthoring(
-                    LevelGridValidationPurposeV2.ProductionPublish));
         }
 
         public void ConfigureForTests(string configuredLevelId)
@@ -206,31 +164,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             levelId = configuredLevelId;
             includeInactive = true;
             validateOnEnable = false;
-        }
-
-        private void LogGridResult(LevelGridValidationResultV2 result)
-        {
-            if (result.CanPublish)
-            {
-                Debug.Log(
-                    "Level grid " + result.Purpose + " validation passed with "
-                    + result.WarningCount + " warning(s).",
-                    this);
-                return;
-            }
-
-            for (int index = 0; index < result.Problems.Count; index++)
-            {
-                LevelGridProblemV2 problem = result.Problems[index];
-                if (problem.Severity == LevelDesignValidationSeverity.Error)
-                {
-                    Debug.LogError(problem.ToString(), this);
-                }
-                else
-                {
-                    Debug.LogWarning(problem.ToString(), this);
-                }
-            }
         }
     }
 }
