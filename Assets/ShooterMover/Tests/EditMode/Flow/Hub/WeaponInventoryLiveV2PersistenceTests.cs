@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
@@ -6,6 +7,7 @@ using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Weapons;
 
 namespace ShooterMover.Tests.EditMode.Flow.Hub
@@ -139,6 +141,84 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 restored.MountLoadoutAuthority.ExportSnapshot().Fingerprint,
                 Is.EqualTo(mountsBeforeOpen.Fingerprint),
                 "Reopening Inventory must not repair or reorder physical mounts.");
+        }
+
+        [Test]
+        public void CharacterSemanticsAcceptMountV2AndRequireLegacyWeaponSlotsEmpty()
+        {
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "account-semantics",
+                ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId));
+            InventoryLoadoutAuthoritySnapshotV1 armorOnly =
+                ProductionWeaponMountLoadoutProjectionV2.ArmorOnly(
+                    runtime.LoadoutAuthority.ExportSnapshot());
+
+            SaveComponentSnapshotV1 holdingsComponent =
+                KnownSaveComponentAdaptersV1.PlayerHoldings(
+                    runtime.Holdings.ExportSnapshot,
+                    KnownSaveComponentCodecsV1.PlayerHoldings.Validate,
+                    snapshot => SaveComponentApplyResultV1.Applied())
+                    .ExportComponent();
+            SaveComponentSnapshotV1 weaponsComponent =
+                WeaponHoldingsSaveComponentV2.CreateAdapter(
+                    runtime.WeaponHoldings).ExportComponent();
+            SaveComponentSnapshotV1 mountsComponent =
+                WeaponMountLoadoutSaveComponentV2.CreateAdapter(
+                    runtime.MountLoadoutAuthority).ExportComponent();
+            SaveComponentSnapshotV1 armorComponent =
+                KnownSaveComponentAdaptersV1.ExactInstanceLoadout(
+                    () => armorOnly,
+                    KnownSaveComponentCodecsV1.ExactInstanceLoadout.Validate,
+                    snapshot => SaveComponentApplyResultV1.Applied())
+                    .ExportComponent();
+
+            var validCharacter = new CharacterInstanceSnapshotV1(
+                runtime.RoutePayload.SelectedCharacterStableId,
+                runtime.RoutePayload.LoadoutProfileStableId,
+                0,
+                "Canonical Mount Character",
+                0L,
+                new[]
+                {
+                    holdingsComponent,
+                    weaponsComponent,
+                    mountsComponent,
+                    armorComponent,
+                });
+            SaveComponentValidationResultV1 valid =
+                PlayerAccountComponentSemanticsV1.ValidateCharacter(
+                    validCharacter);
+            Assert.That(valid.Succeeded, Is.True, valid.RejectionCode);
+
+            InventoryLoadoutAuthoritySnapshotV1 invalidLegacyWeapons =
+                runtime.LoadoutAuthority.ExportSnapshot();
+            SaveComponentSnapshotV1 invalidLoadoutComponent =
+                KnownSaveComponentAdaptersV1.ExactInstanceLoadout(
+                    () => invalidLegacyWeapons,
+                    KnownSaveComponentCodecsV1.ExactInstanceLoadout.Validate,
+                    snapshot => SaveComponentApplyResultV1.Applied())
+                    .ExportComponent();
+            var invalidCharacter = new CharacterInstanceSnapshotV1(
+                runtime.RoutePayload.SelectedCharacterStableId,
+                runtime.RoutePayload.LoadoutProfileStableId,
+                0,
+                "Legacy Weapon Slot Conflict",
+                0L,
+                new[]
+                {
+                    holdingsComponent,
+                    weaponsComponent,
+                    mountsComponent,
+                    invalidLoadoutComponent,
+                });
+            SaveComponentValidationResultV1 invalid =
+                PlayerAccountComponentSemanticsV1.ValidateCharacter(
+                    invalidCharacter);
+            Assert.That(invalid.Succeeded, Is.False);
+            Assert.That(
+                invalid.RejectionCode,
+                Does.StartWith(
+                    "legacy-weapon-slot-must-be-empty-when-mount-v2-present"));
         }
 
         private static CanonicalWeaponInventoryScreenServiceV2 Service(
