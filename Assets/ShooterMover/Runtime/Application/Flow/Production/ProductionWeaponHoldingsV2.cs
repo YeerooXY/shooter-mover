@@ -221,7 +221,8 @@ namespace ShooterMover.Application.Flow.Production
 
     /// <summary>
     /// Character-local canonical authority for exact owned weapons.
-    /// Equip and unequip never mutate this authority.
+    /// Equip and unequip never mutate this authority. Runtime additions and destructive removals
+    /// validate the canonical definition and current unsupported-state policy before committing.
     /// </summary>
     public sealed class ProductionWeaponHoldingsAuthorityV2
     {
@@ -295,6 +296,20 @@ namespace ShooterMover.Application.Flow.Production
                 return false;
             }
 
+            ProductionWeaponMarkV1 mark;
+            bool definitionResolved = ProductionWeaponCatalogProvider.Current
+                .TryGetMark(instance.WeaponDefinitionId.Value, out mark)
+                && mark != null;
+            CanonicalWeaponOperationAvailabilityV1 availability =
+                CanonicalWeaponSafetyPolicyV1.EvaluateRewardAcceptance(
+                    instance,
+                    definitionResolved);
+            if (!availability.IsAvailable)
+            {
+                rejectionCode = availability.RejectionCode;
+                return false;
+            }
+
             WeaponEquipmentInstance existing = snapshot.Find(instance.InstanceId);
             if (existing != null)
             {
@@ -326,9 +341,21 @@ namespace ShooterMover.Application.Flow.Production
                 rejectionCode = "weapon-holdings-v2-instance-id-null";
                 return false;
             }
-            if (snapshot.Find(instanceId) == null)
+
+            WeaponEquipmentInstance existing = snapshot.Find(instanceId);
+            if (existing == null)
             {
                 return true;
+            }
+
+            ProductionWeaponMarkV1 mark;
+            if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+                    existing.WeaponDefinitionId.Value,
+                    out mark)
+                || mark == null)
+            {
+                rejectionCode = "canonical-weapon-definition-unresolved";
+                return false;
             }
 
             var next = new List<WeaponEquipmentInstance>();
