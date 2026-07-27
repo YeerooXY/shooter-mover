@@ -1,9 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
-using System.Text;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
 using UnityEngine;
@@ -38,12 +35,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 room_id = room == null ? string.Empty : room.RoomIdText,
                 door_id = door == null ? string.Empty : door.DoorIdText,
             };
-        }
-
-        private static string BuildRoomFolderName(LevelRoomAuthoring2D room)
-        {
-            return "Room_" + room.GridCoordinate.x + "_" + room.GridCoordinate.y
-                + "_" + room.FolderSlot.ToString("00");
         }
 
         private static void WriteJsonIfMissing(string path, object value)
