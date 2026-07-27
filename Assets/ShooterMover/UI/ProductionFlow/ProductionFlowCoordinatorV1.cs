@@ -874,6 +874,11 @@ namespace ShooterMover.UI.ProductionFlow
             public void ReturnToHub(
                 PlayerRouteProfilePayloadV1 routePayload)
             {
+                if (routePayload == null)
+                {
+                    owner.transitions.TryNavigateBack();
+                    return;
+                }
                 owner.ReturnToHub(routePayload);
             }
         }
