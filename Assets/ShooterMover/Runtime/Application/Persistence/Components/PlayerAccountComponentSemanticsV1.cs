@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
@@ -46,6 +47,7 @@ namespace ShooterMover.Application.Persistence.Components
             }
 
             PlayerHoldingsSnapshotV1 holdings = null;
+            WeaponHoldingsSnapshotV2 weaponHoldings = null;
             InventoryLoadoutAuthoritySnapshotV1 loadout = null;
             StrongboxOpeningSnapshotV1 strongboxes = null;
             GeneratedEquipmentAugmentSignatureSnapshotV1 augmentSignatures = null;
@@ -61,6 +63,19 @@ namespace ShooterMover.Application.Persistence.Components
             {
                 return SaveComponentValidationResultV1.Reject(error);
             }
+
+            string weaponHoldingsError;
+            bool hasWeaponHoldings = WeaponHoldingsSaveComponentV2.TryRead(
+                character,
+                out weaponHoldings,
+                out weaponHoldingsError);
+            if (!hasWeaponHoldings
+                && !string.IsNullOrEmpty(weaponHoldingsError))
+            {
+                return SaveComponentValidationResultV1.Reject(
+                    weaponHoldingsError);
+            }
+
             if (character.TryGetComponent(
                 KnownSaveComponentDefinitionsV1.ExactInstanceLoadout().ComponentStableId,
                 out component)
@@ -110,13 +125,25 @@ namespace ShooterMover.Application.Persistence.Components
                 {
                     StableId instanceId = loadout.Bindings[index]
                         .EquipmentInstanceStableId;
-                    if (instanceId != null
-                        && !equipmentIds.Contains(instanceId)
-                        && !IsRetiredWeaponSaveInstance(instanceId))
+                    if (instanceId == null)
+                    {
+                        continue;
+                    }
+
+                    bool weaponSlot = index < InventoryLoadoutSlotsV1.All.Count
+                        && InventoryLoadoutSlotsV1.All[index].Kind
+                            == InventoryLoadoutSlotKindV1.Weapon;
+                    bool present = weaponSlot && weaponHoldings != null
+                        ? weaponHoldings.Find(instanceId) != null
+                        : equipmentIds.Contains(instanceId);
+                    if (!present && !IsRetiredWeaponSaveInstance(instanceId))
                     {
                         return SaveComponentValidationResultV1.Reject(
-                            "loadout-equipment-instance-absent-from-holdings:"
-                                + instanceId);
+                            weaponSlot && weaponHoldings != null
+                                ? "loadout-weapon-instance-absent-from-canonical-holdings:"
+                                    + instanceId
+                                : "loadout-equipment-instance-absent-from-holdings:"
+                                    + instanceId);
                     }
                 }
             }
