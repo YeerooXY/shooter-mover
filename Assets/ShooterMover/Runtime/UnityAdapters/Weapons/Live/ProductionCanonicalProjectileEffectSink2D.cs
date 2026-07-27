@@ -101,6 +101,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public bool TryBindSource(
             WeaponActorInstanceId actorId,
+            RunParticipantId participantId,
             LifecycleGeneration lifecycle,
             StableId mountStableId,
             EquipmentInstanceId equipmentInstanceId,
@@ -108,6 +109,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             if (retired
                 || actorId == null
+                || participantId == null
                 || lifecycle == null
                 || mountStableId == null
                 || equipmentInstanceId == null
@@ -118,6 +120,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (sourceBound)
             {
                 return sourceActorId.Equals(actorId)
+                    && sourceParticipantId.Equals(participantId)
                     && sourceLifecycle.Equals(lifecycle)
                     && sourceMountStableId == mountStableId
                     && sourceEquipmentInstanceId.Equals(equipmentInstanceId)
@@ -125,6 +128,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             sourceActorId = actorId;
+            sourceParticipantId = participantId;
             sourceLifecycle = lifecycle;
             sourceMountStableId = mountStableId;
             sourceEquipmentInstanceId = equipmentInstanceId;
@@ -160,12 +164,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-source-identity-mismatch");
-            }
-            if (sourceParticipantId != null
-                && !sourceParticipantId.Equals(batch.Identity.ParticipantId))
-            {
-                return WeaponEffectBatchSinkResult.Reject(
-                    "canonical-projectile-participant-identity-mismatch");
             }
 
             string key = batch.Identity.ToCanonicalString();
@@ -220,7 +218,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         CanonicalProjectileSourceIdentity2D>();
                 if (!identityProjection.TryBind(
                         sourceActorId,
-                        batch.Identity.ParticipantId,
+                        sourceParticipantId,
                         sourceLifecycle,
                         sourceMountStableId,
                         sourceEquipmentInstanceId,
@@ -251,10 +249,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
 
                 RetainAccepted(key, batch.Fingerprint);
-                if (sourceParticipantId == null)
-                {
-                    sourceParticipantId = batch.Identity.ParticipantId;
-                }
                 return WeaponEffectBatchSinkResult.Accept();
             }
             catch (Exception exception)
@@ -293,6 +287,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             return identity != null
                 && sourceActorId.Equals(identity.ActorId)
+                && sourceParticipantId.Equals(identity.ParticipantId)
                 && sourceLifecycle.Equals(identity.LifecycleGeneration)
                 && sourceEquipmentInstanceId.Equals(identity.EquipmentInstanceId)
                 && sourceWeaponDefinitionId.Equals(identity.WeaponDefinitionId);
