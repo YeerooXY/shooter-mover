@@ -45,13 +45,20 @@ Compatibility `WeaponCatalog`, route-slot projections and UI models remain proje
   - simulation-tick advancement into the retained runtime;
   - lifecycle cleanup.
 - `ProductionCanonicalProjectileEffectSink2D.cs`
-  - replay-safe accepted-batch receipts;
-  - one supported canonical Normal launch per accepted batch for this first slice;
+  - bind once to exact actor/lifecycle/mount/equipment/definition identity;
+  - reject mismatched batches;
+  - retain replay-safe accepted-batch receipts keyed by full canonical effect identity;
+  - stage one supported canonical Normal launch per accepted batch;
+  - attach a read-only exact source-identity projection to each projectile object.
+- `ProductionCanonicalNormalProjectile2D.cs`
   - explicit player-hierarchy collider suppression;
-  - canonical contact/effect resolution;
+  - canonical movement, contact and effect resolution;
   - exact retryable enemy damage command delivery;
   - retirement of uncommitted scene presentation.
-- Unity `.meta` files for new runtime source files.
+- `CanonicalWeaponProjectileSourceIdentityTests.cs`
+  - narrow exact-replay/conflicting-mount identity guard;
+  - fail-closed unbound sink guard.
+- Unity `.meta` files for new source files.
 - This change-contract document.
 
 ## Forbidden systems
@@ -91,16 +98,17 @@ No identity may be derived from display name, hierarchy position, route slot ind
 ### Canonical firing composition
 
 - Before commit: resolve the current character graph, bound canonical player source, exact V2 mount binding, exact live equipment projection and exact canonical blueprint.
-- Commit point: the controller publishes its bound runtime only after all exact identities agree and the runtime, sink and mounted execution entry are fully constructed.
-- Failure before commit: destroy staged components owned by this composition and leave all persistent authorities unchanged.
+- Commit point: the controller publishes its bound runtime only after all exact identities agree, the sink accepts the exact source binding, and the runtime and mounted execution entry are fully constructed.
+- Failure before commit: retire staged scene presentation and leave all persistent authorities unchanged.
 - Retry: a later bounded composition attempt may retry the same exact context; it must reuse an already matching controller and reject conflicting duplicates.
 
 ### Launch-effect delivery
 
-- Before commit: validate the batch, exact identity fingerprint and supported canonical Normal launch; create and configure the projectile inactive.
+- Before commit: validate exact source identity, full canonical effect identity, batch fingerprint and supported canonical Normal launch; create and configure the projectile inactive.
 - Commit point: the projectile begins emission and the accepted receipt is retained only after successful staging.
 - Failure before commit: destroy the staged projectile and retain no receipt.
 - Repeated exact delivery: return `AlreadyAccepted` and create no second projectile.
+- Distinct emissions from one fire operation remain distinct through shot sequence and projectile ordinal.
 - Conflicting identity reuse: reject without mutating presentation state.
 
 ### Enemy impact
@@ -120,7 +128,8 @@ No identity may be derived from display name, hierarchy position, route slot ind
 
 ## Runtime, editor, persistence and assembly boundaries
 
-- Runtime-only implementation; no editor API dependency.
+- Runtime-only production implementation; no editor API dependency.
+- EditMode-only regression coverage remains in the existing test assembly.
 - No serialized schema or persistence envelope changes.
 - No generated asset output beyond required Unity `.meta` files.
 - The UI production-flow assembly owns player input/composition.
@@ -138,6 +147,7 @@ No identity may be derived from display name, hierarchy position, route slot ind
 | stale mount binding | reject before runtime commit |
 | unsupported projectile mechanics | sink rejects batch and pending delivery remains retryable |
 | exact accepted-batch replay | acknowledge without another projectile |
+| distinct burst emission | distinct full effect identity; do not collapse into the first receipt |
 | conflicting batch fingerprint | reject without mutation |
 | player collider contact | ignore explicitly by source hierarchy |
 | duplicate enemy collider callback | suppress by exact enemy actor/lifecycle identity |
@@ -157,10 +167,11 @@ No identity may be derived from display name, hierarchy position, route slot ind
 7. Hold primary fire while aiming with the mouse; observe cadence from the authored fire mode.
 8. Release primary fire; confirm automatic emission stops through scheduler trigger handling.
 9. Confirm one visible projectile exists for each newly accepted canonical launch and that no projectile collides with the player hierarchy.
-10. Hit the enemy and confirm canonical enemy health changes.
-11. Kill the enemy and confirm the existing terminal fact, room-clear state and authored exit unlock occur without direct weapon-side unlock logic.
-12. Leave and re-enter the level; confirm no duplicate controller, sink or stale projectile remains.
-13. Force exact weapon-definition resolution failure and confirm no fallback weapon or projectile appears.
+10. Inspect a projectile and confirm its source projection retains exact character actor, lifecycle, mount, equipment-instance and definition identity.
+11. Hit the enemy and confirm canonical enemy health changes.
+12. Kill the enemy and confirm the existing terminal fact, room-clear state and authored exit unlock occur without direct weapon-side unlock logic.
+13. Leave and re-enter the level; confirm no duplicate controller, sink or stale projectile remains.
+14. Force exact weapon-definition resolution failure and confirm no fallback weapon or projectile appears.
 
 ## Invariant ledger
 
@@ -173,3 +184,7 @@ No identity may be derived from display name, hierarchy position, route slot ind
 - Exact replay cannot duplicate projectiles or enemy damage.
 - Scene objects are projections over authoritative state.
 - Existing enemy terminal and room-clear authorities remain authoritative.
+
+## Scope checkpoint
+
+The requested vertical slice crosses the preferred 500-production-line threshold because it includes three inseparable runtime boundaries: production input/composition, replay-safe scene launch presentation, and canonical projectile-to-enemy contact. Rocket, Orb, homing, damage-over-time and multi-projectile spread remain explicitly excluded. The pull request must remain draft until Unity compilation and the complete manual gameplay route are executed.
