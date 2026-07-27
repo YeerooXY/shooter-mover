@@ -199,12 +199,17 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             ProductionCanonicalWeaponFireControllerV1 controller =
-                source.GetComponent<ProductionCanonicalWeaponFireControllerV1>()
-                ?? source.gameObject.AddComponent<
+                source.GetComponent<ProductionCanonicalWeaponFireControllerV1>();
+            bool controllerAdded = controller == null;
+            if (controllerAdded)
+            {
+                controller = source.gameObject.AddComponent<
                     ProductionCanonicalWeaponFireControllerV1>();
+            }
             if (!controller.TryBind(source, gameplayCamera))
             {
                 Debug.LogError("canonical-weapon-fire-binding-rejected", controller);
+                if (controllerAdded) Destroy(controller);
                 enabled = false;
                 return;
             }
@@ -366,6 +371,8 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 var exactDefinition = new WeaponDefinitionId(
                     configuredSource.WeaponDefinitionId);
+                var exactEquipmentInstanceId = new EquipmentInstanceId(
+                    configuredSource.ExactWeaponInstanceId);
                 var resolver = new BoundCanonicalWeaponBlueprintResolverV1(
                     exactDefinition,
                     configuredSource.ResolvedMark.Blueprint);
@@ -377,6 +384,17 @@ namespace ShooterMover.UI.ProductionFlow
                     ProductionCanonicalProjectileEffectSink2D>()
                     ?? gameObject.AddComponent<
                         ProductionCanonicalProjectileEffectSink2D>();
+                if (!stagedSink.TryBindSource(
+                        stagedActor.ActorId,
+                        stagedActor.Lifecycle,
+                        exactMount.MountStableId,
+                        exactEquipmentInstanceId,
+                        exactDefinition))
+                {
+                    throw new InvalidOperationException(
+                        "canonical-weapon-fire-effect-sink-source-rejected");
+                }
+
                 int ticksPerSecond = Math.Max(
                     1,
                     Mathf.RoundToInt(1f / Time.fixedDeltaTime));
@@ -395,8 +413,7 @@ namespace ShooterMover.UI.ProductionFlow
                     {
                         new InventoryWeaponMountedRuntimeV1(
                             exactMount.MountStableId,
-                            new EquipmentInstanceId(
-                                configuredSource.ExactWeaponInstanceId),
+                            exactEquipmentInstanceId,
                             exactMount.LateralOffset),
                     },
                     adapter);
