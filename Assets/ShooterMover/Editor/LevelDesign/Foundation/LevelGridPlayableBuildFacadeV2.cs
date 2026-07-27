@@ -58,8 +58,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 LevelGridV2PlayableExporter.Export(
                     root,
                     paths.SourcePackageAbsolutePath);
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                // Export returns only after the staged package occupies the destination. Refresh is
+                // post-commit observation and must not redefine the transaction boundary.
                 result.ExportCommitted = true;
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 result.Message = "Playable source export committed to "
                     + paths.SourcePackagePath
                     + ".";
@@ -69,7 +71,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 if (IsFatal(exception)) throw;
                 result.Failure = exception;
                 result.Message = result.ExportCommitted
-                    ? "Export committed, then a later operation failed: " + exception.Message
+                    ? "Export committed, then a post-commit editor operation failed: "
+                        + exception.Message
                     : "Export failed before commit: " + exception.Message;
             }
             return result;
@@ -97,8 +100,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 if (IsFatal(exception)) throw;
                 result.Failure = exception;
-                result.Message = "Compile failed before authoritative publication; the previous "
-                    + "playable asset remains authoritative. "
+                result.Message = "Compile failed before authoritative publication or rolled back "
+                    + "after a failed switch; the previous playable asset remains authoritative. "
                     + exception.Message;
             }
             return result;
@@ -115,8 +118,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 LevelGridV2PlayableExporter.Export(
                     root,
                     paths.SourcePackageAbsolutePath);
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                // This is the export commit point. Later refresh or compile failure must preserve it.
                 result.ExportCommitted = true;
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
                 result.CompiledAsset = LevelGridV2AssetCompiler.CompileToAsset(
                     paths.SourcePackagePath,
@@ -130,8 +134,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 if (IsFatal(exception)) throw;
                 result.Failure = exception;
                 result.Message = result.ExportCommitted
-                    ? "Export committed, but compiled-asset publication failed. The previous "
-                        + "compiled asset remains authoritative. "
+                    ? "Export committed, but a later build step failed before a new compiled asset "
+                        + "became authoritative. The previous compiled asset remains authoritative. "
                         + exception.Message
                     : "Export failed before commit; compilation was not started. "
                         + exception.Message;
@@ -228,7 +232,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 throw new InvalidOperationException(
                     "Stop Play Mode before opening the production level-selection scene.");
             }
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                throw new OperationCanceledException(
+                    "Opening production Level Selection was cancelled; the authoring scene remains open.");
+            }
             EditorSceneManager.OpenScene(
                 LevelGridPlayableBuildPathsV2.LevelSelectionScenePath,
                 OpenSceneMode.Single);
