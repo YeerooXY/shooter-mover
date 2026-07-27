@@ -27,7 +27,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 .Select(value => value.EquipmentInstanceStableId)
                 .ToArray();
             ProductionWeaponMountBindingV1 locked = mountSet
-                .ConfiguredBindings.Single(value =>
+                .PhysicalBindings.Single(value =>
                     ProductionWeaponMountPolicyV1.FindPosition(
                         mountSet.Layout,
                         value.MountStableId).IsLockedBySkill);
@@ -37,7 +37,8 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(
                 mountSet.Layout.LockedBySkillMountCount,
                 Is.EqualTo(1));
-            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.PhysicalBindings.Count, Is.EqualTo(3));
+            Assert.That(mountSet.ConfiguredBindings.Count, Is.EqualTo(2));
             Assert.That(mountSet.EnabledBindings.Count, Is.EqualTo(2));
             Assert.That(owned.Length, Is.EqualTo(2));
             Assert.That(owned.Distinct().Count(), Is.EqualTo(2));
