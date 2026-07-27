@@ -104,9 +104,12 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
             List<LevelRoomRecord> rooms =
                 new List<LevelRoomRecord>(roomComponents.Length);
+            List<LevelGridRoomRecordV2> gridRooms =
+                new List<LevelGridRoomRecordV2>(roomComponents.Length);
             for (int index = 0; index < roomComponents.Length; index++)
             {
                 rooms.Add(roomComponents[index].BuildRecord());
+                gridRooms.Add(roomComponents[index].BuildGridRecord());
             }
 
             List<LevelGridDoorRecordV2> doors =
@@ -125,6 +128,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
             lastGridValidation = LevelGridAuthoringV2CompositeValidator.Validate(
                 rooms,
+                gridRooms,
                 doors,
                 connections,
                 purpose);
