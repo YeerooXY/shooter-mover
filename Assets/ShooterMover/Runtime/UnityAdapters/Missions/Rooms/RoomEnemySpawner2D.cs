@@ -24,7 +24,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         [SerializeField] private JsonRoomRuntimeBootstrap2D roomLoader;
         [SerializeField] private RoomRuntimeComposition2D room;
         [SerializeField] private EnemyCatalogAsset2D enemyCatalog;
-        [SerializeField] private string runStableId;
         [SerializeField] private string difficultyStableId;
         [SerializeField] private double difficultyScalar = 1d;
 
@@ -32,6 +31,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             new Dictionary<StableId, EnemyBinding>();
         private Dictionary<StableId, EnemyBinding> enemiesByActor =
             new Dictionary<StableId, EnemyBinding>();
+        private StableId configuredRunStableId;
+        private IEnemyExperienceFactConsumerV1 configuredExperienceConsumer;
+        private IEnemyDropFactConsumerV1 configuredDropConsumer;
+        private IEnemyKillStatFactConsumerV1 configuredKillStatisticsConsumer;
+        private bool runDownstreamConfigured;
         private bool isSubscribed;
         private long appliedRevision;
         private long lastAttemptedRevision;
@@ -67,6 +71,50 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         public string LastBuildError
         {
             get { return lastBuildError; }
+        }
+
+        /// <summary>
+        /// Freezes the exact transient Run Session identity and the typed terminal-fact
+        /// consumers before enemy runtimes are committed. The room terminal and collision
+        /// ports remain owned by this spawner.
+        /// </summary>
+        public void ConfigureRunDownstream(
+            StableId runStableId,
+            IEnemyExperienceFactConsumerV1 experienceConsumer,
+            IEnemyDropFactConsumerV1 dropConsumer,
+            IEnemyKillStatFactConsumerV1 killStatisticsConsumer)
+        {
+            if (runStableId == null) throw new ArgumentNullException(nameof(runStableId));
+            if (experienceConsumer == null)
+                throw new ArgumentNullException(nameof(experienceConsumer));
+            if (dropConsumer == null) throw new ArgumentNullException(nameof(dropConsumer));
+            if (killStatisticsConsumer == null)
+                throw new ArgumentNullException(nameof(killStatisticsConsumer));
+            if (runDownstreamConfigured)
+            {
+                throw new InvalidOperationException(
+                    "Room enemy run/downstream composition is already frozen.");
+            }
+            if (appliedRevision > 0L || enemiesByPlacement.Count > 0
+                || enemiesByActor.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "Room enemy run/downstream composition cannot change after binding commit.");
+            }
+
+            configuredRunStableId = runStableId;
+            configuredExperienceConsumer = experienceConsumer;
+            configuredDropConsumer = dropConsumer;
+            configuredKillStatisticsConsumer = killStatisticsConsumer;
+            runDownstreamConfigured = true;
+
+            // A room build can race ahead of the production scene composition. Missing
+            // composition fails closed, then this exact configuration may retry that same
+            // uncommitted presentation revision.
+            lastAttemptedRevision = 0L;
+            lastBuildError = null;
+            lastLoggedFailureRevision = long.MinValue;
+            lastLoggedFailureMessage = null;
         }
 
         public bool Synchronize()
@@ -220,7 +268,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     throw new InvalidOperationException(BuildCatalogFailure(importResult));
                 }
 
-                StableId runId = StableId.Parse(runStableId);
+                StableId runId = configuredRunStableId;
                 StableId difficultyId = StableId.Parse(difficultyStableId);
                 StableId currentRoomId = projection.CurrentRoomStableId;
                 AuthorableRoomDefinitionV1 authoredRoom =
@@ -461,14 +509,13 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         private EnemyRuntimeDownstreamPortsV1 BuildDownstreamPorts()
         {
-            var rewards = new NoRewardPort();
             return new EnemyRuntimeDownstreamPortsV1(
                 new UnconnectedAttackPort(),
                 new UnconnectedPlayerDamagePort(),
                 new EnemyRoomPort(this),
-                rewards,
-                rewards,
-                rewards,
+                configuredExperienceConsumer,
+                configuredDropConsumer,
+                configuredKillStatisticsConsumer,
                 new EnemyCollisionPort(this));
         }
 
@@ -606,10 +653,15 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 throw new InvalidOperationException(
                     "The imported room bundle does not match the live room definition.");
             }
-            if (string.IsNullOrWhiteSpace(runStableId))
+            if (!runDownstreamConfigured
+                || configuredRunStableId == null
+                || configuredExperienceConsumer == null
+                || configuredDropConsumer == null
+                || configuredKillStatisticsConsumer == null)
             {
                 throw new InvalidOperationException(
-                    "A run stable ID is required to compose room enemies.");
+                    "An exact run identity and typed enemy-death downstream composition "
+                    + "are required before room enemies can bind.");
             }
             if (string.IsNullOrWhiteSpace(difficultyStableId))
             {
@@ -845,32 +897,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 return new EnemyPlayerDamagePortResultV1(
                     EnemyRuntimeOperationStatusV1.Rejected,
                     EnemyRuntimeRejectionCodeV1.InvalidCommand);
-            }
-        }
-
-        private sealed class NoRewardPort :
-            IEnemyExperienceFactConsumerV1,
-            IEnemyDropFactConsumerV1,
-            IEnemyKillStatFactConsumerV1
-        {
-            void IEnemyExperienceFactConsumerV1.Consume(EnemyDeathFactV1 fact)
-            {
-                RequireFact(fact);
-            }
-
-            void IEnemyDropFactConsumerV1.Consume(EnemyDeathFactV1 fact)
-            {
-                RequireFact(fact);
-            }
-
-            void IEnemyKillStatFactConsumerV1.Consume(EnemyDeathFactV1 fact)
-            {
-                RequireFact(fact);
-            }
-
-            private static void RequireFact(EnemyDeathFactV1 fact)
-            {
-                if (fact == null) throw new ArgumentNullException(nameof(fact));
             }
         }
     }
