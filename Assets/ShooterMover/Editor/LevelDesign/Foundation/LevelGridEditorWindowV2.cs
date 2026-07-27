@@ -54,6 +54,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private string notificationMessage = string.Empty;
         private Vector2 notificationPosition;
         private double notificationUntil;
+        // Retained for the legacy no-op queued-refresh callback in the state partial.
+        private bool validationQueued;
 
         public LevelDesignSceneAuthoringRoot2D ActiveRoot
         {
