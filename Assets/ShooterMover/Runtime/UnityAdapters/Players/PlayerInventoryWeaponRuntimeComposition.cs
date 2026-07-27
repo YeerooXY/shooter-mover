@@ -154,7 +154,8 @@ namespace ShooterMover.UnityAdapters.Players
             var executionAdapter = new InventoryBackedWeaponExecutionAdapter(
                 new CanonicalWeaponEquipmentProjectionLookupV2(
                     loadoutRuntime.WeaponHoldings,
-                    loadoutRuntime.EquipmentCatalog),
+                    loadoutRuntime.EquipmentCatalog,
+                    loadoutRuntime.Holdings),
                 loadoutRuntime.EquipmentCatalog,
                 loadoutRuntime.WeaponCatalog,
                 playerState,
