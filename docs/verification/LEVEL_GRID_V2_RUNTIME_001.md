@@ -46,11 +46,20 @@ A complete second pass found four additional real edge cases and repaired them:
 
 The same pass also moved optional-enemy validation, finite rotation checks and background/foreground placement validation into the V2 compiler rather than relying only on the downstream compatibility importer.
 
+## Unity-facing static pass
+
+A separate assembly/API-focused pass checked the new tests and editor code against the existing assembly definitions and room-runtime APIs. It found one additional Unity-specific migration defect:
+
+- Unity folder `.meta` files were not moved or deleted with room directories. A moved room could lose its folder GUID, leave orphaned metadata behind, or inherit the GUID of a deleted room when reusing its coordinate.
+
+The migration now moves the room folder and its sibling `.meta` as one ownership unit, deletes deleted-room folder metadata, and removes folder-less stale metadata before assigning a path. Dedicated EditMode tests verify both ordinary room moves and deleted-coordinate reuse preserve only the surviving room’s folder GUID.
+
 ## Static verification performed in the connected environment
 
 - inspected merged PR #333 and current `main` authoring/runtime boundaries;
 - inspected `RoomContentJsonImporterV1`, including exact door-rule matching and ambiguity behavior;
 - confirmed the compiler output remains a `RoomContentJsonPackageV1` and is validated through the existing importer before Unity assets are written;
+- checked the new EditMode and PlayMode code against the referenced assembly definitions and established room-runtime test APIs;
 - generated and parsed every tracked V2 and generated V1 JSON document;
 - verified the V2 room index is `room ID → coordinate+slot folder`, while runtime links use only stable room ID + door ID;
 - verified exact connections are starter-east → single-west and single-east → double-west, with source endpoints retaining progression semantics regardless of grid placement;
@@ -61,7 +70,7 @@ The same pass also moved optional-enemy validation, finite rotation checks and b
 - verified authored broad door rules are matched before defaults using the retained importer’s selector semantics;
 - verified the compiled runtime asset references the manifest and all 15 generated room documents;
 - verified the production catalogue selects the existing gameplay scene and `Level1EnemyCatalog`;
-- inspected stable-ID folder migration, deleted-coordinate reuse, destination ownership and the transactional staged compile/import gate;
+- inspected stable-ID folder migration, folder metadata ownership, deleted-coordinate reuse, destination ownership and the transactional staged compile/import gate;
 - confirmed PR #336 has no submitted reviews, inline review threads or discussion comments at the time of this audit.
 
 ## EditMode coverage authored
@@ -96,6 +105,11 @@ The same pass also moved optional-enemy validation, finite rotation checks and b
 - export destination level-ownership rejection;
 - a surviving room reusing a coordinate vacated by a deleted room while retaining only its own sidecars.
 
+`LevelGridV2UnityMetadataRegressionTests` adds focused coverage for:
+
+- moving a room folder while preserving its Unity folder GUID metadata;
+- reusing a deleted room’s coordinate without adopting its deleted folder GUID.
+
 ## PlayMode coverage authored
 
 `LevelGridV2CompiledAssetPlayModeTests` performs two checks against the tracked build-included resource:
@@ -117,7 +131,7 @@ These tests exercise the existing imported room authority, but they do not repla
 Not performed in this connected environment:
 
 - Unity 6000.3.19f1 import/domain reload;
-- C# compilation;
+- C# compilation by Unity/Roslyn with project-generated references;
 - Console missing-script, missing-assembly and serialization scan;
 - EditMode test execution/XML result;
 - PlayMode test execution/XML result;
@@ -129,8 +143,8 @@ The pull request must remain draft until these checks run in a real Unity checko
 
 1. Open the three-room graph in Unity.
 2. Move at least one connected room to the opposite side of its neighbour, export, and confirm the same progression/return doors remain gated.
-3. Confirm that room's enemies, props, decor and encounter sidecars remain attached after the move.
-4. Delete a different room, move a surviving room into the deleted room’s old coordinate+slot, export, and confirm only the survivor’s sidecars remain.
+3. Confirm that room’s enemies, props, decor, encounter sidecars and folder GUID remain attached after the move.
+4. Delete a different room, move a surviving room into the deleted room’s old coordinate+slot, export, and confirm only the survivor’s sidecars and folder GUID remain.
 5. Attempt export into another level’s non-empty folder and confirm the operation is blocked before replacement.
 6. Compile the tracked compiler-ready V2 package.
 7. Enter **COMBAT LOOP TEST** through normal Level Selection.
