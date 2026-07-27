@@ -13,6 +13,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons;
 
 namespace ShooterMover.Application.Equipment.Upgrades
 {
@@ -110,6 +111,19 @@ namespace ShooterMover.Application.Equipment.Upgrades
             }
 
             EquipmentInstance equipment = holding.EquipmentInstance;
+            CanonicalWeaponOperationAvailabilityV1 upgradeAvailability =
+                EvaluateGenericUpgradeAvailability(catalog, equipment);
+            if (!upgradeAvailability.IsAvailable)
+            {
+                failure = Failure(
+                    AugmentUpgradeConfirmationStatusV1.InvalidRequest,
+                    confirmation.ConfirmationStableId,
+                    confirmation.Fingerprint,
+                    upgradeAvailability.RejectionCode,
+                    quote);
+                return false;
+            }
+
             if (!string.Equals(
                 quote.EquipmentFingerprint,
                 equipment.Fingerprint,
