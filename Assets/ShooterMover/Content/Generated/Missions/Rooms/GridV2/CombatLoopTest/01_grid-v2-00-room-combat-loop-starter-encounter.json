@@ -1,0 +1,13 @@
+{
+  "room": "room.combat-loop-starter",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {
+        "door_id": "door.combat-loop-starter-east"
+      },
+      "open_when": "room-complete"
+    }
+  ]
+}

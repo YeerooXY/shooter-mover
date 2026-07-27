@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "room": "room.combat-loop-double",
+  "tiles": [
+    {
+      "object": "tile.floor-industrial",
+      "fill": {
+        "from": [
+          -12,
+          -7
+        ],
+        "to": [
+          12,
+          7
+        ]
+      }
+    }
+  ]
+}

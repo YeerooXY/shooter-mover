@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "nodes": [
+    {
+      "room_id": "room.combat-loop-starter",
+      "grid_position": [
+        0,
+        0
+      ],
+      "slot": 1,
+      "label": "STARTER ROOM",
+      "visible_on_map": true
+    },
+    {
+      "room_id": "room.combat-loop-single",
+      "grid_position": [
+        1,
+        0
+      ],
+      "slot": 1,
+      "label": "SINGLE CONTACT",
+      "visible_on_map": true
+    },
+    {
+      "room_id": "room.combat-loop-double",
+      "grid_position": [
+        2,
+        0
+      ],
+      "slot": 1,
+      "label": "CROSSFIRE",
+      "visible_on_map": true
+    }
+  ],
+  "connections": [
+    {
+      "connection_id": "connection.combat-loop-starter-single",
+      "from": {
+        "room_id": "room.combat-loop-starter",
+        "door_id": "door.combat-loop-starter-east"
+      },
+      "to": {
+        "room_id": "room.combat-loop-single",
+        "door_id": "door.combat-loop-single-west"
+      },
+      "travel_policy": "Bidirectional"
+    },
+    {
+      "connection_id": "connection.combat-loop-single-double",
+      "from": {
+        "room_id": "room.combat-loop-single",
+        "door_id": "door.combat-loop-single-east"
+      },
+      "to": {
+        "room_id": "room.combat-loop-double",
+        "door_id": "door.combat-loop-double-west"
+      },
+      "travel_policy": "Bidirectional"
+    }
+  ]
+}

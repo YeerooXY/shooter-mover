@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "room_id": "room.combat-loop-starter",
+  "display_name": "STARTER ROOM",
+  "grid_position": [
+    0,
+    0
+  ],
+  "slot": 1,
+  "footprint_cells": [
+    1,
+    1
+  ],
+  "runtime_bounds": {
+    "center": [
+      0,
+      0
+    ],
+    "size": [
+      24,
+      14
+    ]
+  },
+  "player_start": {
+    "position": [
+      -9,
+      0
+    ],
+    "rotation": 0
+  }
+}

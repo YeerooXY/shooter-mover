@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "room": "room.combat-loop-single",
+  "enemies": [
+    {
+      "id": "single-droid",
+      "object": "enemy.moving-droid",
+      "level": 1,
+      "position": [
+        4,
+        0
+      ],
+      "rotation": 180
+    }
+  ]
+}

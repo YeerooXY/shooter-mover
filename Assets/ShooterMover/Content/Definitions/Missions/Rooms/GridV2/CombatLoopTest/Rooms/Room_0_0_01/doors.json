@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "room_id": "room.combat-loop-starter",
+  "doors": [
+    {
+      "door_id": "door.combat-loop-starter-east",
+      "side": "East",
+      "placement_mode": "Fixed",
+      "current_local_position": [
+        11,
+        0
+      ],
+      "traversable": true,
+      "visible_on_map": true,
+      "runtime_object": "door.room-standard"
+    }
+  ]
+}

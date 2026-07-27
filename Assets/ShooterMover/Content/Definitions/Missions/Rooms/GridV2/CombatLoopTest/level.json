@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "level_id": "level.authored-json-combat-loop-test",
+  "authoring_state": "validated-playable",
+  "runtime_import_status": "compiler-ready",
+  "start_room_id": "room.combat-loop-starter",
+  "final_exit": {
+    "room_id": "room.combat-loop-double",
+    "door_id": "door.combat-loop-double-exit"
+  },
+  "room_ids": [
+    "room.combat-loop-starter",
+    "room.combat-loop-single",
+    "room.combat-loop-double"
+  ],
+  "rooms": [
+    {
+      "room_id": "room.combat-loop-starter",
+      "grid_position": [
+        0,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_0_0_01"
+    },
+    {
+      "room_id": "room.combat-loop-single",
+      "grid_position": [
+        1,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_1_0_01"
+    },
+    {
+      "room_id": "room.combat-loop-double",
+      "grid_position": [
+        2,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_2_0_01"
+    }
+  ]
+}

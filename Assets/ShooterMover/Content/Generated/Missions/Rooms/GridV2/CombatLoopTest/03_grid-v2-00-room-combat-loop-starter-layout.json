@@ -1,0 +1,52 @@
+{
+  "room": "room.combat-loop-starter",
+  "order": 0,
+  "display_name": "STARTER ROOM",
+  "bounds": {
+    "center": [
+      0,
+      0
+    ],
+    "size": [
+      24,
+      14
+    ]
+  },
+  "spawns": [
+    {
+      "id": "player-start",
+      "kind": "player",
+      "position": [
+        -9,
+        0
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "arrival-door-combat-loop-starter-east",
+      "kind": "auxiliary",
+      "position": [
+        10,
+        0
+      ],
+      "rotation": 180
+    }
+  ],
+  "doors": [
+    {
+      "id": "door.combat-loop-starter-east",
+      "object": "door.room-standard",
+      "position": [
+        11,
+        0
+      ],
+      "rotation": 0,
+      "link": {
+        "kind": "room",
+        "exit_type": "progression",
+        "target_room": "room.combat-loop-single",
+        "target_spawn": "arrival-door-combat-loop-single-west"
+      }
+    }
+  ]
+}

@@ -1,0 +1,304 @@
+#if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using ShooterMover.Application.Missions.Rooms.Content;
+using ShooterMover.Content.Definitions.Missions.Rooms;
+using ShooterMover.UnityAdapters.Authoring.LevelDesign;
+using UnityEditor;
+using UnityEngine;
+
+namespace ShooterMover.Editor.LevelDesign.Foundation
+{
+    /// <summary>
+    /// Exports the editor graph into the compiler-ready V2 package. Unlike the Phase-1 draft
+    /// exporter, this command requires explicit start/final metadata and writes room-local runtime
+    /// bounds and door coordinates suitable for the build-time compiler.
+    /// </summary>
+    public static partial class LevelGridV2PlayableExporter
+    {
+        private static readonly UTF8Encoding Utf8WithoutBom = new UTF8Encoding(false);
+
+        [MenuItem(
+            "Tools/Shooter Mover/Level Design/Export Compiler-Ready Grid V2 Package...",
+            priority = 254)]
+        private static void ExportSelected()
+        {
+            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            if (root == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Playable Grid V2 Export",
+                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "OK");
+                return;
+            }
+
+            string outputRoot = EditorUtility.OpenFolderPanel(
+                "Export Compiler-Ready Level Grid V2 Package",
+                Application.dataPath,
+                (root.LevelIdText ?? "level").Replace('.', '_'));
+            if (string.IsNullOrWhiteSpace(outputRoot)) return;
+
+            try
+            {
+                Export(root, outputRoot);
+                AssetDatabase.Refresh();
+                EditorUtility.RevealInFinder(outputRoot);
+                Debug.Log(
+                    "Compiler-ready Level Grid V2 package exported to " + outputRoot,
+                    root);
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Debug.LogError(
+                    "Compiler-ready Level Grid V2 export failed: " + exception.Message,
+                    root);
+                EditorUtility.DisplayDialog(
+                    "Playable Grid V2 Export Failed",
+                    exception.Message,
+                    "OK");
+            }
+        }
+
+        public static void Export(
+            LevelDesignSceneAuthoringRoot2D root,
+            string outputRoot)
+        {
+            if (root == null) throw new ArgumentNullException(nameof(root));
+            if (string.IsNullOrWhiteSpace(outputRoot))
+            {
+                throw new ArgumentException("An output folder is required.", nameof(outputRoot));
+            }
+
+            LevelGridPlayableMetadataV2 metadata =
+                root.GetComponent<LevelGridPlayableMetadataV2>();
+            if (metadata == null)
+            {
+                throw new InvalidOperationException(
+                    "Add LevelGridPlayableMetadataV2 to the level root before playable export.");
+            }
+            metadata.ValidateForPlayableExport(root);
+            LevelGridDoorOperationsV2.ReflowAll(root);
+
+            LevelDesignValidationResult foundation = root.ValidateHierarchy();
+            if (foundation == null || !foundation.IsValid)
+            {
+                throw new InvalidOperationException(
+                    "Existing level-design foundation validation must pass before playable export.");
+            }
+
+            LevelRoomAuthoring2D[] rooms =
+                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelDoorEndpointAuthoring2D[] doors =
+                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            LevelDoorLinkAuthoring2D[] links =
+                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            Array.Sort(rooms, CompareRooms);
+            Array.Sort(doors, CompareDoors);
+            Array.Sort(links, CompareLinks);
+            ValidateGraphAllowingFinalExit(rooms, doors, links, metadata);
+
+            string absoluteOutput = Path.GetFullPath(outputRoot);
+            LevelGridV2RoomFolderMigration.ValidateDestinationRoot(
+                absoluteOutput,
+                root.LevelIdText);
+            string parent = Directory.GetParent(absoluteOutput) == null
+                ? null
+                : Directory.GetParent(absoluteOutput).FullName;
+            if (string.IsNullOrEmpty(parent))
+            {
+                throw new InvalidOperationException(
+                    "Choose a dedicated level folder below a writable parent.");
+            }
+
+            string stage = Path.Combine(
+                parent,
+                "." + Path.GetFileName(absoluteOutput) + ".playable-stage-"
+                + Guid.NewGuid().ToString("N"));
+            string backup = Path.Combine(
+                parent,
+                "." + Path.GetFileName(absoluteOutput) + ".playable-backup-"
+                + Guid.NewGuid().ToString("N"));
+            DeleteSiblingMeta(stage);
+            DeleteSiblingMeta(backup);
+            bool existed = Directory.Exists(absoluteOutput);
+            try
+            {
+                if (existed) CopyDirectory(absoluteOutput, stage);
+                else Directory.CreateDirectory(stage);
+                WritePackage(root, metadata, rooms, doors, links, stage);
+                ValidateStagedPackage(stage);
+                if (existed) Directory.Move(absoluteOutput, backup);
+                Directory.Move(stage, absoluteOutput);
+            }
+            catch
+            {
+                TryDeleteDirectoryAndMeta(stage);
+                if (Directory.Exists(backup) && !Directory.Exists(absoluteOutput))
+                {
+                    Directory.Move(backup, absoluteOutput);
+                }
+                TryDeleteSiblingMeta(backup);
+                throw;
+            }
+
+            // The new package is committed once the stage occupies the destination. Cleanup is
+            // deliberately best-effort so an orphaned backup cannot turn a successful export into
+            // a reported failure after the authoritative package has already changed.
+            TryDeleteSiblingMeta(stage);
+            TryDeleteDirectoryAndMeta(backup);
+        }
+
+        private static void ValidateStagedPackage(string stage)
+        {
+            LevelGridV2CompileResult compile = LevelGridV2AssetCompiler.CompileFolder(stage);
+            if (compile == null || !compile.IsValid)
+            {
+                string detail = compile != null && compile.Issues.Count > 0
+                    ? compile.Issues[0].ToString()
+                    : "Compilation failed without a structured issue.";
+                throw new InvalidOperationException(
+                    "The staged playable package did not compile: " + detail);
+            }
+
+            RoomContentImportResultV1 imported = RoomContentJsonImporterV1.Import(
+                compile.Package,
+                BuiltInRoomContentObjectCatalogV1.Create());
+            if (imported == null || !imported.IsValid)
+            {
+                string detail = imported != null && imported.Issues.Count > 0
+                    ? imported.Issues[0].Code + " at " + imported.Issues[0].Path
+                        + ": " + imported.Issues[0].Message
+                    : "The existing V1 importer rejected the staged package.";
+                throw new InvalidOperationException(
+                    "The staged playable package failed runtime import validation: " + detail);
+            }
+        }
+
+        private static void ValidateGraphAllowingFinalExit(
+            LevelRoomAuthoring2D[] rooms,
+            LevelDoorEndpointAuthoring2D[] doors,
+            LevelDoorLinkAuthoring2D[] links,
+            LevelGridPlayableMetadataV2 metadata)
+        {
+            var roomRecords = new List<LevelRoomRecord>(rooms.Length);
+            var gridRooms = new List<LevelGridRoomRecordV2>(rooms.Length);
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                roomRecords.Add(rooms[i].BuildRecord());
+                gridRooms.Add(rooms[i].BuildGridRecord());
+            }
+
+            var doorRecords = new List<LevelGridDoorRecordV2>(doors.Length);
+            for (int i = 0; i < doors.Length; i++)
+            {
+                LevelGridDoorRecordV2 value = doors[i].BuildRecord();
+                if (doors[i] == metadata.FinalExitDoor)
+                {
+                    value = new LevelGridDoorRecordV2(
+                        value.DoorId,
+                        value.RoomId,
+                        value.Side,
+                        value.PlacementMode,
+                        value.EdgeOffset,
+                        value.FixedLocalPosition,
+                        false,
+                        value.VisibleOnMap,
+                        value.AutoFaceConnection,
+                        value.DiagnosticLocation);
+                }
+                doorRecords.Add(value);
+            }
+
+            var connectionRecords = new List<LevelGridConnectionRecordV2>(links.Length);
+            for (int i = 0; i < links.Length; i++)
+            {
+                LevelGridConnectionRecordV2 record = links[i].BuildRecord();
+                if ((string.Equals(record.SourceRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
+                        && string.Equals(record.SourceDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal))
+                    || (string.Equals(record.DestinationRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
+                        && string.Equals(record.DestinationDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal)))
+                {
+                    throw new InvalidOperationException(
+                        "The exact final-exit endpoint cannot also participate in a room connection.");
+                }
+                connectionRecords.Add(record);
+            }
+
+            LevelGridValidationResultV2 result =
+                LevelGridAuthoringV2CompositeValidator.Validate(
+                    roomRecords,
+                    gridRooms,
+                    doorRecords,
+                    connectionRecords,
+                    LevelGridValidationPurposeV2.ProductionPublish);
+            if (!result.CanPublish)
+            {
+                LevelGridProblemV2 issue = result.Problems.Count == 0
+                    ? null
+                    : result.Problems[0];
+                throw new InvalidOperationException(
+                    issue == null
+                        ? "Level Grid V2 production validation failed."
+                        : issue.ToString());
+            }
+        }
+
+        private static void DeleteSiblingMeta(string directoryPath)
+        {
+            string metaPath = directoryPath + ".meta";
+            if (File.Exists(metaPath)) File.Delete(metaPath);
+        }
+
+        private static void TryDeleteSiblingMeta(string directoryPath)
+        {
+            try
+            {
+                DeleteSiblingMeta(directoryPath);
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Debug.LogWarning(
+                    "Playable Grid V2 cleanup could not delete metadata '"
+                    + directoryPath + ".meta': " + exception.Message);
+            }
+        }
+
+        private static void TryDeleteDirectoryAndMeta(string directoryPath)
+        {
+            try
+            {
+                if (Directory.Exists(directoryPath)) Directory.Delete(directoryPath, true);
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Debug.LogWarning(
+                    "Playable Grid V2 cleanup could not delete directory '"
+                    + directoryPath + "': " + exception.Message);
+            }
+            TryDeleteSiblingMeta(directoryPath);
+        }
+
+    }
+}
+#endif

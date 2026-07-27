@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "room_id": "room.combat-loop-single",
+  "display_name": "SINGLE CONTACT",
+  "grid_position": [
+    1,
+    0
+  ],
+  "slot": 1,
+  "footprint_cells": [
+    1,
+    1
+  ],
+  "runtime_bounds": {
+    "center": [
+      0,
+      0
+    ],
+    "size": [
+      24,
+      14
+    ]
+  }
+}

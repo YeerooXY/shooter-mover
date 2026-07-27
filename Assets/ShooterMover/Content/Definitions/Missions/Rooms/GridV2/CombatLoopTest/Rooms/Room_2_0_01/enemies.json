@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "room": "room.combat-loop-double",
+  "enemies": [
+    {
+      "id": "double-droid-lower",
+      "object": "enemy.moving-droid",
+      "level": 1,
+      "position": [
+        4,
+        -3
+      ],
+      "rotation": 180
+    },
+    {
+      "id": "double-droid-upper",
+      "object": "enemy.moving-droid",
+      "level": 1,
+      "position": [
+        4,
+        3
+      ],
+      "rotation": 180
+    }
+  ]
+}
