@@ -23,6 +23,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static readonly UTF8Encoding Utf8WithoutBom = new UTF8Encoding(false);
 
         internal static Action BeforeCommitForTests;
+        internal static Action AfterBackupMoveForTests;
 
         [MenuItem(
             "Tools/Shooter Mover/Level Design/Export Compiler-Ready Grid V2 Package...",
@@ -175,19 +176,32 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                             + "' changed while it was being moved to the rollback backup. "
                             + "The staged package was not published.");
                     }
+
+                    Action afterBackupMove = AfterBackupMoveForTests;
+                    if (afterBackupMove != null)
+                    {
+                        afterBackupMove();
+                    }
                 }
 
                 // Commit point: the fully validated stage becomes the authoritative source package.
                 Directory.Move(stage, absoluteOutput);
             }
-            catch
+            catch (Exception exception)
             {
                 TryDeleteDirectoryAndMeta(stage);
-                if (Directory.Exists(backup) && !Directory.Exists(absoluteOutput))
-                {
-                    Directory.Move(backup, absoluteOutput);
-                }
+                Exception rollbackFailure = TryRestoreBackup(backup, absoluteOutput);
                 TryDeleteSiblingMeta(backup);
+                if (rollbackFailure != null)
+                {
+                    throw new InvalidOperationException(
+                        "Playable export failed before commit and automatic rollback could not "
+                            + "restore the previous exact destination. The previous package remains "
+                            + "recoverable at '" + backup + "'. Original failure: "
+                            + exception.Message + " Rollback failure: "
+                            + rollbackFailure.Message,
+                        new AggregateException(exception, rollbackFailure));
+                }
                 throw;
             }
 
@@ -251,7 +265,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 root,
                 "*",
                 SearchOption.AllDirectories);
-            Array.Sort(directories, StringComparer.OrdinalIgnoreCase);
+            Array.Sort(directories, StringComparer.Ordinal);
             for (int index = 0; index < directories.Length; index++)
             {
                 AppendSnapshot(
@@ -264,7 +278,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 root,
                 "*",
                 SearchOption.AllDirectories);
-            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            Array.Sort(files, StringComparer.Ordinal);
             for (int index = 0; index < files.Length; index++)
             {
                 string relative = RelativeSnapshotPath(root, files[index]);
@@ -395,6 +409,37 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     issue == null
                         ? "Level Grid V2 production validation failed."
                         : issue.ToString());
+            }
+        }
+
+        private static Exception TryRestoreBackup(
+            string backup,
+            string absoluteOutput)
+        {
+            if (!Directory.Exists(backup))
+            {
+                return null;
+            }
+            if (Directory.Exists(absoluteOutput))
+            {
+                return new IOException(
+                    "The destination was occupied before rollback could restore the previous package.");
+            }
+
+            try
+            {
+                Directory.Move(backup, absoluteOutput);
+                return null;
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                return exception;
             }
         }
 
