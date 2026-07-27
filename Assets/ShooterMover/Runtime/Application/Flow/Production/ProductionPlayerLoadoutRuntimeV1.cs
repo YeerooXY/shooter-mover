@@ -16,7 +16,8 @@ namespace ShooterMover.Application.Flow.Production
 {
     /// <summary>
     /// Character-local production inventory composition. Generic holdings retain reward receipts
-    /// and non-weapon inventory; WeaponHoldings is the sole owned-weapon authority.
+    /// and non-weapon inventory; WeaponHoldings and MountLoadoutAuthority are the sole canonical
+    /// weapon ownership and equipped-state authorities.
     /// </summary>
     public sealed class ProductionPlayerLoadoutRuntimeV1
     {
@@ -59,22 +60,36 @@ namespace ShooterMover.Application.Flow.Production
 
             WeaponHoldings = new ProductionWeaponHoldingsAuthorityV2(
                 state.WeaponHoldings);
-            Holdings = new CanonicalizingPlayerHoldingsAuthorityV2(
+            Holdings = new CanonicalFirstPlayerHoldingsAuthorityV2(
                 LegacyHoldings,
                 WeaponHoldings);
+            MountLoadoutAuthority = new ProductionWeaponMountLoadoutAuthorityV2(
+                MountLayout,
+                WeaponHoldings,
+                state.WeaponMountLoadout);
+
+            InventoryLoadoutAuthoritySnapshotV1 compatibilityLoadout =
+                ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
+                    MountLayout,
+                    MountLoadoutAuthority.ExportSnapshot(),
+                    state.Loadout);
             LoadoutAuthority = new ProductionInventoryLoadoutAuthorityV1(
-                RoutePayload,
+                ProductionWeaponMountLoadoutProjectionV2.Route(
+                    RoutePayload.SelectedCharacterStableId,
+                    RoutePayload.LoadoutProfileStableId,
+                    MountLayout,
+                    MountLoadoutAuthority.ExportSnapshot()),
                 Holdings,
                 CatalogAdapter,
                 WeaponHoldings,
                 WeaponCatalog);
 
             ProductionInventoryLoadoutImportResultV1 loadoutImport =
-                LoadoutAuthority.ImportSnapshot(state.Loadout);
+                LoadoutAuthority.ImportSnapshot(compatibilityLoadout);
             if (loadoutImport == null || !loadoutImport.Succeeded)
             {
                 throw new InvalidOperationException(
-                    "Unable to restore production loadout: "
+                    "Unable to restore production loadout projection: "
                     + (loadoutImport == null
                         ? "result-null"
                         : loadoutImport.RejectionCode));
@@ -86,16 +101,21 @@ namespace ShooterMover.Application.Flow.Production
         {
             get
             {
-                return ProductionWeaponOnboardingV1.RouteFromLoadout(
+                return ProductionWeaponMountLoadoutProjectionV2.Route(
                     RoutePayload.SelectedCharacterStableId,
                     RoutePayload.LoadoutProfileStableId,
-                    LoadoutAuthority.ExportSnapshot());
+                    MountLayout,
+                    MountLoadoutAuthority.ExportSnapshot());
             }
         }
         public ProductionWeaponMountLayoutV1 MountLayout { get; }
         public PlayerHoldingsService LegacyHoldings { get; }
         public IPlayerHoldingsAuthorityV1 Holdings { get; }
         public ProductionWeaponHoldingsAuthorityV2 WeaponHoldings { get; }
+        public ProductionWeaponMountLoadoutAuthorityV2 MountLoadoutAuthority
+        {
+            get;
+        }
         public EquipmentCatalog EquipmentCatalog { get; }
         public ProductionEquipmentCatalogAdapterV1 CatalogAdapter { get; }
         public WeaponCatalog WeaponCatalog { get; }
@@ -112,6 +132,7 @@ namespace ShooterMover.Application.Flow.Production
                 loadoutProfileStableId,
                 holdings,
                 null,
+                null,
                 loadout);
         }
 
@@ -122,12 +143,30 @@ namespace ShooterMover.Application.Flow.Production
             WeaponHoldingsSnapshotV2 weaponHoldings,
             InventoryLoadoutAuthoritySnapshotV1 loadout)
         {
+            return Restore(
+                characterInstanceStableId,
+                loadoutProfileStableId,
+                genericHoldings,
+                weaponHoldings,
+                null,
+                loadout);
+        }
+
+        public static ProductionPlayerLoadoutRuntimeV1 Restore(
+            StableId characterInstanceStableId,
+            StableId loadoutProfileStableId,
+            PlayerHoldingsSnapshotV1 genericHoldings,
+            WeaponHoldingsSnapshotV2 weaponHoldings,
+            WeaponMountLoadoutSnapshotV2 weaponMountLoadout,
+            InventoryLoadoutAuthoritySnapshotV1 loadout)
+        {
             return new ProductionPlayerLoadoutRuntimeV1(
                 ProductionWeaponOnboardingV2.Restore(
                     characterInstanceStableId,
                     loadoutProfileStableId,
                     genericHoldings,
                     weaponHoldings,
+                    weaponMountLoadout,
                     loadout));
         }
 
@@ -137,21 +176,22 @@ namespace ShooterMover.Application.Flow.Production
         {
             instance = null;
             rejectionCode = string.Empty;
-            InventoryLoadoutAuthoritySnapshotV1 loadout =
-                LoadoutAuthority.ExportSnapshot();
+            WeaponMountLoadoutSnapshotV2 mounts =
+                MountLoadoutAuthority.ExportSnapshot();
             for (int index = 0; index < MountLayout.Positions.Count; index++)
             {
                 ProductionWeaponMountPositionV1 position =
                     MountLayout.Positions[index];
-                if (position.Availability
-                    != ProductionWeaponMountAvailabilityV1.Active)
+                if (!position.IsActive)
                 {
                     continue;
                 }
 
-                StableId instanceId = loadout.GetBinding(
-                    position.LoadoutSlotStableId)
-                    .EquipmentInstanceStableId;
+                WeaponMountBindingV2 binding = mounts.Find(
+                    position.MountStableId);
+                StableId instanceId = binding == null
+                    ? null
+                    : binding.InstanceId;
                 if (instanceId == null)
                 {
                     continue;
@@ -236,8 +276,8 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Exact-instance equipped truth for one character. Empty active mounts are valid.
-    /// Locked/nonexistent mounts must remain unbound.
+    /// Compatibility projection for generic armor and fixed route slots. Canonical weapon equipped
+    /// truth is owned by ProductionWeaponMountLoadoutAuthorityV2.
     /// </summary>
     public sealed class ProductionInventoryLoadoutAuthorityV1 :
         IInventoryLoadoutAuthorityPortV1
