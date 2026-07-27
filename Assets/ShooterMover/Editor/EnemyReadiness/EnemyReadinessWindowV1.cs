@@ -172,12 +172,11 @@ namespace ShooterMover.Editor.Enemies
                 presentationFailure = "Presentation catalogue invalid: " + exception.Message;
             }
 
-            EnemyPresentationAdapter2D adapter = prefab == null
-                ? null
-                : prefab.GetComponentInChildren<EnemyPresentationAdapter2D>(true);
-            string adapterFailure = string.Empty;
-            bool presentationRegistered = adapter != null
-                && adapter.TryValidateFor(definition.DefinitionId, out adapterFailure);
+            string adapterFailure;
+            bool presentationRegistered = ReadPresentationEvidence(
+                prefab,
+                definition.DefinitionId,
+                out adapterFailure);
 
             StableId mappedPresentation;
             bool roomMappingAvailable = string.IsNullOrEmpty(roomFailure)
@@ -192,12 +191,7 @@ namespace ShooterMover.Editor.Enemies
 
             var missing = new List<string>();
             if (!string.IsNullOrEmpty(presentationFailure)) missing.Add(presentationFailure);
-            if (!presentationRegistered)
-            {
-                missing.Add(string.IsNullOrEmpty(adapterFailure)
-                    ? "No matching presentation adapter is registered."
-                    : adapterFailure);
-            }
+            if (!presentationRegistered) missing.Add(adapterFailure);
             if (!roomMappingAvailable)
             {
                 missing.Add(string.IsNullOrEmpty(roomFailure)
@@ -229,46 +223,131 @@ namespace ShooterMover.Editor.Enemies
                 ready ? "All required production evidence is present." : string.Join(" ", missing));
         }
 
+        private static bool ReadPresentationEvidence(
+            GameObject prefab,
+            StableId definitionId,
+            out string reason)
+        {
+            if (prefab == null)
+            {
+                reason = "No presentation prefab is registered.";
+                return false;
+            }
+
+            EnemyPresentationAdapter2D[] adapters =
+                prefab.GetComponentsInChildren<EnemyPresentationAdapter2D>(true);
+            if (adapters.Length == 0)
+            {
+                reason = "No matching presentation adapter is registered.";
+                return false;
+            }
+            if (adapters.Length > 1)
+            {
+                reason = "Multiple presentation adapters are registered; ownership is ambiguous.";
+                return false;
+            }
+
+            try
+            {
+                return adapters[0].TryValidateFor(definitionId, out reason);
+            }
+            catch (Exception exception)
+            {
+                reason = "Presentation evidence failed: " + exception.Message;
+                return false;
+            }
+        }
+
         private static bool ReadMechanicsEvidence(GameObject prefab, out string reason)
         {
+            IEnemyRuntimeMechanicsReadiness2D evidence = null;
+            int count = 0;
             if (prefab != null)
             {
                 MonoBehaviour[] components = prefab.GetComponentsInChildren<MonoBehaviour>(true);
                 for (int index = 0; index < components.Length; index++)
                 {
-                    IEnemyRuntimeMechanicsReadiness2D evidence =
+                    IEnemyRuntimeMechanicsReadiness2D candidate =
                         components[index] as IEnemyRuntimeMechanicsReadiness2D;
-                    if (evidence == null) continue;
-                    reason = string.IsNullOrWhiteSpace(evidence.RuntimeMechanicsReadinessReason)
-                        ? "Runtime mechanics evidence reports unsupported."
-                        : evidence.RuntimeMechanicsReadinessReason;
-                    return evidence.RuntimeMechanicsReady;
+                    if (candidate == null) continue;
+                    evidence = candidate;
+                    count++;
                 }
             }
 
-            reason = "No typed production mechanics-readiness evidence is registered.";
-            return false;
+            if (count == 0)
+            {
+                reason = "No typed production mechanics-readiness evidence is registered.";
+                return false;
+            }
+            if (count > 1)
+            {
+                reason = "Multiple runtime mechanics-readiness providers are registered; ownership is ambiguous.";
+                return false;
+            }
+
+            try
+            {
+                bool ready = evidence.RuntimeMechanicsReady;
+                string detail = evidence.RuntimeMechanicsReadinessReason;
+                reason = string.IsNullOrWhiteSpace(detail)
+                    ? (ready
+                        ? string.Empty
+                        : "Runtime mechanics evidence reports unsupported.")
+                    : detail;
+                return ready;
+            }
+            catch (Exception exception)
+            {
+                reason = "Runtime mechanics readiness evidence failed: " + exception.Message;
+                return false;
+            }
         }
 
         private static bool ReadPlayerDamageEvidence(GameObject prefab, out string reason)
         {
+            IEnemyPlayerDamageRouteReadiness2D evidence = null;
+            int count = 0;
             if (prefab != null)
             {
                 MonoBehaviour[] components = prefab.GetComponentsInChildren<MonoBehaviour>(true);
                 for (int index = 0; index < components.Length; index++)
                 {
-                    IEnemyPlayerDamageRouteReadiness2D evidence =
+                    IEnemyPlayerDamageRouteReadiness2D candidate =
                         components[index] as IEnemyPlayerDamageRouteReadiness2D;
-                    if (evidence == null) continue;
-                    reason = string.IsNullOrWhiteSpace(evidence.PlayerDamageRouteReadinessReason)
-                        ? "Player-damage route evidence reports unsupported."
-                        : evidence.PlayerDamageRouteReadinessReason;
-                    return evidence.PlayerDamageRouteReady;
+                    if (candidate == null) continue;
+                    evidence = candidate;
+                    count++;
                 }
             }
 
-            reason = "No typed canonical player-damage-route evidence is registered.";
-            return false;
+            if (count == 0)
+            {
+                reason = "No typed canonical player-damage-route evidence is registered.";
+                return false;
+            }
+            if (count > 1)
+            {
+                reason = "Multiple player-damage-route readiness providers are registered; ownership is ambiguous.";
+                return false;
+            }
+
+            try
+            {
+                bool ready = evidence.PlayerDamageRouteReady;
+                string detail = evidence.PlayerDamageRouteReadinessReason;
+                reason = string.IsNullOrWhiteSpace(detail)
+                    ? (ready
+                        ? string.Empty
+                        : "Player-damage route evidence reports unsupported.")
+                    : detail;
+                return ready;
+            }
+            catch (Exception exception)
+            {
+                reason = "Player-damage-route readiness evidence failed: " + exception.Message;
+                return false;
+            }
         }
 
         private static Dictionary<StableId, StableId> ReadRoomMappings(out string failure)
