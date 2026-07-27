@@ -13,6 +13,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     {
         NotConfigured,
         Invalid,
+        Valid,
         ValidButNotExported,
         ExportedButStale,
         ExportCurrent,
@@ -113,7 +114,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 && root.LastGridValidation.CanPublish
                 && productionPurpose;
             status.AuthoringStatus = status.AuthoringValid
-                ? LevelGridPlayableStatusKindV2.Registered
+                ? LevelGridPlayableStatusKindV2.Valid
                 : LevelGridPlayableStatusKindV2.Invalid;
             status.AuthoringDetail = status.AuthoringValid
                 ? "Foundation and Grid V2 ProductionPublish validation pass."
@@ -138,7 +139,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 metadata.ValidateForPlayableExport(root);
                 status.MetadataValid = true;
-                status.MetadataStatus = LevelGridPlayableStatusKindV2.Registered;
+                status.MetadataStatus = LevelGridPlayableStatusKindV2.Valid;
                 status.MetadataDetail = "Exact start room and final room-plus-door are valid.";
             }
             catch (Exception exception)
@@ -246,9 +247,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string absolute = LevelGridPlayableBuildPathsV2.ToAbsoluteProjectPath(assetPath);
             if (!File.Exists(absolute))
             {
-                status.CompiledStatus = status.ExportCurrent
-                    ? LevelGridPlayableStatusKindV2.ExportCurrent
-                    : LevelGridPlayableStatusKindV2.CompiledButStale;
+                status.CompiledStatus = LevelGridPlayableStatusKindV2.NotConfigured;
                 status.CompiledDetail = "No compiled runtime asset exists.";
                 return;
             }
