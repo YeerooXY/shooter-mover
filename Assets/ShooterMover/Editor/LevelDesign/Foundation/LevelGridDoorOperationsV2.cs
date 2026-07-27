@@ -72,8 +72,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             EditorUtility.SetDirty(door);
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
+            LevelGridAuthoringV2LiveValidation.ValidateNow(
+                root,
+                LevelGridValidationPurposeV2.Draft,
+                false);
             SceneView.RepaintAll();
         }
 
@@ -95,8 +97,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
             if (root != null)
             {
-                root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-                LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
+                LevelGridAuthoringV2LiveValidation.ValidateNow(
+                    root,
+                    LevelGridValidationPurposeV2.Draft,
+                    false);
                 EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             }
             SceneView.RepaintAll();
@@ -120,8 +124,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
             if (root != null)
             {
-                root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-                LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
+                LevelGridAuthoringV2LiveValidation.ValidateNow(
+                    root,
+                    LevelGridValidationPurposeV2.Draft,
+                    false);
                 EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             }
             SceneView.RepaintAll();
@@ -220,9 +226,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             Selection.activeObject = root;
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            root.ValidateHierarchy();
-            root.ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
-            LevelGridAuthoringV2LiveValidation.MarkSynchronouslyValidated(root);
+            LevelGridAuthoringV2LiveValidation.ValidateNow(
+                root,
+                LevelGridValidationPurposeV2.Draft,
+                false);
             if (openProblemsWindow)
             {
                 LevelGridProblemsWindowV2.Open(root);
