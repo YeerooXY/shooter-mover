@@ -360,55 +360,32 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             var roomRecords = new List<LevelRoomRecord>(rooms.Length);
             var gridRooms = new List<LevelGridRoomRecordV2>(rooms.Length);
-            for (int i = 0; i < rooms.Length; i++)
+            for (int index = 0; index < rooms.Length; index++)
             {
-                roomRecords.Add(rooms[i].BuildRecord());
-                gridRooms.Add(rooms[i].BuildGridRecord());
+                roomRecords.Add(rooms[index].BuildRecord());
+                gridRooms.Add(rooms[index].BuildGridRecord());
             }
 
             var doorRecords = new List<LevelGridDoorRecordV2>(doors.Length);
-            for (int i = 0; i < doors.Length; i++)
+            for (int index = 0; index < doors.Length; index++)
             {
-                LevelGridDoorRecordV2 value = doors[i].BuildRecord();
-                if (doors[i] == metadata.FinalExitDoor)
-                {
-                    value = new LevelGridDoorRecordV2(
-                        value.DoorId,
-                        value.RoomId,
-                        value.Side,
-                        value.PlacementMode,
-                        value.EdgeOffset,
-                        value.FixedLocalPosition,
-                        false,
-                        value.VisibleOnMap,
-                        value.AutoFaceConnection,
-                        value.DiagnosticLocation);
-                }
-                doorRecords.Add(value);
+                doorRecords.Add(doors[index].BuildRecord());
             }
 
             var connectionRecords = new List<LevelGridConnectionRecordV2>(links.Length);
-            for (int i = 0; i < links.Length; i++)
+            for (int index = 0; index < links.Length; index++)
             {
-                LevelGridConnectionRecordV2 record = links[i].BuildRecord();
-                if ((string.Equals(record.SourceRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
-                        && string.Equals(record.SourceDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal))
-                    || (string.Equals(record.DestinationRoomId, metadata.FinalExitRoom.RoomIdText, StringComparison.Ordinal)
-                        && string.Equals(record.DestinationDoorId, metadata.FinalExitDoor.DoorIdText, StringComparison.Ordinal)))
-                {
-                    throw new InvalidOperationException(
-                        "The exact final-exit endpoint cannot also participate in a room connection.");
-                }
-                connectionRecords.Add(record);
+                connectionRecords.Add(links[index].BuildRecord());
             }
 
-            LevelGridValidationResultV2 result =
-                LevelGridAuthoringV2CompositeValidator.Validate(
-                    roomRecords,
-                    gridRooms,
-                    doorRecords,
-                    connectionRecords,
-                    LevelGridValidationPurposeV2.ProductionPublish);
+            LevelGridValidationResultV2 result = LevelGridPlayableValidationV2.Validate(
+                roomRecords,
+                gridRooms,
+                doorRecords,
+                connectionRecords,
+                LevelGridValidationPurposeV2.ProductionPublish,
+                metadata.FinalExitRoom.RoomIdText,
+                metadata.FinalExitDoor.DoorIdText);
             if (!result.CanPublish)
             {
                 LevelGridProblemV2 issue = result.Problems.Count == 0
