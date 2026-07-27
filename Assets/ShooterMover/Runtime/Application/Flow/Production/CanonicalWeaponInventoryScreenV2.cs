@@ -140,14 +140,16 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Exact weapon-only Inventory draft. Opening or refreshing this service never grants,
-    /// repairs, recreates or auto-equips equipment.
+    /// Exact weapon-only Inventory draft. Canonical physical mount state commits first and the old
+    /// fixed-slot authority is updated only as a compatibility route/armor projection. Opening or
+    /// refreshing this service never grants, repairs, recreates or auto-equips equipment.
     /// </summary>
     public sealed class CanonicalWeaponInventoryScreenServiceV2
     {
         private readonly PlayerRouteProfilePayloadV1 incomingRoute;
         private readonly IPlayerHoldingsAuthorityV1 genericHoldings;
         private readonly ProductionWeaponHoldingsAuthorityV2 weaponHoldings;
+        private readonly ProductionWeaponMountLoadoutAuthorityV2 mountLoadoutAuthority;
         private readonly ProductionInventoryLoadoutAuthorityV1 loadoutAuthority;
         private readonly ProductionWeaponMountLayoutV1 layout;
         private readonly WeaponCatalog weaponCatalog;
@@ -161,6 +163,7 @@ namespace ShooterMover.Application.Flow.Production
             PlayerRouteProfilePayloadV1 incomingRoute,
             IPlayerHoldingsAuthorityV1 genericHoldings,
             ProductionWeaponHoldingsAuthorityV2 weaponHoldings,
+            ProductionWeaponMountLoadoutAuthorityV2 mountLoadoutAuthority,
             ProductionInventoryLoadoutAuthorityV1 loadoutAuthority,
             ProductionWeaponMountLayoutV1 layout,
             WeaponCatalog weaponCatalog)
@@ -177,23 +180,22 @@ namespace ShooterMover.Application.Flow.Production
                 ?? throw new ArgumentNullException(nameof(genericHoldings));
             this.weaponHoldings = weaponHoldings
                 ?? throw new ArgumentNullException(nameof(weaponHoldings));
+            this.mountLoadoutAuthority = mountLoadoutAuthority
+                ?? throw new ArgumentNullException(nameof(mountLoadoutAuthority));
             this.loadoutAuthority = loadoutAuthority
                 ?? throw new ArgumentNullException(nameof(loadoutAuthority));
             this.layout = layout ?? throw new ArgumentNullException(nameof(layout));
             this.weaponCatalog = weaponCatalog
                 ?? throw new ArgumentNullException(nameof(weaponCatalog));
 
-            InventoryLoadoutAuthoritySnapshotV1 authority =
-                loadoutAuthority.ExportSnapshot();
-            if (authority == null || !authority.HasValidFingerprint())
+            InventoryLoadoutAuthoritySnapshotV1 compatibility =
+                ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
+                    layout,
+                    mountLoadoutAuthority.ExportSnapshot(),
+                    loadoutAuthority.ExportSnapshot());
+            for (int index = 0; index < compatibility.Bindings.Count; index++)
             {
-                throw new ArgumentException(
-                    "The Inventory loadout authority snapshot is invalid.",
-                    nameof(loadoutAuthority));
-            }
-            for (int index = 0; index < authority.Bindings.Count; index++)
-            {
-                InventoryLoadoutSlotBindingV1 binding = authority.Bindings[index];
+                InventoryLoadoutSlotBindingV1 binding = compatibility.Bindings[index];
                 draftBindings.Add(
                     binding.SlotStableId,
                     binding.EquipmentInstanceStableId);
@@ -269,8 +271,7 @@ namespace ShooterMover.Application.Flow.Production
                     InventoryLoadoutScreenStatusV1.InvalidSlot,
                     "inventory-loadout-mount-not-owned-by-class");
             }
-            if (mount.Availability
-                != ProductionWeaponMountAvailabilityV1.Active)
+            if (!mount.IsActive)
             {
                 return Result(
                     InventoryLoadoutScreenStatusV1.InvalidSlot,
@@ -286,10 +287,11 @@ namespace ShooterMover.Application.Flow.Production
                     "inventory-loadout-instance-not-owned");
             }
 
-            foreach (KeyValuePair<StableId, StableId> pair in draftBindings)
+            for (int index = 0; index < layout.Positions.Count; index++)
             {
-                if (pair.Key != targetLoadoutSlotId
-                    && pair.Value == selectedInstanceId)
+                StableId otherSlot = layout.Positions[index].LoadoutSlotStableId;
+                if (otherSlot != targetLoadoutSlotId
+                    && draftBindings[otherSlot] == selectedInstanceId)
                 {
                     return Result(
                         InventoryLoadoutScreenStatusV1
@@ -330,8 +332,7 @@ namespace ShooterMover.Application.Flow.Production
                     InventoryLoadoutScreenStatusV1.InvalidSlot,
                     "inventory-loadout-mount-not-owned-by-class");
             }
-            if (mount.Availability
-                != ProductionWeaponMountAvailabilityV1.Active)
+            if (!mount.IsActive)
             {
                 return Result(
                     InventoryLoadoutScreenStatusV1.InvalidSlot,
@@ -371,41 +372,64 @@ namespace ShooterMover.Application.Flow.Production
 
             WeaponHoldingsSnapshotV2 holdingsBefore =
                 weaponHoldings.ExportSnapshot();
-            InventoryLoadoutAuthoritySnapshotV1 authorityBefore =
+            WeaponMountLoadoutSnapshotV2 mountsBefore =
+                mountLoadoutAuthority.ExportSnapshot();
+            InventoryLoadoutAuthoritySnapshotV1 legacyBefore =
                 loadoutAuthority.ExportSnapshot();
-            var command = new InventoryLoadoutAuthorityCommandV1(
-                authorityBefore.Sequence,
-                genericHoldings.Sequence,
-                BuildBindings());
-            InventoryLoadoutAuthorityResultV1 result =
-                loadoutAuthority.Apply(command);
-            if (result == null || !result.Succeeded)
+
+            WeaponMountLoadoutImportResultV2 mountResult =
+                mountLoadoutAuthority.Apply(
+                    mountsBefore.Sequence,
+                    BuildMountBindings());
+            if (mountResult == null || !mountResult.Succeeded)
             {
                 return Result(
                     InventoryLoadoutScreenStatusV1.AuthorityRejected,
-                    result == null
+                    mountResult == null
+                        ? "weapon-mount-loadout-authority-result-null"
+                        : mountResult.RejectionCode);
+            }
+
+            IReadOnlyList<InventoryLoadoutSlotBindingV1> compatibilityBindings =
+                ProductionWeaponMountLoadoutProjectionV2.ToLegacyProjection(
+                    layout,
+                    mountResult.Snapshot,
+                    legacyBefore).Bindings;
+            var command = new InventoryLoadoutAuthorityCommandV1(
+                legacyBefore.Sequence,
+                genericHoldings.Sequence,
+                compatibilityBindings);
+            InventoryLoadoutAuthorityResultV1 legacyResult =
+                loadoutAuthority.Apply(command);
+            if (legacyResult == null || !legacyResult.Succeeded)
+            {
+                RollBack(mountsBefore, legacyBefore);
+                return Result(
+                    InventoryLoadoutScreenStatusV1.AuthorityRejected,
+                    legacyResult == null
                         ? "inventory-loadout-authority-result-null"
-                        : result.RejectionCode);
+                        : legacyResult.RejectionCode);
             }
 
             WeaponHoldingsSnapshotV2 holdingsAfter =
                 weaponHoldings.ExportSnapshot();
+            InventoryLoadoutAuthoritySnapshotV1 legacyAfter =
+                legacyResult.Snapshot ?? loadoutAuthority.ExportSnapshot();
             if (holdingsAfter.Sequence != holdingsBefore.Sequence
                 || !string.Equals(
                     holdingsAfter.Fingerprint,
                     holdingsBefore.Fingerprint,
                     StringComparison.Ordinal))
             {
+                RollBack(mountsBefore, legacyBefore);
                 return Result(
                     InventoryLoadoutScreenStatusV1
                         .HoldingsChangedDuringApply,
                     "inventory-loadout-authority-mutated-weapon-holdings");
             }
-
-            InventoryLoadoutAuthoritySnapshotV1 authorityAfter =
-                result.Snapshot ?? loadoutAuthority.ExportSnapshot();
-            if (!Matches(authorityAfter, command.Bindings))
+            if (!Matches(legacyAfter, compatibilityBindings))
             {
+                RollBack(mountsBefore, legacyBefore);
                 return Result(
                     InventoryLoadoutScreenStatusV1
                         .AuthoritySnapshotMismatch,
@@ -414,14 +438,17 @@ namespace ShooterMover.Application.Flow.Production
 
             completed = true;
             Rebuild();
+            WeaponMountLoadoutSnapshotV2 mountsAfter =
+                mountLoadoutAuthority.ExportSnapshot();
             return new InventoryLoadoutScreenResultV1(
                 InventoryLoadoutScreenStatusV1.Confirmed,
                 string.Empty,
                 BuildCompatibilitySnapshot(),
-                ProductionWeaponOnboardingV1.RouteFromLoadout(
+                ProductionWeaponMountLoadoutProjectionV2.Route(
                     incomingRoute.SelectedCharacterStableId,
                     incomingRoute.LoadoutProfileStableId,
-                    authorityAfter));
+                    layout,
+                    mountsAfter));
         }
 
         public InventoryLoadoutScreenResultV1 Back()
@@ -441,6 +468,24 @@ namespace ShooterMover.Application.Flow.Production
                 incomingRoute);
         }
 
+        private void RollBack(
+            WeaponMountLoadoutSnapshotV2 mounts,
+            InventoryLoadoutAuthoritySnapshotV1 legacy)
+        {
+            WeaponMountLoadoutImportResultV2 mountRollback =
+                mountLoadoutAuthority.ImportSnapshot(mounts);
+            ProductionInventoryLoadoutImportResultV1 legacyRollback =
+                loadoutAuthority.ImportSnapshot(legacy);
+            if (mountRollback == null
+                || !mountRollback.Succeeded
+                || legacyRollback == null
+                || !legacyRollback.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "Inventory loadout rollback failed.");
+            }
+        }
+
         private void Rebuild()
         {
             WeaponHoldingsSnapshotV2 holdings =
@@ -454,8 +499,7 @@ namespace ShooterMover.Application.Flow.Production
                     layout.Positions[index];
                 StableId instanceId =
                     draftBindings[position.LoadoutSlotStableId];
-                if (position.Availability
-                    != ProductionWeaponMountAvailabilityV1.Active)
+                if (!position.IsActive)
                 {
                     if (instanceId != null)
                     {
@@ -475,7 +519,7 @@ namespace ShooterMover.Application.Flow.Production
                 }
                 equippedMountByInstance.Add(
                     instanceId,
-                    position.LoadoutSlotStableId);
+                    position.MountStableId);
             }
 
             var cards = new List<CanonicalWeaponInventoryCardV2>(
@@ -546,16 +590,16 @@ namespace ShooterMover.Application.Flow.Production
                 selectedInstanceId = cards[0].Instance.InstanceId;
             }
 
-            InventoryLoadoutAuthoritySnapshotV1 authority =
-                loadoutAuthority.ExportSnapshot();
+            WeaponMountLoadoutSnapshotV2 authoritativeMounts =
+                mountLoadoutAuthority.ExportSnapshot();
             snapshot = new CanonicalWeaponInventorySnapshotV2(
                 mounts,
                 cards,
                 selectedInstanceId,
                 holdings.Sequence,
                 holdings.Fingerprint,
-                authority.Sequence,
-                authority.Fingerprint,
+                authoritativeMounts.Sequence,
+                authoritativeMounts.Fingerprint,
                 valid,
                 completed);
         }
@@ -662,6 +706,23 @@ namespace ShooterMover.Application.Flow.Production
                 bindings.Add(new InventoryLoadoutSlotBindingV1(
                     slot.SlotStableId,
                     draftBindings[slot.SlotStableId]));
+            }
+            return bindings;
+        }
+
+        private IReadOnlyList<WeaponMountBindingV2> BuildMountBindings()
+        {
+            var bindings = new List<WeaponMountBindingV2>(
+                layout.PhysicalPositions.Count);
+            for (int index = 0; index < layout.PhysicalPositions.Count; index++)
+            {
+                ProductionWeaponMountPositionV1 position =
+                    layout.PhysicalPositions[index];
+                bindings.Add(new WeaponMountBindingV2(
+                    position.MountStableId,
+                    position.IsActive
+                        ? draftBindings[position.LoadoutSlotStableId]
+                        : null));
             }
             return bindings;
         }
