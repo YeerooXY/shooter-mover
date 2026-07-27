@@ -19,8 +19,8 @@ namespace ShooterMover.Editor.Enemies
             "Assets/ShooterMover/Resources/EnemyCatalog/enemy_catalog_v2.json";
         private const string PresentationCatalogPath =
             "Assets/ShooterMover/Resources/ProductionLevels/Level1PresentationCatalog.asset";
-        private const string RoomContentFolder =
-            "Assets/ShooterMover/Content/Definitions/Missions/Rooms/Json";
+        private const string RoomContentPath =
+            "Assets/ShooterMover/Resources/ProductionLevels/Level1RoomContent.asset";
 
         private readonly List<ReadinessRowV1> rows = new List<ReadinessRowV1>();
         private Vector2 scroll;
@@ -92,9 +92,9 @@ namespace ShooterMover.Editor.Enemies
             EditorGUILayout.LabelField(
                 row.ProductionReady ? "PRODUCTION READY" : "NOT READY",
                 EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(row.Reason, row.ProductionReady
-                ? MessageType.Info
-                : MessageType.Warning);
+            EditorGUILayout.HelpBox(
+                row.Reason,
+                row.ProductionReady ? MessageType.Info : MessageType.Warning);
             EditorGUILayout.EndVertical();
         }
 
@@ -123,30 +123,44 @@ namespace ShooterMover.Editor.Enemies
             TextAsset enemyJson = AssetDatabase.LoadAssetAtPath<TextAsset>(EnemyCatalogPath);
             RoomPresentationCatalog2D presentationCatalog =
                 AssetDatabase.LoadAssetAtPath<RoomPresentationCatalog2D>(PresentationCatalogPath);
-            if (enemyJson == null || presentationCatalog == null)
+            JsonRoomContentDefinition2D roomContent =
+                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(RoomContentPath);
+            if (enemyJson == null || presentationCatalog == null || roomContent == null)
             {
                 loadFailure = "Required production assets are missing. Enemy catalogue: "
-                    + (enemyJson == null ? "missing" : "found")
+                    + Presence(enemyJson)
                     + "; presentation catalogue: "
-                    + (presentationCatalog == null ? "missing" : "found")
+                    + Presence(presentationCatalog)
+                    + "; room content: "
+                    + Presence(roomContent)
                     + ".";
                 return;
             }
 
-            EnemyCatalogImportResultV1 import = EnemyCatalogJsonImporterV1.Import(
+            EnemyCatalogImportResultV1 enemyImport = EnemyCatalogJsonImporterV1.Import(
                 enemyJson.text,
                 BuiltInEnemyCatalogRegistryV1.Create());
-            if (!import.IsValid)
+            if (!enemyImport.IsValid)
             {
-                loadFailure = "Enemy catalogue is invalid: " + JoinIssues(import.Issues);
+                loadFailure = "Enemy catalogue is invalid: " + JoinEnemyIssues(enemyImport.Issues);
+                return;
+            }
+
+            RoomContentImportResultV1 roomImport = roomContent.Import();
+            if (roomImport == null || !roomImport.IsValid)
+            {
+                loadFailure = "Production room content is invalid: " + JoinRoomIssues(
+                    roomImport == null ? null : roomImport.Issues);
                 return;
             }
 
             string roomFailure;
-            Dictionary<StableId, StableId> roomMappings = ReadRoomMappings(out roomFailure);
-            for (int index = 0; index < import.Catalog.Definitions.Count; index++)
+            Dictionary<StableId, StableId> roomMappings = ReadRoomMappings(
+                roomImport.Bundle,
+                out roomFailure);
+            for (int index = 0; index < enemyImport.Catalog.Definitions.Count; index++)
             {
-                EnemyDefinitionV1 definition = import.Catalog.Definitions[index];
+                EnemyDefinitionV1 definition = enemyImport.Catalog.Definitions[index];
                 rows.Add(BuildRow(
                     definition,
                     presentationCatalog,
@@ -187,7 +201,7 @@ namespace ShooterMover.Editor.Enemies
             bool mechanics = ReadMechanicsEvidence(prefab, out mechanicsReason);
             string damageReason;
             bool playerDamage = ReadPlayerDamageEvidence(prefab, out damageReason);
-            bool deathDownstream = roomMappingAvailable && prefab != null;
+            bool deathDownstream = roomMappingAvailable;
 
             var missing = new List<string>();
             if (!string.IsNullOrEmpty(presentationFailure)) missing.Add(presentationFailure);
@@ -195,14 +209,14 @@ namespace ShooterMover.Editor.Enemies
             if (!roomMappingAvailable)
             {
                 missing.Add(string.IsNullOrEmpty(roomFailure)
-                    ? "No unambiguous authored room mapping exists."
+                    ? "No canonical authored room mapping exists."
                     : roomFailure);
             }
             if (!mechanics) missing.Add(mechanicsReason);
             if (!playerDamage) missing.Add(damageReason);
             if (!deathDownstream)
             {
-                missing.Add("Canonical room terminal/death route is unavailable for this mapping.");
+                missing.Add("No authored room mapping reaches the generic room terminal route.");
             }
 
             bool ready = presentationRegistered
@@ -291,9 +305,7 @@ namespace ShooterMover.Editor.Enemies
                 bool ready = evidence.RuntimeMechanicsReady;
                 string detail = evidence.RuntimeMechanicsReadinessReason;
                 reason = string.IsNullOrWhiteSpace(detail)
-                    ? (ready
-                        ? string.Empty
-                        : "Runtime mechanics evidence reports unsupported.")
+                    ? (ready ? string.Empty : "Runtime mechanics evidence reports unsupported.")
                     : detail;
                 return ready;
             }
@@ -337,9 +349,7 @@ namespace ShooterMover.Editor.Enemies
                 bool ready = evidence.PlayerDamageRouteReady;
                 string detail = evidence.PlayerDamageRouteReadinessReason;
                 reason = string.IsNullOrWhiteSpace(detail)
-                    ? (ready
-                        ? string.Empty
-                        : "Player-damage route evidence reports unsupported.")
+                    ? (ready ? string.Empty : "Player-damage route evidence reports unsupported.")
                     : detail;
                 return ready;
             }
@@ -350,123 +360,86 @@ namespace ShooterMover.Editor.Enemies
             }
         }
 
-        private static Dictionary<StableId, StableId> ReadRoomMappings(out string failure)
+        private static Dictionary<StableId, StableId> ReadRoomMappings(
+            RoomContentBundleV1 bundle,
+            out string failure)
         {
             failure = string.Empty;
             var result = new Dictionary<StableId, StableId>();
+            if (bundle == null)
+            {
+                failure = "The canonical room importer returned no bundle.";
+                return result;
+            }
+
             RoomContentObjectCatalogV1 objectCatalog =
                 BuiltInRoomContentObjectCatalogV1.Create();
-            string[] guids = AssetDatabase.FindAssets(
-                "t:TextAsset",
-                new[] { RoomContentFolder });
-
-            for (int index = 0; index < guids.Length; index++)
+            for (int index = 0; index < bundle.Enemies.Count; index++)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guids[index]);
-                TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
-                if (asset == null || asset.text.IndexOf("\"enemies\"", StringComparison.Ordinal) < 0)
+                RoomEnemyPlacementContentV1 placement = bundle.Enemies[index];
+                if (placement == null || placement.ObjectStableId == null)
                 {
-                    continue;
-                }
-
-                EnemyPlacementDocumentV1 document;
-                try
-                {
-                    document = JsonUtility.FromJson<EnemyPlacementDocumentV1>(asset.text);
-                }
-                catch (Exception exception)
-                {
-                    failure = "Malformed room enemy document " + path + ": " + exception.Message;
+                    failure = "Canonical room content contains an enemy without stable object identity.";
                     return new Dictionary<StableId, StableId>();
                 }
 
-                EnemyPlacementV1[] placements = document == null
-                    ? null
-                    : document.enemies;
-                if (placements == null)
+                RoomContentObjectDefinitionV1 mapping;
+                if (!objectCatalog.TryResolve(
+                    placement.ObjectStableId,
+                    RoomContentObjectKindV1.Enemy,
+                    out mapping))
                 {
-                    failure = "Room enemy document has no readable enemies array: " + path;
+                    failure = "Canonical room content references an unknown enemy object: "
+                        + placement.ObjectStableId
+                        + ".";
                     return new Dictionary<StableId, StableId>();
                 }
 
-                for (int placementIndex = 0; placementIndex < placements.Length; placementIndex++)
+                StableId existing;
+                if (result.TryGetValue(mapping.RuntimeDefinitionStableId, out existing)
+                    && existing != mapping.PresentationStableId)
                 {
-                    EnemyPlacementV1 placement = placements[placementIndex];
-                    if (placement == null || string.IsNullOrWhiteSpace(placement.objectId))
-                    {
-                        failure = "Room enemy placement has no stable object identity: " + path;
-                        return new Dictionary<StableId, StableId>();
-                    }
-
-                    StableId objectStableId;
-                    try
-                    {
-                        objectStableId = StableId.Parse(placement.objectId);
-                    }
-                    catch (Exception exception)
-                    {
-                        failure = "Invalid room enemy object identity "
-                            + placement.objectId
-                            + " in "
-                            + path
-                            + ": "
-                            + exception.Message;
-                        return new Dictionary<StableId, StableId>();
-                    }
-
-                    RoomContentObjectDefinitionV1 mapping;
-                    if (!objectCatalog.TryResolve(
-                        objectStableId,
-                        RoomContentObjectKindV1.Enemy,
-                        out mapping))
-                    {
-                        failure = "Unknown room enemy object identity "
-                            + placement.objectId
-                            + " in "
-                            + path
-                            + ".";
-                        return new Dictionary<StableId, StableId>();
-                    }
-
-                    StableId existing;
-                    if (result.TryGetValue(mapping.RuntimeDefinitionStableId, out existing)
-                        && existing != mapping.PresentationStableId)
-                    {
-                        failure = "Conflicting room presentation mappings for "
-                            + mapping.RuntimeDefinitionStableId
-                            + ".";
-                        return new Dictionary<StableId, StableId>();
-                    }
-
-                    result[mapping.RuntimeDefinitionStableId] = mapping.PresentationStableId;
+                    failure = "Conflicting room presentation mappings for "
+                        + mapping.RuntimeDefinitionStableId
+                        + ".";
+                    return new Dictionary<StableId, StableId>();
                 }
+
+                result[mapping.RuntimeDefinitionStableId] = mapping.PresentationStableId;
             }
 
             return result;
         }
 
-        private static string JoinIssues(IReadOnlyList<EnemyCatalogIssueV1> issues)
+        private static string JoinEnemyIssues(IReadOnlyList<EnemyCatalogIssueV1> issues)
         {
+            if (issues == null || issues.Count == 0) return "no structured issue was returned.";
             var values = new List<string>();
             for (int index = 0; index < issues.Count; index++)
             {
-                values.Add(issues[index].ToString());
+                EnemyCatalogIssueV1 issue = issues[index];
+                values.Add(issue == null ? "<null issue>" : issue.ToString());
             }
             return string.Join(" | ", values);
         }
 
-        [Serializable]
-        private sealed class EnemyPlacementDocumentV1
+        private static string JoinRoomIssues(IReadOnlyList<RoomContentImportIssueV1> issues)
         {
-            public EnemyPlacementV1[] enemies;
+            if (issues == null || issues.Count == 0) return "no structured issue was returned.";
+            var values = new List<string>();
+            for (int index = 0; index < issues.Count; index++)
+            {
+                RoomContentImportIssueV1 issue = issues[index];
+                values.Add(issue == null
+                    ? "<null issue>"
+                    : "[" + issue.Code + "] " + issue.Path + ": " + issue.Message);
+            }
+            return string.Join(" | ", values);
         }
 
-        [Serializable]
-        private sealed class EnemyPlacementV1
+        private static string Presence(UnityEngine.Object value)
         {
-            public string @object;
-
-            public string objectId { get { return @object; } }
+            return value == null ? "missing" : "found";
         }
 
         private sealed class ReadinessRowV1
