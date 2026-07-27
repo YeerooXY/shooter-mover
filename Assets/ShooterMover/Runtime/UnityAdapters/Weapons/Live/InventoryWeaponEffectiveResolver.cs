@@ -9,11 +9,32 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
+    internal static class WeaponLiveExceptionPolicyV1
+    {
+        internal static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
+        }
+    }
+
     public interface IWeaponBlueprintMappingPolicyResolver
     {
         bool TryResolve(
             WeaponDefinitionId definitionId,
             out WeaponCatalogBlueprintMappingIntent mappingIntent);
+    }
+
+    /// <summary>
+    /// Exact authored-blueprint seam for compositions that already own canonical weapon content.
+    /// When supplied, live combat does not rebuild mechanics from the flat compatibility catalogue.
+    /// </summary>
+    public interface ICanonicalWeaponBlueprintResolver
+    {
+        bool TryResolveCanonical(
+            WeaponDefinitionId definitionId,
+            out WeaponBlueprint blueprint);
     }
 
     /// <summary>
@@ -116,9 +137,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     /// <summary>
-    /// Resolves one exact immutable EffectiveWeapon from the existing equipment and catalog
-    /// authorities. It never substitutes equipment, guesses missing mapping semantics, or applies
-    /// item-level combat scaling.
+    /// Resolves one exact immutable EffectiveWeapon. Production canonical composition consumes the
+    /// exact authored WeaponBlueprint directly; retained compatibility callers may still provide an
+    /// explicit flat-catalogue mapping policy. Neither path substitutes equipment or guesses missing
+    /// semantics.
     /// </summary>
     public sealed class InventoryWeaponEffectiveResolver
     {
@@ -177,69 +199,113 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
             string definitionValue =
                 equipmentDefinition.RuntimeWeaponReferenceId.ToString();
-            WeaponDefinitionData catalogDefinition;
-            if (!weaponCatalog.TryGetDefinition(
-                    definitionValue,
-                    out catalogDefinition)
-                || catalogDefinition == null)
-            {
-                rejectionCode =
-                    "weapon-live-definition-unresolved:" + definitionValue;
-                return false;
-            }
-            if (catalogDefinition.Availability != WeaponCatalogAvailability.Live)
-            {
-                rejectionCode =
-                    "weapon-live-definition-not-live:" + definitionValue;
-                return false;
-            }
-
             var definitionId = new WeaponDefinitionId(definitionValue);
-            WeaponCatalogBlueprintMappingIntent intent;
-            try
+            WeaponBlueprint blueprint;
+            ICanonicalWeaponBlueprintResolver canonicalResolver =
+                mappingPolicies as ICanonicalWeaponBlueprintResolver;
+            if (canonicalResolver != null)
             {
-                if (!mappingPolicies.TryResolve(definitionId, out intent)
-                    || intent == null)
+                try
+                {
+                    if (!canonicalResolver.TryResolveCanonical(
+                            definitionId,
+                            out blueprint)
+                        || blueprint == null)
+                    {
+                        rejectionCode =
+                            "weapon-live-canonical-blueprint-missing:"
+                            + definitionValue;
+                        return false;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                    rejectionCode =
+                        "weapon-live-canonical-blueprint-resolution-exception";
+                    return false;
+                }
+
+                if (blueprint.IsTransitionalCatalogProjection
+                    || !blueprint.DefinitionId.Equals(definitionId))
                 {
                     rejectionCode =
-                        "weapon-live-blueprint-policy-missing:" + definitionValue;
+                        "weapon-live-canonical-blueprint-identity-mismatch";
                     return false;
                 }
             }
-            catch (Exception)
+            else
             {
-                rejectionCode = "weapon-live-blueprint-policy-exception";
-                return false;
-            }
+                WeaponDefinitionData catalogDefinition;
+                if (!weaponCatalog.TryGetDefinition(
+                        definitionValue,
+                        out catalogDefinition)
+                    || catalogDefinition == null)
+                {
+                    rejectionCode =
+                        "weapon-live-definition-unresolved:" + definitionValue;
+                    return false;
+                }
+                if (catalogDefinition.Availability
+                    != WeaponCatalogAvailability.Live)
+                {
+                    rejectionCode =
+                        "weapon-live-definition-not-live:" + definitionValue;
+                    return false;
+                }
 
-            WeaponBlueprintMappingResult mapping;
-            try
-            {
-                mapping = WeaponCatalogBlueprintMapper.Map(
-                    weaponCatalog,
-                    definitionValue,
-                    intent);
-            }
-            catch (OverflowException)
-            {
-                rejectionCode =
-                    "weapon-live-blueprint-mapping-numerical-failure";
-                return false;
-            }
-            catch (Exception)
-            {
-                rejectionCode = "weapon-live-blueprint-mapping-exception";
-                return false;
-            }
+                WeaponCatalogBlueprintMappingIntent intent;
+                try
+                {
+                    if (!mappingPolicies.TryResolve(definitionId, out intent)
+                        || intent == null)
+                    {
+                        rejectionCode =
+                            "weapon-live-blueprint-policy-missing:"
+                            + definitionValue;
+                        return false;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                    rejectionCode = "weapon-live-blueprint-policy-exception";
+                    return false;
+                }
 
-            if (mapping == null || !mapping.Succeeded || mapping.Blueprint == null)
-            {
-                string issue = mapping == null || mapping.Issues.Count == 0
-                    ? "unknown"
-                    : mapping.Issues[0].Code.ToString();
-                rejectionCode =
-                    "weapon-live-blueprint-mapping-failed:" + issue;
-                return false;
+                WeaponBlueprintMappingResult mapping;
+                try
+                {
+                    mapping = WeaponCatalogBlueprintMapper.Map(
+                        weaponCatalog,
+                        definitionValue,
+                        intent);
+                }
+                catch (OverflowException)
+                {
+                    rejectionCode =
+                        "weapon-live-blueprint-mapping-numerical-failure";
+                    return false;
+                }
+                catch (Exception exception)
+                {
+                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                    rejectionCode = "weapon-live-blueprint-mapping-exception";
+                    return false;
+                }
+
+                if (mapping == null
+                    || !mapping.Succeeded
+                    || mapping.Blueprint == null)
+                {
+                    string issue = mapping == null || mapping.Issues.Count == 0
+                        ? "unknown"
+                        : mapping.Issues[0].Code.ToString();
+                    rejectionCode =
+                        "weapon-live-blueprint-mapping-failed:" + issue;
+                    return false;
+                }
+                blueprint = mapping.Blueprint;
             }
 
             IReadOnlyList<WeaponAugmentModifierSet> modifierSets;
@@ -259,8 +325,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     return false;
                 }
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
                 rejectionCode = "weapon-live-augment-resolution-exception";
                 return false;
             }
@@ -268,7 +335,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             try
             {
                 effectiveWeapon = EffectiveWeaponFactory.Create(
-                    mapping.Blueprint,
+                    blueprint,
                     equipmentCatalog,
                     equipmentInstance,
                     modifierSets);
