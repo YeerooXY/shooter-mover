@@ -35,7 +35,8 @@ namespace ShooterMover.UI.ProductionFlow
             Run = run;
             this.pending = pending;
             this.projection = projection;
-            DropConsumer = dropConsumer;
+            DropConsumer = dropConsumer
+                ?? throw new ArgumentNullException(nameof(dropConsumer));
             ExperienceConsumer = new ExplicitNoOpExperienceConsumerV1();
             KillStatisticsConsumer = new ExplicitNoOpKillStatisticsConsumerV1();
         }
@@ -54,6 +55,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         public static ProductionRunRewardRuntimeV1 Create(
             ProductionPlayableLevelDefinitionV1 level,
+            StableId gameModeId,
             ProductionCharacterRuntimeGraphV1 graph,
             ShooterMover.Application.Persistence.Composition.CharacterCompositionCoordinatorV1 coordinator,
             RoomRuntimeComposition2D rooms,
@@ -61,12 +63,40 @@ namespace ShooterMover.UI.ProductionFlow
             StableId proofRoomId,
             StableId proofPlacementId)
         {
+            if (level == null) throw new ArgumentNullException(nameof(level));
+            if (gameModeId == null) throw new ArgumentNullException(nameof(gameModeId));
+            if (graph == null) throw new ArgumentNullException(nameof(graph));
+            if (coordinator == null) throw new ArgumentNullException(nameof(coordinator));
+            if (rooms == null) throw new ArgumentNullException(nameof(rooms));
+            if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
+            if (proofRoomId == null) throw new ArgumentNullException(nameof(proofRoomId));
+            if (proofPlacementId == null)
+                throw new ArgumentNullException(nameof(proofPlacementId));
+
+            StableId difficultyId = StableId.Parse("difficulty.normal");
+            ProgressionContext currentProgression =
+                graph.ExperienceAuthority.CurrentContext;
+            if (currentProgression == null || currentProgression.CharacterLevel < 1)
+            {
+                throw new InvalidOperationException(
+                    "The selected character progression context is unavailable at run start.");
+            }
+            ProgressionContext frozenProgression = ProgressionContext.Create(
+                currentProgression.CharacterLevel,
+                currentProgression.RegionLevel,
+                difficultyId,
+                currentProgression.DifficultyValue,
+                currentProgression.ProgressionTags);
+
             string token = Guid.NewGuid().ToString("N");
             StableId runId = StableId.Create("run", "playable-level-" + token);
-            long seed = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0) & long.MaxValue;
+            long seed = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0)
+                & long.MaxValue;
             var source = new ProductionCharacterRunSessionStartSourceV1(
                 coordinator,
-                new ProductionPlayableLevelStatInputResolverV1(level),
+                new ProductionPlayableLevelStatInputResolverV1(
+                    level,
+                    frozenProgression),
                 new ProductionPlayableLevelRuntimePortFactoryV1(rooms));
             var authority = new RunSessionAuthorityV1(source);
             var command = new StartRunSessionCommandV1(
@@ -78,11 +108,12 @@ namespace ShooterMover.UI.ProductionFlow
                 graph.Character.Revision,
                 graph.Character.Fingerprint,
                 level.LevelStableId,
-                StableId.Parse("difficulty.normal"),
+                difficultyId,
                 seed,
                 0L,
                 ProductionRunFingerprintV1.Hash(
-                    "playable-level-event-context-v1|" + level.LevelStableId));
+                    "playable-level-event-context-v1|" + level.LevelStableId + "|"
+                    + gameModeId + "|" + frozenProgression.Fingerprint));
             RunSessionStartResultV1 start = authority.Start(command);
             RunSessionAggregateV1 run;
             if (start == null
@@ -95,9 +126,17 @@ namespace ShooterMover.UI.ProductionFlow
                     "The selected-character production Run Session did not start: "
                     + (start == null ? "result-null" : start.RejectionCode));
             }
+            if (run.FrozenInputs.CharacterStats.Level
+                    != frozenProgression.CharacterLevel
+                || run.StartCommand.DifficultyStableId
+                    != frozenProgression.DifficultyId)
+            {
+                throw new InvalidOperationException(
+                    "The accepted Run Session did not preserve its frozen progression context.");
+            }
 
             run.ConfigureRewardEnvironment(new RunRewardEnvironmentSnapshotV1(
-                StableId.Parse("game-mode.campaign"),
+                gameModeId,
                 Array.Empty<StableId>(),
                 1000,
                 1000,
@@ -106,36 +145,63 @@ namespace ShooterMover.UI.ProductionFlow
             var pending = new PendingTerminalDropAdmissionAuthorityV1();
             var projection = new PendingAdmissionProjectionConsumerV1();
             Func<RunSessionAggregateV1> runResolver = delegate { return run; };
-            TerminalDropBindingCompositionV1 binding = TerminalDropBindingCompositionV1.Create(
-                enemyCatalog,
-                new ExactRunEnemySourceContextResolverV1(runResolver),
-                new PropCatalogV1(
-                    PropCapabilityRegistryV1.CreateBuiltIns(),
-                    Array.Empty<PropDefinitionV1>()),
-                new UnsupportedPropSourceContextResolverV1(),
-                new RunSessionTerminalDropContextResolverV1(
-                    authority,
-                    new SelectedCharacterProgressionContextProviderV1(graph),
-                    1),
-                null,
-                null,
-                pending,
-                admissionConsumer: projection,
-                participantResolver: new RunSessionTerminalRewardParticipantResolverV1(
-                    runResolver,
-                    new TerminalRewardEligibilityPolicyV1(true, false, false)),
-                environmentResolver: new RunSessionTerminalRewardEnvironmentResolverV1(
-                    runResolver),
-                overrideResolver: new DeterministicProofRewardOverrideResolverV1(
+            var personalGeneration = new PersonalRewardGenerationServiceV1(
+                new ParticipantDropPacingAuthorityV1(
+                    new RunSessionParticipantDropPacingStateStoreV1(run)));
+            var deliveryOutbox = new RunSessionPersonalRewardDeliveryOutboxV1(run);
+            var canonicalOverrides =
+                new RunSessionTerminalRewardOverrideResolverV1(runResolver);
+            var proofOverrides = new DeterministicProofRewardOverrideResolverV1(
+                runId,
+                proofRoomId,
+                proofPlacementId);
+            var composedOverrides = new ProductionProofOverlayRewardOverrideResolverV1(
+                canonicalOverrides,
+                proofOverrides);
+
+            TerminalDropBindingCompositionV1 binding =
+                TerminalDropBindingCompositionV1.Create(
+                    enemyCatalog,
+                    new ExactRunEnemySourceContextResolverV1(runResolver),
+                    new PropCatalogV1(
+                        PropCapabilityRegistryV1.CreateBuiltIns(),
+                        Array.Empty<PropDefinitionV1>()),
+                    new UnsupportedPropSourceContextResolverV1(),
+                    new RunSessionTerminalDropContextResolverV1(
+                        authority,
+                        new FrozenRunProgressionContextProviderV1(
+                            graph.Character.CharacterInstanceStableId,
+                            frozenProgression),
+                        1),
+                    null,
+                    null,
+                    pending,
+                    admissionConsumer: projection,
+                    personalGenerationService: personalGeneration,
+                    participantResolver:
+                        new RunSessionTerminalRewardParticipantResolverV1(
+                            runResolver,
+                            new TerminalRewardEligibilityPolicyV1(
+                                true,
+                                false,
+                                false)),
+                    environmentResolver:
+                        new RunSessionTerminalRewardEnvironmentResolverV1(
+                            runResolver),
+                    overrideResolver: composedOverrides,
+                    deliveryOutbox: deliveryOutbox);
+            IEnemyDropFactConsumerV1 strictProofConsumer =
+                new RequiredProofPendingAdmissionEnemyConsumerV1(
+                    binding.EnemyConsumer,
                     runId,
                     proofRoomId,
-                    proofPlacementId));
+                    proofPlacementId);
             return new ProductionRunRewardRuntimeV1(
                 authority,
                 run,
                 pending,
                 projection,
-                binding.EnemyConsumer);
+                strictProofConsumer);
         }
     }
 
@@ -221,6 +287,79 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
+    internal sealed class RequiredProofPendingAdmissionEnemyConsumerV1 :
+        IEnemyDropFactConsumerV1
+    {
+        private readonly EnemyTerminalDropFactConsumerV1 inner;
+        private readonly StableId runId;
+        private readonly StableId roomId;
+        private readonly StableId placementId;
+
+        public RequiredProofPendingAdmissionEnemyConsumerV1(
+            EnemyTerminalDropFactConsumerV1 inner,
+            StableId runId,
+            StableId roomId,
+            StableId placementId)
+        {
+            this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
+            this.runId = runId ?? throw new ArgumentNullException(nameof(runId));
+            this.roomId = roomId ?? throw new ArgumentNullException(nameof(roomId));
+            this.placementId = placementId
+                ?? throw new ArgumentNullException(nameof(placementId));
+        }
+
+        public void Consume(EnemyDeathFactV1 fact)
+        {
+            if (fact == null) throw new ArgumentNullException(nameof(fact));
+            inner.Consume(fact);
+            if (!IsProof(fact)) return;
+
+            IReadOnlyList<PendingTerminalDropAdmissionResultV1> admissions =
+                inner.LastAdmissions;
+            if (admissions == null
+                || admissions.Count != 1
+                || admissions[0] == null
+                || !admissions[0].IsAccepted
+                || admissions[0].PendingResult == null
+                || !HasExactProofRewards(admissions[0].PendingResult))
+            {
+                string detail = admissions == null || admissions.Count == 0
+                    ? "admission-missing"
+                    : admissions[0] == null
+                        ? "admission-null"
+                        : admissions[0].Diagnostic;
+                throw new InvalidOperationException(
+                    "The deterministic proof reward was not admitted exactly once: "
+                    + detail);
+            }
+        }
+
+        private bool IsProof(EnemyDeathFactV1 fact)
+        {
+            return fact.Identity != null
+                && fact.Identity.RunStableId == runId
+                && fact.Identity.RoomStableId == roomId
+                && fact.Identity.PlacementStableId == placementId;
+        }
+
+        private static bool HasExactProofRewards(
+            GeneratedTerminalDropResultV1 result)
+        {
+            long cash = 0L;
+            long scrap = 0L;
+            long boxes = 0L;
+            for (int index = 0; index < result.GeneratedRewards.Count; index++)
+            {
+                GeneratedTerminalDropRewardV1 reward = result.GeneratedRewards[index];
+                if (reward.Kind == RewardGrantKindV1.Money) cash += reward.Quantity;
+                else if (reward.Kind == RewardGrantKindV1.Scrap) scrap += reward.Quantity;
+                else if (reward.Kind == RewardGrantKindV1.Strongbox)
+                    boxes += reward.Quantity;
+            }
+            return cash == 1L && scrap == 1L && boxes == 1L;
+        }
+    }
+
     internal sealed class ExactRunEnemySourceContextResolverV1 :
         IEnemyTerminalSourceContextResolverV1
     {
@@ -282,14 +421,20 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
-    internal sealed class SelectedCharacterProgressionContextProviderV1 :
+    internal sealed class FrozenRunProgressionContextProviderV1 :
         IRunRewardProgressionContextProviderV1
     {
-        private readonly ProductionCharacterRuntimeGraphV1 graph;
-        public SelectedCharacterProgressionContextProviderV1(
-            ProductionCharacterRuntimeGraphV1 graph)
+        private readonly StableId characterId;
+        private readonly ProgressionContext frozenProgression;
+
+        public FrozenRunProgressionContextProviderV1(
+            StableId characterId,
+            ProgressionContext frozenProgression)
         {
-            this.graph = graph ?? throw new ArgumentNullException(nameof(graph));
+            this.characterId = characterId
+                ?? throw new ArgumentNullException(nameof(characterId));
+            this.frozenProgression = frozenProgression
+                ?? throw new ArgumentNullException(nameof(frozenProgression));
         }
 
         public bool TryResolve(
@@ -299,18 +444,86 @@ namespace ShooterMover.UI.ProductionFlow
         {
             progressionContext = null;
             if (run == null
-                || graph.IsDisposed
-                || run.FrozenInputs.Character.CharacterInstanceStableId
-                    != graph.Character.CharacterInstanceStableId)
+                || run.FrozenInputs.Character.CharacterInstanceStableId != characterId
+                || run.FrozenInputs.CharacterStats.Level
+                    != frozenProgression.CharacterLevel
+                || run.StartCommand.DifficultyStableId
+                    != frozenProgression.DifficultyId)
             {
-                diagnostic = "run-progression-selected-character-mismatch";
+                diagnostic = "run-progression-frozen-context-mismatch";
                 return false;
             }
-            progressionContext = graph.ExperienceAuthority.CurrentContext;
-            diagnostic = progressionContext == null
-                ? "run-progression-context-unavailable"
-                : string.Empty;
-            return progressionContext != null;
+            progressionContext = frozenProgression;
+            diagnostic = string.Empty;
+            return true;
+        }
+    }
+
+    internal sealed class ProductionProofOverlayRewardOverrideResolverV1 :
+        ITerminalRewardOverrideResolverV1
+    {
+        private readonly ITerminalRewardOverrideResolverV1 production;
+        private readonly ITerminalRewardOverrideResolverV1 proof;
+
+        public ProductionProofOverlayRewardOverrideResolverV1(
+            ITerminalRewardOverrideResolverV1 production,
+            ITerminalRewardOverrideResolverV1 proof)
+        {
+            this.production = production
+                ?? throw new ArgumentNullException(nameof(production));
+            this.proof = proof ?? throw new ArgumentNullException(nameof(proof));
+        }
+
+        public bool TryResolve(
+            TerminalDropSourceFactV1 source,
+            TerminalDropRunGenerationContextV1 runContext,
+            TerminalRewardEnvironmentV1 environment,
+            TerminalRewardPlacementContextV1 placement,
+            out TerminalRewardOverrideSetV1 overrides,
+            out string diagnostic)
+        {
+            overrides = null;
+            TerminalRewardOverrideSetV1 productionSet;
+            if (!production.TryResolve(
+                    source,
+                    runContext,
+                    environment,
+                    placement,
+                    out productionSet,
+                    out diagnostic)
+                || productionSet == null)
+            {
+                diagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                    ? "production-reward-overrides-unavailable"
+                    : diagnostic;
+                return false;
+            }
+
+            TerminalRewardOverrideSetV1 proofSet;
+            string proofDiagnostic;
+            if (!proof.TryResolve(
+                    source,
+                    runContext,
+                    environment,
+                    placement,
+                    out proofSet,
+                    out proofDiagnostic)
+                || proofSet == null)
+            {
+                diagnostic = string.IsNullOrWhiteSpace(proofDiagnostic)
+                    ? "proof-reward-overrides-unavailable"
+                    : proofDiagnostic;
+                return false;
+            }
+
+            overrides = new TerminalRewardOverrideSetV1(
+                productionSet.GameModeOverride,
+                productionSet.MissionOverride,
+                productionSet.DifficultyOverride,
+                productionSet.EventOverrides,
+                proofSet.PlacementOverride ?? productionSet.PlacementOverride);
+            diagnostic = string.Empty;
+            return true;
         }
     }
 
