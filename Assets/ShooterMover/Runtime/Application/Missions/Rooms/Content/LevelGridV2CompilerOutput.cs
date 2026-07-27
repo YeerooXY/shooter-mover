@@ -112,7 +112,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         link = new V1DoorLinkDto
                         {
                             Kind = "room",
-                            ExitType = IsForward(room, target.Room) ? "progression" : "return",
+                            ExitType = IsProgressionEndpoint(door) ? "progression" : "return",
                             TargetRoom = target.Room.Entry.RoomId,
                             TargetSpawn = ArrivalId(target.DoorId),
                         };
@@ -148,7 +148,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     DoorRuleDto rule = Require(room.Encounter.DoorRules[i], room.Root + "encounter.json.door_rules[" + i + "]");
                     if (rule.Match != null && !string.IsNullOrWhiteSpace(rule.Match.DoorId))
                     {
-                        explicitByDoor[rule.Match.DoorId.Trim()] = rule;
+                        explicitByDoor.Add(rule.Match.DoorId.Trim(), rule);
                     }
                     rules.Add(rule);
                 }
@@ -158,11 +158,11 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!door.Dto.Traversable || explicitByDoor.ContainsKey(door.DoorId)) continue;
                     bool final = string.Equals(room.Entry.RoomId, finalRoomId, StringComparison.Ordinal)
                         && string.Equals(door.DoorId, finalDoorId, StringComparison.Ordinal);
-                    bool forward = final || (door.Other != null && IsForward(room, door.Other.Room));
+                    bool progression = final || IsProgressionEndpoint(door);
                     rules.Add(new DoorRuleDto
                     {
                         Match = new DoorMatchDto { DoorId = door.DoorId },
-                        OpenWhen = forward ? "room-complete" : "always",
+                        OpenWhen = progression ? "room-complete" : "always",
                     });
                 }
                 return new V1EncounterDto
@@ -174,11 +174,24 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 };
             }
 
-            private static bool IsForward(RoomSource from, RoomSource to)
+            private static bool IsProgressionEndpoint(DoorSource door)
             {
-                int[] left = from.Entry.GridPosition;
-                int[] right = to.Entry.GridPosition;
-                return right[0] > left[0] || (right[0] == left[0] && right[1] > left[1]);
+                if (door == null || door.Connection == null || door.Connection.From == null)
+                {
+                    return false;
+                }
+                EndpointDto from = door.Connection.From;
+                string roomId = string.IsNullOrWhiteSpace(from.RoomId)
+                    ? string.Empty
+                    : from.RoomId.Trim();
+                string doorId = string.IsNullOrWhiteSpace(from.DoorId)
+                    ? string.Empty
+                    : from.DoorId.Trim();
+                return string.Equals(
+                        roomId,
+                        door.Room.Entry.RoomId,
+                        StringComparison.Ordinal)
+                    && string.Equals(doorId, door.DoorId, StringComparison.Ordinal);
             }
 
         }
