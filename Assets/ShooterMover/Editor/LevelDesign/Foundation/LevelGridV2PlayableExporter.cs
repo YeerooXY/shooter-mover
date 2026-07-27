@@ -135,6 +135,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 if (existed) CopyDirectory(absoluteOutput, stage);
                 else Directory.CreateDirectory(stage);
                 WritePackage(root, metadata, rooms, doors, links, stage);
+                LevelGridPlayableProvenanceV2.Write(root, stage);
                 ValidateStagedPackage(stage);
                 if (existed) Directory.Move(absoluteOutput, backup);
                 Directory.Move(stage, absoluteOutput);
