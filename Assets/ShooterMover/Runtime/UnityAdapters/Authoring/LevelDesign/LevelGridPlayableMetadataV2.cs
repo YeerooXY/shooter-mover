@@ -47,10 +47,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                     "Playable Grid V2 metadata requires a final-exit room owned by this level root.");
             }
             if (finalExitDoor == null
-                || finalExitDoor.OwningRoom != finalExitRoom)
+                || finalExitDoor.OwningRoom != finalExitRoom
+                || finalExitDoor.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root)
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 final exit must reference an exact door owned by the final-exit room.");
+                    "Playable Grid V2 final exit must reference an exact door owned by the final-exit room and this level root.");
             }
             if (!finalExitDoor.Traversable)
             {
