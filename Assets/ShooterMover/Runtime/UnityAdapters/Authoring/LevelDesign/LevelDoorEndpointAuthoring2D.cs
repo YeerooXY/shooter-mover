@@ -16,6 +16,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private LevelDoorPlacementModeV2 placementMode =
             LevelDoorPlacementModeV2.EdgeManaged;
         [SerializeField] [Range(0f, 1f)] private float edgeOffset = 0.5f;
+        [Tooltip(
+            "Stored relative to the owning room, even when the endpoint has an "
+                + "intermediate helper parent.")]
         [SerializeField] private Vector2 fixedLocalPosition = Vector2.zero;
         [Tooltip("When enabled, connected edge-managed doors follow the relative room direction.")]
         [SerializeField] private bool autoFaceConnection = true;
@@ -88,10 +91,18 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         {
             if (placementMode == LevelDoorPlacementModeV2.Fixed)
             {
-                return new Vector3(
+                Vector3 roomRelative = new Vector3(
                     fixedLocalPosition.x,
                     fixedLocalPosition.y,
-                    transform.localPosition.z);
+                    0f);
+                Vector3 worldPosition = owningRoom == null
+                    ? roomRelative
+                    : owningRoom.transform.TransformPoint(roomRelative);
+                worldPosition.z = transform.position.z;
+                Transform localParent = transform.parent;
+                return localParent == null
+                    ? worldPosition
+                    : localParent.InverseTransformPoint(worldPosition);
             }
 
             if (owningRoom == null || owningRoom.RoomBounds == null)
@@ -151,14 +162,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void CaptureCurrentPositionAsFixedPlacement()
         {
             placementMode = LevelDoorPlacementModeV2.Fixed;
-            fixedLocalPosition = transform.localPosition;
+            fixedLocalPosition = ResolveCurrentRoomRelativePosition();
         }
 
         public void CaptureCurrentFixedPosition()
         {
             if (placementMode == LevelDoorPlacementModeV2.Fixed)
             {
-                fixedLocalPosition = transform.localPosition;
+                fixedLocalPosition = ResolveCurrentRoomRelativePosition();
             }
         }
 
@@ -220,7 +231,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         private void Reset()
         {
             owningRoom = GetComponentInParent<LevelRoomAuthoring2D>();
-            fixedLocalPosition = transform.localPosition;
+            fixedLocalPosition = ResolveCurrentRoomRelativePosition();
         }
 
         private void OnValidate()
@@ -230,6 +241,18 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             {
                 owningRoom = GetComponentInParent<LevelRoomAuthoring2D>();
             }
+        }
+
+        private Vector2 ResolveCurrentRoomRelativePosition()
+        {
+            if (owningRoom == null)
+            {
+                return transform.localPosition;
+            }
+
+            Vector3 roomRelative =
+                owningRoom.transform.InverseTransformPoint(transform.position);
+            return new Vector2(roomRelative.x, roomRelative.y);
         }
 
         private string BuildDiagnosticLocation()
