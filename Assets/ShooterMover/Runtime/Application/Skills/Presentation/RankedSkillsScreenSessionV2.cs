@@ -6,24 +6,15 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Progression.Experience;
 using ShooterMover.Domain.Progression.Experience;
 using ShooterMover.Domain.Progression.Skills;
-
 namespace ShooterMover.Application.Skills.Presentation
 {
     public sealed class RankedSkillsPersistenceResultV2
     {
-        public RankedSkillsPersistenceResultV2(bool succeeded, string rejectionCode)
-        { Succeeded = succeeded; RejectionCode = rejectionCode ?? string.Empty; }
-        public bool Succeeded { get; }
-        public string RejectionCode { get; }
+        public RankedSkillsPersistenceResultV2(bool succeeded, string rejectionCode) { Succeeded = succeeded; RejectionCode = rejectionCode ?? string.Empty; }
+        public bool Succeeded { get; } public string RejectionCode { get; }
     }
-
     public interface IRankedSkillsPersistencePortV2
-    {
-        RankedSkillsPersistenceResultV2 Persist(
-            string mutationScope,
-            string immutableMutationFingerprint);
-    }
-
+    { RankedSkillsPersistenceResultV2 Persist(string mutationScope, string immutableMutationFingerprint); }
     /// <summary>
     /// Trusted Skills V2 boundary. XP owns awarded points, ranked-skills V2 owns ranks,
     /// and durable selected-character persistence is the mutation commit point.
@@ -37,14 +28,10 @@ namespace ShooterMover.Application.Skills.Presentation
         private readonly IRankedSkillsPersistencePortV2 persistence;
         private readonly string profileId;
         private SkillsScreenProjectionV1 projection;
-
         private RankedSkillsScreenSessionV2(
-            PlayerRouteProfilePayloadV1 route,
-            IPlayerExperienceAuthorityV1 experience,
-            RankedSkillAllocationAuthorityV2 authority,
-            string profileId,
-            IRankedSkillsPersistencePortV2 persistence,
-            SkillsScreenProjectionV1 projection)
+            PlayerRouteProfilePayloadV1 route, IPlayerExperienceAuthorityV1 experience,
+            RankedSkillAllocationAuthorityV2 authority, string profileId,
+            IRankedSkillsPersistencePortV2 persistence, SkillsScreenProjectionV1 projection)
         {
             this.route = route;
             this.experience = experience;
@@ -53,16 +40,11 @@ namespace ShooterMover.Application.Skills.Presentation
             this.persistence = persistence;
             this.projection = projection;
         }
-
         public SkillsScreenProjectionV1 CurrentProjection => projection;
-
         public static bool TryCreate(
-            PlayerRouteProfilePayloadV1 route,
-            IPlayerExperienceAuthorityV1 experience,
-            RankedSkillAllocationAuthorityV2 authority,
-            string profileId,
-            IRankedSkillsPersistencePortV2 persistence,
-            out RankedSkillsScreenSessionV2 session,
+            PlayerRouteProfilePayloadV1 route, IPlayerExperienceAuthorityV1 experience,
+            RankedSkillAllocationAuthorityV2 authority, string profileId,
+            IRankedSkillsPersistencePortV2 persistence, out RankedSkillsScreenSessionV2 session,
             out string rejectionCode)
         {
             session = null;
@@ -71,7 +53,6 @@ namespace ShooterMover.Application.Skills.Presentation
             if (authority == null) return Reject("skills-v2-allocation-authority-missing", out rejectionCode);
             if (string.IsNullOrWhiteSpace(profileId)) return Reject("skills-v2-profile-id-missing", out rejectionCode);
             if (persistence == null) return Reject("skills-v2-persistence-port-missing", out rejectionCode);
-
             PlayerExperienceStateV1 xp = experience.CurrentState;
             RankedSkillAllocationSnapshotV2 allocation;
             if (xp == null) return Reject("skills-v2-experience-state-missing", out rejectionCode);
@@ -81,7 +62,6 @@ namespace ShooterMover.Application.Skills.Presentation
             session = new RankedSkillsScreenSessionV2(route, experience, authority, profileId.Trim(), persistence, initial);
             return true;
         }
-
         public SkillsScreenAllocationResultV1 Allocate(string skillId)
         {
             PlayerExperienceStateV1 xp = experience.CurrentState;
@@ -89,7 +69,6 @@ namespace ShooterMover.Application.Skills.Presentation
             string stateError;
             if (xp == null || !authority.TryGet(profileId, out before)) return Invalid(skillId, "skills-v2-authoritative-state-unavailable");
             if (!Validate(authority.Catalog, before, xp.TotalSkillPointsAwarded, out stateError)) return Invalid(skillId, stateError);
-
             string operationId = OperationId(skillId, before, xp.TotalSkillPointsAwarded);
             AllocateSkillRankCommandV2 command;
             try
@@ -101,14 +80,12 @@ namespace ShooterMover.Application.Skills.Presentation
             {
                 return Invalid(skillId, "skills-v2-command-invalid:" + exception.GetType().Name);
             }
-
             SkillAllocationResultV2 result = authority.Allocate(command);
             if (!result.Accepted)
             {
                 projection = Project(xp, result.Snapshot);
                 return Present(operationId, skillId, Status(result.Rejection), Code(result.Rejection), before, result.Snapshot, xp);
             }
-
             string persistenceError = Persist(result.Snapshot);
             if (persistenceError.Length != 0)
             {
@@ -119,13 +96,10 @@ namespace ShooterMover.Application.Skills.Presentation
                 projection = Project(xp, restored);
                 return Present(operationId, skillId, SkillMutationStatusV1.InvalidRequest, persistenceError, before, restored, xp);
             }
-
             projection = Project(xp, result.Snapshot);
             return Present(operationId, skillId, SkillMutationStatusV1.Applied, string.Empty, before, result.Snapshot, xp);
         }
-
         public SkillsScreenBackResultV1 Back() => new SkillsScreenBackResultV1(route, projection);
-
         private string Persist(RankedSkillAllocationSnapshotV2 accepted)
         {
             try
@@ -139,7 +113,6 @@ namespace ShooterMover.Application.Skills.Presentation
                 return "skills-v2-persistence-threw:" + exception.GetType().Name;
             }
         }
-
         private SkillsScreenAllocationResultV1 Invalid(string skillId, string rejectionCode)
         {
             var snapshot = new SkillProgressionSnapshotV1(
@@ -152,15 +125,10 @@ namespace ShooterMover.Application.Skills.Presentation
                 new SkillRejectionReasonV1(rejectionCode));
             return new SkillsScreenAllocationResultV1(string.Empty, fact, projection);
         }
-
         private SkillsScreenAllocationResultV1 Present(
-            string operationId,
-            string skillId,
-            SkillMutationStatusV1 status,
-            string rejectionCode,
-            RankedSkillAllocationSnapshotV2 before,
-            RankedSkillAllocationSnapshotV2 after,
-            PlayerExperienceStateV1 xp)
+            string operationId, string skillId, SkillMutationStatusV1 status,
+            string rejectionCode, RankedSkillAllocationSnapshotV2 before,
+            RankedSkillAllocationSnapshotV2 after, PlayerExperienceStateV1 xp)
         {
             var fact = new SkillMutationFactV1(
                 status,
@@ -171,7 +139,6 @@ namespace ShooterMover.Application.Skills.Presentation
                 new SkillRejectionReasonV1(rejectionCode));
             return new SkillsScreenAllocationResultV1(operationId, fact, projection);
         }
-
         private SkillsScreenProjectionV1 Project(PlayerExperienceStateV1 xp, RankedSkillAllocationSnapshotV2 allocation)
         {
             SkillsScreenProjectionV1 result;
@@ -180,14 +147,10 @@ namespace ShooterMover.Application.Skills.Presentation
                 throw new InvalidOperationException(rejectionCode);
             return result;
         }
-
         private static bool TryProject(
-            PlayerRouteProfilePayloadV1 route,
-            PlayerExperienceStateV1 xp,
-            RankedSkillCatalogV2 catalog,
-            RankedSkillAllocationSnapshotV2 allocation,
-            out SkillsScreenProjectionV1 projection,
-            out string rejectionCode)
+            PlayerRouteProfilePayloadV1 route, PlayerExperienceStateV1 xp,
+            RankedSkillCatalogV2 catalog, RankedSkillAllocationSnapshotV2 allocation,
+            out SkillsScreenProjectionV1 projection, out string rejectionCode)
         {
             projection = null;
             if (!Validate(catalog, allocation, xp.TotalSkillPointsAwarded, out rejectionCode)) return false;
@@ -226,12 +189,9 @@ namespace ShooterMover.Application.Skills.Presentation
                 available, allocation.Version, skills);
             return true;
         }
-
         private static bool Validate(
-            RankedSkillCatalogV2 catalog,
-            RankedSkillAllocationSnapshotV2 allocation,
-            int totalPoints,
-            out string rejectionCode)
+            RankedSkillCatalogV2 catalog, RankedSkillAllocationSnapshotV2 allocation,
+            int totalPoints, out string rejectionCode)
         {
             if (catalog == null || allocation == null) return Reject("skills-v2-projection-input-missing", out rejectionCode);
             if (!string.Equals(allocation.SchemaVersion, catalog.SchemaVersion, StringComparison.Ordinal)
@@ -239,7 +199,6 @@ namespace ShooterMover.Application.Skills.Presentation
                 return Reject("skills-v2-definition-version-stale", out rejectionCode);
             if (allocation.AllocatedPoints > totalPoints)
                 return Reject("skills-v2-allocation-exceeds-awarded-points", out rejectionCode);
-
             foreach (KeyValuePair<string, int> pair in allocation.Ranks)
             {
                 RankedSkillDefinitionV2 skill;
@@ -254,7 +213,6 @@ namespace ShooterMover.Application.Skills.Presentation
             rejectionCode = string.Empty;
             return true;
         }
-
         private static int Invested(RankedSkillCatalogV2 catalog, RankedSkillAllocationSnapshotV2 allocation, string categoryId)
         {
             return allocation.Ranks.Sum(pair =>
@@ -264,7 +222,6 @@ namespace ShooterMover.Application.Skills.Presentation
                     && string.Equals(skill.CategoryId, categoryId, StringComparison.Ordinal) ? pair.Value : 0;
             });
         }
-
         private static string Block(bool eligible, int rank, int cap, bool prerequisitesMet, bool gatesMet, int available)
         {
             if (!eligible) return "skill-class-ineligible";
@@ -273,13 +230,11 @@ namespace ShooterMover.Application.Skills.Presentation
             if (!gatesMet) return "skill-category-investment-missing";
             return available < 1 ? "skill-points-insufficient" : string.Empty;
         }
-
         private static string OperationId(string skillId, RankedSkillAllocationSnapshotV2 allocation, int totalPoints)
         {
             return "operation.skills-v2-allocate-" + SkillFingerprintV2.Hash(
                 allocation.ProfileId + "|" + (skillId ?? string.Empty) + "|" + allocation.Version + "|" + totalPoints);
         }
-
         private static SkillMutationStatusV1 Status(SkillAllocationRejectionV2 rejection)
         {
             switch (rejection)
@@ -292,7 +247,6 @@ namespace ShooterMover.Application.Skills.Presentation
                 default: return SkillMutationStatusV1.InvalidRequest;
             }
         }
-
         private static string Code(SkillAllocationRejectionV2 rejection)
         {
             switch (rejection)
@@ -308,7 +262,6 @@ namespace ShooterMover.Application.Skills.Presentation
                 default: return "skill-allocation-rejected";
             }
         }
-
         private static bool Reject(string code, out string rejectionCode)
         { rejectionCode = code; return false; }
     }
