@@ -45,19 +45,19 @@ namespace ShooterMover.UI.Skills
         private GUIStyle smallStyle;
         private GUIStyle statusStyle;
 
-        public bool IsVisible => visible;
-        public SkillsScreenProjectionV1 CurrentProjection => projection;
-        public SkillsScreenAllocationResultV1 LastAllocation => lastAllocation;
-        public bool HasBackplateAsset => skillsBackplateAsset != null;
-        public bool IsDisconnected => visible && session == null && rankedSession == null;
-        public bool IsRankedV2Connected => visible && rankedSession != null;
-        public string UnavailableReason => unavailableReason;
+        public bool IsVisible { get { return visible; } }
+        public SkillsScreenProjectionV1 CurrentProjection { get { return projection; } }
+        public SkillsScreenAllocationResultV1 LastAllocation { get { return lastAllocation; } }
+        public bool HasBackplateAsset { get { return skillsBackplateAsset != null; } }
+        public bool IsDisconnected { get { return visible && session == null && rankedSession == null; } }
+        public bool IsRankedV2Connected { get { return visible && rankedSession != null; } }
+        public string UnavailableReason { get { return unavailableReason; } }
 
         private void Awake()
         {
             EnsureBackplateTexture();
-            // Standalone preview is intentionally not composed here. Production flow must
-            // inject the selected character graph or explicitly present unavailable state.
+            // Standalone preview is intentionally not composed here. Production flow
+            // must inject the selected character graph or explicitly present unavailable state.
         }
 
         private void Update()
@@ -139,12 +139,13 @@ namespace ShooterMover.UI.Skills
             ISkillsScreenNavigationPortV1 presentedNavigationPort,
             string rejectionCode)
         {
-            disconnectedPayload = routePayload
-                ?? throw new ArgumentNullException(nameof(routePayload));
-            if (!routePayload.HasValidFingerprint())
+            disconnectedPayload = routePayload;
+            if (routePayload != null && !routePayload.HasValidFingerprint())
+            {
                 throw new ArgumentException(
                     "The Skills route payload is invalid.",
                     nameof(routePayload));
+            }
             navigationPort = presentedNavigationPort
                 ?? throw new ArgumentNullException(nameof(presentedNavigationPort));
             session = null;
@@ -181,9 +182,11 @@ namespace ShooterMover.UI.Skills
         public void ConfigureBackplateForTests(TextAsset asset)
         {
             skillsBackplateAsset = asset;
-            if (backplateTexture == null) return;
-            Destroy(backplateTexture);
-            backplateTexture = null;
+            if (backplateTexture != null)
+            {
+                Destroy(backplateTexture);
+                backplateTexture = null;
+            }
         }
 
         public SkillsScreenAllocationResultV1 AllocateSkill(
@@ -238,11 +241,13 @@ namespace ShooterMover.UI.Skills
                 DesignHeight * scale);
             GUI.Box(new Rect(0f, 0f, Screen.width, Screen.height), GUIContent.none);
             if (backplateTexture != null)
+            {
                 GUI.DrawTexture(
                     canvas,
                     backplateTexture,
                     ScaleMode.StretchToFill,
                     true);
+            }
             return canvas;
         }
 
@@ -251,7 +256,9 @@ namespace ShooterMover.UI.Skills
             if (GUI.Button(
                 ScaleRect(canvas, new Rect(22f, 18f, 126f, 48f)),
                 "BACK"))
+            {
                 Back();
+            }
 
             GUI.Label(
                 ScaleRect(canvas, new Rect(164f, 15f, 535f, 48f)),
@@ -260,9 +267,11 @@ namespace ShooterMover.UI.Skills
             string totals = projection == null
                 ? "SKILLS UNAVAILABLE"
                 : "LEVEL " + projection.PlayerLevel
-                    + "    POINTS " + projection.AvailableSkillPoints
+                    + "    POINTS "
+                    + projection.AvailableSkillPoints
                     + " / " + projection.TotalSkillPoints
-                    + "    SPENT " + projection.SpentSkillPoints;
+                    + "    SPENT "
+                    + projection.SpentSkillPoints;
             GUI.Label(
                 ScaleRect(canvas, new Rect(710f, 18f, 548f, 38f)),
                 totals,
@@ -301,7 +310,11 @@ namespace ShooterMover.UI.Skills
 
         private void DrawSkills(Rect canvas)
         {
-            if (projection == null) return;
+            if (projection == null)
+            {
+                return;
+            }
+
             Rect viewport = ScaleRect(
                 canvas,
                 new Rect(24f, 104f, 1232f, 588f));
@@ -309,7 +322,8 @@ namespace ShooterMover.UI.Skills
             float cardWidth = ((viewport.width / scale)
                 - ((ColumnCount - 1) * CardGap) - 18f)
                 / ColumnCount;
-            int rowCount = (projection.Skills.Count + ColumnCount - 1)
+            int rowCount =
+                (projection.Skills.Count + ColumnCount - 1)
                 / ColumnCount;
             Rect content = new Rect(
                 0f,
@@ -321,7 +335,9 @@ namespace ShooterMover.UI.Skills
                 viewport,
                 scrollPosition,
                 content);
-            for (int index = 0; index < projection.Skills.Count; index++)
+            for (int index = 0;
+                index < projection.Skills.Count;
+                index++)
             {
                 int column = index % ColumnCount;
                 int row = index / ColumnCount;
@@ -341,29 +357,55 @@ namespace ShooterMover.UI.Skills
             SkillsScreenSkillProjectionV1 skill)
         {
             GUI.Box(card, GUIContent.none);
-            float inset = Mathf.Max(6f, card.width * 0.035f);
-            float line = Mathf.Max(16f, card.height * 0.135f);
+            float inset = Mathf.Max(
+                6f,
+                card.width * 0.035f);
+            float line = Mathf.Max(
+                16f,
+                card.height * 0.135f);
             float width = card.width - inset * 2f;
 
             GUI.Label(
-                new Rect(card.x + inset, card.y + inset, width, line),
+                new Rect(
+                    card.x + inset,
+                    card.y + inset,
+                    width,
+                    line),
                 skill.DisplayName,
                 headerStyle);
             GUI.Label(
-                new Rect(card.x + inset, card.y + inset + line, width, line),
+                new Rect(
+                    card.x + inset,
+                    card.y + inset + line,
+                    width,
+                    line),
                 skill.SkillId,
                 smallStyle);
             GUI.Label(
-                new Rect(card.x + inset, card.y + inset + line * 2f, width, line),
-                "RANK " + skill.CurrentRank + " / " + skill.MaximumRank
-                    + "    " + skill.State.ToString().ToUpperInvariant(),
+                new Rect(
+                    card.x + inset,
+                    card.y + inset + line * 2f,
+                    width,
+                    line),
+                "RANK " + skill.CurrentRank
+                + " / " + skill.MaximumRank
+                + "    "
+                + skill.State.ToString().ToUpperInvariant(),
                 bodyStyle);
             GUI.Label(
-                new Rect(card.x + inset, card.y + inset + line * 3f, width, line),
+                new Rect(
+                    card.x + inset,
+                    card.y + inset + line * 3f,
+                    width,
+                    line),
                 "REQ: " + skill.PrerequisiteLabel,
                 smallStyle);
             GUI.Label(
-                new Rect(card.x + inset, card.y + inset + line * 4f, width, line * 2f),
+                new Rect(
+                    card.x + inset,
+                    card.y + inset + line * 4f,
+                    width,
+                    line * 2f),
                 skill.Description,
                 smallStyle);
 
@@ -399,7 +441,9 @@ namespace ShooterMover.UI.Skills
                 ? fingerprint
                 : fingerprint.Substring(0, 16);
             return "skills-ui."
-                + (routeToken.Length == 0 ? "unbound" : routeToken)
+                + (routeToken.Length == 0
+                    ? "unbound"
+                    : routeToken)
                 + "."
                 + (skillId ?? "unknown")
                 + "."
@@ -413,17 +457,23 @@ namespace ShooterMover.UI.Skills
             switch (fact.Status)
             {
                 case SkillMutationStatusV1.Applied:
-                    return fact.SkillId + " increased to rank " + fact.CurrentRank + ".";
+                    return fact.SkillId
+                        + " increased to rank "
+                        + fact.CurrentRank
+                        + ".";
                 case SkillMutationStatusV1.DuplicateNoChange:
                     return "Duplicate operation ignored; no additional point was spent.";
                 case SkillMutationStatusV1.InsufficientPoints:
                     return "Insufficient skill points.";
                 case SkillMutationStatusV1.PrerequisiteMissing:
-                    return "Missing prerequisite for " + fact.SkillId + ".";
+                    return "Missing prerequisite for "
+                        + fact.SkillId
+                        + ".";
                 case SkillMutationStatusV1.CategoryInvestmentMissing:
                     return "Category investment requirement is not satisfied.";
                 case SkillMutationStatusV1.RankCapped:
-                    return fact.SkillId + " is already at maximum rank.";
+                    return fact.SkillId
+                        + " is already at maximum rank.";
                 case SkillMutationStatusV1.UnknownSkill:
                     return "Unknown skill identity.";
                 case SkillMutationStatusV1.InvalidRequest:
@@ -440,12 +490,18 @@ namespace ShooterMover.UI.Skills
         {
             switch (code)
             {
-                case "skill-prerequisite-missing": return "LOCKED";
-                case "skill-category-investment-missing": return "GATED";
-                case "skill-class-ineligible": return "CLASS LOCKED";
-                case "skill-rank-capped": return "CAPPED";
-                case "skill-points-insufficient": return "NO POINTS";
-                default: return "UNAVAILABLE";
+                case "skill-prerequisite-missing":
+                    return "LOCKED";
+                case "skill-category-investment-missing":
+                    return "GATED";
+                case "skill-class-ineligible":
+                    return "CLASS LOCKED";
+                case "skill-rank-capped":
+                    return "CAPPED";
+                case "skill-points-insufficient":
+                    return "NO POINTS";
+                default:
+                    return "UNAVAILABLE";
             }
         }
 
@@ -454,12 +510,15 @@ namespace ShooterMover.UI.Skills
             if (backplateTexture != null
                 || skillsBackplateAsset == null
                 || skillsBackplateAsset.bytes.Length == 0)
+            {
                 return;
+            }
 
             byte[] bytes;
             try
             {
-                bytes = Convert.FromBase64String(skillsBackplateAsset.text.Trim());
+                bytes = Convert.FromBase64String(
+                    skillsBackplateAsset.text.Trim());
             }
             catch (FormatException)
             {
@@ -472,9 +531,13 @@ namespace ShooterMover.UI.Skills
                 TextureFormat.RGBA32,
                 false);
             if (ImageConversion.LoadImage(loaded, bytes, false))
+            {
                 backplateTexture = loaded;
+            }
             else
+            {
                 Destroy(loaded);
+            }
         }
 
         private void EnsureStyles()
@@ -526,9 +589,11 @@ namespace ShooterMover.UI.Skills
 
         private void OnDestroy()
         {
-            if (backplateTexture == null) return;
-            Destroy(backplateTexture);
-            backplateTexture = null;
+            if (backplateTexture != null)
+            {
+                Destroy(backplateTexture);
+                backplateTexture = null;
+            }
         }
     }
 }
