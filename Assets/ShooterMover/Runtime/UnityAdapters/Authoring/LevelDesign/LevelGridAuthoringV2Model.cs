@@ -41,6 +41,54 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         InvalidRoomIdentity = 12,
         DuplicateRoomIdentity = 13,
         OverlappingRoomGridFootprint = 14,
+        InvalidRoomFolderSlot = 15,
+        DuplicateRoomFolderSlot = 16,
+        EdgeManagedDoorFacingMismatch = 17,
+    }
+
+    public sealed class LevelGridRoomRecordV2
+    {
+        public LevelGridRoomRecordV2(
+            string roomId,
+            Vector2Int gridCoordinate,
+            Vector2Int footprintCells,
+            int folderSlot,
+            string diagnosticLocation)
+        {
+            RoomId = roomId;
+            GridCoordinate = gridCoordinate;
+            FootprintCells = footprintCells;
+            FolderSlot = folderSlot;
+            DiagnosticLocation = diagnosticLocation ?? string.Empty;
+        }
+
+        public string RoomId { get; }
+
+        public Vector2Int GridCoordinate { get; }
+
+        public Vector2Int FootprintCells { get; }
+
+        public int FolderSlot { get; }
+
+        public string DiagnosticLocation { get; }
+
+        public string FolderKey
+        {
+            get
+            {
+                return GridCoordinate.x + "," + GridCoordinate.y + ":"
+                    + FolderSlot;
+            }
+        }
+
+        public string FolderName
+        {
+            get
+            {
+                return "Room_" + GridCoordinate.x + "_" + GridCoordinate.y
+                    + "_" + FolderSlot.ToString("00");
+            }
+        }
     }
 
     public sealed class LevelGridDoorRecordV2
@@ -55,6 +103,31 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             bool traversable,
             bool visibleOnMap,
             string diagnosticLocation)
+            : this(
+                doorId,
+                roomId,
+                side,
+                placementMode,
+                edgeOffset,
+                fixedLocalPosition,
+                traversable,
+                visibleOnMap,
+                true,
+                diagnosticLocation)
+        {
+        }
+
+        public LevelGridDoorRecordV2(
+            string doorId,
+            string roomId,
+            LevelDoorSideV2 side,
+            LevelDoorPlacementModeV2 placementMode,
+            float edgeOffset,
+            Vector2 fixedLocalPosition,
+            bool traversable,
+            bool visibleOnMap,
+            bool autoFaceConnection,
+            string diagnosticLocation)
         {
             DoorId = doorId;
             RoomId = roomId;
@@ -64,6 +137,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             FixedLocalPosition = fixedLocalPosition;
             Traversable = traversable;
             VisibleOnMap = visibleOnMap;
+            AutoFaceConnection = autoFaceConnection;
             DiagnosticLocation = diagnosticLocation ?? string.Empty;
         }
 
@@ -82,6 +156,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public bool Traversable { get; }
 
         public bool VisibleOnMap { get; }
+
+        public bool AutoFaceConnection { get; }
 
         public string DiagnosticLocation { get; }
 
