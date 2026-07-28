@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 400000}
   - component: {fileID: 11400000}
+  - component: {fileID: 11400001}
   m_Layer: 0
   m_Name: MobileBlasterDroidPresentation
   m_TagString: Untagged
@@ -100,3 +101,16 @@ MonoBehaviour:
   telegraphEndScaleMultiplier: 0.47058824
   telegraphStartAlpha: 0.12
   telegraphEndAlpha: 0.72
+--- !u!114 &11400001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c85f4e4ae0d43e295720af1f5e427b1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  retirementSeconds: 0.35
