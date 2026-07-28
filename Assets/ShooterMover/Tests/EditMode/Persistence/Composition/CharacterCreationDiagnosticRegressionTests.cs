@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ShooterMover.Application.Persistence.Accounts;
+using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -16,7 +18,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             var authority = new PlayerAccountSaveAuthorityV1(
                 PlayerAccountSnapshotV1.Empty(
                     Id("account.character-creation-diagnostic-regression")));
-            var factory = new ThrowingStarterFactory();
+            var factory = new ThrowingStarterFactory(0);
             int saveCalls = 0;
             var composition = new CharacterCompositionCoordinatorV1(
                 authority,
@@ -39,7 +41,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                             return Saved(snapshot);
                         }).Migrate(new[]
                         {
-                            LegacyProfile(),
+                            LegacyProfile(0),
                         });
 
                 Assert.That(result.Succeeded, Is.False);
@@ -62,22 +64,78 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             }
         }
 
-        private static LegacyCharacterProfileV1 LegacyProfile()
+        [Test]
+        public void BatchMigrationReportsRootStarterFailureAndRollsBackEarlierSlot()
+        {
+            var authority = new PlayerAccountSaveAuthorityV1(
+                PlayerAccountSnapshotV1.Empty(
+                    Id("account.batch-migration-diagnostic-regression")));
+            var factory = new ThrowingStarterFactory(1);
+            int saveCalls = 0;
+            var migration = new LegacyCharacterProfileMigrationV1(
+                authority,
+                factory,
+                snapshot =>
+                {
+                    saveCalls++;
+                    return Saved(snapshot);
+                });
+
+            LegacyCharacterProfileMigrationResultV1 result = migration.Migrate(
+                new[]
+                {
+                    LegacyProfile(0),
+                    LegacyProfile(1),
+                });
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(
+                result.Diagnostic,
+                Does.Contain(
+                    "legacy-profile-migration-threw:"
+                    + "TypeInitializationException"
+                    + "->InvalidOperationException:"
+                    + "starter graph catalogue missing"));
+            Assert.That(result.MigratedSlots, Is.Empty);
+            Assert.That(authority.Current.CharacterAt(0), Is.Null);
+            Assert.That(authority.Current.CharacterAt(1), Is.Null);
+            Assert.That(saveCalls, Is.Zero);
+            Assert.That(factory.Created.Count, Is.EqualTo(1));
+            Assert.That(factory.Created[0].IsDisposed, Is.True);
+        }
+
+        private static LegacyCharacterProfileV1 LegacyProfile(int slotIndex)
         {
             StableId classId = Id("loadout-profile.juggernaut");
             PlayerRouteProfilePayloadV1 route =
                 PlayerRouteProfilePayloadV1.Create(
-                    Id("character.creation-diagnostic-regression"),
+                    Id(
+                        "character.creation-diagnostic-regression-"
+                            + slotIndex),
                     classId,
                     new StableId[
                         PlayerRouteProfilePayloadV1.WeaponSlotCount]);
             return new LegacyCharacterProfileV1(
-                0,
-                "Diagnostic Pilot",
+                slotIndex,
+                "Diagnostic Pilot " + slotIndex,
                 route.SelectedCharacterStableId,
                 classId,
                 route.Fingerprint,
                 route);
+        }
+
+        private static IReadOnlyList<SaveComponentDefinitionV1> Definitions()
+        {
+            return new[]
+            {
+                KnownSaveComponentDefinitionsV1.PlayerExperience(),
+                KnownSaveComponentDefinitionsV1.PlayerHoldings(),
+                KnownSaveComponentDefinitionsV1.MoneyWallet(),
+                KnownSaveComponentDefinitionsV1.ScrapWallet(),
+                KnownSaveComponentDefinitionsV1.RankedSkillAllocation(),
+                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
+                KnownSaveComponentDefinitionsV1.StrongboxState(),
+            };
         }
 
         private static PlayerAccountStoreResultV1 Saved(
@@ -98,6 +156,15 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             ICharacterRuntimeGraphFactoryV1,
             IStarterCharacterRuntimeGraphFactoryV1
         {
+            private readonly int throwOnSlotIndex;
+
+            public ThrowingStarterFactory(int throwOnSlotIndex)
+            {
+                this.throwOnSlotIndex = throwOnSlotIndex;
+            }
+
+            public List<TestGraph> Created { get; } = new List<TestGraph>();
+
             public ICharacterRuntimeGraphV1 CreateRestoreTarget(
                 CharacterInstanceSnapshotV1 character)
             {
@@ -112,10 +179,127 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 string displayName,
                 object legacyContext)
             {
-                throw new TypeInitializationException(
-                    "StarterGraphCatalog",
-                    new InvalidOperationException(
-                        "starter graph catalogue missing"));
+                if (slotIndex == throwOnSlotIndex)
+                {
+                    throw new TypeInitializationException(
+                        "StarterGraphCatalog",
+                        new InvalidOperationException(
+                            "starter graph catalogue missing"));
+                }
+
+                TestGraph graph = TestGraph.Create(
+                    new CharacterInstanceSnapshotV1(
+                        exactCharacterInstanceStableId,
+                        classDefinitionStableId,
+                        slotIndex,
+                        displayName,
+                        0L,
+                        null));
+                Created.Add(graph);
+                return graph;
+            }
+        }
+
+        private sealed class TestGraph : ICharacterRuntimeGraphV1
+        {
+            private TestGraph(
+                CharacterInstanceSnapshotV1 character,
+                IReadOnlyList<ISaveComponentAdapterV1> saveAdapters)
+            {
+                Character = character;
+                SaveAdapters = saveAdapters;
+            }
+
+            public CharacterInstanceSnapshotV1 Character { get; private set; }
+
+            public IReadOnlyList<ISaveComponentAdapterV1> SaveAdapters { get; }
+
+            public bool IsDisposed { get; private set; }
+
+            public static TestGraph Create(CharacterInstanceSnapshotV1 character)
+            {
+                var adapters = new List<ISaveComponentAdapterV1>();
+                foreach (SaveComponentDefinitionV1 definition in Definitions())
+                {
+                    var state = new MutableState(
+                        "diagnostic-" + definition.ComponentStableId);
+                    var codec = new TestCodec();
+                    adapters.Add(
+                        new AuthoritySnapshotSaveComponentAdapterV1<TestSnapshot>(
+                            definition,
+                            codec,
+                            () => new TestSnapshot(state.Value),
+                            snapshot => codec.Validate(snapshot),
+                            snapshot =>
+                            {
+                                state.Value = snapshot.Value;
+                                return SaveComponentApplyResultV1.Applied();
+                            }));
+                }
+                return new TestGraph(character, adapters);
+            }
+
+            public void MarkPersisted(CharacterInstanceSnapshotV1 character)
+            {
+                Character = character;
+            }
+
+            public void Dispose()
+            {
+                IsDisposed = true;
+            }
+        }
+
+        private sealed class MutableState
+        {
+            public MutableState(string value)
+            {
+                Value = value;
+            }
+
+            public string Value { get; set; }
+        }
+
+        private sealed class TestSnapshot
+        {
+            public TestSnapshot(string value)
+            {
+                Value = value;
+            }
+
+            public string Value { get; }
+        }
+
+        private sealed class TestCodec :
+            ISaveComponentPayloadCodecV1<TestSnapshot>
+        {
+            public string ContractId
+            {
+                get { return "character-creation-diagnostic-test-v1"; }
+            }
+
+            public string Encode(TestSnapshot snapshot)
+            {
+                return snapshot.Value;
+            }
+
+            public bool TryDecode(
+                string canonicalPayload,
+                out TestSnapshot snapshot,
+                out string rejectionCode)
+            {
+                snapshot = new TestSnapshot(canonicalPayload);
+                rejectionCode = string.Empty;
+                return true;
+            }
+
+            public SaveComponentValidationResultV1 Validate(
+                TestSnapshot snapshot)
+            {
+                return snapshot == null || snapshot.Value == null
+                    ? SaveComponentValidationResultV1.Reject(
+                        "character-creation-diagnostic-test-snapshot-null")
+                    : SaveComponentValidationResultV1.Accept();
             }
         }
     }
