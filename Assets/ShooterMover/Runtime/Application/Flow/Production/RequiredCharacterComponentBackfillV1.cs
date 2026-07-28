@@ -57,6 +57,8 @@ namespace ShooterMover.Application.Flow.Production
                     account);
             }
 
+            var coordinatorRequiredIds = new HashSet<StableId>(
+                CharacterCompositionCoordinatorV1.RequiredCharacterComponentIds);
             PlayerAccountSnapshotV1 next = account;
             int migratedCharacters = 0;
             for (int slotIndex = 0;
@@ -103,22 +105,25 @@ namespace ShooterMover.Application.Flow.Production
                                     + slotIndex,
                                 account);
                         }
-                        if (!adapter.Definition.IsRequired)
+
+                        StableId componentId =
+                            adapter.Definition.ComponentStableId;
+                        bool required = adapter.Definition.IsRequired
+                            || coordinatorRequiredIds.Contains(componentId);
+                        if (!required)
                         {
                             continue;
                         }
-                        if (!seen.Add(adapter.Definition.ComponentStableId))
+                        if (!seen.Add(componentId))
                         {
                             return Failure(
                                 "required-character-component-backfill-adapter-duplicate:"
-                                    + adapter.Definition.ComponentStableId,
+                                    + componentId,
                                 account);
                         }
 
                         SaveComponentSnapshotV1 ignored;
-                        if (character.TryGetComponent(
-                                adapter.Definition.ComponentStableId,
-                                out ignored))
+                        if (character.TryGetComponent(componentId, out ignored))
                         {
                             continue;
                         }
@@ -144,6 +149,26 @@ namespace ShooterMover.Application.Flow.Production
                          componentIndex++)
                     {
                         migrated = migrated.WithComponent(missing[componentIndex]);
+                    }
+
+                    for (int requiredIndex = 0;
+                         requiredIndex
+                            < CharacterCompositionCoordinatorV1
+                                .RequiredCharacterComponentIds.Count;
+                         requiredIndex++)
+                    {
+                        StableId requiredId = CharacterCompositionCoordinatorV1
+                            .RequiredCharacterComponentIds[requiredIndex];
+                        SaveComponentSnapshotV1 ignored;
+                        if (!migrated.TryGetComponent(requiredId, out ignored))
+                        {
+                            return Failure(
+                                "required-character-component-backfill-source-missing:"
+                                    + slotIndex
+                                    + ":"
+                                    + requiredId,
+                                account);
+                        }
                     }
 
                     SaveComponentValidationResultV1 characterValidation =
