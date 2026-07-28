@@ -50,8 +50,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 
         private readonly Dictionary<StableId, RunRewardPickup2D> views =
             new Dictionary<StableId, RunRewardPickup2D>();
+        private readonly HashSet<RunRewardPickup2D> retiringViews =
+            new HashSet<RunRewardPickup2D>();
 
         public int VisiblePickupCount { get { return views.Count; } }
+        public int RetiringPickupCount { get { return retiringViews.Count; } }
         public RunPickupPresentationSyncResultV1 LastSyncResult { get; private set; }
 
         public void Configure(
@@ -170,6 +173,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             {
                 views.Remove(view.PickupStableId);
             }
+            retiringViews.Add(view);
         }
 
         internal void CompleteCollectedRetirement(RunRewardPickup2D view)
@@ -178,6 +182,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             {
                 return;
             }
+            retiringViews.Remove(view);
             Destroy(view.gameObject);
         }
 
@@ -246,6 +251,13 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                     Destroy(view.gameObject);
             }
             views.Clear();
+
+            foreach (RunRewardPickup2D view in retiringViews)
+            {
+                if (view != null)
+                    Destroy(view.gameObject);
+            }
+            retiringViews.Clear();
         }
     }
 }
