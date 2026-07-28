@@ -22,7 +22,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         [TestCase(ProductionWeaponMountPolicyV1.AggressiveLoadoutProfileId, 3, 2, 1)]
         [TestCase(ProductionWeaponMountPolicyV1.HealerLoadoutProfileId, 3, 3, 0)]
         [TestCase(ProductionWeaponMountPolicyV1.DefensiveLoadoutProfileId, 4, 4, 0)]
-        public void FreshCharacterCreatesOneDistinctCanonicalStarterPerActiveMount(
+        public void FreshCharacterCreatesEquippedRattlersAndOneUnequippedSweeper(
             string profileId,
             int expectedPhysical,
             int expectedActive,
@@ -39,11 +39,18 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 runtime.MountLoadoutAuthority.ExportSnapshot();
             InventoryLoadoutAuthoritySnapshotV1 loadout =
                 runtime.LoadoutAuthority.ExportSnapshot();
+            WeaponEquipmentInstance sweeper = weapons.Instances.Single(item =>
+                item.WeaponDefinitionId.Value
+                    == ProductionWeaponOnboardingV2.SweeperWeaponDefinitionId);
+            StableId[] equippedIds = mounts.Bindings
+                .Where(item => item.InstanceId != null)
+                .Select(item => item.InstanceId)
+                .ToArray();
 
             Assert.That(runtime.MountLayout.PhysicalMountCount, Is.EqualTo(expectedPhysical));
             Assert.That(runtime.MountLayout.ActiveMountCount, Is.EqualTo(expectedActive));
             Assert.That(runtime.MountLayout.LockedBySkillMountCount, Is.EqualTo(expectedLocked));
-            Assert.That(weapons.Instances.Count, Is.EqualTo(expectedActive));
+            Assert.That(weapons.Instances.Count, Is.EqualTo(expectedActive + 1));
             Assert.That(mounts.Bindings.Count, Is.EqualTo(expectedPhysical));
             Assert.That(
                 mounts.Bindings.Select(item => item.MountId),
@@ -59,12 +66,18 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 Is.True);
             Assert.That(
                 weapons.Instances.Select(item => item.InstanceId).Distinct().Count(),
-                Is.EqualTo(expectedActive));
+                Is.EqualTo(expectedActive + 1));
             Assert.That(
-                weapons.Instances.All(item =>
+                weapons.Instances.Count(item =>
                     item.WeaponDefinitionId.Value
                     == ProductionWeaponOnboardingV1.StarterWeaponDefinitionId),
+                Is.EqualTo(expectedActive));
+            Assert.That(
+                equippedIds.All(instanceId =>
+                    weapons.Find(instanceId).WeaponDefinitionId.Value
+                    == ProductionWeaponOnboardingV1.StarterWeaponDefinitionId),
                 Is.True);
+            Assert.That(equippedIds, Does.Not.Contain(sweeper.InstanceId));
             Assert.That(
                 loadout.Bindings.Count(item =>
                     item.EquipmentInstanceStableId != null),
@@ -82,6 +95,48 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 draft.WeaponSlots.All(item => !item.IsBound),
                 Is.True,
                 "Character creation must not mutate the incoming route payload.");
+        }
+
+        [Test]
+        public void SweeperMk1UsesRequestedShotgunStats()
+        {
+            ProductionWeaponMarkV1 sweeper;
+            Assert.That(
+                ProductionWeaponCatalogProvider.Current.TryGetMark(
+                    ProductionWeaponOnboardingV2.SweeperWeaponDefinitionId,
+                    out sweeper),
+                Is.True);
+            Assert.That(sweeper, Is.Not.Null);
+            Assert.That(sweeper.Blueprint.DisplayName, Is.EqualTo("Sweeper MK1"));
+            Assert.That(
+                sweeper.Blueprint.FireSettings.Mode,
+                Is.EqualTo(WeaponFireMode.Automatic));
+            Assert.That(sweeper.Blueprint.FireSettings.RateOfFire, Is.EqualTo(2d));
+            Assert.That(sweeper.Blueprint.ShotPattern.ProjectilesPerShot, Is.EqualTo(3));
+            Assert.That(sweeper.Blueprint.BaseStats.DirectDamage, Is.EqualTo(1d));
+            Assert.That(
+                ProductionWeaponCatalogProvider.Current.Families.Single(item =>
+                    item.FamilyId == "sweeper").WeaponCategoryId,
+                Is.EqualTo(StableId.Create("weapon-category", "shotgun")));
+
+            WeaponDefinitionData flat;
+            Assert.That(
+                ProductionWeaponCatalogProvider.WeaponCatalog.TryGetDefinition(
+                    ProductionWeaponOnboardingV2.SweeperWeaponDefinitionId,
+                    out flat),
+                Is.True);
+            Assert.That(flat.DisplayName, Is.EqualTo("Sweeper MK1"));
+            Assert.That(flat.FireRate, Is.EqualTo(2d));
+            Assert.That(flat.ProjectilesPerTrigger, Is.EqualTo(3));
+            Assert.That(flat.DamagePerProjectile, Is.EqualTo(1d));
+
+            ProductionWeaponMarkV1 replaced;
+            Assert.That(
+                ProductionWeaponCatalogProvider.Current.TryGetMark(
+                    "ironwake.mk1",
+                    out replaced),
+                Is.False,
+                "The old provisional shotgun slot must not survive beside Sweeper.");
         }
 
         [Test]
@@ -131,7 +186,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
 
             Assert.That(after.Sequence, Is.EqualTo(before.Sequence));
             Assert.That(after.Fingerprint, Is.EqualTo(before.Fingerprint));
-            Assert.That(after.Instances.Count, Is.EqualTo(3));
+            Assert.That(after.Instances.Count, Is.EqualTo(4));
             Assert.That(
                 runtime.MountLoadoutAuthority.ExportSnapshot().Fingerprint,
                 Is.EqualTo(mountsBefore.Fingerprint));
@@ -219,22 +274,74 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         [Test]
-        public void DuplicateDefinitionsRemainDistinctSelectableCards()
+        public void SweeperCanReplaceMountedRattlerWithoutChangingOwnership()
+        {
+            var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
+                "sweeper-equip",
+                ProductionWeaponMountPolicyV1.HealerLoadoutProfileId));
+            WeaponHoldingsSnapshotV2 heldBefore =
+                runtime.WeaponHoldings.ExportSnapshot();
+            ProductionWeaponMountPositionV1 firstPosition =
+                runtime.MountLayout.ConfigurablePositions[0];
+            StableId rattlerInstanceId = runtime.MountLoadoutAuthority.ExportSnapshot()
+                .Find(firstPosition.MountStableId).InstanceId;
+            StableId sweeperInstanceId = heldBefore.Instances.Single(item =>
+                item.WeaponDefinitionId.Value
+                    == ProductionWeaponOnboardingV2.SweeperWeaponDefinitionId)
+                .InstanceId;
+
+            var inventory = CanonicalService(runtime);
+            Assert.That(
+                inventory.Unequip(firstPosition.LoadoutSlotStableId).Status,
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
+            Assert.That(
+                inventory.SelectWeapon(sweeperInstanceId).Status,
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
+            Assert.That(
+                inventory.EquipSelected(firstPosition.LoadoutSlotStableId).Status,
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
+            Assert.That(
+                inventory.Confirm().Status,
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.Confirmed));
+
+            Assert.That(
+                runtime.MountLoadoutAuthority.ExportSnapshot()
+                    .Find(firstPosition.MountStableId).InstanceId,
+                Is.EqualTo(sweeperInstanceId));
+            Assert.That(runtime.WeaponHoldings.Find(rattlerInstanceId), Is.Not.Null);
+            Assert.That(runtime.WeaponHoldings.Find(sweeperInstanceId), Is.Not.Null);
+            Assert.That(
+                runtime.WeaponHoldings.ExportSnapshot().Fingerprint,
+                Is.EqualTo(heldBefore.Fingerprint));
+        }
+
+        [Test]
+        public void DuplicateRattlersRemainDistinctSelectableCardsAlongsideSweeper()
         {
             var runtime = new ProductionPlayerLoadoutRuntimeV1(Route(
                 "duplicates",
                 ProductionWeaponMountPolicyV1.HealerLoadoutProfileId));
             var service = CanonicalService(runtime);
 
-            Assert.That(service.Snapshot.OwnedWeapons.Count, Is.EqualTo(3));
+            Assert.That(service.Snapshot.OwnedWeapons.Count, Is.EqualTo(4));
             Assert.That(
                 service.Snapshot.OwnedWeapons.Select(item =>
                     item.Instance.WeaponDefinitionId.Value).Distinct().Count(),
+                Is.EqualTo(2));
+            Assert.That(
+                service.Snapshot.OwnedWeapons.Count(item =>
+                    item.Instance.WeaponDefinitionId.Value
+                    == ProductionWeaponOnboardingV1.StarterWeaponDefinitionId),
+                Is.EqualTo(3));
+            Assert.That(
+                service.Snapshot.OwnedWeapons.Count(item =>
+                    item.Instance.WeaponDefinitionId.Value
+                    == ProductionWeaponOnboardingV2.SweeperWeaponDefinitionId),
                 Is.EqualTo(1));
             Assert.That(
                 service.Snapshot.OwnedWeapons.Select(item =>
                     item.Instance.InstanceId).Distinct().Count(),
-                Is.EqualTo(3));
+                Is.EqualTo(4));
         }
 
         [Test]
