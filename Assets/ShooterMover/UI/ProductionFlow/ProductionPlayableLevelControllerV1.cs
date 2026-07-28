@@ -43,8 +43,6 @@ namespace ShooterMover.UI.ProductionFlow
         private string routeFingerprint;
         private PlayablePlayerMarker2D playerMarker;
         private Rigidbody2D playerBody;
-        private Sprite runtimeSprite;
-        private Texture2D runtimeTexture;
         private long operationSequence;
         private bool isConfigured;
         private bool completionAccepted;
@@ -263,7 +261,6 @@ namespace ShooterMover.UI.ProductionFlow
                     throw Failure(BuildImportDiagnostic());
                 }
                 ValidateImportedLevel();
-                CreateRuntimeSprite();
                 SpawnExactlyOnePlayer();
                 CreateExactlyOneGameplayCamera();
                 SynchronizeCurrentRoom();
@@ -280,7 +277,6 @@ namespace ShooterMover.UI.ProductionFlow
                         "playable-level-room-enemy-composition-rejected:"
                         + enemySpawner.LastBuildError);
                 }
-                DecoratePresentation();
                 isConfigured = true;
                 diagnostic = string.Empty;
             }
@@ -303,8 +299,27 @@ namespace ShooterMover.UI.ProductionFlow
             if (presentationCatalog == null) throw Failure("playable-level-presentation-catalog-missing");
             if (presentationRoot == null) throw Failure("playable-level-presentation-root-missing");
             if (playerPrefab == null) throw Failure("playable-level-player-prefab-missing");
+            ValidateAuthoredPlayerPresentation();
             if (playerSpeed <= 0f) throw Failure("playable-level-player-speed-invalid");
             if (cameraSize <= 0f) throw Failure("playable-level-camera-size-invalid");
+        }
+
+        private void ValidateAuthoredPlayerPresentation()
+        {
+            SpriteRenderer[] renderers =
+                playerPrefab.GetComponentsInChildren<SpriteRenderer>(true);
+            if (renderers == null || renderers.Length == 0)
+            {
+                throw Failure("playable-level-player-renderer-missing");
+            }
+
+            for (int index = 0; index < renderers.Length; index++)
+            {
+                SpriteRenderer renderer = renderers[index];
+                if (renderer != null && renderer.sprite != null) return;
+            }
+
+            throw Failure("playable-level-player-sprite-missing");
         }
 
         private string BuildImportDiagnostic()
@@ -478,7 +493,6 @@ namespace ShooterMover.UI.ProductionFlow
             playerBody.rotation = (float)spawn.LocalRotationDegrees;
             playerBody.linearVelocity = Vector2.zero;
             RebuildOwnedBindings();
-            DecoratePresentation();
         }
 
         private RoomSpawnPointDefinitionV1 ResolveCurrentSpawn()
@@ -553,10 +567,6 @@ namespace ShooterMover.UI.ProductionFlow
             boundary.transform.position = position;
             BoxCollider2D collider = boundary.AddComponent<BoxCollider2D>();
             collider.size = size;
-            SpriteRenderer renderer = boundary.AddComponent<SpriteRenderer>();
-            renderer.sprite = runtimeSprite;
-            renderer.color = new Color(0.22f, 0.28f, 0.36f, 1f);
-            renderer.transform.localScale = new Vector3(size.x, size.y, 1f);
             ownedBindings.Add(boundary);
         }
 
@@ -600,66 +610,6 @@ namespace ShooterMover.UI.ProductionFlow
                 || !flow.Transitions.TryReturnToHub(characterGraph.RoutePayload))
             {
                 Debug.LogError("playable-level-hub-return-rejected", this);
-            }
-        }
-
-        private void CreateRuntimeSprite()
-        {
-            runtimeTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            runtimeTexture.name = "Playable Level Runtime Pixel";
-            runtimeTexture.SetPixel(0, 0, Color.white);
-            runtimeTexture.Apply(false, true);
-            runtimeSprite = Sprite.Create(
-                runtimeTexture,
-                new Rect(0f, 0f, 1f, 1f),
-                new Vector2(0.5f, 0.5f),
-                1f);
-            runtimeSprite.name = "Playable Level Runtime Sprite";
-        }
-
-        private void DecoratePresentation()
-        {
-            if (runtimeSprite == null || presentationRoot == null) return;
-            SpriteRenderer[] renderers = presentationRoot.GetComponentsInChildren<
-                SpriteRenderer>(true);
-            for (int index = 0; index < renderers.Length; index++)
-            {
-                SpriteRenderer renderer = renderers[index];
-                if (renderer == null) continue;
-                if (renderer.sprite == null) renderer.sprite = runtimeSprite;
-                RoomDoorInstance2D door = renderer.GetComponentInParent<RoomDoorInstance2D>();
-                RoomPlacedInstance2D placed =
-                    renderer.GetComponentInParent<RoomPlacedInstance2D>();
-                if (door != null)
-                {
-                    renderer.color = door.IsOpen
-                        ? new Color(0.2f, 0.85f, 0.45f, 1f)
-                        : new Color(0.8f, 0.25f, 0.2f, 1f);
-                }
-                else if (placed != null
-                    && placed.PlacementKind == RoomLivePlacementKindV1.Enemy)
-                {
-                    renderer.color = new Color(0.85f, 0.3f, 0.25f, 1f);
-                }
-                else if (placed != null)
-                {
-                    renderer.color = new Color(0.45f, 0.52f, 0.62f, 1f);
-                }
-                else
-                {
-                    renderer.color = new Color(0.12f, 0.15f, 0.2f, 1f);
-                }
-            }
-
-            if (playerMarker != null)
-            {
-                SpriteRenderer playerRenderer =
-                    playerMarker.GetComponentInChildren<SpriteRenderer>(true);
-                if (playerRenderer != null)
-                {
-                    if (playerRenderer.sprite == null) playerRenderer.sprite = runtimeSprite;
-                    playerRenderer.color = new Color(0.25f, 0.65f, 1f, 1f);
-                }
             }
         }
 
@@ -712,8 +662,6 @@ namespace ShooterMover.UI.ProductionFlow
                     HandleRoomPresentationRebuilt;
                 roomRuntime.FinalExitReached -= HandleFinalExitReached;
             }
-            if (runtimeSprite != null) Destroy(runtimeSprite);
-            if (runtimeTexture != null) Destroy(runtimeTexture);
         }
     }
 

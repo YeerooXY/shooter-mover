@@ -44,7 +44,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     [CreateAssetMenu(
         fileName = "RoomPresentationCatalog2D",
         menuName = "Shooter Mover/Level Design/Room Presentation Catalog 2D")]
-    public sealed class RoomPresentationCatalog2D : ScriptableObject
+    public sealed class RoomPresentationCatalog2D :
+        ScriptableObject,
+        ISerializationCallbackReceiver
     {
         [SerializeField] private RoomPresentationCatalogEntry2D[] entries =
             Array.Empty<RoomPresentationCatalogEntry2D>();
@@ -60,6 +62,19 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
 
             EnsureResolved();
+            if (!resolved.TryGetValue(presentationStableId, out prefab))
+            {
+                return false;
+            }
+            if (prefab != null)
+            {
+                return true;
+            }
+
+            // Unity objects can become fake-null after asset replacement or reimport while
+            // domain reload is disabled. Rebuild once from the serialized source of truth.
+            InvalidateResolved();
+            EnsureResolved();
             return resolved.TryGetValue(presentationStableId, out prefab)
                 && prefab != null;
         }
@@ -67,6 +82,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void ValidateFor(AuthorableRoomGraphDefinitionV1 definition)
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
+
             EnsureResolved();
             for (int roomIndex = 0; roomIndex < definition.Rooms.Count; roomIndex++)
             {
@@ -88,7 +104,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             entries = configuredEntries == null
                 ? Array.Empty<RoomPresentationCatalogEntry2D>()
                 : (RoomPresentationCatalogEntry2D[])configuredEntries.Clone();
-            resolved = null;
+            InvalidateResolved();
         }
 
         public void ConfigureForTests(params RoomPresentationCatalogEntry2D[] configuredEntries)
@@ -96,21 +112,54 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             Configure(configuredEntries);
         }
 
+        void ISerializationCallbackReceiver.OnBeforeSerialize()
+        {
+        }
+
+        void ISerializationCallbackReceiver.OnAfterDeserialize()
+        {
+            InvalidateResolved();
+        }
+
+        private void OnEnable()
+        {
+            InvalidateResolved();
+        }
+
+        private void OnValidate()
+        {
+            InvalidateResolved();
+        }
+
         private void Require(StableId presentationStableId)
         {
             GameObject prefab;
-            if (!resolved.TryGetValue(presentationStableId, out prefab) || prefab == null)
+            if (resolved.TryGetValue(presentationStableId, out prefab)
+                && prefab != null)
             {
-                throw new InvalidOperationException(
-                    "room-live-presentation-missing:" + presentationStableId);
+                return;
             }
+
+            if (resolved.ContainsKey(presentationStableId))
+            {
+                InvalidateResolved();
+                EnsureResolved();
+                if (resolved.TryGetValue(presentationStableId, out prefab)
+                    && prefab != null)
+                {
+                    return;
+                }
+            }
+
+            throw new InvalidOperationException(
+                "room-live-presentation-missing:" + presentationStableId);
         }
 
         private void EnsureResolved()
         {
             if (resolved != null) return;
 
-            resolved = new Dictionary<StableId, GameObject>();
+            var candidate = new Dictionary<StableId, GameObject>();
             RoomPresentationCatalogEntry2D[] authoredEntries = entries
                 ?? Array.Empty<RoomPresentationCatalogEntry2D>();
             for (int index = 0; index < authoredEntries.Length; index++)
@@ -129,14 +178,21 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         "room-live-presentation-prefab-missing:" + id);
                 }
 
-                if (resolved.ContainsKey(id))
+                if (candidate.ContainsKey(id))
                 {
                     throw new InvalidOperationException(
                         "room-live-presentation-duplicate:" + id);
                 }
 
-                resolved.Add(id, entry.Prefab);
+                candidate.Add(id, entry.Prefab);
             }
+
+            resolved = candidate;
+        }
+
+        private void InvalidateResolved()
+        {
+            resolved = null;
         }
     }
 }
