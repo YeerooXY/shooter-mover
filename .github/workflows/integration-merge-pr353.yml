@@ -1,0 +1,165 @@
+name: Integration merge PR 353
+
+on:
+  push:
+    branches:
+      - agent/integration-all-open-prs-20260728
+    paths:
+      - .github/workflows/integration-merge-pr353.yml
+
+permissions:
+  contents: write
+
+jobs:
+  merge-pr353:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/integration-all-open-prs-20260728
+          fetch-depth: 0
+
+      - name: Merge PR 353 and resolve shared authorities
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "shooter-mover-integration-bot"
+          git config user.email "integration-bot@users.noreply.github.com"
+          git fetch origin agent/run-reward-composition-001
+
+          set +e
+          git merge --no-ff --no-commit origin/agent/run-reward-composition-001
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            unresolved="$(git diff --name-only --diff-filter=U)"
+            expected_a="Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemySpawner2D.cs"
+            expected_b="Assets/ShooterMover/UI/ProductionFlow/ShooterMover.UI.ProductionFlow.asmdef"
+            unexpected="$(printf '%s\n' "$unresolved" | grep -v -x -e "$expected_a" -e "$expected_b" || true)"
+            if [ -n "$unexpected" ]; then
+              echo "Unexpected conflicts:"
+              printf '%s\n' "$unexpected"
+              exit 1
+            fi
+          fi
+
+          spawner="Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemySpawner2D.cs"
+          asmdef="Assets/ShooterMover/UI/ProductionFlow/ShooterMover.UI.ProductionFlow.asmdef"
+
+          if git diff --name-only --diff-filter=U | grep -Fxq "$spawner"; then
+            git checkout --theirs -- "$spawner"
+            python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemySpawner2D.cs")
+          text = path.read_text(encoding="utf-8")
+
+          old = """                    EnemyRuntimeDownstreamPortsV1 downstream = BuildDownstreamPorts();"""
+          new = """                    var attackPresentation =
+                        new RoomEnemyAttackPresentationPortV1();
+                    EnemyRuntimeDownstreamPortsV1 downstream =
+                        BuildDownstreamPorts(attackPresentation);"""
+          if text.count(old) != 1:
+              raise SystemExit("Expected one downstream-construction seam")
+          text = text.replace(old, new)
+
+          old = """                        actor.Bind(runtime);
+                        var binding = new EnemyBinding(actor, runtime);"""
+          new = """                        actor.Bind(runtime);
+                        attackPresentation.Bind(actor, revision);
+                        var binding = new EnemyBinding(actor, runtime);"""
+          if text.count(old) != 1:
+              raise SystemExit("Expected one actor-bind seam")
+          text = text.replace(old, new)
+
+          old = """        private EnemyRuntimeDownstreamPortsV1 BuildDownstreamPorts()
+        {
+            return new EnemyRuntimeDownstreamPortsV1(
+                new UnconnectedAttackPort(),
+                new UnconnectedPlayerDamagePort(),
+                new EnemyRoomPort(this),
+                configuredExperienceConsumer,
+                configuredDropConsumer,
+                configuredKillStatisticsConsumer,
+                new EnemyCollisionPort(this));
+        }"""
+          new = """        private EnemyRuntimeDownstreamPortsV1 BuildDownstreamPorts(
+            RoomEnemyAttackPresentationPortV1 attackPresentation)
+        {
+            if (attackPresentation == null)
+            {
+                throw new ArgumentNullException(nameof(attackPresentation));
+            }
+            return new EnemyRuntimeDownstreamPortsV1(
+                attackPresentation,
+                new UnconnectedPlayerDamagePort(),
+                new EnemyRoomPort(this),
+                configuredExperienceConsumer,
+                configuredDropConsumer,
+                configuredKillStatisticsConsumer,
+                new EnemyCollisionPort(this));
+        }"""
+          if text.count(old) != 1:
+              raise SystemExit("Expected one downstream method seam")
+          text = text.replace(old, new)
+
+          old = """        private sealed class UnconnectedAttackPort : IEnemyAttackEffectPortV1
+        {
+            public void Emit(EnemyAttackExecutionRequestV1 request)
+            {
+                if (request == null) throw new ArgumentNullException(nameof(request));
+                throw new InvalidOperationException(
+                    \"Room enemy attack output is not connected yet.\");
+            }
+        }
+
+"""
+          if text.count(old) != 1:
+              raise SystemExit("Expected one retired unconnected attack port")
+          text = text.replace(old, "")
+
+          path.write_text(text, encoding="utf-8", newline="\n")
+          PY
+            git add -- "$spawner"
+          fi
+
+          if git diff --name-only --diff-filter=U | grep -Fxq "$asmdef"; then
+            python3 - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          path = "Assets/ShooterMover/UI/ProductionFlow/ShooterMover.UI.ProductionFlow.asmdef"
+          ours = json.loads(subprocess.check_output(["git", "show", f":2:{path}"], text=True))
+          theirs = json.loads(subprocess.check_output(["git", "show", f":3:{path}"], text=True))
+
+          keys = set(ours) | set(theirs)
+          for key in sorted(keys - {"references"}):
+              if ours.get(key) != theirs.get(key):
+                  raise SystemExit(f"Unexpected asmdef conflict outside references: {key}")
+
+          refs = []
+          for value in ours.get("references", []) + theirs.get("references", []):
+              if value not in refs:
+                  refs.append(value)
+          ours["references"] = refs
+          Path(path).write_text(json.dumps(ours, indent=4) + "\n", encoding="utf-8")
+          PY
+            git add -- "$asmdef"
+          fi
+
+          remaining="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$remaining" ]; then
+            echo "Unresolved conflicts remain:"
+            printf '%s\n' "$remaining"
+            exit 1
+          fi
+
+          if grep -R -n -E '^(<<<<<<<|=======|>>>>>>>)' Assets/ShooterMover --include='*.cs' --include='*.asmdef'; then
+            echo "Conflict markers remain"
+            exit 1
+          fi
+          git diff --check
+          git commit -m "[integration-bot] Merge PR #353 with enemy combat composition"
+          git push origin HEAD:agent/integration-all-open-prs-20260728
