@@ -9,6 +9,16 @@ using UnityEngine;
 namespace ShooterMover.UnityAdapters.Missions.Rooms
 {
     /// <summary>
+    /// Optional presentation-only handoff used after authoritative room defeat has committed.
+    /// Implementations may keep the already-terminal object visible briefly, then invoke release.
+    /// They never delay room completion, door synchronization, collision shutdown, or rewards.
+    /// </summary>
+    internal interface IRoomDefeatedPresentationRetirement2D
+    {
+        bool TryBeginRetirement(Action release);
+    }
+
+    /// <summary>
     /// Unity-only renderer for one active authored room. It owns instantiated presentation
     /// objects and stable-id lookup, but it never owns room state or completion decisions.
     /// </summary>
@@ -156,8 +166,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 StableId id = remove[index];
                 RoomPlacedInstance2D instance;
                 if (!spawnedPlacements.TryGetValue(id, out instance)) continue;
+
+                // Remove lookup ownership immediately so the defeated placement cannot be rebound,
+                // targeted, or counted as live. Only visual destruction may be deferred.
                 spawnedPlacements.Remove(id);
-                RemoveSpawnedObject(instance == null ? null : instance.gameObject);
+                RetireSpawnedObject(instance == null ? null : instance.gameObject);
             }
         }
 
@@ -203,6 +216,55 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             return instance;
         }
 
+        private void RetireSpawnedObject(GameObject instance)
+        {
+            if (instance == null) return;
+
+            IRoomDefeatedPresentationRetirement2D retirement = null;
+            int providerCount = 0;
+            MonoBehaviour[] behaviours = instance.GetComponentsInChildren<MonoBehaviour>(true);
+            for (int index = 0; index < behaviours.Length; index++)
+            {
+                IRoomDefeatedPresentationRetirement2D candidate =
+                    behaviours[index] as IRoomDefeatedPresentationRetirement2D;
+                if (candidate == null) continue;
+                retirement = candidate;
+                providerCount++;
+            }
+
+            if (providerCount > 1)
+            {
+                Debug.LogError(
+                    "room-defeated-presentation-retirement-ambiguous",
+                    instance);
+                RemoveSpawnedObject(instance);
+                return;
+            }
+            if (retirement == null)
+            {
+                RemoveSpawnedObject(instance);
+                return;
+            }
+
+            try
+            {
+                if (retirement.TryBeginRetirement(
+                    () => RemoveSpawnedObject(instance)))
+                {
+                    return;
+                }
+            }
+            catch (Exception exception)
+            {
+                if (IsFatalException(exception)) throw;
+                Debug.LogException(exception, instance);
+            }
+
+            // The authoritative defeat is already committed. A failed optional visual handoff
+            // must clean up immediately rather than leave a stale room-owned object behind.
+            RemoveSpawnedObject(instance);
+        }
+
         private void RemoveSpawnedObject(GameObject instance)
         {
             if (instance == null) return;
@@ -237,6 +299,13 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
 
             return false;
+        }
+
+        private static bool IsFatalException(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
     }
 }
