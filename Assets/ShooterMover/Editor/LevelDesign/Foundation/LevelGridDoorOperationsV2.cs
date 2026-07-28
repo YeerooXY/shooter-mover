@@ -7,133 +7,24 @@ using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
-    public static class LevelGridDoorOperationsV2
+    /// <summary>
+    /// Internal mechanics used by LevelGridEditorOperationsV2. This type owns no user-visible
+    /// commands. Bulk inspection is deliberately read-only; an exact door moves only when an
+    /// explicit canonical editor operation calls ReflowDoor.
+    /// </summary>
+    internal static class LevelGridDoorOperationsV2
     {
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Delete Selected Door (Undoable)",
-            priority = 241)]
-        private static void DeleteSelectedDoor()
+        /// <summary>
+        /// Compatibility entry retained for existing callers. It no longer mutates authoring state;
+        /// validation and Build must report required reflow rather than silently editing the scene.
+        /// </summary>
+        internal static int ReflowAll(LevelDesignSceneAuthoringRoot2D root)
         {
-            LevelDoorEndpointAuthoring2D door = ResolveSelectedDoor();
-            if (door == null)
-            {
-                EditorUtility.DisplayDialog(
-                    "Delete Door",
-                    "Select a Level Grid V2 door endpoint.",
-                    "OK");
-                return;
-            }
-
-            DeleteDoorUndoable(door);
+            return CountDoorsNeedingReflow(root);
         }
 
-        [MenuItem(
-            "CONTEXT/LevelDoorEndpointAuthoring2D/Delete Door (Undoable)")]
-        private static void DeleteDoorFromContext(MenuCommand command)
-        {
-            LevelDoorEndpointAuthoring2D door =
-                command.context as LevelDoorEndpointAuthoring2D;
-            if (door != null)
-            {
-                DeleteDoorUndoable(door);
-            }
-        }
-
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Reflow Selected Edge Door",
-            priority = 242)]
-        private static void ReflowSelectedDoor()
-        {
-            LevelDoorEndpointAuthoring2D door = ResolveSelectedDoor();
-            if (door == null)
-            {
-                EditorUtility.DisplayDialog(
-                    "Reflow Door",
-                    "Select a Level Grid V2 door endpoint.",
-                    "OK");
-                return;
-            }
-
-            LevelDesignSceneAuthoringRoot2D root =
-                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            if (root == null)
-            {
-                return;
-            }
-
-            Undo.IncrementCurrentGroup();
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Reflow Edge-Managed Door");
-            Undo.RecordObject(door, "Reflow Edge-Managed Door");
-            Undo.RecordObject(door.transform, "Reflow Edge-Managed Door");
-            door.SetAutoFaceConnectionForAuthoring(true);
-            ReflowDoor(root, door);
-            Undo.CollapseUndoOperations(undoGroup);
-
-            EditorUtility.SetDirty(door);
-            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            LevelGridAuthoringV2LiveValidation.ValidateNow(
-                root,
-                LevelGridValidationPurposeV2.Draft,
-                false);
-            SceneView.RepaintAll();
-        }
-
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Keep Selected Door Placement",
-            priority = 243)]
-        private static void KeepSelectedDoorPlacement()
-        {
-            LevelDoorEndpointAuthoring2D door = ResolveSelectedDoor();
-            if (door == null)
-            {
-                return;
-            }
-
-            Undo.RecordObject(door, "Keep Door Placement");
-            door.SetAutoFaceConnectionForAuthoring(false);
-            EditorUtility.SetDirty(door);
-            LevelDesignSceneAuthoringRoot2D root =
-                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            if (root != null)
-            {
-                LevelGridAuthoringV2LiveValidation.ValidateNow(
-                    root,
-                    LevelGridValidationPurposeV2.Draft,
-                    false);
-                EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            }
-            SceneView.RepaintAll();
-        }
-
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Capture Selected Door As Fixed",
-            priority = 244)]
-        private static void CaptureSelectedDoorAsFixed()
-        {
-            LevelDoorEndpointAuthoring2D door = ResolveSelectedDoor();
-            if (door == null)
-            {
-                return;
-            }
-
-            Undo.RecordObject(door, "Capture Fixed Door Position");
-            door.CaptureCurrentPositionAsFixedPlacement();
-            EditorUtility.SetDirty(door);
-            LevelDesignSceneAuthoringRoot2D root =
-                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-            if (root != null)
-            {
-                LevelGridAuthoringV2LiveValidation.ValidateNow(
-                    root,
-                    LevelGridValidationPurposeV2.Draft,
-                    false);
-                EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            }
-            SceneView.RepaintAll();
-        }
-
-        public static int ReflowAll(LevelDesignSceneAuthoringRoot2D root)
+        internal static int CountDoorsNeedingReflow(
+            LevelDesignSceneAuthoringRoot2D root)
         {
             if (root == null)
             {
@@ -142,46 +33,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             LevelDoorEndpointAuthoring2D[] doors =
                 root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
-            int changed = 0;
+            int count = 0;
             for (int index = 0; index < doors.Length; index++)
             {
                 LevelDoorEndpointAuthoring2D door = doors[index];
-                if (door == null
-                    || door.PlacementMode != LevelDoorPlacementModeV2.EdgeManaged
-                    || !door.AutoFaceConnection)
-                {
-                    continue;
-                }
-
                 LevelDoorSideV2 expected;
                 if (!TryResolveExpectedSide(root, door, out expected))
                 {
                     continue;
                 }
 
-                Vector3 expectedPosition = ResolvePositionForSide(door, expected);
-                bool sideChanged = door.Side != expected;
-                bool positionChanged = door.transform.localPosition != expectedPosition;
-                if (!sideChanged && !positionChanged)
+                bool sideMismatch = door.Side != expected;
+                bool positionMismatch = !sideMismatch
+                    && door.transform.localPosition != door.ResolveTargetLocalPosition();
+                if (sideMismatch || positionMismatch)
                 {
-                    continue;
+                    count++;
                 }
-
-                Undo.RecordObject(door, "Auto-Reflow Edge Door");
-                Undo.RecordObject(door.transform, "Auto-Reflow Edge Door");
-                door.SetEdgeSideForAuthoring(expected);
-                EditorUtility.SetDirty(door);
-                changed++;
             }
-
-            if (changed > 0)
-            {
-                EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            }
-            return changed;
+            return count;
         }
 
-        public static bool ReflowDoor(
+        internal static bool ReflowDoor(
             LevelDesignSceneAuthoringRoot2D root,
             LevelDoorEndpointAuthoring2D door)
         {
@@ -191,11 +64,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return false;
             }
 
+            bool changed = door.Side != expected
+                || door.transform.localPosition != ResolveTargetPosition(door, expected);
+            if (!changed)
+            {
+                return false;
+            }
+
             door.SetEdgeSideForAuthoring(expected);
             return true;
         }
 
-        public static int DeleteDoorUndoable(
+        /// <summary>
+        /// Physical deletion helper for the canonical LevelGridEditorOperationsV2 façade. No menu,
+        /// inspector, context action or live-validation callback calls this method directly.
+        /// </summary>
+        internal static int DeleteDoorUndoable(
             LevelDoorEndpointAuthoring2D door,
             bool openProblemsWindow = true)
         {
@@ -246,12 +130,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return attached.Count;
         }
 
-        public static List<LevelDoorLinkAuthoring2D> FindAttachedConnections(
+        internal static List<LevelDoorLinkAuthoring2D> FindAttachedConnections(
             LevelDesignSceneAuthoringRoot2D root,
             LevelDoorEndpointAuthoring2D door)
         {
-            List<LevelDoorLinkAuthoring2D> attached =
-                new List<LevelDoorLinkAuthoring2D>();
+            var attached = new List<LevelDoorLinkAuthoring2D>();
             if (root == null || door == null)
             {
                 return attached;
@@ -314,18 +197,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return false;
         }
 
-        private static Vector3 ResolvePositionForSide(
+        private static Vector3 ResolveTargetPosition(
             LevelDoorEndpointAuthoring2D door,
             LevelDoorSideV2 expected)
         {
-            LevelDoorSideV2 original = door.Side;
-            if (original == expected)
+            if (door.Side == expected)
             {
                 return door.ResolveTargetLocalPosition();
             }
 
-            // The public authoring setter also snaps. Use current position as a conservative
-            // comparison and let the recorded setter perform the authoritative reflow.
+            // A side change necessarily requires an explicit canonical reflow. The exact resulting
+            // position is calculated by SetEdgeSideForAuthoring after Undo has been recorded.
             return door.transform.localPosition;
         }
 
@@ -345,14 +227,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 Undo.DestroyObjectImmediate(link);
             }
-        }
-
-        private static LevelDoorEndpointAuthoring2D ResolveSelectedDoor()
-        {
-            GameObject selected = Selection.activeGameObject;
-            return selected == null
-                ? null
-                : selected.GetComponentInParent<LevelDoorEndpointAuthoring2D>();
         }
     }
 }
