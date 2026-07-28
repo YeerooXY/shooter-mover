@@ -155,23 +155,25 @@ namespace ShooterMover.TerminalDropBinding
             lastBatch = null;
             lastAdmissions = EmptyAdmissions();
 
-            TerminalPersonalRewardBatchV1 generated = authority.GenerateBatch(fact);
-            ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> admitted =
-                AdmitBatch(generated);
-            lastBatch = generated;
-            lastAdmissions = admitted;
+            lastBatch = authority.GenerateBatch(fact);
+            lastAdmissions = AdmitBatch(lastBatch);
             if (requireAcceptedPublication)
             {
-                TerminalDropPendingPublicationPolicyV1.Validate(generated, admitted);
+                TerminalDropPendingPublicationPolicyV1.Validate(
+                    lastBatch,
+                    lastAdmissions);
             }
 
-            PublishAdmissions(admitted);
+            PublishAdmissions(lastAdmissions);
         }
 
         private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> AdmitBatch(
             TerminalPersonalRewardBatchV1 batch)
         {
             var values = new List<PendingTerminalDropAdmissionResultV1>();
+            var view = new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
+                values);
+            lastAdmissions = view;
             if (batch != null && batch.IsAccepted)
             {
                 for (int index = 0; index < batch.Results.Count; index++)
@@ -179,7 +181,7 @@ namespace ShooterMover.TerminalDropBinding
                     values.Add(pendingAdmission.Admit(batch.Results[index]));
                 }
             }
-            return new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(values);
+            return view;
         }
 
         private void PublishAdmissions(
@@ -253,23 +255,25 @@ namespace ShooterMover.TerminalDropBinding
             lastBatch = null;
             lastAdmissions = EmptyAdmissions();
 
-            TerminalPersonalRewardBatchV1 generated = authority.GenerateBatch(fact);
-            ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> admitted =
-                AdmitBatch(generated);
-            lastBatch = generated;
-            lastAdmissions = admitted;
+            lastBatch = authority.GenerateBatch(fact);
+            lastAdmissions = AdmitBatch(lastBatch);
             if (requireAcceptedPublication)
             {
-                TerminalDropPendingPublicationPolicyV1.Validate(generated, admitted);
+                TerminalDropPendingPublicationPolicyV1.Validate(
+                    lastBatch,
+                    lastAdmissions);
             }
 
-            PublishAdmissions(admitted);
+            PublishAdmissions(lastAdmissions);
         }
 
         private ReadOnlyCollection<PendingTerminalDropAdmissionResultV1> AdmitBatch(
             TerminalPersonalRewardBatchV1 batch)
         {
             var values = new List<PendingTerminalDropAdmissionResultV1>();
+            var view = new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(
+                values);
+            lastAdmissions = view;
             if (batch != null && batch.IsAccepted)
             {
                 for (int index = 0; index < batch.Results.Count; index++)
@@ -277,7 +281,7 @@ namespace ShooterMover.TerminalDropBinding
                     values.Add(pendingAdmission.Admit(batch.Results[index]));
                 }
             }
-            return new ReadOnlyCollection<PendingTerminalDropAdmissionResultV1>(values);
+            return view;
         }
 
         private void PublishAdmissions(
