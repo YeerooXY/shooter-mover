@@ -2,6 +2,7 @@ using System;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Presentation
 {
@@ -130,8 +131,10 @@ namespace ShooterMover.Application.Weapons.Presentation
                 return false;
             }
 
-            string weaponDefinitionId = equipmentDefinition
-                .RuntimeWeaponReferenceId.ToString();
+            string weaponDefinitionId = WeaponDefinitionId
+                .FromRuntimeReference(
+                    equipmentDefinition.RuntimeWeaponReferenceId)
+                .Value;
             WeaponDefinitionData weaponDefinition;
             if (!weaponCatalog.TryGetDefinition(
                 weaponDefinitionId,

@@ -193,7 +193,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             return definition != null
                 && definition.RuntimeWeaponReferenceId != null
                 && string.Equals(
-                    definition.RuntimeWeaponReferenceId.ToString(),
+                    WeaponDefinitionId.FromRuntimeReference(
+                        definition.RuntimeWeaponReferenceId).Value,
                     canonical.WeaponDefinitionId.Value,
                     StringComparison.Ordinal);
         }

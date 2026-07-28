@@ -190,6 +190,29 @@ namespace ShooterMover.Application.Flow.Production
                 return false;
             }
 
+            // The mount-v2 component is now the authoritative source for
+            // weapon bindings. The legacy loadout component is retained as a
+            // compatibility projection for armour/non-weapon slots only. A
+            // previous migration could leave both representations populated,
+            // which the account semantic validator correctly rejects.
+            SaveComponentSnapshotV1 mountV2Component;
+            bool hasMountV2 = character.TryGetComponent(
+                WeaponMountLoadoutSaveComponentV2.Definition()
+                    .ComponentStableId,
+                out mountV2Component);
+            if (hasMountV2)
+            {
+                WeaponMountLoadoutSnapshotV2 mountSnapshot;
+                if (!WeaponMountLoadoutSaveComponentV2.Codec.TryDecode(
+                        mountV2Component.CanonicalPayload,
+                        out mountSnapshot,
+                        out diagnostic))
+                {
+                    diagnostic = "mount-v2-decode-failed:" + diagnostic;
+                    return false;
+                }
+            }
+
             HashSet<StableId> retiredInstanceIds =
                 FindRetiredEquipmentInstances(holdings);
             PlayerHoldingsSnapshotV1 currentHoldings =
@@ -204,12 +227,18 @@ namespace ShooterMover.Application.Flow.Production
                     loadout,
                     instanceIdFactory);
 
+            InventoryLoadoutAuthoritySnapshotV1 repairedLegacyLoadout =
+                hasMountV2
+                    ? ProductionWeaponMountLoadoutProjectionV2.ArmorOnly(
+                        repaired.Loadout)
+                    : repaired.Loadout;
+
             bool holdingsChanged = !string.Equals(
                 repaired.Holdings.Fingerprint,
                 holdings.Fingerprint,
                 StringComparison.Ordinal);
             bool loadoutChanged = !string.Equals(
-                repaired.Loadout.Fingerprint,
+                repairedLegacyLoadout.Fingerprint,
                 loadout.Fingerprint,
                 StringComparison.Ordinal);
             GeneratedEquipmentAugmentSignatureSnapshotV1 cleanedSignatures;
@@ -240,7 +269,7 @@ namespace ShooterMover.Application.Flow.Production
                 migrated = migrated.WithComponent(Component(
                     KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
                     KnownSaveComponentCodecsV1.ExactInstanceLoadout.Encode(
-                        repaired.Loadout)));
+                        repairedLegacyLoadout)));
             }
             if (signaturesChanged)
             {

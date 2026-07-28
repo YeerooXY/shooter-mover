@@ -775,25 +775,66 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            var instances = new List<StableId>(
-                PlayerRouteProfilePayloadV1.WeaponSlotCount);
-            for (int index = 0;
-                 index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
-                 index++)
+            PlayerRouteProfilePayloadV1 routePayload;
+            SaveComponentSnapshotV1 mountComponent;
+            if (character.TryGetComponent(
+                    WeaponMountLoadoutSaveComponentV2.Definition()
+                        .ComponentStableId,
+                    out mountComponent))
             {
-                instances.Add(loadout.GetBinding(
-                    InventoryLoadoutSlotsV1.All[index].SlotStableId)
-                    .EquipmentInstanceStableId);
+                WeaponMountLoadoutSnapshotV2 mounts;
+                if (!WeaponMountLoadoutSaveComponentV2.Codec.TryDecode(
+                        mountComponent.CanonicalPayload,
+                        out mounts,
+                        out rejectionCode))
+                {
+                    rejectionCode =
+                        "character-projection-mount-v2-invalid:"
+                            + rejectionCode;
+                    return false;
+                }
+
+                try
+                {
+                    routePayload = ProductionWeaponMountLoadoutProjectionV2
+                        .Route(
+                            character.CharacterInstanceStableId,
+                            character.ClassDefinitionStableId,
+                            ProductionWeaponMountPolicyV1.ResolveLayout(
+                                character.ClassDefinitionStableId),
+                            mounts);
+                }
+                catch (Exception exception)
+                {
+                    rejectionCode = "character-projection-mount-v2-threw:"
+                        + exception.GetType().Name;
+                    return false;
+                }
+            }
+            else
+            {
+                var instances = new List<StableId>(
+                    PlayerRouteProfilePayloadV1.WeaponSlotCount);
+                for (int index = 0;
+                     index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                     index++)
+                {
+                    instances.Add(loadout.GetBinding(
+                        InventoryLoadoutSlotsV1.All[index].SlotStableId)
+                        .EquipmentInstanceStableId);
+                }
+
+                routePayload = PlayerRouteProfilePayloadV1.Create(
+                    character.CharacterInstanceStableId,
+                    character.ClassDefinitionStableId,
+                    instances);
             }
 
             try
             {
                 profile = new ProductionFlowProfileRecordV1(
                     character.DisplayName,
-                    PlayerRouteProfilePayloadV1.Create(
-                        character.CharacterInstanceStableId,
-                        character.ClassDefinitionStableId,
-                        instances));
+                    routePayload);
                 return true;
             }
             catch (Exception exception)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Catalog
 {
@@ -36,8 +37,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                             "weapon-family",
                             family.FamilyId),
                         mark.Blueprint.DisplayName,
-                        StableId.Parse(
-                            mark.Blueprint.DefinitionId.ToString()),
+                        mark.Blueprint.DefinitionId.ToRuntimeReference(),
                         InclusiveIntRange.Create(1, 200),
                         4,
                         new[] { quality },

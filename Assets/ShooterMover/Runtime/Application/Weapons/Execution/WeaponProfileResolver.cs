@@ -144,7 +144,8 @@ namespace ShooterMover.Application.Weapons.Execution
                 return false;
             }
 
-            id = new WeaponDefinitionId(definition.RuntimeWeaponReferenceId.ToString());
+            id = WeaponDefinitionId.FromRuntimeReference(
+                definition.RuntimeWeaponReferenceId);
             return true;
         }
     }

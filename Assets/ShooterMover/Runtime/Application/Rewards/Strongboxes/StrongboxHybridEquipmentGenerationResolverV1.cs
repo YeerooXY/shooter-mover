@@ -8,6 +8,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Rewards.Strongboxes
 {
@@ -353,7 +354,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 return false;
             }
 
-            string reference = equipment.RuntimeWeaponReferenceId.ToString();
+            string reference = WeaponDefinitionId.FromRuntimeReference(
+                equipment.RuntimeWeaponReferenceId).Value;
             if (weaponCatalog.TryGetDefinition(reference, out weapon)
                 && weapon != null)
             {

@@ -1,6 +1,7 @@
 using System.Globalization;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 using UnityEditor;
 using UnityEngine;
 
@@ -79,7 +80,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                     card.EquipmentDefinitionId.ToString());
                 EditorGUILayout.LabelField(
                     "Runtime weapon reference",
-                    card.RuntimeWeaponReferenceId.ToString());
+                    WeaponDefinitionId.FromRuntimeReference(
+                        card.RuntimeWeaponReferenceId).Value);
                 EditorGUILayout.LabelField(
                     "Weapon definition",
                     card.WeaponDefinitionId);

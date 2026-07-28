@@ -174,16 +174,44 @@ namespace ShooterMover.UI.ProductionFlow
                             .CurrentDiagnostic);
                 return;
             }
-            if (routePayload == null
-                || !routePayload.HasValidFingerprint()
-                || !graph.RoutePayload.Equals(routePayload)
-                || !profile.Payload.Equals(routePayload))
+            if (!HasSameCharacterRouteIdentity(routePayload, graph, profile)
+                || graph.RoutePayload == null
+                || !graph.RoutePayload.HasValidFingerprint()
+                || profile.Payload == null
+                || !profile.Payload.HasValidFingerprint()
+                || !graph.RoutePayload.Equals(profile.Payload))
             {
                 FailAndReturn("playable-level-character-route-mismatch");
                 return;
             }
 
+            // Navigation payloads are immutable snapshots. Inventory/equipment changes
+            // can legitimately occur after the snapshot used to enter Play was created.
+            // The selected character and class still have to match exactly, but a stale
+            // weapon-slot fingerprint must not reject the run. Gameplay binds to the
+            // current character graph below, which is the authoritative payload.
             Begin(selectedLevel, graph);
+        }
+
+        private static bool HasSameCharacterRouteIdentity(
+            PlayerRouteProfilePayloadV1 routePayload,
+            ProductionCharacterRuntimeGraphV1 graph,
+            ProductionFlowProfileRecordV1 profile)
+        {
+            return routePayload != null
+                && routePayload.HasValidFingerprint()
+                && graph != null
+                && graph.Character != null
+                && profile != null
+                && profile.Payload != null
+                && routePayload.SelectedCharacterStableId
+                    == graph.Character.CharacterInstanceStableId
+                && routePayload.SelectedCharacterStableId
+                    == profile.Payload.SelectedCharacterStableId
+                && routePayload.LoadoutProfileStableId
+                    == graph.Character.ClassDefinitionStableId
+                && routePayload.LoadoutProfileStableId
+                    == profile.Payload.LoadoutProfileStableId;
         }
 
         private void Begin(

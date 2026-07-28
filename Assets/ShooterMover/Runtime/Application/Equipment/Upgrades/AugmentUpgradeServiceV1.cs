@@ -16,6 +16,7 @@ using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Equipment.Upgrades
 {
@@ -190,7 +191,8 @@ namespace ShooterMover.Application.Equipment.Upgrades
                 ProductionWeaponMarkV1 mark;
                 canonicalDefinitionResolved = ProductionWeaponCatalogProvider.Current
                     .TryGetMark(
-                        definition.RuntimeWeaponReferenceId.ToString(),
+                        WeaponDefinitionId.FromRuntimeReference(
+                            definition.RuntimeWeaponReferenceId).Value,
                         out mark)
                     && mark != null;
             }

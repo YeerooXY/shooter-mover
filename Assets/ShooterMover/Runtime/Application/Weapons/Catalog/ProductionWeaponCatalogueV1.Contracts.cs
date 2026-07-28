@@ -5,6 +5,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Catalog
 {
@@ -266,10 +267,9 @@ namespace ShooterMover.Application.Weapons.Catalog
                         pair.Value.EquipmentDefinitionId);
                 if (equipment == null
                     || equipment.RuntimeWeaponReferenceId == null
-                    || !string.Equals(
-                        equipment.RuntimeWeaponReferenceId.ToString(),
-                        pair.Key,
-                        StringComparison.Ordinal))
+                    || !WeaponDefinitionId.FromRuntimeReference(
+                            equipment.RuntimeWeaponReferenceId)
+                        .Equals(new WeaponDefinitionId(pair.Key)))
                 {
                     throw new ArgumentException(
                         "Canonical weapon is missing its exact equipment projection: "
