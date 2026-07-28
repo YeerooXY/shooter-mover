@@ -340,7 +340,22 @@ namespace ShooterMover.Application.Persistence.Components
                         "Export adapters must be non-null.",
                         nameof(adapters));
                 }
-                SaveComponentSnapshotV1 component = adapter.ExportComponent();
+                SaveComponentSnapshotV1 component;
+                try
+                {
+                    component = adapter.ExportComponent();
+                }
+                catch (Exception exception)
+                {
+                    string componentId = adapter.Definition == null
+                        ? "unknown"
+                        : adapter.Definition.ComponentStableId.ToString();
+                    throw new InvalidOperationException(
+                        "save-component-export-failed:"
+                            + componentId
+                            + ":"
+                            + exception.Message);
+                }
                 string key = component.ComponentStableId.ToString();
                 if (ordered.ContainsKey(key))
                 {

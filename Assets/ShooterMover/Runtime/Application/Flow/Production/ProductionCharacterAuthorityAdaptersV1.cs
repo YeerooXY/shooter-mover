@@ -111,6 +111,8 @@ namespace ShooterMover.Application.Flow.Production
                         verifier.TryImport(snapshot);
                     return result.Status
                             == PlayerExperienceImportStatusV1.Imported
+                        || result.Status
+                            == PlayerExperienceImportStatusV1.DuplicateNoChange
                         ? SaveComponentValidationResultV1.Accept()
                         : SaveComponentValidationResultV1.Reject(
                             result.RejectionCode);
@@ -121,6 +123,8 @@ namespace ShooterMover.Application.Flow.Production
                         authority.TryImport(snapshot);
                     return result.Status
                             == PlayerExperienceImportStatusV1.Imported
+                        || result.Status
+                            == PlayerExperienceImportStatusV1.DuplicateNoChange
                         ? SaveComponentApplyResultV1.Applied()
                         : SaveComponentApplyResultV1.Rejected(
                             result.RejectionCode);

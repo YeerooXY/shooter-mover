@@ -198,7 +198,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
 
             string definitionValue =
-                equipmentDefinition.RuntimeWeaponReferenceId.ToString();
+                WeaponDefinitionId.FromRuntimeReference(
+                    equipmentDefinition.RuntimeWeaponReferenceId).Value;
             var definitionId = new WeaponDefinitionId(definitionValue);
             WeaponBlueprint blueprint;
             ICanonicalWeaponBlueprintResolver canonicalResolver =

@@ -148,6 +148,10 @@ namespace ShooterMover.Domain.Weapons.Execution
 
     public sealed class WeaponDefinitionId : IEquatable<WeaponDefinitionId>
     {
+        private const string RuntimeReferenceNamespace = "weapon";
+        private const string MarkSeparator = ".mk";
+        private const string RuntimeMarkSeparator = "-mk";
+
         public WeaponDefinitionId(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -159,6 +163,55 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
 
         public string Value { get; }
+
+        public StableId ToRuntimeReference()
+        {
+            int markIndex = Value.LastIndexOf(
+                MarkSeparator,
+                StringComparison.Ordinal);
+            if (markIndex <= 0 || markIndex + MarkSeparator.Length >= Value.Length)
+            {
+                throw new FormatException(
+                    "Weapon definition IDs must end with a mark such as .mk1.");
+            }
+
+            string encoded = Value.Substring(0, markIndex)
+                + RuntimeMarkSeparator
+                + Value.Substring(markIndex + MarkSeparator.Length);
+            return StableId.Create(RuntimeReferenceNamespace, encoded);
+        }
+
+        public static WeaponDefinitionId FromRuntimeReference(
+            StableId runtimeReference)
+        {
+            if (runtimeReference == null
+                || !string.Equals(
+                    runtimeReference.Namespace,
+                    RuntimeReferenceNamespace,
+                    StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "A weapon.* runtime reference is required.",
+                    nameof(runtimeReference));
+            }
+
+            int markIndex = runtimeReference.Value.LastIndexOf(
+                RuntimeMarkSeparator,
+                StringComparison.Ordinal);
+            if (markIndex <= 0
+                || markIndex + RuntimeMarkSeparator.Length
+                    >= runtimeReference.Value.Length)
+            {
+                throw new FormatException(
+                    "Weapon runtime references must end with a mark such as -mk1.");
+            }
+
+            string decoded = runtimeReference.Value.Substring(0, markIndex)
+                + MarkSeparator
+                + runtimeReference.Value.Substring(
+                    markIndex + RuntimeMarkSeparator.Length);
+            return new WeaponDefinitionId(decoded);
+        }
 
         public bool Equals(WeaponDefinitionId other)
         {

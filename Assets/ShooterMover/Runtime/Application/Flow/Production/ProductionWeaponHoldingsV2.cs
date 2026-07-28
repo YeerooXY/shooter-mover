@@ -476,8 +476,8 @@ namespace ShooterMover.Application.Flow.Production
 
             converted = WeaponEquipmentInstance.Create(
                 legacy.InstanceId,
-                new WeaponDefinitionId(
-                    definition.RuntimeWeaponReferenceId.ToString()),
+                WeaponDefinitionId.FromRuntimeReference(
+                    definition.RuntimeWeaponReferenceId),
                 augmentAssignments,
                 Array.Empty<StableId>());
             return true;

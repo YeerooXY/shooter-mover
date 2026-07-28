@@ -105,10 +105,9 @@ namespace ShooterMover.Domain.Weapons
                     nameof(equipmentDefinition));
             }
             if (equipmentDefinition.RuntimeWeaponReferenceId == null
-                || !string.Equals(
-                    equipmentDefinition.RuntimeWeaponReferenceId.ToString(),
-                    blueprint.DefinitionId.Value,
-                    StringComparison.Ordinal))
+                || !WeaponDefinitionId.FromRuntimeReference(
+                    equipmentDefinition.RuntimeWeaponReferenceId)
+                    .Equals(blueprint.DefinitionId))
             {
                 throw new ArgumentException(
                     "Equipment runtime weapon reference does not match the supplied WeaponBlueprint identity.",

@@ -8,6 +8,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Strongboxes;
 using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
@@ -193,7 +194,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             EquipmentDefinition equipment,
             out WeaponDefinitionData weapon)
         {
-            string reference = equipment.RuntimeWeaponReferenceId.ToString();
+            string reference = WeaponDefinitionId.FromRuntimeReference(
+                equipment.RuntimeWeaponReferenceId).Value;
             if (weaponCatalog.TryGetDefinition(reference, out weapon) && weapon != null)
                 return true;
 
