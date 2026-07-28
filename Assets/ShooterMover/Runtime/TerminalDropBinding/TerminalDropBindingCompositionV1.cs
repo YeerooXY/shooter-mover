@@ -344,7 +344,8 @@ namespace ShooterMover.TerminalDropBinding
             ITerminalRewardParticipantResolverV1 participantResolver = null,
             ITerminalRewardEnvironmentResolverV1 environmentResolver = null,
             ITerminalRewardOverrideResolverV1 overrideResolver = null,
-            IPersonalRewardDeliveryOutboxV1 deliveryOutbox = null)
+            IPersonalRewardDeliveryOutboxV1 deliveryOutbox = null,
+            bool requireAcceptedPublication = false)
         {
             if (enemyCatalog == null)
                 throw new ArgumentNullException(nameof(enemyCatalog));
@@ -424,12 +425,12 @@ namespace ShooterMover.TerminalDropBinding
                     authority,
                     pendingAdmission,
                     admissionConsumer,
-                    true),
+                    requireAcceptedPublication),
                 new PropTerminalDropFactConsumerV1(
                     authority,
                     pendingAdmission,
                     admissionConsumer,
-                    true));
+                    requireAcceptedPublication));
         }
     }
 }
