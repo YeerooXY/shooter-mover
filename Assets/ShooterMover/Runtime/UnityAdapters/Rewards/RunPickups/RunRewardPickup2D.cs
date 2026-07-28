@@ -7,8 +7,9 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 {
     /// <summary>
     /// Generic physical projection of one exact run-local pickup. Trigger callbacks only
-    /// construct and submit a typed collection command. The object hides itself only after
-    /// authority acceptance or an exact accepted replay.
+    /// construct and submit a typed collection command. Authority acceptance retires the
+    /// exact view immediately from synchronization, while optional visual feedback may
+    /// complete before the GameObject is destroyed.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RunRewardPickup2D : MonoBehaviour
@@ -18,9 +19,12 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         private RunPickupSnapshotV1 pickup;
         private RunPickupAuthorityHost2D authorityHost;
         private RunPickupPresenter2D presenter;
+        private IRunRewardPickupAcceptedFeedbackV1 acceptedFeedback;
         private bool collectionInProgress;
         private bool retired;
+        private bool retirementCompleted;
         private RunPickupCollectionResultV1 lastCollectionResult;
+        private string presentationDiagnostic = string.Empty;
 
         public RunPickupSnapshotV1 Pickup { get { return pickup; } }
         public StableId PickupStableId
@@ -28,6 +32,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             get { return pickup == null ? null : pickup.PickupStableId; }
         }
         public bool IsRetired { get { return retired; } }
+        public bool IsRetirementFeedbackPending
+        {
+            get { return retired && !retirementCompleted; }
+        }
+        public string PresentationDiagnostic { get { return presentationDiagnostic; } }
         public RunPickupCollectionResultV1 LastCollectionResult
         {
             get { return lastCollectionResult; }
@@ -50,9 +59,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                     nameof(authorityHost));
             if (presentation == null)
                 throw new ArgumentNullException(nameof(presentation));
-            string presentationDiagnostic;
-            if (!presentation.IsUsable(out presentationDiagnostic))
-                throw new ArgumentException(presentationDiagnostic, nameof(presentation));
+            string presentationValidationDiagnostic;
+            if (!presentation.IsUsable(out presentationValidationDiagnostic))
+                throw new ArgumentException(
+                    presentationValidationDiagnostic,
+                    nameof(presentation));
             if (this.pickup != null
                 && this.pickup.PickupStableId != pickup.PickupStableId)
             {
@@ -72,7 +83,10 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 (float)pickup.WorldSpawnContext.PositionY,
                 transform.position.z);
             retired = false;
+            retirementCompleted = false;
+            presentationDiagnostic = string.Empty;
             ApplyVisibleState(true);
+            BindOptionalPresentation(pickup);
         }
 
         public RunPickupCollectionResultV1 TryCollect(
@@ -143,10 +157,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                         "run-pickup-view-authority-result-null");
                 if (lastCollectionResult.IsCollected)
                 {
-                    retired = true;
-                    ApplyVisibleState(false);
-                    if (presenter != null)
-                        presenter.NotifyCollected(this);
+                    BeginAcceptedRetirement(collector);
                 }
                 return lastCollectionResult;
             }
@@ -188,6 +199,120 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             spriteRenderer = GetComponent<SpriteRenderer>();
             if (spriteRenderer == null)
                 spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+        }
+
+        private void BindOptionalPresentation(RunPickupSnapshotV1 immutablePickup)
+        {
+            IRunRewardPickupProjectionBinderV1 binder = null;
+            IRunRewardPickupAcceptedFeedbackV1 feedback = null;
+            MonoBehaviour[] behaviours = GetComponents<MonoBehaviour>();
+            for (int index = 0; index < behaviours.Length; index++)
+            {
+                MonoBehaviour behaviour = behaviours[index];
+                IRunRewardPickupProjectionBinderV1 candidateBinder =
+                    behaviour as IRunRewardPickupProjectionBinderV1;
+                if (candidateBinder != null)
+                {
+                    if (binder != null && !ReferenceEquals(binder, candidateBinder))
+                    {
+                        throw new InvalidOperationException(
+                            "A pickup view cannot own multiple projection binders.");
+                    }
+                    binder = candidateBinder;
+                }
+
+                IRunRewardPickupAcceptedFeedbackV1 candidateFeedback =
+                    behaviour as IRunRewardPickupAcceptedFeedbackV1;
+                if (candidateFeedback != null)
+                {
+                    if (feedback != null && !ReferenceEquals(feedback, candidateFeedback))
+                    {
+                        throw new InvalidOperationException(
+                            "A pickup view cannot own multiple accepted-feedback handlers.");
+                    }
+                    feedback = candidateFeedback;
+                }
+            }
+
+            bool decoratorBound = true;
+            if (binder != null)
+            {
+                string diagnostic;
+                decoratorBound = binder.TryBindRunPickup(
+                    immutablePickup,
+                    out diagnostic);
+                presentationDiagnostic = diagnostic ?? string.Empty;
+            }
+
+            if (feedback != null && decoratorBound)
+            {
+                acceptedFeedback = feedback;
+                return;
+            }
+
+            RunPickupTransformAcceptedFeedback2D fallback =
+                GetComponent<RunPickupTransformAcceptedFeedback2D>();
+            if (fallback == null)
+            {
+                fallback = gameObject.AddComponent<RunPickupTransformAcceptedFeedback2D>();
+            }
+            acceptedFeedback = fallback;
+        }
+
+        private void BeginAcceptedRetirement(RunPickupCollector2D collector)
+        {
+            if (retired)
+            {
+                return;
+            }
+
+            retired = true;
+            retirementCompleted = false;
+            if (collectionTrigger != null)
+            {
+                collectionTrigger.enabled = false;
+            }
+            if (presenter != null)
+            {
+                presenter.BeginCollectedRetirement(this);
+            }
+
+            bool started = false;
+            try
+            {
+                started = acceptedFeedback != null
+                    && acceptedFeedback.TryPlayAcceptedCollectionFeedback(
+                        collector == null ? null : collector.transform,
+                        CompleteAcceptedRetirement);
+            }
+            catch (Exception exception)
+            {
+                presentationDiagnostic =
+                    "run-pickup-accepted-feedback-exception:" + exception.Message;
+            }
+
+            if (!started)
+            {
+                CompleteAcceptedRetirement();
+            }
+        }
+
+        private void CompleteAcceptedRetirement()
+        {
+            if (retirementCompleted)
+            {
+                return;
+            }
+
+            retirementCompleted = true;
+            if (presenter != null)
+            {
+                presenter.CompleteCollectedRetirement(this);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
         }
 
         private void ApplyVisibleState(bool visible)
