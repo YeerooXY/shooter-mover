@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Domain.Common;
 using ShooterMover.EnemyRuntimeComposition;
+using ShooterMover.GameplayEntities.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using UnityEngine;
 
@@ -88,12 +89,7 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 diagnostic = "enemy-attack-presentation-binding-stale";
                 return false;
             }
-            if (sequence == null
-                || sequence.Execution == null
-                || sequence.Execution.Identity == null
-                || sequence.Sequence == null
-                || sequence.Emissions == null
-                || sequence.Emissions.Count == 0)
+            if (sequence == null || sequence.Emissions == null || sequence.Emissions.Count == 0)
             {
                 diagnostic = "enemy-attack-presentation-sequence-invalid";
                 return false;
@@ -184,11 +180,6 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                     throw new InvalidOperationException(
                         "enemy-attack-presentation-emission-duplicate");
                 }
-                if (pulse.DelaySeconds <= 0f)
-                {
-                    sink.SignalAttackOrigin();
-                    continue;
-                }
                 pending.Add(new PendingPulse(
                     pulse.EmissionStableId,
                     pulse.DelaySeconds));
@@ -260,17 +251,17 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                     0f,
                     pending[index].RemainingSeconds - delta);
             }
+            pending.Sort(PendingPulse.Compare);
             while (pending.Count > 0 && pending[0].RemainingSeconds <= 0f)
             {
                 pending.RemoveAt(0);
                 sink.SignalAttackOrigin();
             }
-            pending.Sort(PendingPulse.Compare);
         }
 
         private void OnDisable()
         {
-            if (!IsBound) Clear();
+            Clear();
         }
 
         private void OnDestroy()
