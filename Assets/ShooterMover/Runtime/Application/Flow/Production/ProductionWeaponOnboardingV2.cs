@@ -6,6 +6,8 @@ using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Weapons;
 
 namespace ShooterMover.Application.Flow.Production
@@ -136,6 +138,53 @@ namespace ShooterMover.Application.Flow.Production
                 999L,
                 new ProductionEquipmentCatalogAdapterV1(
                     ProductionWeaponCatalogProvider.EquipmentCatalog));
+
+            // The V2 weapon authority owns canonical weapon state, but the generic holdings
+            // ledger remains the compatibility/receipt projection consumed by the run-start
+            // boundary and older reward paths.  Starter creation must publish the same exact
+            // instances to both projections; otherwise the loadout contains equipped IDs that
+            // the run validator cannot resolve as owned.
+            EquipmentDefinition starterEquipment =
+                ProductionWeaponCatalogProvider.EquipmentCatalog
+                    .FindEquipmentDefinition(starter.EquipmentDefinitionId);
+            if (starterEquipment == null
+                || starterEquipment.QualityTiers == null
+                || starterEquipment.QualityTiers.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "The authored starter equipment projection is invalid.");
+            }
+            for (int index = 0; index < owned.Count; index++)
+            {
+                WeaponEquipmentInstance weapon = owned[index];
+                string token = (index + 1).ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
+                EquipmentInstance receipt = EquipmentInstance.Create(
+                    weapon.InstanceId,
+                    starterEquipment.DefinitionId,
+                    starterEquipment.ItemLevelRange.Minimum,
+                    starterEquipment.QualityTiers[0].QualityId,
+                    Array.Empty<AugmentInstance>());
+                PlayerHoldingsMutationResultV1 result = genericHoldings.Apply(
+                    PlayerHoldingsCommandV1.AddEquipment(
+                        StableId.Parse("transaction.weapon-onboarding-v2-" + token),
+                        StableId.Parse("operation.weapon-onboarding-v2-" + token),
+                        HoldingsAuthorityStableId,
+                        receipt,
+                        HoldingProvenanceV1.Create(
+                            StableId.Parse("grant.weapon-onboarding-v2-" + token),
+                            StableId.Parse("source.production-weapon-onboarding-v2")),
+                        genericHoldings.Sequence));
+                if (result == null
+                    || (result.Status != PlayerHoldingsMutationStatusV1.Applied
+                        && result.Status
+                            != PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange))
+                {
+                    throw new InvalidOperationException(
+                        "Unable to publish starter equipment receipt: "
+                        + (result == null ? "result-null" : result.RejectionCode));
+                }
+            }
 
             return new ProductionWeaponInventoryStateV2(
                 route,
