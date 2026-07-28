@@ -46,13 +46,14 @@ namespace ShooterMover.TerminalDropBinding
 
             int resultCount = batch.Results == null ? 0 : batch.Results.Count;
             int admissionCount = admissions == null ? 0 : admissions.Count;
-            if (batch.Status == TerminalPersonalRewardBatchStatusV1.ExplicitNoDrop)
+            if (batch.Status
+                == TerminalPersonalRewardBatchStatusV1.NoEligibleParticipants)
             {
                 if (resultCount != 0 || admissionCount != 0)
                 {
                     throw new InvalidOperationException(
-                        "An explicit no-drop batch cannot contain generated results "
-                        + "or pending admissions.");
+                        "A no-eligible-participants batch cannot contain generated "
+                        + "results or pending admissions.");
                 }
                 return;
             }
