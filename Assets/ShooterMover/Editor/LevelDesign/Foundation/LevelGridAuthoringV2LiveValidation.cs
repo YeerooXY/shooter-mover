@@ -3,17 +3,19 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
+    /// <summary>
+    /// Refreshes diagnostics after authoring changes. This observer is deliberately read-only with
+    /// respect to room topology and edge-managed door placement: it reports stale/misaligned state
+    /// but never reflows or migrates the scene behind the designer's back.
+    /// </summary>
     [InitializeOnLoad]
     public static class LevelGridAuthoringV2LiveValidation
     {
         private static readonly HashSet<LevelDesignSceneAuthoringRoot2D> PendingRoots =
-            new HashSet<LevelDesignSceneAuthoringRoot2D>();
-        private static readonly HashSet<LevelDesignSceneAuthoringRoot2D> ReflowRoots =
             new HashSet<LevelDesignSceneAuthoringRoot2D>();
         private static readonly Dictionary<int, int> HierarchySignatureByRoot =
             new Dictionary<int, int>();
@@ -30,7 +32,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         internal static void ValidateNow(
             LevelDesignSceneAuthoringRoot2D root,
             LevelGridValidationPurposeV2 purpose,
-            bool reflow = true,
+            bool reflow = false,
             bool notifyWindows = true)
         {
             if (!IsSceneRoot(root))
@@ -38,11 +40,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            MigrateLegacyFixedDoorPositions(root);
-            if (reflow)
-            {
-                LevelGridDoorOperationsV2.ReflowAll(root);
-            }
+            // The compatibility parameter remains so existing callers compile, but validation is
+            // intentionally read-only. Explicit reflow belongs to LevelGridEditorOperationsV2.
             root.ValidateHierarchy();
             root.ValidateGridAuthoring(purpose);
             MarkSynchronouslyValidated(root);
@@ -61,15 +60,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             PendingRoots.Remove(root);
-            ReflowRoots.Remove(root);
             UpdateHierarchySignature(root);
         }
 
         private static UndoPropertyModification[] OnPostprocessModifications(
             UndoPropertyModification[] modifications)
         {
-            HashSet<LevelDoorEndpointAuthoring2D> capturedFixedDoors =
-                new HashSet<LevelDoorEndpointAuthoring2D>();
+            var capturedFixedDoors = new HashSet<LevelDoorEndpointAuthoring2D>();
             for (int index = 0; index < modifications.Length; index++)
             {
                 UndoPropertyModification modification = modifications[index];
@@ -91,6 +88,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         && fixedDoor.PlacementMode == LevelDoorPlacementModeV2.Fixed
                         && capturedFixedDoors.Add(fixedDoor))
                     {
+                        // The designer explicitly moved a fixed door. Capture that authored value;
+                        // do not move the transform or alter topology.
                         CaptureFixedDoorPositionWithUndo(fixedDoor);
                     }
                 }
@@ -98,7 +97,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 LevelDesignSceneAuthoringRoot2D root = gameObject == null
                     ? null
                     : gameObject.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
-                QueueRoot(root, true);
+                QueueRoot(root);
             }
 
             return modifications;
@@ -106,20 +105,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void OnUndoRedoPerformed()
         {
-            QueueAllLoadedRoots(true, false);
+            QueueAllLoadedRoots(true);
         }
 
         private static void OnHierarchyChanged()
         {
-            QueueAllLoadedRoots(false, true);
+            QueueAllLoadedRoots(false);
         }
 
         private static void QueueAllLoadedRootsInitially()
         {
-            QueueAllLoadedRoots(true, true);
+            QueueAllLoadedRoots(true);
         }
 
-        private static void QueueAllLoadedRoots(bool force, bool reflow)
+        private static void QueueAllLoadedRoots(bool force)
         {
             LevelDesignSceneAuthoringRoot2D[] roots =
                 Resources.FindObjectsOfTypeAll<LevelDesignSceneAuthoringRoot2D>();
@@ -135,13 +134,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 {
                     continue;
                 }
-                QueueRoot(root, reflow);
+                QueueRoot(root);
             }
         }
 
-        private static void QueueRoot(
-            LevelDesignSceneAuthoringRoot2D root,
-            bool reflow)
+        private static void QueueRoot(LevelDesignSceneAuthoringRoot2D root)
         {
             if (!IsSceneRoot(root))
             {
@@ -149,10 +146,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             PendingRoots.Add(root);
-            if (reflow)
-            {
-                ReflowRoots.Add(root);
-            }
             ScheduleRefresh();
         }
 
@@ -184,15 +177,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     continue;
                 }
 
-                bool reflow = ReflowRoots.Remove(root);
                 LevelGridValidationPurposeV2 purpose =
                     root.LastGridValidation.Purpose
                         == LevelGridValidationPurposeV2.ProductionPublish
                     ? LevelGridValidationPurposeV2.ProductionPublish
                     : LevelGridValidationPurposeV2.Draft;
-                ValidateNow(root, purpose, reflow, false);
+                ValidateNow(root, purpose, false, false);
             }
-            ReflowRoots.Clear();
             NotifyOpenWindows();
         }
 
@@ -227,56 +218,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Undo.RecordObject(door, "Move Fixed Level Door");
             door.CaptureCurrentFixedPosition();
             EditorUtility.SetDirty(door);
-        }
-
-        private static int MigrateLegacyFixedDoorPositions(
-            LevelDesignSceneAuthoringRoot2D root)
-        {
-            if (!IsSceneRoot(root) || EditorApplication.isPlayingOrWillChangePlaymode)
-            {
-                return 0;
-            }
-
-            LevelDoorEndpointAuthoring2D[] doors =
-                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
-            int changed = 0;
-            int undoGroup = -1;
-            for (int index = 0; index < doors.Length; index++)
-            {
-                LevelDoorEndpointAuthoring2D door = doors[index];
-                if (door == null
-                    || door.PlacementMode != LevelDoorPlacementModeV2.Fixed
-                    || door.UsesOwningRoomFixedPositionSpace
-                    || door.OwningRoom == null)
-                {
-                    continue;
-                }
-
-                if (undoGroup < 0)
-                {
-                    Undo.IncrementCurrentGroup();
-                    undoGroup = Undo.GetCurrentGroup();
-                    Undo.SetCurrentGroupName("Migrate Fixed Door Position Space");
-                }
-                Undo.RecordObject(door, "Migrate Fixed Door Position Space");
-                if (!door.MigrateFixedPositionSpaceForAuthoring())
-                {
-                    continue;
-                }
-
-                EditorUtility.SetDirty(door);
-                changed++;
-            }
-
-            if (undoGroup >= 0)
-            {
-                Undo.CollapseUndoOperations(undoGroup);
-            }
-            if (changed > 0)
-            {
-                EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
-            }
-            return changed;
         }
 
         private static bool HasHierarchyChanged(
