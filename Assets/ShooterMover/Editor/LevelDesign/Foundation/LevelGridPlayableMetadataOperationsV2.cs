@@ -119,6 +119,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     throw new InvalidOperationException(
                         "The final-exit door must belong to the selected final room.");
                 }
+                RequireUnconnectedDoor(root, door);
             }
             Apply(
                 root,
@@ -139,6 +140,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 throw new InvalidOperationException(
                     "The selected final-exit door must be traversable.");
             }
+            RequireUnconnectedDoor(root, door);
             Apply(
                 root,
                 metadata,
@@ -247,6 +249,18 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 throw new ArgumentException(
                     "The selected door is not owned by the active level root.",
                     parameterName);
+            }
+        }
+
+        private static void RequireUnconnectedDoor(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDoorEndpointAuthoring2D door)
+        {
+            if (LevelGridEditorOperationsV2.IsConnected(root, door))
+            {
+                throw new InvalidOperationException(
+                    "A connected room endpoint cannot be assigned as the final exit. "
+                    + "Delete its room connection first.");
             }
         }
 
