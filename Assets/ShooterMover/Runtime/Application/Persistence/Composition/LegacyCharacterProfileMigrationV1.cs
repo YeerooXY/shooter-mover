@@ -269,7 +269,7 @@ namespace ShooterMover.Application.Persistence.Composition
                     RollBack(rollback);
                     return Reject(
                         "legacy-profile-migration-threw:"
-                            + exception.GetType().Name);
+                            + DescribeException(exception));
                 }
             }
 
@@ -427,6 +427,36 @@ namespace ShooterMover.Application.Persistence.Composition
             {
                 graph.Dispose();
             }
+        }
+
+        private static string DescribeException(Exception exception)
+        {
+            if (exception == null)
+            {
+                return "Exception";
+            }
+
+            Exception root = exception.GetBaseException() ?? exception;
+            string description = exception.GetType().Name;
+            if (!ReferenceEquals(root, exception))
+            {
+                description += "->" + root.GetType().Name;
+            }
+
+            if (string.IsNullOrWhiteSpace(root.Message))
+            {
+                return description;
+            }
+
+            string message = root.Message
+                .Replace('\r', ' ')
+                .Replace('\n', ' ')
+                .Trim();
+            if (message.Length > 256)
+            {
+                message = message.Substring(0, 256);
+            }
+            return description + ":" + message;
         }
 
         private static string Hash(string value)
