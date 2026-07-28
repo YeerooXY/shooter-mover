@@ -143,7 +143,7 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         }
 
         [UnityTest]
-        public IEnumerator PlayerTrigger_CollectsOnceAndHidesOnlyAfterAcceptance()
+        public IEnumerator PlayerTrigger_CollectsImmediatelyAndDestroysAfterFeedback()
         {
             SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Money);
             RunPickupSnapshotV1 pickup = Realize(
@@ -156,12 +156,20 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
 
             view.HandleTriggerForTests(fixture.Collector);
 
-            Assert.That(view.LastCollectionResult.Status,
+            Assert.That(
+                view.LastCollectionResult.Status,
                 Is.EqualTo(RunPickupCollectionStatusV1.Collected));
-            Assert.That(view.gameObject.activeSelf, Is.False);
-            Assert.That(fixture.Session.CollectionRecordCount, Is.EqualTo(1));
-            yield return null;
+            Assert.That(view.gameObject.activeSelf, Is.True);
+            Assert.That(view.IsRetirementFeedbackPending, Is.True);
             Assert.That(fixture.Presenter.VisiblePickupCount, Is.EqualTo(0));
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(1));
+            Assert.That(fixture.Session.CollectionRecordCount, Is.EqualTo(1));
+
+            yield return new WaitForSecondsRealtime(0.3f);
+
+            Assert.That(view == null, Is.True);
+            Assert.That(fixture.Presenter.VisiblePickupCount, Is.EqualTo(0));
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(0));
         }
 
         [UnityTest]
@@ -180,7 +188,9 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
 
             Assert.That(fixture.Session.CollectionRecordCount, Is.EqualTo(1));
             Assert.That(fixture.Authority.CollectedPickupCount, Is.EqualTo(1));
-            yield return null;
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(1));
+            yield return new WaitForSecondsRealtime(0.3f);
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(0));
         }
 
         [UnityTest]
@@ -335,7 +345,9 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             GameObject collectorObject = Track(new GameObject("PlayerCollector"));
             RunPickupCollector2D collector =
                 collectorObject.AddComponent<RunPickupCollector2D>();
-            collector.ConfigureForTests(PlayerActorId.ToString(), PlayerParticipantId.ToString());
+            collector.ConfigureForTests(
+                PlayerActorId.ToString(),
+                PlayerParticipantId.ToString());
 
             return new SceneFixture
             {
