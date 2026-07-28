@@ -134,7 +134,7 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return Failure(
                     "retired-weapon-migration-threw:"
-                    + exception.GetType().Name,
+                        + DescribeException(exception),
                     account);
             }
         }
@@ -408,6 +408,29 @@ namespace ShooterMover.Application.Flow.Production
                 definition.SchemaVersion,
                 definition.ContentVersion,
                 payload);
+        }
+
+        private static string DescribeException(Exception exception)
+        {
+            if (exception == null)
+            {
+                return "Exception";
+            }
+            Exception root = exception.GetBaseException() ?? exception;
+            string description = exception.GetType().Name;
+            if (!ReferenceEquals(root, exception))
+            {
+                description += "->" + root.GetType().Name;
+            }
+            if (string.IsNullOrWhiteSpace(root.Message))
+            {
+                return description;
+            }
+            string message = root.Message
+                .Replace('\r', ' ')
+                .Replace('\n', ' ')
+                .Trim();
+            return description + ":" + message;
         }
 
         private static RetiredWeaponSaveMigrationResultV1 Failure(

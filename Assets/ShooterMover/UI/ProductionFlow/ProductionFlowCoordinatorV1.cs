@@ -277,9 +277,45 @@ namespace ShooterMover.UI.ProductionFlow
                 if (controller != null)
                 {
                     controller.ConfigureDisconnected(ReturnToHub);
-                    controller.Present(
-                        HubRouteV1.Inventory,
-                        transitions.Navigation.Payload);
+                    ProductionCharacterRuntimeGraphV1 graph;
+                    ProductionFlowProfileRecordV1 authoritativeProfile;
+                    if (ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                            out graph,
+                            out authoritativeProfile)
+                        && graph != null
+                        && !graph.IsDisposed
+                        && graph.LoadoutRuntime != null)
+                    {
+                        ProductionPlayerLoadoutRuntimeV1 runtime =
+                            graph.LoadoutRuntime;
+                        ProductionWeaponMountLoadoutRegistryV2.Register(
+                            runtime.WeaponHoldings,
+                            runtime.MountLoadoutAuthority);
+                        controller.ConnectCanonicalAuthorities(
+                            runtime.Holdings,
+                            runtime.CatalogAdapter,
+                            runtime.WeaponHoldings,
+                            runtime.LoadoutAuthority,
+                            runtime.MountLayout,
+                            runtime.WeaponCatalog);
+                        controller.ConfigureWeaponPresentation(
+                            runtime.EquipmentCatalog,
+                            runtime.WeaponCatalog);
+                        controller.Present(
+                            HubRouteV1.Inventory,
+                            runtime.CurrentRoutePayload);
+                    }
+                    else
+                    {
+                        controller.Present(
+                            HubRouteV1.Inventory,
+                            transitions.Navigation.Payload);
+                        Debug.LogError(
+                            "inventory-character-context-unavailable:"
+                                + ProductionCharacterAccountCompositionV1
+                                    .CurrentDiagnostic,
+                            controller);
+                    }
                 }
                 return;
             }

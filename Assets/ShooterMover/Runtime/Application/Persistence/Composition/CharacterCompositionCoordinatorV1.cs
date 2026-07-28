@@ -289,7 +289,7 @@ namespace ShooterMover.Application.Persistence.Composition
                 DisposeGraph(candidate);
                 return Reject(
                     "character-restore-threw:"
-                        + exception.GetType().Name,
+                        + DescribeException(exception),
                     selected);
             }
         }
