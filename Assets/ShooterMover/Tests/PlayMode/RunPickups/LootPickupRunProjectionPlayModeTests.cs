@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,17 +13,6 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.RunPickups
 {
-    internal sealed class ThrowingRunPickupAcceptedFeedback2D : MonoBehaviour,
-        IRunRewardPickupAcceptedFeedbackV1
-    {
-        public bool TryPlayAcceptedCollectionFeedback(
-            Transform attractionTarget,
-            Action completed)
-        {
-            throw new InvalidOperationException("test-feedback-failure");
-        }
-    }
-
     public sealed class LootPickupRunProjectionPlayModeTests
     {
         private static readonly StableId RunId =
