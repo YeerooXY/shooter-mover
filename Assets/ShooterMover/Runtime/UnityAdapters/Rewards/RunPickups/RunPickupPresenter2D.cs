@@ -157,14 +157,26 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 && view != null;
         }
 
-        internal void NotifyCollected(RunRewardPickup2D view)
+        internal void BeginCollectedRetirement(RunRewardPickup2D view)
         {
-            if (view == null || view.PickupStableId == null) return;
+            if (view == null || view.PickupStableId == null)
+            {
+                return;
+            }
+
             RunRewardPickup2D existing;
             if (views.TryGetValue(view.PickupStableId, out existing)
                 && ReferenceEquals(existing, view))
             {
                 views.Remove(view.PickupStableId);
+            }
+        }
+
+        internal void CompleteCollectedRetirement(RunRewardPickup2D view)
+        {
+            if (view == null)
+            {
+                return;
             }
             Destroy(view.gameObject);
         }
