@@ -1,0 +1,249 @@
+using System;
+using System.Collections.Generic;
+using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Persistence.Accounts;
+
+namespace ShooterMover.Application.Flow.Production
+{
+    public sealed class RequiredCharacterComponentBackfillResultV1
+    {
+        internal RequiredCharacterComponentBackfillResultV1(
+            bool succeeded,
+            bool changed,
+            int migratedCharacterCount,
+            string diagnostic,
+            PlayerAccountSnapshotV1 account)
+        {
+            Succeeded = succeeded;
+            Changed = changed;
+            MigratedCharacterCount = migratedCharacterCount;
+            Diagnostic = diagnostic ?? string.Empty;
+            Account = account;
+        }
+
+        public bool Succeeded { get; }
+        public bool Changed { get; }
+        public int MigratedCharacterCount { get; }
+        public string Diagnostic { get; }
+        public PlayerAccountSnapshotV1 Account { get; }
+    }
+
+    /// <summary>
+    /// Versioned, additive migration for account-backed characters created before a newly required
+    /// save component existed. Existing component payloads are never replaced. Missing required
+    /// components are exported from the normal starter graph for the exact character identity,
+    /// then the complete aggregate is validated before the caller may publish or persist it.
+    /// </summary>
+    public static class RequiredCharacterComponentBackfillV1
+    {
+        public const int MigrationVersion = 1;
+
+        public static RequiredCharacterComponentBackfillResultV1 Migrate(
+            PlayerAccountSnapshotV1 account,
+            IStarterCharacterRuntimeGraphFactoryV1 starterFactory)
+        {
+            if (account == null)
+            {
+                return Failure(
+                    "required-character-component-backfill-account-null",
+                    null);
+            }
+            if (starterFactory == null)
+            {
+                return Failure(
+                    "required-character-component-backfill-factory-null",
+                    account);
+            }
+
+            PlayerAccountSnapshotV1 next = account;
+            int migratedCharacters = 0;
+            for (int slotIndex = 0;
+                 slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
+                 slotIndex++)
+            {
+                CharacterInstanceSnapshotV1 character = next.CharacterAt(slotIndex);
+                if (character == null)
+                {
+                    continue;
+                }
+
+                ICharacterRuntimeGraphV1 starter = null;
+                try
+                {
+                    starter = starterFactory.CreateStarter(
+                        slotIndex,
+                        character.CharacterInstanceStableId,
+                        character.ClassDefinitionStableId,
+                        character.DisplayName,
+                        null);
+                    if (starter == null
+                        || starter.IsDisposed
+                        || starter.SaveAdapters == null)
+                    {
+                        return Failure(
+                            "required-character-component-backfill-starter-invalid:"
+                                + slotIndex,
+                            account);
+                    }
+
+                    var missing = new List<SaveComponentSnapshotV1>();
+                    var seen = new HashSet<StableId>();
+                    for (int adapterIndex = 0;
+                         adapterIndex < starter.SaveAdapters.Count;
+                         adapterIndex++)
+                    {
+                        ISaveComponentAdapterV1 adapter =
+                            starter.SaveAdapters[adapterIndex];
+                        if (adapter == null || adapter.Definition == null)
+                        {
+                            return Failure(
+                                "required-character-component-backfill-adapter-null:"
+                                    + slotIndex,
+                                account);
+                        }
+                        if (!adapter.Definition.IsRequired)
+                        {
+                            continue;
+                        }
+                        if (!seen.Add(adapter.Definition.ComponentStableId))
+                        {
+                            return Failure(
+                                "required-character-component-backfill-adapter-duplicate:"
+                                    + adapter.Definition.ComponentStableId,
+                                account);
+                        }
+
+                        SaveComponentSnapshotV1 ignored;
+                        if (character.TryGetComponent(
+                                adapter.Definition.ComponentStableId,
+                                out ignored))
+                        {
+                            continue;
+                        }
+                        missing.Add(adapter.ExportComponent());
+                    }
+
+                    if (missing.Count == 0)
+                    {
+                        continue;
+                    }
+                    missing.Sort(delegate(
+                        SaveComponentSnapshotV1 left,
+                        SaveComponentSnapshotV1 right)
+                    {
+                        return string.CompareOrdinal(
+                            left.ComponentStableId.ToString(),
+                            right.ComponentStableId.ToString());
+                    });
+
+                    CharacterInstanceSnapshotV1 migrated = character;
+                    for (int componentIndex = 0;
+                         componentIndex < missing.Count;
+                         componentIndex++)
+                    {
+                        migrated = migrated.WithComponent(missing[componentIndex]);
+                    }
+
+                    SaveComponentValidationResultV1 characterValidation =
+                        PlayerAccountComponentSemanticsV1.ValidateCharacter(migrated);
+                    if (characterValidation == null
+                        || !characterValidation.Succeeded)
+                    {
+                        return Failure(
+                            "required-character-component-backfill-character-invalid:"
+                                + slotIndex
+                                + ":"
+                                + (characterValidation == null
+                                    ? "result-null"
+                                    : characterValidation.RejectionCode),
+                            account);
+                    }
+
+                    next = next.WithCharacter(slotIndex, migrated);
+                    migratedCharacters++;
+                }
+                catch (Exception exception)
+                {
+                    if (IsFatal(exception))
+                    {
+                        throw;
+                    }
+                    return Failure(
+                        "required-character-component-backfill-threw:"
+                            + slotIndex
+                            + ":"
+                            + DescribeException(exception),
+                        account);
+                }
+                finally
+                {
+                    if (starter != null)
+                    {
+                        starter.Dispose();
+                    }
+                }
+            }
+
+            SaveComponentValidationResultV1 aggregateValidation =
+                PlayerAccountComponentSemanticsV1.Validate(next);
+            if (aggregateValidation == null || !aggregateValidation.Succeeded)
+            {
+                return Failure(
+                    "required-character-component-backfill-account-invalid:"
+                        + (aggregateValidation == null
+                            ? "result-null"
+                            : aggregateValidation.RejectionCode),
+                    account);
+            }
+
+            return new RequiredCharacterComponentBackfillResultV1(
+                true,
+                migratedCharacters > 0,
+                migratedCharacters,
+                string.Empty,
+                next);
+        }
+
+        private static RequiredCharacterComponentBackfillResultV1 Failure(
+            string diagnostic,
+            PlayerAccountSnapshotV1 account)
+        {
+            return new RequiredCharacterComponentBackfillResultV1(
+                false,
+                false,
+                0,
+                diagnostic,
+                account);
+        }
+
+        private static string DescribeException(Exception exception)
+        {
+            Exception root = exception == null
+                ? null
+                : exception.GetBaseException() ?? exception;
+            if (root == null)
+            {
+                return "Exception";
+            }
+            string description = exception.GetType().Name;
+            if (!ReferenceEquals(root, exception))
+            {
+                description += "->" + root.GetType().Name;
+            }
+            return string.IsNullOrWhiteSpace(root.Message)
+                ? description
+                : description + ":" + root.Message.Replace('\r', ' ')
+                    .Replace('\n', ' ')
+                    .Trim();
+        }
+
+        private static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
+        }
+    }
+}
