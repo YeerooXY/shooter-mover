@@ -241,7 +241,13 @@ namespace ShooterMover.UnityAdapters.Enemies.Presentation
                 return;
             }
 
-            sink.SetFacing(actor.transform.right);
+            // Mobile bodies project their authoritative transform rotation continuously. An
+            // authored Static body cannot rotate, so its last committed canonical attack-facing
+            // must remain on the visual aiming root instead of being overwritten every tick.
+            if (body == null || body.bodyType != RigidbodyType2D.Static)
+            {
+                sink.SetFacing(actor.transform.right);
+            }
             sink.SetMovementIntent(body == null ? Vector2.zero : body.linearVelocity);
 
             float delta = Time.fixedDeltaTime;
