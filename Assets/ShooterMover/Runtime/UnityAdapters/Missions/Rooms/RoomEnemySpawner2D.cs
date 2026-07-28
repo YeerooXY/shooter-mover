@@ -240,7 +240,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 var temporaryByActor = new Dictionary<StableId, EnemyBinding>();
                 if (candidates.Count > 0)
                 {
-                    EnemyRuntimeDownstreamPortsV1 downstream = BuildDownstreamPorts();
+                    var attackPresentation =
+                        new RoomEnemyAttackPresentationPortV1();
+                    EnemyRuntimeDownstreamPortsV1 downstream =
+                        BuildDownstreamPorts(attackPresentation);
                     EnemyPlacementRuntimeFactoryV1 factory =
                         BuiltInEnemyRuntimePolicyRegistryV1.CreateFactory(
                             roomObjects,
@@ -326,6 +329,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
                         boundDuringAttempt.Add(actor);
                         actor.Bind(runtime);
+                        attackPresentation.Bind(actor, revision);
                         var binding = new EnemyBinding(actor, runtime);
                         if (temporaryByPlacement.ContainsKey(runtime.PlacementStableId)
                             || temporaryByActor.ContainsKey(runtime.SpawnStableId))
@@ -459,11 +463,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             return candidates;
         }
 
-        private EnemyRuntimeDownstreamPortsV1 BuildDownstreamPorts()
+        private EnemyRuntimeDownstreamPortsV1 BuildDownstreamPorts(
+            RoomEnemyAttackPresentationPortV1 attackPresentation)
         {
+            if (attackPresentation == null)
+                throw new ArgumentNullException(nameof(attackPresentation));
             var rewards = new NoRewardPort();
             return new EnemyRuntimeDownstreamPortsV1(
-                new UnconnectedAttackPort(),
+                attackPresentation,
                 new UnconnectedPlayerDamagePort(),
                 new EnemyRoomPort(this),
                 rewards,
