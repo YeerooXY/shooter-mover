@@ -18,20 +18,25 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private static readonly StableId KineticDamageChannelStableId =
             StableId.Parse("damage.kinetic");
+        private static readonly StableId ThermalDamageChannelStableId =
+            StableId.Parse("damage.thermal");
 
         public static bool TryMap(
             StableId damageChannelStableId,
             out CombatChannel channel)
         {
             channel = default(CombatChannel);
-            if (damageChannelStableId == null
-                || damageChannelStableId != KineticDamageChannelStableId)
+            if (damageChannelStableId == KineticDamageChannelStableId)
             {
-                return false;
+                channel = CombatChannel.Kinetic;
+                return true;
             }
-
-            channel = CombatChannel.Kinetic;
-            return true;
+            if (damageChannelStableId == ThermalDamageChannelStableId)
+            {
+                channel = CombatChannel.Thermal;
+                return true;
+            }
+            return false;
         }
     }
 
