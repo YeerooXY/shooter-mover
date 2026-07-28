@@ -26,6 +26,7 @@ When a production canonical weapon is selected in Inventory:
 | Equipped exact weapon | `ProductionWeaponMountLoadoutAuthorityV2` | Legacy loadout projection remains compatibility/navigation state |
 | Weapon definition | Canonical `WeaponDefinitionId` resolved by `ProductionWeaponCatalogProvider` | `EquipmentDefinition.RuntimeWeaponReferenceId` links the generic receipt projection |
 | Generic augment upgrade | `AugmentUpgradeServiceV1` for non-canonical generic equipment only | It must never replace a canonical weapon receipt |
+| Canonical receipt mutation boundary | `CanonicalFirstPlayerHoldingsAuthorityV2` | Generic receipts are written only after canonical acceptance and are compensated on failure |
 | Unsupported-operation decision | `CanonicalWeaponSafetyPolicyV1` | Inventory and live adapters consume its structured result; neither becomes an authority |
 | Live compatibility projection | `CanonicalWeaponEquipmentProjectionLookupV2` | May read immutable augment receipt payloads but cannot write ownership or assignments |
 
@@ -36,6 +37,14 @@ When a production canonical weapon is selected in Inventory:
 The existing generic upgrade service keeps its established immutable-replacement model for supported generic equipment. It creates a deterministic replacement, retires the old generic holding and applies the replacement through the existing reward route.
 
 That model is **not** adopted for canonical weapons in this PR. A production-catalog weapon receipt is rejected at quote time and rechecked at confirmation preparation before money, holdings or reward mutation.
+
+### Legacy-first mutation path retirement
+
+`CanonicalizingPlayerHoldingsAuthorityV2` is removed from the runtime assembly rather than retained as a deprecated or throwing compatibility shell.
+
+The removed adapter wrote the generic receipt first and projected into canonical holdings second. A canonical rejection could therefore occur after the receipt had already changed, with no complete compensation path. The production runtime had already moved to `CanonicalFirstPlayerHoldingsAuthorityV2`, so removing the obsolete type changes no save schema, migration payload or active production composition.
+
+`ProductionWeaponHoldingsMigrationV2` remains as the deterministic read/restore conversion helper. It does not own runtime mutation and does not recreate a receipt-first writer.
 
 ### Augment assignment identity
 
@@ -95,6 +104,8 @@ Canonical definition and overclock policy are validated before the canonical-fir
 
 When canonical ownership is missing but an exact retained equipment receipt exists, the receipt must be classified before removal. An unresolved definition fails closed instead of falling through to generic deletion; a recognized weapon receipt reports canonical/receipt drift.
 
+There is no remaining public legacy-first adapter. Runtime reward and compatibility callers must consume this canonical-first boundary or call the canonical writer directly where no receipt mutation is required.
+
 ### Live execution
 
 `CanonicalWeaponEquipmentProjectionLookupV2.TryResolve`
@@ -120,6 +131,7 @@ The exact owned canonical instance is resolved first. `LastAvailability` records
 - Receipt failure: existing snapshot compensation restores both authorities
 - Direct rejection: canonical sequence and snapshot remain unchanged
 - Retry: supported existing reward identities retain their existing replay behavior; unsupported state remains rejected
+- Forbidden path: no receipt-first canonical projection adapter remains in the assembly
 
 ### Canonical weapon removal
 
@@ -145,6 +157,8 @@ The exact owned canonical instance is resolved first. `LastAvailability` records
 | Direct canonical add carries overclock assignment | Reject with `canonical-weapon-overclock-policy-unsupported` before mutation |
 | Canonical reward definition is unresolved | Reject before canonical or receipt mutation |
 | Canonical reward carries overclock assignment | Reject before canonical or receipt mutation |
+| Receipt write rejects or throws after canonical acceptance | Restore both captured snapshots |
+| Legacy-first adapter type is requested | Type is absent from the runtime assembly; no receipt-first write route exists |
 | Existing canonical destructive removal definition is unresolved | Reject before removal |
 | Canonical ownership missing, retained receipt definition unresolved | Reject before generic receipt removal |
 | Canonical ownership missing, retained receipt is a known weapon | Reject as authority drift |
@@ -160,11 +174,13 @@ The exact owned canonical instance is resolved first. `LastAvailability` records
 - Domain policy contains no Unity, editor, persistence or application dependencies.
 - Application services consume the policy at transaction boundaries.
 - The canonical holdings authority enforces runtime add and destructive-removal admission itself; compatibility wrappers are not the only guard.
+- `CanonicalizingPlayerHoldingsAuthorityV2` is absent from the runtime assembly.
+- The deterministic schema-V1 conversion helper remains available only for migration/restore composition.
 - The Unity live adapter exposes read-only diagnostics and remains a projection.
 - Inventory renders the warning inside the existing selected-weapon scroll panel and performs no mutation.
 - No detached overlay component or overlapping screen-space window is installed.
 - No schema version, serialized field, generated asset or migration path changes.
-- One Unity `.meta` file is added only for the focused EditMode regression file.
+- Two deterministic Unity `.meta` files accompany the focused EditMode regression sources.
 
 ## Production caller paths
 
@@ -185,8 +201,15 @@ Generic upgrade caller
 ```
 
 ```text
-Production reward or direct runtime write
-→ CanonicalFirstPlayerHoldingsAuthorityV2 / direct canonical caller
+Production reward
+→ CanonicalFirstPlayerHoldingsAuthorityV2.Apply
+→ ProductionWeaponHoldingsAuthorityV2.TryAdd / TryRemove
+→ receipt write only after canonical acceptance
+→ snapshot compensation on receipt failure
+```
+
+```text
+Direct canonical runtime write
 → ProductionWeaponHoldingsAuthorityV2.TryAdd / TryRemove
 → CanonicalWeaponSafetyPolicyV1 or definition-resolution guard
 → commit only when supported
@@ -208,25 +231,28 @@ Live firing resolution
 - unmodified canonical weapon remains policy-eligible;
 - direct canonical add with an overclock assignment is rejected without mutation;
 - direct canonical removal with an unresolved definition is rejected without mutation;
-- retained ambiguous receipt cannot fall through to generic removal and both authority sequences remain unchanged.
+- retained ambiguous receipt cannot fall through to generic removal and both authority sequences remain unchanged;
+- runtime assembly lookup proves `CanonicalizingPlayerHoldingsAuthorityV2` is absent.
 
 These tests are authored evidence only until executed by Unity/NUnit.
 
 ## Manual Unity acceptance route
 
 1. Import/compile the project in Unity.
-2. Enter the production Hub with an account-backed character that owns a canonical weapon.
-3. Open Inventory.
-4. Select a canonical weapon.
-5. Confirm the disabled `AUGMENT UPGRADE — BLOCKED` control and the specific canonical-upgrade rejection appear inside the selected-weapon panel.
-6. Confirm the warning scrolls with selected-weapon details and does not cover Equip, Unequip, Refresh, Confirm or Back controls.
-7. Confirm overclock installation is marked unavailable.
-8. Attempt the historical generic upgrade route through a controlled harness and confirm wallet balance/sequence, generic holdings, canonical holdings, assignments and mounts do not change.
-9. Load a controlled canonical snapshot containing one non-empty overclock assignment.
-10. Confirm Inventory reports live execution blocked and the gameplay source returns `canonical-weapon-overclock-policy-unsupported` without a fallback.
-11. Verify normal selection, equip, replace and unequip still work for supported weapons.
-12. Enter the authored playable level and verify an ordinary supported equipped weapon still fires.
-13. Restart and verify the rejected operation left no persistent partial state.
+2. Run the focused EditMode suite and confirm the legacy-first type-absence guard passes.
+3. Enter the production Hub with an account-backed character that owns a canonical weapon.
+4. Open Inventory.
+5. Select a canonical weapon.
+6. Confirm the disabled `AUGMENT UPGRADE — BLOCKED` control and the specific canonical-upgrade rejection appear inside the selected-weapon panel.
+7. Confirm the warning scrolls with selected-weapon details and does not cover Equip, Unequip, Refresh, Confirm or Back controls.
+8. Confirm overclock installation is marked unavailable.
+9. Attempt the historical generic upgrade route through a controlled harness and confirm wallet balance/sequence, generic holdings, canonical holdings, assignments and mounts do not change.
+10. Apply a supported canonical weapon reward and confirm canonical ownership commits before its immutable receipt and both persist across restart.
+11. Load a controlled canonical snapshot containing one non-empty overclock assignment.
+12. Confirm Inventory reports live execution blocked and the gameplay source returns `canonical-weapon-overclock-policy-unsupported` without a fallback.
+13. Verify normal selection, equip, replace and unequip still work for supported weapons.
+14. Enter the authored playable level and verify an ordinary supported equipped weapon still fires.
+15. Restart and verify rejected operations left no persistent partial state.
 
 ## Validation evidence policy
 
