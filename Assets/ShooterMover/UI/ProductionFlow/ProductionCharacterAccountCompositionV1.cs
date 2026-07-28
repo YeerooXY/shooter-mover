@@ -586,6 +586,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
             if (!initialized || composition == null || flow == null)
             {
+                diagnostic = "character-composition-not-ready";
                 return false;
             }
 
@@ -594,6 +595,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 composition.UnbindActive();
                 currentProfile = null;
+                diagnostic = "character-composition-selected-profile-missing";
                 return false;
             }
 
