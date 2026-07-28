@@ -8,9 +8,8 @@ using UnityEngine.InputSystem;
 namespace ShooterMover.UI.Skills
 {
     /// <summary>
-    /// Artwork-backed Skills presentation. Production may show a disconnected state
-    /// without constructing preview XP/SKILL authorities; connected sessions still use
-    /// the existing SkillsScreenSessionV1.
+    /// Artwork-backed Skills presentation. Production uses ranked-skills V2; the original
+    /// V1 session remains available only for compatibility fixtures and focused tests.
     /// </summary>
     [DefaultExecutionOrder(10000)]
     [DisallowMultipleComponent]
@@ -30,10 +29,12 @@ namespace ShooterMover.UI.Skills
         [SerializeField] private string backSceneName = "MainMenu";
 
         private SkillsScreenSessionV1 session;
+        private RankedSkillsScreenSessionV2 rankedSession;
         private ISkillsScreenNavigationPortV1 navigationPort;
         private PlayerRouteProfilePayloadV1 disconnectedPayload;
         private SkillsScreenProjectionV1 projection;
         private SkillsScreenAllocationResultV1 lastAllocation;
+        private string unavailableReason = string.Empty;
         private Texture2D backplateTexture;
         private Vector2 scrollPosition;
         private bool visible;
@@ -48,13 +49,15 @@ namespace ShooterMover.UI.Skills
         public SkillsScreenProjectionV1 CurrentProjection { get { return projection; } }
         public SkillsScreenAllocationResultV1 LastAllocation { get { return lastAllocation; } }
         public bool HasBackplateAsset { get { return skillsBackplateAsset != null; } }
-        public bool IsDisconnected { get { return visible && session == null; } }
+        public bool IsDisconnected { get { return visible && session == null && rankedSession == null; } }
+        public bool IsRankedV2Connected { get { return visible && rankedSession != null; } }
+        public string UnavailableReason { get { return unavailableReason; } }
 
         private void Awake()
         {
             EnsureBackplateTexture();
             // Standalone preview is intentionally not composed here. Production flow
-            // must inject real authorities or explicitly request disconnected mode.
+            // must inject the selected character graph or explicitly present unavailable state.
         }
 
         private void Update()
@@ -73,13 +76,14 @@ namespace ShooterMover.UI.Skills
             if (!visible) return;
             EnsureBackplateTexture();
             EnsureStyles();
-            if (session != null) projection = session.CurrentProjection;
+            if (rankedSession != null) projection = rankedSession.CurrentProjection;
+            else if (session != null) projection = session.CurrentProjection;
 
             int previousDepth = GUI.depth;
             GUI.depth = -900;
             Rect canvas = DrawBackplate();
             DrawHeader(canvas);
-            if (session == null) DrawDisconnected(canvas);
+            if (session == null && rankedSession == null) DrawDisconnected(canvas);
             else DrawSkills(canvas);
             GUI.depth = previousDepth;
         }
@@ -90,11 +94,31 @@ namespace ShooterMover.UI.Skills
         {
             session = presentedSession
                 ?? throw new ArgumentNullException(nameof(presentedSession));
+            rankedSession = null;
             navigationPort = presentedNavigationPort
                 ?? throw new ArgumentNullException(nameof(presentedNavigationPort));
             disconnectedPayload = null;
             projection = session.CurrentProjection;
             lastAllocation = null;
+            unavailableReason = string.Empty;
+            backDispatched = false;
+            visible = true;
+            enabled = true;
+        }
+
+        public void ShowRankedV2(
+            RankedSkillsScreenSessionV2 presentedSession,
+            ISkillsScreenNavigationPortV1 presentedNavigationPort)
+        {
+            rankedSession = presentedSession
+                ?? throw new ArgumentNullException(nameof(presentedSession));
+            session = null;
+            navigationPort = presentedNavigationPort
+                ?? throw new ArgumentNullException(nameof(presentedNavigationPort));
+            disconnectedPayload = null;
+            projection = rankedSession.CurrentProjection;
+            lastAllocation = null;
+            unavailableReason = string.Empty;
             backDispatched = false;
             visible = true;
             enabled = true;
@@ -104,20 +128,33 @@ namespace ShooterMover.UI.Skills
             PlayerRouteProfilePayloadV1 routePayload,
             ISkillsScreenNavigationPortV1 presentedNavigationPort)
         {
-            disconnectedPayload = routePayload
-                ?? throw new ArgumentNullException(nameof(routePayload));
-            if (!routePayload.HasValidFingerprint())
+            ShowUnavailable(
+                routePayload,
+                presentedNavigationPort,
+                "skills-v2-active-character-graph-unavailable");
+        }
+
+        public void ShowUnavailable(
+            PlayerRouteProfilePayloadV1 routePayload,
+            ISkillsScreenNavigationPortV1 presentedNavigationPort,
+            string rejectionCode)
+        {
+            disconnectedPayload = routePayload;
+            if (routePayload != null && !routePayload.HasValidFingerprint())
             {
                 throw new ArgumentException(
                     "The Skills route payload is invalid.",
                     nameof(routePayload));
             }
-
             navigationPort = presentedNavigationPort
                 ?? throw new ArgumentNullException(nameof(presentedNavigationPort));
             session = null;
+            rankedSession = null;
             projection = null;
             lastAllocation = null;
+            unavailableReason = string.IsNullOrWhiteSpace(rejectionCode)
+                ? "skills-v2-unavailable"
+                : rejectionCode.Trim();
             backDispatched = false;
             visible = true;
             enabled = true;
@@ -135,6 +172,13 @@ namespace ShooterMover.UI.Skills
             Show(configuredSession, configuredNavigationPort);
         }
 
+        public void ConfigureRankedV2ForTests(
+            RankedSkillsScreenSessionV2 configuredSession,
+            ISkillsScreenNavigationPortV1 configuredNavigationPort)
+        {
+            ShowRankedV2(configuredSession, configuredNavigationPort);
+        }
+
         public void ConfigureBackplateForTests(TextAsset asset)
         {
             skillsBackplateAsset = asset;
@@ -149,8 +193,20 @@ namespace ShooterMover.UI.Skills
             string skillId,
             string operationId)
         {
-            EnsureConnectedSession();
+            if (session == null)
+                throw new InvalidOperationException(
+                    "The legacy Skills session is not connected.");
             lastAllocation = session.Allocate(operationId, skillId);
+            projection = lastAllocation.Projection;
+            return lastAllocation;
+        }
+
+        public SkillsScreenAllocationResultV1 AllocateRankedSkill(string skillId)
+        {
+            if (rankedSession == null)
+                throw new InvalidOperationException(
+                    "The ranked Skills V2 session is not connected.");
+            lastAllocation = rankedSession.Allocate(skillId);
             projection = lastAllocation.Projection;
             return lastAllocation;
         }
@@ -159,29 +215,17 @@ namespace ShooterMover.UI.Skills
         {
             if (backDispatched || navigationPort == null) return false;
             PlayerRouteProfilePayloadV1 payload;
-            if (session == null)
-            {
-                payload = disconnectedPayload;
-            }
+            if (rankedSession != null)
+                payload = rankedSession.Back().RoutePayload;
+            else if (session != null)
+                payload = session.Back().RoutePayload;
             else
-            {
-                SkillsScreenBackResultV1 result = session.Back();
-                payload = result.RoutePayload;
-            }
+                payload = disconnectedPayload;
 
             backDispatched = true;
             visible = false;
             navigationPort.ReturnToHub(payload);
             return true;
-        }
-
-        private void EnsureConnectedSession()
-        {
-            if (session == null)
-            {
-                throw new InvalidOperationException(
-                    "The Skills screen requires injected XP and SKILL authorities.");
-            }
         }
 
         private Rect DrawBackplate()
@@ -221,7 +265,7 @@ namespace ShooterMover.UI.Skills
                 "SKILLS",
                 titleStyle);
             string totals = projection == null
-                ? "AUTHORITY COMPOSITION REQUIRED"
+                ? "SKILLS UNAVAILABLE"
                 : "LEVEL " + projection.PlayerLevel
                     + "    POINTS "
                     + projection.AvailableSkillPoints
@@ -232,13 +276,16 @@ namespace ShooterMover.UI.Skills
                 ScaleRect(canvas, new Rect(710f, 18f, 548f, 38f)),
                 totals,
                 headerStyle);
+
+            bool disconnected = session == null && rankedSession == null;
+            string status = disconnected
+                ? "No valid active selected-character graph: " + unavailableReason
+                : lastAllocation == null
+                    ? "Select a skill to request one authoritative rank allocation."
+                    : FormatStatus(lastAllocation);
             GUI.Label(
                 ScaleRect(canvas, new Rect(164f, 57f, 1094f, 34f)),
-                session == null
-                    ? "No preview rank or skill authority was created."
-                    : lastAllocation == null
-                        ? "Select an available skill to allocate one real skill point."
-                        : FormatStatus(lastAllocation),
+                status,
                 statusStyle);
         }
 
@@ -246,17 +293,18 @@ namespace ShooterMover.UI.Skills
         {
             GUI.Label(
                 ScaleRect(canvas, new Rect(170f, 190f, 940f, 150f)),
-                "The real Skills screen is active, but no XP/SKILL authority "
-                + "composition has been supplied. No preview ranks or skill points "
-                + "were created.",
+                "Skills V2 requires the real active selected-character graph. "
+                + "No preview profile, point budget, or rank state was created.",
                 statusStyle);
             GUI.Label(
-                ScaleRect(canvas, new Rect(170f, 355f, 940f, 70f)),
-                disconnectedPayload == null
+                ScaleRect(canvas, new Rect(170f, 355f, 940f, 90f)),
+                (disconnectedPayload == null
                     ? string.Empty
                     : disconnectedPayload.SelectedCharacterStableId
                         + " / "
-                        + disconnectedPayload.LoadoutProfileStableId,
+                        + disconnectedPayload.LoadoutProfileStableId)
+                    + "\n"
+                    + unavailableReason,
                 smallStyle);
         }
 
@@ -362,7 +410,9 @@ namespace ShooterMover.UI.Skills
                 smallStyle);
 
             bool previousEnabled = GUI.enabled;
-            GUI.enabled = skill.CanAllocate;
+            // V2 keeps blocked cards clickable so the trusted session can return the exact
+            // authoritative rejection. Legacy fixtures retain their original disabled UI.
+            GUI.enabled = rankedSession != null || skill.CanAllocate;
             string buttonLabel = skill.CanAllocate
                 ? "ALLOCATE"
                 : BlockLabel(skill.AllocationBlockCode);
@@ -374,9 +424,10 @@ namespace ShooterMover.UI.Skills
                     line),
                 buttonLabel))
             {
-                AllocateSkill(
-                    skill.SkillId,
-                    CreateOperationId(skill.SkillId));
+                if (rankedSession != null)
+                    AllocateRankedSkill(skill.SkillId);
+                else
+                    AllocateSkill(skill.SkillId, CreateOperationId(skill.SkillId));
             }
             GUI.enabled = previousEnabled;
         }
@@ -418,13 +469,18 @@ namespace ShooterMover.UI.Skills
                     return "Missing prerequisite for "
                         + fact.SkillId
                         + ".";
+                case SkillMutationStatusV1.CategoryInvestmentMissing:
+                    return "Category investment requirement is not satisfied.";
                 case SkillMutationStatusV1.RankCapped:
                     return fact.SkillId
                         + " is already at maximum rank.";
                 case SkillMutationStatusV1.UnknownSkill:
                     return "Unknown skill identity.";
                 case SkillMutationStatusV1.InvalidRequest:
-                    return "Invalid allocation request.";
+                    return "Allocation rejected: "
+                        + (string.IsNullOrEmpty(fact.RejectionCode)
+                            ? "invalid request"
+                            : fact.RejectionCode);
                 default:
                     return fact.Status.ToString();
             }
@@ -436,6 +492,10 @@ namespace ShooterMover.UI.Skills
             {
                 case "skill-prerequisite-missing":
                     return "LOCKED";
+                case "skill-category-investment-missing":
+                    return "GATED";
+                case "skill-class-ineligible":
+                    return "CLASS LOCKED";
                 case "skill-rank-capped":
                     return "CAPPED";
                 case "skill-points-insufficient":

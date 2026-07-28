@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Content.Definitions.Missions.Rooms;
+using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Editor.LevelDesign.Foundation;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
@@ -13,7 +14,6 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 {
-    [NonParallelizable]
     public sealed class LevelGridV2AssetCompilerPublicationTests
     {
         private string assetRoot;
@@ -256,7 +256,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         private static string ProjectPath(string path)
         {
             if (Path.IsPathRooted(path)) return Path.GetFullPath(path);
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return Path.GetFullPath(Path.Combine(projectRoot, path));
         }
 

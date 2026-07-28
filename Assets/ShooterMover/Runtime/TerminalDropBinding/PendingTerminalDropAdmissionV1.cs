@@ -178,6 +178,54 @@ namespace ShooterMover.TerminalDropBinding
             }
         }
 
+        /// <summary>
+        /// Compensates only a pending record created by the exact Accepted receipt supplied.
+        /// ExactReplay receipts are deliberately ineligible because they refer to state owned
+        /// by an earlier committed delivery. Repeating the same rollback is idempotent.
+        /// </summary>
+        public bool TryRollbackAccepted(
+            PendingTerminalDropAdmissionResultV1 admission,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (admission == null
+                || admission.Status != PendingTerminalDropAdmissionStatusV1.Accepted
+                || admission.OperationStableId == null
+                || string.IsNullOrWhiteSpace(admission.BatchFingerprint)
+                || admission.PendingResult == null)
+            {
+                diagnostic = "terminal-drop-pending-rollback-receipt-invalid";
+                return false;
+            }
+
+            lock (gate)
+            {
+                PendingRecord existing;
+                if (!byOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out existing))
+                {
+                    diagnostic = "terminal-drop-pending-rollback-already-absent";
+                    return true;
+                }
+                if (!string.Equals(
+                        existing.Fingerprint,
+                        admission.BatchFingerprint,
+                        StringComparison.Ordinal)
+                    || !string.Equals(
+                        existing.Result.Fingerprint,
+                        admission.PendingResult.Fingerprint,
+                        StringComparison.Ordinal))
+                {
+                    diagnostic = "terminal-drop-pending-rollback-conflict";
+                    return false;
+                }
+
+                byOperation.Remove(admission.OperationStableId);
+                return true;
+            }
+        }
+
         public bool TryGetPending(
             StableId operationStableId,
             out GeneratedTerminalDropResultV1 result)

@@ -10,6 +10,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Strongboxes;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Persistence.Composition
 {
@@ -93,8 +94,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Is.EqualTo(expected.Augments[index].Tier));
                 Assert.That(actual.Augments[index].Level,
                     Is.EqualTo(expected.Augments[index].Level));
-                Assert.That(actual.Augments[index].Fingerprint,
-                    Is.EqualTo(expected.Augments[index].Fingerprint));
+                Assert.That(actual.Augments[index].ToCanonicalString(),
+                    Is.EqualTo(expected.Augments[index].ToCanonicalString()));
             }
         }
 

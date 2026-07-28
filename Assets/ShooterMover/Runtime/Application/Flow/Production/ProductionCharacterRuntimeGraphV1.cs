@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Progression.Experience;

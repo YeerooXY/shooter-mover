@@ -7,6 +7,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
@@ -41,6 +42,13 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             this.equipmentCatalog = equipmentCatalog
                 ?? throw new ArgumentNullException(nameof(equipmentCatalog));
             immutableReceipts = immutableGenericReceipts;
+            LastAvailability = CanonicalWeaponOperationAvailabilityV1.Available();
+        }
+
+        public CanonicalWeaponOperationAvailabilityV1 LastAvailability
+        {
+            get;
+            private set;
         }
 
         public bool TryResolve(
@@ -50,22 +58,31 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             equipmentInstance = null;
             if (equipmentInstanceId == null)
             {
+                LastAvailability = CanonicalWeaponOperationAvailabilityV1.Rejected(
+                    "canonical-weapon-instance-id-missing",
+                    "A canonical weapon instance ID is required for live execution.");
                 return false;
             }
 
             WeaponEquipmentInstance canonical = holdings.Find(
                 equipmentInstanceId.Value);
-            if (canonical == null
-                || canonical.OverclockAssignments.Count != 0)
+            if (canonical == null)
             {
+                LastAvailability = CanonicalWeaponOperationAvailabilityV1.Rejected(
+                    "canonical-weapon-instance-missing",
+                    "The exact canonical weapon instance is not owned.");
                 return false;
             }
 
             ProductionWeaponMarkV1 mark;
-            if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+            bool definitionResolved = ProductionWeaponCatalogProvider.Current.TryGetMark(
                     canonical.WeaponDefinitionId.Value,
                     out mark)
-                || mark == null)
+                && mark != null;
+            LastAvailability = CanonicalWeaponSafetyPolicyV1.EvaluateLiveExecution(
+                canonical,
+                definitionResolved);
+            if (!LastAvailability.IsAvailable)
             {
                 return false;
             }
@@ -77,6 +94,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 || definition.QualityTiers == null
                 || definition.QualityTiers.Count == 0)
             {
+                LastAvailability = CanonicalWeaponOperationAvailabilityV1.Rejected(
+                    "canonical-weapon-compatibility-definition-mismatch",
+                    "The compatibility equipment definition does not match the canonical weapon definition.");
                 return false;
             }
 
@@ -95,6 +115,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 definition,
                 out projection))
             {
+                LastAvailability = CanonicalWeaponOperationAvailabilityV1.Rejected(
+                    "canonical-weapon-augment-receipt-unresolved",
+                    "The exact immutable augment receipt could not be reconciled with canonical assignments.");
                 return false;
             }
 
@@ -102,10 +125,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 equipmentCatalog.ValidateInstance(projection);
             if (validation == null || !validation.IsValid)
             {
+                LastAvailability = CanonicalWeaponOperationAvailabilityV1.Rejected(
+                    "canonical-weapon-compatibility-projection-invalid",
+                    "The compatibility projection failed equipment validation.");
                 return false;
             }
 
             equipmentInstance = projection;
+            LastAvailability = CanonicalWeaponOperationAvailabilityV1.Available();
             return true;
         }
 

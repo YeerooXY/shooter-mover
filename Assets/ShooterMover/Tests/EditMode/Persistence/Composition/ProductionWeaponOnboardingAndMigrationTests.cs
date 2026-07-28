@@ -128,7 +128,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 .Where(item => item.EquipmentInstanceStableId != null)
                 .Select(item => item.EquipmentInstanceStableId).ToArray();
 
-            Assert.That(owned, Does.Not.Contain(RetiredInstance));
+            Assert.That(owned.Any(value => value == RetiredInstance), Is.False);
             Assert.That(
                 holdings.UniqueHoldings.Any(item =>
                     item.DefinitionStableId == RetiredDefinition),
@@ -137,7 +137,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Assert.That(equipped.Length, Is.EqualTo(2));
             Assert.That(equipped.Distinct().Count(), Is.EqualTo(2));
             Assert.That(equipped.All(owned.Contains), Is.True);
-            Assert.That(equipped, Does.Not.Contain(RetiredInstance));
+            Assert.That(equipped.Any(value => value == RetiredInstance), Is.False);
             foreach (KeyValuePair<StableId, string> pair in unrelated)
             {
                 Assert.That(

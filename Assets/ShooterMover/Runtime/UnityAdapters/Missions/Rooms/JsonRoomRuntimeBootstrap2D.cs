@@ -29,6 +29,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private IReadOnlyList<RoomContentImportIssueV1> lastImportIssues =
             Array.Empty<RoomContentImportIssueV1>();
 
+        /// <summary>
+        /// Raised synchronously after the room authority and accepted imported bundle have
+        /// committed, but before the production caller continues with dependent projections.
+        /// Subscribers may compose required downstream ports; an exception fails the caller
+        /// closed rather than allowing a partially connected gameplay scene.
+        /// </summary>
+        public event Action<RoomContentBundleV1> BuildAccepted;
+
         public bool IsBuilt
         {
             get { return isBuilt; }
@@ -143,6 +151,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             importedBundle = acceptedBundle;
             isBuilt = true;
+            Action<RoomContentBundleV1> accepted = BuildAccepted;
+            if (accepted != null)
+            {
+                accepted(acceptedBundle);
+            }
             return true;
         }
 

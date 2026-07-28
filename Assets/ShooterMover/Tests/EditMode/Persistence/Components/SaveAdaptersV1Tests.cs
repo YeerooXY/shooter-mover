@@ -265,7 +265,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
             List<InventoryLoadoutSlotBindingV1> bindings = CopyBindings(before);
             bindings[3] = new InventoryLoadoutSlotBindingV1(
                 InventoryLoadoutSlotIdsV1.WeaponFour,
-                source.RicochetEquipmentInstanceStableId);
+                StableId.Parse("equipment-instance.test-ricochet"));
             var originalCommand = new InventoryLoadoutAuthorityCommandV1(
                 before.Sequence,
                 source.Holdings.Sequence,
@@ -288,7 +288,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
             Assert.That(restoredSnapshot.GetBinding(
                 InventoryLoadoutSlotIdsV1.WeaponFour)
                 .EquipmentInstanceStableId,
-                Is.EqualTo(target.RicochetEquipmentInstanceStableId));
+                Is.EqualTo(StableId.Parse("equipment-instance.test-ricochet")));
             InventoryLoadoutAuthorityResultV1 replay =
                 target.LoadoutAuthority.Apply(originalCommand);
             Assert.That(replay.Status,

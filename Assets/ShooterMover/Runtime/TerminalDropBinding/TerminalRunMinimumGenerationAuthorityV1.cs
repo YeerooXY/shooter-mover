@@ -4,6 +4,7 @@ using System.Globalization;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
+using ShooterMover.Domain.Rewards.Generation;
 
 namespace ShooterMover.TerminalDropBinding
 {

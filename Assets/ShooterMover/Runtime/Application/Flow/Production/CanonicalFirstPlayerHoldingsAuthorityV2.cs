@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Economy;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
@@ -140,6 +141,20 @@ namespace ShooterMover.Application.Flow.Production
                         + "WeaponEquipmentInstance contract: "
                         + command.EquipmentInstance.InstanceId);
                 }
+
+                ProductionWeaponMarkV1 mark;
+                bool definitionResolved = ProductionWeaponCatalogProvider.Current
+                    .TryGetMark(canonical.WeaponDefinitionId.Value, out mark)
+                    && mark != null;
+                CanonicalWeaponOperationAvailabilityV1 availability =
+                    CanonicalWeaponSafetyPolicyV1.EvaluateRewardAcceptance(
+                        canonical,
+                        definitionResolved);
+                if (!availability.IsAvailable)
+                {
+                    throw new InvalidOperationException(
+                        availability.RejectionCode + ": " + availability.Message);
+                }
                 return true;
             }
 
@@ -153,12 +168,23 @@ namespace ShooterMover.Application.Flow.Production
             canonical = weapons.Find(command.Transaction.InstanceStableId);
             if (canonical != null)
             {
+                ProductionWeaponMarkV1 mark;
+                if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+                        canonical.WeaponDefinitionId.Value,
+                        out mark)
+                    || mark == null)
+                {
+                    throw new InvalidOperationException(
+                        "canonical-weapon-definition-unresolved: "
+                        + canonical.WeaponDefinitionId.Value);
+                }
                 return true;
             }
 
             // An exact duplicate removal after both authorities accepted the original command may
-            // legitimately find neither record. A retained weapon receipt without canonical
-            // ownership is inconsistent and must never be mutated further as if it were armor.
+            // legitimately find neither record. A retained equipment receipt without canonical
+            // ownership must be classified before destruction. Unknown classification fails closed;
+            // a recognized weapon receipt proves that canonical ownership has already drifted.
             PlayerHoldingsSnapshotV1 snapshot = receipts.ExportSnapshot();
             if (snapshot != null)
             {
@@ -176,8 +202,13 @@ namespace ShooterMover.Application.Flow.Production
                         ProductionWeaponCatalogProvider.EquipmentCatalog
                             .FindEquipmentDefinition(
                                 holding.EquipmentInstance.DefinitionId);
-                    if (definition != null
-                        && definition.CategoryId == EquipmentCategoryIds.Weapon)
+                    if (definition == null)
+                    {
+                        throw new InvalidOperationException(
+                            "canonical-weapon-definition-unresolved: "
+                            + holding.EquipmentInstance.DefinitionId);
+                    }
+                    if (definition.CategoryId == EquipmentCategoryIds.Weapon)
                     {
                         throw new InvalidOperationException(
                             "A retained weapon receipt is missing canonical ownership: "

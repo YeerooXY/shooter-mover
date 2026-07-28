@@ -46,7 +46,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             string sourceRoot = EditorUtility.OpenFolderPanel(
                 "Choose Level Grid V2 Folder",
-                Application.dataPath,
+                UnityEngine.Application.dataPath,
                 string.Empty);
             if (string.IsNullOrWhiteSpace(sourceRoot)) return;
 
@@ -213,7 +213,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static string ToAbsolutePath(string path)
         {
             if (Path.IsPathRooted(path)) return Path.GetFullPath(path);
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return Path.GetFullPath(Path.Combine(projectRoot, path));
         }
 

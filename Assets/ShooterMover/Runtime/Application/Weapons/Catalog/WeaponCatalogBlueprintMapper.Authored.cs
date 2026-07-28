@@ -513,7 +513,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                             throw new ArgumentException(
                                 "Explicit allowed tiers cannot also carry a minimum tier.");
                         }
-                        eligibility = WeaponStrongboxEligibility.FromAllowedTiers(
+                        eligibility = WeaponStrongboxEligibility.FromAllowedTierIds(
                             details.AllowedStrongboxTiers);
                         break;
                     default:

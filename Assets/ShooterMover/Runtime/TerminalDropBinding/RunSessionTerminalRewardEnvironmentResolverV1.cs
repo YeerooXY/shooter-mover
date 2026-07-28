@@ -30,7 +30,7 @@ namespace ShooterMover.TerminalDropBinding
             if (source == null
                 || runContext == null
                 || run == null
-                || run.IsEnded)
+                || run.LifecycleState == RunSessionLifecycleStateV1.Ended)
             {
                 diagnostic = "terminal-personal-run-environment-unavailable";
                 return false;

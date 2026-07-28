@@ -7,6 +7,7 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.UnityAdapters.Players;
 using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;

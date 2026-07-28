@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
+using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Rewards;
@@ -13,6 +15,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Weapons;
 
 namespace ShooterMover.Application.Equipment.Upgrades
 {
@@ -96,6 +99,15 @@ namespace ShooterMover.Application.Equipment.Upgrades
                 }
 
                 EquipmentInstance equipment = holding.EquipmentInstance;
+                CanonicalWeaponOperationAvailabilityV1 upgradeAvailability =
+                    EvaluateGenericUpgradeAvailability(catalog, equipment);
+                if (!upgradeAvailability.IsAvailable)
+                {
+                    return QuoteFailure(
+                        AugmentUpgradeQuoteStatusV1.InvalidRequest,
+                        upgradeAvailability.RejectionCode);
+                }
+
                 int slotIndex;
                 AugmentInstance augment = FindAugment(
                     equipment,
@@ -156,6 +168,51 @@ namespace ShooterMover.Application.Equipment.Upgrades
                     quote,
                     null);
             }
+        }
+
+        private static CanonicalWeaponOperationAvailabilityV1
+            EvaluateGenericUpgradeAvailability(
+                EquipmentCatalog catalog,
+                EquipmentInstance equipment)
+        {
+            if (catalog == null || equipment == null)
+            {
+                return CanonicalWeaponOperationAvailabilityV1.Available();
+            }
+
+            EquipmentDefinition definition = catalog.FindEquipmentDefinition(
+                equipment.DefinitionId);
+            bool isWeaponReceipt = definition != null
+                && definition.CategoryId == EquipmentCategoryIds.Weapon;
+            bool canonicalDefinitionResolved = false;
+            if (isWeaponReceipt && definition.RuntimeWeaponReferenceId != null)
+            {
+                ProductionWeaponMarkV1 mark;
+                canonicalDefinitionResolved = ProductionWeaponCatalogProvider.Current
+                    .TryGetMark(
+                        definition.RuntimeWeaponReferenceId.ToString(),
+                        out mark)
+                    && mark != null;
+            }
+
+            if (!isWeaponReceipt)
+            {
+                return CanonicalWeaponOperationAvailabilityV1.Available();
+            }
+
+            bool authoritativeProductionCatalog = ReferenceEquals(
+                catalog,
+                ProductionWeaponCatalogProvider.EquipmentCatalog);
+            if (!authoritativeProductionCatalog && !canonicalDefinitionResolved)
+            {
+                // Isolated synthetic/legacy catalogues keep the historical generic route. They do
+                // not identify an exact production canonical weapon receipt.
+                return CanonicalWeaponOperationAvailabilityV1.Available();
+            }
+
+            return CanonicalWeaponSafetyPolicyV1.EvaluateGenericUpgrade(
+                true,
+                canonicalDefinitionResolved);
         }
     }
 }

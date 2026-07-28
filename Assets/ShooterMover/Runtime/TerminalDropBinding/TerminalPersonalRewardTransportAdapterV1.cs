@@ -6,6 +6,7 @@ using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
 using ShooterMover.Domain.Rewards.Generation;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.TerminalDropBinding
 {

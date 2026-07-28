@@ -1,5 +1,6 @@
 using System;
 using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.Application.Rewards.Strongboxes

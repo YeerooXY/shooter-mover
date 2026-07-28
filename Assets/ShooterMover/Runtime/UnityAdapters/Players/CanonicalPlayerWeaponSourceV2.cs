@@ -1,8 +1,10 @@
 using System;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;
 
@@ -98,20 +100,41 @@ namespace ShooterMover.UnityAdapters.Players
             if (!IsBound || projectionLookup == null)
             {
                 rejectionCode = "gameplay-canonical-player-source-unbound";
+                Diagnostic = rejectionCode;
                 return false;
             }
-            if (!projectionLookup.TryResolve(
-                    new EquipmentInstanceId(ExactWeaponInstanceId),
-                    out equipmentInstance)
+
+            bool resolved = projectionLookup.TryResolve(
+                new EquipmentInstanceId(ExactWeaponInstanceId),
+                out equipmentInstance);
+            if (!resolved
                 || equipmentInstance == null
                 || equipmentInstance.InstanceId != ExactWeaponInstanceId)
             {
                 equipmentInstance = null;
+                CanonicalWeaponOperationAvailabilityV1 availability =
+                    projectionLookup.LastAvailability;
+                if (!resolved
+                    && availability != null
+                    && !availability.IsAvailable
+                    && !string.IsNullOrEmpty(availability.RejectionCode))
+                {
+                    rejectionCode = availability.RejectionCode;
+                    Diagnostic = rejectionCode
+                        + (string.IsNullOrEmpty(availability.Message)
+                            ? string.Empty
+                            : ": " + availability.Message);
+                    return false;
+                }
+
                 rejectionCode =
                     "gameplay-canonical-live-equipment-unresolved:"
                     + ExactWeaponInstanceId;
+                Diagnostic = rejectionCode;
                 return false;
             }
+
+            Diagnostic = string.Empty;
             return true;
         }
     }

@@ -330,10 +330,12 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
             return CollectedRunRewardTransferCanonicalV1.DeriveStableId(
                 "operation",
                 "collected-run-custody-save",
-                transfer.CustodyStableId.ToString(),
-                ((int)transfer.State).ToString(
-                    CultureInfo.InvariantCulture),
-                transfer.Fingerprint);
+                transfer.CustodyStableId.ToString()
+                    + "|"
+                    + ((int)transfer.State).ToString(
+                    CultureInfo.InvariantCulture)
+                    + "|"
+                    + transfer.Fingerprint);
         }
 
         private static SaveComponentSnapshotV1 PreparedComponent(

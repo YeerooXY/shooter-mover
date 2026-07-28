@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Flow.Production;
@@ -50,10 +49,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             StableId runId,
             params MissionRunStrongboxResultV1[] boxes)
         {
-            PlayerHoldingsSnapshotV1 holdings =
-                source.LoadoutRuntime.Holdings.ExportSnapshot();
-            StrongboxOpeningSnapshotV1 strongboxes =
-                source.StrongboxAuthority.ExportSnapshot();
+            PlayerHoldingsSnapshotV1 holdings = source.LoadoutRuntime.Holdings.ExportSnapshot();
+            StrongboxOpeningSnapshotV1 strongboxes = source.StrongboxAuthority.ExportSnapshot();
             return MissionResultPayloadV1.Create(
                 runId,
                 route,
@@ -71,24 +68,20 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             string suffix,
             ulong seed)
         {
-            StrongboxDefinitionV1 definition =
-                graph.StrongboxCatalog.Definitions[0];
+            StrongboxDefinitionV1 definition = graph.StrongboxCatalog.Definitions[0];
             StableId boxId = Id("strongbox-instance." + suffix);
             StableId grantId = Id("grant." + suffix);
             StableId sourceId = Id("source." + suffix);
-            PlayerHoldingsMutationResultV1 added =
-                graph.LoadoutRuntime.Holdings.Apply(
-                    PlayerHoldingsCommandV1.AddStrongbox(
-                        Id("transaction.add." + suffix),
-                        Id("operation.add." + suffix),
-                        graph.LoadoutRuntime.Holdings.AuthorityStableId,
-                        definition.TierStableId,
-                        boxId,
-                        HoldingProvenanceV1.Create(grantId, sourceId)));
-            Assert.That(added.Status,
-                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
-            PlayerHoldingsSnapshotV1 holdings =
-                graph.LoadoutRuntime.Holdings.ExportSnapshot();
+            PlayerHoldingsMutationResultV1 added = graph.LoadoutRuntime.Holdings.Apply(
+                PlayerHoldingsCommandV1.AddStrongbox(
+                    Id("transaction.add." + suffix),
+                    Id("operation.add." + suffix),
+                    graph.LoadoutRuntime.Holdings.AuthorityStableId,
+                    definition.TierStableId,
+                    boxId,
+                    HoldingProvenanceV1.Create(grantId, sourceId)));
+            Assert.That(added.Status, Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+            PlayerHoldingsSnapshotV1 holdings = graph.LoadoutRuntime.Holdings.ExportSnapshot();
             var context = StrongboxInstanceContextV1.Create(
                 boxId,
                 definition.TierStableId,
@@ -103,8 +96,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 sourceId,
                 grantId,
                 definition.Fingerprint);
-            Assert.That(
-                graph.StrongboxAuthority.RegisterInstance(context).Status,
+            Assert.That(graph.StrongboxAuthority.RegisterInstance(context).Status,
                 Is.EqualTo(StrongboxRegistrationStatusV1.Registered));
             var collection = new MissionRunStrongboxCollectionV1(
                 definition.TierStableId,
@@ -114,12 +106,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Id("operation.collect." + suffix),
                 holdings.LedgerSnapshot.Sequence,
                 holdings.Fingerprint);
-            var result = new MissionRunStrongboxResultV1(
-                collection,
-                MissionRunStrongboxStateV1.Unopened,
-                null,
-                null);
-            return new BoxFixture(context, result);
+            return new BoxFixture(
+                context,
+                new MissionRunStrongboxResultV1(
+                    collection,
+                    MissionRunStrongboxStateV1.Unopened,
+                    null,
+                    null));
         }
 
         private static StrongboxOpenCommandV1 OpenCommand(
@@ -139,8 +132,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
         private static ProductionCharacterRuntimeGraphFactoryV1 Factory()
         {
-            return ProductionCharacterRuntimeGraphFactoryV1
-                .CreateVerticalSliceDefaults();
+            return ProductionCharacterRuntimeGraphFactoryV1.CreateVerticalSliceDefaults();
         }
 
         private static CharacterCompositionCoordinatorV1 Composition(
@@ -165,38 +157,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         {
             StableId characterId = Id("character-instance." + suffix);
             StableId classId = Id("loadout-profile.juggernaut");
-            PlayerRouteProfilePayloadV1 route =
-                PlayerRouteProfilePayloadV1.Create(
-                    characterId,
-                    classId,
-                    new[]
-                    {
-                        ProductionStarterWeaponCatalogV1
-                            .BlasterEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ShotgunEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .RocketEquipmentInstanceStableId,
-                        ProductionStarterWeaponCatalogV1
-                            .ArcEquipmentInstanceStableId,
-                    });
-            ICharacterRuntimeGraphV1 graph = factory.CreateStarter(
-                slotIndex,
+            PlayerRouteProfilePayloadV1 route = PlayerRouteProfilePayloadV1.Create(
                 characterId,
                 classId,
-                suffix,
-                route);
+                new StableId[PlayerRouteProfilePayloadV1.WeaponSlotCount]);
+            ICharacterRuntimeGraphV1 graph = factory.CreateStarter(
+                slotIndex, characterId, classId, suffix, route);
             IReadOnlyList<SaveComponentSnapshotV1> components =
-                PlayerAccountRestoreCoordinatorV1.ExportComponents(
-                    graph.SaveAdapters);
+                PlayerAccountRestoreCoordinatorV1.ExportComponents(graph.SaveAdapters);
             graph.Dispose();
             return new CharacterInstanceSnapshotV1(
-                characterId,
-                classId,
-                slotIndex,
-                suffix,
-                0L,
-                components);
+                characterId, classId, slotIndex, suffix, 0L, components);
         }
 
         private static PlayerAccountSnapshotV1 Account(
@@ -205,35 +176,22 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             var slots = new CharacterInstanceSnapshotV1[
                 PlayerAccountSnapshotV1.CharacterSlotCount];
             foreach (CharacterInstanceSnapshotV1 character in characters)
-            {
                 slots[character.SlotIndex] = character;
-            }
             return new PlayerAccountSnapshotV1(
-                Id("account.box-persist-tests"),
-                0L,
-                slots,
-                null);
+                Id("account.box-persist-tests"), 0L, slots, null);
         }
 
-        private static PlayerAccountStoreResultV1 Saved(
-            PlayerAccountSnapshotV1 snapshot)
+        private static PlayerAccountStoreResultV1 Saved(PlayerAccountSnapshotV1 snapshot)
         {
             return new PlayerAccountStoreResultV1(
-                PlayerAccountStoreStatusV1.Saved,
-                string.Empty,
-                snapshot);
+                PlayerAccountStoreStatusV1.Saved, string.Empty, snapshot);
         }
 
-        private static StableId Id(string value)
-        {
-            return StableId.Parse(value);
-        }
+        private static StableId Id(string value) { return StableId.Parse(value); }
 
         private sealed class BoxFixture
         {
-            public BoxFixture(
-                StrongboxInstanceContextV1 context,
-                MissionRunStrongboxResultV1 result)
+            public BoxFixture(StrongboxInstanceContextV1 context, MissionRunStrongboxResultV1 result)
             {
                 Context = context;
                 Result = result;
@@ -241,6 +199,5 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             public StrongboxInstanceContextV1 Context { get; }
             public MissionRunStrongboxResultV1 Result { get; }
         }
-
     }
 }

@@ -664,6 +664,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 : base("status-effect-runtime", generation)
             {
             }
+
+            public int ActiveEffectCount { get { return 0; } }
         }
 
         private sealed class FakeConditionalPort : FakeLifecyclePort,
@@ -724,7 +726,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 PlayerRouteProfilePayloadV1 routePayload)
             {
                 return new MissionRunAuthorityResultV1(
-                    MissionRunAuthorityStatusV1.Rejected,
+                    MissionRunAuthorityStatusV1.InvalidRequest,
                     Sequence,
                     Sequence,
                     request.OperationStableId,

@@ -5,13 +5,19 @@ using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.LevelSelection;
 using ShooterMover.Application.Flow.PlaySelection;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Shops.Presentation;
+using ShooterMover.Application.Skills.Presentation;
 using ShooterMover.Content.Definitions.Characters.Selection;
 using ShooterMover.Content.Definitions.Flow.PlayModes;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Persistence.Accounts;
+using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.Domain.Shops;
 using ShooterMover.Domain.Weapons.Catalog;
 using ShooterMover.UI.Crafting;
@@ -287,9 +293,7 @@ namespace ShooterMover.UI.ProductionFlow
                     Find<SkillsSceneController>(scene);
                 if (controller != null)
                 {
-                    controller.ShowDisconnected(
-                        transitions.Navigation.Payload,
-                        new SkillsNavigationAdapter(this));
+                    ConfigureRankedSkills(controller);
                 }
                 return;
             }
@@ -438,6 +442,97 @@ namespace ShooterMover.UI.ProductionFlow
                 out profile)
                 ? runtime.WeaponCatalog
                 : null;
+        }
+
+        private void ConfigureRankedSkills(SkillsSceneController controller)
+        {
+            PlayerRouteProfilePayloadV1 payload = transitions.Navigation.Payload;
+            var navigation = new SkillsNavigationAdapter(this);
+            if (payload == null)
+            {
+                controller.ShowUnavailable(
+                    null,
+                    navigation,
+                    "skills-v2-route-missing");
+                return;
+            }
+            if (!payload.HasValidFingerprint())
+            {
+                controller.ShowUnavailable(
+                    null,
+                    navigation,
+                    "skills-v2-route-invalid");
+                return;
+            }
+
+            ProductionCharacterRuntimeGraphV1 graph;
+            ProductionFlowProfileRecordV1 authoritativeProfile;
+            CharacterCompositionCoordinatorV1 composition;
+            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    out graph,
+                    out authoritativeProfile,
+                    out composition)
+                || graph == null
+                || graph.IsDisposed
+                || authoritativeProfile == null
+                || authoritativeProfile.Payload == null
+                || composition == null)
+            {
+                controller.ShowUnavailable(
+                    payload,
+                    navigation,
+                    "skills-v2-active-character-graph-unavailable");
+                return;
+            }
+
+            bool exactCharacter = graph.Character != null
+                && graph.Character.CharacterInstanceStableId
+                    == payload.SelectedCharacterStableId
+                && graph.Character.ClassDefinitionStableId
+                    == payload.LoadoutProfileStableId;
+            bool exactRoute = graph.RoutePayload != null
+                && string.Equals(
+                    graph.RoutePayload.Fingerprint,
+                    payload.Fingerprint,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    authoritativeProfile.Payload.Fingerprint,
+                    payload.Fingerprint,
+                    StringComparison.Ordinal);
+            if (!exactCharacter || !exactRoute)
+            {
+                controller.ShowUnavailable(
+                    payload,
+                    navigation,
+                    "skills-v2-active-character-identity-mismatch");
+                return;
+            }
+
+            RankedSkillsScreenSessionV2 session;
+            string rejectionCode;
+            if (!RankedSkillsScreenSessionV2.TryCreate(
+                    payload,
+                    graph.ExperienceAuthority,
+                    graph.SkillAuthority,
+                    graph.SkillProfileId,
+                    new RankedSkillsPersistenceAdapterV2(
+                        this,
+                        composition,
+                        graph,
+                        payload,
+                        graph.SkillAuthority,
+                        graph.SkillProfileId),
+                    out session,
+                    out rejectionCode))
+            {
+                controller.ShowUnavailable(
+                    payload,
+                    navigation,
+                    rejectionCode);
+                return;
+            }
+
+            controller.ShowRankedV2(session, navigation);
         }
 
         private static void ConfigureShopWeaponPresentation(
@@ -780,6 +875,113 @@ namespace ShooterMover.UI.ProductionFlow
             }
         }
 
+        private sealed class RankedSkillsPersistenceAdapterV2 :
+            IRankedSkillsPersistencePortV2
+        {
+            private readonly ProductionFlowCoordinatorV1 owner;
+            private readonly CharacterCompositionCoordinatorV1 expectedComposition;
+            private readonly ProductionCharacterRuntimeGraphV1 expectedGraph;
+            private readonly PlayerRouteProfilePayloadV1 expectedRoute;
+            private readonly RankedSkillAllocationAuthorityV2 expectedAuthority;
+            private readonly string expectedSkillProfileId;
+            public RankedSkillsPersistenceAdapterV2(
+                ProductionFlowCoordinatorV1 owner,
+                CharacterCompositionCoordinatorV1 expectedComposition,
+                ProductionCharacterRuntimeGraphV1 expectedGraph,
+                PlayerRouteProfilePayloadV1 expectedRoute,
+                RankedSkillAllocationAuthorityV2 expectedAuthority,
+                string expectedSkillProfileId)
+            {
+                this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+                this.expectedComposition = expectedComposition ?? throw new ArgumentNullException(nameof(expectedComposition));
+                this.expectedGraph = expectedGraph ?? throw new ArgumentNullException(nameof(expectedGraph));
+                this.expectedRoute = expectedRoute ?? throw new ArgumentNullException(nameof(expectedRoute));
+                this.expectedAuthority = expectedAuthority ?? throw new ArgumentNullException(nameof(expectedAuthority));
+                this.expectedSkillProfileId = string.IsNullOrWhiteSpace(expectedSkillProfileId)
+                    ? throw new ArgumentException("A stable ranked-skill profile identity is required.", nameof(expectedSkillProfileId))
+                    : expectedSkillProfileId.Trim();
+            }
+            public RankedSkillsPersistenceResultV2 Persist(
+                string mutationScope, string immutableMutationFingerprint)
+            {
+                if (string.IsNullOrWhiteSpace(mutationScope)
+                    || string.IsNullOrWhiteSpace(immutableMutationFingerprint))
+                    return Reject("skills-v2-persistence-request-invalid", true);
+                string fingerprint = immutableMutationFingerprint.Trim();
+                RankedSkillAllocationSnapshotV2 accepted;
+                string rejectionCode;
+                if (!TryReadExactActiveSnapshot(out accepted, out rejectionCode))
+                    return Reject(rejectionCode, true);
+                if (!string.Equals(accepted.Fingerprint, fingerprint, StringComparison.Ordinal))
+                    return Reject("skills-v2-persistence-snapshot-mismatch", true);
+                CharacterCompositionResultV1 result =
+                    ProductionCharacterAccountCompositionV1.PersistCurrent(mutationScope, fingerprint);
+                if (result == null || !result.Succeeded)
+                    return Reject(result == null
+                        ? "character-composition-save-result-null"
+                        : result.Diagnostic, true);
+                if (!TryReadExactActiveSnapshot(out accepted, out rejectionCode))
+                    return Reject(rejectionCode, false);
+                if (!TryVerifyPersistedSnapshot(result.Character, fingerprint, out rejectionCode))
+                    return Reject(rejectionCode, false);
+                return new RankedSkillsPersistenceResultV2(true, string.Empty, false);
+            }
+            private bool TryReadExactActiveSnapshot(
+                out RankedSkillAllocationSnapshotV2 allocation, out string rejectionCode)
+            {
+                allocation = null;
+                ProductionCharacterRuntimeGraphV1 currentGraph =
+                    expectedComposition.ActiveRuntime as ProductionCharacterRuntimeGraphV1;
+                PlayerRouteProfilePayloadV1 navigationRoute = owner.transitions == null
+                    || owner.transitions.Navigation == null ? null : owner.transitions.Navigation.Payload;
+                ProductionFlowProfileRecordV1 currentProfile = owner.profile;
+                if (currentGraph == null || currentGraph.IsDisposed
+                    || !ReferenceEquals(currentGraph, expectedGraph)
+                    || !ReferenceEquals(currentGraph.SkillAuthority, expectedAuthority))
+                { rejectionCode = "skills-v2-persistence-active-graph-changed"; return false; }
+                if (currentGraph.Character == null
+                    || currentGraph.Character.CharacterInstanceStableId != expectedRoute.SelectedCharacterStableId
+                    || currentGraph.Character.ClassDefinitionStableId != expectedRoute.LoadoutProfileStableId
+                    || currentGraph.RoutePayload == null || !currentGraph.RoutePayload.HasValidFingerprint()
+                    || !string.Equals(currentGraph.RoutePayload.Fingerprint, expectedRoute.Fingerprint, StringComparison.Ordinal)
+                    || navigationRoute == null || !navigationRoute.HasValidFingerprint()
+                    || !string.Equals(navigationRoute.Fingerprint, expectedRoute.Fingerprint, StringComparison.Ordinal)
+                    || currentProfile == null || currentProfile.Payload == null
+                    || !string.Equals(currentProfile.Payload.Fingerprint, expectedRoute.Fingerprint, StringComparison.Ordinal)
+                    || !string.Equals(currentGraph.SkillProfileId, expectedSkillProfileId, StringComparison.Ordinal))
+                { rejectionCode = "skills-v2-persistence-active-identity-mismatch"; return false; }
+                if (!expectedAuthority.TryGet(expectedSkillProfileId, out allocation))
+                { rejectionCode = "skills-v2-persistence-profile-unavailable"; return false; }
+                rejectionCode = string.Empty;
+                return true;
+            }
+            private bool TryVerifyPersistedSnapshot(
+                CharacterInstanceSnapshotV1 character, string fingerprint, out string rejectionCode)
+            {
+                if (character == null
+                    || character.CharacterInstanceStableId != expectedRoute.SelectedCharacterStableId
+                    || character.ClassDefinitionStableId != expectedRoute.LoadoutProfileStableId)
+                { rejectionCode = "skills-v2-persistence-character-mismatch"; return false; }
+                SaveComponentSnapshotV1 component;
+                if (!character.TryGetComponent(
+                    KnownSaveComponentDefinitionsV1.RankedSkillAllocation().ComponentStableId,
+                    out component))
+                { rejectionCode = "skills-v2-persistence-component-missing"; return false; }
+                RankedSkillAllocationSnapshotV2 persisted;
+                if (!KnownSaveComponentCodecsV1.RankedSkillAllocation.TryDecode(
+                    component.CanonicalPayload, out persisted, out rejectionCode))
+                { rejectionCode = "skills-v2-persistence-component-invalid:" + rejectionCode; return false; }
+                if (!string.Equals(persisted.ProfileId, expectedSkillProfileId, StringComparison.Ordinal)
+                    || !string.Equals(persisted.Fingerprint, fingerprint, StringComparison.Ordinal))
+                { rejectionCode = "skills-v2-persistence-committed-snapshot-mismatch"; return false; }
+                rejectionCode = string.Empty;
+                return true;
+            }
+            private static RankedSkillsPersistenceResultV2 Reject(
+                string rejectionCode, bool shouldRollback)
+            { return new RankedSkillsPersistenceResultV2(false, rejectionCode, shouldRollback); }
+        }
+
         private sealed class SkillsNavigationAdapter :
             ISkillsScreenNavigationPortV1
         {
@@ -794,6 +996,11 @@ namespace ShooterMover.UI.ProductionFlow
             public void ReturnToHub(
                 PlayerRouteProfilePayloadV1 routePayload)
             {
+                if (routePayload == null)
+                {
+                    owner.transitions.TryNavigateBack();
+                    return;
+                }
                 owner.ReturnToHub(routePayload);
             }
         }

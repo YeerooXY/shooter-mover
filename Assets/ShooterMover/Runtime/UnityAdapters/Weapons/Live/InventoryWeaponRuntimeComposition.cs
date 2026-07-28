@@ -841,7 +841,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         {
             WeaponActorInstanceId actorId;
             LifecycleGeneration generation;
-            string lifecycleRejection;
+            string lifecycleRejection = string.Empty;
             if (simulationTick < 0L
                 || !TryResolveAndActivateCurrentLifecycleLocked(
                     out actorId,
