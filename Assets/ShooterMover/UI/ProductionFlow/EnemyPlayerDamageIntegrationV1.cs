@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using ShooterMover.Application.Missions.Rooms;
+using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
-using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
@@ -11,204 +10,6 @@ using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UI.ProductionFlow
 {
-    /// <summary>
-    /// Explicit integration-owned mapping from authored enemy damage channels to canonical
-    /// player combat channels. Unknown or missing channels fail closed.
-    /// </summary>
-    public static class EnemyPlayerDamageChannelMapV1
-    {
-        private static readonly StableId KineticDamageChannelStableId =
-            StableId.Parse("damage.kinetic");
-
-        public static bool TryMap(
-            StableId damageChannelStableId,
-            out CombatChannel channel)
-        {
-            channel = default(CombatChannel);
-            if (damageChannelStableId == null
-                || damageChannelStableId != KineticDamageChannelStableId)
-            {
-                return false;
-            }
-
-            channel = CombatChannel.Kinetic;
-            return true;
-        }
-    }
-
-    public enum EnemyPublisherResolutionStatusV1
-    {
-        Pending = 1,
-        Ready = 2,
-        Rejected = 3,
-    }
-
-    /// <summary>
-    /// Reconciles live enemy-hit publishers against the authoritative current-room enemy
-    /// projection. Props and retired occupants never contribute to the expected count.
-    /// </summary>
-    public static class EnemyPublisherReconciliationV1
-    {
-        public static EnemyPublisherResolutionStatusV1 Classify(
-            int authoritativeActiveEnemyCount,
-            int readyPublisherCount,
-            bool hasNonTerminalUnboundPublisher,
-            out string diagnostic)
-        {
-            diagnostic = string.Empty;
-            if (authoritativeActiveEnemyCount < 0 || readyPublisherCount < 0)
-            {
-                diagnostic = "enemy-player-damage-publisher-count-invalid";
-                return EnemyPublisherResolutionStatusV1.Rejected;
-            }
-            if (hasNonTerminalUnboundPublisher)
-            {
-                diagnostic = "enemy-player-damage-publisher-binding-pending";
-                return EnemyPublisherResolutionStatusV1.Pending;
-            }
-            if (readyPublisherCount < authoritativeActiveEnemyCount)
-            {
-                diagnostic = "enemy-player-damage-publisher-pending:"
-                    + readyPublisherCount
-                    + "/"
-                    + authoritativeActiveEnemyCount;
-                return EnemyPublisherResolutionStatusV1.Pending;
-            }
-            if (readyPublisherCount > authoritativeActiveEnemyCount)
-            {
-                diagnostic = "enemy-player-damage-publisher-duplicated:"
-                    + readyPublisherCount
-                    + "/"
-                    + authoritativeActiveEnemyCount;
-                return EnemyPublisherResolutionStatusV1.Rejected;
-            }
-
-            return EnemyPublisherResolutionStatusV1.Ready;
-        }
-
-        public static int CountAuthoritativeActiveEnemies(
-            RoomRuntimeComposition2D roomRuntime)
-        {
-            if (roomRuntime == null
-                || !roomRuntime.IsBuilt
-                || roomRuntime.Definition == null
-                || roomRuntime.CurrentProjection == null)
-            {
-                throw new InvalidOperationException(
-                    "enemy-player-damage-room-projection-pending");
-            }
-
-            RoomLiveRuntimeProjectionV1 runtimeProjection =
-                roomRuntime.CurrentProjection;
-            RoomLiveRoomProjectionV1 roomProjection =
-                runtimeProjection.GetRoom(runtimeProjection.CurrentRoomStableId);
-            AuthorableRoomDefinitionV1 roomDefinition =
-                roomRuntime.Definition.GetRoom(runtimeProjection.CurrentRoomStableId);
-
-            int count = 0;
-            for (int index = 0; index < roomProjection.ActiveOccupants.Count; index++)
-            {
-                RoomPlacedEntityDefinitionV1 placement;
-                if (roomDefinition.TryGetPlacement(
-                        roomProjection.ActiveOccupants[index].EntityStableId,
-                        out placement)
-                    && placement != null
-                    && placement.PlacementKind == RoomLivePlacementKindV1.Enemy)
-                {
-                    count++;
-                }
-            }
-            return count;
-        }
-    }
-
-    /// <summary>
-    /// Owns exact EnemyAttack2D subscriptions. Reconciliation replaces the complete set, so
-    /// room rebuilds cannot accumulate duplicate hit delivery.
-    /// </summary>
-    public sealed class EnemyHitSubscriptionSetV1
-    {
-        private readonly Dictionary<EnemyAttack2D, Action<EnemyHitV1>> subscriptions =
-            new Dictionary<EnemyAttack2D, Action<EnemyHitV1>>();
-
-        public int Count { get { return subscriptions.Count; } }
-
-        public bool Contains(EnemyAttack2D publisher)
-        {
-            return publisher != null && subscriptions.ContainsKey(publisher);
-        }
-
-        public void Replace(
-            IReadOnlyList<EnemyAttack2D> publishers,
-            Action<EnemyAttack2D, EnemyHitV1> receiver)
-        {
-            if (publishers == null) throw new ArgumentNullException(nameof(publishers));
-            if (receiver == null) throw new ArgumentNullException(nameof(receiver));
-
-            Clear();
-            var seen = new HashSet<EnemyAttack2D>();
-            try
-            {
-                for (int index = 0; index < publishers.Count; index++)
-                {
-                    EnemyAttack2D publisher = publishers[index];
-                    if (publisher == null)
-                    {
-                        throw new InvalidOperationException(
-                            "enemy-player-damage-publisher-missing");
-                    }
-                    if (!seen.Add(publisher))
-                    {
-                        throw new InvalidOperationException(
-                            "enemy-player-damage-publisher-duplicated");
-                    }
-
-                    EnemyAttack2D capturedPublisher = publisher;
-                    Action<EnemyHitV1> handler = hit =>
-                        receiver(capturedPublisher, hit);
-                    publisher.Hit += handler;
-                    subscriptions.Add(publisher, handler);
-                }
-            }
-            catch
-            {
-                Clear();
-                throw;
-            }
-        }
-
-        public bool AllCurrent(Scene scene)
-        {
-            foreach (KeyValuePair<EnemyAttack2D, Action<EnemyHitV1>> pair
-                in subscriptions)
-            {
-                EnemyAttack2D publisher = pair.Key;
-                if (publisher == null
-                    || publisher.gameObject.scene != scene
-                    || !publisher.gameObject.activeInHierarchy
-                    || !publisher.IsBound
-                    || publisher.IsTerminalStopped)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        public void Clear()
-        {
-            foreach (KeyValuePair<EnemyAttack2D, Action<EnemyHitV1>> pair
-                in subscriptions)
-            {
-                if (pair.Key != null)
-                {
-                    pair.Key.Hit -= pair.Value;
-                }
-            }
-            subscriptions.Clear();
-        }
-    }
-
     internal static class EnemyPlayerDamageIntegrationInstallerV1
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -235,8 +36,7 @@ namespace ShooterMover.UI.ProductionFlow
             if (!scene.IsValid()
                 || !string.Equals(
                     scene.path,
-                    Content.Definitions.Levels.Selection
-                        .ProductionPlayableLevelCatalogV1.PlayableLevelScenePath,
+                    ProductionPlayableLevelCatalogV1.PlayableLevelScenePath,
                     StringComparison.Ordinal))
             {
                 return;
@@ -254,17 +54,15 @@ namespace ShooterMover.UI.ProductionFlow
 
                 ProductionPlayableLevelControllerV1 candidate = roots[index]
                     .GetComponentInChildren<ProductionPlayableLevelControllerV1>(true);
-                if (candidate != null)
+                if (candidate == null) continue;
+                if (controller != null && !ReferenceEquals(controller, candidate))
                 {
-                    if (controller != null && !ReferenceEquals(controller, candidate))
-                    {
-                        Debug.LogError(
-                            "enemy-player-damage-controller-duplicated",
-                            candidate);
-                        return;
-                    }
-                    controller = candidate;
+                    Debug.LogError(
+                        "enemy-player-damage-controller-duplicated",
+                        candidate);
+                    return;
                 }
+                controller = candidate;
             }
 
             if (controller != null)
@@ -313,11 +111,8 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public int SubscribedEnemyPublisherCount { get { return subscriptions.Count; } }
-
         public bool IsDefeatAccepted { get { return defeatAccepted; } }
-
         public DamageReceiverResult LastDamageResult { get { return lastDamageResult; } }
-
         public string LastDiagnostic { get { return lastDiagnostic; } }
 
         private void OnEnable()
@@ -336,10 +131,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void Update()
         {
-            if (destroying || resolutionRejected || defeatAccepted)
-            {
-                return;
-            }
+            if (destroying || resolutionRejected || defeatAccepted) return;
 
             if (resolving)
             {
@@ -621,7 +413,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             defeatAccepted = true;
-            subscriptions.Clear();
+            UnsubscribeAll();
         }
 
         private void HandleRoomPresentationRebuilt()
@@ -710,10 +502,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void OnDisable()
         {
-            if (!destroying)
-            {
-                UnsubscribeAll();
-            }
+            if (!destroying) UnsubscribeAll();
         }
 
         private void OnDestroy()
