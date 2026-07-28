@@ -41,8 +41,10 @@ namespace ShooterMover.Editor.Enemies
         {
             EditorGUILayout.LabelField("Enemy Production Readiness", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This is a read-only projection. Missing, stale, unsupported, or ambiguous "
-                + "evidence is reported as not ready; the tool never enables catalogue entries.",
+                "This window validates static authoritative assets and exact presentation "
+                + "retirement configuration. It does not accept prefab booleans as proof of "
+                + "live mechanics or player damage. Production readiness remains blocked until "
+                + "the production scene passes PlayMode/manual runtime acceptance.",
                 MessageType.Info);
 
             if (GUILayout.Button("Refresh from authoritative assets"))
@@ -63,7 +65,7 @@ namespace ShooterMover.Editor.Enemies
             }
 
             EditorGUILayout.LabelField(
-                "Ready: " + ready + " / " + rows.Count,
+                "Production ready: " + ready + " / " + rows.Count,
                 ready == rows.Count && rows.Count > 0
                     ? EditorStyles.boldLabel
                     : EditorStyles.label);
@@ -84,11 +86,11 @@ namespace ShooterMover.Editor.Enemies
                 row.ProductionReady ? EditorStyles.boldLabel : EditorStyles.label);
             EditorGUILayout.LabelField("presentation", row.PresentationId);
             Flag("catalogue valid", row.CatalogueValid);
-            Flag("runtime mechanics supported", row.RuntimeMechanicsSupported);
-            Flag("presentation registered", row.PresentationRegistered);
-            Flag("room mapping available", row.RoomMappingAvailable);
-            Flag("player-damage route supported", row.PlayerDamageRouteSupported);
-            Flag("death downstream integration", row.DeathDownstreamIntegrationAvailable);
+            Flag("presentation recipe valid", row.PresentationRegistered);
+            Flag("canonical room mapping", row.RoomMappingAvailable);
+            Flag("terminal retirement configured", row.TerminalRetirementConfigured);
+            Flag("live mechanics acceptance verified", row.RuntimeMechanicsVerified);
+            Flag("live player-damage acceptance verified", row.PlayerDamageVerified);
             EditorGUILayout.LabelField(
                 row.ProductionReady ? "PRODUCTION READY" : "NOT READY",
                 EditorStyles.boldLabel);
@@ -160,9 +162,8 @@ namespace ShooterMover.Editor.Enemies
                 out roomFailure);
             for (int index = 0; index < enemyImport.Catalog.Definitions.Count; index++)
             {
-                EnemyDefinitionV1 definition = enemyImport.Catalog.Definitions[index];
                 rows.Add(BuildRow(
-                    definition,
+                    enemyImport.Catalog.Definitions[index],
                     presentationCatalog,
                     roomMappings,
                     roomFailure));
@@ -197,11 +198,17 @@ namespace ShooterMover.Editor.Enemies
                 && roomMappings.TryGetValue(definition.DefinitionId, out mappedPresentation)
                 && mappedPresentation == definition.PresentationId;
 
-            string mechanicsReason;
-            bool mechanics = ReadMechanicsEvidence(prefab, out mechanicsReason);
-            string damageReason;
-            bool playerDamage = ReadPlayerDamageEvidence(prefab, out damageReason);
-            bool deathDownstream = roomMappingAvailable;
+            string retirementFailure;
+            bool retirementConfigured = ReadRetirementEvidence(
+                prefab,
+                out retirementFailure);
+
+            // Static asset inspection cannot prove that the current scene successfully bound the
+            // factory runtime, attack publisher, current player lifecycle and damage receiver.
+            // These facts deliberately remain false until executable acceptance evidence exists.
+            const bool mechanicsVerified = false;
+            const bool playerDamageVerified = false;
+            const bool runtimeAcceptanceVerified = false;
 
             var missing = new List<string>();
             if (!string.IsNullOrEmpty(presentationFailure)) missing.Add(presentationFailure);
@@ -212,29 +219,33 @@ namespace ShooterMover.Editor.Enemies
                     ? "No canonical authored room mapping exists."
                     : roomFailure);
             }
-            if (!mechanics) missing.Add(mechanicsReason);
-            if (!playerDamage) missing.Add(damageReason);
-            if (!deathDownstream)
-            {
-                missing.Add("No authored room mapping reaches the generic room terminal route.");
-            }
+            if (!retirementConfigured) missing.Add(retirementFailure);
+            missing.Add(
+                "Live mechanics are not proven by static prefab declarations; run the production "
+                + "PlayMode/manual movement, aim, wind-up and emission acceptance route.");
+            missing.Add(
+                "Canonical player damage is not proven by static prefab declarations; run the "
+                + "production hit, replay, stale-lifecycle and defeat acceptance route.");
 
             bool ready = presentationRegistered
                 && roomMappingAvailable
-                && mechanics
-                && playerDamage
-                && deathDownstream;
+                && retirementConfigured
+                && mechanicsVerified
+                && playerDamageVerified
+                && runtimeAcceptanceVerified;
             return new ReadinessRowV1(
                 definition.DefinitionId.ToString(),
                 definition.PresentationId.ToString(),
                 true,
-                mechanics,
                 presentationRegistered,
                 roomMappingAvailable,
-                playerDamage,
-                deathDownstream,
+                retirementConfigured,
+                mechanicsVerified,
+                playerDamageVerified,
                 ready,
-                ready ? "All required production evidence is present." : string.Join(" ", missing));
+                ready
+                    ? "All required static and executable production evidence is present."
+                    : string.Join(" ", missing));
         }
 
         private static bool ReadPresentationEvidence(
@@ -272,90 +283,34 @@ namespace ShooterMover.Editor.Enemies
             }
         }
 
-        private static bool ReadMechanicsEvidence(GameObject prefab, out string reason)
+        private static bool ReadRetirementEvidence(GameObject prefab, out string reason)
         {
-            IEnemyRuntimeMechanicsReadiness2D evidence = null;
-            int count = 0;
-            if (prefab != null)
+            if (prefab == null)
             {
-                MonoBehaviour[] components = prefab.GetComponentsInChildren<MonoBehaviour>(true);
-                for (int index = 0; index < components.Length; index++)
-                {
-                    IEnemyRuntimeMechanicsReadiness2D candidate =
-                        components[index] as IEnemyRuntimeMechanicsReadiness2D;
-                    if (candidate == null) continue;
-                    evidence = candidate;
-                    count++;
-                }
-            }
-
-            if (count == 0)
-            {
-                reason = "No typed production mechanics-readiness evidence is registered.";
+                reason = "No prefab exists for terminal-presentation validation.";
                 return false;
             }
-            if (count > 1)
+
+            EnemyDefeatedPresentationRetirement2D[] providers =
+                prefab.GetComponentsInChildren<EnemyDefeatedPresentationRetirement2D>(true);
+            if (providers.Length == 0)
             {
-                reason = "Multiple runtime mechanics-readiness providers are registered; ownership is ambiguous.";
+                reason = "No defeated-presentation retirement component is configured.";
+                return false;
+            }
+            if (providers.Length > 1)
+            {
+                reason = "Multiple defeated-presentation retirement components are ambiguous.";
                 return false;
             }
 
             try
             {
-                bool ready = evidence.RuntimeMechanicsReady;
-                string detail = evidence.RuntimeMechanicsReadinessReason;
-                reason = string.IsNullOrWhiteSpace(detail)
-                    ? (ready ? string.Empty : "Runtime mechanics evidence reports unsupported.")
-                    : detail;
-                return ready;
+                return providers[0].TryValidate(out reason);
             }
             catch (Exception exception)
             {
-                reason = "Runtime mechanics readiness evidence failed: " + exception.Message;
-                return false;
-            }
-        }
-
-        private static bool ReadPlayerDamageEvidence(GameObject prefab, out string reason)
-        {
-            IEnemyPlayerDamageRouteReadiness2D evidence = null;
-            int count = 0;
-            if (prefab != null)
-            {
-                MonoBehaviour[] components = prefab.GetComponentsInChildren<MonoBehaviour>(true);
-                for (int index = 0; index < components.Length; index++)
-                {
-                    IEnemyPlayerDamageRouteReadiness2D candidate =
-                        components[index] as IEnemyPlayerDamageRouteReadiness2D;
-                    if (candidate == null) continue;
-                    evidence = candidate;
-                    count++;
-                }
-            }
-
-            if (count == 0)
-            {
-                reason = "No typed canonical player-damage-route evidence is registered.";
-                return false;
-            }
-            if (count > 1)
-            {
-                reason = "Multiple player-damage-route readiness providers are registered; ownership is ambiguous.";
-                return false;
-            }
-
-            try
-            {
-                bool ready = evidence.PlayerDamageRouteReady;
-                string detail = evidence.PlayerDamageRouteReadinessReason;
-                reason = string.IsNullOrWhiteSpace(detail)
-                    ? (ready ? string.Empty : "Player-damage route evidence reports unsupported.")
-                    : detail;
-                return ready;
-            }
-            catch (Exception exception)
-            {
-                reason = "Player-damage-route readiness evidence failed: " + exception.Message;
+                reason = "Terminal retirement evidence failed: " + exception.Message;
                 return false;
             }
         }
@@ -448,22 +403,22 @@ namespace ShooterMover.Editor.Enemies
                 string definitionId,
                 string presentationId,
                 bool catalogueValid,
-                bool runtimeMechanicsSupported,
                 bool presentationRegistered,
                 bool roomMappingAvailable,
-                bool playerDamageRouteSupported,
-                bool deathDownstreamIntegrationAvailable,
+                bool terminalRetirementConfigured,
+                bool runtimeMechanicsVerified,
+                bool playerDamageVerified,
                 bool productionReady,
                 string reason)
             {
                 DefinitionId = definitionId;
                 PresentationId = presentationId;
                 CatalogueValid = catalogueValid;
-                RuntimeMechanicsSupported = runtimeMechanicsSupported;
                 PresentationRegistered = presentationRegistered;
                 RoomMappingAvailable = roomMappingAvailable;
-                PlayerDamageRouteSupported = playerDamageRouteSupported;
-                DeathDownstreamIntegrationAvailable = deathDownstreamIntegrationAvailable;
+                TerminalRetirementConfigured = terminalRetirementConfigured;
+                RuntimeMechanicsVerified = runtimeMechanicsVerified;
+                PlayerDamageVerified = playerDamageVerified;
                 ProductionReady = productionReady;
                 Reason = reason;
             }
@@ -471,11 +426,11 @@ namespace ShooterMover.Editor.Enemies
             public string DefinitionId { get; private set; }
             public string PresentationId { get; private set; }
             public bool CatalogueValid { get; private set; }
-            public bool RuntimeMechanicsSupported { get; private set; }
             public bool PresentationRegistered { get; private set; }
             public bool RoomMappingAvailable { get; private set; }
-            public bool PlayerDamageRouteSupported { get; private set; }
-            public bool DeathDownstreamIntegrationAvailable { get; private set; }
+            public bool TerminalRetirementConfigured { get; private set; }
+            public bool RuntimeMechanicsVerified { get; private set; }
+            public bool PlayerDamageVerified { get; private set; }
             public bool ProductionReady { get; private set; }
             public string Reason { get; private set; }
         }
