@@ -49,8 +49,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private RoomPresentationCatalogEntry2D[] entries =
             Array.Empty<RoomPresentationCatalogEntry2D>();
 
-        private Dictionary<StableId, GameObject> resolved;
-
         public bool TryResolve(StableId presentationStableId, out GameObject prefab)
         {
             if (presentationStableId == null)
@@ -59,7 +57,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 return false;
             }
 
-            EnsureResolved();
+            Dictionary<StableId, GameObject> resolved = BuildResolved();
             return resolved.TryGetValue(presentationStableId, out prefab)
                 && prefab != null;
         }
@@ -67,18 +65,19 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void ValidateFor(AuthorableRoomGraphDefinitionV1 definition)
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
-            EnsureResolved();
+
+            Dictionary<StableId, GameObject> resolved = BuildResolved();
             for (int roomIndex = 0; roomIndex < definition.Rooms.Count; roomIndex++)
             {
                 AuthorableRoomDefinitionV1 room = definition.Rooms[roomIndex];
                 for (int index = 0; index < room.Placements.Count; index++)
                 {
-                    Require(room.Placements[index].PresentationStableId);
+                    Require(resolved, room.Placements[index].PresentationStableId);
                 }
 
                 for (int index = 0; index < room.Doors.Count; index++)
                 {
-                    Require(room.Doors[index].PresentationStableId);
+                    Require(resolved, room.Doors[index].PresentationStableId);
                 }
             }
         }
@@ -88,7 +87,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             entries = configuredEntries == null
                 ? Array.Empty<RoomPresentationCatalogEntry2D>()
                 : (RoomPresentationCatalogEntry2D[])configuredEntries.Clone();
-            resolved = null;
         }
 
         public void ConfigureForTests(params RoomPresentationCatalogEntry2D[] configuredEntries)
@@ -96,7 +94,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             Configure(configuredEntries);
         }
 
-        private void Require(StableId presentationStableId)
+        private static void Require(
+            IReadOnlyDictionary<StableId, GameObject> resolved,
+            StableId presentationStableId)
         {
             GameObject prefab;
             if (!resolved.TryGetValue(presentationStableId, out prefab) || prefab == null)
@@ -106,11 +106,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
         }
 
-        private void EnsureResolved()
+        private Dictionary<StableId, GameObject> BuildResolved()
         {
-            if (resolved != null) return;
-
-            resolved = new Dictionary<StableId, GameObject>();
+            var resolved = new Dictionary<StableId, GameObject>();
             RoomPresentationCatalogEntry2D[] authoredEntries = entries
                 ?? Array.Empty<RoomPresentationCatalogEntry2D>();
             for (int index = 0; index < authoredEntries.Length; index++)
@@ -137,6 +135,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
                 resolved.Add(id, entry.Prefab);
             }
+            return resolved;
         }
     }
 }
