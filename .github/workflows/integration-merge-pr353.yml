@@ -6,6 +6,11 @@ on:
       - agent/integration-all-open-prs-20260728
     paths:
       - .github/workflows/integration-merge-pr353.yml
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
 
 permissions:
   contents: write
