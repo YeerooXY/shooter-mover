@@ -54,10 +54,10 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         [Test]
-        public void Validate_AcceptsExactExplicitNoDrop()
+        public void Validate_AcceptsNoEligibleParticipantsWithoutAdmissions()
         {
             var batch = new TerminalPersonalRewardBatchV1(
-                TerminalPersonalRewardBatchStatusV1.ExplicitNoDrop,
+                TerminalPersonalRewardBatchStatusV1.NoEligibleParticipants,
                 null,
                 Array.Empty<GeneratedTerminalDropResultV1>(),
                 string.Empty);
