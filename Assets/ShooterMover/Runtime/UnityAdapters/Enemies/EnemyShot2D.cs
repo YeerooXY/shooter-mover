@@ -8,7 +8,9 @@ using UnityEngine;
 namespace ShooterMover.UnityAdapters.Enemies
 {
     /// <summary>
-    /// Reusable Unity presentation for one supported simple travelling enemy shot.
+    /// Reusable Unity realization for one supported travelling enemy projectile. Direct payloads
+    /// publish one target contact. Instantaneous area payloads complete at target, obstruction,
+    /// or maximum range and delegate radius admission to the owning attack driver.
     /// </summary>
     [DisallowMultipleComponent]
     internal sealed class EnemyShot2D : MonoBehaviour
@@ -49,7 +51,9 @@ namespace ShooterMover.UnityAdapters.Enemies
 
             SpriteRenderer renderer = gameObject.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
-            renderer.color = new Color(1f, 0.72f, 0.12f, 1f);
+            renderer.color = payload.AreaPayload == null
+                ? new Color(1f, 0.72f, 0.12f, 1f)
+                : new Color(1f, 0.28f, 0.08f, 1f);
             renderer.sortingOrder = 300;
             float diameter = Mathf.Max(0.12f, (float)payload.CollisionRadius * 2f);
             transform.localScale = new Vector3(diameter, diameter, 1f);
@@ -78,7 +82,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 || target == null
                 || !target.IsCurrent(gameObject.scene))
             {
-                End(false, null);
+                End(CompletionKind.Cancelled, null, body == null ? (Vector2)transform.position : body.position);
                 return;
             }
 
@@ -88,16 +92,17 @@ namespace ShooterMover.UnityAdapters.Enemies
             body.MovePosition(next);
             if (Vector2.Distance(origin, next) >= distance)
             {
-                End(false, null);
+                End(CompletionKind.MaximumRange, null, next);
             }
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (ended || other == null) return;
+            Vector2 point = body == null ? (Vector2)transform.position : body.position;
             if (target != null && target.IsTarget(other))
             {
-                End(true, other);
+                End(CompletionKind.TargetContact, other, ClosestPoint(other, point));
                 return;
             }
             if (source != null
@@ -108,29 +113,61 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
             if (!other.isTrigger)
             {
-                End(false, null);
+                End(CompletionKind.Obstruction, null, ClosestPoint(other, point));
             }
         }
 
         public void Cancel()
         {
-            End(false, null);
+            End(
+                CompletionKind.Cancelled,
+                null,
+                body == null ? (Vector2)transform.position : body.position);
         }
 
-        private void End(bool hit, Collider2D targetCollider)
+        private void End(
+            CompletionKind completion,
+            Collider2D targetCollider,
+            Vector2 completionPoint)
         {
             if (ended) return;
             ended = true;
             StableId id = emission == null ? null : emission.EmissionStableId;
-            if (hit && owner != null && emission != null && targetCollider != null)
+            if (completion != CompletionKind.Cancelled
+                && owner != null
+                && emission != null)
             {
-                owner.Publish(emission, targetCollider);
+                EnemyAreaPayloadV1 area = emission.Projectile.Payload.AreaPayload;
+                if (area != null)
+                {
+                    owner.PublishArea(emission, completionPoint, area);
+                }
+                else if (completion == CompletionKind.TargetContact
+                    && targetCollider != null)
+                {
+                    owner.Publish(emission, targetCollider);
+                }
             }
             if (owner != null)
             {
                 owner.Ended(id);
             }
             Destroy(gameObject);
+        }
+
+        private static Vector2 ClosestPoint(Collider2D collider, Vector2 fallback)
+        {
+            if (collider == null || !collider.enabled) return fallback;
+            Vector2 point = collider.ClosestPoint(fallback);
+            return Finite(point) ? point : fallback;
+        }
+
+        private static bool Finite(Vector2 value)
+        {
+            return !float.IsNaN(value.x)
+                && !float.IsInfinity(value.x)
+                && !float.IsNaN(value.y)
+                && !float.IsInfinity(value.y);
         }
 
         private void OnDestroy()
@@ -145,6 +182,14 @@ namespace ShooterMover.UnityAdapters.Enemies
             target = null;
             emission = null;
             body = null;
+        }
+
+        private enum CompletionKind
+        {
+            Cancelled = 0,
+            TargetContact = 1,
+            Obstruction = 2,
+            MaximumRange = 3,
         }
     }
 }
