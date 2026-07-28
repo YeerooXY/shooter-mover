@@ -14,11 +14,25 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.RunPickups
 {
+    internal sealed class ThrowingRunPickupAcceptedFeedback2D : MonoBehaviour,
+        IRunRewardPickupAcceptedFeedbackV1
+    {
+        public bool TryPlayAcceptedCollectionFeedback(
+            Transform attractionTarget,
+            Action completed)
+        {
+            throw new InvalidOperationException("test-feedback-failure");
+        }
+    }
+
     public sealed class LootPickupRunProjectionPlayModeTests
     {
-        private static readonly StableId RunId = StableId.Parse("run.loot-projection-test");
-        private static readonly StableId RoomId = StableId.Parse("room.loot-projection-test");
-        private static readonly StableId PlayerActorId = StableId.Parse("actor.loot-projection-player");
+        private static readonly StableId RunId =
+            StableId.Parse("run.loot-projection-test");
+        private static readonly StableId RoomId =
+            StableId.Parse("room.loot-projection-test");
+        private static readonly StableId PlayerActorId =
+            StableId.Parse("actor.loot-projection-player");
         private static readonly StableId PlayerParticipantId =
             StableId.Parse("participant.loot-projection-player");
 
@@ -51,7 +65,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             public long AuthoritativeTick { get { return 10L; } }
             public bool IsActive { get { return true; } }
             public StableId PlayerActorStableId { get { return PlayerActorId; } }
-            public StableId PlayerParticipantStableId { get { return PlayerParticipantId; } }
+            public StableId PlayerParticipantStableId
+            {
+                get { return PlayerParticipantId; }
+            }
             public int CollectionCount { get; private set; }
 
             public bool TryReadContext(
@@ -81,6 +98,15 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             }
         }
 
+        private sealed class Fixture
+        {
+            public SessionPort Session;
+            public RunLocalPickupAuthorityV1 Authority;
+            public RunPickupPresenter2D Presenter;
+            public RunPickupCollector2D Collector;
+            public RunPickupSnapshotV1 Pickup;
+        }
+
         [UnityTearDown]
         public IEnumerator TearDown()
         {
@@ -98,22 +124,98 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator MoneyPickup_BindsRichVisualAndRetiresAfterCanonicalAcceptance()
         {
+            Fixture fixture = CreateFixture(true, false);
+            RunRewardPickup2D view;
+            Assert.That(
+                fixture.Presenter.TryGetView(
+                    fixture.Pickup.PickupStableId,
+                    out view),
+                Is.True);
+
+            LootPickupRunProjection2D bridge =
+                view.GetComponent<LootPickupRunProjection2D>();
+            LootPickupVisual2D visual =
+                view.GetComponent<LootPickupVisual2D>();
+            SpriteRenderer legacy = view.GetComponent<SpriteRenderer>();
+
+            Assert.That(bridge, Is.Not.Null);
+            Assert.That(bridge.IsBound, Is.True);
+            Assert.That(visual, Is.Not.Null);
+            Assert.That(
+                visual.Projection.PickupStableId,
+                Is.EqualTo(fixture.Pickup.PickupStableId));
+            Assert.That(visual.Projection.Quantity, Is.EqualTo(25L));
+            Assert.That(legacy.enabled, Is.False);
+
+            view.HandleTriggerForTests(fixture.Collector);
+
+            Assert.That(view.LastCollectionResult.IsCollected, Is.True);
+            Assert.That(fixture.Session.CollectionCount, Is.EqualTo(1));
+            Assert.That(visual.IsPlayingAcceptedCollectionFeedback, Is.True);
+            Assert.That(fixture.Presenter.VisiblePickupCount, Is.EqualTo(0));
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(1));
+
+            yield return new WaitForSecondsRealtime(0.3f);
+
+            Assert.That(view == null, Is.True);
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator FeedbackFailure_DoesNotRewriteAcceptedCollectionAsRejected()
+        {
+            Fixture fixture = CreateFixture(false, true);
+            RunRewardPickup2D view;
+            Assert.That(
+                fixture.Presenter.TryGetView(
+                    fixture.Pickup.PickupStableId,
+                    out view),
+                Is.True);
+
+            view.HandleTriggerForTests(fixture.Collector);
+
+            Assert.That(view.LastCollectionResult.IsCollected, Is.True);
+            Assert.That(fixture.Session.CollectionCount, Is.EqualTo(1));
+            Assert.That(
+                view.PresentationDiagnostic,
+                Does.Contain("test-feedback-failure"));
+            Assert.That(fixture.Presenter.VisiblePickupCount, Is.EqualTo(0));
+            Assert.That(fixture.Presenter.RetiringPickupCount, Is.EqualTo(0));
+
+            yield return null;
+
+            Assert.That(view == null, Is.True);
+        }
+
+        private Fixture CreateFixture(
+            bool addRichProjection,
+            bool addThrowingFeedback)
+        {
             var session = new SessionPort();
             var authority = new RunLocalPickupAuthorityV1(
                 session,
                 new FixedPositionPort());
 
-            GameObject hostObject = Track(new GameObject("LootProjectionAuthorityHost"));
+            GameObject hostObject =
+                Track(new GameObject("LootProjectionAuthorityHost"));
             RunPickupAuthorityHost2D host =
                 hostObject.AddComponent<RunPickupAuthorityHost2D>();
             host.Configure(authority);
 
             GameObject prefab = Track(new GameObject("LootProjectionPrefab"));
             prefab.AddComponent<SpriteRenderer>();
-            prefab.AddComponent<LootPickupRunProjection2D>();
+            if (addRichProjection)
+            {
+                prefab.AddComponent<LootPickupRunProjection2D>();
+            }
+            if (addThrowingFeedback)
+            {
+                prefab.AddComponent<ThrowingRunPickupAcceptedFeedback2D>();
+            }
             prefab.SetActive(false);
 
-            GameObject registryObject = Track(new GameObject("LootProjectionRegistry"));
+            GameObject registryObject =
+                Track(new GameObject("LootProjectionRegistry"));
             RunPickupPresentationRegistry2D registry =
                 registryObject.AddComponent<RunPickupPresentationRegistry2D>();
             var entry = new RunPickupPresentationEntryV1();
@@ -127,13 +229,15 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                 "money");
             registry.ConfigureForTests(new[] { entry });
 
-            GameObject presenterObject = Track(new GameObject("LootProjectionPresenter"));
+            GameObject presenterObject =
+                Track(new GameObject("LootProjectionPresenter"));
             RunPickupPresenter2D presenter =
                 presenterObject.AddComponent<RunPickupPresenter2D>();
             presenter.Configure(host, registry, presenterObject.transform);
 
-            GameObject collectorObject = Track(new GameObject("LootProjectionCollector"));
-            collectorObject.transform.position = new Vector3(0f, 0f, 0f);
+            GameObject collectorObject =
+                Track(new GameObject("LootProjectionCollector"));
+            collectorObject.transform.position = Vector3.zero;
             RunPickupCollector2D collector =
                 collectorObject.AddComponent<RunPickupCollector2D>();
             collector.ConfigureForTests(
@@ -156,7 +260,8 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                     new[]
                     {
                         new RunPickupGeneratedRewardV1(
-                            StableId.Parse("terminaldropchild.loot-projection-money"),
+                            StableId.Parse(
+                                "terminaldropchild.loot-projection-money"),
                             0,
                             StableId.Parse("grant.loot-projection-money"),
                             RewardGrantKindV1.Money,
@@ -167,35 +272,18 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                 .Pickups
                 .Single();
 
-            RunPickupPresentationSyncResultV1 sync = presenter.Synchronize(RoomId);
-            RunRewardPickup2D view;
+            RunPickupPresentationSyncResultV1 sync =
+                presenter.Synchronize(RoomId);
             Assert.That(sync.Succeeded, Is.True, sync.Diagnostic);
-            Assert.That(presenter.TryGetView(pickup.PickupStableId, out view), Is.True);
 
-            LootPickupRunProjection2D bridge =
-                view.GetComponent<LootPickupRunProjection2D>();
-            LootPickupVisual2D visual = view.GetComponent<LootPickupVisual2D>();
-            SpriteRenderer legacy = view.GetComponent<SpriteRenderer>();
-
-            Assert.That(bridge, Is.Not.Null);
-            Assert.That(bridge.IsBound, Is.True);
-            Assert.That(visual, Is.Not.Null);
-            Assert.That(visual.Projection.PickupStableId, Is.EqualTo(pickup.PickupStableId));
-            Assert.That(visual.Projection.Quantity, Is.EqualTo(25L));
-            Assert.That(legacy.enabled, Is.False);
-
-            view.HandleTriggerForTests(collector);
-
-            Assert.That(view.LastCollectionResult.IsCollected, Is.True);
-            Assert.That(session.CollectionCount, Is.EqualTo(1));
-            Assert.That(visual.IsPlayingAcceptedCollectionFeedback, Is.True);
-            Assert.That(presenter.VisiblePickupCount, Is.EqualTo(0));
-            Assert.That(presenter.RetiringPickupCount, Is.EqualTo(1));
-
-            yield return new WaitForSecondsRealtime(0.3f);
-
-            Assert.That(view == null, Is.True);
-            Assert.That(presenter.RetiringPickupCount, Is.EqualTo(0));
+            return new Fixture
+            {
+                Session = session,
+                Authority = authority,
+                Presenter = presenter,
+                Collector = collector,
+                Pickup = pickup,
+            };
         }
 
         private GameObject Track(GameObject value)
