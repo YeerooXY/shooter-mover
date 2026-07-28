@@ -44,10 +44,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     [CreateAssetMenu(
         fileName = "RoomPresentationCatalog2D",
         menuName = "Shooter Mover/Level Design/Room Presentation Catalog 2D")]
-    public sealed class RoomPresentationCatalog2D : ScriptableObject
+    public sealed class RoomPresentationCatalog2D :
+        ScriptableObject,
+        ISerializationCallbackReceiver
     {
         [SerializeField] private RoomPresentationCatalogEntry2D[] entries =
             Array.Empty<RoomPresentationCatalogEntry2D>();
+
+        private Dictionary<StableId, GameObject> resolved;
 
         public bool TryResolve(StableId presentationStableId, out GameObject prefab)
         {
@@ -57,7 +61,20 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 return false;
             }
 
-            Dictionary<StableId, GameObject> resolved = BuildResolved();
+            EnsureResolved();
+            if (!resolved.TryGetValue(presentationStableId, out prefab))
+            {
+                return false;
+            }
+            if (prefab != null)
+            {
+                return true;
+            }
+
+            // Unity objects can become fake-null after asset replacement or reimport while
+            // domain reload is disabled. Rebuild once from the serialized source of truth.
+            InvalidateResolved();
+            EnsureResolved();
             return resolved.TryGetValue(presentationStableId, out prefab)
                 && prefab != null;
         }
@@ -66,18 +83,18 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
 
-            Dictionary<StableId, GameObject> resolved = BuildResolved();
+            EnsureResolved();
             for (int roomIndex = 0; roomIndex < definition.Rooms.Count; roomIndex++)
             {
                 AuthorableRoomDefinitionV1 room = definition.Rooms[roomIndex];
                 for (int index = 0; index < room.Placements.Count; index++)
                 {
-                    Require(resolved, room.Placements[index].PresentationStableId);
+                    Require(room.Placements[index].PresentationStableId);
                 }
 
                 for (int index = 0; index < room.Doors.Count; index++)
                 {
-                    Require(resolved, room.Doors[index].PresentationStableId);
+                    Require(room.Doors[index].PresentationStableId);
                 }
             }
         }
@@ -87,6 +104,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             entries = configuredEntries == null
                 ? Array.Empty<RoomPresentationCatalogEntry2D>()
                 : (RoomPresentationCatalogEntry2D[])configuredEntries.Clone();
+            InvalidateResolved();
         }
 
         public void ConfigureForTests(params RoomPresentationCatalogEntry2D[] configuredEntries)
@@ -94,21 +112,54 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             Configure(configuredEntries);
         }
 
-        private static void Require(
-            IReadOnlyDictionary<StableId, GameObject> resolved,
-            StableId presentationStableId)
+        void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
-            GameObject prefab;
-            if (!resolved.TryGetValue(presentationStableId, out prefab) || prefab == null)
-            {
-                throw new InvalidOperationException(
-                    "room-live-presentation-missing:" + presentationStableId);
-            }
         }
 
-        private Dictionary<StableId, GameObject> BuildResolved()
+        void ISerializationCallbackReceiver.OnAfterDeserialize()
         {
-            var resolved = new Dictionary<StableId, GameObject>();
+            InvalidateResolved();
+        }
+
+        private void OnEnable()
+        {
+            InvalidateResolved();
+        }
+
+        private void OnValidate()
+        {
+            InvalidateResolved();
+        }
+
+        private void Require(StableId presentationStableId)
+        {
+            GameObject prefab;
+            if (resolved.TryGetValue(presentationStableId, out prefab)
+                && prefab != null)
+            {
+                return;
+            }
+
+            if (resolved.ContainsKey(presentationStableId))
+            {
+                InvalidateResolved();
+                EnsureResolved();
+                if (resolved.TryGetValue(presentationStableId, out prefab)
+                    && prefab != null)
+                {
+                    return;
+                }
+            }
+
+            throw new InvalidOperationException(
+                "room-live-presentation-missing:" + presentationStableId);
+        }
+
+        private void EnsureResolved()
+        {
+            if (resolved != null) return;
+
+            var candidate = new Dictionary<StableId, GameObject>();
             RoomPresentationCatalogEntry2D[] authoredEntries = entries
                 ?? Array.Empty<RoomPresentationCatalogEntry2D>();
             for (int index = 0; index < authoredEntries.Length; index++)
@@ -127,15 +178,21 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         "room-live-presentation-prefab-missing:" + id);
                 }
 
-                if (resolved.ContainsKey(id))
+                if (candidate.ContainsKey(id))
                 {
                     throw new InvalidOperationException(
                         "room-live-presentation-duplicate:" + id);
                 }
 
-                resolved.Add(id, entry.Prefab);
+                candidate.Add(id, entry.Prefab);
             }
-            return resolved;
+
+            resolved = candidate;
+        }
+
+        private void InvalidateResolved()
+        {
+            resolved = null;
         }
     }
 }
