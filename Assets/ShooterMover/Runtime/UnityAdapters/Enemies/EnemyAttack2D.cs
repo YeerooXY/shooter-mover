@@ -14,7 +14,7 @@ namespace ShooterMover.UnityAdapters.Enemies
 {
     /// <summary>
     /// Live driver for enemies whose authored attack set consists entirely of supported
-    /// simple travelling shots. It contains no enemy, policy or projectile-name switch.
+    /// travelling projectile attacks. It contains no enemy, policy or projectile-name switch.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class EnemyAttack2D : MonoBehaviour
@@ -42,6 +42,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         private double seconds;
         private double step;
         private Vector2 facing = Vector2.right;
+        private bool translationLocked;
         private bool stopped;
         private string lastDiagnostic;
         private LineRenderer telegraph;
@@ -77,7 +78,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
             for (int index = 0; index < value.Attacks.Count; index++)
             {
-                if (!IsSimpleShot(value.Attacks[index]))
+                if (!IsSupportedShot(value.Attacks[index]))
                 {
                     return false;
                 }
@@ -121,7 +122,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             revision = presentationRevision;
             BuildSupported(next);
             player = null;
-            body = EnsureBody(boundActor.gameObject);
+            body = EnsureBody(boundActor.gameObject, out translationLocked);
             EnsureCollider(boundActor.gameObject);
             EnsureVisuals();
 
@@ -440,10 +441,10 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
 
             Vector2 velocity = ToUnity(movement.DesiredVelocity);
-            if (HasTelegraph())
+            if (translationLocked || HasTelegraph())
             {
-                // A committed dangerous wind-up is a hard translation hold. Do not decelerate
-                // toward zero: clear inherited velocity before the physics step consumes it.
+                // An authored stationary body never translates. A committed dangerous wind-up is
+                // also a hard translation hold for mobile bodies.
                 body.linearVelocity = Vector2.zero;
             }
             else
@@ -474,7 +475,10 @@ namespace ShooterMover.UnityAdapters.Enemies
                 maximumTurn);
             float radians = nextAngle * Mathf.Deg2Rad;
             facing = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
-            body.MoveRotation(nextAngle);
+            if (!translationLocked)
+            {
+                body.MoveRotation(nextAngle);
+            }
         }
 
         private void SpawnDue()
@@ -540,6 +544,57 @@ namespace ShooterMover.UnityAdapters.Enemies
                     + player.EntityStableId.ToString()).ToString(
                         "x16",
                         CultureInfo.InvariantCulture));
+            PublishFact(contactId, emission, targetCollider);
+        }
+
+        internal void PublishArea(
+            EnemyAttackEffectEmissionV1 emission,
+            Vector2 center,
+            EnemyAreaPayloadV1 area)
+        {
+            if (emission == null
+                || area == null
+                || player == null
+                || !Finite(center))
+            {
+                return;
+            }
+
+            ShowAreaPulse(center, (float)area.Radius);
+            Collider2D targetCollider;
+            double distanceSquared;
+            if (!player.TryResolveAreaContact(
+                    center,
+                    (float)area.Radius,
+                    out targetCollider,
+                    out distanceSquared))
+            {
+                return;
+            }
+
+            StableId contactId = StableId.Create(
+                "enemy-area-contact",
+                "hit-" + Hash64(
+                    emission.EmissionStableId.ToString()
+                    + "|"
+                    + player.EntityStableId.ToString()).ToString(
+                        "x16",
+                        CultureInfo.InvariantCulture));
+            PublishFact(contactId, emission, targetCollider);
+        }
+
+        private void PublishFact(
+            StableId contactId,
+            EnemyAttackEffectEmissionV1 emission,
+            Collider2D targetCollider)
+        {
+            if (contactId == null
+                || emission == null
+                || targetCollider == null
+                || player == null)
+            {
+                return;
+            }
             var fact = new EnemyHitV1(
                 contactId,
                 emission,
@@ -594,7 +649,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return false;
             }
             EnemyProjectilePayloadV1 payload = emission.Projectile.Payload;
-            if (!IsSimplePayload(payload))
+            if (!IsSupportedPayload(payload))
             {
                 diagnostic = "enemy-attack-emission-mechanics-unsupported";
                 return false;
@@ -612,7 +667,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             return true;
         }
 
-        private static bool IsSimpleShot(EnemyRuntimeAttackBindingV1 binding)
+        private static bool IsSupportedShot(EnemyRuntimeAttackBindingV1 binding)
         {
             if (binding == null
                 || binding.Descriptor == null
@@ -632,18 +687,26 @@ namespace ShooterMover.UnityAdapters.Enemies
                 && shooting.ProjectilesPerShot > 0
                 && shooting.SequenceAimPolicy
                     == EnemySequenceAimPolicyV1.LockAtSequenceStart
-                && IsSimplePayload(descriptor.ProjectilePayload);
+                && IsSupportedPayload(descriptor.ProjectilePayload);
         }
 
-        private static bool IsSimplePayload(EnemyProjectilePayloadV1 payload)
+        private static bool IsSupportedPayload(EnemyProjectilePayloadV1 payload)
         {
-            return payload != null
-                && payload.ProjectileProfileId != null
-                && payload.AreaPayload == null
-                && payload.PierceCount == 0
-                && IsFinitePositive(payload.Speed)
-                && IsFinitePositive(payload.MaximumTravelDistance)
-                && IsFinitePositive(payload.CollisionRadius);
+            if (payload == null
+                || payload.ProjectileProfileId == null
+                || payload.PierceCount != 0
+                || !IsFinitePositive(payload.Speed)
+                || !IsFinitePositive(payload.MaximumTravelDistance)
+                || !IsFinitePositive(payload.CollisionRadius))
+            {
+                return false;
+            }
+
+            EnemyAreaPayloadV1 area = payload.AreaPayload;
+            return area == null
+                || (area.DurationSeconds == 0d
+                    && area.MaximumTargets > 0
+                    && IsFinitePositive(area.Radius));
         }
 
         private static bool IsFinitePositive(double value)
@@ -657,7 +720,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             for (int index = 0; index < value.Attacks.Count; index++)
             {
                 EnemyRuntimeAttackBindingV1 binding = value.Attacks[index];
-                if (!IsSimpleShot(binding))
+                if (!IsSupportedShot(binding))
                 {
                     throw new InvalidOperationException("enemy-attack-mechanics-unsupported");
                 }
@@ -731,15 +794,23 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return PlayerAcquisitionStatus.Pending;
             }
             Rigidbody2D playerBody = marker.GetComponent<Rigidbody2D>();
-            Collider2D playerCollider = marker.GetComponentInChildren<Collider2D>(true);
-            if (playerBody == null || playerCollider == null)
+            Collider2D[] playerColliders = marker.GetComponentsInChildren<Collider2D>(true);
+            if (playerBody == null || playerColliders == null || playerColliders.Length == 0)
             {
                 diagnostic = "enemy-attack-player-physics-missing";
                 return PlayerAcquisitionStatus.Pending;
             }
 
-            result = new PlayerBinding(marker, entityId, playerBody);
-            return PlayerAcquisitionStatus.Ready;
+            try
+            {
+                result = new PlayerBinding(marker, entityId, playerBody, playerColliders);
+                return PlayerAcquisitionStatus.Ready;
+            }
+            catch (ArgumentException)
+            {
+                diagnostic = "enemy-attack-player-collider-missing";
+                return PlayerAcquisitionStatus.Pending;
+            }
         }
 
         private bool HasLineOfSight(Vector2 origin, Vector2 target)
@@ -866,17 +937,42 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
         }
 
-        private static Rigidbody2D EnsureBody(GameObject target)
+        private void ShowAreaPulse(Vector2 center, float radius)
+        {
+            if (shotSprite == null || !Finite(center) || !float.IsFinite(radius) || radius <= 0f)
+            {
+                return;
+            }
+            GameObject pulse = new GameObject("Enemy Area Pulse");
+            pulse.transform.SetParent(transform.parent, true);
+            pulse.transform.position = new Vector3(center.x, center.y, transform.position.z);
+            pulse.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
+            SpriteRenderer renderer = pulse.AddComponent<SpriteRenderer>();
+            renderer.sprite = shotSprite;
+            renderer.color = new Color(1f, 0.18f, 0.04f, 0.28f);
+            renderer.sortingOrder = 290;
+            Destroy(pulse, 0.12f);
+        }
+
+        private static Rigidbody2D EnsureBody(
+            GameObject target,
+            out bool authoredStationary)
         {
             Rigidbody2D result = target.GetComponent<Rigidbody2D>()
                 ?? target.AddComponent<Rigidbody2D>();
-            result.bodyType = RigidbodyType2D.Dynamic;
+            authoredStationary = result.bodyType == RigidbodyType2D.Static;
+            if (!authoredStationary)
+            {
+                result.bodyType = RigidbodyType2D.Dynamic;
+            }
             result.gravityScale = 0f;
             result.linearDamping = 8f;
             result.angularDamping = 8f;
             result.interpolation = RigidbodyInterpolation2D.Interpolate;
             result.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            result.constraints = RigidbodyConstraints2D.None;
+            result.constraints = authoredStationary
+                ? RigidbodyConstraints2D.FreezeAll
+                : RigidbodyConstraints2D.None;
             result.simulated = true;
             return result;
         }
@@ -928,6 +1024,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 body.angularVelocity = 0f;
             }
             player = null;
+            translationLocked = false;
             playerAcquisitionAttempts = 0;
             playerAcquisitionWaitTicks = 0;
             pendingPlayerDiagnostic = null;
@@ -968,6 +1065,14 @@ namespace ShooterMover.UnityAdapters.Enemies
         private static Vector2 ToUnity(EnemyVector2 value)
         {
             return new Vector2((float)value.X, (float)value.Y);
+        }
+
+        private static bool Finite(Vector2 value)
+        {
+            return !float.IsNaN(value.x)
+                && !float.IsInfinity(value.x)
+                && !float.IsNaN(value.y)
+                && !float.IsInfinity(value.y);
         }
 
         private static ulong Hash64(string value)
@@ -1013,15 +1118,39 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         internal sealed class PlayerBinding
         {
+            private readonly Collider2D[] colliders;
+
             public PlayerBinding(
                 MonoBehaviour marker,
                 StableId entityStableId,
-                Rigidbody2D body)
+                Rigidbody2D body,
+                IEnumerable<Collider2D> targetColliders)
             {
                 Marker = marker ?? throw new ArgumentNullException(nameof(marker));
                 EntityStableId = entityStableId
                     ?? throw new ArgumentNullException(nameof(entityStableId));
                 Body = body ?? throw new ArgumentNullException(nameof(body));
+                if (targetColliders == null)
+                    throw new ArgumentNullException(nameof(targetColliders));
+
+                var values = new List<Collider2D>();
+                var ids = new HashSet<int>();
+                foreach (Collider2D collider in targetColliders)
+                {
+                    if (collider != null && ids.Add(collider.GetInstanceID()))
+                    {
+                        values.Add(collider);
+                    }
+                }
+                if (values.Count == 0)
+                {
+                    throw new ArgumentException(
+                        "At least one player collider is required.",
+                        nameof(targetColliders));
+                }
+                values.Sort((left, right) =>
+                    left.GetInstanceID().CompareTo(right.GetInstanceID()));
+                colliders = values.ToArray();
             }
 
             public MonoBehaviour Marker { get; }
@@ -1036,6 +1165,45 @@ namespace ShooterMover.UnityAdapters.Enemies
                     && Marker != null
                     && (collider.transform == Marker.transform
                         || collider.transform.IsChildOf(Marker.transform));
+            }
+
+            public bool TryResolveAreaContact(
+                Vector2 center,
+                float radius,
+                out Collider2D targetCollider,
+                out double distanceSquared)
+            {
+                targetCollider = null;
+                distanceSquared = double.PositiveInfinity;
+                if (!Finite(center)
+                    || float.IsNaN(radius)
+                    || float.IsInfinity(radius)
+                    || radius <= 0f)
+                {
+                    return false;
+                }
+
+                for (int index = 0; index < colliders.Length; index++)
+                {
+                    Collider2D collider = colliders[index];
+                    if (collider == null
+                        || !collider.enabled
+                        || !collider.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+                    Vector2 closest = collider.ClosestPoint(center);
+                    if (!Finite(closest)) continue;
+                    double candidate = (closest - center).sqrMagnitude;
+                    if (candidate < distanceSquared)
+                    {
+                        distanceSquared = candidate;
+                        targetCollider = collider;
+                    }
+                }
+
+                return targetCollider != null
+                    && distanceSquared <= radius * radius;
             }
 
             public bool IsCurrent(Scene scene)
