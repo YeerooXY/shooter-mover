@@ -6,6 +6,8 @@
     "ShooterMover.Domain",
     "ShooterMover.Contracts",
     "ShooterMover.UnityAdapters",
+    "ShooterMover.RunPickups",
+    "ShooterMover.RunPickupUnity",
     "Unity.InputSystem"
   ],
   "includePlatforms": [],
