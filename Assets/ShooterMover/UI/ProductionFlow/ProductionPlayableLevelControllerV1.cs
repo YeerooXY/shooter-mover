@@ -168,7 +168,10 @@ namespace ShooterMover.UI.ProductionFlow
                 || profile == null
                 || graph.IsDisposed)
             {
-                FailAndReturn("playable-level-character-context-missing");
+                FailAndReturn(
+                    "playable-level-character-context-missing:"
+                        + ProductionCharacterAccountCompositionV1
+                            .CurrentDiagnostic);
                 return;
             }
             if (routePayload == null

@@ -89,6 +89,19 @@ namespace ShooterMover.UI.ProductionFlow
             get { return diagnostic; }
         }
 
+        public static string CurrentDiagnostic
+        {
+            get
+            {
+                EnsureInstalled();
+                return instance == null
+                    ? "character-account-composition-missing"
+                    : string.IsNullOrWhiteSpace(instance.diagnostic)
+                        ? "character-account-current-runtime-unavailable"
+                        : instance.diagnostic;
+            }
+        }
+
         public static bool TryResolveCurrent(
             out ProductionCharacterRuntimeGraphV1 graph,
             out ProductionFlowProfileRecordV1 profile)
@@ -183,7 +196,22 @@ namespace ShooterMover.UI.ProductionFlow
             }
             instance = this;
             flow = GetComponent<ProductionFlowCoordinatorV1>();
-            Initialize();
+            try
+            {
+                Initialize();
+            }
+            catch (Exception exception)
+            {
+                if (exception is OutOfMemoryException
+                    || exception is StackOverflowException
+                    || exception is AccessViolationException)
+                {
+                    throw;
+                }
+                Fail(
+                    "character-composition-initialize-threw:"
+                        + DescribeException(exception));
+            }
         }
 
         private void Update()
@@ -245,6 +273,9 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
+            graphFactory = ProductionCharacterRuntimeGraphFactoryV1
+                .CreateVerticalSliceDefaults();
+
             if (!firstAccount)
             {
                 RetiredWeaponSaveMigrationResultV1 weaponMigration =
@@ -277,9 +308,41 @@ namespace ShooterMover.UI.ProductionFlow
                 }
             }
 
+            if (!firstAccount)
+            {
+                RequiredCharacterComponentBackfillResultV1 backfill =
+                    RequiredCharacterComponentBackfillV1.Migrate(
+                        account,
+                        graphFactory);
+                if (backfill == null || !backfill.Succeeded)
+                {
+                    Fail(
+                        "required-character-component-backfill-rejected:"
+                            + (backfill == null
+                                ? "result-null"
+                                : backfill.Diagnostic));
+                    return;
+                }
+                if (backfill.Changed)
+                {
+                    PlayerAccountStoreResultV1 backfilledSave =
+                        accountStore.Save(backfill.Account);
+                    if (backfilledSave == null
+                        || !backfilledSave.Succeeded
+                        || backfilledSave.Snapshot == null)
+                    {
+                        Fail(
+                            "required-character-component-backfill-store-rejected:"
+                                + (backfilledSave == null
+                                    ? "result-null"
+                                    : backfilledSave.RejectionCode));
+                        return;
+                    }
+                    account = backfilledSave.Snapshot;
+                }
+            }
+
             accountAuthority = new PlayerAccountSaveAuthorityV1(account);
-            graphFactory = ProductionCharacterRuntimeGraphFactoryV1
-                .CreateVerticalSliceDefaults();
             composition = new CharacterCompositionCoordinatorV1(
                 accountAuthority,
                 graphFactory,
@@ -782,6 +845,33 @@ namespace ShooterMover.UI.ProductionFlow
                 composition.UnbindActive();
             }
             Debug.LogError(diagnostic, this);
+        }
+
+        private static string DescribeException(Exception exception)
+        {
+            if (exception == null)
+            {
+                return "Exception";
+            }
+            Exception root = exception.GetBaseException() ?? exception;
+            string description = exception.GetType().Name;
+            if (!ReferenceEquals(root, exception))
+            {
+                description += "->" + root.GetType().Name;
+            }
+            if (string.IsNullOrWhiteSpace(root.Message))
+            {
+                return description;
+            }
+            string message = root.Message
+                .Replace('\r', ' ')
+                .Replace('\n', ' ')
+                .Trim();
+            if (message.Length > 256)
+            {
+                message = message.Substring(0, 256);
+            }
+            return description + ":" + message;
         }
 
         private static string Hash(string value)
