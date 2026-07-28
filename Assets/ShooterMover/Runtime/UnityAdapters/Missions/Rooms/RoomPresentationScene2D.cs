@@ -13,7 +13,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     /// Implementations may keep the already-terminal object visible briefly, then invoke release.
     /// They never delay room completion, door synchronization, collision shutdown, or rewards.
     /// </summary>
-    internal interface IRoomDefeatedPresentationRetirement2D
+    public interface IRoomDefeatedPresentationRetirement2D
     {
         bool TryBeginRetirement(Action release);
     }
