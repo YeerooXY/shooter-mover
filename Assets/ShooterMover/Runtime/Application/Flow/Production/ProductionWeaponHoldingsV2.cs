@@ -7,7 +7,6 @@ using System.Text;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Components;
 using ShooterMover.Application.Weapons.Catalog;
-using ShooterMover.Contracts.Economy;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -494,102 +493,6 @@ namespace ShooterMover.Application.Flow.Production
                 && holding.EquipmentInstance != null
                 && TryConvertEquipment(holding.EquipmentInstance, out converted)
                 && converted.InstanceId == holding.InstanceStableId;
-        }
-    }
-
-    /// <summary>
-    /// Keeps immutable generic reward receipts authoritative while projecting accepted weapon
-    /// additions/removals into canonical V2 holdings in the same runtime operation.
-    /// </summary>
-    public sealed class CanonicalizingPlayerHoldingsAuthorityV2 :
-        IPlayerHoldingsAuthorityV1
-    {
-        private readonly IPlayerHoldingsAuthorityV1 legacy;
-        private readonly ProductionWeaponHoldingsAuthorityV2 weapons;
-
-        public CanonicalizingPlayerHoldingsAuthorityV2(
-            IPlayerHoldingsAuthorityV1 legacyAuthority,
-            ProductionWeaponHoldingsAuthorityV2 weaponAuthority)
-        {
-            legacy = legacyAuthority
-                ?? throw new ArgumentNullException(nameof(legacyAuthority));
-            weapons = weaponAuthority
-                ?? throw new ArgumentNullException(nameof(weaponAuthority));
-        }
-
-        public StableId AuthorityStableId { get { return legacy.AuthorityStableId; } }
-        public long Sequence { get { return legacy.Sequence; } }
-
-        public PlayerHoldingsSnapshotV1 ExportSnapshot()
-        {
-            return legacy.ExportSnapshot();
-        }
-
-        public PlayerHoldingsImportResultV1 ImportSnapshot(
-            PlayerHoldingsSnapshotV1 snapshot)
-        {
-            PlayerHoldingsImportResultV1 result = legacy.ImportSnapshot(snapshot);
-            if (result != null && result.Succeeded)
-            {
-                SynchronizeLegacyWeapons();
-            }
-            return result;
-        }
-
-        public PlayerHoldingsMutationResultV1 Apply(
-            PlayerHoldingsCommandV1 command)
-        {
-            PlayerHoldingsMutationResultV1 result = legacy.Apply(command);
-            if (result == null
-                || (result.Status != PlayerHoldingsMutationStatusV1.Applied
-                    && result.Status
-                        != PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange)
-                || command == null
-                || command.RewardKind != RewardGrantKindV1.EquipmentReference)
-            {
-                return result;
-            }
-
-            string rejectionCode;
-            if (command.Transaction.Operation
-                    == EconomyTransactionOperationV1.AddUnique
-                && command.EquipmentInstance != null)
-            {
-                WeaponEquipmentInstance converted;
-                if (ProductionWeaponHoldingsMigrationV2.TryConvertEquipment(
-                        command.EquipmentInstance,
-                        out converted)
-                    && !weapons.TryAdd(converted, out rejectionCode))
-                {
-                    throw new InvalidOperationException(
-                        "Canonical weapon grant projection failed: "
-                        + rejectionCode);
-                }
-            }
-            else if (command.Transaction.Operation
-                    == EconomyTransactionOperationV1.RemoveUnique
-                && command.Transaction.InstanceStableId != null
-                && !weapons.TryRemove(
-                    command.Transaction.InstanceStableId,
-                    out rejectionCode))
-            {
-                throw new InvalidOperationException(
-                    "Canonical weapon removal projection failed: "
-                    + rejectionCode);
-            }
-            return result;
-        }
-
-        private void SynchronizeLegacyWeapons()
-        {
-            WeaponHoldingsSnapshotV2 migrated =
-                ProductionWeaponHoldingsMigrationV2.ConvertLegacy(
-                    legacy.ExportSnapshot());
-            for (int index = 0; index < migrated.Instances.Count; index++)
-            {
-                string ignored;
-                weapons.TryAdd(migrated.Instances[index], out ignored);
-            }
         }
     }
 
