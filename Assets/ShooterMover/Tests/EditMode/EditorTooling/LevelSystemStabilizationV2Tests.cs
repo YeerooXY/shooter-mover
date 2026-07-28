@@ -149,47 +149,53 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         }
 
         [Test]
-        public void ExactFinalExit_IsAllowedUnconnectedButRejectedAsRoomLink()
+        public void ExactFinalExit_IsAllowedUnconnectedAndRejectedBeforeRoomLinkMutation()
         {
             ConfigurePlayableGraph();
-            LevelRoomAuthoring2D extraRoom = LevelGridEditorOperationsV2.CreateRoom(
-                root,
-                new Vector2Int(2, 0));
-            LevelDoorEndpointAuthoring2D extraDoor =
-                LevelGridEditorOperationsV2.CreateDoor(
-                    extraRoom,
-                    LevelDoorSideV2.West,
-                    0.5f);
+            LevelDoorEndpointAuthoring2D connectedDoor =
+                FindConnectedDoorExcludingFinalExit();
+            int initialLinkCount =
+                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true).Length;
 
-            LevelDoorLinkAuthoring2D invalidLink;
-            string rejection;
+            AssertFinalExitConnectionRejected(configuredFinalExitDoor, connectedDoor);
+            AssertFinalExitConnectionRejected(connectedDoor, configuredFinalExitDoor);
+
             Assert.That(
-                LevelGridEditorOperationsV2.TryCreateConnection(
-                    root,
-                    configuredFinalExitDoor,
-                    extraDoor,
-                    out invalidLink,
-                    out rejection),
-                Is.True,
-                rejection);
-
+                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true).Length,
+                Is.EqualTo(initialLinkCount));
             LevelGridEditorOperationsV2.Validate(
                 root,
                 LevelGridValidationPurposeV2.ProductionPublish);
+            Assert.That(root.LastGridValidation.CanPublish, Is.True);
+        }
 
-            Assert.That(root.LastGridValidation.CanPublish, Is.False);
-            bool foundExactFailure = false;
-            for (int index = 0; index < root.LastGridValidation.Problems.Count; index++)
-            {
-                LevelGridProblemV2 problem = root.LastGridValidation.Problems[index];
-                if (problem.AuthoredId == invalidLink.ConnectionIdText
-                    && problem.Message.Contains(configuredFinalExitDoor.DoorIdText))
-                {
-                    foundExactFailure = true;
-                    break;
-                }
-            }
-            Assert.That(foundExactFailure, Is.True);
+        [Test]
+        public void ConnectedEndpoint_CannotBecomeFinalExit()
+        {
+            ConfigurePlayableGraph();
+            LevelGridPlayableMetadataV2 metadata =
+                root.GetComponent<LevelGridPlayableMetadataV2>();
+            LevelDoorEndpointAuthoring2D connectedDoor =
+                FindConnectedDoorExcludingFinalExit(metadata.FinalExitRoom);
+
+            InvalidOperationException setException =
+                Assert.Throws<InvalidOperationException>(
+                    () => LevelGridPlayableMetadataOperationsV2.SetFinalDoor(
+                        root,
+                        metadata,
+                        connectedDoor));
+            Assert.That(setException.Message, Does.Contain("connected room endpoint"));
+            Assert.That(metadata.FinalExitDoor, Is.SameAs(configuredFinalExitDoor));
+
+            InvalidOperationException useException =
+                Assert.Throws<InvalidOperationException>(
+                    () => LevelGridPlayableMetadataOperationsV2.UseDoorAsFinalExit(
+                        root,
+                        metadata,
+                        connectedDoor));
+            Assert.That(useException.Message, Does.Contain("connected room endpoint"));
+            Assert.That(metadata.FinalExitRoom, Is.SameAs(configuredFinalExitDoor.OwningRoom));
+            Assert.That(metadata.FinalExitDoor, Is.SameAs(configuredFinalExitDoor));
         }
 
         [Test]
@@ -396,6 +402,43 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             Assert.That(root.LastValidation.IsValid, Is.True);
             Assert.That(root.LastGridValidation.CanPublish, Is.True);
             return finalRoom;
+        }
+
+        private LevelDoorEndpointAuthoring2D FindConnectedDoorExcludingFinalExit(
+            LevelRoomAuthoring2D requiredRoom = null)
+        {
+            LevelDoorEndpointAuthoring2D[] doors =
+                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            for (int index = 0; index < doors.Length; index++)
+            {
+                if (doors[index] != configuredFinalExitDoor
+                    && (requiredRoom == null || doors[index].OwningRoom == requiredRoom)
+                    && LevelGridEditorOperationsV2.IsConnected(root, doors[index]))
+                {
+                    return doors[index];
+                }
+            }
+
+            Assert.Fail("Expected at least one matching connected non-final endpoint.");
+            return null;
+        }
+
+        private void AssertFinalExitConnectionRejected(
+            LevelDoorEndpointAuthoring2D source,
+            LevelDoorEndpointAuthoring2D destination)
+        {
+            LevelDoorLinkAuthoring2D rejectedLink;
+            string rejection;
+            Assert.That(
+                LevelGridEditorOperationsV2.TryCreateConnection(
+                    root,
+                    source,
+                    destination,
+                    out rejectedLink,
+                    out rejection),
+                Is.False);
+            Assert.That(rejectedLink, Is.Null);
+            Assert.That(rejection, Does.Contain("final-exit endpoint"));
         }
 
         private static string ReadProjectFile(string assetPath)

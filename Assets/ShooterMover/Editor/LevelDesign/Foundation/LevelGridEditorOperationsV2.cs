@@ -403,6 +403,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 return "Both endpoints must belong to the selected level root.";
             }
+            if (IsConfiguredFinalExit(selectedRoot, source)
+                || IsConfiguredFinalExit(selectedRoot, destination))
+            {
+                return "The configured final-exit endpoint cannot connect to another authored room.";
+            }
             if (IsConnected(selectedRoot, source))
             {
                 return "The source endpoint is already connected.";
@@ -581,6 +586,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 : component.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
         }
 
+
+        private static bool IsConfiguredFinalExit(
+            LevelDesignSceneAuthoringRoot2D root,
+            LevelDoorEndpointAuthoring2D door)
+        {
+            if (root == null || door == null)
+            {
+                return false;
+            }
+
+            LevelGridPlayableMetadataV2 metadata =
+                root.GetComponent<LevelGridPlayableMetadataV2>();
+            return metadata != null
+                && metadata.FinalExitRoom == door.OwningRoom
+                && metadata.FinalExitDoor == door;
+        }
 
         private static bool ConnectionTouchesRoom(
             LevelDoorLinkAuthoring2D connection,
