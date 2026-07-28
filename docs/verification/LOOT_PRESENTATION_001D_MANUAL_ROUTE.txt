@@ -1,0 +1,12 @@
+Unity 6000.3.19f1 manual route
+
+1. Check out the full LOOT-PRESENTATION-001 stack through the pickup-feedback branch.
+2. Confirm RunPickupUnity, StrongboxOpening UI and RunPickups PlayMode assemblies compile.
+3. Run RunPickupPresentationPlayModeTests.
+4. Run LootPickupRunProjectionPlayModeTests.
+5. Collect one canonical pickup with the player collector.
+6. Confirm authority collection records immediately and exactly once.
+7. Confirm the pickup remains visible for the fly/fade animation and is then destroyed.
+8. Repeat trigger delivery during feedback and confirm no duplicate collection.
+9. Reject a collection and confirm the pickup remains visible and collectable.
+10. Repeat Play Mode entry with domain reload disabled and confirm generated sprites remain valid.
