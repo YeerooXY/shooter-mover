@@ -149,6 +149,9 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             string liveValidation = ReadProjectFile(
                 "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
                 + "LevelGridAuthoringV2LiveValidation.cs");
+            string canonicalPanels = ReadProjectFile(
+                "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
+                + "LevelGridEditorWindowV2.Panels.cs");
 
             StringAssert.DoesNotContain("[MenuItem(", doorUtility);
             StringAssert.DoesNotContain("DeleteSelectedDoor", doorUtility);
@@ -159,6 +162,16 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             StringAssert.DoesNotContain(
                 "LevelGridDoorOperationsV2.ReflowAll(root)",
                 liveValidation);
+
+            StringAssert.Contains(
+                "LevelGridEditorOperationsV2.ReflowDoor(door)",
+                canonicalPanels);
+            StringAssert.Contains(
+                "LevelGridEditorOperationsV2.KeepDoorPlacement(door)",
+                canonicalPanels);
+            StringAssert.Contains(
+                "LevelGridEditorOperationsV2.DeleteDoor(door)",
+                canonicalPanels);
         }
 
         private DoorGraph ConfigurePlayableGraph()
