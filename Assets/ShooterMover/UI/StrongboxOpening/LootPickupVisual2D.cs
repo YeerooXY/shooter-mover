@@ -37,6 +37,13 @@ namespace ShooterMover.UI.StrongboxOpening
         public bool IsVisible { get { return bodyRenderer != null && bodyRenderer.enabled; } }
         public bool IsPlayingAcceptedCollectionFeedback { get { return acceptedFeedback; } }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeCache()
+        {
+            SpriteCache.Clear();
+            haloSprite = null;
+        }
+
         public void Bind(LootPickupPresentationV1 immutableProjection)
         {
             if (immutableProjection == null)
@@ -93,7 +100,8 @@ namespace ShooterMover.UI.StrongboxOpening
         {
             if (projection == null)
             {
-                throw new InvalidOperationException("A projection must be bound before reconstruction.");
+                throw new InvalidOperationException(
+                    "A projection must be bound before reconstruction.");
             }
             acceptedFeedback = false;
             feedbackElapsed = 0f;
@@ -120,11 +128,14 @@ namespace ShooterMover.UI.StrongboxOpening
 
             float bob = Mathf.Sin(time * 3.2f) * 0.08f;
             transform.localPosition = baseLocalPosition + new Vector3(0f, bob, 0f);
-            float pulse = 1f + (Mathf.Sin(time * (2.4f + projection.GlowStrength * 2.2f))
-                * (0.04f + projection.GlowStrength * 0.08f));
+            float pulse = 1f
+                + Mathf.Sin(
+                    time * (2.4f + projection.GlowStrength * 2.2f))
+                    * (0.04f + projection.GlowStrength * 0.08f);
             if (haloRenderer != null)
             {
-                haloRenderer.transform.localScale = new Vector3(pulse, pulse, 1f);
+                haloRenderer.transform.localScale =
+                    new Vector3(pulse, pulse, 1f);
             }
         }
 
@@ -134,8 +145,12 @@ namespace ShooterMover.UI.StrongboxOpening
             const float duration = 0.24f;
             float progress = Mathf.Clamp01(feedbackElapsed / duration);
             float eased = 1f - Mathf.Pow(1f - progress, 3f);
-            transform.position = Vector3.Lerp(feedbackStart, feedbackTarget, eased);
-            transform.localScale = baseLocalScale * Mathf.Lerp(1f, 0.2f, eased);
+            transform.position = Vector3.Lerp(
+                feedbackStart,
+                feedbackTarget,
+                eased);
+            transform.localScale =
+                baseLocalScale * Mathf.Lerp(1f, 0.2f, eased);
             SetAlpha(1f - progress);
             if (progress < 1f)
             {
@@ -172,7 +187,8 @@ namespace ShooterMover.UI.StrongboxOpening
             {
                 GameObject labelObject = new GameObject("LootLabel");
                 labelObject.transform.SetParent(transform, false);
-                labelObject.transform.localPosition = new Vector3(0f, -0.72f, 0f);
+                labelObject.transform.localPosition =
+                    new Vector3(0f, -0.72f, 0f);
                 label = labelObject.AddComponent<TextMesh>();
                 label.anchor = TextAnchor.UpperCenter;
                 label.alignment = TextAlignment.Center;
@@ -187,19 +203,23 @@ namespace ShooterMover.UI.StrongboxOpening
             bodyRenderer.sprite = GetBodySprite(projection.PresentationKind);
             bodyRenderer.color = accent;
             float bodyScale = projection.IsStrongbox ? 1.15f : 0.92f;
-            bodyRenderer.transform.localScale = new Vector3(bodyScale, bodyScale, 1f);
+            bodyRenderer.transform.localScale =
+                new Vector3(bodyScale, bodyScale, 1f);
 
             Color halo = accent;
-            halo.a = 0.16f + (projection.GlowStrength * 0.5f);
+            halo.a = 0.16f + projection.GlowStrength * 0.5f;
             haloRenderer.color = halo;
-            float haloScale = 1.45f + (projection.GlowStrength * 0.75f);
-            haloRenderer.transform.localScale = new Vector3(haloScale, haloScale, 1f);
+            float haloScale = 1.45f + projection.GlowStrength * 0.75f;
+            haloRenderer.transform.localScale =
+                new Vector3(haloScale, haloScale, 1f);
 
             label.color = Color.Lerp(Color.white, accent, 0.25f);
             label.text = projection.Label
                 + (projection.Quantity == 1L
                     ? string.Empty
-                    : " x" + projection.Quantity.ToString(CultureInfo.InvariantCulture));
+                    : " x"
+                        + projection.Quantity.ToString(
+                            CultureInfo.InvariantCulture));
         }
 
         private void SetVisible(bool visible)
@@ -231,13 +251,15 @@ namespace ShooterMover.UI.StrongboxOpening
             }
         }
 
-        private static string BuildFingerprint(LootPickupPresentationV1 value)
+        private static string BuildFingerprint(
+            LootPickupPresentationV1 value)
         {
             return value.PickupStableId
                 + "|" + value.RewardInstanceStableId
                 + "|" + value.RewardKind
                 + "|" + value.ContentStableId
-                + "|" + value.Quantity.ToString(CultureInfo.InvariantCulture);
+                + "|" + value.Quantity.ToString(
+                    CultureInfo.InvariantCulture);
         }
 
         private static Color ResolveAccent(LootPickupPresentationV1 value)
@@ -278,16 +300,25 @@ namespace ShooterMover.UI.StrongboxOpening
             return Color.HSVToRGB(hue, saturation, value);
         }
 
-        private static Sprite GetBodySprite(LootPickupPresentationKindV1 kind)
+        private static Sprite GetBodySprite(
+            LootPickupPresentationKindV1 kind)
         {
             Sprite sprite;
             if (SpriteCache.TryGetValue(kind, out sprite))
             {
-                return sprite;
+                if (sprite != null)
+                {
+                    return sprite;
+                }
+                SpriteCache.Remove(kind);
             }
 
             const int size = 48;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            var texture = new Texture2D(
+                size,
+                size,
+                TextureFormat.RGBA32,
+                false)
             {
                 name = "LootPresentation_" + kind,
                 filterMode = FilterMode.Point,
@@ -330,15 +361,21 @@ namespace ShooterMover.UI.StrongboxOpening
                     int dx = x - center;
                     int dy = y - center;
                     int radiusSquared = dx * dx + dy * dy;
-                    return radiusSquared <= 18 * 18 && radiusSquared >= 9 * 9;
+                    return radiusSquared <= 18 * 18
+                        && radiusSquared >= 9 * 9;
                 case LootPickupPresentationKindV1.Scrap:
                     return (x >= 11 && x <= 36 && y >= 14 && y <= 33)
                         || (x >= 18 && x <= 29 && y >= 7 && y <= 40)
-                        || (x + y >= 31 && x + y <= 61 && x - y >= -16 && x - y <= 16);
+                        || (x + y >= 31
+                            && x + y <= 61
+                            && x - y >= -16
+                            && x - y <= 16);
                 case LootPickupPresentationKindV1.Strongbox:
-                    bool shell = x >= 6 && x <= 41 && y >= 10 && y <= 37;
+                    bool shell = x >= 6 && x <= 41
+                        && y >= 10 && y <= 37;
                     bool seam = y >= 25 && y <= 28;
-                    bool lockPlate = x >= 20 && x <= 27 && y >= 20 && y <= 31;
+                    bool lockPlate = x >= 20 && x <= 27
+                        && y >= 20 && y <= 31;
                     return shell && (!seam || lockPlate);
                 default:
                     return false;
@@ -353,7 +390,11 @@ namespace ShooterMover.UI.StrongboxOpening
             }
 
             const int size = 64;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            var texture = new Texture2D(
+                size,
+                size,
+                TextureFormat.RGBA32,
+                false)
             {
                 name = "LootPresentation_Halo",
                 filterMode = FilterMode.Bilinear,
@@ -361,14 +402,19 @@ namespace ShooterMover.UI.StrongboxOpening
                 hideFlags = HideFlags.HideAndDontSave,
             };
             var pixels = new Color32[size * size];
-            Vector2 center = new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
+            Vector2 center =
+                new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
-                    float distance = Vector2.Distance(new Vector2(x, y), center) / (size * 0.5f);
-                    byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(1f - distance) * 255f);
-                    pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+                    float distance = Vector2.Distance(
+                        new Vector2(x, y),
+                        center) / (size * 0.5f);
+                    byte alpha = (byte)Mathf.RoundToInt(
+                        Mathf.Clamp01(1f - distance) * 255f);
+                    pixels[y * size + x] =
+                        new Color32(255, 255, 255, alpha);
                 }
             }
             texture.SetPixels32(pixels);
