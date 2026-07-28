@@ -11,7 +11,6 @@ using UnityEngine.SceneManagement;
 
 namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 {
-    [NonParallelizable]
     public sealed class LevelSystemStabilizationV2Tests
     {
         private LevelDesignSceneAuthoringRoot2D root;
@@ -401,7 +400,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 
         private static string ReadProjectFile(string assetPath)
         {
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return File.ReadAllText(Path.GetFullPath(Path.Combine(projectRoot, assetPath)));
         }
     }

@@ -93,8 +93,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Is.EqualTo(expected.Augments[index].Tier));
                 Assert.That(actual.Augments[index].Level,
                     Is.EqualTo(expected.Augments[index].Level));
-                Assert.That(actual.Augments[index].Fingerprint,
-                    Is.EqualTo(expected.Augments[index].Fingerprint));
+                Assert.That(actual.Augments[index].ToCanonicalString(),
+                    Is.EqualTo(expected.Augments[index].ToCanonicalString()));
             }
         }
 

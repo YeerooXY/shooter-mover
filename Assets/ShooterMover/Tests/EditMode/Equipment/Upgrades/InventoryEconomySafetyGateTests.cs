@@ -13,6 +13,7 @@ using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;

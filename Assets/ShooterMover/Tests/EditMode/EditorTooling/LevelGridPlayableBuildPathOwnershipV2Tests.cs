@@ -8,7 +8,6 @@ using UnityEngine;
 
 namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 {
-    [NonParallelizable]
     public sealed class LevelGridPlayableBuildPathOwnershipV2Tests
     {
         private const string OwnedLevelId = "level.generated-owner-test";
@@ -84,7 +83,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 
         private static string ProjectPath(string assetPath)
         {
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return Path.GetFullPath(Path.Combine(projectRoot, assetPath));
         }
     }

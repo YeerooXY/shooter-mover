@@ -724,7 +724,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 PlayerRouteProfilePayloadV1 routePayload)
             {
                 return new MissionRunAuthorityResultV1(
-                    MissionRunAuthorityStatusV1.Rejected,
+                    MissionRunAuthorityStatusV1.InvalidRequest,
                     Sequence,
                     Sequence,
                     request.OperationStableId,

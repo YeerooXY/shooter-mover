@@ -100,9 +100,10 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
                 0d,
                 0,
                 0,
+                0,
                 0d,
-                0d,
-                1d);
+                1d,
+                0d);
             var family = new WeaponFamilyDefinition(
                 "test-family",
                 "Test Family",

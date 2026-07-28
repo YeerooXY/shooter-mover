@@ -7,6 +7,8 @@ using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Economy.Money;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Application;
 using ShooterMover.Domain.Rewards.Strongboxes;

@@ -5,6 +5,7 @@ using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Tests.EditMode.Weapons
 {

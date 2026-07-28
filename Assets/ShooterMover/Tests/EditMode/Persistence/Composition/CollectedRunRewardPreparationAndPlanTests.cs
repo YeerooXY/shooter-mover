@@ -11,6 +11,7 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Application;

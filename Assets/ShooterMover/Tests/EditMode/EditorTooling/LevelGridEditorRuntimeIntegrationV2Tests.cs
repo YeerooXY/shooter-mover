@@ -13,7 +13,6 @@ using UnityEngine.SceneManagement;
 
 namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 {
-    [NonParallelizable]
     public sealed class LevelGridEditorRuntimeIntegrationV2Tests
     {
         private LevelDesignSceneAuthoringRoot2D root;
@@ -448,7 +447,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 
         private static string ProjectPath(string assetPath)
         {
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return Path.GetFullPath(Path.Combine(projectRoot, assetPath));
         }
     }
