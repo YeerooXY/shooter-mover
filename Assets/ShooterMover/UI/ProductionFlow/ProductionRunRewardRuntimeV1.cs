@@ -199,7 +199,8 @@ namespace ShooterMover.UI.ProductionFlow
                         participantResolver: participantResolver,
                         environmentResolver: environmentResolver,
                         overrideResolver: composedOverrides,
-                        deliveryOutbox: deliveryOutbox);
+                        deliveryOutbox: deliveryOutbox,
+                        requireAcceptedPublication: true);
                 return binding.EnemyConsumer;
             };
 
@@ -253,6 +254,19 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
             operations.Add(admission.OperationStableId);
+        }
+
+        public void RollbackAccepted(
+            PendingTerminalDropAdmissionResultV1 admission)
+        {
+            if (admission == null
+                || admission.Status
+                    != PendingTerminalDropAdmissionStatusV1.Accepted
+                || admission.OperationStableId == null)
+            {
+                return;
+            }
+            operations.Remove(admission.OperationStableId);
         }
 
         public PendingRunRewardProjectionV1 Export(
@@ -423,6 +437,7 @@ namespace ShooterMover.UI.ProductionFlow
                         continue;
                     }
 
+                    projection.RollbackAccepted(admission);
                     string diagnostic;
                     try
                     {
