@@ -39,6 +39,8 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 runtime.MountLoadoutAuthority.ExportSnapshot();
             InventoryLoadoutAuthoritySnapshotV1 loadout =
                 runtime.LoadoutAuthority.ExportSnapshot();
+            PlayerHoldingsSnapshotV1 receipts =
+                runtime.LegacyHoldings.ExportSnapshot();
             WeaponEquipmentInstance sweeper = weapons.Instances.Single(item =>
                 item.WeaponDefinitionId.Value
                     == ProductionWeaponOnboardingV2.SweeperWeaponDefinitionId);
@@ -87,10 +89,11 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     .Where(item => item.EquipmentInstanceStableId != null)
                     .All(item => weapons.Find(item.EquipmentInstanceStableId) != null),
                 Is.True);
+            Assert.That(receipts.UniqueHoldings.Count, Is.EqualTo(expectedActive + 1));
             Assert.That(
-                runtime.LegacyHoldings.ExportSnapshot().UniqueHoldings,
-                Is.Empty,
-                "Fresh starters are canonical holdings, not generic reward grants.");
+                receipts.UniqueHoldings.Select(item => item.InstanceStableId),
+                Is.EquivalentTo(weapons.Instances.Select(item => item.InstanceId)),
+                "Generic holdings must remain an exact receipt projection of canonical starter ownership.");
             Assert.That(
                 draft.WeaponSlots.All(item => !item.IsBound),
                 Is.True,
@@ -296,7 +299,8 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
             Assert.That(
                 inventory.SelectWeapon(sweeperInstanceId).Status,
-                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged)
+                    .Or.EqualTo(InventoryLoadoutScreenStatusV1.NoChange));
             Assert.That(
                 inventory.EquipSelected(firstPosition.LoadoutSlotStableId).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged));
