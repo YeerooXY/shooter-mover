@@ -75,7 +75,8 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 "Production inventory weapon-card presenter test");
             InventoryLoadoutScreenControllerV1 controller =
                 host.AddComponent<InventoryLoadoutScreenControllerV1>();
-            controller.ConfigureDisconnected(delegate { });
+            controller.ConfigureDisconnected(
+                delegate(PlayerRouteProfilePayloadV1 payload) { });
             controller.Present(
                 HubRouteV1.Inventory,
                 runtime.CurrentRoutePayload);
