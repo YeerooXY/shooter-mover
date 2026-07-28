@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Flow.Production;
@@ -145,10 +146,6 @@ namespace ShooterMover.UI.ProductionFlow
             var pending = new PendingTerminalDropAdmissionAuthorityV1();
             var projection = new PendingAdmissionProjectionConsumerV1();
             Func<RunSessionAggregateV1> runResolver = delegate { return run; };
-            var personalGeneration = new PersonalRewardGenerationServiceV1(
-                new ParticipantDropPacingAuthorityV1(
-                    new RunSessionParticipantDropPacingStateStoreV1(run)));
-            var deliveryOutbox = new RunSessionPersonalRewardDeliveryOutboxV1(run);
             var canonicalOverrides =
                 new RunSessionTerminalRewardOverrideResolverV1(runResolver);
             var proofOverrides = new DeterministicProofRewardOverrideResolverV1(
@@ -158,41 +155,60 @@ namespace ShooterMover.UI.ProductionFlow
             var composedOverrides = new ProductionProofOverlayRewardOverrideResolverV1(
                 canonicalOverrides,
                 proofOverrides);
+            var enemySourceContexts =
+                new ExactRunEnemySourceContextResolverV1(runResolver);
+            var propCatalog = new PropCatalogV1(
+                PropCapabilityRegistryV1.CreateBuiltIns(),
+                Array.Empty<PropDefinitionV1>());
+            var propSourceContexts = new UnsupportedPropSourceContextResolverV1();
+            var runContexts = new RunSessionTerminalDropContextResolverV1(
+                authority,
+                new FrozenRunProgressionContextProviderV1(
+                    graph.Character.CharacterInstanceStableId,
+                    frozenProgression),
+                1);
+            var participantResolver =
+                new RunSessionTerminalRewardParticipantResolverV1(
+                    runResolver,
+                    new TerminalRewardEligibilityPolicyV1(
+                        true,
+                        false,
+                        false));
+            var environmentResolver =
+                new RunSessionTerminalRewardEnvironmentResolverV1(runResolver);
 
-            TerminalDropBindingCompositionV1 binding =
-                TerminalDropBindingCompositionV1.Create(
-                    enemyCatalog,
-                    new ExactRunEnemySourceContextResolverV1(runResolver),
-                    new PropCatalogV1(
-                        PropCapabilityRegistryV1.CreateBuiltIns(),
-                        Array.Empty<PropDefinitionV1>()),
-                    new UnsupportedPropSourceContextResolverV1(),
-                    new RunSessionTerminalDropContextResolverV1(
-                        authority,
-                        new FrozenRunProgressionContextProviderV1(
-                            graph.Character.CharacterInstanceStableId,
-                            frozenProgression),
-                        1),
-                    null,
-                    null,
+            Func<EnemyTerminalDropFactConsumerV1> consumerFactory = delegate
+            {
+                var personalGeneration = new PersonalRewardGenerationServiceV1(
+                    new ParticipantDropPacingAuthorityV1(
+                        new RunSessionParticipantDropPacingStateStoreV1(run)));
+                var deliveryOutbox =
+                    new RunSessionPersonalRewardDeliveryOutboxV1(run);
+                TerminalDropBindingCompositionV1 binding =
+                    TerminalDropBindingCompositionV1.Create(
+                        enemyCatalog,
+                        enemySourceContexts,
+                        propCatalog,
+                        propSourceContexts,
+                        runContexts,
+                        null,
+                        null,
+                        pending,
+                        admissionConsumer: null,
+                        personalGenerationService: personalGeneration,
+                        participantResolver: participantResolver,
+                        environmentResolver: environmentResolver,
+                        overrideResolver: composedOverrides,
+                        deliveryOutbox: deliveryOutbox);
+                return binding.EnemyConsumer;
+            };
+
+            IEnemyDropFactConsumerV1 transactionalConsumer =
+                new TransactionalRunRewardEnemyConsumerV1(
+                    run,
                     pending,
-                    admissionConsumer: projection,
-                    personalGenerationService: personalGeneration,
-                    participantResolver:
-                        new RunSessionTerminalRewardParticipantResolverV1(
-                            runResolver,
-                            new TerminalRewardEligibilityPolicyV1(
-                                true,
-                                false,
-                                false)),
-                    environmentResolver:
-                        new RunSessionTerminalRewardEnvironmentResolverV1(
-                            runResolver),
-                    overrideResolver: composedOverrides,
-                    deliveryOutbox: deliveryOutbox);
-            IEnemyDropFactConsumerV1 strictProofConsumer =
-                new RequiredProofPendingAdmissionEnemyConsumerV1(
-                    binding.EnemyConsumer,
+                    projection,
+                    consumerFactory,
                     runId,
                     proofRoomId,
                     proofPlacementId);
@@ -201,7 +217,7 @@ namespace ShooterMover.UI.ProductionFlow
                 run,
                 pending,
                 projection,
-                strictProofConsumer);
+                transactionalConsumer);
         }
     }
 
@@ -287,35 +303,181 @@ namespace ShooterMover.UI.ProductionFlow
         }
     }
 
-    internal sealed class RequiredProofPendingAdmissionEnemyConsumerV1 :
+    /// <summary>
+    /// Coordinates run-owned pacing/outbox state with scene-local pending admission.
+    /// A failed attempt restores the exact run reward snapshot, compensates only pending
+    /// records created by that attempt, and discards the attempt's generation replay state.
+    /// A successful attempt retains its consumer so exact redelivery reuses the same ledger.
+    /// </summary>
+    internal sealed class TransactionalRunRewardEnemyConsumerV1 :
         IEnemyDropFactConsumerV1
     {
-        private readonly EnemyTerminalDropFactConsumerV1 inner;
+        private readonly object gate = new object();
+        private readonly RunSessionAggregateV1 run;
+        private readonly PendingTerminalDropAdmissionAuthorityV1 pending;
+        private readonly PendingAdmissionProjectionConsumerV1 projection;
+        private readonly Func<EnemyTerminalDropFactConsumerV1> consumerFactory;
         private readonly StableId runId;
-        private readonly StableId roomId;
-        private readonly StableId placementId;
+        private readonly StableId proofRoomId;
+        private readonly StableId proofPlacementId;
+        private readonly Dictionary<StableId, EnemyTerminalDropFactConsumerV1>
+            committedByDeathEvent =
+                new Dictionary<StableId, EnemyTerminalDropFactConsumerV1>();
 
-        public RequiredProofPendingAdmissionEnemyConsumerV1(
-            EnemyTerminalDropFactConsumerV1 inner,
+        public TransactionalRunRewardEnemyConsumerV1(
+            RunSessionAggregateV1 run,
+            PendingTerminalDropAdmissionAuthorityV1 pending,
+            PendingAdmissionProjectionConsumerV1 projection,
+            Func<EnemyTerminalDropFactConsumerV1> consumerFactory,
             StableId runId,
-            StableId roomId,
-            StableId placementId)
+            StableId proofRoomId,
+            StableId proofPlacementId)
         {
-            this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
+            this.run = run ?? throw new ArgumentNullException(nameof(run));
+            this.pending = pending ?? throw new ArgumentNullException(nameof(pending));
+            this.projection = projection
+                ?? throw new ArgumentNullException(nameof(projection));
+            this.consumerFactory = consumerFactory
+                ?? throw new ArgumentNullException(nameof(consumerFactory));
             this.runId = runId ?? throw new ArgumentNullException(nameof(runId));
-            this.roomId = roomId ?? throw new ArgumentNullException(nameof(roomId));
-            this.placementId = placementId
-                ?? throw new ArgumentNullException(nameof(placementId));
+            this.proofRoomId = proofRoomId
+                ?? throw new ArgumentNullException(nameof(proofRoomId));
+            this.proofPlacementId = proofPlacementId
+                ?? throw new ArgumentNullException(nameof(proofPlacementId));
         }
 
         public void Consume(EnemyDeathFactV1 fact)
         {
             if (fact == null) throw new ArgumentNullException(nameof(fact));
-            inner.Consume(fact);
-            if (!IsProof(fact)) return;
+            if (fact.DeathEventStableId == null)
+            {
+                throw new InvalidOperationException(
+                    "A transactional enemy reward requires one stable death-event identity.");
+            }
 
-            IReadOnlyList<PendingTerminalDropAdmissionResultV1> admissions =
-                inner.LastAdmissions;
+            lock (gate)
+            {
+                EnemyTerminalDropFactConsumerV1 committed;
+                if (committedByDeathEvent.TryGetValue(
+                        fact.DeathEventStableId,
+                        out committed))
+                {
+                    committed.Consume(fact);
+                    ValidateProofIfRequired(fact, committed.LastAdmissions);
+                    Publish(committed.LastAdmissions);
+                    return;
+                }
+
+                RunRewardRuntimeSnapshotV1 snapshot =
+                    run.ExportRewardRuntimeSnapshot();
+                EnemyTerminalDropFactConsumerV1 attempt = null;
+                try
+                {
+                    attempt = consumerFactory();
+                    if (attempt == null)
+                    {
+                        throw new InvalidOperationException(
+                            "The enemy reward attempt factory returned no consumer.");
+                    }
+
+                    attempt.Consume(fact);
+                    ValidateProofIfRequired(fact, attempt.LastAdmissions);
+                    Publish(attempt.LastAdmissions);
+                    committedByDeathEvent.Add(
+                        fact.DeathEventStableId,
+                        attempt);
+                }
+                catch (Exception exception)
+                {
+                    Exception rollbackFailure = RollbackAttempt(
+                        attempt == null ? null : attempt.LastAdmissions,
+                        snapshot);
+                    if (rollbackFailure != null && !IsFatal(exception))
+                    {
+                        throw new InvalidOperationException(
+                            "The enemy reward attempt failed and compensation was incomplete.",
+                            new AggregateException(exception, rollbackFailure));
+                    }
+
+                    ExceptionDispatchInfo.Capture(exception).Throw();
+                    throw;
+                }
+            }
+        }
+
+        private Exception RollbackAttempt(
+            IReadOnlyList<PendingTerminalDropAdmissionResultV1> admissions,
+            RunRewardRuntimeSnapshotV1 snapshot)
+        {
+            Exception failure = null;
+            if (admissions != null)
+            {
+                for (int index = admissions.Count - 1; index >= 0; index--)
+                {
+                    PendingTerminalDropAdmissionResultV1 admission =
+                        admissions[index];
+                    if (admission == null
+                        || admission.Status
+                            != PendingTerminalDropAdmissionStatusV1.Accepted)
+                    {
+                        continue;
+                    }
+
+                    string diagnostic;
+                    try
+                    {
+                        if (!pending.TryRollbackAccepted(
+                                admission,
+                                out diagnostic))
+                        {
+                            failure = Combine(
+                                failure,
+                                new InvalidOperationException(
+                                    "Pending reward compensation rejected: "
+                                    + diagnostic));
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        if (IsFatal(exception))
+                        {
+                            ExceptionDispatchInfo.Capture(exception).Throw();
+                        }
+                        failure = Combine(failure, exception);
+                    }
+                }
+            }
+
+            try
+            {
+                run.RestoreRewardRuntimeSnapshot(snapshot);
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception))
+                {
+                    ExceptionDispatchInfo.Capture(exception).Throw();
+                }
+                failure = Combine(failure, exception);
+            }
+            return failure;
+        }
+
+        private void Publish(
+            IReadOnlyList<PendingTerminalDropAdmissionResultV1> admissions)
+        {
+            if (admissions == null) return;
+            for (int index = 0; index < admissions.Count; index++)
+            {
+                projection.Consume(admissions[index]);
+            }
+        }
+
+        private void ValidateProofIfRequired(
+            EnemyDeathFactV1 fact,
+            IReadOnlyList<PendingTerminalDropAdmissionResultV1> admissions)
+        {
+            if (!IsProof(fact)) return;
             if (admissions == null
                 || admissions.Count != 1
                 || admissions[0] == null
@@ -338,8 +500,8 @@ namespace ShooterMover.UI.ProductionFlow
         {
             return fact.Identity != null
                 && fact.Identity.RunStableId == runId
-                && fact.Identity.RoomStableId == roomId
-                && fact.Identity.PlacementStableId == placementId;
+                && fact.Identity.RoomStableId == proofRoomId
+                && fact.Identity.PlacementStableId == proofPlacementId;
         }
 
         private static bool HasExactProofRewards(
@@ -350,13 +512,29 @@ namespace ShooterMover.UI.ProductionFlow
             long boxes = 0L;
             for (int index = 0; index < result.GeneratedRewards.Count; index++)
             {
-                GeneratedTerminalDropRewardV1 reward = result.GeneratedRewards[index];
-                if (reward.Kind == RewardGrantKindV1.Money) cash += reward.Quantity;
-                else if (reward.Kind == RewardGrantKindV1.Scrap) scrap += reward.Quantity;
+                GeneratedTerminalDropRewardV1 reward =
+                    result.GeneratedRewards[index];
+                if (reward.Kind == RewardGrantKindV1.Money)
+                    cash += reward.Quantity;
+                else if (reward.Kind == RewardGrantKindV1.Scrap)
+                    scrap += reward.Quantity;
                 else if (reward.Kind == RewardGrantKindV1.Strongbox)
                     boxes += reward.Quantity;
             }
             return cash == 1L && scrap == 1L && boxes == 1L;
+        }
+
+        private static Exception Combine(Exception current, Exception next)
+        {
+            if (current == null) return next;
+            return new AggregateException(current, next);
+        }
+
+        private static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
     }
 
@@ -571,7 +749,8 @@ namespace ShooterMover.UI.ProductionFlow
             out string diagnostic)
         {
             overrides = TerminalRewardOverrideSetV1.Empty();
-            if (source == null || runContext == null || environment == null || placement == null)
+            if (source == null || runContext == null
+                || environment == null || placement == null)
             {
                 diagnostic = "proof-reward-context-missing";
                 return false;
