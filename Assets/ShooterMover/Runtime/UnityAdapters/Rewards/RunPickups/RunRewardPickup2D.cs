@@ -148,27 +148,44 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             collectionInProgress = true;
             try
             {
-                lastCollectionResult = authorityHost.Authority.Collect(command)
-                    ?? new RunPickupCollectionResultV1(
+                try
+                {
+                    lastCollectionResult = authorityHost.Authority.Collect(command)
+                        ?? new RunPickupCollectionResultV1(
+                            RunPickupCollectionStatusV1.Rejected,
+                            command,
+                            pickup,
+                            null,
+                            "run-pickup-view-authority-result-null");
+                }
+                catch (Exception exception)
+                {
+                    lastCollectionResult = new RunPickupCollectionResultV1(
                         RunPickupCollectionStatusV1.Rejected,
                         command,
                         pickup,
                         null,
-                        "run-pickup-view-authority-result-null");
+                        "run-pickup-view-collection-exception:" + exception.Message);
+                    return lastCollectionResult;
+                }
+
                 if (lastCollectionResult.IsCollected)
                 {
-                    BeginAcceptedRetirement(collector);
+                    try
+                    {
+                        BeginAcceptedRetirement(collector);
+                    }
+                    catch (Exception exception)
+                    {
+                        presentationDiagnostic =
+                            "run-pickup-retirement-exception:"
+                            + exception.GetType().Name
+                            + ":"
+                            + exception.Message;
+                        retired = true;
+                        CompleteAcceptedRetirement();
+                    }
                 }
-                return lastCollectionResult;
-            }
-            catch (Exception exception)
-            {
-                lastCollectionResult = new RunPickupCollectionResultV1(
-                    RunPickupCollectionStatusV1.Rejected,
-                    command,
-                    pickup,
-                    null,
-                    "run-pickup-view-collection-exception:" + exception.Message);
                 return lastCollectionResult;
             }
             finally
@@ -288,7 +305,10 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             catch (Exception exception)
             {
                 presentationDiagnostic =
-                    "run-pickup-accepted-feedback-exception:" + exception.Message;
+                    "run-pickup-accepted-feedback-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
             }
 
             if (!started)
