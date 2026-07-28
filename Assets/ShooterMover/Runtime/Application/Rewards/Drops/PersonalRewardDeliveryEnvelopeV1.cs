@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using System.Text;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Drops;
+using ShooterMover.Domain.Rewards.Generation;
 
 namespace ShooterMover.Application.Rewards.Drops
 {

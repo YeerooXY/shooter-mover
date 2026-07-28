@@ -8,6 +8,7 @@ using System.Text;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Application.Rewards.CollectedRunTransfers
 {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
+using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using UnityEngine;

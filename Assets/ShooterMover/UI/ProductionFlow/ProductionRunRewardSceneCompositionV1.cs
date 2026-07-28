@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ShooterMover.Application.Enemies.Catalog;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Content.Definitions.Levels.Selection;

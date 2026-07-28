@@ -641,7 +641,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             diagnostic = normalized;
-            nextHubReturnAttemptAt = Application.isPlaying
+            nextHubReturnAttemptAt = UnityEngine.Application.isPlaying
                 ? Time.unscaledTime + HubReturnRetrySeconds
                 : 0f;
         }
@@ -652,7 +652,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 return;
             }
-            if (!Application.isPlaying)
+            if (!UnityEngine.Application.isPlaying)
             {
                 playerRenderer.color = playerBaseColor;
                 return;
@@ -677,7 +677,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void OnGUI()
         {
-            if (!Application.isPlaying || !IsBound)
+            if (!UnityEngine.Application.isPlaying || !IsBound)
             {
                 return;
             }

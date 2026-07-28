@@ -176,7 +176,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 throw new ArgumentException("A project path is required.", nameof(projectPath));
             }
             if (Path.IsPathRooted(projectPath)) return Path.GetFullPath(projectPath);
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             return Path.GetFullPath(Path.Combine(projectRoot, projectPath));
         }
 

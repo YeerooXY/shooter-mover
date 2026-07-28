@@ -5,6 +5,7 @@ using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Skills.Presentation;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Progression.Experience;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Progression.Curves;

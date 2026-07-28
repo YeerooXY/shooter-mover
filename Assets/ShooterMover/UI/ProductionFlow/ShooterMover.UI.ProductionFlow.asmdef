@@ -8,6 +8,7 @@
     "ShooterMover.Domain",
     "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.PlayerRuntime",
     "ShooterMover.TerminalDropBinding",
     "ShooterMover.UnityAdapters",
     "ShooterMover.UI.Hub",

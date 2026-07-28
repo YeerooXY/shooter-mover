@@ -10,6 +10,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Strongboxes;
+using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Persistence.Composition
 {

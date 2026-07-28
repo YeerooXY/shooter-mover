@@ -664,6 +664,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 : base("status-effect-runtime", generation)
             {
             }
+
+            public int ActiveEffectCount { get { return 0; } }
         }
 
         private sealed class FakeConditionalPort : FakeLifecyclePort,

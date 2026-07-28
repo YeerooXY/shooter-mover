@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Domain.Weapons
 {

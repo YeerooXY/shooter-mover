@@ -12,6 +12,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.Domain.Weapons.Catalog;
 
 namespace ShooterMover.Tests.EditMode.Flow.Hub
@@ -99,9 +100,8 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(center.EquippedInstanceId, Is.Null);
             Assert.That(
                 service.SelectWeapon(selected).Status,
-                Is.AnyOf(
-                    InventoryLoadoutScreenStatusV1.SelectionChanged,
-                    InventoryLoadoutScreenStatusV1.NoChange));
+                Is.EqualTo(InventoryLoadoutScreenStatusV1.SelectionChanged)
+                    .Or.EqualTo(InventoryLoadoutScreenStatusV1.NoChange));
             InventoryLoadoutScreenResultV1 result = service.EquipSelected(
                 center.Position.LoadoutSlotStableId);
 

@@ -1,8 +1,10 @@
 using System;
 using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Weapons.Catalog;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.UnityAdapters.Weapons.Live;
 using UnityEngine;
 

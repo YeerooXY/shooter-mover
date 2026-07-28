@@ -135,39 +135,39 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
 
             Bounds worldBounds = owningRoom.RoomBounds.bounds;
-            Vector3 worldPosition;
+            Vector3 edgeWorldPosition;
             switch (side)
             {
                 case LevelDoorSideV2.North:
-                    worldPosition = new Vector3(
+                    edgeWorldPosition = new Vector3(
                         Mathf.Lerp(worldBounds.min.x, worldBounds.max.x, edgeOffset),
                         worldBounds.max.y,
                         transform.position.z);
                     break;
                 case LevelDoorSideV2.East:
-                    worldPosition = new Vector3(
+                    edgeWorldPosition = new Vector3(
                         worldBounds.max.x,
                         Mathf.Lerp(worldBounds.min.y, worldBounds.max.y, edgeOffset),
                         transform.position.z);
                     break;
                 case LevelDoorSideV2.South:
-                    worldPosition = new Vector3(
+                    edgeWorldPosition = new Vector3(
                         Mathf.Lerp(worldBounds.min.x, worldBounds.max.x, edgeOffset),
                         worldBounds.min.y,
                         transform.position.z);
                     break;
                 default:
-                    worldPosition = new Vector3(
+                    edgeWorldPosition = new Vector3(
                         worldBounds.min.x,
                         Mathf.Lerp(worldBounds.min.y, worldBounds.max.y, edgeOffset),
                         transform.position.z);
                     break;
             }
 
-            Transform localParent = transform.parent;
-            return localParent == null
-                ? worldPosition
-                : localParent.InverseTransformPoint(worldPosition);
+            Transform edgeLocalParent = transform.parent;
+            return edgeLocalParent == null
+                ? edgeWorldPosition
+                : edgeLocalParent.InverseTransformPoint(edgeWorldPosition);
         }
 
         public void AssignNewStableId()

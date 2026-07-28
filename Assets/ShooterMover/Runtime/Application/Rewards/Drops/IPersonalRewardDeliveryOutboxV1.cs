@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Drops;
 
 namespace ShooterMover.Application.Rewards.Drops
 {

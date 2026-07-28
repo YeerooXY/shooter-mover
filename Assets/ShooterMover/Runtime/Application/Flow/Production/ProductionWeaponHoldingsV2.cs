@@ -14,6 +14,7 @@ using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 using ShooterMover.Domain.Weapons.Catalog;
 
 namespace ShooterMover.Application.Flow.Production

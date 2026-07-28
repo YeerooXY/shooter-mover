@@ -90,7 +90,7 @@ namespace ShooterMover.Application.Flow.Production
                 new MoneyRewardChildAuthorityV1(money),
                 new ScrapRewardChildAuthorityV1(scrap),
                 new GeneratedAugmentSignaturePlayerHoldingsRewardChildAuthorityV1(
-                    loadout.Holdings,
+                    loadout.LegacyHoldings,
                     loadout.CatalogAdapter,
                     augmentSignatures));
 

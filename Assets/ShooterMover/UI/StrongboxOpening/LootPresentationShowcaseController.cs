@@ -112,7 +112,7 @@ namespace ShooterMover.UI.StrongboxOpening
 
         private void Awake()
         {
-            if (!Application.isEditor && !Debug.isDebugBuild)
+            if (!UnityEngine.Application.isEditor && !Debug.isDebugBuild)
             {
                 Debug.LogWarning(
                     "LootPresentationShowcase is disabled outside Editor/development builds.");

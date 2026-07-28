@@ -5,6 +5,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Content.Definitions.Missions.Rooms;
+using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEditor;
 using UnityEngine;

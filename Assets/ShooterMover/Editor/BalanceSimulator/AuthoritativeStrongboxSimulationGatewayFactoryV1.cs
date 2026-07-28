@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using ShooterMover.Application.Rewards.Strongboxes.Simulation;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Strongboxes;

@@ -7,6 +7,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {

@@ -40,7 +40,7 @@ namespace ShooterMover.TerminalDropBinding
                 || runContext == null
                 || placementContext == null
                 || run == null
-                || run.IsEnded)
+                || run.LifecycleState == RunSessionLifecycleStateV1.Ended)
             {
                 diagnostic = "terminal-personal-run-roster-unavailable";
                 return false;

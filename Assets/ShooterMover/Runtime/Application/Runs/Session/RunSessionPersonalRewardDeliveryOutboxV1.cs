@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Drops;
 
 namespace ShooterMover.Application.Runs.Session
 {
