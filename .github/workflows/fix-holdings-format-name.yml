@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/fix-holdings-format-name
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
