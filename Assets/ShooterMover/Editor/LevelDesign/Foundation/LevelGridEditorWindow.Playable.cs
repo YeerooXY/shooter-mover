@@ -348,25 +348,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Export only"))
-            {
-                ApplyBuildResult(
-                    LevelGridPlayableBuildFacade.ExportPlayable(activeRoot));
-            }
-            if (GUILayout.Button("Compile only"))
-            {
-                ApplyBuildResult(
-                    LevelGridPlayableBuildFacade.CompileAsset(activeRoot));
-            }
-            if (GUILayout.Button("Select compiled asset"))
-            {
-                RunPlayableOperation(
-                    () => LevelGridPlayableBuildFacade.SelectCompiledAsset(activeRoot),
-                    "Selected the exact compiled runtime asset.");
-            }
-            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawPlayableToolbarControls()
@@ -410,16 +391,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 false,
                 () => LevelGridProblemsWindow.Open(activeRoot));
             menu.AddSeparator(string.Empty);
-            menu.AddItem(
-                new GUIContent("Playable/Export only"),
-                false,
-                () => ApplyBuildResult(
-                    LevelGridPlayableBuildFacade.ExportPlayable(activeRoot)));
-            menu.AddItem(
-                new GUIContent("Playable/Compile only"),
-                false,
-                () => ApplyBuildResult(
-                    LevelGridPlayableBuildFacade.CompileAsset(activeRoot)));
             menu.AddItem(
                 new GUIContent("Playable/Select compiled asset"),
                 false,

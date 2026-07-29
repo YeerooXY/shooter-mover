@@ -6,14 +6,13 @@ using System.Text;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
-using UnityEditor;
 using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
     /// <summary>
-    /// Builds an authored level folder into the runtime room asset used by gameplay.
-    /// JSON asset boundary. Generated TextAssets are published immutably and the build-included
+    /// Builds an authored level folder into the room asset used by gameplay.
+    /// Generated TextAssets are published immutably and the build-included
     /// resource asset is switched only after the complete replacement has imported and validated.
     /// </summary>
     public static partial class LevelGridAssetCompiler
@@ -27,43 +26,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             "Assets/ShooterMover/Content/Generated/Missions/Rooms/Levels/Level1";
         public const string Level1Resource =
             "Assets/ShooterMover/Resources/Levels/Level1RoomContent.asset";
-
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Compile Level 1",
-            priority = 252)]
-        private static void CompileLevel1()
-        {
-            CompileAndReport(
-                Level1Source,
-                Level1Generated,
-                Level1Resource);
-        }
-
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Compile Level Folder...",
-            priority = 253)]
-        private static void CompileSelectedFolder()
-        {
-            string sourceRoot = EditorUtility.OpenFolderPanel(
-                "Choose Level Folder",
-                UnityEngine.Application.dataPath,
-                string.Empty);
-            if (string.IsNullOrWhiteSpace(sourceRoot)) return;
-
-            string assetPath = EditorUtility.SaveFilePanelInProject(
-                "Choose Compiled Room Content Asset",
-                "LevelRoomContent",
-                "asset",
-                "Choose the build-included RoomFile asset.",
-                "Assets/ShooterMover/Resources/Levels");
-            if (string.IsNullOrWhiteSpace(assetPath)) return;
-
-            string levelFolderName = new DirectoryInfo(sourceRoot).Name;
-            string generatedRoot =
-                "Assets/ShooterMover/Content/Generated/Missions/Rooms/Levels/"
-                + SanitizeFileName(levelFolderName);
-            CompileAndReport(sourceRoot, generatedRoot, assetPath);
-        }
 
         public static RoomFile CompileToAsset(
             string sourceRoot,
@@ -108,7 +70,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 || !Directory.Exists(ToAbsolutePath(sourceRoot)))
             {
                 throw new DirectoryNotFoundException(
-                    "Level Level source folder does not exist: " + sourceRoot);
+                    "Level source folder does not exist: " + sourceRoot);
             }
 
             lock (PublishGate)
@@ -131,7 +93,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (!Directory.Exists(absoluteRoot))
             {
                 throw new DirectoryNotFoundException(
-                    "Level Level source folder does not exist: " + sourceRoot);
+                    "Level source folder does not exist: " + sourceRoot);
             }
 
             string[] files = Directory.GetFiles(
@@ -172,35 +134,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 validation,
                 "The existing room importer rejected the compiled result.");
             return compile;
-        }
-
-        private static void CompileAndReport(
-            string sourceRoot,
-            string generatedAssetFolder,
-            string roomContentAssetPath)
-        {
-            try
-            {
-                RoomFile asset = CompileToAsset(
-                    sourceRoot,
-                    generatedAssetFolder,
-                    roomContentAssetPath);
-                Debug.Log(
-                    "Level Level compiled and transactionally published into build-included asset '"
-                    + AssetDatabase.GetAssetPath(asset)
-                    + "'.",
-                    asset);
-                Selection.activeObject = asset;
-            }
-            catch (Exception exception)
-            {
-                if (IsFatal(exception)) throw;
-                Debug.LogError("Level Level compilation failed: " + exception.Message);
-                EditorUtility.DisplayDialog(
-                    "Level Level Compilation Failed",
-                    exception.Message,
-                    "OK");
-            }
         }
 
         private static bool IsFatal(Exception exception)
