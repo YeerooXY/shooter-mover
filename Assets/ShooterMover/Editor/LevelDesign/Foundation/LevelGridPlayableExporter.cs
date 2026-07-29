@@ -8,15 +8,12 @@ using System.Text;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Content.Definitions.Missions.Rooms;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
-using UnityEditor;
 using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
     /// <summary>
-    /// Exports the editor graph into the compiler-ready V2 package. Unlike the Phase-1 draft
-    /// exporter, this command requires explicit start/final metadata and writes room-local runtime
-    /// bounds and door coordinates suitable for the build-time compiler.
+    /// Writes the Level Grid editor graph into the compiler-ready package used by Build.
     /// </summary>
     public static partial class LevelGridPlayableExporter
     {
@@ -24,54 +21,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         internal static Action BeforeCommitForTests;
         internal static Action AfterBackupMoveForTests;
-
-        [MenuItem(
-            "Tools/Shooter Mover/Level Design/Export Compiler-Ready Level Package...",
-            priority = 254)]
-        private static void ExportSelected()
-        {
-            LevelDraft root = ResolveSelectedRoot();
-            if (root == null)
-            {
-                EditorUtility.DisplayDialog(
-                    "Playable Level Export",
-                    "Select an object below a LevelDraft.",
-                    "OK");
-                return;
-            }
-
-            string outputRoot = EditorUtility.OpenFolderPanel(
-                "Export Compiler-Ready Level Level Package",
-                UnityEngine.Application.dataPath,
-                (root.LevelIdText ?? "level").Replace('.', '_'));
-            if (string.IsNullOrWhiteSpace(outputRoot)) return;
-
-            try
-            {
-                Export(root, outputRoot);
-                AssetDatabase.Refresh();
-                EditorUtility.RevealInFinder(outputRoot);
-                Debug.Log(
-                    "Compiler-ready Level Level package exported to " + outputRoot,
-                    root);
-            }
-            catch (Exception exception)
-            {
-                if (exception is OutOfMemoryException
-                    || exception is StackOverflowException
-                    || exception is AccessViolationException)
-                {
-                    throw;
-                }
-                Debug.LogError(
-                    "Compiler-ready Level Level export failed: " + exception.Message,
-                    root);
-                EditorUtility.DisplayDialog(
-                    "Playable Level Export Failed",
-                    exception.Message,
-                    "OK");
-            }
-        }
 
         public static void Export(
             LevelDraft root,
@@ -407,7 +356,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     : result.Problems[0];
                 throw new InvalidOperationException(
                     issue == null
-                        ? "Level Level production validation failed."
+                        ? "Level production validation failed."
                         : issue.ToString());
             }
         }
@@ -489,7 +438,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
             TryDeleteSiblingMeta(directoryPath);
         }
-
     }
 }
 #endif
