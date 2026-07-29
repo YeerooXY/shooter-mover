@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Contracts.Flow.Session;
@@ -60,7 +61,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         }
 
         [UnityTest]
-        public IEnumerator PresenterBindsAggressiveCanonicalInventoryWithoutFallback()
+        public IEnumerator PresenterBindsAggressivePhysicalMountsAndExactInstances()
         {
             PlayerRouteProfilePayload draft =
                 PlayerRouteProfilePayload.Create(
@@ -91,14 +92,54 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             Assert.That(controller.CanonicalSnapshot, Is.Not.Null);
             Assert.That(
                 controller.CanonicalSnapshot.OwnedWeapons.Count,
-                Is.EqualTo(2));
+                Is.EqualTo(3),
+                "Two exact starter Rattlers and one unequipped Sweeper are owned.");
             Assert.That(
                 controller.CanonicalSnapshot.Mounts.Count,
                 Is.EqualTo(3));
             Assert.That(
+                controller.CanonicalSnapshot.Mounts[0]
+                    .Position.DisplayName,
+                Is.EqualTo("Outer Left"));
+            Assert.That(
+                controller.CanonicalSnapshot.Mounts[1]
+                    .Position.DisplayName,
+                Is.EqualTo("Center"));
+            Assert.That(
                 controller.CanonicalSnapshot.Mounts[1]
                     .Position.IsLockedBySkill,
                 Is.True);
+            Assert.That(
+                controller.CanonicalSnapshot.Mounts[1]
+                    .EquippedInstanceId,
+                Is.Null);
+            Assert.That(
+                controller.CanonicalSnapshot.Mounts[2]
+                    .Position.DisplayName,
+                Is.EqualTo("Outer Right"));
+
+            var exactIds = new HashSet<StableId>();
+            int rattlerCount = 0;
+            for (int index = 0;
+                 index < controller.CanonicalSnapshot.OwnedWeapons.Count;
+                 index++)
+            {
+                WeaponInventoryCard card =
+                    controller.CanonicalSnapshot.OwnedWeapons[index];
+                Assert.That(
+                    exactIds.Add(card.Instance.InstanceId),
+                    Is.True,
+                    "One exact instance must produce only one owned card.");
+                if (card.Instance.WeaponDefinitionId.Value
+                    == LegacyWeaponSetup.StarterWeaponDefinitionId)
+                {
+                    rattlerCount++;
+                }
+            }
+            Assert.That(
+                rattlerCount,
+                Is.EqualTo(2),
+                "The two shown Rattlers are separate exact owned instances.");
             Assert.That(controller.enabled, Is.False);
 
             Object.Destroy(host);

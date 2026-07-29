@@ -89,10 +89,12 @@ namespace ShooterMover.Application.Flow.Production
         {
             get { return mounts; }
         }
+
         public IReadOnlyList<WeaponInventoryCard> OwnedWeapons
         {
             get { return owned; }
         }
+
         public StableId SelectedInstanceId { get; }
         public long WeaponHoldingsSequence { get; }
         public string WeaponHoldingsFingerprint { get; }
@@ -140,9 +142,10 @@ namespace ShooterMover.Application.Flow.Production
     }
 
     /// <summary>
-    /// Exact weapon-only Inventory draft. Canonical physical mount state commits first and the old
-    /// fixed-slot authority is updated only as a compatibility route/armor projection. Opening or
-    /// refreshing this service never grants, repairs, recreates or auto-equips equipment.
+    /// Exact weapon-only Inventory draft. Physical mount state comes from the selected character's
+    /// existing canonical authority. The fixed-slot state is written only as a compatibility and
+    /// armor projection after the physical authority accepts the change. Opening or refreshing this
+    /// service never grants, repairs, recreates, migrates, or auto-equips equipment.
     /// </summary>
     public sealed class WeaponInventoryScreenActions
     {
@@ -185,35 +188,38 @@ namespace ShooterMover.Application.Flow.Production
             this.weaponCatalog = weaponCatalog
                 ?? throw new ArgumentNullException(nameof(weaponCatalog));
 
+            WeaponMountLayout routeLayout = WeaponMountPolicy.ResolveLayout(
+                incomingRoute.LoadoutProfileStableId);
+            if (!LayoutsMatch(routeLayout, layout))
+            {
+                throw new InvalidOperationException(
+                    "Inventory mount layout does not match the selected character class: "
+                    + incomingRoute.LoadoutProfileStableId);
+            }
+
             WeaponMountLoadoutState resolvedMounts;
             if (!WeaponMountLoadoutRegistry.TryResolve(
                     weaponHoldings,
-                    out resolvedMounts))
+                    out resolvedMounts)
+                || resolvedMounts == null)
             {
-                resolvedMounts = new WeaponMountLoadoutState(
-                    layout,
-                    weaponHoldings,
-                    WeaponMountLoadoutView.MigrateLegacy(
-                        layout,
-                        weaponHoldings,
-                        loadoutAuthority.ExportSnapshot()));
-                WeaponMountLoadoutRegistry.Register(
-                    weaponHoldings,
-                    resolvedMounts);
+                throw new InvalidOperationException(
+                    "The selected character's canonical weapon mount authority is unavailable. "
+                    + "Inventory will not create or migrate a replacement authority.");
             }
             mountLoadoutAuthority = resolvedMounts;
 
-            InventoryLoadoutStateSnapshot compatibility =
-                WeaponMountLoadoutView.ToLegacyProjection(
-                    layout,
-                    mountLoadoutAuthority.ExportSnapshot(),
-                    loadoutAuthority.ExportSnapshot());
-            for (int index = 0; index < compatibility.Bindings.Count; index++)
+            WeaponMountLoadoutSnapshot authoritative =
+                mountLoadoutAuthority.ExportSnapshot();
+            ValidateAuthoritativeMounts(authoritative);
+            for (int index = 0; index < layout.Positions.Count; index++)
             {
-                InventoryLoadoutSlotBinding binding = compatibility.Bindings[index];
+                WeaponMountPosition position = layout.Positions[index];
+                WeaponMountBinding binding = authoritative.Find(
+                    position.MountStableId);
                 draftBindings.Add(
-                    binding.SlotStableId,
-                    binding.EquipmentInstanceStableId);
+                    position.LoadoutSlotStableId,
+                    position.IsActive ? binding.InstanceId : null);
             }
             Rebuild();
         }
@@ -278,8 +284,7 @@ namespace ShooterMover.Application.Flow.Production
                     InventoryLoadoutScreenStatus.AlreadyCompleted,
                     "inventory-loadout-screen-completed");
             }
-            WeaponMountPosition mount = FindPhysicalMount(
-                targetLoadoutSlotId);
+            WeaponMountPosition mount = FindPhysicalMount(targetLoadoutSlotId);
             if (mount == null)
             {
                 return Result(
@@ -290,9 +295,7 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return Result(
                     InventoryLoadoutScreenStatus.InvalidSlot,
-                    string.IsNullOrWhiteSpace(mount.LockReason)
-                        ? "inventory-loadout-mount-locked-by-skill"
-                        : mount.LockReason);
+                    "inventory-loadout-mount-locked-by-skill");
             }
             if (selectedInstanceId == null
                 || weaponHoldings.Find(selectedInstanceId) == null)
@@ -309,8 +312,7 @@ namespace ShooterMover.Application.Flow.Production
                     && draftBindings[otherSlot] == selectedInstanceId)
                 {
                     return Result(
-                        InventoryLoadoutScreenStatus
-                            .DuplicateEquipmentInstance,
+                        InventoryLoadoutScreenStatus.DuplicateEquipmentInstance,
                         "inventory-loadout-instance-already-bound-elsewhere");
                 }
             }
@@ -339,8 +341,7 @@ namespace ShooterMover.Application.Flow.Production
                     InventoryLoadoutScreenStatus.AlreadyCompleted,
                     "inventory-loadout-screen-completed");
             }
-            WeaponMountPosition mount = FindPhysicalMount(
-                targetLoadoutSlotId);
+            WeaponMountPosition mount = FindPhysicalMount(targetLoadoutSlotId);
             if (mount == null)
             {
                 return Result(
@@ -351,9 +352,7 @@ namespace ShooterMover.Application.Flow.Production
             {
                 return Result(
                     InventoryLoadoutScreenStatus.InvalidSlot,
-                    string.IsNullOrWhiteSpace(mount.LockReason)
-                        ? "inventory-loadout-mount-locked-by-skill"
-                        : mount.LockReason);
+                    "inventory-loadout-mount-locked-by-skill");
             }
             if (draftBindings[targetLoadoutSlotId] == null)
             {
@@ -438,16 +437,14 @@ namespace ShooterMover.Application.Flow.Production
             {
                 RollBack(mountsBefore, legacyBefore);
                 return Result(
-                    InventoryLoadoutScreenStatus
-                        .HoldingsChangedDuringApply,
+                    InventoryLoadoutScreenStatus.HoldingsChangedDuringApply,
                     "inventory-loadout-authority-mutated-weapon-holdings");
             }
             if (!Matches(legacyAfter, compatibilityBindings))
             {
                 RollBack(mountsBefore, legacyBefore);
                 return Result(
-                    InventoryLoadoutScreenStatus
-                        .AuthoritySnapshotMismatch,
+                    InventoryLoadoutScreenStatus.AuthoritySnapshotMismatch,
                     "inventory-loadout-authority-result-mismatch");
             }
 
@@ -483,6 +480,38 @@ namespace ShooterMover.Application.Flow.Production
                 incomingRoute);
         }
 
+        private void ValidateAuthoritativeMounts(
+            WeaponMountLoadoutSnapshot authoritative)
+        {
+            if (authoritative == null
+                || !authoritative.HasValidFingerprint()
+                || authoritative.Bindings.Count
+                    != layout.PhysicalPositions.Count)
+            {
+                throw new InvalidOperationException(
+                    "The selected character's canonical weapon mount snapshot is invalid.");
+            }
+
+            for (int index = 0; index < layout.PhysicalPositions.Count; index++)
+            {
+                WeaponMountPosition position = layout.PhysicalPositions[index];
+                WeaponMountBinding binding = authoritative.Find(
+                    position.MountStableId);
+                if (binding == null)
+                {
+                    throw new InvalidOperationException(
+                        "The selected character's canonical loadout is missing mount: "
+                        + position.MountStableId);
+                }
+                if (position.IsLockedBySkill && binding.InstanceId != null)
+                {
+                    throw new InvalidOperationException(
+                        "A skill-locked weapon mount is bound: "
+                        + position.MountStableId);
+                }
+            }
+        }
+
         private void RollBack(
             WeaponMountLoadoutSnapshot mounts,
             InventoryLoadoutStateSnapshot legacy)
@@ -510,8 +539,7 @@ namespace ShooterMover.Application.Flow.Production
 
             for (int index = 0; index < layout.Positions.Count; index++)
             {
-                WeaponMountPosition position =
-                    layout.Positions[index];
+                WeaponMountPosition position = layout.Positions[index];
                 StableId instanceId =
                     draftBindings[position.LoadoutSlotStableId];
                 if (!position.IsActive)
@@ -627,8 +655,7 @@ namespace ShooterMover.Application.Flow.Production
                  index < snapshot.OwnedWeapons.Count;
                  index++)
             {
-                WeaponInventoryCard card =
-                    snapshot.OwnedWeapons[index];
+                WeaponInventoryCard card = snapshot.OwnedWeapons[index];
                 equipment.Add(new InventoryLoadoutEquipmentView(
                     card.Instance.InstanceId,
                     StableId.Parse(card.Instance.WeaponDefinitionId.Value),
@@ -643,6 +670,8 @@ namespace ShooterMover.Application.Flow.Production
                     string.Empty));
             }
 
+            InventoryLoadoutStateSnapshot legacy =
+                loadoutAuthority.ExportSnapshot();
             var selections = new List<InventoryLoadoutSelectionView>(
                 InventoryLoadoutSlots.All.Count);
             for (int index = 0;
@@ -651,14 +680,21 @@ namespace ShooterMover.Application.Flow.Production
             {
                 InventoryLoadoutSlotDescriptor slot =
                     InventoryLoadoutSlots.All[index];
-                StableId selected = draftBindings[slot.SlotStableId];
-                bool physical = slot.Kind != InventoryLoadoutSlotKind.Weapon
-                    || FindPhysicalMount(slot.SlotStableId) != null;
-                bool active = slot.Kind != InventoryLoadoutSlotKind.Weapon
-                    || layout.ContainsLoadoutSlot(slot.SlotStableId);
-                bool valid = physical
-                    ? active || selected == null
-                    : selected == null;
+                WeaponMountPosition physical = slot.Kind
+                        == InventoryLoadoutSlotKind.Weapon
+                    ? FindPhysicalMount(slot.SlotStableId)
+                    : null;
+                StableId selected = slot.Kind
+                        == InventoryLoadoutSlotKind.Weapon
+                    ? physical == null
+                        ? null
+                        : draftBindings[slot.SlotStableId]
+                    : legacy.GetBinding(slot.SlotStableId)
+                        .EquipmentInstanceStableId;
+                bool valid = slot.Kind != InventoryLoadoutSlotKind.Weapon
+                    || physical == null
+                    || physical.IsActive
+                    || selected == null;
                 selections.Add(new InventoryLoadoutSelectionView(
                     slot,
                     selected,
@@ -691,8 +727,7 @@ namespace ShooterMover.Application.Flow.Production
                 null);
         }
 
-        private WeaponMountPosition FindPhysicalMount(
-            StableId slotId)
+        private WeaponMountPosition FindPhysicalMount(StableId slotId)
         {
             if (slotId == null)
             {
@@ -706,23 +741,6 @@ namespace ShooterMover.Application.Flow.Production
                 }
             }
             return null;
-        }
-
-        private IReadOnlyList<InventoryLoadoutSlotBinding> BuildBindings()
-        {
-            var bindings = new List<InventoryLoadoutSlotBinding>(
-                InventoryLoadoutSlots.All.Count);
-            for (int index = 0;
-                 index < InventoryLoadoutSlots.All.Count;
-                 index++)
-            {
-                InventoryLoadoutSlotDescriptor slot =
-                    InventoryLoadoutSlots.All[index];
-                bindings.Add(new InventoryLoadoutSlotBinding(
-                    slot.SlotStableId,
-                    draftBindings[slot.SlotStableId]));
-            }
-            return bindings;
         }
 
         private IReadOnlyList<WeaponMountBinding> BuildMountBindings()
@@ -740,6 +758,38 @@ namespace ShooterMover.Application.Flow.Production
                         : null));
             }
             return bindings;
+        }
+
+        private static bool LayoutsMatch(
+            WeaponMountLayout left,
+            WeaponMountLayout right)
+        {
+            if (left == null
+                || right == null
+                || left.PhysicalPositions.Count
+                    != right.PhysicalPositions.Count)
+            {
+                return false;
+            }
+            for (int index = 0;
+                 index < left.PhysicalPositions.Count;
+                 index++)
+            {
+                WeaponMountPosition leftPosition =
+                    left.PhysicalPositions[index];
+                WeaponMountPosition rightPosition =
+                    right.PhysicalPositions[index];
+                if (leftPosition.MountStableId
+                        != rightPosition.MountStableId
+                    || leftPosition.LoadoutSlotStableId
+                        != rightPosition.LoadoutSlotStableId
+                    || leftPosition.Availability
+                        != rightPosition.Availability)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static bool Matches(

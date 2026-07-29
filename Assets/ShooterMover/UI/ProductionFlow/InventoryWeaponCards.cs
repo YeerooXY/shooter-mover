@@ -3,6 +3,7 @@ using System.Globalization;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Common;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -30,6 +31,7 @@ namespace ShooterMover.UI.ProductionFlow
         private Vector2 weaponScroll;
         private GUIStyle titleStyle;
         private GUIStyle smallStyle;
+        private GUIStyle warningStyle;
 
         public bool IsBound { get { return bound; } }
 
@@ -195,6 +197,7 @@ namespace ShooterMover.UI.ProductionFlow
             DrawWeapons(snapshot);
             GUILayout.EndHorizontal();
 
+            DrawLastDiagnostic();
             GUILayout.BeginHorizontal();
             GUI.enabled = snapshot.CanConfirm;
             if (GUILayout.Button("CONFIRM", GUILayout.MinHeight(42f)))
@@ -213,33 +216,54 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void DrawMounts(WeaponInventorySnapshot snapshot)
         {
-            GUILayout.BeginVertical(GUILayout.Width(280f));
+            GUILayout.BeginVertical(GUILayout.Width(300f));
             GUILayout.Label("WEAPON MOUNTS", titleStyle);
             mountScroll = GUILayout.BeginScrollView(mountScroll);
             for (int index = 0; index < snapshot.Mounts.Count; index++)
             {
-                WeaponInventoryMount mount =
-                    snapshot.Mounts[index];
+                WeaponInventoryMount mount = snapshot.Mounts[index];
                 bool selected = mount.Position.LoadoutSlotStableId
                     == controller.ActiveSlotStableId;
                 bool locked = mount.Position.Availability
                     != WeaponMountAvailability.Active;
                 string equipped = mount.EquippedCard == null
                     ? "EMPTY"
-                    : mount.EquippedCard.DisplayName;
+                    : mount.EquippedCard.DisplayName
+                        + "\n"
+                        + "Instance "
+                        + ShortIdentity(mount.EquippedInstanceId);
+                string state = locked
+                    ? "LOCKED\nUnlock through class skill"
+                    : equipped;
+
+                GUI.enabled = !locked;
                 if (GUILayout.Button(
-                    (selected ? "▶ " : string.Empty)
+                    (selected && !locked ? "▶ " : string.Empty)
                     + mount.Position.DisplayName
                     + "\n"
-                    + (locked
-                        ? "LOCKED — SKILL REQUIRED"
-                        : equipped),
-                    GUILayout.MinHeight(72f)))
+                    + state,
+                    GUILayout.MinHeight(88f)))
                 {
                     controller.SelectSlot(
                         mount.Position.LoadoutSlotStableId);
                 }
+                GUI.enabled = true;
             }
+
+            WeaponInventoryMount active =
+                snapshot.FindMount(controller.ActiveSlotStableId);
+            bool canUnequip = active != null
+                && active.Position.Availability
+                    == WeaponMountAvailability.Active
+                && active.EquippedInstanceId != null;
+            GUI.enabled = canUnequip;
+            if (GUILayout.Button(
+                "UNEQUIP ACTIVE MOUNT",
+                GUILayout.MinHeight(38f)))
+            {
+                controller.UnequipActiveSlot();
+            }
+            GUI.enabled = true;
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
         }
@@ -285,6 +309,10 @@ namespace ShooterMover.UI.ProductionFlow
                     ? string.Empty
                     : "  •  " + card.Family),
                 smallStyle);
+            GUILayout.Label(
+                "Exact instance: "
+                + ShortIdentity(card.Instance.InstanceId),
+                smallStyle);
             if (resolved)
             {
                 GUILayout.BeginHorizontal();
@@ -300,11 +328,17 @@ namespace ShooterMover.UI.ProductionFlow
             }
             else
             {
-                GUILayout.Label(error, smallStyle);
+                GUILayout.Label(error, warningStyle);
             }
+
+            WeaponInventoryMount equippedMount =
+                FindMountByPhysicalId(snapshot, card.EquippedMountId);
             GUILayout.Label(
                 card.IsEquipped
-                    ? "EQUIPPED — " + card.EquippedMountId
+                    ? "EQUIPPED — "
+                        + (equippedMount == null
+                            ? card.EquippedMountId.ToString()
+                            : equippedMount.Position.DisplayName)
                     : "UNEQUIPPED",
                 smallStyle);
             GUILayout.EndVertical();
@@ -316,13 +350,26 @@ namespace ShooterMover.UI.ProductionFlow
                 && active.Position.Availability
                     == WeaponMountAvailability.Active;
             if (GUILayout.Button(
-                "EQUIP TO ACTIVE MOUNT",
+                "EQUIP / REPLACE ACTIVE MOUNT",
                 GUILayout.MinHeight(36f)))
             {
                 controller.SelectInstance(card.Instance.InstanceId);
             }
             GUI.enabled = true;
             GUILayout.EndVertical();
+        }
+
+        private void DrawLastDiagnostic()
+        {
+            if (controller.LastResult == null
+                || string.IsNullOrEmpty(
+                    controller.LastResult.RejectionCode))
+            {
+                return;
+            }
+            GUILayout.Label(
+                controller.LastResult.RejectionCode,
+                warningStyle);
         }
 
         private void DrawStat(string label, string value)
@@ -405,6 +452,42 @@ namespace ShooterMover.UI.ProductionFlow
                 fontSize = 12,
                 wordWrap = true,
             };
+            warningStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 12,
+                fontStyle = FontStyle.Italic,
+                wordWrap = true,
+            };
+        }
+
+        private static WeaponInventoryMount FindMountByPhysicalId(
+            WeaponInventorySnapshot snapshot,
+            StableId mountId)
+        {
+            if (snapshot == null || mountId == null)
+            {
+                return null;
+            }
+            for (int index = 0; index < snapshot.Mounts.Count; index++)
+            {
+                WeaponInventoryMount mount = snapshot.Mounts[index];
+                if (mount.Position.MountStableId == mountId)
+                {
+                    return mount;
+                }
+            }
+            return null;
+        }
+
+        private static string ShortIdentity(StableId stableId)
+        {
+            string text = stableId == null
+                ? string.Empty
+                : stableId.ToString();
+            return text.Length <= 28
+                ? text
+                : "…" + text.Substring(text.Length - 27);
         }
 
         private static string Format(double value)
