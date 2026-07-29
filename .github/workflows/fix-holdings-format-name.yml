@@ -35,15 +35,14 @@ jobs:
           helper = root / 'Runtime/Domain/Holdings/PlayerHoldingsModel.cs'
 
           text = helper.read_text(encoding='utf-8-sig')
-          old_declaration = 'public static class Holdings'
-          new_declaration = 'public static class HoldingsFormat'
-          count = text.count(old_declaration)
-          if count != 1:
-              raise SystemExit(f'Expected one helper declaration, found {count}.')
-          helper.write_text(
-              text.replace(old_declaration, new_declaration),
-              encoding='utf-8',
-              newline='\n')
+          declaration = re.compile(r'\bpublic static class Holdings\b')
+          text, declaration_count = declaration.subn(
+              'public static class HoldingsFormat',
+              text)
+          if declaration_count != 1:
+              raise SystemExit(
+                  f'Expected one exact helper declaration, found {declaration_count}.')
+          helper.write_text(text, encoding='utf-8', newline='\n')
 
           methods = (
               'AppendToken',
@@ -80,7 +79,7 @@ jobs:
               raise SystemExit(
                   'Old holdings helper calls remain:\n' + '\n'.join(leftovers))
 
-          if old_declaration in helper.read_text(encoding='utf-8-sig'):
+          if declaration.search(helper.read_text(encoding='utf-8-sig')):
               raise SystemExit('Old helper declaration remains.')
 
           print(f'Updated {replacement_count} calls in {len(changed_files)} files.')
