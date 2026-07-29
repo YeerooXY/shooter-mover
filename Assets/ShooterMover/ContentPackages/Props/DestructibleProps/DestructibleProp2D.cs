@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
+using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Props.DestructibleProps
@@ -34,11 +35,12 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
     }
 
     /// <summary>
-    /// Unity-facing destructible target. State mutates only from confirmed combat messages;
-    /// collision and presentation references are supplied explicitly by the authoring boundary.
+    /// Unity-facing destructible target. State mutates only from a shared direct-hit boundary or
+    /// confirmed combat messages; collision and presentation references are supplied explicitly by
+    /// the authoring boundary.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class DestructibleProp2D : MonoBehaviour
+    public sealed class DestructibleProp2D : DamageableTarget2D
     {
         private Collider2D blockingCollider;
         private Renderer[] presentationRenderers = Array.Empty<Renderer>();
@@ -51,6 +53,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private bool configured;
         private bool destructionNotificationPublished;
         private int destructionNotificationCount;
+        private long lifecycleGeneration;
 
         public event Action<DestructiblePropDestructionResult> Destroyed;
         public event Action<DestructiblePropTerminalEvent2D> TerminalDestroyed;
@@ -66,16 +69,17 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             ? null
             : authority.CurrentState;
         public Collider2D BlockingCollider => blockingCollider;
-        public DestructiblePropTerminalProvenanceV1 TerminalProvenance =>
-            terminalProvenance;
+        public DestructiblePropTerminalProvenanceV1 TerminalProvenance => terminalProvenance;
         public int DestructionNotificationCount => destructionNotificationCount;
-        public DestructiblePropDestroyedCollisionPolicy DestroyedCollisionPolicy =>
-            destroyedCollisionPolicy;
+        public DestructiblePropDestroyedCollisionPolicy DestroyedCollisionPolicy => destroyedCollisionPolicy;
 
-        /// <summary>
-        /// Compatibility overload retained for existing package consumers. Production terminal
-        /// reward routes must use the provenance overload and fail closed when it is absent.
-        /// </summary>
+        public override StableId DamageableStableId => PropId;
+        public override long DamageableLifecycleGeneration => lifecycleGeneration;
+        public override bool CanTakeDamage => configured
+            && authority != null
+            && authority.CurrentState != null
+            && authority.CurrentState.IsActive;
+
         public void Configure(
             StableId configuredPropId,
             double configuredMaximumHealth,
@@ -84,7 +88,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         {
             if (configuredPresentationRoot == null)
                 throw new ArgumentNullException(nameof(configuredPresentationRoot));
-
             Configure(
                 configuredPropId,
                 configuredMaximumHealth,
@@ -119,26 +122,15 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             DestructiblePropTerminalProvenanceV1 configuredTerminalProvenance)
         {
             if (configured)
-                throw new InvalidOperationException(
-                    "Destructible prop is already configured.");
+                throw new InvalidOperationException("Destructible prop is already configured.");
             if (configuredPropId == null)
                 throw new ArgumentNullException(nameof(configuredPropId));
             if (configuredBlockingCollider == null)
                 throw new ArgumentNullException(nameof(configuredBlockingCollider));
-            if (configuredPresentationRenderers == null
-                || configuredPresentationRenderers.Length == 0)
-            {
-                throw new ArgumentException(
-                    "At least one explicit presentation renderer is required.",
-                    nameof(configuredPresentationRenderers));
-            }
-            if (!Enum.IsDefined(
-                typeof(DestructiblePropDestroyedCollisionPolicy),
-                configuredDestroyedCollisionPolicy))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(configuredDestroyedCollisionPolicy));
-            }
+            if (configuredPresentationRenderers == null || configuredPresentationRenderers.Length == 0)
+                throw new ArgumentException("At least one explicit presentation renderer is required.", nameof(configuredPresentationRenderers));
+            if (!Enum.IsDefined(typeof(DestructiblePropDestroyedCollisionPolicy), configuredDestroyedCollisionPolicy))
+                throw new ArgumentOutOfRangeException(nameof(configuredDestroyedCollisionPolicy));
 
             presentationRenderers = new Renderer[configuredPresentationRenderers.Length];
             initialRendererEnabled = new bool[configuredPresentationRenderers.Length];
@@ -146,18 +138,12 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             {
                 Renderer renderer = configuredPresentationRenderers[index];
                 if (renderer == null)
-                {
-                    throw new ArgumentException(
-                        "Presentation renderer references cannot contain null.",
-                        nameof(configuredPresentationRenderers));
-                }
+                    throw new ArgumentException("Presentation renderer references cannot contain null.", nameof(configuredPresentationRenderers));
                 presentationRenderers[index] = renderer;
                 initialRendererEnabled[index] = renderer.enabled;
             }
 
-            authority = new DestructiblePropAuthority(
-                configuredPropId,
-                configuredMaximumHealth);
+            authority = new DestructiblePropAuthority(configuredPropId, configuredMaximumHealth);
             blockingCollider = configuredBlockingCollider;
             initialColliderEnabled = blockingCollider.enabled;
             initialColliderIsTrigger = blockingCollider.isTrigger;
@@ -165,13 +151,43 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             terminalProvenance = configuredTerminalProvenance;
             destructionNotificationPublished = false;
             destructionNotificationCount = 0;
+            lifecycleGeneration = 1L;
             configured = true;
             ApplyActivePresentation();
         }
 
-        public DestructiblePropDamageResult TryApplyConfirmedHit(
-            HitMessage hit,
-            double requestedDamage)
+        public override void TakeHit(DamageHit2D hit)
+        {
+            if (hit == null) throw new ArgumentNullException(nameof(hit));
+            if (!configured || authority == null)
+                throw new InvalidOperationException("The destructible prop is not configured.");
+            if (hit.TargetEntityStableId != PropId || hit.TargetLifecycleGeneration != lifecycleGeneration)
+                throw new InvalidOperationException("The direct hit does not match the prop lifecycle.");
+
+            CombatChannel channel = ToCombatChannel(hit.ChannelValue);
+            var message = new HitMessage(
+                hit.EventStableId,
+                hit.SourceEntityStableId,
+                hit.TargetEntityStableId,
+                channel,
+                HitResult.Confirmed);
+            DestructiblePropDamageResult result = TryApplyConfirmedHit(message, hit.Amount);
+            if (result == null)
+                throw new InvalidOperationException("The prop damage authority returned no result.");
+
+            switch (result.Status)
+            {
+                case DestructiblePropDamageStatus.Applied:
+                case DestructiblePropDamageStatus.Destroyed:
+                case DestructiblePropDamageStatus.DuplicateEventIgnored:
+                case DestructiblePropDamageStatus.TargetAlreadyDestroyed:
+                    return;
+                default:
+                    throw new InvalidOperationException("The prop rejected a direct hit: " + result.Status + ".");
+            }
+        }
+
+        public DestructiblePropDamageResult TryApplyConfirmedHit(HitMessage hit, double requestedDamage)
         {
             if (!configured || authority == null)
             {
@@ -183,16 +199,11 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     null);
             }
 
-            DestructiblePropDamageResult result =
-                authority.ApplyConfirmedHit(hit, requestedDamage);
-            if (result.Status != DestructiblePropDamageStatus.Destroyed
-                || result.Destruction == null)
-            {
+            DestructiblePropDamageResult result = authority.ApplyConfirmedHit(hit, requestedDamage);
+            if (result.Status != DestructiblePropDamageStatus.Destroyed || result.Destruction == null)
                 return result;
-            }
 
-            DestructiblePropTerminalEvent2D terminal = CaptureTerminalEvent(
-                result.Destruction);
+            DestructiblePropTerminalEvent2D terminal = CaptureTerminalEvent(result.Destruction);
             ApplyDestroyedPresentation();
             PublishDestroyed(result.Destruction, terminal);
             return result;
@@ -202,6 +213,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         {
             if (!configured || authority == null) return;
             authority.Restart();
+            lifecycleGeneration = checked(lifecycleGeneration + 1L);
             destructionNotificationPublished = false;
             destructionNotificationCount = 0;
             ApplyActivePresentation();
@@ -227,7 +239,6 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                         break;
                 }
             }
-
             for (int index = 0; index < presentationRenderers.Length; index++)
             {
                 Renderer renderer = presentationRenderers[index];
@@ -242,38 +253,25 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 blockingCollider.enabled = initialColliderEnabled;
                 blockingCollider.isTrigger = initialColliderIsTrigger;
             }
-
-            int count = Math.Min(
-                presentationRenderers.Length,
-                initialRendererEnabled.Length);
+            int count = Math.Min(presentationRenderers.Length, initialRendererEnabled.Length);
             for (int index = 0; index < count; index++)
             {
                 Renderer renderer = presentationRenderers[index];
-                if (renderer != null)
-                    renderer.enabled = initialRendererEnabled[index];
+                if (renderer != null) renderer.enabled = initialRendererEnabled[index];
             }
         }
 
-        private DestructiblePropTerminalEvent2D CaptureTerminalEvent(
-            DestructiblePropDestructionResult destruction)
+        private DestructiblePropTerminalEvent2D CaptureTerminalEvent(DestructiblePropDestructionResult destruction)
         {
             Vector2 position = blockingCollider.bounds.center;
             string fingerprint = "prop-terminal-position-v1|"
-                + destruction.EventId
-                + "|"
-                + position.x.ToString("R", CultureInfo.InvariantCulture)
-                + "|"
+                + destruction.EventId + "|"
+                + position.x.ToString("R", CultureInfo.InvariantCulture) + "|"
                 + position.y.ToString("R", CultureInfo.InvariantCulture);
-            return new DestructiblePropTerminalEvent2D(
-                destruction,
-                terminalProvenance,
-                position,
-                fingerprint);
+            return new DestructiblePropTerminalEvent2D(destruction, terminalProvenance, position, fingerprint);
         }
 
-        private void PublishDestroyed(
-            DestructiblePropDestructionResult destruction,
-            DestructiblePropTerminalEvent2D terminal)
+        private void PublishDestroyed(DestructiblePropDestructionResult destruction, DestructiblePropTerminalEvent2D terminal)
         {
             if (destructionNotificationPublished || destruction == null) return;
             destructionNotificationPublished = true;
@@ -281,35 +279,21 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             PublishTerminalDestroyed(terminal);
             Action<DestructiblePropDestructionResult> handler = Destroyed;
             if (handler == null) return;
-
             foreach (Delegate subscriber in handler.GetInvocationList())
             {
-                try
-                {
-                    ((Action<DestructiblePropDestructionResult>)subscriber)(destruction);
-                }
-                catch (Exception)
-                {
-                    // Optional observers cannot replay or block authoritative destruction.
-                }
+                try { ((Action<DestructiblePropDestructionResult>)subscriber)(destruction); }
+                catch (Exception) { }
             }
         }
 
-        private void PublishTerminalDestroyed(
-            DestructiblePropTerminalEvent2D terminal)
+        private void PublishTerminalDestroyed(DestructiblePropTerminalEvent2D terminal)
         {
             Action<DestructiblePropTerminalEvent2D> handler = TerminalDestroyed;
             if (handler == null || terminal == null) return;
             foreach (Delegate subscriber in handler.GetInvocationList())
             {
-                try
-                {
-                    ((Action<DestructiblePropTerminalEvent2D>)subscriber)(terminal);
-                }
-                catch (Exception)
-                {
-                    // Optional observers cannot replay or block authoritative destruction.
-                }
+                try { ((Action<DestructiblePropTerminalEvent2D>)subscriber)(terminal); }
+                catch (Exception) { }
             }
         }
 
@@ -319,20 +303,25 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             if (handler == null) return;
             foreach (Delegate subscriber in handler.GetInvocationList())
             {
-                try
-                {
-                    ((Action)subscriber)();
-                }
-                catch (Exception)
-                {
-                    // Optional observers cannot block authoritative restart.
-                }
+                try { ((Action)subscriber)(); }
+                catch (Exception) { }
             }
+        }
+
+        private static CombatChannel ToCombatChannel(int channelValue)
+        {
+            if (!Enum.IsDefined(typeof(CombatChannel), channelValue))
+                throw new ArgumentOutOfRangeException(nameof(channelValue));
+            CombatChannel channel = (CombatChannel)channelValue;
+            if (channel == CombatChannel.System)
+                throw new ArgumentOutOfRangeException(nameof(channelValue));
+            return channel;
         }
 
         private void OnDestroy()
         {
             Destroyed = null;
+            TerminalDestroyed = null;
             Restarted = null;
         }
     }

@@ -1,21 +1,24 @@
 using System;
 using ShooterMover.Domain.Common;
 using ShooterMover.EnemyRuntimeComposition;
+using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Missions.Rooms
 {
     /// <summary>
-    /// Binds the room-owned enemy presentation object to one factory-created runtime.
-    /// Health, damage, lifecycle, and death remain authoritative in that runtime.
+    /// Connects one room enemy GameObject to its enemy gameplay state.
+    /// The enemy owns health, death, rewards, drops, and room-clear reporting.
+    /// Projectiles only deliver a hit.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class RoomEnemyActor2D : MonoBehaviour
+    public sealed class RoomEnemyActor2D : DamageableTarget2D
     {
         private EnemyPlacementRuntimeInstanceV1 runtime;
         private RoomOccupantTerminalRelay2D legacyRelay;
         private bool legacyRelayEnabled;
         private bool legacyRelayStateCaptured;
+        private bool terminalPresentationDisabled;
 
         public bool IsBound
         {
@@ -52,6 +55,26 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             get { return runtime != null && runtime.ActorState.IsActive; }
         }
 
+        public bool IsTerminalPresentationDisabled
+        {
+            get { return terminalPresentationDisabled; }
+        }
+
+        public override StableId DamageableStableId
+        {
+            get { return ActorStableId; }
+        }
+
+        public override long DamageableLifecycleGeneration
+        {
+            get { return LifecycleGeneration; }
+        }
+
+        public override bool CanTakeDamage
+        {
+            get { return IsBound && IsAlive; }
+        }
+
         internal void Bind(EnemyPlacementRuntimeInstanceV1 value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
@@ -61,6 +84,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "A room enemy actor may only bind once per room presentation.");
             }
 
+            bool reactivateAfterDeath = terminalPresentationDisabled;
             legacyRelay = GetComponent<RoomOccupantTerminalRelay2D>();
             if (legacyRelay != null)
             {
@@ -70,6 +94,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
 
             runtime = value;
+            terminalPresentationDisabled = false;
+            if (reactivateAfterDeath && !gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
         }
 
         public void Unbind()
@@ -83,6 +112,63 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             legacyRelay = null;
             legacyRelayEnabled = false;
             legacyRelayStateCaptured = false;
+        }
+
+        public override void TakeHit(DamageHit2D hit)
+        {
+            if (hit == null) throw new ArgumentNullException(nameof(hit));
+            if (runtime == null)
+            {
+                throw new InvalidOperationException(
+                    "The room enemy actor is not bound to a live enemy runtime.");
+            }
+            if (hit.TargetEntityStableId != runtime.SpawnStableId
+                || hit.TargetLifecycleGeneration != runtime.LifecycleGeneration)
+            {
+                throw new InvalidOperationException(
+                    "The direct hit does not match the bound enemy lifecycle.");
+            }
+
+            EnemyRuntimeDamageResultV1 result;
+            try
+            {
+                result = runtime.ApplyDamage(
+                    new EnemyRuntimeDamageCommandV1(
+                        hit.EventStableId,
+                        hit.SourceEntityStableId,
+                        hit.SourceRunParticipantStableId,
+                        runtime.SpawnStableId,
+                        runtime.LifecycleGeneration,
+                        hit.Order,
+                        hit.ChannelValue,
+                        hit.Amount),
+                    hit.OccurredAtSeconds);
+            }
+            finally
+            {
+                if (runtime != null && !runtime.ActorState.IsActive)
+                {
+                    DisableTerminalPresentation();
+                }
+            }
+
+            if (result == null)
+            {
+                throw new InvalidOperationException(
+                    "The enemy damage authority returned no result.");
+            }
+            if (result.Status == EnemyRuntimeOperationStatusV1.Rejected)
+            {
+                throw new InvalidOperationException(
+                    "The enemy rejected a direct hit: " + result.Rejection + ".");
+            }
+            if (runtime.TerminalConsequenceFailureCount > 0)
+            {
+                Debug.LogError(
+                    "enemy-death-action-failed:"
+                    + runtime.LastTerminalConsequenceFailure,
+                    this);
+            }
         }
 
         public EnemyRuntimeDamageResultV1 ApplyDamage(
@@ -109,25 +195,17 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "Enemy terminal collision facts must match the bound actor lifecycle.");
             }
 
-            Collider2D[] colliders = GetComponentsInChildren<Collider2D>(true);
-            for (int index = 0; index < colliders.Length; index++)
-            {
-                Collider2D collider = colliders[index];
-                if (collider != null && collider.enabled)
-                {
-                    collider.enabled = false;
-                }
-            }
+            DisableTerminalPresentation();
+        }
 
-            Rigidbody2D[] bodies = GetComponentsInChildren<Rigidbody2D>(true);
-            for (int index = 0; index < bodies.Length; index++)
-            {
-                Rigidbody2D body = bodies[index];
-                if (body == null) continue;
-                body.linearVelocity = Vector2.zero;
-                body.angularVelocity = 0f;
-                body.simulated = false;
-            }
+        private void DisableTerminalPresentation()
+        {
+            if (terminalPresentationDisabled) return;
+            terminalPresentationDisabled = true;
+
+            // An inactive GameObject receives no Update, FixedUpdate, rendering, or physics work.
+            // The room spawner can still retain the object reference and reactivate it on the next bind.
+            gameObject.SetActive(false);
         }
     }
 }

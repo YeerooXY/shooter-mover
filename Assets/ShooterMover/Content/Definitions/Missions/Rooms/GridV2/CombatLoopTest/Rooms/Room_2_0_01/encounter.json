@@ -1,1 +1,20 @@
-{}
+{
+  "schema_version": 2,
+  "room": "room.combat-loop-double",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {
+        "door_id": "door.combat-loop-double-west"
+      },
+      "open_when": "room-complete"
+    },
+    {
+      "match": {
+        "door_id": "door.combat-loop-double-exit"
+      },
+      "open_when": "room-complete"
+    }
+  ]
+}
