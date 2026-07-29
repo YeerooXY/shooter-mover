@@ -578,7 +578,7 @@ namespace ShooterMover.Application.Crafting
                 target.CategoryId,
                 target.FamilyId,
                 target.DisplayName,
-                target.RuntimeWeaponReferenceId,
+                target.RuntimeGunReferenceId,
                 InclusiveIntRange.Create(minimumItemLevel, maximumItemLevel),
                 maximumSlots,
                 target.QualityTiers,

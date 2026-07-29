@@ -1,0 +1,19 @@
+{
+  "room": "room.level-1-middle",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {
+        "door_id": "door.level-1-middle-west"
+      },
+      "open_when": "room-complete"
+    },
+    {
+      "match": {
+        "door_id": "door.level-1-middle-east"
+      },
+      "open_when": "room-complete"
+    }
+  ]
+}

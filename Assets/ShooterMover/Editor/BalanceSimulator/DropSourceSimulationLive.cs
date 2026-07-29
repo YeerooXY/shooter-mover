@@ -64,8 +64,8 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                 throw new ArgumentNullException(nameof(request));
             }
 
-            RewardSourceProfile source =
-                RewardSourceCatalog.Get(
+            LootSourceProfile source =
+                LootSourceCatalog.Get(
                     request.SourceProfileReferenceId);
             RewardProfileResolution resolution = profileResolver.Resolve(
                 request.SourceProfileReferenceId,

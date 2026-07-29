@@ -4,9 +4,9 @@ using ShooterMover.Domain.Enemies.Catalog;
 
 namespace ShooterMover.EnemyRuntimeComposition
 {
-    public static class BuiltInEnemyLivePolicyRegistry
+    public static class BuiltInEnemyRules
     {
-        public static EnemyLivePolicyRegistry Create()
+        public static EnemyRules Create()
         {
             StableId lockedAim = StableId.Parse("enemy-aim.locked-standard");
             var movementPolicy = new DecisionMovementLivePolicy();
@@ -16,7 +16,7 @@ namespace ShooterMover.EnemyRuntimeComposition
             var aimPolicy = new LockedEnemyTargetingAimPolicy();
             var attackAdapter = new RequestEnemyAttackCapabilityBridge();
 
-            return new EnemyLivePolicyRegistry(
+            return new EnemyRules(
                 new[]
                 {
                     Movement("enemy-movement.mobile-positioning", 3.5d, 12d, 360d,
@@ -62,12 +62,12 @@ namespace ShooterMover.EnemyRuntimeComposition
                 });
         }
 
-        public static EnemyPlacementLiveFactory CreateFactory(
+        public static EnemyFactory CreateFactory(
             IRoomContentObjectCatalog roomObjects,
             EnemyCatalog enemyCatalog,
             EnemyLiveDownstreamPorts downstream)
         {
-            return new EnemyPlacementLiveFactory(
+            return new EnemyFactory(
                 roomObjects,
                 enemyCatalog,
                 Create(),

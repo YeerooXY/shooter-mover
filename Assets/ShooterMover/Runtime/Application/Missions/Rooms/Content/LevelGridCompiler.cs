@@ -5,7 +5,7 @@ using System.Globalization;
 namespace ShooterMover.Application.Missions.Rooms.Content
 {
     /// <summary>
-    /// Immutable in-memory view of one exported Level Grid V2 folder. Runtime code consumes the
+    /// Immutable in-memory view of one exported Level Level folder. Runtime code consumes the
     /// compiled Unity asset; only editor/build-time code is expected to populate this package.
     /// </summary>
     public sealed class LevelGridSourcePackage
@@ -21,15 +21,15 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 string key = NormalizePath(pair.Key);
                 if (string.IsNullOrEmpty(key))
                 {
-                    throw new ArgumentException("A Level Grid V2 document path is required.", nameof(documents));
+                    throw new ArgumentException("A Level Level document path is required.", nameof(documents));
                 }
                 if (pair.Value == null)
                 {
-                    throw new ArgumentException("Level Grid V2 document content cannot be null: " + key, nameof(documents));
+                    throw new ArgumentException("Level Level document content cannot be null: " + key, nameof(documents));
                 }
                 if (this.documents.ContainsKey(key))
                 {
-                    throw new ArgumentException("Duplicate Level Grid V2 document path: " + key, nameof(documents));
+                    throw new ArgumentException("Duplicate Level Level document path: " + key, nameof(documents));
                 }
                 this.documents.Add(key, pair.Value);
             }
@@ -109,7 +109,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             catch (Exception exception)
             {
                 if (IsFatal(exception)) throw;
-                return Failure(null, "level-grid-v2-invalid", "$", exception.GetType().Name + ": " + exception.Message);
+                return Failure(null, "level-level-1-invalid", "$", exception.GetType().Name + ": " + exception.Message);
             }
         }
 
@@ -185,7 +185,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 List<RoomIndexDto> index = RequireList(level.Rooms, "$.level.rooms");
                 if (index.Count == 0)
                 {
-                    throw Error("level-grid-v2-room-list-empty", "$.level.rooms", "A compiled level requires at least one room.");
+                    throw Error("level-level-1-room-list-empty", "$.level.rooms", "A compiled level requires at least one room.");
                 }
 
                 var coordinateSlots = new HashSet<string>(StringComparer.Ordinal);
@@ -197,29 +197,29 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     string roomId = RequireText(entry.RoomId, path + ".room_id");
                     if (rooms.ContainsKey(roomId))
                     {
-                        throw Error("level-grid-v2-room-id-duplicate", path + ".room_id", "Duplicate room stable ID: " + roomId);
+                        throw Error("level-level-1-room-id-duplicate", path + ".room_id", "Duplicate room stable ID: " + roomId);
                     }
                     int[] coordinate = RequireVector(entry.GridPosition, path + ".grid_position");
                     if (entry.Slot <= 0)
                     {
-                        throw Error("level-grid-v2-room-slot-invalid", path + ".slot", "Room slot must be at least 1.");
+                        throw Error("level-level-1-room-slot-invalid", path + ".slot", "Room slot must be at least 1.");
                     }
                     string coordinateSlot = coordinate[0].ToString(CultureInfo.InvariantCulture)
                         + "," + coordinate[1].ToString(CultureInfo.InvariantCulture)
                         + ":" + entry.Slot.ToString(CultureInfo.InvariantCulture);
                     if (!coordinateSlots.Add(coordinateSlot))
                     {
-                        throw Error("level-grid-v2-coordinate-slot-duplicate", path, "Duplicate coordinate+slot: " + coordinateSlot);
+                        throw Error("level-level-1-coordinate-slot-duplicate", path, "Duplicate coordinate+slot: " + coordinateSlot);
                     }
                     string folder = RequireSafeFolder(entry.Folder, path + ".folder");
                     if (!folders.Add(folder))
                     {
-                        throw Error("level-grid-v2-folder-duplicate", path + ".folder", "Room folder is referenced more than once: " + folder);
+                        throw Error("level-level-1-folder-duplicate", path + ".folder", "Room folder is referenced more than once: " + folder);
                     }
                     string expectedFolder = "Room_" + coordinate[0] + "_" + coordinate[1] + "_" + entry.Slot.ToString("00", CultureInfo.InvariantCulture);
                     if (!string.Equals(folder, expectedFolder, StringComparison.OrdinalIgnoreCase))
                     {
-                        throw Error("level-grid-v2-folder-coordinate-mismatch", path + ".folder", "Folder must match authored coordinate+slot: " + expectedFolder);
+                        throw Error("level-level-1-folder-coordinate-mismatch", path + ".folder", "Folder must match authored coordinate+slot: " + expectedFolder);
                     }
 
                     string root = "Rooms/" + folder + "/";
@@ -232,14 +232,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     RequireSameVector(coordinate, room.GridPosition, root + "room.json.grid_position");
                     if (room.Slot != entry.Slot)
                     {
-                        throw Error("level-grid-v2-room-slot-mismatch", root + "room.json.slot", "Room index and room sidecar slot differ.");
+                        throw Error("level-level-1-room-slot-mismatch", root + "room.json.slot", "Room index and room sidecar slot differ.");
                     }
                     LiveBoundsDto bounds = Require(room.RuntimeBounds, root + "room.json.runtime_bounds");
                     double[] center = RequireFiniteVector(bounds.Center, root + "room.json.runtime_bounds.center");
                     double[] size = RequireFiniteVector(bounds.Size, root + "room.json.runtime_bounds.size");
                     if (size[0] <= 1d || size[1] <= 1d)
                     {
-                        throw Error("level-grid-v2-room-bounds-invalid", root + "room.json.runtime_bounds.size", "Runtime bounds must be larger than the arrival safety margins.");
+                        throw Error("level-level-1-room-bounds-invalid", root + "room.json.runtime_bounds.size", "Runtime bounds must be larger than the arrival safety margins.");
                     }
 
                     RoomSource roomSource = new RoomSource(entry, room, root, center, size);

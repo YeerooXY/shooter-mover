@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using ShooterMover.Application.Flow.Production;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Flow.Game;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
@@ -114,12 +114,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                         character.CharacterInstanceStableId,
                         slotIndex == beforeCharacter.SlotIndex
                             ? graph.SaveAdapters
-                            : Array.Empty<ISaveComponentBridge>()));
+                            : Array.Empty<ISavePart>()));
                 }
 
                 var restore = new PlayerAccountRestoreFlow(
                     validateAggregate: snapshot =>
-                        PlayerAccountComponentSemantics.Validate(snapshot));
+                        GameSaveRules.Validate(snapshot));
                 PlayerAccountRestoreResult restored = restore.Restore(
                     beforeAccount,
                     bindings);
@@ -163,12 +163,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             CharacterInstanceSnapshot durableCharacter,
             CharacterLiveGraph graph)
         {
-            IReadOnlyList<SaveComponentSnapshot> exported =
+            IReadOnlyList<SavePartSnapshot> exported =
                 PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             for (int index = 0; index < exported.Count; index++)
             {
-                SaveComponentSnapshot durable;
+                SavePartSnapshot durable;
                 if (!durableCharacter.TryGetComponent(
                         exported[index].ComponentStableId,
                         out durable)
@@ -191,7 +191,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
         private static string ExportComponentFingerprint(
             CharacterLiveGraph graph)
         {
-            IReadOnlyList<SaveComponentSnapshot> components =
+            IReadOnlyList<SavePartSnapshot> components =
                 PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             var parts = new List<string>(components.Count);

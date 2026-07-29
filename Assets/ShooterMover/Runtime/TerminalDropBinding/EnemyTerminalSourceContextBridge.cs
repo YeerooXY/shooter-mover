@@ -3,7 +3,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.EnemyRuntimeComposition;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Immutable projection of the source/run facts that are owned by production
@@ -57,17 +57,17 @@ namespace ShooterMover.TerminalDropBinding
     /// The only built-in complete enemy terminal-drop adapter. It combines the internal
     /// definition/profile projection with production-owned Run Session lifecycle context.
     /// </summary>
-    public sealed class ContextResolvedEnemyDeathTerminalDropFactBridge :
-        ITerminalDropFactBridge
+    public sealed class ContextResolvedEnemyDeathLootDropFactBridge :
+        ILootDropFactBridge
     {
-        private readonly EnemyDeathTerminalDropDefinitionProjector definitionProjector;
+        private readonly EnemyDeathLootDropDefinitionProjector definitionProjector;
         private readonly IEnemyTerminalSourceContextResolver sourceContexts;
 
-        public ContextResolvedEnemyDeathTerminalDropFactBridge(
+        public ContextResolvedEnemyDeathLootDropFactBridge(
             EnemyCatalog catalog,
             IEnemyTerminalSourceContextResolver sourceContexts)
         {
-            definitionProjector = new EnemyDeathTerminalDropDefinitionProjector(
+            definitionProjector = new EnemyDeathLootDropDefinitionProjector(
                 catalog ?? throw new ArgumentNullException(nameof(catalog)));
             this.sourceContexts = sourceContexts
                 ?? throw new ArgumentNullException(nameof(sourceContexts));
@@ -75,40 +75,40 @@ namespace ShooterMover.TerminalDropBinding
 
         public StableId FactKindStableId
         {
-            get { return TerminalDropFactKindIds.EnemyDeath; }
+            get { return LootDropFactKindIds.EnemyDeath; }
         }
 
         public Type FactType { get { return typeof(EnemyDeathFact); } }
 
-        public TerminalDropAdaptationResult Adapt(object terminalFact)
+        public LootDropAdaptationResult Adapt(object terminalFact)
         {
             EnemyDeathFact fact = terminalFact as EnemyDeathFact;
             if (fact == null)
             {
-                return TerminalDropAdaptationResult.Rejected(
-                    TerminalDropRejectionCode.InvalidTerminalFact,
+                return LootDropAdaptationResult.Rejected(
+                    LootDropRejectionCode.InvalidTerminalFact,
                     "enemy-death-fact-type-mismatch");
             }
 
-            EnemyDeathTerminalDropDefinitionViewResult definitionResult;
+            EnemyDeathLootDropDefinitionViewResult definitionResult;
             try
             {
                 definitionResult = definitionProjector.Project(fact);
             }
             catch (Exception exception)
             {
-                return TerminalDropAdaptationResult.Rejected(
-                    TerminalDropRejectionCode.InvalidTerminalFact,
+                return LootDropAdaptationResult.Rejected(
+                    LootDropRejectionCode.InvalidTerminalFact,
                     "enemy-definition-projection-exception:"
                         + exception.GetType().Name + ":" + exception.Message);
             }
             if (definitionResult == null || !definitionResult.Succeeded)
             {
                 return definitionResult == null
-                    ? TerminalDropAdaptationResult.Rejected(
-                        TerminalDropRejectionCode.InvalidTerminalFact,
+                    ? LootDropAdaptationResult.Rejected(
+                        LootDropRejectionCode.InvalidTerminalFact,
                         "enemy-definition-projector-returned-null")
-                    : TerminalDropAdaptationResult.Rejected(
+                    : LootDropAdaptationResult.Rejected(
                         definitionResult.RejectionCode,
                         definitionResult.Diagnostic);
             }
@@ -122,15 +122,15 @@ namespace ShooterMover.TerminalDropBinding
             }
             catch (Exception exception)
             {
-                return TerminalDropAdaptationResult.Rejected(
-                    TerminalDropRejectionCode.MissingSourceContext,
+                return LootDropAdaptationResult.Rejected(
+                    LootDropRejectionCode.MissingSourceContext,
                     "enemy-source-context-exception:"
                         + exception.GetType().Name + ":" + exception.Message);
             }
             if (!resolved || context == null)
             {
-                return TerminalDropAdaptationResult.Rejected(
-                    TerminalDropRejectionCode.MissingSourceContext,
+                return LootDropAdaptationResult.Rejected(
+                    LootDropRejectionCode.MissingSourceContext,
                     string.IsNullOrWhiteSpace(diagnostic)
                         ? "enemy-source-context-missing"
                         : diagnostic);
@@ -142,15 +142,15 @@ namespace ShooterMover.TerminalDropBinding
                 || context.SourcePlacementStableId != fact.Identity.PlacementStableId
                 || context.SourceLifecycleGeneration != fact.LifecycleGeneration)
             {
-                return TerminalDropAdaptationResult.Rejected(
-                    TerminalDropRejectionCode.InvalidTerminalFact,
+                return LootDropAdaptationResult.Rejected(
+                    LootDropRejectionCode.InvalidTerminalFact,
                     "enemy-source-context-does-not-match-death-fact");
             }
 
-            EnemyDeathTerminalDropDefinitionView projection =
+            EnemyDeathLootDropDefinitionView projection =
                 definitionResult.Projection;
-            return TerminalDropAdaptationResult.Accepted(
-                new TerminalDropSourceFact(
+            return LootDropAdaptationResult.Accepted(
+                new LootDropSourceFact(
                     FactKindStableId,
                     fact.DeathEventStableId,
                     fact.TriggeringEventStableId,

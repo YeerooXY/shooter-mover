@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "room_id": "room.level-1-middle",
+  "doors": [
+    {
+      "door_id": "door.level-1-middle-west",
+      "side": "West",
+      "placement_mode": "Fixed",
+      "current_local_position": [
+        -11,
+        0
+      ],
+      "traversable": true,
+      "visible_on_map": true,
+      "runtime_object": "door.room-standard"
+    },
+    {
+      "door_id": "door.level-1-middle-east",
+      "side": "East",
+      "placement_mode": "Fixed",
+      "current_local_position": [
+        11,
+        0
+      ],
+      "traversable": true,
+      "visible_on_map": true,
+      "runtime_object": "door.room-standard"
+    }
+  ]
+}

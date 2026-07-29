@@ -55,11 +55,11 @@ namespace ShooterMover.Content.Definitions.Equipment
     public sealed class EquipmentDefinitionAsset : ScriptableObject
     {
         [SerializeField] private string definitionId = string.Empty;
-        [SerializeField] private string categoryId = "equipment-category.weapon";
+        [SerializeField] private string categoryId = "equipment-category.gun";
         [SerializeField] private string familyId = string.Empty;
         [SerializeField] private string displayName = string.Empty;
-        [Tooltip("Only weapon equipment uses this field. It references an existing weapon.* package identity; it never duplicates firing behavior.")]
-        [SerializeField] private string runtimeWeaponReferenceId = string.Empty;
+        [Tooltip("Only gun equipment uses this field. It references an existing gun.* package identity; it never duplicates firing behavior.")]
+        [SerializeField] private string runtimeGunReferenceId = string.Empty;
         [Min(1)] [SerializeField] private int minimumItemLevel = 1;
         [Min(1)] [SerializeField] private int maximumItemLevel = 1;
         [Min(0)] [SerializeField] private int maximumAugmentSlots;
@@ -69,7 +69,7 @@ namespace ShooterMover.Content.Definitions.Equipment
         public string DefinitionId { get { return definitionId; } }
         public string CategoryId { get { return categoryId; } }
         public string FamilyId { get { return familyId; } }
-        public string RuntimeWeaponReferenceId { get { return runtimeWeaponReferenceId; } }
+        public string RuntimeGunReferenceId { get { return runtimeGunReferenceId; } }
         public int MaximumAugmentSlots { get { return maximumAugmentSlots; } }
 
         public EquipmentAuthoringConversionResult<EquipmentDefinition> BuildDefinition()
@@ -78,7 +78,7 @@ namespace ShooterMover.Content.Definitions.Equipment
             StableId parsedDefinitionId = ParseRequired(definitionId, "definition_id", errors);
             StableId parsedCategoryId = ParseRequired(categoryId, "category_id", errors);
             StableId parsedFamilyId = ParseRequired(familyId, "family_id", errors);
-            StableId parsedRuntimeReference = ParseOptional(runtimeWeaponReferenceId, "runtime_weapon_reference_id", errors);
+            StableId parsedRuntimeReference = ParseOptional(runtimeGunReferenceId, "runtime_gun_reference_id", errors);
 
             List<EquipmentQualityTier> parsedQualities = new List<EquipmentQualityTier>();
             if (qualityTiers == null)

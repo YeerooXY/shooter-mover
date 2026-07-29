@@ -30,7 +30,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     {
         private const string VersionsFolderName = "Versions";
         private const string RuntimeStagesFolderName = "__RuntimeStages";
-        private const string PublishingMarkerFileName = ".level-grid-v2-publishing";
+        private const string PublishingMarkerFileName = ".level-level-1-publishing";
 
         private sealed class DestinationSnapshot
         {
@@ -57,7 +57,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             public PublishedVersion(
                 string folderPath,
                 TextAsset manifest,
-                RoomContentJsonDocumentAsset2D[] documents,
+                RoomDocument[] documents,
                 bool createdByTransaction)
             {
                 FolderPath = folderPath;
@@ -68,11 +68,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             public string FolderPath { get; }
             public TextAsset Manifest { get; }
-            public RoomContentJsonDocumentAsset2D[] Documents { get; }
+            public RoomDocument[] Documents { get; }
             public bool CreatedByTransaction { get; }
         }
 
-        private static JsonRoomContentDefinition2D PublishCompiledPackage(
+        private static RoomFile PublishCompiledPackage(
             RoomContentJsonPackage package,
             string generatedAssetFolder,
             string roomContentAssetPath,
@@ -95,7 +95,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     generatedAssetFolder,
                     transactionId,
                     faultInjector);
-                JsonRoomContentDefinition2D stagedAsset = CreateAndValidateRuntimeStage(
+                RoomFile stagedAsset = CreateAndValidateRuntimeStage(
                     runtimeStageAssetPath,
                     roomContentAssetPath,
                     version.Manifest,
@@ -113,14 +113,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 AssetDatabase.ImportAsset(
                     runtimeStageAssetPath,
                     ImportAssetOptions.ForceSynchronousImport);
-                stagedAsset = AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(
+                stagedAsset = AssetDatabase.LoadAssetAtPath<RoomFile>(
                     runtimeStageAssetPath);
                 ValidateRuntimeAsset(stagedAsset, runtimeStageAssetPath);
 
                 Inject(
                     faultInjector,
                     LevelGridAssetCompilerPublishStep.BeforeAuthoritativeAssetSwitch);
-                JsonRoomContentDefinition2D published = ReplaceAuthoritativeAssetAtomically(
+                RoomFile published = ReplaceAuthoritativeAssetAtomically(
                     runtimeStageAssetPath,
                     roomContentAssetPath,
                     destinationSnapshot,
@@ -248,18 +248,18 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             RequireTextAssetContent(manifest, manifestPath, package.ManifestJson);
 
             List<string> keys = SortedKeys(package);
-            var documents = new RoomContentJsonDocumentAsset2D[keys.Count];
+            var documents = new RoomDocument[keys.Count];
             for (int index = 0; index < keys.Count; index++)
             {
                 string path = DocumentAssetPath(folderPath, index, keys[index]);
                 TextAsset text = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
                 RequireTextAssetContent(text, path, package.Documents[keys[index]]);
-                var entry = new RoomContentJsonDocumentAsset2D();
+                var entry = new RoomDocument();
                 entry.ConfigureCompiledAsset(keys[index], text);
                 documents[index] = entry;
             }
 
-            var candidate = ScriptableObject.CreateInstance<JsonRoomContentDefinition2D>();
+            var candidate = ScriptableObject.CreateInstance<RoomFile>();
             try
             {
                 candidate.ConfigureCompiledAssets(manifest, documents);
@@ -273,14 +273,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return new PublishedVersion(folderPath, manifest, documents, createdByTransaction);
         }
 
-        private static JsonRoomContentDefinition2D CreateAndValidateRuntimeStage(
+        private static RoomFile CreateAndValidateRuntimeStage(
             string runtimeStageAssetPath,
             string roomContentAssetPath,
             TextAsset manifest,
-            RoomContentJsonDocumentAsset2D[] documents)
+            RoomDocument[] documents)
         {
             EnsureAssetFolder(Path.GetDirectoryName(runtimeStageAssetPath).Replace('\\', '/'));
-            var stage = ScriptableObject.CreateInstance<JsonRoomContentDefinition2D>();
+            var stage = ScriptableObject.CreateInstance<RoomFile>();
             stage.name = Path.GetFileNameWithoutExtension(roomContentAssetPath);
             stage.ConfigureCompiledAssets(manifest, documents);
             AssetDatabase.CreateAsset(stage, runtimeStageAssetPath);
@@ -290,13 +290,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 runtimeStageAssetPath,
                 ImportAssetOptions.ForceSynchronousImport);
 
-            JsonRoomContentDefinition2D imported =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(runtimeStageAssetPath);
+            RoomFile imported =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(runtimeStageAssetPath);
             ValidateRuntimeAsset(imported, runtimeStageAssetPath);
             return imported;
         }
 
-        private static JsonRoomContentDefinition2D ReplaceAuthoritativeAssetAtomically(
+        private static RoomFile ReplaceAuthoritativeAssetAtomically(
             string stagedAssetPath,
             string destinationAssetPath,
             DestinationSnapshot destinationSnapshot,
@@ -335,8 +335,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 AssetDatabase.ImportAsset(
                     destinationAssetPath,
                     ImportAssetOptions.ForceSynchronousImport);
-                JsonRoomContentDefinition2D published =
-                    AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(
+                RoomFile published =
+                    AssetDatabase.LoadAssetAtPath<RoomFile>(
                         destinationAssetPath);
                 ValidateRuntimeAsset(published, destinationAssetPath);
                 TryDeleteFile(backupPath);
@@ -358,7 +358,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 catch (Exception rollbackFailure)
                 {
                     throw new AggregateException(
-                        "Level Grid V2 publication failed and rollback could not be verified.",
+                        "Level Level publication failed and rollback could not be verified.",
                         originalFailure,
                         rollbackFailure);
                 }
@@ -395,8 +395,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 AssetDatabase.ImportAsset(
                     destinationAssetPath,
                     ImportAssetOptions.ForceSynchronousImport);
-                JsonRoomContentDefinition2D restored =
-                    AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(
+                RoomFile restored =
+                    AssetDatabase.LoadAssetAtPath<RoomFile>(
                         destinationAssetPath);
                 ValidateRuntimeAsset(restored, destinationAssetPath + " (rolled back)");
                 return;
@@ -431,13 +431,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                         + "to replace it because its stable GUID cannot be preserved: "
                         + roomContentAssetPath);
                 }
-                JsonRoomContentDefinition2D existing =
-                    AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(roomContentAssetPath);
+                RoomFile existing =
+                    AssetDatabase.LoadAssetAtPath<RoomFile>(roomContentAssetPath);
                 if (existing == null)
                 {
                     throw new InvalidOperationException(
                         "The authoritative destination already exists but is not a loadable "
-                        + nameof(JsonRoomContentDefinition2D)
+                        + nameof(RoomFile)
                         + ": "
                         + roomContentAssetPath);
                 }
@@ -496,7 +496,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void ValidateRuntimeAsset(
-            JsonRoomContentDefinition2D asset,
+            RoomFile asset,
             string diagnosticPath)
         {
             if (asset == null)
@@ -520,7 +520,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 && validation.Issues.Count > 0
                 ? validation.Issues[0]
                 : new RoomContentImportIssue(
-                    "level-grid-v2-runtime-validation-missing",
+                    "level-level-1-runtime-validation-missing",
                     "$",
                     fallbackMessage);
             throw new InvalidOperationException(

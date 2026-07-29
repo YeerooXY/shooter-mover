@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Persistence.Accounts;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Persistence.Accounts;
 
@@ -15,13 +15,13 @@ namespace ShooterMover.Application.Persistence.Composition
 {
     /// <summary>
     /// One selected-character runtime graph. It composes existing subsystem authorities
-    /// and their merged save-component adapters; it owns no replacement subsystem truth.
+    /// and their merged save-part adapters; it owns no replacement subsystem truth.
     /// </summary>
     public interface ICharacterLiveGraph : IDisposable
     {
         CharacterInstanceSnapshot Character { get; }
 
-        IReadOnlyList<ISaveComponentBridge> SaveAdapters { get; }
+        IReadOnlyList<ISavePart> SaveAdapters { get; }
 
         bool IsDisposed { get; }
 
@@ -94,17 +94,17 @@ namespace ShooterMover.Application.Persistence.Composition
             requiredCharacterComponentIds =
                 new ReadOnlyCollection<StableId>(new List<StableId>
                 {
-                    KnownSaveComponentDefinitions.PlayerExperience()
+                    GameSaveParts.PlayerExperience()
                         .ComponentStableId,
-                    KnownSaveComponentDefinitions.PlayerHoldings()
+                    GameSaveParts.PlayerHoldings()
                         .ComponentStableId,
-                    KnownSaveComponentDefinitions.MoneyWallet()
+                    GameSaveParts.MoneyWallet()
                         .ComponentStableId,
-                    KnownSaveComponentDefinitions.ScrapWallet()
+                    GameSaveParts.ScrapWallet()
                         .ComponentStableId,
-                    KnownSaveComponentDefinitions.RankedSkillAllocation()
+                    GameSaveParts.RankedSkillAllocation()
                         .ComponentStableId,
-                    KnownSaveComponentDefinitions.ExactInstanceLoadout()
+                    GameSaveParts.ExactInstanceLoadout()
                         .ComponentStableId,
                 });
         private static readonly ConditionalWeakTable<
@@ -128,7 +128,7 @@ namespace ShooterMover.Application.Persistence.Composition
             PlayerAccountSaveState accountAuthority,
             ICharacterLiveGraphFactory runtimeFactory,
             Func<PlayerAccountSnapshot, PlayerAccountStoreResult> saveAccount,
-            Func<PlayerAccountSnapshot, SaveComponentValidationResult>
+            Func<PlayerAccountSnapshot, SavePartValidationResult>
                 validateAggregate = null)
         {
             this.accountAuthority = accountAuthority
@@ -140,7 +140,7 @@ namespace ShooterMover.Application.Persistence.Composition
             restoreCoordinator = new PlayerAccountRestoreFlow(
                 validateAggregate: validateAggregate
                     ?? (snapshot =>
-                        PlayerAccountComponentSemantics.Validate(snapshot)));
+                        GameSaveRules.Validate(snapshot)));
 
             lock (coordinatorGate)
             {
@@ -340,7 +340,7 @@ namespace ShooterMover.Application.Persistence.Composition
             try
             {
                 StableId exactCharacterId =
-                    LegacyCharacterProfileMigration.ExactCharacterId(
+                    SaveMigration.ExactCharacterId(
                         accountAuthority.Current.AccountStableId,
                         profile);
                 candidate = starterFactory.CreateStarter(
@@ -350,7 +350,7 @@ namespace ShooterMover.Application.Persistence.Composition
                     profile.DisplayName,
                     profile.LegacyContext);
 
-                IReadOnlyList<SaveComponentSnapshot> components =
+                IReadOnlyList<SavePartSnapshot> components =
                     PlayerAccountRestoreFlow.ExportComponents(
                         candidate.SaveAdapters);
                 createdCharacter = new CharacterInstanceSnapshot(
@@ -531,7 +531,7 @@ namespace ShooterMover.Application.Persistence.Composition
                     beforeCharacter);
             }
 
-            IReadOnlyList<SaveComponentSnapshot> exported;
+            IReadOnlyList<SavePartSnapshot> exported;
             try
             {
                 exported = PlayerAccountRestoreFlow.ExportComponents(
@@ -545,11 +545,11 @@ namespace ShooterMover.Application.Persistence.Composition
                     beforeCharacter);
             }
 
-            var changed = new List<SaveComponentSnapshot>();
+            var changed = new List<SavePartSnapshot>();
             for (int index = 0; index < exported.Count; index++)
             {
-                SaveComponentSnapshot component = exported[index];
-                SaveComponentSnapshot existing;
+                SavePartSnapshot component = exported[index];
+                SavePartSnapshot existing;
                 if (!beforeCharacter.TryGetComponent(
                         component.ComponentStableId,
                         out existing)
@@ -579,7 +579,7 @@ namespace ShooterMover.Application.Persistence.Composition
 
             for (int index = 0; index < changed.Count; index++)
             {
-                SaveComponentSnapshot component = changed[index];
+                SavePartSnapshot component = changed[index];
                 PlayerAccountSaveResult applied = accountAuthority.Apply(
                     PlayerAccountSaveCommand.UpsertCharacterComponent(
                         ComponentOperationId(
@@ -775,7 +775,7 @@ namespace ShooterMover.Application.Persistence.Composition
                     character.CharacterInstanceStableId,
                     slotIndex == selectedSlotIndex
                         ? selectedGraph.SaveAdapters
-                        : Array.Empty<ISaveComponentBridge>()));
+                        : Array.Empty<ISavePart>()));
             }
             return bindings;
         }
@@ -827,7 +827,7 @@ namespace ShooterMover.Application.Persistence.Composition
 
         private static StableId ComponentOperationId(
             StableId saveOperationStableId,
-            SaveComponentSnapshot component,
+            SavePartSnapshot component,
             int index)
         {
             return DerivedOperationId(

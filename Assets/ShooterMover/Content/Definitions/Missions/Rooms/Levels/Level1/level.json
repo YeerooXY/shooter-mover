@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "level_id": "level.level-1",
+  "authoring_state": "validated-playable",
+  "runtime_import_status": "compiler-ready",
+  "start_room_id": "room.level-1-start",
+  "final_exit": {
+    "room_id": "room.level-1-final",
+    "door_id": "door.level-1-final-exit"
+  },
+  "room_ids": [
+    "room.level-1-start",
+    "room.level-1-middle",
+    "room.level-1-final"
+  ],
+  "rooms": [
+    {
+      "room_id": "room.level-1-start",
+      "grid_position": [
+        0,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_0_0_01"
+    },
+    {
+      "room_id": "room.level-1-middle",
+      "grid_position": [
+        1,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_1_0_01"
+    },
+    {
+      "room_id": "room.level-1-final",
+      "grid_position": [
+        2,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_2_0_01"
+    }
+  ]
+}

@@ -34,7 +34,7 @@ namespace ShooterMover.Domain.Economy.Scrap
         public static readonly StableId CraftingSpendReason =
             StableId.Create("scrap-reason", "crafting-spend");
 
-        public static readonly StableId RewardSourceKind =
+        public static readonly StableId LootSourceKind =
             StableId.Create("scrap-source", "reward");
 
         public static readonly StableId StrongboxSourceKind =
@@ -52,7 +52,7 @@ namespace ShooterMover.Domain.Economy.Scrap
         {
             if (reasonStableId == RewardGrantReason)
             {
-                expectedSourceKind = RewardSourceKind;
+                expectedSourceKind = LootSourceKind;
                 return true;
             }
 

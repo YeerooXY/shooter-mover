@@ -13,9 +13,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     /// </summary>
     public sealed class LevelGridProblemsWindow : EditorWindow
     {
-        private static LevelDesignSceneAuthoringRoot2D currentRoot;
+        private static LevelDraft currentRoot;
 
-        public static void Open(LevelDesignSceneAuthoringRoot2D root)
+        public static void Open(LevelDraft root)
         {
             if (root == null)
             {
@@ -31,12 +31,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             priority = 230)]
         private static void OpenFromSelection()
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            LevelDraft root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
                     "Level Grid Problems",
-                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "Select an object below a LevelDraft.",
                     "OK");
                 return;
             }
@@ -59,17 +59,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUI.EndDisabledGroup();
         }
 
-        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
+        private static LevelDraft ResolveSelectedRoot()
         {
             GameObject selected = Selection.activeGameObject;
             return selected == null
                 ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : selected.GetComponentInParent<LevelDraft>();
         }
     }
 
     /// <summary>
-    /// Compatibility menu callbacks. They resolve context and delegate every Grid V2 operation to
+    /// Compatibility menu callbacks. They resolve context and delegate every Level operation to
     /// LevelGridEditorOperations; they do not own topology mutation or validation.
     /// </summary>
     public static class LevelGridAuthoringMenu
@@ -96,9 +96,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static void DeleteSelectedRoom()
         {
             GameObject selected = Selection.activeGameObject;
-            LevelRoomAuthoring2D room = selected == null
+            LevelRoom room = selected == null
                 ? null
-                : selected.GetComponentInParent<LevelRoomAuthoring2D>();
+                : selected.GetComponentInParent<LevelRoom>();
             if (room == null)
             {
                 EditorUtility.DisplayDialog(
@@ -108,7 +108,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root =
+            LevelDraft root =
                 LevelGridEditorOperations.ResolveRoot(room);
             if (root == null)
             {
@@ -127,30 +127,30 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void ValidateSelected(LevelGridValidationPurpose purpose)
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            LevelDraft root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
                     "Level Grid Validation",
-                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "Select an object below a LevelDraft.",
                     "OK");
                 return;
             }
 
             LevelGridEditorOperations.Validate(root, purpose);
-            LevelDesignSceneAuthoringRoot2DEditor.LogResult(root, root.LastValidation);
-            LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
+            LevelDraftEditor.LogResult(root, root.LastValidation);
+            LevelDraftEditor.LogGridResult(
                 root,
                 root.LastGridValidation);
             LevelGridEditorWindow.OpenForRoot(root);
         }
 
-        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
+        private static LevelDraft ResolveSelectedRoot()
         {
             GameObject selected = Selection.activeGameObject;
             return selected == null
                 ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : selected.GetComponentInParent<LevelDraft>();
         }
     }
 
@@ -159,10 +159,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawDoorEndpoint(
-            LevelDoorEndpointAuthoring2D door,
+            DoorEndpoint door,
             GizmoType gizmoType)
         {
-            LevelDesignSceneAuthoringRoot2D root =
+            LevelDraft root =
                 LevelGridEditorOperations.ResolveRoot(door);
             bool connected = LevelGridEditorOperations.IsConnected(root, door);
             bool exactFinalExit = IsExactFinalExit(root, door);
@@ -189,7 +189,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawConnection(
-            LevelDoorLinkAuthoring2D connection,
+            DoorLink connection,
             GizmoType gizmoType)
         {
             if (connection.SourceDoor == null || connection.DestinationDoor == null)
@@ -209,8 +209,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool IsExactFinalExit(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+            LevelDraft root,
+            DoorEndpoint door)
         {
             if (root == null || door == null)
             {
@@ -225,7 +225,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool HasProductionProblem(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string doorId)
         {
             if (root == null

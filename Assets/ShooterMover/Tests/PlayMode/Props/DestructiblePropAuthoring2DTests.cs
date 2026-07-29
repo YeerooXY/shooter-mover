@@ -13,28 +13,28 @@ using UnityEngine;
 
 namespace ShooterMover.Tests.PlayMode.Props
 {
-    public sealed class DestructiblePropAuthoring2DTests
+    public sealed class BreakableSetupTests
     {
         private static readonly Type RuntimeType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructibleProp2D");
+            "ShooterMover.ContentPackages.Props.Breakables.Breakable");
         private static readonly Type AuthoringType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropAuthoring2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableSetup");
         private static readonly Type FamilyType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropFamilyDefinitionAsset");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableFamilyDefinitionAsset");
         private static readonly Type ValuesType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDefinitionValues");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableDefinitionValues");
         private static readonly Type OverridesType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropValueOverrides");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableValueOverrides");
         private static readonly Type VariantType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropVariantDefinition");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableVariantDefinition");
         private static readonly Type ShapeType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropColliderShape2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableColliderShape");
         private static readonly Type PolicyType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestroyedCollisionPolicy");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableDestroyedCollisionPolicy");
         private static readonly Type BridgeType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropRewardBridge2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableLoot");
         private static readonly Type AnimationPlayerType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestructionPlayer2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableEffects");
 
         [Test]
         public void ArbitraryNamesAndTenInstances_KeepIndependentStableIdentityAndHealth()
@@ -43,9 +43,9 @@ namespace ShooterMover.Tests.PlayMode.Props
             ScriptableObject family = null;
             try
             {
-                GameplaySceneScope2D scope = CreateScope(root);
+                GameplayScene scope = CreateScope(root);
                 family = CreateFamily(20f, Vector2.one, Vector2.zero, null, "Disable");
-                CombatHit2DBridge adapter = new CombatHit2DBridge(
+                HitResolver adapter = new HitResolver(
                     StableId.Parse("actor.test-player"));
                 List<Configured> configured = new List<Configured>();
                 for (int index = 0; index < 10; index++)
@@ -98,9 +98,9 @@ namespace ShooterMover.Tests.PlayMode.Props
             ScriptableObject family = null;
             try
             {
-                GameplaySceneScope2D scope = CreateScope(root);
+                GameplayScene scope = CreateScope(root);
                 family = CreateFamily(20f, Vector2.one, Vector2.zero, null, "Disable");
-                CombatHit2DBridge adapter = new CombatHit2DBridge(
+                HitResolver adapter = new HitResolver(
                     StableId.Parse("actor.test-player"));
                 CreateConfigured(
                     root.transform,
@@ -114,7 +114,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                 second.transform.SetParent(root.transform, false);
                 BoxCollider2D collider = second.AddComponent<BoxCollider2D>();
                 SpriteRenderer renderer = second.AddComponent<SpriteRenderer>();
-                PlacedObjectAuthoring2D placed = second.AddComponent<PlacedObjectAuthoring2D>();
+                PlacedObject placed = second.AddComponent<PlacedObject>();
                 placed.ConfigureForTests(
                     "placed.duplicate",
                     family,
@@ -151,7 +151,7 @@ namespace ShooterMover.Tests.PlayMode.Props
             try
             {
                 Sprite sprite = CreateSprite("Resolved Sprite", out texture);
-                GameplaySceneScope2D scope = CreateScope(root);
+                GameplayScene scope = CreateScope(root);
                 family = CreateFamily(
                     32f,
                     new Vector2(3.5f, 1.75f),
@@ -162,7 +162,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                     root.transform,
                     scope,
                     family,
-                    new CombatHit2DBridge(StableId.Parse("actor.test-player")),
+                    new HitResolver(StableId.Parse("actor.test-player")),
                     "Any Designer Name",
                     "placed.policy-test");
 
@@ -221,8 +221,8 @@ namespace ShooterMover.Tests.PlayMode.Props
                     new Renderer[] { renderer },
                     disablePolicy);
 
-                RewardSourceAuthoring2D source =
-                    obstacle.AddComponent<RewardSourceAuthoring2D>();
+                LootSourceSetup source =
+                    obstacle.AddComponent<LootSourceSetup>();
                 object bridge = obstacle.AddComponent(BridgeType);
                 Invoke(bridge, "Configure", runtime, source);
                 HitMessage hit = CreateHit(
@@ -287,9 +287,9 @@ namespace ShooterMover.Tests.PlayMode.Props
 
         private static Configured CreateConfigured(
             Transform parent,
-            GameplaySceneScope2D scope,
+            GameplayScene scope,
             ScriptableObject family,
-            CombatHit2DBridge adapter,
+            HitResolver adapter,
             string objectName,
             string placedId)
         {
@@ -297,7 +297,7 @@ namespace ShooterMover.Tests.PlayMode.Props
             gameObject.transform.SetParent(parent, false);
             BoxCollider2D collider = gameObject.AddComponent<BoxCollider2D>();
             SpriteRenderer renderer = gameObject.AddComponent<SpriteRenderer>();
-            PlacedObjectAuthoring2D placed = gameObject.AddComponent<PlacedObjectAuthoring2D>();
+            PlacedObject placed = gameObject.AddComponent<PlacedObject>();
             placed.ConfigureForTests(
                 placedId,
                 family,
@@ -316,7 +316,7 @@ namespace ShooterMover.Tests.PlayMode.Props
 
         private static void ConfigureAuthoring(
             object authoring,
-            PlacedObjectAuthoring2D placed,
+            PlacedObject placed,
             ScriptableObject family,
             BoxCollider2D collider,
             SpriteRenderer renderer)
@@ -336,14 +336,14 @@ namespace ShooterMover.Tests.PlayMode.Props
                     renderer.transform,
                     6d,
                     null,
-                    RewardSourceOverrideAuthoring.Inherit("reward-override.test-prop"),
+                    LootSourceOverrideAuthoring.Inherit("reward-override.test-prop"),
                     null
                 });
         }
 
-        private static GameplaySceneScope2D CreateScope(GameObject root)
+        private static GameplayScene CreateScope(GameObject root)
         {
-            GameplaySceneScope2D scope = root.AddComponent<GameplaySceneScope2D>();
+            GameplayScene scope = root.AddComponent<GameplayScene>();
             scope.ConfigureForTests(
                 "scope.gameplay",
                 "scope.gameplay",

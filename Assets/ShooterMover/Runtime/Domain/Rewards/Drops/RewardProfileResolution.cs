@@ -16,8 +16,8 @@ namespace ShooterMover.Domain.Rewards.Drops
 
         public RewardProfileResolution(
             StableId declaredProfileReferenceId,
-            RewardSourceProfile sourceDefaultProfile,
-            RewardSourceProfile effectiveProfile,
+            LootSourceProfile sourceDefaultProfile,
+            LootSourceProfile effectiveProfile,
             IEnumerable<StableId> appliedOverrideIds)
         {
             DeclaredProfileReferenceId = declaredProfileReferenceId
@@ -43,8 +43,8 @@ namespace ShooterMover.Domain.Rewards.Drops
         }
 
         public StableId DeclaredProfileReferenceId { get; }
-        public RewardSourceProfile SourceDefaultProfile { get; }
-        public RewardSourceProfile EffectiveProfile { get; }
+        public LootSourceProfile SourceDefaultProfile { get; }
+        public LootSourceProfile EffectiveProfile { get; }
         public IReadOnlyList<StableId> AppliedOverrideIds
         {
             get { return appliedOverrideIds; }

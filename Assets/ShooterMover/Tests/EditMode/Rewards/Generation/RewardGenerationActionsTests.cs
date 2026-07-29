@@ -337,7 +337,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Generation
                 new[]
                 {
                     AugmentCandidate("augment.power", 0, 100, 1UL),
-                    AugmentCandidate("augment.weapon-only", 0, 100, 1000UL)
+                    AugmentCandidate("augment.gun-only", 0, 100, 1000UL)
                 },
                 1,
                 1,
@@ -398,7 +398,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Generation
                 new[] { QualityCandidate("quality.common", 0L, 1UL) },
                 new[]
                 {
-                    AugmentCandidate("augment.weapon-only", 0, 100, 999UL),
+                    AugmentCandidate("augment.gun-only", 0, 100, 999UL),
                     AugmentCandidate("augment.power", 0, 100, 1UL)
                 },
                 1,
@@ -648,12 +648,12 @@ namespace ShooterMover.Tests.EditMode.Rewards.Generation
                 6,
                 new[] { common, legendary },
                 new[] { energyTag });
-            EquipmentDefinition weapon = EquipmentDefinition.Create(
-                Id("equipment.weapon-fixture"),
-                EquipmentCategoryIds.Weapon,
-                Id("equipment-family.weapon-fixture"),
-                "Weapon Fixture",
-                Id("weapon.blaster-machine-gun"),
+            EquipmentDefinition gun = EquipmentDefinition.Create(
+                Id("equipment.gun-fixture"),
+                EquipmentCategoryIds.Gun,
+                Id("equipment-family.gun-fixture"),
+                "Gun Fixture",
+                Id("gun.blaster-machine-gun"),
                 InclusiveIntRange.Create(1, 100),
                 2,
                 new[] { common },
@@ -695,12 +695,12 @@ namespace ShooterMover.Tests.EditMode.Rewards.Generation
                 AugmentDuplicatePolicy.DisallowSameDefinition,
                 InclusiveIntRange.Create(6, 10),
                 InclusiveIntRange.Create(14, 35));
-            AugmentDefinition weaponOnly = AugmentDefinition.Create(
-                Id("augment.weapon-only"),
-                Id("augment-family.weapon"),
-                "Weapon Only",
+            AugmentDefinition gunOnly = AugmentDefinition.Create(
+                Id("augment.gun-only"),
+                Id("augment-family.gun"),
+                "Gun Only",
                 AugmentCompatibility.Create(
-                    new[] { EquipmentCategoryIds.Weapon },
+                    new[] { EquipmentCategoryIds.Gun },
                     Array.Empty<StableId>(),
                     Array.Empty<StableId>(),
                     Array.Empty<StableId>()),
@@ -710,8 +710,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Generation
                 InclusiveIntRange.Create(1, 3));
 
             EquipmentCatalogBuildResult build = EquipmentCatalog.Build(
-                new[] { weapon, armorBeta, armorAlpha },
-                new[] { utility, weaponOnly, power, mobility, guard });
+                new[] { gun, armorBeta, armorAlpha },
+                new[] { utility, gunOnly, power, mobility, guard });
             if (!build.IsValid)
             {
                 throw new InvalidOperationException("Fixture catalog is invalid: " + JoinIssues(build.Issues));

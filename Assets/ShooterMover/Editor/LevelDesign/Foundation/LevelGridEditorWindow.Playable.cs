@@ -128,7 +128,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             EditorGUILayout.LabelField("Playable metadata", EditorStyles.boldLabel);
-            LevelRoomAuthoring2D startRoom = DrawRoomPopup(
+            LevelRoom startRoom = DrawRoomPopup(
                 "Start room",
                 metadata.StartRoom);
             if (startRoom != metadata.StartRoom)
@@ -159,7 +159,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Player start updated.");
             }
 
-            LevelRoomAuthoring2D finalRoom = DrawRoomPopup(
+            LevelRoom finalRoom = DrawRoomPopup(
                 "Final-exit room",
                 metadata.FinalExitRoom);
             if (finalRoom != metadata.FinalExitRoom)
@@ -172,7 +172,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Final room updated; incompatible final-door references were cleared.");
             }
 
-            LevelDoorEndpointAuthoring2D finalDoor = DrawFinalDoorPopup(
+            DoorEndpoint finalDoor = DrawFinalDoorPopup(
                 metadata.FinalExitRoom,
                 metadata.FinalExitDoor);
             if (finalDoor != metadata.FinalExitDoor)
@@ -205,23 +205,23 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.ObjectField(
                 "Exact start reference",
                 metadata.StartRoom,
-                typeof(LevelRoomAuthoring2D),
+                typeof(LevelRoom),
                 true);
             EditorGUILayout.ObjectField(
                 "Exact final room reference",
                 metadata.FinalExitRoom,
-                typeof(LevelRoomAuthoring2D),
+                typeof(LevelRoom),
                 true);
             EditorGUILayout.ObjectField(
                 "Exact final door reference",
                 metadata.FinalExitDoor,
-                typeof(LevelDoorEndpointAuthoring2D),
+                typeof(DoorEndpoint),
                 true);
             EditorGUI.EndDisabledGroup();
 
             EditorGUILayout.BeginHorizontal();
-            LevelRoomAuthoring2D selectedRoom = selectedAuthoringObject
-                as LevelRoomAuthoring2D;
+            LevelRoom selectedRoom = selectedAuthoringObject
+                as LevelRoom;
             EditorGUI.BeginDisabledGroup(selectedRoom == null);
             if (GUILayout.Button("Use selected room as start"))
             {
@@ -244,8 +244,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
 
-            LevelDoorEndpointAuthoring2D selectedDoor = selectedAuthoringObject
-                as LevelDoorEndpointAuthoring2D;
+            DoorEndpoint selectedDoor = selectedAuthoringObject
+                as DoorEndpoint;
             EditorGUI.BeginDisabledGroup(selectedDoor == null);
             if (GUILayout.Button("Use selected door as final exit"))
             {
@@ -282,7 +282,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.LabelField(
                 "Production catalogue registration",
                 playableStatus.Registered ? "Registered" : "Not registered");
-            if (!playableStatus.Paths.IsTrackedCombatLoop)
+            if (!playableStatus.Paths.IsLevel1)
             {
                 EditorGUILayout.HelpBox(
                     "This generic level uses stable-ID-derived destinations and cannot reuse the "
@@ -343,7 +343,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 RunPlayableOperation(
                     () => LevelGridPlayableBuildFacade
-                        .OpenProductionLevelSelectionScene(activeRoot),
+                        .OpenLevelMenu(activeRoot),
                     "Opened production Level Selection. Choose the exact registered level.");
             }
             EditorGUI.EndDisabledGroup();
@@ -385,7 +385,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 RunPlayableOperation(
                     () => LevelGridPlayableBuildFacade
-                        .OpenProductionLevelSelectionScene(activeRoot),
+                        .OpenLevelMenu(activeRoot),
                     "Opened production Level Selection.");
             }
             if (ToolbarButton("More", "Less frequent topology and playable actions."))
@@ -453,12 +453,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             menu.ShowAsContext();
         }
 
-        private LevelRoomAuthoring2D DrawRoomPopup(
+        private LevelRoom DrawRoomPopup(
             string label,
-            LevelRoomAuthoring2D current)
+            LevelRoom current)
         {
-            LevelRoomAuthoring2D[] rooms =
-                activeRoot.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelRoom[] rooms =
+                activeRoot.GetComponentsInChildren<LevelRoom>(true);
             Array.Sort(
                 rooms,
                 (left, right) => string.CompareOrdinal(
@@ -469,7 +469,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             int selected = 0;
             for (int index = 0; index < rooms.Length; index++)
             {
-                LevelRoomAuthoring2D room = rooms[index];
+                LevelRoom room = rooms[index];
                 labels[index + 1] = room.EditorLabel + " — " + room.RoomIdText;
                 if (room == current) selected = index + 1;
             }
@@ -477,15 +477,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return chosen <= 0 ? null : rooms[chosen - 1];
         }
 
-        private LevelDoorEndpointAuthoring2D DrawFinalDoorPopup(
-            LevelRoomAuthoring2D finalRoom,
-            LevelDoorEndpointAuthoring2D current)
+        private DoorEndpoint DrawFinalDoorPopup(
+            LevelRoom finalRoom,
+            DoorEndpoint current)
         {
-            var doors = new List<LevelDoorEndpointAuthoring2D>();
+            var doors = new List<DoorEndpoint>();
             if (finalRoom != null)
             {
-                LevelDoorEndpointAuthoring2D[] owned =
-                    finalRoom.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+                DoorEndpoint[] owned =
+                    finalRoom.GetComponentsInChildren<DoorEndpoint>(true);
                 for (int index = 0; index < owned.Length; index++)
                 {
                     if (owned[index] != null

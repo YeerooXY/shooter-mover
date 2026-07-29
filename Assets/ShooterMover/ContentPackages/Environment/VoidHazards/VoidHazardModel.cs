@@ -167,7 +167,7 @@ namespace ShooterMover.ContentPackages.Environment.VoidHazards
         {
             return new VoidHazardValidationResult(
                 VoidHazardValidationStatus.Valid,
-                "Void hazard configuration is valid.");
+                "VoidArea hazard configuration is valid.");
         }
 
         public static VoidHazardValidationResult Failed(

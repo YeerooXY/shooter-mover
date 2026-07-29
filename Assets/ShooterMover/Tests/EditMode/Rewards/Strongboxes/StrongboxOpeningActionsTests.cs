@@ -4,7 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Application.Rewards.Generation;
@@ -96,9 +96,9 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                 MissionRun.Fingerprint("holdings.run-scope-before"),
                 1L,
                 MissionRun.Fingerprint("opening.run-scope-before"));
-            var bridge = new RecordingCharacterStrongboxBridge(
+            var bridge = new RecordingCharacterStrongboxes(
                 characterScope.Service);
-            CharacterStrongboxBridgeRegistry.Configure(bridge);
+            CharacterStrongboxesRegistry.Configure(bridge);
             try
             {
                 var context = new ResultsContext(
@@ -149,7 +149,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             }
             finally
             {
-                CharacterStrongboxBridgeRegistry.Clear(bridge);
+                CharacterStrongboxesRegistry.Clear(bridge);
             }
         }
 
@@ -607,12 +607,12 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                 && item.Stage == StrongboxOpeningStage.Opened);
         }
 
-        private sealed class RecordingCharacterStrongboxBridge :
-            ICharacterStrongboxBridge
+        private sealed class RecordingCharacterStrongboxes :
+            ICharacterStrongboxes
         {
             private readonly StrongboxOpeningActions authority;
 
-            public RecordingCharacterStrongboxBridge(
+            public RecordingCharacterStrongboxes(
                 StrongboxOpeningActions authority)
             {
                 this.authority = authority

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Hub;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;

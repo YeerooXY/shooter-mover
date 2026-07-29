@@ -24,7 +24,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             for (int index = 0; index < windows.Length; index++)
             {
                 LevelGridEditorWindow window = windows[index];
-                LevelDesignSceneAuthoringRoot2D root = window == null
+                LevelDraft root = window == null
                     ? null
                     : window.ActiveRoot;
                 if (root == null) continue;

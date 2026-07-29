@@ -372,7 +372,7 @@ namespace ShooterMover.RunConditionIntegration
             }
             return new RunSessionNonConditionLivePorts(
                 ports.Player,
-                ports.Weapons,
+                ports.Guns,
                 ports.ActiveAbilities,
                 ports.Rooms,
                 new PersistentMissionResultRunPort(

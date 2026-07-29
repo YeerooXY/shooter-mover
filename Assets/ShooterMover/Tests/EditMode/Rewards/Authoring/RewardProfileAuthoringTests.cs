@@ -121,15 +121,15 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
             RewardProfile inherited = inheritedAsset.BuildProfile();
             StableId sourceId = StableId.Parse("placed.reward-source-a");
 
-            RewardProfile inherit = RewardSourceOverrideAuthoring.Inherit(
+            RewardProfile inherit = LootSourceOverrideAuthoring.Inherit(
                 "reward-override.inherit").Resolve(sourceId, inherited);
-            RewardProfile none = RewardSourceOverrideAuthoring.None(
+            RewardProfile none = LootSourceOverrideAuthoring.None(
                 "reward-override.none",
                 "reward-profile.none").Resolve(sourceId, inherited);
-            RewardProfile replace = RewardSourceOverrideAuthoring.Replace(
+            RewardProfile replace = LootSourceOverrideAuthoring.Replace(
                 "reward-override.replace",
                 replacementAsset).Resolve(sourceId, inherited);
-            RewardProfile append = RewardSourceOverrideAuthoring.AppendGuaranteed(
+            RewardProfile append = LootSourceOverrideAuthoring.AppendGuaranteed(
                 "reward-override.append",
                 "reward-profile.appended",
                 new RewardGrantOverrideAuthoring(
@@ -138,7 +138,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     "misc.token",
                     1L,
                     1L)).Resolve(sourceId, inherited);
-            RewardProfile money = RewardSourceOverrideAuthoring.MoneyOnly(
+            RewardProfile money = LootSourceOverrideAuthoring.MoneyOnly(
                 "reward-override.money",
                 "reward-profile.money-only",
                 "reward-grant.money-only",
@@ -146,13 +146,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                 10L,
                 20L).Resolve(sourceId, inherited);
             RewardProfile exactBox =
-                RewardSourceOverrideAuthoring.StrongboxExactTier(
+                LootSourceOverrideAuthoring.StrongboxExactTier(
                     "reward-override.exact-box",
                     "reward-profile.exact-box",
                     "reward-grant.exact-box",
                     "strongbox-tier.tier-4").Resolve(sourceId, inherited);
             RewardProfile boxRange =
-                RewardSourceOverrideAuthoring.StrongboxTierRange(
+                LootSourceOverrideAuthoring.StrongboxTierRange(
                     "reward-override.box-range",
                     "reward-profile.box-range",
                     "reward-group.box-range",
@@ -162,7 +162,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     Tier(4),
                     Tier(2),
                     Tier(3)).Resolve(sourceId, inherited);
-            RewardProfile misc = RewardSourceOverrideAuthoring.Miscellaneous(
+            RewardProfile misc = LootSourceOverrideAuthoring.Miscellaneous(
                 "reward-override.misc",
                 "reward-profile.misc",
                 new RewardGrantOverrideAuthoring(
@@ -197,8 +197,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                 "reward-grant.money").BuildProfile();
             StableId sourceId = StableId.Parse("placed.reward-source-a");
 
-            RewardSourceOverrideAuthoring reversed =
-                RewardSourceOverrideAuthoring.StrongboxTierRange(
+            LootSourceOverrideAuthoring reversed =
+                LootSourceOverrideAuthoring.StrongboxTierRange(
                     "reward-override.reversed",
                     "reward-profile.reversed",
                     "reward-group.reversed",
@@ -208,8 +208,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     Tier(2),
                     Tier(3),
                     Tier(4));
-            RewardSourceOverrideAuthoring missingMiddle =
-                RewardSourceOverrideAuthoring.StrongboxTierRange(
+            LootSourceOverrideAuthoring missingMiddle =
+                LootSourceOverrideAuthoring.StrongboxTierRange(
                     "reward-override.missing",
                     "reward-profile.missing",
                     "reward-group.missing",
@@ -232,14 +232,14 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                 "reward-profile.inherited",
                 "reward-grant.inherited").BuildProfile();
             StableId sourceId = StableId.Parse("placed.reward-source-a");
-            RewardProfile overridden = RewardSourceOverrideAuthoring.MoneyOnly(
+            RewardProfile overridden = LootSourceOverrideAuthoring.MoneyOnly(
                 "reward-override.money",
                 "reward-profile.money-only",
                 "reward-grant.money-only",
                 "currency.money",
                 99L,
                 99L).Resolve(sourceId, inherited);
-            RewardProfile cleared = RewardSourceOverrideAuthoring.Inherit(
+            RewardProfile cleared = LootSourceOverrideAuthoring.Inherit(
                 "reward-override.cleared").Resolve(sourceId, inherited);
 
             Assert.That(overridden, Is.Not.EqualTo(inherited));

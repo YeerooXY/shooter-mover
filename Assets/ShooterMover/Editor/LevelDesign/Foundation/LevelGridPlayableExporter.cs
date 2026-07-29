@@ -26,22 +26,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         internal static Action AfterBackupMoveForTests;
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Export Compiler-Ready Grid V2 Package...",
+            "Tools/Shooter Mover/Level Design/Export Compiler-Ready Level Package...",
             priority = 254)]
         private static void ExportSelected()
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            LevelDraft root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
-                    "Playable Grid V2 Export",
-                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "Playable Level Export",
+                    "Select an object below a LevelDraft.",
                     "OK");
                 return;
             }
 
             string outputRoot = EditorUtility.OpenFolderPanel(
-                "Export Compiler-Ready Level Grid V2 Package",
+                "Export Compiler-Ready Level Level Package",
                 UnityEngine.Application.dataPath,
                 (root.LevelIdText ?? "level").Replace('.', '_'));
             if (string.IsNullOrWhiteSpace(outputRoot)) return;
@@ -52,7 +52,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 AssetDatabase.Refresh();
                 EditorUtility.RevealInFinder(outputRoot);
                 Debug.Log(
-                    "Compiler-ready Level Grid V2 package exported to " + outputRoot,
+                    "Compiler-ready Level Level package exported to " + outputRoot,
                     root);
             }
             catch (Exception exception)
@@ -64,17 +64,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     throw;
                 }
                 Debug.LogError(
-                    "Compiler-ready Level Grid V2 export failed: " + exception.Message,
+                    "Compiler-ready Level Level export failed: " + exception.Message,
                     root);
                 EditorUtility.DisplayDialog(
-                    "Playable Grid V2 Export Failed",
+                    "Playable Level Export Failed",
                     exception.Message,
                     "OK");
             }
         }
 
         public static void Export(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string outputRoot)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
@@ -100,12 +100,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     "Existing level-design foundation validation must pass before playable export.");
             }
 
-            LevelRoomAuthoring2D[] rooms =
-                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
-            LevelDoorEndpointAuthoring2D[] doors =
-                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            LevelRoom[] rooms =
+                root.GetComponentsInChildren<LevelRoom>(true);
+            DoorEndpoint[] doors =
+                root.GetComponentsInChildren<DoorEndpoint>(true);
+            DoorLink[] links =
+                root.GetComponentsInChildren<DoorLink>(true);
             Array.Sort(rooms, CompareRooms);
             Array.Sort(doors, CompareDoors);
             Array.Sort(links, CompareLinks);
@@ -213,7 +213,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void EnsureSourceAndDestinationUnchanged(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string absoluteOutput,
             string initialSceneFingerprint,
             string initialDestinationSnapshot)
@@ -367,9 +367,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void ValidateGraphAllowingFinalExit(
-            LevelRoomAuthoring2D[] rooms,
-            LevelDoorEndpointAuthoring2D[] doors,
-            LevelDoorLinkAuthoring2D[] links,
+            LevelRoom[] rooms,
+            DoorEndpoint[] doors,
+            DoorLink[] links,
             LevelGridPlayableMetadata metadata)
         {
             var roomRecords = new List<LevelRoomRecord>(rooms.Length);
@@ -407,7 +407,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     : result.Problems[0];
                 throw new InvalidOperationException(
                     issue == null
-                        ? "Level Grid V2 production validation failed."
+                        ? "Level Level production validation failed."
                         : issue.ToString());
             }
         }
@@ -464,7 +464,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     throw;
                 }
                 Debug.LogWarning(
-                    "Playable Grid V2 cleanup could not delete metadata '"
+                    "Playable Level cleanup could not delete metadata '"
                     + directoryPath + ".meta': " + exception.Message);
             }
         }
@@ -484,7 +484,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     throw;
                 }
                 Debug.LogWarning(
-                    "Playable Grid V2 cleanup could not delete directory '"
+                    "Playable Level cleanup could not delete directory '"
                     + directoryPath + "': " + exception.Message);
             }
             TryDeleteSiblingMeta(directoryPath);

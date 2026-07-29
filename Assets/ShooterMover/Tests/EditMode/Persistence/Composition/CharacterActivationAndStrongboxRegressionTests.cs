@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Persistence.Accounts;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
@@ -247,14 +247,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     characterId,
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayload.WeaponSlotCount]);
+                        PlayerRouteProfilePayload.GunSlotCount]);
             ICharacterLiveGraph graph = factory.CreateStarter(
                 slotIndex,
                 characterId,
                 classId,
                 suffix,
                 route);
-            IReadOnlyList<SaveComponentSnapshot> components =
+            IReadOnlyList<SavePartSnapshot> components =
                 PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             graph.Dispose();

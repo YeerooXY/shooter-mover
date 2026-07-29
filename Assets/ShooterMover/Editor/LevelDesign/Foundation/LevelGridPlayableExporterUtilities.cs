@@ -9,12 +9,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 {
     public static partial class LevelGridPlayableExporter
     {
-        private static LiveBoundsDto ResolveRoomLocalBounds(LevelRoomAuthoring2D room)
+        private static LiveBoundsDto ResolveRoomLocalBounds(LevelRoom room)
         {
             if (room.RoomBounds == null)
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 export requires room bounds for " + room.RoomIdText + ".");
+                    "Playable Level export requires room bounds for " + room.RoomIdText + ".");
             }
             Bounds world = room.RoomBounds.bounds;
             Vector3 min = room.transform.InverseTransformPoint(world.min);
@@ -27,8 +27,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static EndpointDto Endpoint(
-            LevelRoomAuthoring2D room,
-            LevelDoorEndpointAuthoring2D door)
+            LevelRoom room,
+            DoorEndpoint door)
         {
             return new EndpointDto
             {
@@ -65,15 +65,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
+        private static LevelDraft ResolveSelectedRoot()
         {
             GameObject selected = Selection.activeGameObject;
             return selected == null
                 ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : selected.GetComponentInParent<LevelDraft>();
         }
 
-        private static int CompareRooms(LevelRoomAuthoring2D left, LevelRoomAuthoring2D right)
+        private static int CompareRooms(LevelRoom left, LevelRoom right)
         {
             int x = left.GridCoordinate.x.CompareTo(right.GridCoordinate.x);
             if (x != 0) return x;
@@ -83,7 +83,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return slot != 0 ? slot : string.CompareOrdinal(left.RoomIdText, right.RoomIdText);
         }
 
-        private static int CompareDoors(LevelDoorEndpointAuthoring2D left, LevelDoorEndpointAuthoring2D right)
+        private static int CompareDoors(DoorEndpoint left, DoorEndpoint right)
         {
             int room = string.CompareOrdinal(
                 left.OwningRoom == null ? string.Empty : left.OwningRoom.RoomIdText,
@@ -91,7 +91,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return room != 0 ? room : string.CompareOrdinal(left.DoorIdText, right.DoorIdText);
         }
 
-        private static int CompareLinks(LevelDoorLinkAuthoring2D left, LevelDoorLinkAuthoring2D right)
+        private static int CompareLinks(DoorLink left, DoorLink right)
         {
             return string.CompareOrdinal(left.ConnectionIdText, right.ConnectionIdText);
         }

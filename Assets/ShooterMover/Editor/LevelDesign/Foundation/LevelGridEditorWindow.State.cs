@@ -12,12 +12,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private void ShowRootMenu()
         {
             GenericMenu menu = new GenericMenu();
-            LevelDesignSceneAuthoringRoot2D[] roots =
-                Resources.FindObjectsOfTypeAll<LevelDesignSceneAuthoringRoot2D>();
+            LevelDraft[] roots =
+                Resources.FindObjectsOfTypeAll<LevelDraft>();
             int added = 0;
             for (int index = 0; index < roots.Length; index++)
             {
-                LevelDesignSceneAuthoringRoot2D root = roots[index];
+                LevelDraft root = roots[index];
                 if (root == null
                     || !root.gameObject.scene.IsValid()
                     || EditorUtility.IsPersistent(root))
@@ -35,7 +35,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     delegate(object selected)
                     {
                         SetActiveRoot(
-                            (LevelDesignSceneAuthoringRoot2D)selected);
+                            (LevelDraft)selected);
                     },
                     root);
             }
@@ -47,7 +47,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             menu.ShowAsContext();
         }
 
-        private void SetActiveRoot(LevelDesignSceneAuthoringRoot2D root)
+        private void SetActiveRoot(LevelDraft root)
         {
             if (activeRoot == root)
             {
@@ -82,8 +82,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 return;
             }
-            LevelDesignSceneAuthoringRoot2D root =
-                selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+            LevelDraft root =
+                selected.GetComponentInParent<LevelDraft>();
             if (root != null)
             {
                 SetActiveRoot(root);
@@ -102,7 +102,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             activeRoot = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(globalId)
-                as LevelDesignSceneAuthoringRoot2D;
+                as LevelDraft;
             if (activeRoot != null)
             {
                 selectedAuthoringObject = activeRoot;
@@ -167,8 +167,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D selectedRoot =
-                selected as LevelDesignSceneAuthoringRoot2D;
+            LevelDraft selectedRoot =
+                selected as LevelDraft;
             if (selectedRoot != null)
             {
                 SetActiveRoot(selectedRoot);
@@ -225,13 +225,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private UnityEngine.Object ResolveAuthoringSelection(UnityEngine.Object selected)
         {
-            if (selected is LevelDoorEndpointAuthoring2D
-                || selected is LevelDoorLinkAuthoring2D
-                || selected is LevelRoomAuthoring2D
-                || selected is LevelDesignSceneAuthoringRoot2D
-                || selected is LevelPlacementAuthoring2D
-                || selected is LevelDoorConnectionAuthoring2D
-                || selected is LevelVoidRegionAuthoring2D)
+            if (selected is DoorEndpoint
+                || selected is DoorLink
+                || selected is LevelRoom
+                || selected is LevelDraft
+                || selected is LevelObject
+                || selected is DoorConnection
+                || selected is VoidArea)
             {
                 return selected;
             }
@@ -247,47 +247,47 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return null;
             }
 
-            LevelDoorEndpointAuthoring2D door =
-                gameObject.GetComponent<LevelDoorEndpointAuthoring2D>();
+            DoorEndpoint door =
+                gameObject.GetComponent<DoorEndpoint>();
             if (door != null)
             {
                 return door;
             }
-            LevelDoorLinkAuthoring2D connection =
-                gameObject.GetComponent<LevelDoorLinkAuthoring2D>();
+            DoorLink connection =
+                gameObject.GetComponent<DoorLink>();
             if (connection != null)
             {
                 return connection;
             }
-            LevelPlacementAuthoring2D placement =
-                gameObject.GetComponent<LevelPlacementAuthoring2D>();
+            LevelObject placement =
+                gameObject.GetComponent<LevelObject>();
             if (placement != null)
             {
                 return placement;
             }
-            LevelDoorConnectionAuthoring2D legacyDoor =
-                gameObject.GetComponent<LevelDoorConnectionAuthoring2D>();
+            DoorConnection legacyDoor =
+                gameObject.GetComponent<DoorConnection>();
             if (legacyDoor != null)
             {
                 return legacyDoor;
             }
-            LevelVoidRegionAuthoring2D voidRegion =
-                gameObject.GetComponent<LevelVoidRegionAuthoring2D>();
+            VoidArea voidRegion =
+                gameObject.GetComponent<VoidArea>();
             if (voidRegion != null)
             {
                 return voidRegion;
             }
-            LevelRoomAuthoring2D room =
-                gameObject.GetComponentInParent<LevelRoomAuthoring2D>();
+            LevelRoom room =
+                gameObject.GetComponentInParent<LevelRoom>();
             if (room != null)
             {
                 return room;
             }
-            return gameObject.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+            return gameObject.GetComponentInParent<LevelDraft>();
         }
 
         private Rect GetRoomRect(
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             Vector2Int coordinate)
         {
             Vector2Int footprint = room.FootprintCells;
@@ -305,7 +305,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private Vector2 ResolveDoorScreenPosition(
-            LevelDoorEndpointAuthoring2D door,
+            DoorEndpoint door,
             Rect roomRect)
         {
             if (door.PlacementMode == LevelDoorPlacementMode.Fixed
@@ -352,7 +352,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool TryResolveRoomLocalBounds(
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             out Rect localBounds)
         {
             localBounds = default(Rect);
@@ -489,9 +489,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             offset = Mathf.Clamp01(offset);
         }
 
-        private LevelDoorEndpointAuthoring2D HitDoor(Vector2 mouse)
+        private DoorEndpoint HitDoor(Vector2 mouse)
         {
-            foreach (KeyValuePair<LevelDoorEndpointAuthoring2D, Rect> pair in doorRects)
+            foreach (KeyValuePair<DoorEndpoint, Rect> pair in doorRects)
             {
                 Rect expanded = pair.Value;
                 expanded.xMin -= 4f;
@@ -506,11 +506,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return null;
         }
 
-        private LevelRoomAuthoring2D HitRoom(Vector2 mouse)
+        private LevelRoom HitRoom(Vector2 mouse)
         {
             for (int index = projection.Rooms.Count - 1; index >= 0; index--)
             {
-                LevelRoomAuthoring2D room = projection.Rooms[index].Room;
+                LevelRoom room = projection.Rooms[index].Room;
                 Rect rect;
                 if (roomRects.TryGetValue(room, out rect) && rect.Contains(mouse))
                 {
@@ -520,11 +520,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return null;
         }
 
-        private LevelDoorLinkAuthoring2D HitLink(Vector2 mouse)
+        private DoorLink HitLink(Vector2 mouse)
         {
             float bestDistance = 8f;
-            LevelDoorLinkAuthoring2D best = null;
-            foreach (KeyValuePair<LevelDoorLinkAuthoring2D, LineVisual> pair in linkLines)
+            DoorLink best = null;
+            foreach (KeyValuePair<DoorLink, LineVisual> pair in linkLines)
             {
                 float distance = DistanceToSegment(
                     mouse,
@@ -665,7 +665,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             int maxY = int.MinValue;
             for (int index = 0; index < projection.Rooms.Count; index++)
             {
-                LevelRoomAuthoring2D room = projection.Rooms[index].Room;
+                LevelRoom room = projection.Rooms[index].Room;
                 minX = Mathf.Min(minX, room.GridCoordinate.x);
                 minY = Mathf.Min(minY, room.GridCoordinate.y);
                 maxX = Mathf.Max(
@@ -680,39 +680,39 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void FrameSelection()
         {
-            LevelRoomAuthoring2D room = selectedAuthoringObject as LevelRoomAuthoring2D;
-            LevelDoorEndpointAuthoring2D door =
-                selectedAuthoringObject as LevelDoorEndpointAuthoring2D;
+            LevelRoom room = selectedAuthoringObject as LevelRoom;
+            DoorEndpoint door =
+                selectedAuthoringObject as DoorEndpoint;
             if (door != null)
             {
                 room = door.OwningRoom;
             }
 
-            LevelDoorLinkAuthoring2D link =
-                selectedAuthoringObject as LevelDoorLinkAuthoring2D;
+            DoorLink link =
+                selectedAuthoringObject as DoorLink;
             if (link != null
                 && TryFrameRoomPair(link.SourceRoom, link.DestinationRoom))
             {
                 return;
             }
 
-            LevelDoorConnectionAuthoring2D legacyDoor =
-                selectedAuthoringObject as LevelDoorConnectionAuthoring2D;
+            DoorConnection legacyDoor =
+                selectedAuthoringObject as DoorConnection;
             if (legacyDoor != null
                 && TryFrameRoomPair(legacyDoor.SourceRoom, legacyDoor.DestinationRoom))
             {
                 return;
             }
 
-            LevelPlacementAuthoring2D placement =
-                selectedAuthoringObject as LevelPlacementAuthoring2D;
+            LevelObject placement =
+                selectedAuthoringObject as LevelObject;
             if (placement != null)
             {
                 room = placement.Room;
             }
 
-            LevelVoidRegionAuthoring2D voidRegion =
-                selectedAuthoringObject as LevelVoidRegionAuthoring2D;
+            VoidArea voidRegion =
+                selectedAuthoringObject as VoidArea;
             if (voidRegion != null)
             {
                 room = voidRegion.Room;
@@ -723,7 +723,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Component component = selectedAuthoringObject as Component;
                 if (component != null)
                 {
-                    room = component.GetComponentInParent<LevelRoomAuthoring2D>();
+                    room = component.GetComponentInParent<LevelRoom>();
                 }
             }
 
@@ -740,8 +740,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private bool TryFrameRoomPair(
-            LevelRoomAuthoring2D source,
-            LevelRoomAuthoring2D destination)
+            LevelRoom source,
+            LevelRoom destination)
         {
             if (source == null || destination == null)
             {
@@ -820,10 +820,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             if (activeRoot == null)
             {
-                return "ShooterMover.LevelGridEditorV2.NoRoot";
+                return "ShooterMover.LevelGridEditor.NoRoot";
             }
             GlobalObjectId globalId = GlobalObjectId.GetGlobalObjectIdSlow(activeRoot);
-            return "ShooterMover.LevelGridEditorV2." + globalId;
+            return "ShooterMover.LevelGridEditor." + globalId;
         }
 
         private static void DrawRectOutline(Rect rect, Color color, float width)

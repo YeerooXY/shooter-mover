@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Runs.Session;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Resolves the complete one-to-four-player run roster. Kill credit remains part of
@@ -26,8 +26,8 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         public bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             TerminalRewardPlacementContext placementContext,
             out IReadOnlyList<TerminalRewardParticipant> participants,
             out TerminalRewardEligibilityPolicy resolvedEligibilityPolicy,

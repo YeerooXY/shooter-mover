@@ -9,15 +9,15 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
 {
-    public sealed partial class VoidHazardAuthoring2DTests
+    public sealed partial class VoidHazardTests
     {
         [UnityTest]
         public IEnumerator ProjectileEnemyAndPropPoliciesAreIndependentAndDuplicateSafe()
         {
             ObjectFamilyDefinitionAsset family = CreateFamily();
-            GameplaySceneScope2D scope = CreateScope("CategoryScope");
+            GameplayScene scope = CreateScope("CategoryScope");
             VoidHazardTestPorts ports = CreatePorts("CategoryPorts");
-            VoidHazardAuthoring2D hazard = CreateHazard(
+            VoidHazard hazard = CreateHazard(
                 "CategoryHazard",
                 scope.transform,
                 family,
@@ -29,13 +29,13 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                 VoidPropResponseKind.KeepSupported,
                 null,
                 ports);
-            VoidHazardTarget2D enemy = CreateTarget(
+            VoidTarget enemy = CreateTarget(
                 "Enemy", VoidHazardTargetCategory.Enemy, false, ports);
-            VoidHazardTarget2D projectile = CreateTarget(
+            VoidTarget projectile = CreateTarget(
                 "Projectile", VoidHazardTargetCategory.Projectile, false, ports);
-            VoidHazardTarget2D supportedProp = CreateTarget(
+            VoidTarget supportedProp = CreateTarget(
                 "SupportedProp", VoidHazardTargetCategory.Prop, true, ports);
-            VoidHazardTarget2D unsupportedProp = CreateTarget(
+            VoidTarget unsupportedProp = CreateTarget(
                 "UnsupportedProp", VoidHazardTargetCategory.Prop, false, ports);
 
             Assert.That(hazard.HandleContactEnter(enemy).Status,
@@ -64,13 +64,13 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
         public IEnumerator RestartClearsContactsAndRestoresArbitraryHierarchyPlacement()
         {
             ObjectFamilyDefinitionAsset family = CreateFamily();
-            GameplaySceneScope2D scope = CreateScope("RestartScope");
+            GameplayScene scope = CreateScope("RestartScope");
             GameObject levelOne = Track(new GameObject("LevelOne"));
             levelOne.transform.SetParent(scope.transform);
             GameObject levelTwo = Track(new GameObject("LevelTwo"));
             levelTwo.transform.SetParent(levelOne.transform);
             VoidHazardTestPorts ports = CreatePorts("RestartPorts");
-            VoidHazardAuthoring2D hazard = CreateHazard(
+            VoidHazard hazard = CreateHazard(
                 "NestedHazard",
                 levelTwo.transform,
                 family,
@@ -82,7 +82,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                 VoidPropResponseKind.Ignore,
                 null,
                 ports);
-            VoidHazardTarget2D projectile = CreateTarget(
+            VoidTarget projectile = CreateTarget(
                 "Projectile", VoidHazardTargetCategory.Projectile, false, ports);
             StableId placedId = hazard.RestartParticipantId;
 

@@ -393,7 +393,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
             }
         }
 
-        private static StableId SourceId => StableId.Parse("weapon.blaster-machine-gun");
+        private static StableId SourceId => StableId.Parse("gun.blaster-machine-gun");
 
         private static StableId TargetId => StableId.Parse("enemy.pursuer-drone");
 

@@ -10,7 +10,7 @@ namespace ShooterMover.Contracts.Content
     public enum ContentDefinitionKind
     {
         Unknown = 0,
-        Weapon = 1,
+        Gun = 1,
         Enemy = 2,
         Room = 3,
         Encounter = 4,
@@ -281,7 +281,7 @@ namespace ShooterMover.Contracts.Content
 
         public static bool IsKnown(ContentDefinitionKind value)
         {
-            return value == ContentDefinitionKind.Weapon
+            return value == ContentDefinitionKind.Gun
                 || value == ContentDefinitionKind.Enemy
                 || value == ContentDefinitionKind.Room
                 || value == ContentDefinitionKind.Encounter
@@ -293,8 +293,8 @@ namespace ShooterMover.Contracts.Content
         {
             switch (RequireKnown(value, nameof(value)))
             {
-                case ContentDefinitionKind.Weapon:
-                    return "weapon";
+                case ContentDefinitionKind.Gun:
+                    return "gun";
                 case ContentDefinitionKind.Enemy:
                     return "enemy";
                 case ContentDefinitionKind.Room:
@@ -319,8 +319,8 @@ namespace ShooterMover.Contracts.Content
 
             switch (text)
             {
-                case "weapon":
-                    return ContentDefinitionKind.Weapon;
+                case "gun":
+                    return ContentDefinitionKind.Gun;
                 case "enemy":
                     return ContentDefinitionKind.Enemy;
                 case "room":

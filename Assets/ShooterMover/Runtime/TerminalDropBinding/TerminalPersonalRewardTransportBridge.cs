@@ -8,7 +8,7 @@ using ShooterMover.Domain.Rewards.Drops;
 using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.Domain.Rewards.Model;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Converts a personal production result into the existing immutable pending-
@@ -16,8 +16,8 @@ namespace ShooterMover.TerminalDropBinding
     /// </summary>
     internal static class TerminalPersonalRewardTransportBridge
     {
-        internal static GeneratedTerminalDropResult Adapt(
-            TerminalDropSourceFact sharedSource,
+        internal static GeneratedLootDropResult Adapt(
+            LootDropSourceFact sharedSource,
             PersonalRewardGenerationResult personal)
         {
             if (sharedSource == null)
@@ -31,21 +31,21 @@ namespace ShooterMover.TerminalDropBinding
 
             if (personal.Status == PersonalRewardGenerationStatus.ConflictingReplay)
             {
-                return GeneratedTerminalDropResult.Rejected(
-                    TerminalDropRejectionCode.InvalidTerminalFact,
+                return GeneratedLootDropResult.Rejected(
+                    LootDropRejectionCode.InvalidTerminalFact,
                     sharedSource,
                     personal.Diagnostic,
                     true);
             }
             if (!personal.IsSuccess)
             {
-                return GeneratedTerminalDropResult.Rejected(
-                    TerminalDropRejectionCode.GenerationFailed,
+                return GeneratedLootDropResult.Rejected(
+                    LootDropRejectionCode.GenerationFailed,
                     sharedSource,
                     personal.Diagnostic);
             }
 
-            TerminalDropSourceFact participantSource =
+            LootDropSourceFact participantSource =
                 CloneForParticipant(
                     sharedSource,
                     personal.Context.ParticipantStableId);
@@ -61,19 +61,19 @@ namespace ShooterMover.TerminalDropBinding
                 commitmentId,
                 personal.Context.ProfileResolution.EffectiveProfile.ProfileStableId,
                 personal.Context.ProfileResolution.Fingerprint);
-            List<GeneratedTerminalDropReward> rewards =
+            List<GeneratedLootDropReward> rewards =
                 BuildRewards(operation, personal.Grants);
-            TerminalDropBindingStatus status = rewards.Count == 0
-                ? TerminalDropBindingStatus.ExplicitNoDrop
-                : TerminalDropBindingStatus.Accepted;
+            LootDropBindingStatus status = rewards.Count == 0
+                ? LootDropBindingStatus.ExplicitNoDrop
+                : LootDropBindingStatus.Accepted;
             string fingerprint = BuildFingerprint(
                 participantSource,
                 operation,
                 personal,
                 rewards);
-            return new GeneratedTerminalDropResult(
+            return new GeneratedLootDropResult(
                 status,
-                TerminalDropRejectionCode.None,
+                LootDropRejectionCode.None,
                 participantSource,
                 personal.Context.ProfileResolution.EffectiveProfile.ProfileStableId,
                 operation,
@@ -84,11 +84,11 @@ namespace ShooterMover.TerminalDropBinding
                 personal.Diagnostic);
         }
 
-        private static TerminalDropSourceFact CloneForParticipant(
-            TerminalDropSourceFact source,
+        private static LootDropSourceFact CloneForParticipant(
+            LootDropSourceFact source,
             StableId participantStableId)
         {
-            return new TerminalDropSourceFact(
+            return new LootDropSourceFact(
                 source.FactKindStableId,
                 source.TerminalEventStableId,
                 source.TriggeringEventStableId,
@@ -107,11 +107,11 @@ namespace ShooterMover.TerminalDropBinding
                 source.UpstreamFactFingerprint);
         }
 
-        private static List<GeneratedTerminalDropReward> BuildRewards(
+        private static List<GeneratedLootDropReward> BuildRewards(
             RewardOperationRequest operation,
             IReadOnlyList<RewardGrant> grants)
         {
-            var output = new List<GeneratedTerminalDropReward>();
+            var output = new List<GeneratedLootDropReward>();
             int ordinal = 0;
             for (int grantIndex = 0; grantIndex < grants.Count; grantIndex++)
             {
@@ -120,7 +120,7 @@ namespace ShooterMover.TerminalDropBinding
                     || grant.Kind == RewardGrantKind.EquipmentReference;
                 if (!unique)
                 {
-                    output.Add(new GeneratedTerminalDropReward(
+                    output.Add(new GeneratedLootDropReward(
                         grant.GrantStableId,
                         ordinal++,
                         grant.GrantStableId,
@@ -144,7 +144,7 @@ namespace ShooterMover.TerminalDropBinding
                             operation.SourceOperationStableId.ToString(),
                             grant.GrantStableId.ToString(),
                             unit.ToString(CultureInfo.InvariantCulture));
-                    output.Add(new GeneratedTerminalDropReward(
+                    output.Add(new GeneratedLootDropReward(
                         instanceId,
                         ordinal++,
                         grant.GrantStableId,
@@ -157,41 +157,41 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         private static string BuildFingerprint(
-            TerminalDropSourceFact participantSource,
+            LootDropSourceFact participantSource,
             RewardOperationRequest operation,
             PersonalRewardGenerationResult personal,
-            IReadOnlyList<GeneratedTerminalDropReward> rewards)
+            IReadOnlyList<GeneratedLootDropReward> rewards)
         {
             var builder = new StringBuilder(
                 "schema=generated-personal-terminal-drop-batch-v1");
-            TerminalDrop.Append(
+            LootDrop.Append(
                 builder,
                 "source",
                 participantSource.Fingerprint);
-            TerminalDrop.Append(
+            LootDrop.Append(
                 builder,
                 "operation",
                 operation.Fingerprint);
-            TerminalDrop.Append(
+            LootDrop.Append(
                 builder,
                 "personal-context",
                 personal.Context.Fingerprint);
-            TerminalDrop.Append(
+            LootDrop.Append(
                 builder,
                 "personal-result",
                 personal.Fingerprint);
-            TerminalDrop.Append(
+            LootDrop.Append(
                 builder,
                 "reward-count",
                 rewards.Count);
             for (int index = 0; index < rewards.Count; index++)
             {
-                TerminalDrop.Append(
+                LootDrop.Append(
                     builder,
                     "reward-" + index.ToString("D4", CultureInfo.InvariantCulture),
                     rewards[index].Fingerprint);
             }
-            return TerminalDrop.Hash(builder.ToString());
+            return LootDrop.Hash(builder.ToString());
         }
     }
 }

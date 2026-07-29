@@ -16,12 +16,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             priority = 245)]
         private static void CreateThreeRoomStarterExample()
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            LevelDraft root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
                     "Create Three-Room Example",
-                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "Select an object below a LevelDraft.",
                     "OK");
                 return;
             }
@@ -34,38 +34,38 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 "Three-Room Starter Example",
                 root.transform);
 
-            LevelRoomAuthoring2D starter = CreateRoom(
+            LevelRoom starter = CreateRoom(
                 exampleRoot.transform,
                 "Starter Room",
                 "Starter Room",
                 new Vector2Int(0, 0),
                 1);
-            LevelRoomAuthoring2D rightOne = CreateRoom(
+            LevelRoom rightOne = CreateRoom(
                 exampleRoot.transform,
                 "Room 1,0",
                 string.Empty,
                 new Vector2Int(1, 0),
                 1);
-            LevelRoomAuthoring2D rightTwo = CreateRoom(
+            LevelRoom rightTwo = CreateRoom(
                 exampleRoot.transform,
                 "Room 2,0",
                 string.Empty,
                 new Vector2Int(2, 0),
                 1);
 
-            LevelDoorEndpointAuthoring2D starterEast = CreateDoor(
+            DoorEndpoint starterEast = CreateDoor(
                 starter,
                 "East Door",
                 LevelDoorSide.East);
-            LevelDoorEndpointAuthoring2D rightOneWest = CreateDoor(
+            DoorEndpoint rightOneWest = CreateDoor(
                 rightOne,
                 "West Door",
                 LevelDoorSide.West);
-            LevelDoorEndpointAuthoring2D rightOneEast = CreateDoor(
+            DoorEndpoint rightOneEast = CreateDoor(
                 rightOne,
                 "East Door",
                 LevelDoorSide.East);
-            LevelDoorEndpointAuthoring2D rightTwoWest = CreateDoor(
+            DoorEndpoint rightTwoWest = CreateDoor(
                 rightTwo,
                 "West Door",
                 LevelDoorSide.West);
@@ -115,7 +115,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private static LevelRoomAuthoring2D CreateRoom(
+        private static LevelRoom CreateRoom(
             Transform parent,
             string hierarchyName,
             string optionalDisplayName,
@@ -128,8 +128,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 RoomCellSize.x * RoomFootprint.x,
                 RoomCellSize.y * RoomFootprint.y);
 
-            LevelRoomAuthoring2D room =
-                Undo.AddComponent<LevelRoomAuthoring2D>(roomObject);
+            LevelRoom room =
+                Undo.AddComponent<LevelRoom>(roomObject);
             room.AssignNewStableId();
 
             SerializedObject serialized = new SerializedObject(room);
@@ -146,14 +146,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return room;
         }
 
-        private static LevelDoorEndpointAuthoring2D CreateDoor(
-            LevelRoomAuthoring2D room,
+        private static DoorEndpoint CreateDoor(
+            LevelRoom room,
             string hierarchyName,
             LevelDoorSide side)
         {
             GameObject doorObject = CreateObject(hierarchyName, room.transform);
-            LevelDoorEndpointAuthoring2D door =
-                Undo.AddComponent<LevelDoorEndpointAuthoring2D>(doorObject);
+            DoorEndpoint door =
+                Undo.AddComponent<DoorEndpoint>(doorObject);
             door.AssignNewStableId();
             door.ConfigureAuthoring(
                 door.DoorIdText,
@@ -168,17 +168,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return door;
         }
 
-        private static LevelDoorLinkAuthoring2D CreateConnection(
+        private static DoorLink CreateConnection(
             Transform parent,
             string hierarchyName,
-            LevelRoomAuthoring2D sourceRoom,
-            LevelDoorEndpointAuthoring2D sourceDoor,
-            LevelRoomAuthoring2D destinationRoom,
-            LevelDoorEndpointAuthoring2D destinationDoor)
+            LevelRoom sourceRoom,
+            DoorEndpoint sourceDoor,
+            LevelRoom destinationRoom,
+            DoorEndpoint destinationDoor)
         {
             GameObject connectionObject = CreateObject(hierarchyName, parent);
-            LevelDoorLinkAuthoring2D connection =
-                Undo.AddComponent<LevelDoorLinkAuthoring2D>(connectionObject);
+            DoorLink connection =
+                Undo.AddComponent<DoorLink>(connectionObject);
             connection.AssignNewStableId();
             connection.ConfigureConnection(
                 connection.ConnectionIdText,
@@ -198,12 +198,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return created;
         }
 
-        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
+        private static LevelDraft ResolveSelectedRoot()
         {
             GameObject selected = Selection.activeGameObject;
             return selected == null
                 ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : selected.GetComponentInParent<LevelDraft>();
         }
     }
 }

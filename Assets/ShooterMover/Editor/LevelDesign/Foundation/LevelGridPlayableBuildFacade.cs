@@ -13,7 +13,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         public bool ValidationPassed { get; internal set; }
         public bool ExportCommitted { get; internal set; }
         public bool CompileCommitted { get; internal set; }
-        public JsonRoomContentDefinition2D CompiledAsset { get; internal set; }
+        public RoomFile CompiledAsset { get; internal set; }
         public string Message { get; internal set; } = string.Empty;
         public Exception Failure { get; internal set; }
         public bool Succeeded
@@ -29,7 +29,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public static class LevelGridPlayableBuildFacade
     {
         public static LevelGridPlayableBuildResult ValidatePlayable(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             var result = new LevelGridPlayableBuildResult();
             try
@@ -48,7 +48,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static LevelGridPlayableBuildResult ExportPlayable(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             var result = new LevelGridPlayableBuildResult();
             try
@@ -79,7 +79,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static LevelGridPlayableBuildResult CompileAsset(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             var result = new LevelGridPlayableBuildResult();
             try
@@ -109,7 +109,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static LevelGridPlayableBuildResult ExportAndCompile(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             var result = new LevelGridPlayableBuildResult();
             try
@@ -145,13 +145,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return result;
         }
 
-        public static JsonRoomContentDefinition2D SelectCompiledAsset(
-            LevelDesignSceneAuthoringRoot2D root)
+        public static RoomFile SelectCompiledAsset(
+            LevelDraft root)
         {
             LevelGridPlayableBuildPaths paths =
                 LevelGridPlayableBuildPaths.Resolve(root);
-            JsonRoomContentDefinition2D asset =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(
+            RoomFile asset =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(
                     paths.CompiledAssetPath);
             if (asset == null)
             {
@@ -163,7 +163,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return asset;
         }
 
-        public static void RevealSourceFolder(LevelDesignSceneAuthoringRoot2D root)
+        public static void RevealSourceFolder(LevelDraft root)
         {
             LevelGridPlayableBuildPaths paths =
                 LevelGridPlayableBuildPaths.Resolve(root);
@@ -175,7 +175,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorUtility.RevealInFinder(paths.SourcePackageAbsolutePath);
         }
 
-        public static void RevealGeneratedFolder(LevelDesignSceneAuthoringRoot2D root)
+        public static void RevealGeneratedFolder(LevelDraft root)
         {
             LevelGridPlayableBuildPaths paths =
                 LevelGridPlayableBuildPaths.Resolve(root);
@@ -202,7 +202,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static string CopyRegistrationValues(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             LevelGridPlayableBuildPaths paths =
                 LevelGridPlayableBuildPaths.Resolve(root);
@@ -219,8 +219,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return text;
         }
 
-        public static void OpenProductionLevelSelectionScene(
-            LevelDesignSceneAuthoringRoot2D root)
+        public static void OpenLevelMenu(
+            LevelDraft root)
         {
             LevelGridPlayableStatus status =
                 LevelGridPlayableStatusEvaluator.Evaluate(root);
@@ -250,7 +250,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static LevelGridPlayableBuildPaths ValidateOrThrow(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
             LevelGridAuthoringLiveValidation.ValidateNow(
@@ -267,7 +267,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 throw new InvalidOperationException(
                     root.LastGridValidation.Problems.Count == 0
-                        ? "Grid V2 ProductionPublish validation failed."
+                        ? "Level ProductionPublish validation failed."
                         : root.LastGridValidation.Problems[0].ToString());
             }
             LevelGridPlayableMetadata metadata =
@@ -284,7 +284,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return paths;
         }
 
-        private static void RequireCurrentExport(LevelDesignSceneAuthoringRoot2D root)
+        private static void RequireCurrentExport(LevelDraft root)
         {
             LevelGridPlayableStatus status =
                 LevelGridPlayableStatusEvaluator.Evaluate(root);

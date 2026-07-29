@@ -14,7 +14,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             "strongbox-simulation-definition-conditioned-unsupported";
 
         public static bool TryRun(
-            string weaponCatalogJson,
+            string gunCatalogJson,
             StrongboxSimulationRequest request,
             out StrongboxSimulationReport report,
             out string diagnostic)
@@ -39,7 +39,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             AuthoritativeStrongboxSimulationGateway gateway;
             if (!AuthoritativeStrongboxSimulationGatewayFactory.TryCreate(
-                    weaponCatalogJson,
+                    gunCatalogJson,
                     out gateway,
                     out diagnostic)
                 || gateway == null)

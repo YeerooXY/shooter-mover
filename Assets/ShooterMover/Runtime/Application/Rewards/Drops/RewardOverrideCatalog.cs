@@ -33,8 +33,8 @@ namespace ShooterMover.Application.Rewards.Drops
         private static readonly RewardProfileOverride SurvivalBossOverride =
             RewardProfileOverride.Replace(
                 SurvivalBossOverrideId,
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.ExtraBossEnemyId));
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.ExtraBossEnemyId));
         private static readonly RewardProfileOverride BossRushOverride =
             RewardProfileOverride.Modify(
                 StableId.Parse("mission-override.boss-rush"),
@@ -71,8 +71,8 @@ namespace ShooterMover.Application.Rewards.Drops
         private static readonly RewardProfileOverride LockedVaultOverride =
             RewardProfileOverride.Replace(
                 StableId.Parse("placement-override.locked-vault"),
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.LargeTreasureLootId));
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.LargeTreasureLootId));
 
         public static RewardContextOverrideResolution Resolve(
             StableId sourceProfileReferenceId,
@@ -123,7 +123,7 @@ namespace ShooterMover.Application.Rewards.Drops
                 return null;
             }
             return sourceProfileReferenceId
-                    == RewardSourceCatalog.BossEnemyId
+                    == LootSourceCatalog.BossEnemyId
                 ? SurvivalBossOverride
                 : null;
         }
@@ -137,9 +137,9 @@ namespace ShooterMover.Application.Rewards.Drops
                 return null;
             }
             return sourceProfileReferenceId
-                    == RewardSourceCatalog.BossEnemyId
+                    == LootSourceCatalog.BossEnemyId
                 || sourceProfileReferenceId
-                    == RewardSourceCatalog.ExtraBossEnemyId
+                    == LootSourceCatalog.ExtraBossEnemyId
                 ? BossRushOverride
                 : null;
         }

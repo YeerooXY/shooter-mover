@@ -1,6 +1,6 @@
 using ShooterMover.Domain.Common;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Optional explicit placement surface for terminal wrappers that carry room

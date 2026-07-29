@@ -316,7 +316,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         {
             Keyboard keyboard = AddDevice<Keyboard>();
             Mouse mouse = AddDevice<Mouse>();
-            PlayerMovementIntentBridge movementAdapter = CreateMovementAdapter();
+            PlayerControls movementAdapter = CreateMovementAdapter();
             PlayerCombatIntentBridge combatAdapter = CreateCombatAdapter();
 
             QueueKeyboardAndMouse(
@@ -466,14 +466,14 @@ namespace ShooterMover.Tests.PlayMode.Combat
             return adapter;
         }
 
-        private PlayerMovementIntentBridge CreateMovementAdapter()
+        private PlayerControls CreateMovementAdapter()
         {
             InputActionAsset runtimeAsset = CreateRuntimeAsset(MovementActionAssetPath);
             GameObject gameObject =
                 new GameObject("Player Movement Intent Adapter Composition Test");
             createdObjects.Add(gameObject);
-            PlayerMovementIntentBridge adapter =
-                gameObject.AddComponent<PlayerMovementIntentBridge>();
+            PlayerControls adapter =
+                gameObject.AddComponent<PlayerControls>();
             adapter.Configure(runtimeAsset);
             return adapter;
         }
@@ -673,7 +673,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
                     | BindingFlags.Instance
                     | BindingFlags.DeclaredOnly)
                 .Any(field =>
-                    typeof(PlayerInput).IsAssignableFrom(field.FieldType)
+                    typeof(PlayerControls).IsAssignableFrom(field.FieldType)
                     || string.Equals(
                         field.FieldType.FullName,
                         "UnityEngine.InputSystem.Users.InputUser",

@@ -18,18 +18,18 @@ namespace ShooterMover.EditorTools.BalanceSimulator
     {
         private static readonly StableId[] SourceProfileIds =
         {
-            RewardSourceCatalog.SmallEnemyId,
-            RewardSourceCatalog.NormalEnemyId,
-            RewardSourceCatalog.LargeEnemyId,
-            RewardSourceCatalog.BossEnemyId,
-            RewardSourceCatalog.ExtraBossEnemyId,
-            RewardSourceCatalog.NormalPropId,
-            RewardSourceCatalog.RarePropId,
-            RewardSourceCatalog.ExtraRarePropId,
-            RewardSourceCatalog.NormalHiddenTreasureId,
-            RewardSourceCatalog.LargeHiddenLootId,
-            RewardSourceCatalog.LargeTreasureLootId,
-            RewardSourceCatalog.ExplicitNoDropId,
+            LootSourceCatalog.SmallEnemyId,
+            LootSourceCatalog.NormalEnemyId,
+            LootSourceCatalog.LargeEnemyId,
+            LootSourceCatalog.BossEnemyId,
+            LootSourceCatalog.ExtraBossEnemyId,
+            LootSourceCatalog.NormalPropId,
+            LootSourceCatalog.RarePropId,
+            LootSourceCatalog.ExtraRarePropId,
+            LootSourceCatalog.NormalHiddenTreasureId,
+            LootSourceCatalog.LargeHiddenLootId,
+            LootSourceCatalog.LargeTreasureLootId,
+            LootSourceCatalog.ExplicitNoDropId,
         };
 
         private static readonly string[] SourceProfileLabels =
@@ -84,7 +84,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                 "Production Drop Source Simulator",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Uses RewardSourceCatalog, RewardProfileResolver, RewardOverrideCatalog, ParticipantDropPacing and StrongboxTierSelectionCatalog. No simulator-owned probability or pity formula is used.",
+                "Uses LootSourceCatalog, RewardProfileResolver, RewardOverrideCatalog, ParticipantDropPacing and StrongboxTierSelectionCatalog. No simulator-owned probability or pity formula is used.",
                 MessageType.Info);
 
             scroll = EditorGUILayout.BeginScrollView(scroll);

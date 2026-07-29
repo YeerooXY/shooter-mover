@@ -1,6 +1,6 @@
 using System;
 using NUnit.Framework;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
@@ -19,18 +19,18 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 Id("authority.receipt-compensation"),
                 99L,
                 new EquipmentCatalogBridge(
-                    WeaponCatalogProvider.EquipmentCatalog));
+                    GunCatalogProvider.EquipmentCatalog));
             var mutatingReceipt = new MutatingThrowingReceiptState(
                 receiptService);
-            var weapons = new WeaponHoldingsState();
+            var guns = new GunInventoryState();
             var authority = new FirstPlayerHoldingsState(
                 mutatingReceipt,
-                weapons);
+                guns);
 
             EquipmentDefinition definition =
-                WeaponCatalogProvider.EquipmentCatalog
+                GunCatalogProvider.EquipmentCatalog
                     .FindEquipmentDefinition(
-                        Id("equipment.weapon-rattler-mk1"));
+                        Id("equipment.gun-rattler-mk1"));
             EquipmentInstance exact = EquipmentInstance.Create(
                 Id("instance.receipt-compensation"),
                 definition.DefinitionId,
@@ -48,7 +48,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                         Id("source.receipt-compensation")),
                     authority.Sequence);
 
-            WeaponHoldingsSnapshot weaponsBefore = weapons.ExportSnapshot();
+            GunInventorySnapshot gunsBefore = guns.ExportSnapshot();
             PlayerHoldingsSnapshot receiptsBefore =
                 receiptService.ExportSnapshot();
 
@@ -57,12 +57,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 Throws.InvalidOperationException.With.Message.Contains(
                     "mutating-receipt-test-failure"));
             Assert.That(
-                weapons.ExportSnapshot().Fingerprint,
-                Is.EqualTo(weaponsBefore.Fingerprint));
+                guns.ExportSnapshot().Fingerprint,
+                Is.EqualTo(gunsBefore.Fingerprint));
             Assert.That(
                 receiptService.ExportSnapshot().Fingerprint,
                 Is.EqualTo(receiptsBefore.Fingerprint));
-            Assert.That(weapons.Find(exact.InstanceId), Is.Null);
+            Assert.That(guns.Find(exact.InstanceId), Is.Null);
             Assert.That(receiptService.ExportSnapshot().UniqueHoldings, Is.Empty);
         }
 

@@ -243,7 +243,7 @@ namespace ShooterMover.Tests.EditMode.EnvironmentPackages.Doors
                     forbidden[index]);
             }
 
-            Assert.That(source, Does.Contain("PlacedObjectAuthoring2D"));
+            Assert.That(source, Does.Contain("PlacedObject"));
             Assert.That(source, Does.Contain("IRestartParticipant"));
             Assert.That(source, Does.Contain("IDoorWalletReadPort"));
             Assert.That(source, Does.Contain("IDoorKeyReadPort"));

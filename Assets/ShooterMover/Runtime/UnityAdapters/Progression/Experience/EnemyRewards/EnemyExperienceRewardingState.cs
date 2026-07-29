@@ -12,12 +12,12 @@ namespace ShooterMover.UnityAdapters.Progression.Experience.EnemyRewards
     /// Decorates an existing EN-003 authority port. Enemy combat and lifecycle remain
     /// unchanged; accepted EN-002 destruction notifications are forwarded to XP-002.
     /// </summary>
-    public sealed class EnemyExperienceRewardingState : IEnemyActor2DState
+    public sealed class EnemyExperienceRewardingState : IEnemyState
     {
         private static readonly IReadOnlyList<EnemyExperienceRewardFact> EmptyFacts =
             Array.AsReadOnly(new EnemyExperienceRewardFact[0]);
 
-        private readonly IEnemyActor2DState innerAuthority;
+        private readonly IEnemyState innerAuthority;
         private readonly EnemyExperienceRewardActions rewardService;
         private readonly StableId runStableId;
         private readonly StableId enemyDefinitionStableId;
@@ -26,7 +26,7 @@ namespace ShooterMover.UnityAdapters.Progression.Experience.EnemyRewards
         private IReadOnlyList<EnemyExperienceRewardFact> lastRewardFacts = EmptyFacts;
 
         public EnemyExperienceRewardingState(
-            IEnemyActor2DState innerAuthority,
+            IEnemyState innerAuthority,
             EnemyExperienceRewardActions rewardService,
             StableId runStableId,
             StableId enemyDefinitionStableId,

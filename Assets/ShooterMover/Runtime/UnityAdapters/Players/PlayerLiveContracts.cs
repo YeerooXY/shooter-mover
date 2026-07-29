@@ -6,7 +6,7 @@ using ShooterMover.GameplayEntities;
 
 namespace ShooterMover.UnityAdapters.Players
 {
-    public enum PlayerLiveConstructionStatus
+    public enum PlayerSetupStatus
     {
         Constructed = 1,
         RejectedDuplicate = 2,
@@ -14,7 +14,7 @@ namespace ShooterMover.UnityAdapters.Players
         RejectedOwnership = 4,
     }
 
-    public enum PlayerLiveConstructionRejectionCode
+    public enum PlayerSetupRejectionCode
     {
         None = 0,
         AlreadyConstructed = 1,
@@ -30,9 +30,9 @@ namespace ShooterMover.UnityAdapters.Players
         InputOwnershipUnavailable = 11,
     }
 
-    public sealed class PlayerLiveConfiguration
+    public sealed class PlayerConfig
     {
-        public PlayerLiveConfiguration(PlayerActorDefinition actorDefinition)
+        public PlayerConfig(PlayerActorDefinition actorDefinition)
         {
             ActorDefinition = actorDefinition;
         }
@@ -40,9 +40,9 @@ namespace ShooterMover.UnityAdapters.Players
         public PlayerActorDefinition ActorDefinition { get; }
     }
 
-    public sealed class PlayerInputOwnership : IEquatable<PlayerInputOwnership>
+    public sealed class PlayerControlsOwnership : IEquatable<PlayerControlsOwnership>
     {
-        public PlayerInputOwnership(StableId actorInstanceId, StableId runParticipantId)
+        public PlayerControlsOwnership(StableId actorInstanceId, StableId runParticipantId)
         {
             ActorInstanceId = actorInstanceId ?? throw new ArgumentNullException(nameof(actorInstanceId));
             RunParticipantId = runParticipantId ?? throw new ArgumentNullException(nameof(runParticipantId));
@@ -51,14 +51,14 @@ namespace ShooterMover.UnityAdapters.Players
         public StableId ActorInstanceId { get; }
         public StableId RunParticipantId { get; }
 
-        public bool Equals(PlayerInputOwnership other)
+        public bool Equals(PlayerControlsOwnership other)
         {
             return !ReferenceEquals(other, null)
                 && ActorInstanceId == other.ActorInstanceId
                 && RunParticipantId == other.RunParticipantId;
         }
 
-        public override bool Equals(object obj) { return Equals(obj as PlayerInputOwnership); }
+        public override bool Equals(object obj) { return Equals(obj as PlayerControlsOwnership); }
         public override int GetHashCode()
         {
             unchecked { return (ActorInstanceId.GetHashCode() * 397) ^ RunParticipantId.GetHashCode(); }
@@ -105,9 +105,9 @@ namespace ShooterMover.UnityAdapters.Players
         }
     }
 
-    public sealed class PlayerLiveSnapshot
+    public sealed class PlayerSnapshot
     {
-        public PlayerLiveSnapshot(PlayerActorSnapshot player, PlayerMovementSnapshot movement)
+        public PlayerSnapshot(PlayerActorSnapshot player, PlayerMovementSnapshot movement)
         {
             Player = player ?? throw new ArgumentNullException(nameof(player));
             Movement = movement ?? throw new ArgumentNullException(nameof(movement));
@@ -203,7 +203,7 @@ namespace ShooterMover.UnityAdapters.Players
         public long LifecycleGeneration { get; }
     }
 
-    public enum PlayerLiveRestartStatus
+    public enum PlayerRestartStatus
     {
         Applied = 1,
         Duplicate = 2,
@@ -212,7 +212,7 @@ namespace ShooterMover.UnityAdapters.Players
         RejectedByMovement = 5,
     }
 
-    public enum PlayerLiveRestartRejectionCode
+    public enum PlayerRestartRejectionCode
     {
         None = 0,
         NullCommand = 1,
@@ -229,9 +229,9 @@ namespace ShooterMover.UnityAdapters.Players
         Disposed = 12,
     }
 
-    public sealed class PlayerLiveRestartCommand : IEquatable<PlayerLiveRestartCommand>
+    public sealed class PlayerRestartCommand : IEquatable<PlayerRestartCommand>
     {
-        public PlayerLiveRestartCommand(
+        public PlayerRestartCommand(
             StableId operationId,
             StableId targetActorId,
             long retiringGeneration,
@@ -248,7 +248,7 @@ namespace ShooterMover.UnityAdapters.Players
         public long RetiringGeneration { get; }
         public long ReplacementGeneration { get; }
 
-        public bool Equals(PlayerLiveRestartCommand other)
+        public bool Equals(PlayerRestartCommand other)
         {
             return !ReferenceEquals(other, null)
                 && OperationId == other.OperationId
@@ -257,7 +257,7 @@ namespace ShooterMover.UnityAdapters.Players
                 && ReplacementGeneration == other.ReplacementGeneration;
         }
 
-        public override bool Equals(object obj) { return Equals(obj as PlayerLiveRestartCommand); }
+        public override bool Equals(object obj) { return Equals(obj as PlayerRestartCommand); }
         public override int GetHashCode()
         {
             unchecked
@@ -271,13 +271,13 @@ namespace ShooterMover.UnityAdapters.Players
         }
     }
 
-    public sealed class PlayerLiveRestartResult
+    public sealed class PlayerRestartResult
     {
-        public PlayerLiveRestartResult(
-            PlayerLiveRestartStatus status,
-            PlayerLiveRestartRejectionCode rejectionCode,
-            PlayerLiveRestartCommand command,
-            PlayerLiveSnapshot snapshot)
+        public PlayerRestartResult(
+            PlayerRestartStatus status,
+            PlayerRestartRejectionCode rejectionCode,
+            PlayerRestartCommand command,
+            PlayerSnapshot snapshot)
         {
             Status = status;
             RejectionCode = rejectionCode;
@@ -285,29 +285,29 @@ namespace ShooterMover.UnityAdapters.Players
             Snapshot = snapshot;
         }
 
-        public PlayerLiveRestartStatus Status { get; }
-        public PlayerLiveRestartRejectionCode RejectionCode { get; }
-        public PlayerLiveRestartCommand Command { get; }
-        public PlayerLiveSnapshot Snapshot { get; }
+        public PlayerRestartStatus Status { get; }
+        public PlayerRestartRejectionCode RejectionCode { get; }
+        public PlayerRestartCommand Command { get; }
+        public PlayerSnapshot Snapshot { get; }
     }
 
-    public interface IPlayerMovementLive : IDisposable
+    public interface IPlayerMovement : IDisposable
     {
         bool IsDisposed { get; }
         PlayerMovementSnapshot ExportSnapshot();
         bool TryRestart(long retiringGeneration, long replacementGeneration);
     }
 
-    public interface IPlayerPresentationLive : IDisposable
+    public interface IPlayerView : IDisposable
     {
         void RefreshContinuousBoost(PlayerMovementSnapshot movementSnapshot);
-        void Restart(PlayerLiveSnapshot runtimeSnapshot);
+        void Restart(PlayerSnapshot runtimeSnapshot);
     }
 
-    public interface IPlayerInputLive : IDisposable
+    public interface IPlayerControls : IDisposable
     {
-        bool TryAcquire(PlayerInputOwnership ownership);
-        bool Release(PlayerInputOwnership ownership);
+        bool TryAcquire(PlayerControlsOwnership ownership);
+        bool Release(PlayerControlsOwnership ownership);
     }
 
     public interface ITrustedPlayerAttributionResolver
@@ -320,12 +320,12 @@ namespace ShooterMover.UnityAdapters.Players
         void ObservePlayerDeath(GameplayEntityDeathFact deathFact);
     }
 
-    public sealed class PlayerLiveAttachments
+    public sealed class PlayerParts
     {
-        public PlayerLiveAttachments(
-            IPlayerMovementLive movement,
-            IPlayerPresentationLive presentation,
-            IPlayerInputLive input,
+        public PlayerParts(
+            IPlayerMovement movement,
+            IPlayerView presentation,
+            IPlayerControls input,
             ITrustedPlayerAttributionResolver attributionResolver,
             IPlayerRunFlow runCoordinator)
         {
@@ -336,20 +336,20 @@ namespace ShooterMover.UnityAdapters.Players
             RunCoordinator = runCoordinator;
         }
 
-        public IPlayerMovementLive Movement { get; }
-        public IPlayerPresentationLive Presentation { get; }
-        public IPlayerInputLive Input { get; }
+        public IPlayerMovement Movement { get; }
+        public IPlayerView Presentation { get; }
+        public IPlayerControls Input { get; }
         public ITrustedPlayerAttributionResolver AttributionResolver { get; }
         public IPlayerRunFlow RunCoordinator { get; }
     }
 
-    public sealed class PlayerLiveConstructionResult
+    public sealed class PlayerSetupResult
     {
-        internal PlayerLiveConstructionResult(
-            PlayerLiveConstructionStatus status,
-            PlayerLiveConstructionRejectionCode rejectionCode,
+        internal PlayerSetupResult(
+            PlayerSetupStatus status,
+            PlayerSetupRejectionCode rejectionCode,
             PlayerActorCreationRejectionCode actorRejectionCode,
-            PlayerLiveSetup runtime)
+            PlayerSetup runtime)
         {
             Status = status;
             RejectionCode = rejectionCode;
@@ -357,10 +357,10 @@ namespace ShooterMover.UnityAdapters.Players
             Runtime = runtime;
         }
 
-        public PlayerLiveConstructionStatus Status { get; }
-        public PlayerLiveConstructionRejectionCode RejectionCode { get; }
+        public PlayerSetupStatus Status { get; }
+        public PlayerSetupRejectionCode RejectionCode { get; }
         public PlayerActorCreationRejectionCode ActorRejectionCode { get; }
-        public PlayerLiveSetup Runtime { get; }
-        public bool IsConstructed { get { return Status == PlayerLiveConstructionStatus.Constructed; } }
+        public PlayerSetup Runtime { get; }
+        public bool IsConstructed { get { return Status == PlayerSetupStatus.Constructed; } }
     }
 }

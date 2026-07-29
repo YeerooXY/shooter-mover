@@ -300,7 +300,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         }
 
         [Test]
-        public void RewardSourceOverride_AllModesResolveDeterministically()
+        public void LootSourceOverride_AllModesResolveDeterministically()
         {
             RewardProfile inherited = RewardProfile.Create(
                 Id("reward-profile.default"),
@@ -328,18 +328,18 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
                 "currency.scrap",
                 2L);
 
-            RewardSourceOverride inherit = RewardSourceOverride.Inherit(
+            LootSourceOverride inherit = LootSourceOverride.Inherit(
                 Id("reward-override.inherit"),
                 Id("source.crate-a"));
-            RewardSourceOverride noReward = RewardSourceOverride.NoReward(
+            LootSourceOverride noReward = LootSourceOverride.NoReward(
                 Id("reward-override.none"),
                 Id("source.crate-a"),
                 Id("reward-profile.resolved-none"));
-            RewardSourceOverride replace = RewardSourceOverride.ReplaceEntirely(
+            LootSourceOverride replace = LootSourceOverride.ReplaceEntirely(
                 Id("reward-override.replace"),
                 Id("source.crate-a"),
                 replacement);
-            RewardSourceOverride append = RewardSourceOverride.AppendGuaranteedEntries(
+            LootSourceOverride append = LootSourceOverride.AppendGuaranteedEntries(
                 Id("reward-override.append"),
                 Id("source.crate-a"),
                 Id("reward-profile.resolved-append"),
@@ -357,7 +357,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         }
 
         [Test]
-        public void RewardSourceOverride_AppendDuplicateGrantIdentity_IsRejectedDuringResolution()
+        public void LootSourceOverride_AppendDuplicateGrantIdentity_IsRejectedDuringResolution()
         {
             RewardGrantSpecification grant = FixedGrant(
                 "grant.same",
@@ -369,7 +369,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
                 new[] { grant },
                 Array.Empty<IndependentRewardRoll>(),
                 Array.Empty<ExclusiveRewardGroup>());
-            RewardSourceOverride append = RewardSourceOverride.AppendGuaranteedEntries(
+            LootSourceOverride append = LootSourceOverride.AppendGuaranteedEntries(
                 Id("reward-override.append-duplicate"),
                 Id("source.crate-b"),
                 Id("reward-profile.append-duplicate"),

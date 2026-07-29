@@ -6,7 +6,7 @@ using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Shops;
-using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Guns.Catalog;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -46,7 +46,7 @@ namespace ShooterMover.UI.Shop
         private static ShopScreenSession pendingSession;
         private static IShopScreenRouteBridge pendingRouteAdapter;
         private static EquipmentCatalog pendingEquipmentCatalog;
-        private static WeaponCatalog pendingWeaponCatalog;
+        private static GunCatalog pendingGunCatalog;
 
         public static void Prepare(
             ShopScreenSession session,
@@ -59,7 +59,7 @@ namespace ShooterMover.UI.Shop
             ShopScreenSession session,
             IShopScreenRouteBridge routeAdapter,
             EquipmentCatalog equipmentCatalog,
-            WeaponCatalog weaponCatalog)
+            GunCatalog gunCatalog)
         {
             lock (Sync)
             {
@@ -68,7 +68,7 @@ namespace ShooterMover.UI.Shop
                 pendingRouteAdapter = routeAdapter
                     ?? throw new ArgumentNullException(nameof(routeAdapter));
                 pendingEquipmentCatalog = equipmentCatalog;
-                pendingWeaponCatalog = weaponCatalog;
+                pendingGunCatalog = gunCatalog;
             }
         }
 
@@ -77,30 +77,30 @@ namespace ShooterMover.UI.Shop
             out IShopScreenRouteBridge routeAdapter)
         {
             EquipmentCatalog equipmentCatalog;
-            WeaponCatalog weaponCatalog;
+            GunCatalog gunCatalog;
             return TryConsume(
                 out session,
                 out routeAdapter,
                 out equipmentCatalog,
-                out weaponCatalog);
+                out gunCatalog);
         }
 
         public static bool TryConsume(
             out ShopScreenSession session,
             out IShopScreenRouteBridge routeAdapter,
             out EquipmentCatalog equipmentCatalog,
-            out WeaponCatalog weaponCatalog)
+            out GunCatalog gunCatalog)
         {
             lock (Sync)
             {
                 session = pendingSession;
                 routeAdapter = pendingRouteAdapter;
                 equipmentCatalog = pendingEquipmentCatalog;
-                weaponCatalog = pendingWeaponCatalog;
+                gunCatalog = pendingGunCatalog;
                 pendingSession = null;
                 pendingRouteAdapter = null;
                 pendingEquipmentCatalog = null;
-                pendingWeaponCatalog = null;
+                pendingGunCatalog = null;
                 return session != null && routeAdapter != null;
             }
         }
@@ -112,7 +112,7 @@ namespace ShooterMover.UI.Shop
                 pendingSession = null;
                 pendingRouteAdapter = null;
                 pendingEquipmentCatalog = null;
-                pendingWeaponCatalog = null;
+                pendingGunCatalog = null;
             }
         }
     }

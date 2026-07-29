@@ -619,7 +619,7 @@ namespace ShooterMover.Domain.Rewards.Model
         }
     }
 
-    public enum RewardSourceOverrideMode
+    public enum LootSourceOverrideMode
     {
         InheritDefault = 1,
         NoReward = 2,
@@ -631,16 +631,16 @@ namespace ShooterMover.Domain.Rewards.Model
     /// Immutable source override. Resolution is a pure composition step and performs
     /// no generation, random sampling, claim, or application.
     /// </summary>
-    public sealed class RewardSourceOverride : IEquatable<RewardSourceOverride>
+    public sealed class LootSourceOverride : IEquatable<LootSourceOverride>
     {
         private readonly ReadOnlyCollection<RewardGrantSpecification> appendedGuaranteedEntries;
         private readonly string canonicalText;
         private readonly string fingerprint;
 
-        private RewardSourceOverride(
+        private LootSourceOverride(
             StableId overrideStableId,
             StableId sourceInstanceStableId,
-            RewardSourceOverrideMode mode,
+            LootSourceOverrideMode mode,
             StableId resultProfileStableId,
             RewardProfile replacementProfile,
             IEnumerable<RewardGrantSpecification> appendedGuaranteedEntries)
@@ -668,7 +668,7 @@ namespace ShooterMover.Domain.Rewards.Model
 
         public StableId SourceInstanceStableId { get; }
 
-        public RewardSourceOverrideMode Mode { get; }
+        public LootSourceOverrideMode Mode { get; }
 
         public StableId ResultProfileStableId { get; }
 
@@ -684,57 +684,57 @@ namespace ShooterMover.Domain.Rewards.Model
             get { return this.fingerprint; }
         }
 
-        public static RewardSourceOverride Inherit(
+        public static LootSourceOverride Inherit(
             StableId overrideStableId,
             StableId sourceInstanceStableId)
         {
-            return new RewardSourceOverride(
+            return new LootSourceOverride(
                 overrideStableId,
                 sourceInstanceStableId,
-                RewardSourceOverrideMode.InheritDefault,
+                LootSourceOverrideMode.InheritDefault,
                 null,
                 null,
                 Array.Empty<RewardGrantSpecification>());
         }
 
-        public static RewardSourceOverride NoReward(
+        public static LootSourceOverride NoReward(
             StableId overrideStableId,
             StableId sourceInstanceStableId,
             StableId resultProfileStableId)
         {
-            return new RewardSourceOverride(
+            return new LootSourceOverride(
                 overrideStableId,
                 sourceInstanceStableId,
-                RewardSourceOverrideMode.NoReward,
+                LootSourceOverrideMode.NoReward,
                 resultProfileStableId,
                 null,
                 Array.Empty<RewardGrantSpecification>());
         }
 
-        public static RewardSourceOverride ReplaceEntirely(
+        public static LootSourceOverride ReplaceEntirely(
             StableId overrideStableId,
             StableId sourceInstanceStableId,
             RewardProfile replacementProfile)
         {
-            return new RewardSourceOverride(
+            return new LootSourceOverride(
                 overrideStableId,
                 sourceInstanceStableId,
-                RewardSourceOverrideMode.ReplaceEntirely,
+                LootSourceOverrideMode.ReplaceEntirely,
                 null,
                 replacementProfile,
                 Array.Empty<RewardGrantSpecification>());
         }
 
-        public static RewardSourceOverride AppendGuaranteedEntries(
+        public static LootSourceOverride AppendGuaranteedEntries(
             StableId overrideStableId,
             StableId sourceInstanceStableId,
             StableId resultProfileStableId,
             IEnumerable<RewardGrantSpecification> appendedGuaranteedEntries)
         {
-            return new RewardSourceOverride(
+            return new LootSourceOverride(
                 overrideStableId,
                 sourceInstanceStableId,
-                RewardSourceOverrideMode.AppendGuaranteedEntries,
+                LootSourceOverrideMode.AppendGuaranteedEntries,
                 resultProfileStableId,
                 null,
                 appendedGuaranteedEntries);
@@ -749,13 +749,13 @@ namespace ShooterMover.Domain.Rewards.Model
 
             switch (this.Mode)
             {
-                case RewardSourceOverrideMode.InheritDefault:
+                case LootSourceOverrideMode.InheritDefault:
                     return inheritedProfile;
-                case RewardSourceOverrideMode.NoReward:
+                case LootSourceOverrideMode.NoReward:
                     return RewardProfile.CreateExplicitNoDrop(this.ResultProfileStableId);
-                case RewardSourceOverrideMode.ReplaceEntirely:
+                case LootSourceOverrideMode.ReplaceEntirely:
                     return this.ReplacementProfile;
-                case RewardSourceOverrideMode.AppendGuaranteedEntries:
+                case LootSourceOverrideMode.AppendGuaranteedEntries:
                     return inheritedProfile.AppendGuaranteed(
                         this.ResultProfileStableId,
                         this.appendedGuaranteedEntries);
@@ -769,7 +769,7 @@ namespace ShooterMover.Domain.Rewards.Model
             return this.canonicalText;
         }
 
-        public bool Equals(RewardSourceOverride other)
+        public bool Equals(LootSourceOverride other)
         {
             return !ReferenceEquals(other, null)
                 && string.Equals(this.canonicalText, other.canonicalText, StringComparison.Ordinal);
@@ -777,7 +777,7 @@ namespace ShooterMover.Domain.Rewards.Model
 
         public override bool Equals(object obj)
         {
-            return this.Equals(obj as RewardSourceOverride);
+            return this.Equals(obj as LootSourceOverride);
         }
 
         public override int GetHashCode()
@@ -798,14 +798,14 @@ namespace ShooterMover.Domain.Rewards.Model
 
             switch (this.Mode)
             {
-                case RewardSourceOverrideMode.InheritDefault:
+                case LootSourceOverrideMode.InheritDefault:
                     if (hasResultId || hasReplacement || hasAppendedEntries)
                     {
                         throw new ArgumentException("Inherit overrides must not carry replacement data.");
                     }
 
                     break;
-                case RewardSourceOverrideMode.NoReward:
+                case LootSourceOverrideMode.NoReward:
                     if (!hasResultId || hasReplacement || hasAppendedEntries)
                     {
                         throw new ArgumentException(
@@ -813,7 +813,7 @@ namespace ShooterMover.Domain.Rewards.Model
                     }
 
                     break;
-                case RewardSourceOverrideMode.ReplaceEntirely:
+                case LootSourceOverrideMode.ReplaceEntirely:
                     if (hasResultId || !hasReplacement || hasAppendedEntries)
                     {
                         throw new ArgumentException(
@@ -821,7 +821,7 @@ namespace ShooterMover.Domain.Rewards.Model
                     }
 
                     break;
-                case RewardSourceOverrideMode.AppendGuaranteedEntries:
+                case LootSourceOverrideMode.AppendGuaranteedEntries:
                     if (!hasResultId || hasReplacement || !hasAppendedEntries)
                     {
                         throw new ArgumentException(

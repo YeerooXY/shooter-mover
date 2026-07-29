@@ -33,7 +33,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
             Assert.That(authority.TryGetRun(started.RunStableId, out run),
                 Is.True);
 
-            RunPlayerLiveSnapshot player =
+            RunPlayerSnapshot player =
                 run.RuntimePorts.Player.ExportSnapshot();
             for (int ordinal = 1; ordinal <= 3; ordinal++)
             {
@@ -77,7 +77,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
             Assert.That(run.LifecycleGeneration, Is.EqualTo(1L));
             Assert.That(run.RuntimePorts.Player.LifecycleGeneration,
                 Is.EqualTo(1L));
-            Assert.That(run.RuntimePorts.Weapons.LifecycleGeneration,
+            Assert.That(run.RuntimePorts.Guns.LifecycleGeneration,
                 Is.EqualTo(1L));
             Assert.That(run.RuntimePorts.StatusEffects.LifecycleGeneration,
                 Is.EqualTo(1L));
@@ -117,7 +117,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
 
         private static EnemyDeathFact Death(
             StableId runId,
-            RunPlayerLiveSnapshot player,
+            RunPlayerSnapshot player,
             int ordinal)
         {
             string suffix = ordinal.ToString();
@@ -234,10 +234,10 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
                 StableId qualityId = Id("quality.common");
                 EquipmentDefinition definition = EquipmentDefinition.Create(
                     definitionId,
-                    EquipmentCategoryIds.Weapon,
+                    EquipmentCategoryIds.Gun,
                     Id("equipment-family.atomic-rifle"),
                     "Atomic Rifle",
-                    Id("weapon.atomic-rifle"),
+                    Id("gun.atomic-rifle"),
                     InclusiveIntRange.Create(1, 100),
                     1,
                     new[]
@@ -282,7 +282,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
                                         5m
                                     },
                                     {
-                                        DerivedStatTargetIds.WeaponCapacity,
+                                        DerivedStatTargetIds.GunCapacity,
                                         4m
                                     },
                                     {
@@ -320,7 +320,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
                     new[]
                     {
                         new FrozenRunEquipment(
-                            Id("weapon-slot.slot-1"),
+                            Id("gun-slot.slot-1"),
                             equipment,
                             definition),
                     },
@@ -338,7 +338,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
             {
                 return new RunSessionNonConditionLivePorts(
                     new PlayerPort(),
-                    new WeaponPort(frozen.Equipment.Select(
+                    new GunPort(frozen.Equipment.Select(
                         item => item.EquipmentInstanceStableId)),
                     new AbilityPort(),
                     new RoomPort(),
@@ -399,9 +399,9 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
         {
             public PlayerPort() : base("atomic-player") { }
 
-            public RunPlayerLiveSnapshot ExportSnapshot()
+            public RunPlayerSnapshot ExportSnapshot()
             {
-                return new RunPlayerLiveSnapshot(
+                return new RunPlayerSnapshot(
                     Id("actor.atomic"),
                     Id("participant.atomic"),
                     Generation,
@@ -418,13 +418,13 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
             }
         }
 
-        private sealed class WeaponPort : LifecyclePort,
-            IRunWeaponLivePort
+        private sealed class GunPort : LifecyclePort,
+            IRunGunLivePort
         {
             private readonly IReadOnlyList<StableId> equipment;
 
-            public WeaponPort(IEnumerable<StableId> equipment)
-                : base("atomic-weapons")
+            public GunPort(IEnumerable<StableId> equipment)
+                : base("atomic-guns")
             {
                 this.equipment = equipment.ToList().AsReadOnly();
             }

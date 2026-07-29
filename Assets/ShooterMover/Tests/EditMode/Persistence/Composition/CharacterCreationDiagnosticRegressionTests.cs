@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using ShooterMover.Application.Persistence.Accounts;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -31,8 +31,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             try
             {
-                LegacyCharacterProfileMigrationResult result =
-                    new LegacyCharacterProfileMigration(
+                SaveMigrationResult result =
+                    new SaveMigration(
                         authority,
                         factory,
                         snapshot =>
@@ -72,7 +72,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Id("account.batch-migration-diagnostic-regression")));
             var factory = new ThrowingStarterFactory(1);
             int saveCalls = 0;
-            var migration = new LegacyCharacterProfileMigration(
+            var migration = new SaveMigration(
                 authority,
                 factory,
                 snapshot =>
@@ -81,7 +81,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     return Saved(snapshot);
                 });
 
-            LegacyCharacterProfileMigrationResult result = migration.Migrate(
+            SaveMigrationResult result = migration.Migrate(
                 new[]
                 {
                     LegacyProfile(0),
@@ -114,7 +114,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                             + slotIndex),
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayload.WeaponSlotCount]);
+                        PlayerRouteProfilePayload.GunSlotCount]);
             return new LegacyCharacterProfile(
                 slotIndex,
                 "Diagnostic Pilot " + slotIndex,
@@ -124,17 +124,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 route);
         }
 
-        private static IReadOnlyList<SaveComponentDefinition> Definitions()
+        private static IReadOnlyList<SavePartDefinition> Definitions()
         {
             return new[]
             {
-                KnownSaveComponentDefinitions.PlayerExperience(),
-                KnownSaveComponentDefinitions.PlayerHoldings(),
-                KnownSaveComponentDefinitions.MoneyWallet(),
-                KnownSaveComponentDefinitions.ScrapWallet(),
-                KnownSaveComponentDefinitions.RankedSkillAllocation(),
-                KnownSaveComponentDefinitions.ExactInstanceLoadout(),
-                KnownSaveComponentDefinitions.StrongboxState(),
+                GameSaveParts.PlayerExperience(),
+                GameSaveParts.PlayerHoldings(),
+                GameSaveParts.MoneyWallet(),
+                GameSaveParts.ScrapWallet(),
+                GameSaveParts.RankedSkillAllocation(),
+                GameSaveParts.ExactInstanceLoadout(),
+                GameSaveParts.StrongboxState(),
             };
         }
 
@@ -204,7 +204,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         {
             private TestGraph(
                 CharacterInstanceSnapshot character,
-                IReadOnlyList<ISaveComponentBridge> saveAdapters)
+                IReadOnlyList<ISavePart> saveAdapters)
             {
                 Character = character;
                 SaveAdapters = saveAdapters;
@@ -212,20 +212,20 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             public CharacterInstanceSnapshot Character { get; private set; }
 
-            public IReadOnlyList<ISaveComponentBridge> SaveAdapters { get; }
+            public IReadOnlyList<ISavePart> SaveAdapters { get; }
 
             public bool IsDisposed { get; private set; }
 
             public static TestGraph Create(CharacterInstanceSnapshot character)
             {
-                var adapters = new List<ISaveComponentBridge>();
-                foreach (SaveComponentDefinition definition in Definitions())
+                var adapters = new List<ISavePart>();
+                foreach (SavePartDefinition definition in Definitions())
                 {
                     var state = new MutableState(
                         "diagnostic-" + definition.ComponentStableId);
                     var codec = new TestCodec();
                     adapters.Add(
-                        new StateSnapshotSaveComponentBridge<TestSnapshot>(
+                        new SnapshotSavePart<TestSnapshot>(
                             definition,
                             codec,
                             () => new TestSnapshot(state.Value),
@@ -233,7 +233,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                             snapshot =>
                             {
                                 state.Value = snapshot.Value;
-                                return SaveComponentApplyResult.Applied();
+                                return SavePartApplyResult.Applied();
                             }));
                 }
                 return new TestGraph(character, adapters);
@@ -271,7 +271,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         private sealed class TestCodec :
-            ISaveComponentPayloadCodec<TestSnapshot>
+            ISavePartFormat<TestSnapshot>
         {
             public string ContractId
             {
@@ -293,13 +293,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 return true;
             }
 
-            public SaveComponentValidationResult Validate(
+            public SavePartValidationResult Validate(
                 TestSnapshot snapshot)
             {
                 return snapshot == null || snapshot.Value == null
-                    ? SaveComponentValidationResult.Reject(
+                    ? SavePartValidationResult.Reject(
                         "character-creation-diagnostic-test-snapshot-null")
-                    : SaveComponentValidationResult.Accept();
+                    : SavePartValidationResult.Accept();
             }
         }
     }

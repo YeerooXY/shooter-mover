@@ -10,11 +10,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public static partial class LevelGridPlayableExporter
     {
         private static void WritePackage(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
-            LevelRoomAuthoring2D[] rooms,
-            LevelDoorEndpointAuthoring2D[] doors,
-            LevelDoorLinkAuthoring2D[] links,
+            LevelRoom[] rooms,
+            DoorEndpoint[] doors,
+            DoorLink[] links,
             string outputRoot)
         {
             Directory.CreateDirectory(outputRoot);
@@ -27,7 +27,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             var nodes = new MapNodeDto[rooms.Length];
             for (int i = 0; i < rooms.Length; i++)
             {
-                LevelRoomAuthoring2D room = rooms[i];
+                LevelRoom room = rooms[i];
                 string folder = Path.GetFileName(foldersByRoom[room.RoomIdText]);
                 roomIds[i] = room.RoomIdText;
                 roomIndex[i] = new RoomIndexDto
@@ -92,8 +92,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void WriteRoom(
-            LevelRoomAuthoring2D room,
-            LevelDoorEndpointAuthoring2D[] allDoors,
+            LevelRoom room,
+            DoorEndpoint[] allDoors,
             LevelGridPlayableMetadata metadata,
             string roomRoot)
         {
@@ -126,7 +126,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             var roomDoors = new List<DoorDto>();
             for (int i = 0; i < allDoors.Length; i++)
             {
-                LevelDoorEndpointAuthoring2D door = allDoors[i];
+                DoorEndpoint door = allDoors[i];
                 if (door.OwningRoom != room) continue;
                 Vector2 local = LevelGridPlayableMetadata.ResolveDoorLocalPosition(room, door.transform);
                 roomDoors.Add(new DoorDto

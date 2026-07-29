@@ -6,10 +6,10 @@ namespace ShooterMover.Domain.Combat
 {
     public sealed class FourMountCombatStepInput
     {
-        private readonly WeaponLiveProfile[] profiles;
-        private readonly StableId[] weaponIds;
+        private readonly GunLiveProfile[] profiles;
+        private readonly StableId[] gunIds;
         private readonly StableId[] mountIds;
-        private readonly WeaponMountOrigin[] mountOrigins;
+        private readonly GunMountOrigin[] mountOrigins;
         private readonly string[] externalFaultDetails;
 
         public FourMountCombatStepInput(
@@ -19,10 +19,10 @@ namespace ShooterMover.Domain.Combat
             bool empoweredRequested,
             AimVector2 sharedAimIntent,
             AimVector2 sharedAimPoint,
-            WeaponLiveProfile[] profiles,
-            StableId[] weaponIds,
+            GunLiveProfile[] profiles,
+            StableId[] gunIds,
             StableId[] mountIds,
-            WeaponMountOrigin[] mountOrigins,
+            GunMountOrigin[] mountOrigins,
             string[] externalFaultDetails = null)
         {
             if (simulationStep < 0L)
@@ -36,7 +36,7 @@ namespace ShooterMover.Domain.Combat
             }
 
             FourMountCombatState.ValidateFour(profiles, nameof(profiles));
-            FourMountCombatState.ValidateFour(weaponIds, nameof(weaponIds));
+            FourMountCombatState.ValidateFour(gunIds, nameof(gunIds));
             FourMountCombatState.ValidateFour(mountIds, nameof(mountIds));
             if (mountOrigins == null || mountOrigins.Length != FourMountCombatState.MountCount)
             {
@@ -55,10 +55,10 @@ namespace ShooterMover.Domain.Combat
             EmpoweredRequested = empoweredRequested;
             SharedAimIntent = sharedAimIntent;
             SharedAimPoint = sharedAimPoint;
-            this.profiles = (WeaponLiveProfile[])profiles.Clone();
-            this.weaponIds = (StableId[])weaponIds.Clone();
+            this.profiles = (GunLiveProfile[])profiles.Clone();
+            this.gunIds = (StableId[])gunIds.Clone();
             this.mountIds = (StableId[])mountIds.Clone();
-            this.mountOrigins = (WeaponMountOrigin[])mountOrigins.Clone();
+            this.mountOrigins = (GunMountOrigin[])mountOrigins.Clone();
             this.externalFaultDetails = externalFaultDetails == null
                 ? new string[FourMountCombatState.MountCount]
                 : (string[])externalFaultDetails.Clone();
@@ -71,14 +71,14 @@ namespace ShooterMover.Domain.Combat
         public AimVector2 SharedAimIntent { get; }
         public AimVector2 SharedAimPoint { get; }
 
-        public WeaponLiveProfile GetProfile(int index) { return profiles[index]; }
-        public StableId GetWeaponId(int index) { return weaponIds[index]; }
+        public GunLiveProfile GetProfile(int index) { return profiles[index]; }
+        public StableId GetGunId(int index) { return gunIds[index]; }
         public StableId GetMountId(int index) { return mountIds[index]; }
         public string GetExternalFaultDetail(int index) { return externalFaultDetails[index]; }
 
-        internal WeaponMountOrigin[] CopyOrigins()
+        internal GunMountOrigin[] CopyOrigins()
         {
-            return (WeaponMountOrigin[])mountOrigins.Clone();
+            return (GunMountOrigin[])mountOrigins.Clone();
         }
     }
 
@@ -86,9 +86,9 @@ namespace ShooterMover.Domain.Combat
     {
         internal FourMountCombatLaneResult(
             int stableSlotNumber,
-            WeaponMountStepResult mountResult,
-            WeaponPowerFireDecision powerDecision,
-            WeaponFireExecutionPlan executionPlan)
+            GunMountStepResult mountResult,
+            GunPowerFireDecision powerDecision,
+            GunFireExecutionPlan executionPlan)
         {
             StableSlotNumber = stableSlotNumber;
             MountResult = mountResult ?? throw new ArgumentNullException(nameof(mountResult));
@@ -97,9 +97,9 @@ namespace ShooterMover.Domain.Combat
         }
 
         public int StableSlotNumber { get; }
-        public WeaponMountStepResult MountResult { get; }
-        public WeaponPowerFireDecision PowerDecision { get; }
-        public WeaponFireExecutionPlan ExecutionPlan { get; }
+        public GunMountStepResult MountResult { get; }
+        public GunPowerFireDecision PowerDecision { get; }
+        public GunFireExecutionPlan ExecutionPlan { get; }
         public bool IsFaulted => MountResult.State.IsFaulted;
         public int ShotsFired => MountResult.ShotsFired;
     }
@@ -151,11 +151,11 @@ namespace ShooterMover.Domain.Combat
     public sealed class FourMountCombatStepper
     {
         private readonly FourMountAimResolver aimResolver;
-        private readonly WeaponBehaviorPipeline behaviorPipeline;
+        private readonly GunBehaviorPipeline behaviorPipeline;
 
         public FourMountCombatStepper(
             FourMountAimResolver aimResolver,
-            WeaponBehaviorPipeline behaviorPipeline)
+            GunBehaviorPipeline behaviorPipeline)
         {
             this.aimResolver = aimResolver ?? throw new ArgumentNullException(nameof(aimResolver));
             this.behaviorPipeline = behaviorPipeline ?? throw new ArgumentNullException(nameof(behaviorPipeline));
@@ -172,8 +172,8 @@ namespace ShooterMover.Domain.Combat
                 input.SharedAimIntent,
                 input.SharedAimPoint,
                 input.CopyOrigins());
-            WeaponMountState[] nextMounts = new WeaponMountState[FourMountCombatState.MountCount];
-            WeaponPowerBankState[] nextBanks = new WeaponPowerBankState[FourMountCombatState.MountCount];
+            GunMountState[] nextMounts = new GunMountState[FourMountCombatState.MountCount];
+            GunPowerBankState[] nextBanks = new GunPowerBankState[FourMountCombatState.MountCount];
             FourMountCombatLaneResult[] lanes = new FourMountCombatLaneResult[FourMountCombatState.MountCount];
 
             for (int index = 0; index < FourMountCombatState.MountCount; index++)
@@ -192,24 +192,24 @@ namespace ShooterMover.Domain.Combat
             FourMountCombatStepInput input,
             FourMountAimSolution aim,
             int index,
-            out WeaponMountState nextMount,
-            out WeaponPowerBankState nextBank,
+            out GunMountState nextMount,
+            out GunPowerBankState nextBank,
             out FourMountCombatLaneResult lane)
         {
-            WeaponMountState mountBefore = state.GetMountByStableIndex(index);
-            WeaponPowerBankState bankBefore = state.GetPowerBankByStableIndex(index);
+            GunMountState mountBefore = state.GetMountByStableIndex(index);
+            GunPowerBankState bankBefore = state.GetPowerBankByStableIndex(index);
 
             try
             {
-                WeaponLiveProfile profile = input.GetProfile(index);
+                GunLiveProfile profile = input.GetProfile(index);
                 string externalFault = input.GetExternalFaultDetail(index);
                 if (!string.IsNullOrWhiteSpace(externalFault))
                 {
-                    WeaponMountStepResult faulted = WeaponMountStepper.Step(
+                    GunMountStepResult faulted = GunMountStepper.Step(
                         profile,
                         mountBefore,
                         0d,
-                        WeaponMountStepInput.Fault(externalFault));
+                        GunMountStepInput.Fault(externalFault));
                     nextMount = faulted.State;
                     nextBank = bankBefore;
                     lane = new FourMountCombatLaneResult(index + 1, faulted, null, null);
@@ -217,17 +217,17 @@ namespace ShooterMover.Domain.Combat
                 }
 
                 bool readyAtSample = input.FireRequested && mountBefore.IsReady;
-                WeaponPowerFireDecision power = WeaponPowerBankPolicy.ResolveFire(
+                GunPowerFireDecision power = GunPowerBankPolicy.ResolveFire(
                     bankBefore,
                     readyAtSample,
                     input.EmpoweredRequested);
-                WeaponMountStepResult mountResult = WeaponMountStepper.Step(
+                GunMountStepResult mountResult = GunMountStepper.Step(
                     profile,
                     mountBefore,
                     input.ElapsedSeconds,
-                    new WeaponMountStepInput(input.FireRequested));
+                    new GunMountStepInput(input.FireRequested));
 
-                WeaponFireExecutionPlan plan = null;
+                GunFireExecutionPlan plan = null;
                 if (mountResult.CyclesStarted > 0 && !mountResult.State.IsFaulted)
                 {
                     SharedAimSolution solution = aim.GetByStableIndex(index);
@@ -236,9 +236,9 @@ namespace ShooterMover.Domain.Combat
                         + input.SimulationStep.ToString(CultureInfo.InvariantCulture)
                         + "-slot-"
                         + (index + 1).ToString(CultureInfo.InvariantCulture));
-                    WeaponBehaviorInput behaviorInput = new WeaponBehaviorInput(
+                    GunBehaviorInput behaviorInput = new GunBehaviorInput(
                         combatEventId,
-                        input.GetWeaponId(index),
+                        input.GetGunId(index),
                         input.GetMountId(index),
                         input.SimulationStep,
                         profile,
@@ -257,11 +257,11 @@ namespace ShooterMover.Domain.Combat
             }
             catch (Exception exception)
             {
-                WeaponMountStepResult faulted = WeaponMountStepper.Step(
+                GunMountStepResult faulted = GunMountStepper.Step(
                     input.GetProfile(index),
                     mountBefore,
                     0d,
-                    WeaponMountStepInput.Fault(
+                    GunMountStepInput.Fault(
                         "CB-006 isolated slot "
                         + (index + 1).ToString(CultureInfo.InvariantCulture)
                         + ": "

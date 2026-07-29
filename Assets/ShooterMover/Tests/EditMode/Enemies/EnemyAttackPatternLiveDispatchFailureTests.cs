@@ -19,7 +19,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             {
                 ThrowOnDispatchEmissionIndex = 1,
             };
-            EnemyPlacementLiveInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
+            EnemyInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
             EnemyPerceptionSnapshot perception = Perception();
             EnemyPlacementDecision decision = runtime.Evaluate(perception);
             StableId operation = Id("enemy-operation", "atomic-retry");
@@ -84,7 +84,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             {
                 RejectNextCancellation = true,
             };
-            EnemyPlacementLiveInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
+            EnemyInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
             EnemyPerceptionSnapshot perception = Perception();
             EnemyPlacementDecision decision = runtime.Evaluate(perception);
             runtime.TryExecuteAttack(
@@ -128,7 +128,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         public void LethalDamage_AutomaticallyCancelsPendingSequenceWithoutManualCancellation()
         {
             var ports = new RecordingPatternPorts();
-            EnemyPlacementLiveInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
+            EnemyInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
             EnemyPerceptionSnapshot perception = Perception();
             EnemyPlacementDecision decision = runtime.Evaluate(perception);
             runtime.TryExecuteAttack(
@@ -157,7 +157,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             {
                 RejectNextCancellation = true,
             };
-            EnemyPlacementLiveInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
+            EnemyInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
             EnemyPerceptionSnapshot perception = Perception();
             EnemyPlacementDecision decision = runtime.Evaluate(perception);
             runtime.TryExecuteAttack(
@@ -195,7 +195,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         }
 
         private static EnemyLiveDamageCommand LethalDamage(
-            EnemyPlacementLiveInstance runtime,
+            EnemyInstance runtime,
             string suffix)
         {
             return new EnemyLiveDamageCommand(

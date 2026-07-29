@@ -8,7 +8,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
 {
     /// <summary>
     /// Authored hybrid loot-selection and augment-signature balance for the eleven
-    /// production strongbox tiers. Every policy exposes all seven canonical weapon-
+    /// production strongbox tiers. Every policy exposes all seven canonical gun-
     /// definition rarity bands. Uncommon and Mythic use an explicit midpoint mapping
     /// between their neighboring authored bands; equipment quality remains a separate
     /// Common/Rare/Exceptional roll owned by BOX/GEN.

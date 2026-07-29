@@ -6,7 +6,7 @@ using System.Text;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
-using ShooterMover.Application.Weapons.Catalog;
+using ShooterMover.Application.Guns.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Rewards;
@@ -19,7 +19,7 @@ using ShooterMover.Domain.Progression.Curves;
 using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
-using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Guns.Catalog;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
@@ -336,10 +336,10 @@ namespace ShooterMover.Editor.BalanceSimulator
         private static readonly StableId SourceId =
             StableId.Parse("source.lootbox-simulator");
 
-        private readonly WeaponCatalog weaponCatalog;
+        private readonly GunCatalog gunCatalog;
         private readonly EquipmentCatalog equipmentCatalog;
-        private readonly Dictionary<StableId, WeaponDefinitionData>
-            weaponByEquipmentId;
+        private readonly Dictionary<StableId, GunDefinitionData>
+            gunByEquipmentId;
         private readonly StrongboxDefinitionCatalog
             strongboxDefinitions;
         private readonly StrongboxEquipmentGenerationResolver
@@ -351,22 +351,22 @@ namespace ShooterMover.Editor.BalanceSimulator
             new HashSet<StableId>();
 
         private LootboxSimulatorLive(
-            WeaponCatalog weaponCatalog,
+            GunCatalog gunCatalog,
             EquipmentCatalog equipmentCatalog,
-            Dictionary<StableId, WeaponDefinitionData>
-                weaponByEquipmentId,
+            Dictionary<StableId, GunDefinitionData>
+                gunByEquipmentId,
             StrongboxDefinitionCatalog strongboxDefinitions,
             StrongboxEquipmentGenerationResolver resolver)
         {
-            this.weaponCatalog = weaponCatalog
+            this.gunCatalog = gunCatalog
                 ?? throw new ArgumentNullException(
-                    nameof(weaponCatalog));
+                    nameof(gunCatalog));
             this.equipmentCatalog = equipmentCatalog
                 ?? throw new ArgumentNullException(
                     nameof(equipmentCatalog));
-            this.weaponByEquipmentId = weaponByEquipmentId
+            this.gunByEquipmentId = gunByEquipmentId
                 ?? throw new ArgumentNullException(
-                    nameof(weaponByEquipmentId));
+                    nameof(gunByEquipmentId));
             this.strongboxDefinitions = strongboxDefinitions
                 ?? throw new ArgumentNullException(
                     nameof(strongboxDefinitions));
@@ -378,9 +378,9 @@ namespace ShooterMover.Editor.BalanceSimulator
                 new SimulatorEquipmentValidator(equipmentCatalog));
         }
 
-        public WeaponCatalog WeaponCatalog
+        public GunCatalog GunCatalog
         {
-            get { return weaponCatalog; }
+            get { return gunCatalog; }
         }
 
         public EquipmentCatalog EquipmentCatalog
@@ -400,18 +400,18 @@ namespace ShooterMover.Editor.BalanceSimulator
         public long Cash { get; private set; }
 
         public static bool TryCreate(
-            string weaponCatalogJson,
+            string gunCatalogJson,
             out LootboxSimulatorLive runtime,
             out string diagnostic)
         {
             runtime = null;
             diagnostic = string.Empty;
-            WeaponCatalogImportResult import =
-                WeaponCatalogJsonImporter.Import(weaponCatalogJson);
+            GunCatalogImportResult import =
+                GunCatalogJsonImporter.Import(gunCatalogJson);
             if (!import.IsSuccess)
             {
                 diagnostic = import.Issues.Count == 0
-                    ? "Weapon catalog import failed."
+                    ? "Gun catalog import failed."
                     : import.Issues[0].Path
                         + ": "
                         + import.Issues[0].Detail;
@@ -420,7 +420,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             try
             {
-                Dictionary<StableId, WeaponDefinitionData> map;
+                Dictionary<StableId, GunDefinitionData> map;
                 EquipmentCatalog equipment = BuildEquipmentCatalog(
                     import.Catalog,
                     out map);
@@ -546,7 +546,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                     rootSeed,
                     queueOrdinal),
                 RewardGrantKind.EquipmentReference,
-                EquipmentCategoryIds.Weapon,
+                EquipmentCategoryIds.Gun,
                 1L);
 
             IReadOnlyList<EquipmentInstance> generated;
@@ -576,13 +576,13 @@ namespace ShooterMover.Editor.BalanceSimulator
                     "Fresh strongbox equipment must not contain installed augments.");
             }
 
-            WeaponDefinitionData source;
-            if (!weaponByEquipmentId.TryGetValue(
+            GunDefinitionData source;
+            if (!gunByEquipmentId.TryGetValue(
                     item.DefinitionId,
                     out source))
             {
                 throw new InvalidOperationException(
-                    "Generated equipment is missing its weapon-catalog projection.");
+                    "Generated equipment is missing its gun-catalog projection.");
             }
 
             return new LootboxGeneratedItem(
@@ -739,11 +739,11 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         private static EquipmentCatalog BuildEquipmentCatalog(
-            WeaponCatalog source,
-            out Dictionary<StableId, WeaponDefinitionData> map)
+            GunCatalog source,
+            out Dictionary<StableId, GunDefinitionData> map)
         {
             map =
-                new Dictionary<StableId, WeaponDefinitionData>();
+                new Dictionary<StableId, GunDefinitionData>();
             EquipmentQualityTier common =
                 EquipmentQualityTier.Create(
                     QualityCommon,
@@ -761,33 +761,33 @@ namespace ShooterMover.Editor.BalanceSimulator
                     3);
             var equipment =
                 new List<EquipmentDefinition>();
-            IReadOnlyList<WeaponDefinitionData> live =
+            IReadOnlyList<GunDefinitionData> live =
                 source.GetDefinitions(
-                    WeaponCatalogContentFilter.LiveOnly);
+                    GunCatalogContentFilter.LiveOnly);
 
             for (int index = 0; index < live.Count; index++)
             {
-                WeaponDefinitionData weapon = live[index];
+                GunDefinitionData gun = live[index];
                 StableId definitionId =
                     Strongbox.DeriveId(
-                        "weapondefinition",
-                        weapon.DefinitionId);
+                        "gundefinition",
+                        gun.DefinitionId);
                 StableId runtimeReferenceId =
                     Strongbox.DeriveId(
-                        "weapon",
-                        weapon.DefinitionId);
+                        "gun",
+                        gun.DefinitionId);
                 int minimumLevel = Math.Max(
                     1,
-                    weapon.FirstAppearance);
-                int maximumLevel = MaximumItemLevel(weapon);
+                    gun.FirstAppearance);
+                int maximumLevel = MaximumItemLevel(gun);
                 equipment.Add(
                     EquipmentDefinition.Create(
                         definitionId,
-                        EquipmentCategoryIds.Weapon,
+                        EquipmentCategoryIds.Gun,
                         Strongbox.DeriveId(
-                            "weaponfamily",
-                            weapon.FamilyId),
-                        weapon.DisplayName,
+                            "gunfamily",
+                            gun.FamilyId),
+                        gun.DisplayName,
                         runtimeReferenceId,
                         InclusiveIntRange.Create(
                             minimumLevel,
@@ -800,13 +800,13 @@ namespace ShooterMover.Editor.BalanceSimulator
                             exceptional,
                         },
                         Array.Empty<StableId>()));
-                map.Add(definitionId, weapon);
+                map.Add(definitionId, gun);
             }
 
             if (equipment.Count == 0)
             {
                 throw new InvalidOperationException(
-                    "The live weapon catalog is empty.");
+                    "The live gun catalog is empty.");
             }
 
             EquipmentCatalogBuildResult build =
@@ -816,7 +816,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             if (!build.IsValid)
             {
                 throw new InvalidOperationException(
-                    "Weapon-to-equipment catalog projection is invalid: "
+                    "Gun-to-equipment catalog projection is invalid: "
                     + (build.Issues.Count == 0
                         ? "unknown"
                         : build.Issues[0].ToString()));
@@ -827,7 +827,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private static EquipmentGenerationPolicy BuildPolicy(
             StrongboxTier tier,
-            Dictionary<StableId, WeaponDefinitionData> map)
+            Dictionary<StableId, GunDefinitionData> map)
         {
             var candidates =
                 new List<EquipmentGenerationCandidate>();
@@ -837,8 +837,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             for (int index = 0; index < keys.Count; index++)
             {
                 StableId key = keys[index];
-                WeaponDefinitionData weapon = map[key];
-                if (weapon.TopBoxOnly
+                GunDefinitionData gun = map[key];
+                if (gun.TopBoxOnly
                     && tier.TierNumber < 11)
                 {
                     continue;
@@ -852,15 +852,15 @@ namespace ShooterMover.Editor.BalanceSimulator
                         0,
                         1000,
                         Array.Empty<StableId>(),
-                        Math.Max(1, weapon.PeakDropLevel),
+                        Math.Max(1, gun.PeakDropLevel),
                         InclusiveIntRange.Create(
                             Math.Max(
                                 1,
-                                weapon.FirstAppearance),
-                            MaximumItemLevel(weapon)),
+                                gun.FirstAppearance),
+                            MaximumItemLevel(gun)),
                         Math.Max(
                             0.000001,
-                            weapon.FinalBaseWeight),
+                            gun.FinalBaseWeight),
                         1.0));
             }
 
@@ -869,7 +869,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 throw new InvalidOperationException(
                     "Strongbox tier "
                     + tier.DisplayName
-                    + " has no eligible live weapon definitions.");
+                    + " has no eligible live gun definitions.");
             }
 
             return EquipmentGenerationPolicy.Create(
@@ -907,13 +907,13 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         private static int MaximumItemLevel(
-            WeaponDefinitionData weapon)
+            GunDefinitionData gun)
         {
             return Math.Max(
-                Math.Max(1, weapon.FirstAppearance),
+                Math.Max(1, gun.FirstAppearance),
                 Math.Max(
                     200,
-                    checked(weapon.PowerAnchor + 50)));
+                    checked(gun.PowerAnchor + 50)));
         }
 
         private static IEnumerable<LootboxOddsEntry> Entries(

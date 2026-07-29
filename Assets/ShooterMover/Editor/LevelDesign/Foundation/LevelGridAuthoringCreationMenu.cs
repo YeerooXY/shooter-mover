@@ -13,7 +13,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public static class LevelGridAuthoringCreationMenu
     {
         [MenuItem(
-            "GameObject/Shooter Mover/Level Grid V2/Door Endpoint",
+            "GameObject/Shooter Mover/Level Level/Door Endpoint",
             false,
             20)]
         private static void CreateDoorEndpoint(MenuCommand command)
@@ -24,9 +24,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 context = Selection.activeGameObject;
             }
 
-            LevelRoomAuthoring2D room = context == null
+            LevelRoom room = context == null
                 ? null
-                : context.GetComponentInParent<LevelRoomAuthoring2D>();
+                : context.GetComponentInParent<LevelRoom>();
             if (room == null)
             {
                 EditorUtility.DisplayDialog(
@@ -60,12 +60,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "GameObject/Shooter Mover/Level Grid V2/Connect Selected Door Endpoints",
+            "GameObject/Shooter Mover/Level Level/Connect Selected Door Endpoints",
             false,
             21)]
         private static void ConnectSelectedDoorEndpoints(MenuCommand command)
         {
-            LevelDoorEndpointAuthoring2D[] endpoints = GetSelectedEndpoints();
+            DoorEndpoint[] endpoints = GetSelectedEndpoints();
             if (endpoints.Length != 2)
             {
                 EditorUtility.DisplayDialog(
@@ -75,9 +75,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root =
+            LevelDraft root =
                 LevelGridEditorOperations.ResolveRoot(endpoints[0]);
-            LevelDoorLinkAuthoring2D created;
+            DoorLink created;
             string rejection;
             if (!LevelGridEditorOperations.TryCreateConnection(
                     root,
@@ -94,21 +94,21 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "GameObject/Shooter Mover/Level Grid V2/Connect Selected Door Endpoints",
+            "GameObject/Shooter Mover/Level Level/Connect Selected Door Endpoints",
             true)]
         private static bool ValidateConnectSelectedDoorEndpoints()
         {
             return GetSelectedEndpoints().Length == 2;
         }
 
-        private static LevelDoorEndpointAuthoring2D[] GetSelectedEndpoints()
+        private static DoorEndpoint[] GetSelectedEndpoints()
         {
             GameObject[] selected = Selection.gameObjects;
-            var endpoints = new List<LevelDoorEndpointAuthoring2D>();
+            var endpoints = new List<DoorEndpoint>();
             for (int index = 0; index < selected.Length; index++)
             {
-                LevelDoorEndpointAuthoring2D endpoint =
-                    selected[index].GetComponent<LevelDoorEndpointAuthoring2D>();
+                DoorEndpoint endpoint =
+                    selected[index].GetComponent<DoorEndpoint>();
                 if (endpoint != null && !endpoints.Contains(endpoint))
                 {
                     endpoints.Add(endpoint);

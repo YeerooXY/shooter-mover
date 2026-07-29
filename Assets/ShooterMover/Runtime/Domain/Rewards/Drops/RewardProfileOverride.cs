@@ -29,7 +29,7 @@ namespace ShooterMover.Domain.Rewards.Drops
         private RewardProfileOverride(
             StableId overrideStableId,
             RewardProfileOverrideOperation operation,
-            RewardSourceProfile replacementProfile,
+            LootSourceProfile replacementProfile,
             IEnumerable<RewardRollGroup> addedGroups,
             int probabilityMultiplierPermille,
             int quantityMultiplierPermille,
@@ -78,7 +78,7 @@ namespace ShooterMover.Domain.Rewards.Drops
 
         public StableId OverrideStableId { get; }
         public RewardProfileOverrideOperation Operation { get; }
-        public RewardSourceProfile ReplacementProfile { get; }
+        public LootSourceProfile ReplacementProfile { get; }
         public IReadOnlyList<RewardRollGroup> AddedGroups { get { return addedGroups; } }
         public int ProbabilityMultiplierPermille { get; }
         public int QuantityMultiplierPermille { get; }
@@ -87,7 +87,7 @@ namespace ShooterMover.Domain.Rewards.Drops
 
         public static RewardProfileOverride Replace(
             StableId overrideStableId,
-            RewardSourceProfile replacementProfile)
+            LootSourceProfile replacementProfile)
         {
             return new RewardProfileOverride(
                 overrideStableId,

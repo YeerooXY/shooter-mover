@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 05816b76c9624af3a7815a287d08995c, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.Crafting::ShooterMover.UI.Crafting.CraftingScreenController
+  m_EditorClassIdentifier: ShooterMover.UI.Crafting::ShooterMover.UI.Crafting.CraftingMenu
   craftingBackplateAsset: {fileID: 4900000, guid: 64dcd2c9205c495fa2804e076721fc9f, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

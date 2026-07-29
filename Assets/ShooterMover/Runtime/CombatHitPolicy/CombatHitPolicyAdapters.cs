@@ -3,7 +3,7 @@ using System.Globalization;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Props;
-using ShooterMover.Domain.Weapons.Execution;
+using ShooterMover.Domain.Guns.Execution;
 using ShooterMover.GameplayEntities;
 
 namespace ShooterMover.Combat.HitPolicy
@@ -13,10 +13,10 @@ namespace ShooterMover.Combat.HitPolicy
     /// Explosion and persistent-field owners create distinct area/field effect IDs for
     /// their own lifetimes while retaining the same source actor and generation facts.
     /// </summary>
-    public static class WeaponEffectHitPolicyBridge
+    public static class GunEffectHitPolicyBridge
     {
         public static CombatEffectSnapshot Create(
-            IWeaponEffectDescription effect,
+            IGunEffectDescription effect,
             StableId policyId,
             CombatWorldBlockerBehavior worldBlockerBehavior,
             bool allowsSelfHit,
@@ -25,7 +25,7 @@ namespace ShooterMover.Combat.HitPolicy
         {
             if (effect == null
                 || effect.Identity == null
-                || !Enum.IsDefined(typeof(WeaponEffectKind), effect.Kind))
+                || !Enum.IsDefined(typeof(GunEffectKind), effect.Kind))
             {
                 return null;
             }
@@ -43,14 +43,14 @@ namespace ShooterMover.Combat.HitPolicy
                 maximumHitsPerTarget);
         }
 
-        public static StableId DeriveEffectId(IWeaponEffectDescription effect)
+        public static StableId DeriveEffectId(IGunEffectDescription effect)
         {
             if (effect == null || effect.Identity == null)
             {
                 return null;
             }
 
-            string digest = WeaponExecutionFingerprint.Compute(
+            string digest = GunExecutionFingerprint.Compute(
                 effect.Identity.ToCanonicalString()
                 + "|kind=" + ((int)effect.Kind).ToString(
                     CultureInfo.InvariantCulture));
@@ -62,14 +62,14 @@ namespace ShooterMover.Combat.HitPolicy
         }
 
         private static CombatEffectGeometryKind ResolveGeometry(
-            WeaponEffectKind kind)
+            GunEffectKind kind)
         {
-            return kind == WeaponEffectKind.ChainArc
+            return kind == GunEffectKind.ChainArc
                 ? CombatEffectGeometryKind.Chain
                 : CombatEffectGeometryKind.Projectile;
         }
 
-        private static int ResolvePierce(IWeaponEffectDescription effect)
+        private static int ResolvePierce(IGunEffectDescription effect)
         {
             DirectProjectileEffect direct = effect as DirectProjectileEffect;
             if (direct != null)

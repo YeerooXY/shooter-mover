@@ -15,7 +15,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             GameObject owner = new GameObject("room-enemy-spawner-test");
             try
             {
-                RoomEnemySpawner2D spawner = owner.AddComponent<RoomEnemySpawner2D>();
+                RoomEnemies spawner = owner.AddComponent<RoomEnemies>();
                 var consumers = new TypedNoOpConsumers();
 
                 Assert.DoesNotThrow(() => spawner.ConfigureRunDownstream(
@@ -36,7 +36,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             GameObject owner = new GameObject("room-enemy-spawner-test");
             try
             {
-                RoomEnemySpawner2D spawner = owner.AddComponent<RoomEnemySpawner2D>();
+                RoomEnemies spawner = owner.AddComponent<RoomEnemies>();
                 var first = new TypedNoOpConsumers();
                 var second = new TypedNoOpConsumers();
                 spawner.ConfigureRunDownstream(
@@ -66,7 +66,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             GameObject owner = new GameObject("room-enemy-spawner-test");
             try
             {
-                RoomEnemySpawner2D spawner = owner.AddComponent<RoomEnemySpawner2D>();
+                RoomEnemies spawner = owner.AddComponent<RoomEnemies>();
                 var consumers = new TypedNoOpConsumers();
 
                 Assert.Throws<ArgumentNullException>(() => spawner.ConfigureRunDownstream(

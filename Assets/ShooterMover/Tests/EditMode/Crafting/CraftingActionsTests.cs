@@ -576,20 +576,20 @@ namespace ShooterMover.Tests.EditMode.Crafting
             };
             EquipmentDefinition alpha = EquipmentDefinition.Create(
                 EquipmentAlpha,
-                EquipmentCategoryIds.Weapon,
+                EquipmentCategoryIds.Gun,
                 Id("equipment-family.alpha"),
                 "Alpha",
-                Id("weapon.alpha"),
+                Id("gun.alpha"),
                 InclusiveIntRange.Create(1, 100),
                 2,
                 qualities,
                 Array.Empty<StableId>());
             EquipmentDefinition beta = EquipmentDefinition.Create(
                 EquipmentBeta,
-                EquipmentCategoryIds.Weapon,
+                EquipmentCategoryIds.Gun,
                 Id("equipment-family.beta"),
                 "Beta",
-                Id("weapon.beta"),
+                Id("gun.beta"),
                 InclusiveIntRange.Create(1, 100),
                 2,
                 qualities,
@@ -633,7 +633,7 @@ namespace ShooterMover.Tests.EditMode.Crafting
                     amount,
                     ScrapIdentity.RewardGrantReason,
                     new ScrapProvenance(
-                        ScrapIdentity.RewardSourceKind,
+                        ScrapIdentity.LootSourceKind,
                         Id("reward-op.initial"),
                         Id("player.test"))));
             Assert.That(result.ChangedState, Is.True);

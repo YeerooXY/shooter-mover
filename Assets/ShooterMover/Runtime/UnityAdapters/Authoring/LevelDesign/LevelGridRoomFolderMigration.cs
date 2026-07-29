@@ -40,7 +40,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             if (!File.Exists(levelPath))
             {
                 throw new InvalidOperationException(
-                    "The selected folder is not empty and has no Level Grid V2 level.json. "
+                    "The selected folder is not empty and has no Level Level level.json. "
                         + "Choose an empty or previously exported dedicated level folder.");
             }
 
@@ -55,7 +55,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         }
 
         public static IReadOnlyDictionary<string, string> Prepare(
-            LevelRoomAuthoring2D[] rooms,
+            LevelRoom[] rooms,
             string roomsRoot)
         {
             if (rooms == null) throw new ArgumentNullException(nameof(rooms));
@@ -67,13 +67,13 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             Directory.CreateDirectory(roomsRoot);
             Dictionary<string, string> existingByRoomId =
                 ScanExistingRoomFolders(roomsRoot);
-            var activeByRoomId = new Dictionary<string, LevelRoomAuthoring2D>(
+            var activeByRoomId = new Dictionary<string, LevelRoom>(
                 StringComparer.Ordinal);
             var desiredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             for (int index = 0; index < rooms.Length; index++)
             {
-                LevelRoomAuthoring2D room = rooms[index];
+                LevelRoom room = rooms[index];
                 if (room == null || string.IsNullOrWhiteSpace(room.RoomIdText))
                 {
                     throw new InvalidOperationException(
@@ -108,7 +108,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
 
             var temporaryByRoomId = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, LevelRoomAuthoring2D> pair in activeByRoomId)
+            foreach (KeyValuePair<string, LevelRoom> pair in activeByRoomId)
             {
                 string existingPath;
                 if (!existingByRoomId.TryGetValue(pair.Key, out existingPath)
@@ -125,7 +125,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
 
             var result = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, LevelRoomAuthoring2D> pair in activeByRoomId)
+            foreach (KeyValuePair<string, LevelRoom> pair in activeByRoomId)
             {
                 string desiredPath = Path.Combine(
                     roomsRoot,
@@ -257,7 +257,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             return identity;
         }
 
-        private static string BuildRoomFolderName(LevelRoomAuthoring2D room)
+        private static string BuildRoomFolderName(LevelRoom room)
         {
             return "Room_" + room.GridCoordinate.x + "_" + room.GridCoordinate.y
                 + "_" + room.FolderSlot.ToString("00");

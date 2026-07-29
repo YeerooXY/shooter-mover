@@ -134,7 +134,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                 {
                     throw new ArgumentOutOfRangeException(
                         nameof(augmentSlotOutcomes),
-                        "V1 supports authored weapon slot outcomes through four slots.");
+                        "V1 supports authored gun slot outcomes through four slots.");
                 }
             }
         }

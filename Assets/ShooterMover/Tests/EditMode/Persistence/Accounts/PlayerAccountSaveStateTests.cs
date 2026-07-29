@@ -63,7 +63,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Accounts
         public void NewCharacterSubsystemComponent_RequiresNoAccountModelChange()
         {
             var authority = CreateAuthorityWithCharacter();
-            SaveComponentSnapshot boxes = Component(
+            SavePartSnapshot boxes = Component(
                 "character.unopened-strongboxes",
                 "box.a|tier=4|seed=77;box.b|tier=5|seed=88");
 
@@ -75,7 +75,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Accounts
                     Id("character.striker-one"),
                     boxes));
 
-            SaveComponentSnapshot stored;
+            SavePartSnapshot stored;
             Assert.That(result.Status, Is.EqualTo(
                 PlayerAccountSaveStatus.Applied));
             Assert.That(
@@ -91,10 +91,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Accounts
         public void AccountComponents_SupportAchievementsCollectionsAndEvents()
         {
             var authority = CreateAuthority();
-            SaveComponentSnapshot achievements = Component(
+            SavePartSnapshot achievements = Component(
                 "account.achievements",
                 "achievement.first-win=1");
-            SaveComponentSnapshot eventState = Component(
+            SavePartSnapshot eventState = Component(
                 "account.event-state",
                 "event.double-drops-2026=claimed");
 
@@ -109,7 +109,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Accounts
                     1L,
                     eventState));
 
-            SaveComponentSnapshot stored;
+            SavePartSnapshot stored;
             Assert.That(
                 authority.Current.TryGetAccountComponent(
                     achievements.ComponentStableId,
@@ -257,7 +257,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Accounts
             int slotIndex,
             string characterId,
             string classId,
-            params SaveComponentSnapshot[] components)
+            params SavePartSnapshot[] components)
         {
             return new CharacterInstanceSnapshot(
                 Id(characterId),
@@ -268,11 +268,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Accounts
                 components);
         }
 
-        private static SaveComponentSnapshot Component(
+        private static SavePartSnapshot Component(
             string componentId,
             string payload)
         {
-            return new SaveComponentSnapshot(
+            return new SavePartSnapshot(
                 Id(componentId),
                 1,
                 "content.v1",

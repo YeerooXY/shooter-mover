@@ -36,7 +36,7 @@ namespace ShooterMover.Tests.EditMode.Flow
             Assert.That(
                 PlayableLevelCatalog.TryResolve(
                     PlayableLevelCatalog
-                        .AuthoredCombatLoopTestLevelStableId,
+                        .FirstLevelStableId,
                     out definition),
                 Is.False);
             Assert.That(definition, Is.Null);
@@ -60,7 +60,7 @@ namespace ShooterMover.Tests.EditMode.Flow
                         System.Type type = script == null ? null : script.GetClass();
                         return type != null
                             && type.FullName ==
-                            "ShooterMover.UI.LevelSelection.LevelSelectionController";
+                            "ShooterMover.UI.LevelSelection.LevelMenu";
                     });
 
                 var serializedController = new SerializedObject(controller);

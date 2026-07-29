@@ -25,7 +25,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         public void IdenticalInputsAndSeedProduceByteEquivalentResults()
         {
             PersonalRewardRollContext context = Context(
-                RewardSourceCatalog.NormalEnemyId,
+                LootSourceCatalog.NormalEnemyId,
                 ParticipantA,
                 7UL,
                 1,
@@ -40,13 +40,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         {
             PersonalRewardGenerationActions service = NewService();
             PersonalRewardGenerationResult left = service.Generate(Context(
-                RewardSourceCatalog.NormalEnemyId,
+                LootSourceCatalog.NormalEnemyId,
                 ParticipantA,
                 113UL,
                 1,
                 1));
             PersonalRewardGenerationResult right = service.Generate(Context(
-                RewardSourceCatalog.NormalEnemyId,
+                LootSourceCatalog.NormalEnemyId,
                 ParticipantB,
                 113UL,
                 1,
@@ -66,7 +66,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             PersonalRewardGenerationActions service =
                 new PersonalRewardGenerationActions(authority);
             PersonalRewardRollContext original = Context(
-                RewardSourceCatalog.NormalEnemyId,
+                LootSourceCatalog.NormalEnemyId,
                 ParticipantA,
                 42UL,
                 1,
@@ -76,7 +76,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             Assert.That(replay, Is.SameAs(first));
 
             PersonalRewardRollContext conflict = Context(
-                RewardSourceCatalog.NormalEnemyId,
+                LootSourceCatalog.NormalEnemyId,
                 ParticipantA,
                 43UL,
                 1,
@@ -92,35 +92,35 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         [Test]
         public void ProductionAliasesShareTheSameProfileFingerprint()
         {
-            RewardSourceProfile normal = RewardSourceCatalog.Get(
-                RewardSourceCatalog.NormalEnemyId);
+            LootSourceProfile normal = LootSourceCatalog.Get(
+                LootSourceCatalog.NormalEnemyId);
             Assert.That(
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.NormalPropId),
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.NormalPropId),
                 Is.SameAs(normal));
             Assert.That(
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.NormalHiddenTreasureId),
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.NormalHiddenTreasureId),
                 Is.SameAs(normal));
 
-            RewardSourceProfile large = RewardSourceCatalog.Get(
-                RewardSourceCatalog.LargeEnemyId);
+            LootSourceProfile large = LootSourceCatalog.Get(
+                LootSourceCatalog.LargeEnemyId);
             Assert.That(
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.RarePropId),
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.RarePropId),
                 Is.SameAs(large));
             Assert.That(
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.LargeTreasureLootId),
-                Is.SameAs(RewardSourceCatalog.Get(
-                    RewardSourceCatalog.ExtraRarePropId)));
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.LargeTreasureLootId),
+                Is.SameAs(LootSourceCatalog.Get(
+                    LootSourceCatalog.ExtraRarePropId)));
         }
 
         [Test]
         public void NormalEnemyApproximatesNinetyEightTwoBeforePacing()
         {
             Distribution distribution = Simulate(
-                RewardSourceCatalog.NormalEnemyId,
+                LootSourceCatalog.NormalEnemyId,
                 20000);
             Assert.That(distribution.Money / 20000d, Is.InRange(0.88d, 0.92d));
             Assert.That(distribution.Scrap / 20000d, Is.InRange(0.07d, 0.09d));
@@ -132,7 +132,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         public void LargeEnemyApproximatesSixtyEightThirtyTwoBeforePacing()
         {
             Distribution distribution = Simulate(
-                RewardSourceCatalog.LargeEnemyId,
+                LootSourceCatalog.LargeEnemyId,
                 20000);
             Assert.That(distribution.Money / 20000d, Is.InRange(0.58d, 0.62d));
             Assert.That(distribution.Scrap / 20000d, Is.InRange(0.07d, 0.09d));
@@ -143,7 +143,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         public void ExtraBossCountApproximatesSeventyTwentyFiveFive()
         {
             CountDistribution distribution = SimulateBoxCounts(
-                RewardSourceCatalog.ExtraBossEnemyId,
+                LootSourceCatalog.ExtraBossEnemyId,
                 20000);
             Assert.That(distribution.Counts[3] / 20000d, Is.InRange(0.68d, 0.72d));
             Assert.That(distribution.Counts[4] / 20000d, Is.InRange(0.23d, 0.27d));
@@ -154,7 +154,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         public void ExtraRarePropCountApproximatesSeventyTwentyFiveFive()
         {
             CountDistribution distribution = SimulateBoxCounts(
-                RewardSourceCatalog.ExtraRarePropId,
+                LootSourceCatalog.ExtraRarePropId,
                 20000);
             Assert.That(distribution.Counts[2] / 20000d, Is.InRange(0.68d, 0.72d));
             Assert.That(distribution.Counts[3] / 20000d, Is.InRange(0.23d, 0.27d));
@@ -168,10 +168,10 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             IReadOnlyList<PersonalRewardGenerationResult> results =
                 service.GenerateForParticipants(new[]
                 {
-                    Context(RewardSourceCatalog.BossEnemyId, ParticipantA, 99UL, 1, 1),
-                    Context(RewardSourceCatalog.BossEnemyId, ParticipantB, 99UL, 1, 1),
-                    Context(RewardSourceCatalog.BossEnemyId, ParticipantC, 99UL, 1, 1),
-                    Context(RewardSourceCatalog.BossEnemyId, ParticipantD, 99UL, 1, 1),
+                    Context(LootSourceCatalog.BossEnemyId, ParticipantA, 99UL, 1, 1),
+                    Context(LootSourceCatalog.BossEnemyId, ParticipantB, 99UL, 1, 1),
+                    Context(LootSourceCatalog.BossEnemyId, ParticipantC, 99UL, 1, 1),
+                    Context(LootSourceCatalog.BossEnemyId, ParticipantD, 99UL, 1, 1),
                 });
             Assert.That(results, Has.Count.EqualTo(4));
             var exactBoxIds = new HashSet<StableId>();
@@ -190,7 +190,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         [Test]
         public void ModeReplacementCanRemoveBossStrongboxCompletely()
         {
-            RewardSourceProfile moneyOnly = RewardSourceProfile.Create(
+            LootSourceProfile moneyOnly = LootSourceProfile.Create(
                 StableId.Parse("drop-source.test-survival-boss"),
                 null,
                 new[]
@@ -213,9 +213,9 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
                         }),
                 });
             RewardProfileResolution resolution = new RewardProfileResolver().Resolve(
-                RewardSourceCatalog.BossEnemyId,
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.BossEnemyId),
+                LootSourceCatalog.BossEnemyId,
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.BossEnemyId),
                 RewardProfileOverride.Replace(
                     StableId.Parse("game-mode.survival-boss-override"),
                     moneyOnly),
@@ -244,7 +244,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
                 PersonalRewardGenerationActions service =
                     new PersonalRewardGenerationActions(authority);
                 PersonalRewardGenerationResult playerA = service.Generate(Context(
-                    RewardSourceCatalog.LargeEnemyId,
+                    LootSourceCatalog.LargeEnemyId,
                     ParticipantA,
                     seed,
                     1,
@@ -253,7 +253,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
                     continue;
 
                 PersonalRewardGenerationResult playerB = service.Generate(Context(
-                    RewardSourceCatalog.LargeEnemyId,
+                    LootSourceCatalog.LargeEnemyId,
                     ParticipantB,
                     seed,
                     1,
@@ -275,7 +275,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             for (int ordinal = 1; ordinal <= 15; ordinal++)
             {
                 uninterrupted.Generate(Context(
-                    RewardSourceCatalog.SmallEnemyId,
+                    LootSourceCatalog.SmallEnemyId,
                     ParticipantA,
                     1UL,
                     ordinal,
@@ -295,7 +295,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             PersonalRewardGenerationActions restored =
                 new PersonalRewardGenerationActions(restoredAuthority);
             PersonalRewardRollContext next = Context(
-                RewardSourceCatalog.SmallEnemyId,
+                LootSourceCatalog.SmallEnemyId,
                 ParticipantA,
                 1UL,
                 16,
@@ -319,7 +319,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             PersonalRewardGenerationActions service =
                 new PersonalRewardGenerationActions(authority);
             RewardProfileResolution noDrop = Resolution(
-                RewardSourceCatalog.ExplicitNoDropId);
+                LootSourceCatalog.ExplicitNoDropId);
             PersonalRewardGenerationResult first = service.GenerateRunMinimum(
                 Context(noDrop, ParticipantA, 77UL, 1001, 1));
             Assert.That(CountBoxes(first), Is.EqualTo(1));
@@ -338,7 +338,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
             for (int ordinal = 1; ordinal <= 10000; ordinal++)
             {
                 PersonalRewardGenerationResult result = service.Generate(Context(
-                    RewardSourceCatalog.NormalEnemyId,
+                    LootSourceCatalog.NormalEnemyId,
                     ParticipantA,
                     1234UL,
                     ordinal,
@@ -466,8 +466,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         private static RewardProfileResolution Resolution(
             StableId profileReferenceId)
         {
-            RewardSourceProfile profile =
-                RewardSourceCatalog.Get(profileReferenceId);
+            LootSourceProfile profile =
+                LootSourceCatalog.Get(profileReferenceId);
             return new RewardProfileResolution(
                 profileReferenceId,
                 profile,

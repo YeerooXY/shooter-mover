@@ -14,7 +14,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         /// topology workflows.
         /// </summary>
         public static LevelGridEditorWindow OpenForRoot(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null)
             {

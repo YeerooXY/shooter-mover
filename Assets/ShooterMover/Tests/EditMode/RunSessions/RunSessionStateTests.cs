@@ -90,7 +90,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 Is.Not.EqualTo(
                     run.FrozenInputs.Equipment[1].EquipmentInstanceStableId));
             Assert.That(
-                run.RuntimePorts.Weapons.FrozenEquipmentInstanceStableIds,
+                run.RuntimePorts.Guns.FrozenEquipmentInstanceStableIds,
                 Is.EquivalentTo(run.FrozenInputs.Equipment.Select(
                     item => item.EquipmentInstanceStableId)));
         }
@@ -114,8 +114,8 @@ namespace ShooterMover.Tests.EditMode.RunSessions
 
             first.Player.Damage(35d);
             first.Player.MoveTo(8d, -3d);
-            first.Weapons.CooldownCount = 2;
-            first.Weapons.ProjectileCount = 4;
+            first.Guns.CooldownCount = 2;
+            first.Guns.ProjectileCount = 4;
             first.StatusEffects.SetActiveEffectCount(3);
             Assert.That(firstRun.ApplyLocalMutation(new RunLocalMutationCommand(
                 Id("operation.pickup-a"),
@@ -128,14 +128,14 @@ namespace ShooterMover.Tests.EditMode.RunSessions
 
             Assert.That(firstRun.ExportHudSnapshot().CurrentHealth, Is.EqualTo(65d));
             Assert.That(first.Player.ExportSnapshot().PositionX, Is.EqualTo(8d));
-            Assert.That(first.Weapons.CooldownCount, Is.EqualTo(2));
+            Assert.That(first.Guns.CooldownCount, Is.EqualTo(2));
             Assert.That(first.StatusEffects.ActiveEffectCount, Is.EqualTo(3));
             Assert.That(firstRun.ExportLocalState().TemporaryPickups["pickup.medkit"],
                 Is.EqualTo(1L));
 
             Assert.That(secondRun.ExportHudSnapshot().CurrentHealth, Is.EqualTo(100d));
             Assert.That(second.Player.ExportSnapshot().PositionX, Is.EqualTo(0d));
-            Assert.That(second.Weapons.CooldownCount, Is.EqualTo(0));
+            Assert.That(second.Guns.CooldownCount, Is.EqualTo(0));
             Assert.That(second.StatusEffects.ActiveEffectCount, Is.EqualTo(0));
             Assert.That(secondRun.ExportLocalState().TemporaryPickups, Is.Empty);
             Assert.That(source.Character.Fingerprint, Is.EqualTo(permanentFingerprint));
@@ -156,10 +156,10 @@ namespace ShooterMover.Tests.EditMode.RunSessions
 
             bundle.Player.Damage(80d);
             bundle.Player.MoveTo(12d, 9d);
-            bundle.Weapons.CooldownCount = 2;
-            bundle.Weapons.ProjectileCount = 8;
-            bundle.Weapons.AttackIntentCount = 2;
-            bundle.Weapons.ContactOperationCount = 1;
+            bundle.Guns.CooldownCount = 2;
+            bundle.Guns.ProjectileCount = 8;
+            bundle.Guns.AttackIntentCount = 2;
+            bundle.Guns.ContactOperationCount = 1;
             bundle.StatusEffects.SetActiveEffectCount(4);
             bundle.ConditionalFacts.TransientCount = 3;
             bundle.Rooms.TransientCount = 2;
@@ -197,10 +197,10 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             Assert.That(run.LifecycleGeneration, Is.EqualTo(2L));
             Assert.That(bundle.Player.ExportSnapshot().CurrentHealth, Is.EqualTo(100d));
             Assert.That(bundle.Player.ExportSnapshot().PositionX, Is.EqualTo(0d));
-            Assert.That(bundle.Weapons.CooldownCount, Is.EqualTo(0));
-            Assert.That(bundle.Weapons.ProjectileCount, Is.EqualTo(0));
-            Assert.That(bundle.Weapons.AttackIntentCount, Is.EqualTo(0));
-            Assert.That(bundle.Weapons.ContactOperationCount, Is.EqualTo(0));
+            Assert.That(bundle.Guns.CooldownCount, Is.EqualTo(0));
+            Assert.That(bundle.Guns.ProjectileCount, Is.EqualTo(0));
+            Assert.That(bundle.Guns.AttackIntentCount, Is.EqualTo(0));
+            Assert.That(bundle.Guns.ContactOperationCount, Is.EqualTo(0));
             Assert.That(bundle.StatusEffects.ActiveEffectCount, Is.EqualTo(0));
             Assert.That(bundle.ConditionalFacts.TransientCount, Is.EqualTo(0));
             Assert.That(bundle.Rooms.TransientCount, Is.EqualTo(0));
@@ -442,10 +442,10 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 StableId qualityId = Id("quality.common");
                 EquipmentDefinition definition = EquipmentDefinition.Create(
                     definitionId,
-                    EquipmentCategoryIds.Weapon,
+                    EquipmentCategoryIds.Gun,
                     Id("equipment-family.test-rifle"),
                     "Test Rifle",
-                    Id("weapon.test-rifle"),
+                    Id("gun.test-rifle"),
                     InclusiveIntRange.Create(1, 100),
                     2,
                     new[]
@@ -486,7 +486,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     {
                         { DerivedStatTargetIds.MaximumHealth, HubMaximumHealth },
                         { DerivedStatTargetIds.MovementSpeed, 5m },
-                        { DerivedStatTargetIds.WeaponCapacity, 4m },
+                        { DerivedStatTargetIds.GunCapacity, 4m },
                         { DerivedStatTargetIds.AbilityCapacity, 0m },
                     });
                 var characterInput = new DerivedCharacterStatInput(
@@ -525,11 +525,11 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     new[]
                     {
                         new FrozenRunEquipment(
-                            Id("weapon-slot.slot-1"),
+                            Id("gun-slot.slot-1"),
                             first,
                             definition),
                         new FrozenRunEquipment(
-                            Id("weapon-slot.slot-2"),
+                            Id("gun-slot.slot-2"),
                             second,
                             definition),
                     },
@@ -557,7 +557,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     Id("participant." + character.CharacterInstanceStableId.Value),
                     1L,
                     Decimal.ToDouble(frozen.CombatProfile.MaximumHealth));
-                Weapons = new FakeWeaponPort(
+                Guns = new FakeGunPort(
                     1L,
                     frozen.Equipment.Select(
                         item => item.EquipmentInstanceStableId));
@@ -568,7 +568,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 MissionResults = new FakeMissionResultPort(runStableId);
                 Ports = new RunSessionLivePorts(
                     Player,
-                    Weapons,
+                    Guns,
                     StatusEffects,
                     ConditionalFacts,
                     ActiveAbilities,
@@ -577,7 +577,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
 
             public FakePlayerPort Player { get; }
-            public FakeWeaponPort Weapons { get; }
+            public FakeGunPort Guns { get; }
             public FakeStatusEffectPort StatusEffects { get; }
             public FakeConditionalPort ConditionalFacts { get; }
             public FakeAbilityPort ActiveAbilities { get; }
@@ -681,9 +681,9 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 y = nextY;
             }
 
-            public RunPlayerLiveSnapshot ExportSnapshot()
+            public RunPlayerSnapshot ExportSnapshot()
             {
-                return new RunPlayerLiveSnapshot(
+                return new RunPlayerSnapshot(
                     actorId,
                     participantId,
                     Generation,
@@ -725,15 +725,15 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
         }
 
-        private sealed class FakeWeaponPort : FakeLifecyclePort,
-            IRunWeaponLivePort
+        private sealed class FakeGunPort : FakeLifecyclePort,
+            IRunGunLivePort
         {
             private readonly IReadOnlyList<StableId> equipmentIds;
 
-            public FakeWeaponPort(
+            public FakeGunPort(
                 long generation,
                 IEnumerable<StableId> equipmentIds)
-                : base("weapon-runtime", generation)
+                : base("gun-runtime", generation)
             {
                 this.equipmentIds = equipmentIds.ToList().AsReadOnly();
             }

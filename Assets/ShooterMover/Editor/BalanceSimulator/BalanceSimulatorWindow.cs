@@ -105,7 +105,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 .AppendLine("Soft-eligible candidates: " + report.SoftEligibleCandidateCount)
                 .AppendLine("Crafting unlock range: " + report.MinimumCraftingUnlockLevel + ".." + report.MaximumCraftingUnlockLevel);
             Append(builder, "Reward type distribution", report.RewardTypes);
-            Append(builder, "Weapon/armor definitions", report.EquipmentDefinitions);
+            Append(builder, "Gun/armor definitions", report.EquipmentDefinitions);
             Append(builder, "Equipment categories", report.EquipmentCategories);
             Append(builder, "Item levels", report.ItemLevels);
             Append(builder, "Quality", report.Qualities);

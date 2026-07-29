@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -17,7 +17,7 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
 {
     public enum InventoryLoadoutSlotKind
     {
-        Weapon = 1,
+        Gun = 1,
         Armor = 2,
     }
 
@@ -40,7 +40,7 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
         InvalidEquipment = 7,
         WrongEquipmentType = 8,
         DuplicateEquipmentInstance = 9,
-        IncompleteWeaponLoadout = 10,
+        IncompleteGunLoadout = 10,
         StaleSelection = 11,
         AuthorityRejected = 12,
         AuthoritySnapshotMismatch = 13,
@@ -52,14 +52,14 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
 
     public static class InventoryLoadoutSlotIds
     {
-        public static readonly StableId WeaponOne =
-            StableId.Parse("weapon-slot.slot-1");
-        public static readonly StableId WeaponTwo =
-            StableId.Parse("weapon-slot.slot-2");
-        public static readonly StableId WeaponThree =
-            StableId.Parse("weapon-slot.slot-3");
-        public static readonly StableId WeaponFour =
-            StableId.Parse("weapon-slot.slot-4");
+        public static readonly StableId GunOne =
+            StableId.Parse("gun-slot.slot-1");
+        public static readonly StableId GunTwo =
+            StableId.Parse("gun-slot.slot-2");
+        public static readonly StableId GunThree =
+            StableId.Parse("gun-slot.slot-3");
+        public static readonly StableId GunFour =
+            StableId.Parse("gun-slot.slot-4");
         public static readonly StableId ArmorHead =
             StableId.Parse("armor-slot.head");
         public static readonly StableId ArmorBody =
@@ -112,24 +112,24 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                 new List<InventoryLoadoutSlotDescriptor>
                 {
                     new InventoryLoadoutSlotDescriptor(
-                        InventoryLoadoutSlotIds.WeaponOne,
-                        InventoryLoadoutSlotKind.Weapon,
-                        "Weapon 1",
+                        InventoryLoadoutSlotIds.GunOne,
+                        InventoryLoadoutSlotKind.Gun,
+                        "Gun 1",
                         0),
                     new InventoryLoadoutSlotDescriptor(
-                        InventoryLoadoutSlotIds.WeaponTwo,
-                        InventoryLoadoutSlotKind.Weapon,
-                        "Weapon 2",
+                        InventoryLoadoutSlotIds.GunTwo,
+                        InventoryLoadoutSlotKind.Gun,
+                        "Gun 2",
                         1),
                     new InventoryLoadoutSlotDescriptor(
-                        InventoryLoadoutSlotIds.WeaponThree,
-                        InventoryLoadoutSlotKind.Weapon,
-                        "Weapon 3",
+                        InventoryLoadoutSlotIds.GunThree,
+                        InventoryLoadoutSlotKind.Gun,
+                        "Gun 3",
                         2),
                     new InventoryLoadoutSlotDescriptor(
-                        InventoryLoadoutSlotIds.WeaponFour,
-                        InventoryLoadoutSlotKind.Weapon,
-                        "Weapon 4",
+                        InventoryLoadoutSlotIds.GunFour,
+                        InventoryLoadoutSlotKind.Gun,
+                        "Gun 4",
                         3),
                     new InventoryLoadoutSlotDescriptor(
                         InventoryLoadoutSlotIds.ArmorHead,
@@ -425,9 +425,9 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
         {
             get
             {
-                if (CategoryStableId == EquipmentCategoryIds.Weapon)
+                if (CategoryStableId == EquipmentCategoryIds.Gun)
                 {
-                    return InventoryLoadoutSlotKind.Weapon;
+                    return InventoryLoadoutSlotKind.Gun;
                 }
                 if (CategoryStableId == EquipmentCategoryIds.Armor)
                 {
@@ -592,7 +592,7 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
     }
 
     /// <summary>
-    /// Engine-independent screen draft. Character mount policy decides which weapon
+    /// Engine-independent screen draft. Character mount policy decides which gun
     /// positions are configurable; inactive positions remain null and do not reserve an
     /// equipment instance. Armor behavior remains unchanged.
     /// </summary>
@@ -860,13 +860,13 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                     "inventory-loadout-authority-result-mismatch");
             }
 
-            var orderedWeaponInstances = new List<StableId>(
-                PlayerRouteProfilePayload.WeaponSlotCount);
+            var orderedGunInstances = new List<StableId>(
+                PlayerRouteProfilePayload.GunSlotCount);
             for (int index = 0;
-                index < PlayerRouteProfilePayload.WeaponSlotCount;
+                index < PlayerRouteProfilePayload.GunSlotCount;
                 index++)
             {
-                orderedWeaponInstances.Add(
+                orderedGunInstances.Add(
                     draftBindings[
                         InventoryLoadoutSlots.All[index]
                             .SlotStableId]);
@@ -876,7 +876,7 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                 PlayerRouteProfilePayload.Create(
                     incomingRoutePayload.SelectedCharacterStableId,
                     incomingRoutePayload.LoadoutProfileStableId,
-                    orderedWeaponInstances);
+                    orderedGunInstances);
             completed = true;
             RebuildSnapshot(
                 holdingsSequenceBefore,
@@ -916,8 +916,8 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
         private bool IsConfigurable(
             InventoryLoadoutSlotDescriptor slot)
         {
-            return slot.Kind != InventoryLoadoutSlotKind.Weapon
-                || WeaponMountPolicy
+            return slot.Kind != InventoryLoadoutSlotKind.Gun
+                || GunMountPolicy
                     .IsConfigurableLoadoutSlot(
                         incomingRoutePayload.LoadoutProfileStableId,
                         slot.SlotStableId);
@@ -934,17 +934,17 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                     null);
             }
             for (int index = 0;
-                index < incomingRoutePayload.WeaponSlots.Count;
+                index < incomingRoutePayload.GunSlots.Count;
                 index++)
             {
-                PlayerRouteWeaponSlot routeSlot =
-                    incomingRoutePayload.WeaponSlots[index];
-                if (WeaponMountPolicy
+                PlayerRouteGunSlot routeSlot =
+                    incomingRoutePayload.GunSlots[index];
+                if (GunMountPolicy
                     .IsConfigurableLoadoutSlot(
                         incomingRoutePayload.LoadoutProfileStableId,
-                        routeSlot.WeaponSlotStableId))
+                        routeSlot.GunSlotStableId))
                 {
-                    draftBindings[routeSlot.WeaponSlotStableId] =
+                    draftBindings[routeSlot.GunSlotStableId] =
                         routeSlot.EquipmentInstanceStableId;
                 }
             }
@@ -959,7 +959,7 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                     nameof(loadoutAuthority));
             }
             for (int index =
-                    PlayerRouteProfilePayload.WeaponSlotCount;
+                    PlayerRouteProfilePayload.GunSlotCount;
                 index < InventoryLoadoutSlots.All.Count;
                 index++)
             {
@@ -1020,7 +1020,7 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                     ? null
                     : definition.CategoryId;
                 bool acceptedCategory =
-                    categoryId == EquipmentCategoryIds.Weapon
+                    categoryId == EquipmentCategoryIds.Gun
                     || categoryId == EquipmentCategoryIds.Armor;
                 bool selectable = instance != null
                     && definition != null
@@ -1119,11 +1119,11 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                 }
                 else if (selected == null)
                 {
-                    if (slot.Kind == InventoryLoadoutSlotKind.Weapon)
+                    if (slot.Kind == InventoryLoadoutSlotKind.Gun)
                     {
                         valid = false;
                         rejectionCode =
-                            "inventory-loadout-weapon-slot-empty";
+                            "inventory-loadout-gun-slot-empty";
                     }
                 }
                 else
@@ -1196,12 +1196,12 @@ namespace ShooterMover.Application.Inventory.LoadoutScreen
                     continue;
                 }
                 if (selection.Slot.Kind
-                        == InventoryLoadoutSlotKind.Weapon
+                        == InventoryLoadoutSlotKind.Gun
                     && selection.EquipmentInstanceStableId == null)
                 {
                     return Result(
                         InventoryLoadoutScreenStatus
-                            .IncompleteWeaponLoadout,
+                            .IncompleteGunLoadout,
                         selection.RejectionCode);
                 }
                 if (string.Equals(

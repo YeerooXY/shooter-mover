@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
@@ -144,7 +144,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
 
             try
             {
-                IReadOnlyList<SaveComponentSnapshot> restoredComponents =
+                IReadOnlyList<SavePartSnapshot> restoredComponents =
                     PlayerAccountRestoreFlow.ExportComponents(
                         plan.Graph.SaveAdapters);
                 StableId rollbackOperation = Strongbox.DeriveId(
@@ -176,7 +176,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
 
         private static bool ComponentsMatch(
             CharacterInstanceSnapshot character,
-            IReadOnlyList<SaveComponentSnapshot> expected)
+            IReadOnlyList<SavePartSnapshot> expected)
         {
             if (character == null || expected == null)
             {
@@ -184,7 +184,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
             }
             for (int index = 0; index < expected.Count; index++)
             {
-                SaveComponentSnapshot actual;
+                SavePartSnapshot actual;
                 if (!character.TryGetComponent(
                         expected[index].ComponentStableId,
                         out actual)

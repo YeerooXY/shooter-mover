@@ -119,7 +119,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             RewardGrantSpecification equipment = RewardGrantSpecification.CreateFixed(
                 StableId.Create("strongbox-grant", Slug + "-equipment"),
                 RewardGrantKind.EquipmentReference,
-                StableId.Parse("equipment-category.weapon"),
+                StableId.Parse("equipment-category.gun"),
                 1L);
             RewardProfile profile = RewardProfile.Create(
                 StableId.Create("strongbox-profile", Slug),

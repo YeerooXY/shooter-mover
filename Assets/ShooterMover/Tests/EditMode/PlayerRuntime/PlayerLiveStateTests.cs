@@ -16,7 +16,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
         {
             using (Fixture fixture = new Fixture("player-a", "participant-a"))
             {
-                PlayerLiveSetup runtime = fixture.Construct();
+                PlayerSetup runtime = fixture.Construct();
                 PlayerDamageRequest request = fixture.Damage("damage-once", 25d);
 
                 DamageReceiverResult first = runtime.ApplyDamage(request);
@@ -34,7 +34,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
         {
             using (Fixture fixture = new Fixture("player-a", "participant-a"))
             {
-                PlayerLiveSetup runtime = fixture.Construct();
+                PlayerSetup runtime = fixture.Construct();
                 runtime.ApplyDamage(fixture.Damage("damage-conflict", 20d));
 
                 DamageReceiverResult conflict = runtime.ApplyDamage(
@@ -56,7 +56,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
         {
             using (Fixture fixture = new Fixture("player-a", "participant-a"))
             {
-                PlayerLiveSetup runtime = fixture.Construct();
+                PlayerSetup runtime = fixture.Construct();
                 PlayerDamageRequest lethal = fixture.Damage("lethal", 150d);
 
                 DamageReceiverResult first = runtime.ApplyDamage(lethal);
@@ -75,7 +75,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
         {
             using (Fixture fixture = new Fixture("player-a", "participant-a"))
             {
-                PlayerLiveSetup runtime = fixture.Construct();
+                PlayerSetup runtime = fixture.Construct();
 
                 PlayerActorHealingResult result = runtime.ApplyHealing(
                     new PlayerHealingRequest(
@@ -100,18 +100,18 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
         {
             using (Fixture fixture = new Fixture("player-a", "participant-a"))
             {
-                PlayerLiveSetup runtime = fixture.Construct();
+                PlayerSetup runtime = fixture.Construct();
                 StableId identity = runtime.ExportSnapshot().Player.ActorInstanceId;
                 runtime.ApplyDamage(fixture.Damage("before-restart", 70d));
 
-                PlayerLiveRestartResult result = runtime.Restart(
-                    new PlayerLiveRestartCommand(
+                PlayerRestartResult result = runtime.Restart(
+                    new PlayerRestartCommand(
                         Id("operation", "restart-g1"),
                         fixture.ActorId,
                         0L,
                         1L));
 
-                Assert.That(result.Status, Is.EqualTo(PlayerLiveRestartStatus.Applied));
+                Assert.That(result.Status, Is.EqualTo(PlayerRestartStatus.Applied));
                 Assert.That(result.Snapshot.Player.ActorInstanceId, Is.EqualTo(identity));
                 Assert.That(result.Snapshot.Player.LifecycleGeneration, Is.EqualTo(1L));
                 Assert.That(result.Snapshot.Movement.Generation, Is.EqualTo(1L));
@@ -126,8 +126,8 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             using (Fixture first = new Fixture("player-a", "participant-a"))
             using (Fixture second = new Fixture("player-b", "participant-b"))
             {
-                PlayerLiveSetup firstRuntime = first.Construct();
-                PlayerLiveSetup secondRuntime = second.Construct();
+                PlayerSetup firstRuntime = first.Construct();
+                PlayerSetup secondRuntime = second.Construct();
 
                 firstRuntime.ApplyDamage(first.Damage("first-only", 30d));
 
@@ -146,11 +146,11 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             public Fixture(string actorValue, string participantValue)
             {
                 ActorId = Id("actor", actorValue);
-                Root = new PlayerLiveSetupRoot();
+                Root = new PlayerSetupRoot();
                 Movement = new FakeMovement(0L);
                 Input = new FakeInput();
                 RunCoordinator = new FakeRunFlow();
-                Configuration = new PlayerLiveConfiguration(
+                Configuration = new PlayerConfig(
                     new PlayerActorDefinition(
                         ActorId,
                         Id("participant", participantValue),
@@ -158,7 +158,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
                         Id("faction", "player"),
                         100d,
                         0L));
-                Attachments = new PlayerLiveAttachments(
+                Attachments = new PlayerParts(
                     Movement,
                     new FakePresentation(),
                     Input,
@@ -167,16 +167,16 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             }
 
             public StableId ActorId { get; }
-            public PlayerLiveSetupRoot Root { get; }
+            public PlayerSetupRoot Root { get; }
             public FakeMovement Movement { get; }
             public FakeInput Input { get; }
             public FakeRunFlow RunCoordinator { get; }
-            public PlayerLiveConfiguration Configuration { get; }
-            public PlayerLiveAttachments Attachments { get; }
+            public PlayerConfig Configuration { get; }
+            public PlayerParts Attachments { get; }
 
-            public PlayerLiveSetup Construct()
+            public PlayerSetup Construct()
             {
-                PlayerLiveConstructionResult result =
+                PlayerSetupResult result =
                     Root.TryConstruct(Configuration, Attachments);
                 Assert.That(result.IsConstructed, Is.True);
                 return result.Runtime;
@@ -200,7 +200,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             }
         }
 
-        private sealed class FakeMovement : IPlayerMovementLive
+        private sealed class FakeMovement : IPlayerMovement
         {
             private long generation;
 
@@ -251,14 +251,14 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             }
         }
 
-        private sealed class FakePresentation : IPlayerPresentationLive
+        private sealed class FakePresentation : IPlayerView
         {
             public void RefreshContinuousBoost(
                 PlayerMovementSnapshot movementSnapshot)
             {
             }
 
-            public void Restart(PlayerLiveSnapshot runtimeSnapshot)
+            public void Restart(PlayerSnapshot runtimeSnapshot)
             {
             }
 
@@ -267,11 +267,11 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
             }
         }
 
-        private sealed class FakeInput : IPlayerInputLive
+        private sealed class FakeInput : IPlayerControls
         {
-            private PlayerInputOwnership ownership;
+            private PlayerControlsOwnership ownership;
 
-            public bool TryAcquire(PlayerInputOwnership requested)
+            public bool TryAcquire(PlayerControlsOwnership requested)
             {
                 if (requested == null || ownership != null)
                 {
@@ -282,7 +282,7 @@ namespace ShooterMover.Tests.EditMode.PlayerRuntime
                 return true;
             }
 
-            public bool Release(PlayerInputOwnership requested)
+            public bool Release(PlayerControlsOwnership requested)
             {
                 if (requested == null
                     || ownership == null

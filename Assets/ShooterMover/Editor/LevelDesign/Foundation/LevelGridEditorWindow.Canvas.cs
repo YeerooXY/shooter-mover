@@ -18,7 +18,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 GUI.Label(
                     new Rect(rect.x + 24f, rect.y + 24f, rect.width - 48f, 64f),
-                    "Select a LevelDesignSceneAuthoringRoot2D to begin.\n"
+                    "Select a LevelDraft to begin.\n"
                         + "The window never creates a hidden global root.",
                     EditorStyles.helpBox);
                 HandleCanvasInput(rect);
@@ -87,7 +87,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             for (int index = 0; index < projection.Rooms.Count; index++)
             {
                 LevelGridEditorRoomView roomProjection = projection.Rooms[index];
-                LevelRoomAuthoring2D room = roomProjection.Room;
+                LevelRoom room = roomProjection.Room;
                 Vector2Int coordinate = room == draggedRoom
                     ? dragPreviewCoordinate
                     : room.GridCoordinate;
@@ -95,7 +95,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 roomRects[room] = roomRect;
                 for (int doorIndex = 0; doorIndex < roomProjection.Doors.Count; doorIndex++)
                 {
-                    LevelDoorEndpointAuthoring2D door = roomProjection.Doors[doorIndex];
+                    DoorEndpoint door = roomProjection.Doors[doorIndex];
                     Vector2 center = ResolveDoorScreenPosition(door, roomRect);
                     doorRects[door] = new Rect(
                         center.x - DoorRadius,
@@ -107,7 +107,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             for (int index = 0; index < projection.Connections.Count; index++)
             {
-                LevelDoorLinkAuthoring2D link = projection.Connections[index];
+                DoorLink link = projection.Connections[index];
                 Rect sourceRect;
                 Rect destinationRect;
                 if (link.SourceDoor == null
@@ -127,7 +127,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             Handles.BeginGUI();
             Color previous = Handles.color;
-            foreach (KeyValuePair<LevelDoorLinkAuthoring2D, LineVisual> pair in linkLines)
+            foreach (KeyValuePair<DoorLink, LineVisual> pair in linkLines)
             {
                 bool selected = selectedAuthoringObject == pair.Key;
                 bool problem = HasProblem(pair.Key.ConnectionIdText);
@@ -161,7 +161,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             for (int index = 0; index < projection.Rooms.Count; index++)
             {
                 LevelGridEditorRoomView roomProjection = projection.Rooms[index];
-                LevelRoomAuthoring2D room = roomProjection.Room;
+                LevelRoom room = roomProjection.Room;
                 Rect rect = roomRects[room];
                 bool selected = selectedAuthoringObject == room;
                 Color cardColor = roomProjection.OverlapsAnotherRoom
@@ -226,7 +226,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private void DrawDoor(LevelDoorEndpointAuthoring2D door)
+        private void DrawDoor(DoorEndpoint door)
         {
             Rect rect;
             if (!doorRects.TryGetValue(door, out rect))
@@ -359,9 +359,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     return;
                 }
 
-                LevelDoorEndpointAuthoring2D hitDoor = HitDoor(current.mousePosition);
-                LevelRoomAuthoring2D hitRoom = HitRoom(current.mousePosition);
-                LevelDoorLinkAuthoring2D hitLink = HitLink(current.mousePosition);
+                DoorEndpoint hitDoor = HitDoor(current.mousePosition);
+                LevelRoom hitRoom = HitRoom(current.mousePosition);
+                DoorLink hitLink = HitLink(current.mousePosition);
 
                 if (current.button == 1)
                 {
@@ -450,7 +450,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
                 if (draggedRoom != null)
                 {
-                    LevelRoomAuthoring2D room = draggedRoom;
+                    LevelRoom room = draggedRoom;
                     draggedRoom = null;
                     if (room.GridCoordinate != dragPreviewCoordinate)
                     {
@@ -464,11 +464,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
                 if (connectionDragSource != null)
                 {
-                    LevelDoorEndpointAuthoring2D source = connectionDragSource;
+                    DoorEndpoint source = connectionDragSource;
                     connectionDragSource = null;
-                    LevelDoorEndpointAuthoring2D destination =
+                    DoorEndpoint destination =
                         HitDoor(current.mousePosition);
-                    LevelDoorLinkAuthoring2D created;
+                    DoorLink created;
                     string rejection;
                     if (!LevelGridEditorOperations.TryCreateConnection(
                         activeRoot,
@@ -500,9 +500,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void ShowCanvasContextMenu(
             Vector2 mousePosition,
-            LevelRoomAuthoring2D room,
-            LevelDoorEndpointAuthoring2D door,
-            LevelDoorLinkAuthoring2D link)
+            LevelRoom room,
+            DoorEndpoint door,
+            DoorLink link)
         {
             GenericMenu menu = new GenericMenu();
             if (activeRoot == null)
@@ -545,7 +545,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     false,
                     delegate
                     {
-                        LevelDoorEndpointAuthoring2D created =
+                        DoorEndpoint created =
                             LevelGridEditorOperations.CreateDoor(
                                 room,
                                 side,
@@ -584,7 +584,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     false,
                     delegate
                     {
-                        LevelRoomAuthoring2D created =
+                        LevelRoom created =
                             LevelGridEditorOperations.CreateRoom(
                                 activeRoot,
                                 coordinate);
@@ -597,7 +597,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void AddDoorSideMenu(
             GenericMenu menu,
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             LevelDoorSide side)
         {
             menu.AddItem(
@@ -605,7 +605,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 false,
                 delegate
                 {
-                    LevelDoorEndpointAuthoring2D created =
+                    DoorEndpoint created =
                         LevelGridEditorOperations.CreateDoor(room, side, 0.5f);
                     SetSelectedAuthoringObject(created);
                     RequestRefresh(true);

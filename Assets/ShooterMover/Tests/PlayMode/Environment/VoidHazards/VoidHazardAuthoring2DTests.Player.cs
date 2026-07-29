@@ -8,15 +8,15 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
 {
-    public sealed partial class VoidHazardAuthoring2DTests
+    public sealed partial class VoidHazardTests
     {
         [UnityTest]
         public IEnumerator IgnoredCategoryAndDuplicateContactSubmitNoAuthorityRequest()
         {
             ObjectFamilyDefinitionAsset family = CreateFamily();
-            GameplaySceneScope2D scope = CreateScope("IgnoredScope");
+            GameplayScene scope = CreateScope("IgnoredScope");
             VoidHazardTestPorts ports = CreatePorts("IgnoredPorts");
-            VoidHazardAuthoring2D hazard = CreateHazard(
+            VoidHazard hazard = CreateHazard(
                 "IgnoredHazard",
                 scope.transform,
                 family,
@@ -28,7 +28,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                 VoidPropResponseKind.Ignore,
                 null,
                 ports);
-            VoidHazardTarget2D target = CreateTarget(
+            VoidTarget target = CreateTarget(
                 "Player",
                 VoidHazardTargetCategory.Player,
                 false,
@@ -53,15 +53,15 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
         public IEnumerator DamageAndInstantDeathUseSeparateCombatRequests()
         {
             ObjectFamilyDefinitionAsset family = CreateFamily();
-            GameplaySceneScope2D scope = CreateScope("CombatScope");
+            GameplayScene scope = CreateScope("CombatScope");
             VoidHazardTestPorts ports = CreatePorts("CombatPorts");
-            VoidHazardTarget2D player = CreateTarget(
+            VoidTarget player = CreateTarget(
                 "Player",
                 VoidHazardTargetCategory.Player,
                 false,
                 ports);
 
-            VoidHazardAuthoring2D damageHazard = CreateHazard(
+            VoidHazard damageHazard = CreateHazard(
                 "DamageHazard",
                 scope.transform,
                 family,
@@ -73,7 +73,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                 VoidPropResponseKind.Ignore,
                 null,
                 ports);
-            VoidHazardAuthoring2D deathHazard = CreateHazard(
+            VoidHazard deathHazard = CreateHazard(
                 "DeathHazard",
                 scope.transform,
                 family,
@@ -103,14 +103,14 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
         public IEnumerator RespawnUsesCheckpointAndMissingCheckpointFailsClosed()
         {
             ObjectFamilyDefinitionAsset family = CreateFamily();
-            GameplaySceneScope2D scope = CreateScope("RespawnScope");
+            GameplayScene scope = CreateScope("RespawnScope");
             VoidHazardTestPorts ports = CreatePorts("RespawnPorts");
-            VoidHazardTarget2D player = CreateTarget(
+            VoidTarget player = CreateTarget(
                 "Player",
                 VoidHazardTargetCategory.Player,
                 false,
                 ports);
-            VoidHazardAuthoring2D hazard = CreateHazard(
+            VoidHazard hazard = CreateHazard(
                 "RespawnHazard",
                 scope.transform,
                 family,
@@ -139,7 +139,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                 Is.EqualTo(VoidHazardContactStatus.MissingCheckpoint));
             Assert.That(ports.RespawnRequestCount, Is.EqualTo(1));
 
-            VoidHazardAuthoring2D invalid = CreateUnactivatedHazard(
+            VoidHazard invalid = CreateUnactivatedHazard(
                 "InvalidRespawnHazard",
                 scope.transform,
                 family,

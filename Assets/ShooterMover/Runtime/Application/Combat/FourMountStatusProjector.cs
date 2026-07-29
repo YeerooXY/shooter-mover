@@ -15,8 +15,8 @@ namespace ShooterMover.Application.Combat
     {
         public DomainCombat.FourMountStatusSnapshot Project(
             DomainCombat.FourMountCombatState combatState,
-            DomainCombat.WeaponLiveProfile[] profiles,
-            StableId[] weaponIds,
+            DomainCombat.GunLiveProfile[] profiles,
+            StableId[] gunIds,
             DomainCombat.FourMountCombatStepResult latestStepResult = null)
         {
             if (combatState == null)
@@ -26,7 +26,7 @@ namespace ShooterMover.Application.Combat
 
             ValidateContractCompatibility();
             ValidateFour(profiles, nameof(profiles), allowNullElements: true);
-            ValidateFour(weaponIds, nameof(weaponIds), allowNullElements: true);
+            ValidateFour(gunIds, nameof(gunIds), allowNullElements: true);
 
             if (latestStepResult != null)
             {
@@ -34,26 +34,26 @@ namespace ShooterMover.Application.Combat
             }
 
             DomainCombat.FourMountSlotStatusSnapshot[] slots =
-                new DomainCombat.FourMountSlotStatusSnapshot[ContractCombat.WeaponMountContractRules.MountCount];
+                new DomainCombat.FourMountSlotStatusSnapshot[ContractCombat.GunMountContractRules.MountCount];
 
             for (int stableIndex = 0; stableIndex < slots.Length; stableIndex++)
             {
-                ContractCombat.WeaponMountSlot contractSlot =
-                    ContractCombat.WeaponMountContractRules.GetSlotAtHudIndex(stableIndex);
+                ContractCombat.GunMountSlot contractSlot =
+                    ContractCombat.GunMountContractRules.GetSlotAtHudIndex(stableIndex);
                 int stableSlotNumber = (int)contractSlot;
-                DomainCombat.WeaponLiveProfile profile = profiles[stableIndex];
-                StableId weaponId = weaponIds[stableIndex];
-                DomainCombat.WeaponMountState mountState =
+                DomainCombat.GunLiveProfile profile = profiles[stableIndex];
+                StableId gunId = gunIds[stableIndex];
+                DomainCombat.GunMountState mountState =
                     combatState.GetMountByStableIndex(stableIndex);
-                DomainCombat.WeaponPowerBankState powerBank =
+                DomainCombat.GunPowerBankState powerBank =
                     combatState.GetPowerBankByStableIndex(stableIndex);
 
-                if (profile == null || weaponId == null)
+                if (profile == null || gunId == null)
                 {
-                    if (profile != null || weaponId != null)
+                    if (profile != null || gunId != null)
                     {
                         throw new ArgumentException(
-                            "An unequipped slot requires both a null profile and null weapon identity.");
+                            "An unequipped slot requires both a null profile and null gun identity.");
                     }
 
                     if (latestStepResult != null)
@@ -79,15 +79,15 @@ namespace ShooterMover.Application.Combat
                     latestStepResult,
                     stableIndex,
                     stableSlotNumber,
-                    weaponId,
+                    gunId,
                     mountState,
                     powerBank);
 
-                DomainCombat.WeaponMountFault fault = mountState.Fault;
+                DomainCombat.GunMountFault fault = mountState.Fault;
                 slots[stableIndex] = new DomainCombat.FourMountSlotStatusSnapshot(
                     stableSlotNumber,
                     true,
-                    weaponId,
+                    gunId,
                     mountState.Phase,
                     mountState.IsReady,
                     mountState.CadenceRemainingSeconds,
@@ -101,7 +101,7 @@ namespace ShooterMover.Application.Combat
                     powerBank.CapacityUnits,
                     powerBank.CanAffordEmpoweredFire,
                     fireMode,
-                    fault == null ? (DomainCombat.WeaponMountFaultKind?)null : fault.Kind,
+                    fault == null ? (DomainCombat.GunMountFaultKind?)null : fault.Kind,
                     fault == null ? null : fault.Detail);
             }
 
@@ -115,40 +115,40 @@ namespace ShooterMover.Application.Combat
         /// Exact coordinator mode, fallback, recovery duration, and fault detail remain
         /// available on the richer FourMountStatusSnapshot returned by Project.
         /// </summary>
-        public ContractPresentation.WeaponHudState ProjectAcceptedHudState(
+        public ContractPresentation.GunHudState ProjectAcceptedHudState(
             DomainCombat.FourMountCombatState combatState,
-            DomainCombat.WeaponLiveProfile[] profiles,
-            StableId[] weaponIds)
+            DomainCombat.GunLiveProfile[] profiles,
+            StableId[] gunIds)
         {
             DomainCombat.FourMountStatusSnapshot status = Project(
                 combatState,
                 profiles,
-                weaponIds);
-            ContractCombat.WeaponMountState[] mounts =
-                new ContractCombat.WeaponMountState[ContractCombat.WeaponMountContractRules.MountCount];
+                gunIds);
+            ContractCombat.GunMountState[] mounts =
+                new ContractCombat.GunMountState[ContractCombat.GunMountContractRules.MountCount];
 
             for (int stableIndex = 0; stableIndex < mounts.Length; stableIndex++)
             {
                 DomainCombat.FourMountSlotStatusSnapshot slot = status.GetByStableIndex(stableIndex);
-                ContractCombat.WeaponMountSlot contractSlot =
-                    ContractCombat.WeaponMountContractRules.GetSlotAtHudIndex(stableIndex);
+                ContractCombat.GunMountSlot contractSlot =
+                    ContractCombat.GunMountContractRules.GetSlotAtHudIndex(stableIndex);
 
                 if (!slot.IsEquipped)
                 {
-                    mounts[stableIndex] = ContractCombat.WeaponMountState.Unequipped(contractSlot);
+                    mounts[stableIndex] = ContractCombat.GunMountState.Unequipped(contractSlot);
                     continue;
                 }
 
-                DomainCombat.WeaponLiveProfile profile = profiles[stableIndex];
-                DomainCombat.WeaponMountState sourceMount =
+                DomainCombat.GunLiveProfile profile = profiles[stableIndex];
+                DomainCombat.GunMountState sourceMount =
                     combatState.GetMountByStableIndex(stableIndex);
-                DomainCombat.WeaponPowerBankState sourcePower =
+                DomainCombat.GunPowerBankState sourcePower =
                     combatState.GetPowerBankByStableIndex(stableIndex);
-                ContractCombat.WeaponMountReadiness readiness =
+                ContractCombat.GunMountReadiness readiness =
                     MapAcceptedReadiness(profile, sourceMount);
                 double cadenceRemaining = sourceMount.CadenceRemainingSeconds;
 
-                if (readiness == ContractCombat.WeaponMountReadiness.CadenceBlocked)
+                if (readiness == ContractCombat.GunMountReadiness.CadenceBlocked)
                 {
                     cadenceRemaining = Math.Max(
                         sourceMount.CadenceRemainingSeconds,
@@ -161,99 +161,99 @@ namespace ShooterMover.Application.Combat
                     }
                 }
 
-                mounts[stableIndex] = new ContractCombat.WeaponMountState(
+                mounts[stableIndex] = new ContractCombat.GunMountState(
                     contractSlot,
-                    slot.WeaponId,
+                    slot.GunId,
                     readiness,
-                    new ContractCombat.WeaponCadenceState(
+                    new ContractCombat.GunCadenceState(
                         cadenceRemaining,
                         sourceMount.BurstShotsRemaining),
                     BuildAcceptedCycleResource(profile, sourceMount),
-                    new ContractCombat.WeaponRecoilState(0d, profile.RecoilInfluence),
+                    new ContractCombat.GunRecoilState(0d, profile.RecoilInfluence),
                     BuildAcceptedPowerBank(sourcePower));
             }
 
-            return new ContractPresentation.WeaponHudState(
-                new ContractCombat.FourMountWeaponState(mounts));
+            return new ContractPresentation.GunHudState(
+                new ContractCombat.FourMountGunState(mounts));
         }
 
-        private static ContractCombat.WeaponMountReadiness MapAcceptedReadiness(
-            DomainCombat.WeaponLiveProfile profile,
-            DomainCombat.WeaponMountState mountState)
+        private static ContractCombat.GunMountReadiness MapAcceptedReadiness(
+            DomainCombat.GunLiveProfile profile,
+            DomainCombat.GunMountState mountState)
         {
             switch (mountState.Phase)
             {
-                case DomainCombat.WeaponMountPhase.Ready:
-                    return ContractCombat.WeaponMountReadiness.Ready;
-                case DomainCombat.WeaponMountPhase.Firing:
-                    return ContractCombat.WeaponMountReadiness.CadenceBlocked;
-                case DomainCombat.WeaponMountPhase.Recovering:
-                    return ContractCombat.WeaponMountReadiness.Recovering;
-                case DomainCombat.WeaponMountPhase.Depleted:
-                    if (profile.CycleMode == DomainCombat.WeaponCycleMode.Charge)
+                case DomainCombat.GunMountPhase.Ready:
+                    return ContractCombat.GunMountReadiness.Ready;
+                case DomainCombat.GunMountPhase.Firing:
+                    return ContractCombat.GunMountReadiness.CadenceBlocked;
+                case DomainCombat.GunMountPhase.Recovering:
+                    return ContractCombat.GunMountReadiness.Recovering;
+                case DomainCombat.GunMountPhase.Depleted:
+                    if (profile.CycleMode == DomainCombat.GunCycleMode.Charge)
                     {
-                        return ContractCombat.WeaponMountReadiness.Charging;
+                        return ContractCombat.GunMountReadiness.Charging;
                     }
 
-                    if (profile.CycleMode == DomainCombat.WeaponCycleMode.Heat
+                    if (profile.CycleMode == DomainCombat.GunCycleMode.Heat
                         && mountState.HeatUnits == profile.HeatCapacityUnits)
                     {
-                        return ContractCombat.WeaponMountReadiness.Overheated;
+                        return ContractCombat.GunMountReadiness.Overheated;
                     }
 
-                    return ContractCombat.WeaponMountReadiness.Recovering;
-                case DomainCombat.WeaponMountPhase.Faulted:
-                    return ContractCombat.WeaponMountReadiness.Faulted;
+                    return ContractCombat.GunMountReadiness.Recovering;
+                case DomainCombat.GunMountPhase.Faulted:
+                    return ContractCombat.GunMountReadiness.Faulted;
                 default:
                     throw new ArgumentOutOfRangeException(
                         nameof(mountState),
                         mountState.Phase,
-                        "Unknown weapon-mount phase.");
+                        "Unknown gun-mount phase.");
             }
         }
 
-        private static ContractCombat.WeaponCycleResourceState BuildAcceptedCycleResource(
-            DomainCombat.WeaponLiveProfile profile,
-            DomainCombat.WeaponMountState mountState)
+        private static ContractCombat.GunCycleResourceState BuildAcceptedCycleResource(
+            DomainCombat.GunLiveProfile profile,
+            DomainCombat.GunMountState mountState)
         {
             switch (profile.CycleMode)
             {
-                case DomainCombat.WeaponCycleMode.None:
-                    return ContractCombat.WeaponCycleResourceState.None;
-                case DomainCombat.WeaponCycleMode.Heat:
-                    return new ContractCombat.WeaponCycleResourceState(
-                        ContractCombat.WeaponCycleResourceKind.Heat,
+                case DomainCombat.GunCycleMode.None:
+                    return ContractCombat.GunCycleResourceState.None;
+                case DomainCombat.GunCycleMode.Heat:
+                    return new ContractCombat.GunCycleResourceState(
+                        ContractCombat.GunCycleResourceKind.Heat,
                         mountState.HeatUnits,
                         profile.HeatCapacityUnits);
-                case DomainCombat.WeaponCycleMode.Charge:
-                    return new ContractCombat.WeaponCycleResourceState(
-                        ContractCombat.WeaponCycleResourceKind.Charge,
+                case DomainCombat.GunCycleMode.Charge:
+                    return new ContractCombat.GunCycleResourceState(
+                        ContractCombat.GunCycleResourceKind.Charge,
                         mountState.ChargeProgressSeconds,
                         profile.ChargeSeconds);
                 default:
                     throw new ArgumentOutOfRangeException(
                         nameof(profile),
                         profile.CycleMode,
-                        "Unknown weapon cycle mode.");
+                        "Unknown gun cycle mode.");
             }
         }
 
-        private static ContractCombat.WeaponPowerBankState BuildAcceptedPowerBank(
-            DomainCombat.WeaponPowerBankState powerBank)
+        private static ContractCombat.GunPowerBankState BuildAcceptedPowerBank(
+            DomainCombat.GunPowerBankState powerBank)
         {
             return powerBank.IsConfigured
-                ? new ContractCombat.WeaponPowerBankState(
+                ? new ContractCombat.GunPowerBankState(
                     true,
                     powerBank.AvailableUnits,
                     powerBank.CapacityUnits,
                     powerBank.EmpoweredCostUnits)
-                : ContractCombat.WeaponPowerBankState.None;
+                : ContractCombat.GunPowerBankState.None;
         }
 
         private static void ValidateContractCompatibility()
         {
             if (DomainCombat.FourMountCombatState.MountCount
-                != ContractCombat.WeaponMountContractRules.MountCount)
+                != ContractCombat.GunMountContractRules.MountCount)
             {
                 throw new InvalidOperationException(
                     "The domain and accepted HUD contract disagree on four-mount slot count.");
@@ -271,7 +271,7 @@ namespace ShooterMover.Application.Combat
                 throw new ArgumentNullException(parameterName);
             }
 
-            if (values.Length != ContractCombat.WeaponMountContractRules.MountCount)
+            if (values.Length != ContractCombat.GunMountContractRules.MountCount)
             {
                 throw new ArgumentException(
                     "Exactly four stable-slot values are required.",
@@ -295,8 +295,8 @@ namespace ShooterMover.Application.Combat
         }
 
         private static void ValidateNeutralUnequippedSource(
-            DomainCombat.WeaponMountState mountState,
-            DomainCombat.WeaponPowerBankState powerBank,
+            DomainCombat.GunMountState mountState,
+            DomainCombat.GunPowerBankState powerBank,
             int stableSlotNumber)
         {
             if (mountState == null || powerBank == null)
@@ -305,7 +305,7 @@ namespace ShooterMover.Application.Combat
                     "Unequipped slots still require neutral authoritative source objects.");
             }
 
-            bool neutralMount = mountState.Phase == DomainCombat.WeaponMountPhase.Ready
+            bool neutralMount = mountState.Phase == DomainCombat.GunMountPhase.Ready
                 && mountState.CadenceRemainingSeconds == 0d
                 && mountState.BurstShotsRemaining == 0
                 && mountState.BurstIntervalRemainingSeconds == 0d
@@ -327,9 +327,9 @@ namespace ShooterMover.Application.Combat
         }
 
         private static void ValidateProfileAndState(
-            DomainCombat.WeaponLiveProfile profile,
-            DomainCombat.WeaponMountState mountState,
-            DomainCombat.WeaponPowerBankState powerBank,
+            DomainCombat.GunLiveProfile profile,
+            DomainCombat.GunMountState mountState,
+            DomainCombat.GunPowerBankState powerBank,
             int stableSlotNumber)
         {
             if (mountState == null)
@@ -344,7 +344,7 @@ namespace ShooterMover.Application.Combat
                     "Equipped slot " + stableSlotNumber + " is missing power-bank state.");
             }
 
-            if (profile.CycleMode == DomainCombat.WeaponCycleMode.None)
+            if (profile.CycleMode == DomainCombat.GunCycleMode.None)
             {
                 if (mountState.HeatUnits != 0d || mountState.ChargeProgressSeconds != 0d)
                 {
@@ -352,7 +352,7 @@ namespace ShooterMover.Application.Combat
                         "A no-resource profile cannot expose heat or charge state.");
                 }
             }
-            else if (profile.CycleMode == DomainCombat.WeaponCycleMode.Heat)
+            else if (profile.CycleMode == DomainCombat.GunCycleMode.Heat)
             {
                 if (mountState.HeatUnits > profile.HeatCapacityUnits
                     || mountState.ChargeProgressSeconds != 0d)
@@ -361,7 +361,7 @@ namespace ShooterMover.Application.Combat
                         "Heat state is inconsistent with the validated runtime profile.");
                 }
             }
-            else if (profile.CycleMode == DomainCombat.WeaponCycleMode.Charge)
+            else if (profile.CycleMode == DomainCombat.GunCycleMode.Charge)
             {
                 if (mountState.ChargeProgressSeconds > profile.ChargeSeconds
                     || mountState.HeatUnits != 0d
@@ -376,7 +376,7 @@ namespace ShooterMover.Application.Combat
                 throw new ArgumentOutOfRangeException(
                     nameof(profile),
                     profile.CycleMode,
-                    "Unknown weapon cycle mode.");
+                    "Unknown gun cycle mode.");
             }
 
             if (profile.HasIndependentPowerBank != powerBank.IsConfigured)
@@ -395,22 +395,22 @@ namespace ShooterMover.Application.Combat
         }
 
         private static void GetCycleValues(
-            DomainCombat.WeaponLiveProfile profile,
-            DomainCombat.WeaponMountState mountState,
+            DomainCombat.GunLiveProfile profile,
+            DomainCombat.GunMountState mountState,
             out double current,
             out double maximum)
         {
             switch (profile.CycleMode)
             {
-                case DomainCombat.WeaponCycleMode.None:
+                case DomainCombat.GunCycleMode.None:
                     current = 0d;
                     maximum = 0d;
                     return;
-                case DomainCombat.WeaponCycleMode.Heat:
+                case DomainCombat.GunCycleMode.Heat:
                     current = mountState.HeatUnits;
                     maximum = profile.HeatCapacityUnits;
                     return;
-                case DomainCombat.WeaponCycleMode.Charge:
+                case DomainCombat.GunCycleMode.Charge:
                     current = mountState.ChargeProgressSeconds;
                     maximum = profile.ChargeSeconds;
                     return;
@@ -423,9 +423,9 @@ namespace ShooterMover.Application.Combat
             DomainCombat.FourMountCombatStepResult latestStepResult,
             int stableIndex,
             int stableSlotNumber,
-            StableId weaponId,
-            DomainCombat.WeaponMountState mountState,
-            DomainCombat.WeaponPowerBankState powerBank)
+            StableId gunId,
+            DomainCombat.GunMountState mountState,
+            DomainCombat.GunPowerBankState powerBank)
         {
             if (mountState.IsFaulted)
             {
@@ -460,7 +460,7 @@ namespace ShooterMover.Application.Combat
                     nameof(latestStepResult));
             }
 
-            DomainCombat.WeaponPowerFireDecision decision = lane.PowerDecision;
+            DomainCombat.GunPowerFireDecision decision = lane.PowerDecision;
             if (decision == null)
             {
                 throw new ArgumentException(
@@ -475,22 +475,22 @@ namespace ShooterMover.Application.Combat
                     nameof(latestStepResult));
             }
 
-            if (lane.ExecutionPlan != null && lane.ExecutionPlan.WeaponId != weaponId)
+            if (lane.ExecutionPlan != null && lane.ExecutionPlan.GunId != gunId)
             {
                 throw new ArgumentException(
-                    "Latest execution-plan weapon identity does not match its stable slot.",
-                    nameof(weaponId));
+                    "Latest execution-plan gun identity does not match its stable slot.",
+                    nameof(gunId));
             }
 
             switch (decision.Kind)
             {
-                case DomainCombat.WeaponPowerFireDecisionKind.NormalFired:
+                case DomainCombat.GunPowerFireDecisionKind.NormalFired:
                     return DomainCombat.FourMountFireMode.Normal;
-                case DomainCombat.WeaponPowerFireDecisionKind.EmpoweredFired:
+                case DomainCombat.GunPowerFireDecisionKind.EmpoweredFired:
                     return DomainCombat.FourMountFireMode.Empowered;
-                case DomainCombat.WeaponPowerFireDecisionKind.NormalFallbackPowerUnavailable:
+                case DomainCombat.GunPowerFireDecisionKind.NormalFallbackPowerUnavailable:
                     return DomainCombat.FourMountFireMode.NormalFallbackPowerUnavailable;
-                case DomainCombat.WeaponPowerFireDecisionKind.NotReady:
+                case DomainCombat.GunPowerFireDecisionKind.NotReady:
                     return DomainCombat.FourMountFireMode.NotReady;
                 default:
                     throw new ArgumentOutOfRangeException(
@@ -528,8 +528,8 @@ namespace ShooterMover.Application.Combat
         }
 
         private static bool SameMountState(
-            DomainCombat.WeaponMountState left,
-            DomainCombat.WeaponMountState right)
+            DomainCombat.GunMountState left,
+            DomainCombat.GunMountState right)
         {
             if (ReferenceEquals(left, right))
             {
@@ -562,8 +562,8 @@ namespace ShooterMover.Application.Combat
         }
 
         private static bool SamePowerState(
-            DomainCombat.WeaponPowerBankState left,
-            DomainCombat.WeaponPowerBankState right)
+            DomainCombat.GunPowerBankState left,
+            DomainCombat.GunPowerBankState right)
         {
             if (ReferenceEquals(left, right))
             {

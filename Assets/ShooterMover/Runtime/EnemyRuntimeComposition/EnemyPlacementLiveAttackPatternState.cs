@@ -3,7 +3,7 @@ using ShooterMover.Domain.Common;
 
 namespace ShooterMover.EnemyRuntimeComposition
 {
-    public sealed partial class EnemyPlacementLiveInstance
+    public sealed partial class EnemyInstance
     {
         private EnemyAttackPatternState attackPatternAuthority;
 

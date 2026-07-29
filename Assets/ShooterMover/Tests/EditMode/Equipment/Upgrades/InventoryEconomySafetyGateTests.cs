@@ -3,22 +3,22 @@ using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Equipment.Upgrades;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
-using ShooterMover.Application.Weapons.Catalog;
+using ShooterMover.Application.Guns.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Weapons.Execution;
+using ShooterMover.Domain.Guns.Execution;
 using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.Domain.Weapons;
-using ShooterMover.UnityAdapters.Weapons.Live;
+using ShooterMover.Domain.Guns;
+using ShooterMover.UnityAdapters.Guns.Live;
 
 namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 {
@@ -41,7 +41,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             Assert.That(result.Status,
                 Is.EqualTo(AugmentUpgradeQuoteStatus.InvalidRequest));
             Assert.That(result.RejectionCode,
-                Is.EqualTo("canonical-weapon-upgrade-route-unsupported"));
+                Is.EqualTo("canonical-gun-upgrade-route-unsupported"));
             Assert.That(result.Quote, Is.Null);
             Assert.That(fixture.Money.Balance, Is.EqualTo(moneyBefore));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(walletSequenceBefore));
@@ -80,7 +80,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             Assert.That(fact.Status,
                 Is.EqualTo(AugmentUpgradeConfirmationStatus.InvalidRequest));
             Assert.That(fact.RejectionCode,
-                Is.EqualTo("canonical-weapon-upgrade-route-unsupported"));
+                Is.EqualTo("canonical-gun-upgrade-route-unsupported"));
             Assert.That(fixture.Money.Balance, Is.EqualTo(moneyBefore));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(walletSequenceBefore));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(holdingsSequenceBefore));
@@ -90,19 +90,19 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void OverclockBearingFixtureFailsClosedAtLiveProjection()
         {
-            WeaponMark mark = FirstProductionMark();
-            WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
+            GunMark mark = FirstProductionMark();
+            GunItem instance = GunItem.Create(
                 StableId.Parse("instance.overclock-fixture"),
                 mark.Blueprint.DefinitionId,
                 Array.Empty<StableId>(),
                 new[] { StableId.Parse("overclock-instance.unsupported") });
-            var holdings = new WeaponHoldingsState(
-                WeaponHoldingsSnapshot.CreateCanonical(
+            var holdings = new GunInventoryState(
+                GunInventorySnapshot.CreateCanonical(
                     0L,
                     new[] { instance }));
-            var lookup = new WeaponEquipmentViewLookup(
+            var lookup = new GunEquipmentViewLookup(
                 holdings,
-                WeaponCatalogProvider.EquipmentCatalog);
+                GunCatalogProvider.EquipmentCatalog);
 
             EquipmentInstance ignored;
             bool resolved = lookup.TryResolve(
@@ -113,19 +113,19 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             Assert.That(ignored, Is.Null);
             Assert.That(lookup.LastAvailability.IsAvailable, Is.False);
             Assert.That(lookup.LastAvailability.RejectionCode,
-                Is.EqualTo("canonical-weapon-overclock-policy-unsupported"));
+                Is.EqualTo("canonical-gun-overclock-policy-unsupported"));
         }
 
         [Test]
-        public void UnmodifiedCanonicalWeaponRemainsLiveEligible()
+        public void UnmodifiedCanonicalGunRemainsLiveEligible()
         {
-            WeaponMark mark = FirstProductionMark();
-            WeaponEquipmentInstance instance = WeaponEquipmentInstance.CreateUnmodified(
+            GunMark mark = FirstProductionMark();
+            GunItem instance = GunItem.CreateUnmodified(
                 StableId.Parse("instance.unmodified-fixture"),
                 mark.Blueprint.DefinitionId);
 
-            WeaponOperationAvailability decision =
-                WeaponSafetyPolicy.EvaluateLiveExecution(
+            GunOperationAvailability decision =
+                GunSafetyPolicy.EvaluateLiveExecution(
                     instance,
                     true);
 
@@ -136,13 +136,13 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void DirectCanonicalAddRejectsUnsupportedOverclockWithoutMutation()
         {
-            WeaponMark mark = FirstProductionMark();
-            WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
+            GunMark mark = FirstProductionMark();
+            GunItem instance = GunItem.Create(
                 StableId.Parse("instance.direct-overclock-add"),
                 mark.Blueprint.DefinitionId,
                 Array.Empty<StableId>(),
                 new[] { StableId.Parse("overclock-instance.direct-add") });
-            var holdings = new WeaponHoldingsState();
+            var holdings = new GunInventoryState();
             long sequenceBefore = holdings.Sequence;
 
             string rejectionCode;
@@ -150,7 +150,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 
             Assert.That(accepted, Is.False);
             Assert.That(rejectionCode,
-                Is.EqualTo("canonical-weapon-overclock-policy-unsupported"));
+                Is.EqualTo("canonical-gun-overclock-policy-unsupported"));
             Assert.That(holdings.Sequence, Is.EqualTo(sequenceBefore));
             Assert.That(holdings.Count, Is.Zero);
             Assert.That(holdings.Contains(instance.InstanceId), Is.False);
@@ -159,11 +159,11 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void DirectCanonicalRemoveRejectsUnresolvedDefinitionWithoutMutation()
         {
-            WeaponEquipmentInstance unresolved = WeaponEquipmentInstance.CreateUnmodified(
+            GunItem unresolved = GunItem.CreateUnmodified(
                 StableId.Parse("instance.direct-unresolved-remove"),
-                new WeaponDefinitionId("weapon-definition.missing"));
-            var holdings = new WeaponHoldingsState(
-                WeaponHoldingsSnapshot.CreateCanonical(
+                new GunDefinitionId("gun-definition.missing"));
+            var holdings = new GunInventoryState(
+                GunInventorySnapshot.CreateCanonical(
                     7L,
                     new[] { unresolved }));
             long sequenceBefore = holdings.Sequence;
@@ -175,7 +175,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 
             Assert.That(accepted, Is.False);
             Assert.That(rejectionCode,
-                Is.EqualTo("canonical-weapon-definition-unresolved"));
+                Is.EqualTo("canonical-gun-definition-unresolved"));
             Assert.That(holdings.Sequence, Is.EqualTo(sequenceBefore));
             Assert.That(holdings.Count, Is.EqualTo(1));
             Assert.That(holdings.Contains(unresolved.InstanceId), Is.True);
@@ -185,7 +185,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void AmbiguousRetainedReceiptCannotFallThroughToGenericRemoval()
         {
             StableId authorityId = StableId.Parse("holdings.ambiguous-receipt");
-            EquipmentCatalog syntheticCatalog = BuildSyntheticUnknownWeaponCatalog();
+            EquipmentCatalog syntheticCatalog = BuildSyntheticUnknownGunCatalog();
             EquipmentDefinition definition = syntheticCatalog.FindEquipmentDefinition(
                 StableId.Parse("equipment.synthetic-unresolved"));
             Assert.That(definition, Is.Not.Null);
@@ -209,7 +209,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                     provenance));
             Assert.That(added.Status,
                 Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
-            var canonical = new WeaponHoldingsState();
+            var canonical = new GunInventoryState();
             var boundary = new FirstPlayerHoldingsState(
                 receipts,
                 canonical);
@@ -227,7 +227,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 delegate { boundary.Apply(remove); });
 
             Assert.That(exception.Message,
-                Does.StartWith("canonical-weapon-definition-unresolved:"));
+                Does.StartWith("canonical-gun-definition-unresolved:"));
             Assert.That(receipts.Sequence, Is.EqualTo(receiptSequenceBefore));
             Assert.That(canonical.Sequence, Is.EqualTo(canonicalSequenceBefore));
             UniqueHoldingSnapshot retained;
@@ -235,12 +235,12 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             Assert.That(retained, Is.Not.Null);
         }
 
-        private static WeaponMark FirstProductionMark()
+        private static GunMark FirstProductionMark()
         {
-            return WeaponCatalogProvider.Current.Families[0].Marks[0];
+            return GunCatalogProvider.Current.Families[0].Marks[0];
         }
 
-        private static EquipmentCatalog BuildSyntheticUnknownWeaponCatalog()
+        private static EquipmentCatalog BuildSyntheticUnknownGunCatalog()
         {
             EquipmentQualityTier quality = EquipmentQualityTier.Create(
                 StableId.Parse("quality.synthetic-unresolved"),
@@ -248,10 +248,10 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 1);
             EquipmentDefinition definition = EquipmentDefinition.Create(
                 StableId.Parse("equipment.synthetic-unresolved"),
-                EquipmentCategoryIds.Weapon,
+                EquipmentCategoryIds.Gun,
                 StableId.Parse("equipment-archetype.synthetic-unresolved"),
-                "Synthetic unresolved weapon",
-                StableId.Parse("weapon-definition.synthetic-unresolved"),
+                "Synthetic unresolved gun",
+                StableId.Parse("gun-definition.synthetic-unresolved"),
                 InclusiveIntRange.Create(1, 1),
                 0,
                 new[] { quality },
@@ -275,8 +275,8 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 
             public ReceiptFixture()
             {
-                WeaponMark mark = FirstProductionMark();
-                Catalog = WeaponCatalogProvider.EquipmentCatalog;
+                GunMark mark = FirstProductionMark();
+                Catalog = GunCatalogProvider.EquipmentCatalog;
                 EquipmentDefinition definition = Catalog.FindEquipmentDefinition(
                     mark.EquipmentDefinitionId);
                 Assert.That(definition, Is.Not.Null);

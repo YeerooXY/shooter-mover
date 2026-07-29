@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
@@ -103,7 +103,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                         plan,
                         "box-transfer-post-mutation-snapshot-null");
                 }
-                IReadOnlyList<SaveComponentSnapshot> expectedComponents =
+                IReadOnlyList<SavePartSnapshot> expectedComponents =
                     PlayerAccountRestoreFlow.ExportComponents(
                         plan.Graph.SaveAdapters);
 

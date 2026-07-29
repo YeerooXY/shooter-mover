@@ -121,7 +121,7 @@ namespace ShooterMover.Tests.PlayMode.Progression.Experience.EnemyRewards
                     new[] { StableId.Parse("progression-tag.campaign") }));
         }
 
-        private sealed class TestEnemyState : IEnemyActor2DState
+        private sealed class TestEnemyState : IEnemyState
         {
             private readonly EnemyActorState initialState;
             private EnemyActorState state;

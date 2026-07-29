@@ -20,7 +20,7 @@ namespace ShooterMover.UnityAdapters.Physics
     [DisallowMultipleComponent]
     public sealed class MovementFixedStepDriver : MonoBehaviour
     {
-        private MovementBody2DBridge bodyAdapter;
+        private MovementBody bodyAdapter;
         private IAuthoritativeMovementVelocitySource velocitySource;
         private bool driveRequested;
 
@@ -60,7 +60,7 @@ namespace ShooterMover.UnityAdapters.Physics
                     "MovementFixedStepDriver is already configured with different dependencies.");
             }
 
-            bodyAdapter = new MovementBody2DBridge(body);
+            bodyAdapter = new MovementBody(body);
             velocitySource = source;
             bodyAdapter.ClearVelocity();
         }

@@ -13,7 +13,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.Domain.Weapons;
+using ShooterMover.Domain.Guns;
 
 namespace ShooterMover.Application.Equipment.Upgrades
 {
@@ -111,7 +111,7 @@ namespace ShooterMover.Application.Equipment.Upgrades
             }
 
             EquipmentInstance equipment = holding.EquipmentInstance;
-            WeaponOperationAvailability upgradeAvailability =
+            GunOperationAvailability upgradeAvailability =
                 EvaluateGenericUpgradeAvailability(catalog, equipment);
             if (!upgradeAvailability.IsAvailable)
             {

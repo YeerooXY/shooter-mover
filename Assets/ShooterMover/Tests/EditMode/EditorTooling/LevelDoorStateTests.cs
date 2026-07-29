@@ -13,7 +13,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 {
     public sealed class LevelDoorStateTests
     {
-        private LevelDesignSceneAuthoringRoot2D root;
+        private LevelDraft root;
         private string temporaryParent;
         private string outputRoot;
 
@@ -23,7 +23,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             Undo.ClearAll();
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             GameObject rootObject = new GameObject("Door Authority Test Root");
-            root = rootObject.AddComponent<LevelDesignSceneAuthoringRoot2D>();
+            root = rootObject.AddComponent<LevelDraft>();
             root.ConfigureForTests("level.door-authority-test");
             temporaryParent = Path.Combine(
                 Path.GetTempPath(),
@@ -118,10 +118,10 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void LiveValidation_DoesNotMigrateLegacyFixedDoorState()
         {
-            LevelRoomAuthoring2D room = LevelGridEditorOperations.CreateRoom(
+            LevelRoom room = LevelGridEditorOperations.CreateRoom(
                 root,
                 Vector2Int.zero);
-            LevelDoorEndpointAuthoring2D door = LevelGridEditorOperations.CreateDoor(
+            DoorEndpoint door = LevelGridEditorOperations.CreateDoor(
                 room,
                 LevelDoorSide.North,
                 0.5f);
@@ -175,29 +175,29 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 
         private DoorGraph ConfigurePlayableGraph()
         {
-            LevelRoomAuthoring2D startRoom = LevelGridEditorOperations.CreateRoom(
+            LevelRoom startRoom = LevelGridEditorOperations.CreateRoom(
                 root,
                 Vector2Int.zero);
-            LevelRoomAuthoring2D finalRoom = LevelGridEditorOperations.CreateRoom(
+            LevelRoom finalRoom = LevelGridEditorOperations.CreateRoom(
                 root,
                 Vector2Int.right);
-            LevelDoorEndpointAuthoring2D sourceDoor =
+            DoorEndpoint sourceDoor =
                 LevelGridEditorOperations.CreateDoor(
                     startRoom,
                     LevelDoorSide.East,
                     0.5f);
-            LevelDoorEndpointAuthoring2D destinationDoor =
+            DoorEndpoint destinationDoor =
                 LevelGridEditorOperations.CreateDoor(
                     finalRoom,
                     LevelDoorSide.West,
                     0.5f);
-            LevelDoorEndpointAuthoring2D finalExitDoor =
+            DoorEndpoint finalExitDoor =
                 LevelGridEditorOperations.CreateDoor(
                     finalRoom,
                     LevelDoorSide.East,
                     0.5f);
 
-            LevelDoorLinkAuthoring2D link;
+            DoorLink link;
             string rejection;
             Assert.That(
                 LevelGridEditorOperations.TryCreateConnection(
@@ -224,7 +224,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         }
 
         private static void ForceWrongSide(
-            LevelDoorEndpointAuthoring2D door,
+            DoorEndpoint door,
             LevelDoorSide side)
         {
             door.ConfigureAuthoring(
@@ -266,18 +266,18 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         private sealed class DoorGraph
         {
             public DoorGraph(
-                LevelDoorEndpointAuthoring2D sourceDoor,
-                LevelDoorEndpointAuthoring2D destinationDoor,
-                LevelDoorEndpointAuthoring2D finalExitDoor)
+                DoorEndpoint sourceDoor,
+                DoorEndpoint destinationDoor,
+                DoorEndpoint finalExitDoor)
             {
                 SourceDoor = sourceDoor;
                 DestinationDoor = destinationDoor;
                 FinalExitDoor = finalExitDoor;
             }
 
-            public LevelDoorEndpointAuthoring2D SourceDoor { get; private set; }
-            public LevelDoorEndpointAuthoring2D DestinationDoor { get; private set; }
-            public LevelDoorEndpointAuthoring2D FinalExitDoor { get; private set; }
+            public DoorEndpoint SourceDoor { get; private set; }
+            public DoorEndpoint DestinationDoor { get; private set; }
+            public DoorEndpoint FinalExitDoor { get; private set; }
         }
     }
 }

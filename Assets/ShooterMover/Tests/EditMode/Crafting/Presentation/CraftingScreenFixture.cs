@@ -33,11 +33,11 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         public static CraftingScreenFixture Create(int level, long scrap, bool includeLocked = false)
         {
             EquipmentQualityTier quality = EquipmentQualityTier.Create(StableId.Parse("quality.standard"), "Standard", 1);
-            EquipmentDefinition weapon = EquipmentDefinition.Create(
-                StableId.Parse("weapon.shared"), EquipmentCategoryIds.Weapon, StableId.Parse("weapon-family.test"),
-                "Shared Weapon", StableId.Parse("weapon.runtime-test"), InclusiveIntRange.Create(1, 20), 0,
+            EquipmentDefinition gun = EquipmentDefinition.Create(
+                StableId.Parse("gun.shared"), EquipmentCategoryIds.Gun, StableId.Parse("gun-family.test"),
+                "Shared Gun", StableId.Parse("gun.runtime-test"), InclusiveIntRange.Create(1, 20), 0,
                 new[] { quality }, Array.Empty<StableId>());
-            EquipmentCatalogBuildResult equipment = EquipmentCatalog.Build(new[] { weapon }, Array.Empty<AugmentDefinition>());
+            EquipmentCatalogBuildResult equipment = EquipmentCatalog.Build(new[] { gun }, Array.Empty<AugmentDefinition>());
             Assert.That(equipment.IsValid, Is.True);
 
             CraftingRecipe available = Recipe("recipe.available", 2, 3, 25);
@@ -58,7 +58,7 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         private static CraftingRecipe Recipe(string id, int natural, int delay, long cost)
         {
             return new CraftingRecipe(
-                1, StableId.Parse(id), StableId.Parse("weapon.shared"), StableId.Parse("discovery.test-source"),
+                1, StableId.Parse(id), StableId.Parse("gun.shared"), StableId.Parse("discovery.test-source"),
                 natural, natural, delay, new CraftingDelayVariance(0, 0), cost,
                 CraftingQualityPolicyKind.Fixed,
                 new[] { new CraftingWeightedDefinition(StableId.Parse("quality.standard"), 1UL) },

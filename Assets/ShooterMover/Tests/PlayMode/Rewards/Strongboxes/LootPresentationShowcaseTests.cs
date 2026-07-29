@@ -49,7 +49,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 "CharacterStrongboxSetup",
                 scene);
             StringAssert.DoesNotContain(
-                "PlayableLevelController",
+                "LevelGame",
                 scene);
         }
 
@@ -81,8 +81,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             GameObject gameObject = new GameObject("LootPickupVisualTest");
             try
             {
-                LootPickupVisual2D visual =
-                    gameObject.AddComponent<LootPickupVisual2D>();
+                LootVisual visual =
+                    gameObject.AddComponent<LootVisual>();
                 visual.Bind(Pickup("first"));
                 Assert.Throws<InvalidOperationException>(
                     delegate { visual.Bind(Pickup("second")); });
@@ -208,8 +208,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 "LootPresentationShowcaseController.cs",
                 "LootPresentationShowcaseController.Data.cs",
                 "LootPresentationShowcaseController.GUI.cs",
-                "LootPresentationDevelopmentPickupFixtureV1.cs",
-                "LootPickupVisual2D.cs",
+                "LootPresentationDevelopmentPickupFixture.cs",
+                "LootVisual.cs",
                 "LootRunHudView.cs",
                 "OwnedStrongboxGroupsView.cs",
                 "StrongboxRewardCardsView.cs",

@@ -21,16 +21,16 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             Assert.That(first, Is.EqualTo(second));
             Assert.That(copy, Is.EqualTo(first));
             Assert.That(copy, Is.Not.SameAs(first));
-            Assert.That(copy.WeaponSlots, Is.Not.SameAs(first.WeaponSlots));
-            Assert.That(copy.WeaponSlots[0], Is.Not.SameAs(first.WeaponSlots[0]));
+            Assert.That(copy.GunSlots, Is.Not.SameAs(first.GunSlots));
+            Assert.That(copy.GunSlots[0], Is.Not.SameAs(first.GunSlots[0]));
             Assert.That(first.HasValidFingerprint(), Is.True);
 
             sourceInstances[0] = StableId.Parse("equipment-instance.replaced-source");
             Assert.That(
-                first.WeaponSlots[0].EquipmentInstanceStableId.ToString(),
-                Is.EqualTo("equipment-instance.route-weapon-1"));
+                first.GunSlots[0].EquipmentInstanceStableId.ToString(),
+                Is.EqualTo("equipment-instance.route-gun-1"));
 
-            var readOnlyView = (IList<PlayerRouteWeaponSlot>)first.WeaponSlots;
+            var readOnlyView = (IList<PlayerRouteGunSlot>)first.GunSlots;
             Assert.Throws<NotSupportedException>(delegate { readOnlyView.Clear(); });
         }
 
@@ -39,7 +39,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         {
             PlayerRouteProfilePayload payload = CreatePayload(CreateInstanceIds());
             PlayerRouteProfileEnvelope valid = payload.ToEnvelope();
-            var originalSlots = new List<PlayerRouteWeaponSlotEnvelope>(valid.WeaponSlots);
+            var originalSlots = new List<PlayerRouteGunSlotEnvelope>(valid.GunSlots);
 
             AssertStatus(
                 new PlayerRouteProfileEnvelope(
@@ -47,7 +47,7 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     valid.ContractStableId,
                     valid.SelectedCharacterStableId,
                     valid.LoadoutProfileStableId,
-                    valid.WeaponSlots,
+                    valid.GunSlots,
                     valid.Fingerprint),
                 PlayerRouteProfileValidationStatus.UnsupportedSchemaVersion);
 
@@ -57,42 +57,42 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                     valid.ContractStableId,
                     "NOT-CANONICAL",
                     valid.LoadoutProfileStableId,
-                    valid.WeaponSlots,
+                    valid.GunSlots,
                     valid.Fingerprint),
                 PlayerRouteProfileValidationStatus.MalformedCharacterIdentity);
 
-            var duplicateSlotIds = new List<PlayerRouteWeaponSlotEnvelope>(
-                valid.WeaponSlots);
-            duplicateSlotIds[1] = new PlayerRouteWeaponSlotEnvelope(
-                valid.WeaponSlots[0].WeaponSlotStableId,
-                valid.WeaponSlots[1].EquipmentInstanceStableId);
+            var duplicateSlotIds = new List<PlayerRouteGunSlotEnvelope>(
+                valid.GunSlots);
+            duplicateSlotIds[1] = new PlayerRouteGunSlotEnvelope(
+                valid.GunSlots[0].GunSlotStableId,
+                valid.GunSlots[1].EquipmentInstanceStableId);
             AssertStatus(
                 Rebuild(valid, duplicateSlotIds, valid.Fingerprint),
-                PlayerRouteProfileValidationStatus.DuplicateWeaponSlotIdentity);
+                PlayerRouteProfileValidationStatus.DuplicateGunSlotIdentity);
 
-            var duplicateEquipmentIds = new List<PlayerRouteWeaponSlotEnvelope>(
-                valid.WeaponSlots);
-            duplicateEquipmentIds[3] = new PlayerRouteWeaponSlotEnvelope(
-                valid.WeaponSlots[3].WeaponSlotStableId,
-                valid.WeaponSlots[0].EquipmentInstanceStableId);
+            var duplicateEquipmentIds = new List<PlayerRouteGunSlotEnvelope>(
+                valid.GunSlots);
+            duplicateEquipmentIds[3] = new PlayerRouteGunSlotEnvelope(
+                valid.GunSlots[3].GunSlotStableId,
+                valid.GunSlots[0].EquipmentInstanceStableId);
             AssertStatus(
                 Rebuild(valid, duplicateEquipmentIds, valid.Fingerprint),
                 PlayerRouteProfileValidationStatus.DuplicateEquipmentInstanceIdentity);
 
-            var missingSlot = new List<PlayerRouteWeaponSlotEnvelope>(valid.WeaponSlots);
+            var missingSlot = new List<PlayerRouteGunSlotEnvelope>(valid.GunSlots);
             missingSlot.RemoveAt(3);
             AssertStatus(
                 Rebuild(valid, missingSlot, valid.Fingerprint),
-                PlayerRouteProfileValidationStatus.WeaponSlotCountMismatch);
+                PlayerRouteProfileValidationStatus.GunSlotCountMismatch);
 
             AssertStatus(
-                Rebuild(valid, valid.WeaponSlots, new string('0', 64)),
+                Rebuild(valid, valid.GunSlots, new string('0', 64)),
                 PlayerRouteProfileValidationStatus.FingerprintMismatch);
 
-            Assert.That(valid.WeaponSlots.Count, Is.EqualTo(4));
+            Assert.That(valid.GunSlots.Count, Is.EqualTo(4));
             for (int index = 0; index < originalSlots.Count; index++)
             {
-                Assert.That(valid.WeaponSlots[index], Is.SameAs(originalSlots[index]));
+                Assert.That(valid.GunSlots[index], Is.SameAs(originalSlots[index]));
             }
         }
 
@@ -166,16 +166,16 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         {
             return new List<StableId>
             {
-                StableId.Parse("equipment-instance.route-weapon-1"),
-                StableId.Parse("equipment-instance.route-weapon-2"),
-                StableId.Parse("equipment-instance.route-weapon-3"),
-                StableId.Parse("equipment-instance.route-weapon-4"),
+                StableId.Parse("equipment-instance.route-gun-1"),
+                StableId.Parse("equipment-instance.route-gun-2"),
+                StableId.Parse("equipment-instance.route-gun-3"),
+                StableId.Parse("equipment-instance.route-gun-4"),
             };
         }
 
         private static PlayerRouteProfileEnvelope Rebuild(
             PlayerRouteProfileEnvelope source,
-            IEnumerable<PlayerRouteWeaponSlotEnvelope> slots,
+            IEnumerable<PlayerRouteGunSlotEnvelope> slots,
             string fingerprint)
         {
             return new PlayerRouteProfileEnvelope(

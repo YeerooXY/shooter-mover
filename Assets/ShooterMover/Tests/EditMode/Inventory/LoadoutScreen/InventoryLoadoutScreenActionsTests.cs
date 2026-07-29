@@ -19,8 +19,8 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
         {
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenSnapshot snapshot = fixture.CreateService().Snapshot;
-            InventoryLoadoutEquipmentView first = snapshot.FindEquipment(fixture.WeaponOne.InstanceId);
-            InventoryLoadoutEquipmentView second = snapshot.FindEquipment(fixture.WeaponTwo.InstanceId);
+            InventoryLoadoutEquipmentView first = snapshot.FindEquipment(fixture.GunOne.InstanceId);
+            InventoryLoadoutEquipmentView second = snapshot.FindEquipment(fixture.GunTwo.InstanceId);
 
             Assert.That(first, Is.Not.Null);
             Assert.That(second, Is.Not.Null);
@@ -29,13 +29,13 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
         }
 
         [Test]
-        public void ConfirmAppliesAllSlotsAndPreservesExactWeaponOrder()
+        public void ConfirmAppliesAllSlotsAndPreservesExactGunOrder()
         {
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenActions service = fixture.CreateService();
             string holdingsBefore = fixture.Holdings.ExportSnapshot().Fingerprint;
 
-            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.WeaponTwo, fixture.WeaponTwo.InstanceId).ChangedSelection, Is.True);
+            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.GunTwo, fixture.GunTwo.InstanceId).ChangedSelection, Is.True);
             Assert.That(service.TrySelect(InventoryLoadoutSlotIds.ArmorHead, fixture.ArmorOne.InstanceId).ChangedSelection, Is.True);
             Assert.That(service.TrySelect(InventoryLoadoutSlotIds.ArmorBody, fixture.ArmorTwo.InstanceId).ChangedSelection, Is.True);
             Assert.That(service.TrySelect(InventoryLoadoutSlotIds.ArmorLegs, fixture.ArmorThree.InstanceId).ChangedSelection, Is.True);
@@ -46,25 +46,25 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
             Assert.That(result.Status, Is.EqualTo(InventoryLoadoutScreenStatus.Confirmed));
             Assert.That(fixture.Loadout.ApplyCount, Is.EqualTo(1));
             Assert.That(result.RoutePayload, Is.Not.SameAs(fixture.RoutePayload));
-            Assert.That(result.RoutePayload.WeaponSlots[0].EquipmentInstanceStableId, Is.EqualTo(fixture.WeaponOne.InstanceId));
-            Assert.That(result.RoutePayload.WeaponSlots[1].EquipmentInstanceStableId, Is.EqualTo(fixture.WeaponTwo.InstanceId));
-            Assert.That(result.RoutePayload.WeaponSlots[2].EquipmentInstanceStableId, Is.EqualTo(fixture.WeaponFour.InstanceId));
-            Assert.That(result.RoutePayload.WeaponSlots[3].EquipmentInstanceStableId, Is.EqualTo(fixture.WeaponFive.InstanceId));
+            Assert.That(result.RoutePayload.GunSlots[0].EquipmentInstanceStableId, Is.EqualTo(fixture.GunOne.InstanceId));
+            Assert.That(result.RoutePayload.GunSlots[1].EquipmentInstanceStableId, Is.EqualTo(fixture.GunTwo.InstanceId));
+            Assert.That(result.RoutePayload.GunSlots[2].EquipmentInstanceStableId, Is.EqualTo(fixture.GunFour.InstanceId));
+            Assert.That(result.RoutePayload.GunSlots[3].EquipmentInstanceStableId, Is.EqualTo(fixture.GunFive.InstanceId));
             Assert.That(fixture.Loadout.Snapshot.GetBinding(InventoryLoadoutSlotIds.ArmorHead).EquipmentInstanceStableId, Is.EqualTo(fixture.ArmorOne.InstanceId));
             Assert.That(fixture.Loadout.Snapshot.GetBinding(InventoryLoadoutSlotIds.ArmorFeet).EquipmentInstanceStableId, Is.EqualTo(fixture.ArmorFour.InstanceId));
             Assert.That(fixture.Holdings.ExportSnapshot().Fingerprint, Is.EqualTo(holdingsBefore));
         }
 
         [Test]
-        public void EmptyWeaponSlotRejectsBeforeAuthorityMutation()
+        public void EmptyGunSlotRejectsBeforeAuthorityMutation()
         {
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenActions service = fixture.CreateService();
-            service.TryUnequip(InventoryLoadoutSlotIds.WeaponFour);
+            service.TryUnequip(InventoryLoadoutSlotIds.GunFour);
 
             InventoryLoadoutScreenResult result = service.Confirm();
 
-            Assert.That(result.Status, Is.EqualTo(InventoryLoadoutScreenStatus.IncompleteWeaponLoadout));
+            Assert.That(result.Status, Is.EqualTo(InventoryLoadoutScreenStatus.IncompleteGunLoadout));
             Assert.That(result.Snapshot.CanConfirm, Is.False);
             Assert.That(fixture.Loadout.ApplyCount, Is.Zero);
         }
@@ -76,15 +76,15 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
             InventoryLoadoutScreenActions service = fixture.CreateService();
             string before = fixture.Holdings.ExportSnapshot().Fingerprint;
 
-            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.WeaponOne, fixture.ArmorOne.InstanceId).Status,
+            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.GunOne, fixture.ArmorOne.InstanceId).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatus.WrongEquipmentType));
-            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.ArmorHead, fixture.WeaponOne.InstanceId).Status,
+            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.ArmorHead, fixture.GunOne.InstanceId).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatus.WrongEquipmentType));
             Assert.That(service.TrySelect(InventoryLoadoutSlotIds.ArmorHead, fixture.Gadget.InstanceId).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatus.InvalidEquipment));
-            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.WeaponOne, Id("equipment-instance.unknown")).Status,
+            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.GunOne, Id("equipment-instance.unknown")).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatus.MissingEquipment));
-            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.WeaponTwo, fixture.WeaponOne.InstanceId).Status,
+            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.GunTwo, fixture.GunOne.InstanceId).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatus.DuplicateEquipmentInstance));
             Assert.That(fixture.Loadout.ApplyCount, Is.Zero);
             Assert.That(fixture.Holdings.ExportSnapshot().Fingerprint, Is.EqualTo(before));
@@ -95,13 +95,13 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
         {
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenActions service = fixture.CreateService();
-            service.TrySelect(InventoryLoadoutSlotIds.WeaponTwo, fixture.WeaponTwo.InstanceId);
-            fixture.Remove(fixture.WeaponTwo, "selected");
+            service.TrySelect(InventoryLoadoutSlotIds.GunTwo, fixture.GunTwo.InstanceId);
+            fixture.Remove(fixture.GunTwo, "selected");
 
             InventoryLoadoutScreenResult refresh = service.Refresh();
-            InventoryLoadoutSelectionView selection = refresh.Snapshot.GetSelection(InventoryLoadoutSlotIds.WeaponTwo);
+            InventoryLoadoutSelectionView selection = refresh.Snapshot.GetSelection(InventoryLoadoutSlotIds.GunTwo);
 
-            Assert.That(selection.EquipmentInstanceStableId, Is.EqualTo(fixture.WeaponTwo.InstanceId));
+            Assert.That(selection.EquipmentInstanceStableId, Is.EqualTo(fixture.GunTwo.InstanceId));
             Assert.That(selection.IsValid, Is.False);
             Assert.That(selection.RejectionCode, Is.EqualTo("inventory-loadout-selection-stale"));
             Assert.That(service.Confirm().Status, Is.EqualTo(InventoryLoadoutScreenStatus.StaleSelection));
@@ -114,7 +114,7 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenActions service = fixture.CreateService();
 
-            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.WeaponOne, fixture.WeaponOne.InstanceId).Status,
+            Assert.That(service.TrySelect(InventoryLoadoutSlotIds.GunOne, fixture.GunOne.InstanceId).Status,
                 Is.EqualTo(InventoryLoadoutScreenStatus.NoChange));
             Assert.That(service.Confirm().Status, Is.EqualTo(InventoryLoadoutScreenStatus.Confirmed));
             Assert.That(service.Confirm().Status, Is.EqualTo(InventoryLoadoutScreenStatus.AlreadyCompleted));
@@ -126,7 +126,7 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
         {
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenActions service = fixture.CreateService();
-            service.TrySelect(InventoryLoadoutSlotIds.WeaponTwo, fixture.WeaponTwo.InstanceId);
+            service.TrySelect(InventoryLoadoutSlotIds.GunTwo, fixture.GunTwo.InstanceId);
 
             InventoryLoadoutScreenResult result = service.Back();
 
@@ -137,18 +137,18 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
         }
 
         [Test]
-        public void RevisitRestoresExactWeaponAndArmorInstanceIdentities()
+        public void RevisitRestoresExactGunAndArmorInstanceIdentities()
         {
             Fixture fixture = new Fixture();
             InventoryLoadoutScreenActions first = fixture.CreateService();
-            first.TrySelect(InventoryLoadoutSlotIds.WeaponTwo, fixture.WeaponTwo.InstanceId);
+            first.TrySelect(InventoryLoadoutSlotIds.GunTwo, fixture.GunTwo.InstanceId);
             first.TrySelect(InventoryLoadoutSlotIds.ArmorHead, fixture.ArmorOne.InstanceId);
             PlayerRouteProfilePayload confirmed = first.Confirm().RoutePayload;
 
             InventoryLoadoutScreenActions revisit = fixture.CreateService(confirmed);
 
-            Assert.That(revisit.Snapshot.GetSelection(InventoryLoadoutSlotIds.WeaponTwo).EquipmentInstanceStableId,
-                Is.EqualTo(fixture.WeaponTwo.InstanceId));
+            Assert.That(revisit.Snapshot.GetSelection(InventoryLoadoutSlotIds.GunTwo).EquipmentInstanceStableId,
+                Is.EqualTo(fixture.GunTwo.InstanceId));
             Assert.That(revisit.Snapshot.GetSelection(InventoryLoadoutSlotIds.ArmorHead).EquipmentInstanceStableId,
                 Is.EqualTo(fixture.ArmorOne.InstanceId));
             Assert.That(revisit.Snapshot.CanConfirm, Is.True);
@@ -167,36 +167,36 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
             public Fixture()
             {
                 EquipmentQualityTier common = EquipmentQualityTier.Create(Id("quality.common"), "Common", 1);
-                EquipmentDefinition shared = Definition("equipment.shared-weapon", EquipmentCategoryIds.Weapon, "Shared Weapon", common);
-                EquipmentDefinition weaponB = Definition("equipment.weapon-b", EquipmentCategoryIds.Weapon, "Weapon B", common);
-                EquipmentDefinition weaponC = Definition("equipment.weapon-c", EquipmentCategoryIds.Weapon, "Weapon C", common);
-                EquipmentDefinition weaponD = Definition("equipment.weapon-d", EquipmentCategoryIds.Weapon, "Weapon D", common);
+                EquipmentDefinition shared = Definition("equipment.shared-gun", EquipmentCategoryIds.Gun, "Shared Gun", common);
+                EquipmentDefinition gunB = Definition("equipment.gun-b", EquipmentCategoryIds.Gun, "Gun B", common);
+                EquipmentDefinition gunC = Definition("equipment.gun-c", EquipmentCategoryIds.Gun, "Gun C", common);
+                EquipmentDefinition gunD = Definition("equipment.gun-d", EquipmentCategoryIds.Gun, "Gun D", common);
                 EquipmentDefinition armor = Definition("equipment.shared-armor", EquipmentCategoryIds.Armor, "Armor", common);
                 EquipmentDefinition gadget = Definition("equipment.future-gadget", Id("equipment-category.gadget"), "Gadget", common);
                 EquipmentCatalogBuildResult build = EquipmentCatalog.Build(
-                    new[] { shared, weaponB, weaponC, weaponD, armor, gadget },
+                    new[] { shared, gunB, gunC, gunD, armor, gadget },
                     new AugmentDefinition[0]);
                 Assert.That(build.IsValid, Is.True);
                 Catalog = new CatalogBridge(build.Catalog);
                 Holdings = new PlayerHoldingsActions(AuthorityId, 1000L, Catalog);
 
-                WeaponOne = Instance("equipment-instance.weapon-1", shared);
-                WeaponTwo = Instance("equipment-instance.weapon-2", shared);
-                WeaponThree = Instance("equipment-instance.weapon-3", weaponB);
-                WeaponFour = Instance("equipment-instance.weapon-4", weaponC);
-                WeaponFive = Instance("equipment-instance.weapon-5", weaponD);
+                GunOne = Instance("equipment-instance.gun-1", shared);
+                GunTwo = Instance("equipment-instance.gun-2", shared);
+                GunThree = Instance("equipment-instance.gun-3", gunB);
+                GunFour = Instance("equipment-instance.gun-4", gunC);
+                GunFive = Instance("equipment-instance.gun-5", gunD);
                 ArmorOne = Instance("equipment-instance.armor-1", armor);
                 ArmorTwo = Instance("equipment-instance.armor-2", armor);
                 ArmorThree = Instance("equipment-instance.armor-3", armor);
                 ArmorFour = Instance("equipment-instance.armor-4", armor);
                 Gadget = Instance("equipment-instance.gadget", gadget);
-                Add(WeaponOne); Add(WeaponTwo); Add(WeaponThree); Add(WeaponFour); Add(WeaponFive);
+                Add(GunOne); Add(GunTwo); Add(GunThree); Add(GunFour); Add(GunFive);
                 Add(ArmorOne); Add(ArmorTwo); Add(ArmorThree); Add(ArmorFour); Add(Gadget);
 
                 RoutePayload = PlayerRouteProfilePayload.Create(
                     Id("character.inventory-loadout-test"),
                     Id("loadout-profile.inventory-loadout-test"),
-                    new[] { WeaponOne.InstanceId, WeaponThree.InstanceId, WeaponFour.InstanceId, WeaponFive.InstanceId });
+                    new[] { GunOne.InstanceId, GunThree.InstanceId, GunFour.InstanceId, GunFive.InstanceId });
                 Loadout = new RecordingLoadoutState(RoutePayload);
             }
 
@@ -204,11 +204,11 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
             public PlayerHoldingsActions Holdings { get; }
             public RecordingLoadoutState Loadout { get; }
             public PlayerRouteProfilePayload RoutePayload { get; }
-            public EquipmentInstance WeaponOne { get; }
-            public EquipmentInstance WeaponTwo { get; }
-            public EquipmentInstance WeaponThree { get; }
-            public EquipmentInstance WeaponFour { get; }
-            public EquipmentInstance WeaponFive { get; }
+            public EquipmentInstance GunOne { get; }
+            public EquipmentInstance GunTwo { get; }
+            public EquipmentInstance GunThree { get; }
+            public EquipmentInstance GunFour { get; }
+            public EquipmentInstance GunFive { get; }
             public EquipmentInstance ArmorOne { get; }
             public EquipmentInstance ArmorTwo { get; }
             public EquipmentInstance ArmorThree { get; }
@@ -254,7 +254,7 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
                     category,
                     Id(id.Replace("equipment.", "equipment-family.")),
                     name,
-                    category == EquipmentCategoryIds.Weapon ? Id("weapon.blaster-machine-gun") : null,
+                    category == EquipmentCategoryIds.Gun ? Id("gun.blaster-machine-gun") : null,
                     InclusiveIntRange.Create(1, 100),
                     0,
                     new[] { quality },
@@ -288,7 +288,7 @@ namespace ShooterMover.Tests.EditMode.Inventory.LoadoutScreen
                 var bindings = new List<InventoryLoadoutSlotBinding>();
                 for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
                 {
-                    StableId instance = index < payload.WeaponSlots.Count ? payload.WeaponSlots[index].EquipmentInstanceStableId : null;
+                    StableId instance = index < payload.GunSlots.Count ? payload.GunSlots[index].EquipmentInstanceStableId : null;
                     bindings.Add(new InventoryLoadoutSlotBinding(InventoryLoadoutSlots.All[index].SlotStableId, instance));
                 }
                 Snapshot = InventoryLoadoutStateSnapshot.CreateCanonical(0L, bindings);

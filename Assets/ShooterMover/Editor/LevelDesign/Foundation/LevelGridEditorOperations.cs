@@ -15,7 +15,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static readonly Vector2 DefaultCellSize = new Vector2(20f, 14f);
 
         public static int FindNextFreeFolderSlot(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             Vector2Int coordinate)
         {
             if (root == null)
@@ -24,8 +24,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             HashSet<int> occupied = new HashSet<int>();
-            LevelRoomAuthoring2D[] rooms =
-                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelRoom[] rooms =
+                root.GetComponentsInChildren<LevelRoom>(true);
             for (int index = 0; index < rooms.Length; index++)
             {
                 if (rooms[index].GridCoordinate == coordinate)
@@ -42,8 +42,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return slot;
         }
 
-        public static LevelRoomAuthoring2D CreateRoom(
-            LevelDesignSceneAuthoringRoot2D root,
+        public static LevelRoom CreateRoom(
+            LevelDraft root,
             Vector2Int coordinate)
         {
             if (root == null)
@@ -64,8 +64,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             BoxCollider2D bounds = Undo.AddComponent<BoxCollider2D>(roomObject);
             bounds.size = cellSize;
 
-            LevelRoomAuthoring2D room =
-                Undo.AddComponent<LevelRoomAuthoring2D>(roomObject);
+            LevelRoom room =
+                Undo.AddComponent<LevelRoom>(roomObject);
             room.AssignNewStableId();
             SerializedObject serialized = new SerializedObject(room);
             serialized.FindProperty("displayName").stringValue = string.Empty;
@@ -86,7 +86,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void MoveRoom(
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             Vector2Int coordinate)
         {
             if (room == null || room.GridCoordinate == coordinate)
@@ -94,7 +94,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            LevelDraft root = ResolveRoot(room);
             if (root == null)
             {
                 return;
@@ -117,7 +117,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetRoomDisplayName(
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             string displayName)
         {
             if (room == null)
@@ -133,7 +133,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            LevelDraft root = ResolveRoot(room);
             Undo.IncrementCurrentGroup();
             int group = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Rename Level Grid Room");
@@ -150,7 +150,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetConnectionTravelPolicy(
-            LevelDoorLinkAuthoring2D connection,
+            DoorLink connection,
             LevelDoorTravelPolicy travelPolicy)
         {
             if (connection == null || connection.TravelPolicy == travelPolicy)
@@ -158,7 +158,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(connection);
+            LevelDraft root = ResolveRoot(connection);
             Undo.RecordObject(connection, "Change Door Travel Policy");
             connection.ConfigureConnection(
                 connection.ConnectionIdText,
@@ -170,7 +170,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             MarkChanged(root, connection);
         }
 
-        public static void SetFolderSlot(LevelRoomAuthoring2D room, int folderSlot)
+        public static void SetFolderSlot(LevelRoom room, int folderSlot)
         {
             if (room == null)
             {
@@ -183,7 +183,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            LevelDraft root = ResolveRoot(room);
             Undo.RecordObject(room, "Change Room Folder Slot");
             SerializedObject serialized = new SerializedObject(room);
             serialized.FindProperty("folderSlot").intValue = normalized;
@@ -192,7 +192,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void ResizeRoom(
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             Vector2Int footprint)
         {
             if (room == null)
@@ -207,7 +207,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            LevelDraft root = ResolveRoot(room);
             Undo.IncrementCurrentGroup();
             int group = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Resize Level Grid Room");
@@ -235,8 +235,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             MarkChanged(root, room);
         }
 
-        public static LevelDoorEndpointAuthoring2D CreateDoor(
-            LevelRoomAuthoring2D room,
+        public static DoorEndpoint CreateDoor(
+            LevelRoom room,
             LevelDoorSide side,
             float edgeOffset)
         {
@@ -245,11 +245,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 throw new ArgumentNullException(nameof(room));
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            LevelDraft root = ResolveRoot(room);
             if (root == null)
             {
                 throw new InvalidOperationException(
-                    "The room must belong to a LevelDesignSceneAuthoringRoot2D.");
+                    "The room must belong to a LevelDraft.");
             }
 
             Undo.IncrementCurrentGroup();
@@ -258,8 +258,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             GameObject doorObject = new GameObject(side + " Door");
             doorObject.transform.SetParent(room.transform, false);
             Undo.RegisterCreatedObjectUndo(doorObject, "Add Level Grid Door");
-            LevelDoorEndpointAuthoring2D door =
-                Undo.AddComponent<LevelDoorEndpointAuthoring2D>(doorObject);
+            DoorEndpoint door =
+                Undo.AddComponent<DoorEndpoint>(doorObject);
             door.AssignNewStableId();
             door.ConfigureAuthoring(
                 door.DoorIdText,
@@ -279,7 +279,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void UpdateDoor(
-            LevelDoorEndpointAuthoring2D door,
+            DoorEndpoint door,
             LevelDoorSide side,
             LevelDoorPlacementMode placementMode,
             float edgeOffset,
@@ -293,7 +293,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(door);
+            LevelDraft root = ResolveRoot(door);
             Undo.IncrementCurrentGroup();
             int group = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Edit Level Grid Door");
@@ -328,10 +328,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static bool TryCreateConnection(
-            LevelDesignSceneAuthoringRoot2D selectedRoot,
-            LevelDoorEndpointAuthoring2D source,
-            LevelDoorEndpointAuthoring2D destination,
-            out LevelDoorLinkAuthoring2D created,
+            LevelDraft selectedRoot,
+            DoorEndpoint source,
+            DoorEndpoint destination,
+            out DoorLink created,
             out string rejection)
         {
             created = null;
@@ -341,8 +341,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return false;
             }
 
-            LevelRoomAuthoring2D sourceRoom = source.OwningRoom;
-            LevelRoomAuthoring2D destinationRoom = destination.OwningRoom;
+            LevelRoom sourceRoom = source.OwningRoom;
+            LevelRoom destinationRoom = destination.OwningRoom;
             Undo.IncrementCurrentGroup();
             int group = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Connect Level Grid Doors");
@@ -352,7 +352,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Undo.RegisterCreatedObjectUndo(
                 connectionObject,
                 "Connect Level Grid Doors");
-            created = Undo.AddComponent<LevelDoorLinkAuthoring2D>(connectionObject);
+            created = Undo.AddComponent<DoorLink>(connectionObject);
             created.AssignNewStableId();
             created.ConfigureConnection(
                 created.ConnectionIdText,
@@ -375,9 +375,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static string ValidateConnectionAttempt(
-            LevelDesignSceneAuthoringRoot2D selectedRoot,
-            LevelDoorEndpointAuthoring2D source,
-            LevelDoorEndpointAuthoring2D destination)
+            LevelDraft selectedRoot,
+            DoorEndpoint source,
+            DoorEndpoint destination)
         {
             if (selectedRoot == null)
             {
@@ -424,34 +424,34 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static bool IsConnected(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+            LevelDraft root,
+            DoorEndpoint door)
         {
             return FindAttachedConnection(root, door) != null;
         }
 
-        public static LevelDoorLinkAuthoring2D FindAttachedConnection(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+        public static DoorLink FindAttachedConnection(
+            LevelDraft root,
+            DoorEndpoint door)
         {
             if (root == null || door == null)
             {
                 return null;
             }
 
-            List<LevelDoorLinkAuthoring2D> links =
+            List<DoorLink> links =
                 LevelGridDoorOperations.FindAttachedConnections(root, door);
             return links.Count == 0 ? null : links[0];
         }
 
-        public static void DeleteConnection(LevelDoorLinkAuthoring2D connection)
+        public static void DeleteConnection(DoorLink connection)
         {
             if (connection == null)
             {
                 return;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(connection);
+            LevelDraft root = ResolveRoot(connection);
             Undo.IncrementCurrentGroup();
             int group = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Delete Level Grid Connection");
@@ -467,28 +467,28 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        public static void DeleteDoor(LevelDoorEndpointAuthoring2D door)
+        public static void DeleteDoor(DoorEndpoint door)
         {
             LevelGridDoorOperations.DeleteDoorUndoable(door, false);
         }
 
-        public static bool DeleteRoom(LevelRoomAuthoring2D room, bool allowModalWarning)
+        public static bool DeleteRoom(LevelRoom room, bool allowModalWarning)
         {
             if (room == null)
             {
                 return false;
             }
 
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(room);
+            LevelDraft root = ResolveRoot(room);
             if (root == null)
             {
                 return false;
             }
 
-            List<LevelDoorLinkAuthoring2D> attached =
-                new List<LevelDoorLinkAuthoring2D>();
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            List<DoorLink> attached =
+                new List<DoorLink>();
+            DoorLink[] links =
+                root.GetComponentsInChildren<DoorLink>(true);
             for (int index = 0; index < links.Length; index++)
             {
                 if (ConnectionTouchesRoom(links[index], room))
@@ -533,9 +533,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return true;
         }
 
-        public static void ReflowDoor(LevelDoorEndpointAuthoring2D door)
+        public static void ReflowDoor(DoorEndpoint door)
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(door);
+            LevelDraft root = ResolveRoot(door);
             if (root == null || door == null)
             {
                 return;
@@ -552,9 +552,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             MarkChanged(root, door);
         }
 
-        public static void KeepDoorPlacement(LevelDoorEndpointAuthoring2D door)
+        public static void KeepDoorPlacement(DoorEndpoint door)
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveRoot(door);
+            LevelDraft root = ResolveRoot(door);
             if (root == null || door == null)
             {
                 return;
@@ -566,7 +566,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void Validate(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridValidationPurpose purpose)
         {
             if (root == null)
@@ -579,17 +579,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             SceneView.RepaintAll();
         }
 
-        public static LevelDesignSceneAuthoringRoot2D ResolveRoot(Component component)
+        public static LevelDraft ResolveRoot(Component component)
         {
             return component == null
                 ? null
-                : component.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : component.GetComponentInParent<LevelDraft>();
         }
 
 
         private static bool IsConfiguredFinalExit(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+            LevelDraft root,
+            DoorEndpoint door)
         {
             if (root == null || door == null)
             {
@@ -604,8 +604,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool ConnectionTouchesRoom(
-            LevelDoorLinkAuthoring2D connection,
-            LevelRoomAuthoring2D room)
+            DoorLink connection,
+            LevelRoom room)
         {
             if (connection == null || room == null)
             {
@@ -618,8 +618,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool DoorTouchesRoom(
-            LevelDoorEndpointAuthoring2D door,
-            LevelRoomAuthoring2D room)
+            DoorEndpoint door,
+            LevelRoom room)
         {
             return door != null
                 && (door.OwningRoom == room
@@ -627,12 +627,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool HasDuplicateLink(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D source,
-            LevelDoorEndpointAuthoring2D destination)
+            LevelDraft root,
+            DoorEndpoint source,
+            DoorEndpoint destination)
         {
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            DoorLink[] links =
+                root.GetComponentsInChildren<DoorLink>(true);
             for (int index = 0; index < links.Length; index++)
             {
                 bool sameDirection = links[index].SourceDoor == source
@@ -647,10 +647,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return false;
         }
 
-        private static Vector2 ResolveCellSize(LevelDesignSceneAuthoringRoot2D root)
+        private static Vector2 ResolveCellSize(LevelDraft root)
         {
-            LevelRoomAuthoring2D[] rooms =
-                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelRoom[] rooms =
+                root.GetComponentsInChildren<LevelRoom>(true);
             for (int index = 0; index < rooms.Length; index++)
             {
                 if (rooms[index].CellSize.x > 0f && rooms[index].CellSize.y > 0f)
@@ -680,7 +680,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void MarkChanged(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             UnityEngine.Object changed)
         {
             if (changed != null)

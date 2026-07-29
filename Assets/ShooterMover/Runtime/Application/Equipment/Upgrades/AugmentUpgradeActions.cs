@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
-using ShooterMover.Application.Weapons.Catalog;
+using ShooterMover.Application.Guns.Catalog;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Rewards;
@@ -15,8 +15,8 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Equipment.Upgrades;
 using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.Domain.Weapons;
-using ShooterMover.Domain.Weapons.Execution;
+using ShooterMover.Domain.Guns;
+using ShooterMover.Domain.Guns.Execution;
 
 namespace ShooterMover.Application.Equipment.Upgrades
 {
@@ -100,7 +100,7 @@ namespace ShooterMover.Application.Equipment.Upgrades
                 }
 
                 EquipmentInstance equipment = holding.EquipmentInstance;
-                WeaponOperationAvailability upgradeAvailability =
+                GunOperationAvailability upgradeAvailability =
                     EvaluateGenericUpgradeAvailability(catalog, equipment);
                 if (!upgradeAvailability.IsAvailable)
                 {
@@ -171,48 +171,48 @@ namespace ShooterMover.Application.Equipment.Upgrades
             }
         }
 
-        private static WeaponOperationAvailability
+        private static GunOperationAvailability
             EvaluateGenericUpgradeAvailability(
                 EquipmentCatalog catalog,
                 EquipmentInstance equipment)
         {
             if (catalog == null || equipment == null)
             {
-                return WeaponOperationAvailability.Available();
+                return GunOperationAvailability.Available();
             }
 
             EquipmentDefinition definition = catalog.FindEquipmentDefinition(
                 equipment.DefinitionId);
-            bool isWeaponReceipt = definition != null
-                && definition.CategoryId == EquipmentCategoryIds.Weapon;
+            bool isGunReceipt = definition != null
+                && definition.CategoryId == EquipmentCategoryIds.Gun;
             bool canonicalDefinitionResolved = false;
-            if (isWeaponReceipt && definition.RuntimeWeaponReferenceId != null)
+            if (isGunReceipt && definition.RuntimeGunReferenceId != null)
             {
-                WeaponMark mark;
-                canonicalDefinitionResolved = WeaponCatalogProvider.Current
+                GunMark mark;
+                canonicalDefinitionResolved = GunCatalogProvider.Current
                     .TryGetMark(
-                        WeaponDefinitionId.FromRuntimeReference(
-                            definition.RuntimeWeaponReferenceId).Value,
+                        GunDefinitionId.FromRuntimeReference(
+                            definition.RuntimeGunReferenceId).Value,
                         out mark)
                     && mark != null;
             }
 
-            if (!isWeaponReceipt)
+            if (!isGunReceipt)
             {
-                return WeaponOperationAvailability.Available();
+                return GunOperationAvailability.Available();
             }
 
             bool authoritativeProductionCatalog = ReferenceEquals(
                 catalog,
-                WeaponCatalogProvider.EquipmentCatalog);
+                GunCatalogProvider.EquipmentCatalog);
             if (!authoritativeProductionCatalog && !canonicalDefinitionResolved)
             {
                 // Isolated synthetic/legacy catalogues keep the historical generic route. They do
-                // not identify an exact production canonical weapon receipt.
-                return WeaponOperationAvailability.Available();
+                // not identify an exact production canonical gun receipt.
+                return GunOperationAvailability.Available();
             }
 
-            return WeaponSafetyPolicy.EvaluateGenericUpgrade(
+            return GunSafetyPolicy.EvaluateGenericUpgrade(
                 true,
                 canonicalDefinitionResolved);
         }

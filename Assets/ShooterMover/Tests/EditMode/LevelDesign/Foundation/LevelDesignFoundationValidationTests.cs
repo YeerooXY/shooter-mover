@@ -277,8 +277,8 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             GameObject roomObject = new GameObject("Initial Name");
             try
             {
-                LevelRoomAuthoring2D room =
-                    roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room =
+                    roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.stable-authored",
                     Vector2Int.zero,
@@ -306,34 +306,34 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         {
             AssertPrefabComponent(
                 "LevelDesignSceneRoot.prefab",
-                typeof(LevelDesignSceneAuthoringRoot2D));
+                typeof(LevelDraft));
             AssertPrefabComponent(
                 "RoomAnchor.prefab",
-                typeof(LevelRoomAuthoring2D));
+                typeof(LevelRoom));
             AssertPrefabComponent(
                 "ConfiguredDoor.prefab",
-                typeof(LevelDoorConnectionAuthoring2D));
+                typeof(DoorConnection));
             AssertPrefabComponent(
                 "PlayerSpawn.prefab",
-                typeof(LevelPlacementAuthoring2D));
+                typeof(LevelObject));
             AssertPrefabComponent(
                 "EnemySpawn.prefab",
-                typeof(LevelPlacementAuthoring2D));
+                typeof(LevelObject));
             AssertPrefabComponent(
                 "PropPlacement.prefab",
-                typeof(LevelPlacementAuthoring2D));
+                typeof(LevelObject));
             AssertPrefabComponent(
                 "PickupSpawn.prefab",
-                typeof(LevelPlacementAuthoring2D));
+                typeof(LevelObject));
             AssertPrefabComponent(
                 "RewardSocket.prefab",
-                typeof(LevelPlacementAuthoring2D));
+                typeof(LevelObject));
             AssertPrefabComponent(
                 "EntryExit.prefab",
-                typeof(LevelPlacementAuthoring2D));
+                typeof(LevelObject));
             AssertPrefabComponent(
                 "VoidRegion.prefab",
-                typeof(LevelVoidRegionAuthoring2D));
+                typeof(VoidArea));
 
             GameObject configuredDoor = AssetDatabase.LoadAssetAtPath<GameObject>(
                 PrefabRoot + "ConfiguredDoor.prefab");
@@ -342,7 +342,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 .GetComponents<MonoBehaviour>()
                 .FirstOrDefault(component => component != null
                     && component.GetType().FullName
-                    == "ShooterMover.ContentPackages.LevelDesign.Foundation.ConfiguredDoorAuthoring2D");
+                    == "ShooterMover.ContentPackages.LevelDesign.Foundation.DoorMarker");
             Assert.That(
                 foundationAdapter,
                 Is.Not.Null,
@@ -359,14 +359,14 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 configuredDoor.GetComponents<MonoBehaviour>()
                     .Any(component => component != null
                         && component.GetType().FullName
-                        == "ShooterMover.ContentPackages.Environment.Doors.DoorController2D"),
+                        == "ShooterMover.ContentPackages.Environment.Doors.Door"),
                 Is.True,
                 "Configured door prefab must consume DOOR-001.");
             Assert.That(
                 configuredDoor.GetComponents<MonoBehaviour>()
                     .Any(component => component != null
                         && component.GetType().FullName
-                        == "ShooterMover.UnityAdapters.Authoring.PlacedObjectAuthoring2D"),
+                        == "ShooterMover.UnityAdapters.Authoring.PlacedObject"),
                 Is.True,
                 "Configured door prefab must consume OBJ-001.");
         }

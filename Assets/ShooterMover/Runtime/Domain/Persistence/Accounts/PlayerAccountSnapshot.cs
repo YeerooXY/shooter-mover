@@ -15,9 +15,9 @@ namespace ShooterMover.Domain.Persistence.Accounts
     /// achievement, event, or future multiplayer payloads. Their owning adapters
     /// serialize and validate those payloads through stable component identities.
     /// </summary>
-    public sealed class SaveComponentSnapshot
+    public sealed class SavePartSnapshot
     {
-        public SaveComponentSnapshot(
+        public SavePartSnapshot(
             StableId componentStableId,
             int schemaVersion,
             string contentVersion,
@@ -82,7 +82,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
             int slotIndex,
             string displayName,
             long revision,
-            IEnumerable<SaveComponentSnapshot> components)
+            IEnumerable<SavePartSnapshot> components)
         {
             CharacterInstanceStableId = characterInstanceStableId
                 ?? throw new ArgumentNullException(
@@ -120,14 +120,14 @@ namespace ShooterMover.Domain.Persistence.Accounts
 
         public long Revision { get; }
 
-        public IReadOnlyDictionary<StableId, SaveComponentSnapshot>
+        public IReadOnlyDictionary<StableId, SavePartSnapshot>
             Components { get; }
 
         public string Fingerprint { get; }
 
         public bool TryGetComponent(
             StableId componentStableId,
-            out SaveComponentSnapshot component)
+            out SavePartSnapshot component)
         {
             component = null;
             return componentStableId != null
@@ -135,7 +135,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
         }
 
         public CharacterInstanceSnapshot WithComponent(
-            SaveComponentSnapshot component)
+            SavePartSnapshot component)
         {
             if (component == null)
             {
@@ -179,32 +179,32 @@ namespace ShooterMover.Domain.Persistence.Accounts
                                 + item.Fingerprint));
         }
 
-        private static IReadOnlyDictionary<StableId, SaveComponentSnapshot>
-            FreezeComponents(IEnumerable<SaveComponentSnapshot> components)
+        private static IReadOnlyDictionary<StableId, SavePartSnapshot>
+            FreezeComponents(IEnumerable<SavePartSnapshot> components)
         {
             var output = new SortedDictionary<
                 string,
-                SaveComponentSnapshot>(StringComparer.Ordinal);
-            foreach (SaveComponentSnapshot component in
-                components ?? Array.Empty<SaveComponentSnapshot>())
+                SavePartSnapshot>(StringComparer.Ordinal);
+            foreach (SavePartSnapshot component in
+                components ?? Array.Empty<SavePartSnapshot>())
             {
                 if (component == null)
                 {
                     throw new ArgumentException(
-                        "Character save components must be non-null.",
+                        "Character save parts must be non-null.",
                         nameof(components));
                 }
                 string key = component.ComponentStableId.ToString();
                 if (output.ContainsKey(key))
                 {
                     throw new ArgumentException(
-                        "Character save component identities must be unique.",
+                        "Character save part identities must be unique.",
                         nameof(components));
                 }
                 output.Add(key, component);
             }
 
-            return new ReadOnlyDictionary<StableId, SaveComponentSnapshot>(
+            return new ReadOnlyDictionary<StableId, SavePartSnapshot>(
                 output.Values.ToDictionary(
                     item => item.ComponentStableId,
                     item => item));
@@ -225,7 +225,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
             StableId accountStableId,
             long revision,
             IEnumerable<CharacterInstanceSnapshot> orderedCharacterSlots,
-            IEnumerable<SaveComponentSnapshot> accountComponents)
+            IEnumerable<SavePartSnapshot> accountComponents)
         {
             AccountStableId = accountStableId
                 ?? throw new ArgumentNullException(nameof(accountStableId));
@@ -255,7 +255,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
             get;
         }
 
-        public IReadOnlyDictionary<StableId, SaveComponentSnapshot>
+        public IReadOnlyDictionary<StableId, SavePartSnapshot>
             AccountComponents { get; }
 
         public string Fingerprint { get; }
@@ -268,7 +268,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
 
         public bool TryGetAccountComponent(
             StableId componentStableId,
-            out SaveComponentSnapshot component)
+            out SavePartSnapshot component)
         {
             component = null;
             return componentStableId != null
@@ -313,7 +313,7 @@ namespace ShooterMover.Domain.Persistence.Accounts
         }
 
         public PlayerAccountSnapshot WithAccountComponent(
-            SaveComponentSnapshot component)
+            SavePartSnapshot component)
         {
             if (component == null)
             {
@@ -415,33 +415,33 @@ namespace ShooterMover.Domain.Persistence.Accounts
             return new ReadOnlyCollection<CharacterInstanceSnapshot>(slots);
         }
 
-        private static IReadOnlyDictionary<StableId, SaveComponentSnapshot>
+        private static IReadOnlyDictionary<StableId, SavePartSnapshot>
             FreezeAccountComponents(
-                IEnumerable<SaveComponentSnapshot> accountComponents)
+                IEnumerable<SavePartSnapshot> accountComponents)
         {
             var output = new SortedDictionary<
                 string,
-                SaveComponentSnapshot>(StringComparer.Ordinal);
-            foreach (SaveComponentSnapshot component in
-                accountComponents ?? Array.Empty<SaveComponentSnapshot>())
+                SavePartSnapshot>(StringComparer.Ordinal);
+            foreach (SavePartSnapshot component in
+                accountComponents ?? Array.Empty<SavePartSnapshot>())
             {
                 if (component == null)
                 {
                     throw new ArgumentException(
-                        "Account save components must be non-null.",
+                        "Account save parts must be non-null.",
                         nameof(accountComponents));
                 }
                 string key = component.ComponentStableId.ToString();
                 if (output.ContainsKey(key))
                 {
                     throw new ArgumentException(
-                        "Account save component identities must be unique.",
+                        "Account save part identities must be unique.",
                         nameof(accountComponents));
                 }
                 output.Add(key, component);
             }
 
-            return new ReadOnlyDictionary<StableId, SaveComponentSnapshot>(
+            return new ReadOnlyDictionary<StableId, SavePartSnapshot>(
                 output.Values.ToDictionary(
                     item => item.ComponentStableId,
                     item => item));

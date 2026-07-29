@@ -7,7 +7,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
 {
     public sealed class StableIdTests
     {
-        [TestCase("weapon.blaster-machine-gun")]
+        [TestCase("gun.blaster-machine-gun")]
         [TestCase("enemy.pursuer-drone")]
         public void Parse_FrozenExamples_RoundTripCanonically(string canonical)
         {
@@ -20,9 +20,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Parse_SeparatesNamespaceAndValue()
         {
-            StableId parsed = StableId.Parse("weapon.blaster-machine-gun");
+            StableId parsed = StableId.Parse("gun.blaster-machine-gun");
 
-            Assert.That(parsed.Namespace, Is.EqualTo("weapon"));
+            Assert.That(parsed.Namespace, Is.EqualTo("gun"));
             Assert.That(parsed.Value, Is.EqualTo("blaster-machine-gun"));
         }
 
@@ -48,9 +48,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void EqualityAndOperators_UseCanonicalOrdinalValue()
         {
-            StableId first = StableId.Parse("weapon.blaster-machine-gun");
-            StableId second = StableId.Create("weapon", "blaster-machine-gun");
-            StableId different = StableId.Parse("weapon.shotgun");
+            StableId first = StableId.Parse("gun.blaster-machine-gun");
+            StableId second = StableId.Create("gun", "blaster-machine-gun");
+            StableId different = StableId.Parse("gun.shotgun");
 
             Assert.That(first, Is.EqualTo(second));
             Assert.That(first == second, Is.True);
@@ -62,7 +62,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         public void HashCode_IsDeterministicForFrozenExamples()
         {
             Assert.That(
-                StableId.Parse("weapon.blaster-machine-gun").GetHashCode(),
+                StableId.Parse("gun.blaster-machine-gun").GetHashCode(),
                 Is.EqualTo(899414729));
             Assert.That(
                 StableId.Parse("enemy.pursuer-drone").GetHashCode(),
@@ -88,10 +88,10 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             var values = new List<StableId>
             {
-                StableId.Parse("weapon.shotgun"),
-                StableId.Parse("weapon.blaster-machine-gun"),
+                StableId.Parse("gun.shotgun"),
+                StableId.Parse("gun.blaster-machine-gun"),
                 StableId.Parse("enemy.pursuer-drone"),
-                StableId.Parse("weapon.arc-gun"),
+                StableId.Parse("gun.arc-gun"),
             };
 
             values.Sort();
@@ -101,9 +101,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 Is.EqualTo(new[]
                 {
                     "enemy.pursuer-drone",
-                    "weapon.arc-gun",
-                    "weapon.blaster-machine-gun",
-                    "weapon.shotgun",
+                    "gun.arc-gun",
+                    "gun.blaster-machine-gun",
+                    "gun.shotgun",
                 }));
         }
 
@@ -111,7 +111,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         public void OrderingOperators_AgreeWithCompareTo()
         {
             StableId lower = StableId.Parse("enemy.pursuer-drone");
-            StableId higher = StableId.Parse("weapon.blaster-machine-gun");
+            StableId higher = StableId.Parse("gun.blaster-machine-gun");
 
             Assert.That(lower.CompareTo(higher), Is.LessThan(0));
             Assert.That(lower < higher, Is.True);
@@ -144,27 +144,27 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [TestCase("")]
         [TestCase(" ")]
         [TestCase("\t")]
-        [TestCase("weapon")]
-        [TestCase(".weapon")]
-        [TestCase("weapon.")]
-        [TestCase("weapon..blaster")]
-        [TestCase("weapon.blaster.machine")]
-        [TestCase("Weapon.blaster-machine-gun")]
-        [TestCase("weapon.Blaster-machine-gun")]
+        [TestCase("gun")]
+        [TestCase(".gun")]
+        [TestCase("gun.")]
+        [TestCase("gun..blaster")]
+        [TestCase("gun.blaster.machine")]
+        [TestCase("Gun.blaster-machine-gun")]
+        [TestCase("gun.Blaster-machine-gun")]
         [TestCase("weapön.blaster")]
-        [TestCase("weapon.blaster machine")]
-        [TestCase("weapon_blaster.machine-gun")]
-        [TestCase("weapon:blaster-machine-gun")]
-        [TestCase("weapon.blaster_machine_gun")]
-        [TestCase("-weapon.blaster")]
-        [TestCase("weapon-.blaster")]
-        [TestCase("weapon.-blaster")]
-        [TestCase("weapon.blaster-")]
-        [TestCase("weapon.blaster--machine-gun")]
-        [TestCase("weapon../enemy")]
-        [TestCase("weapon.enemy/../boss")]
-        [TestCase("weapon.\\enemy")]
-        [TestCase("weapon.%2e%2e")]
+        [TestCase("gun.blaster machine")]
+        [TestCase("gun_blaster.machine-gun")]
+        [TestCase("gun:blaster-machine-gun")]
+        [TestCase("gun.blaster_machine_gun")]
+        [TestCase("-gun.blaster")]
+        [TestCase("gun-.blaster")]
+        [TestCase("gun.-blaster")]
+        [TestCase("gun.blaster-")]
+        [TestCase("gun.blaster--machine-gun")]
+        [TestCase("gun../enemy")]
+        [TestCase("gun.enemy/../boss")]
+        [TestCase("gun.\\enemy")]
+        [TestCase("gun.%2e%2e")]
         public void Parse_MalformedOrAmbiguousValue_ThrowsFormatException(string invalid)
         {
             Assert.Throws<FormatException>(() => StableId.Parse(invalid));
@@ -175,7 +175,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             StableId parsed;
 
-            bool success = StableId.TryParse("Weapon.blaster-machine-gun", out parsed);
+            bool success = StableId.TryParse("Gun.blaster-machine-gun", out parsed);
 
             Assert.That(success, Is.False);
             Assert.That(parsed, Is.Null);
@@ -213,8 +213,8 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             Assert.Throws<ArgumentNullException>(() => StableId.Create(null, "value"));
             Assert.Throws<ArgumentNullException>(() => StableId.Create("namespace", null));
-            Assert.Throws<FormatException>(() => StableId.Create("Weapon", "value"));
-            Assert.Throws<FormatException>(() => StableId.Create("weapon", "blaster--machine-gun"));
+            Assert.Throws<FormatException>(() => StableId.Create("Gun", "value"));
+            Assert.Throws<FormatException>(() => StableId.Create("gun", "blaster--machine-gun"));
         }
     }
 }

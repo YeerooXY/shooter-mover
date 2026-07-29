@@ -320,10 +320,10 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             {
                 EquipmentDefinition equipment = EquipmentDefinition.Create(
                     EquipmentDefinitionId,
-                    EquipmentCategoryIds.Weapon,
+                    EquipmentCategoryIds.Gun,
                     Id("equipment-family.blaster"),
                     "Blaster",
-                    Id("weapon.blaster"),
+                    Id("gun.blaster"),
                     InclusiveIntRange.Create(1, 100),
                     3,
                     new[]
@@ -332,7 +332,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                     },
                     new[] { Id("equipment-tag.energy") });
                 AugmentCompatibility compatibility = AugmentCompatibility.Create(
-                    new[] { EquipmentCategoryIds.Weapon },
+                    new[] { EquipmentCategoryIds.Gun },
                     new[] { Id("equipment-family.blaster") },
                     new[] { Id("equipment-tag.energy") },
                     Array.Empty<StableId>());

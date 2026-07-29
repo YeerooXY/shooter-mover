@@ -11,11 +11,11 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         public void ValidRoomContent_PreservesPortableIdsAndUnityPrefabProjection()
         {
             GameObject prefab = new GameObject("moving_droid");
-            RoomContentDefinition2D definition =
-                ScriptableObject.CreateInstance<RoomContentDefinition2D>();
+            RoomContents definition =
+                ScriptableObject.CreateInstance<RoomContents>();
             try
             {
-                var placement = new RoomContentPlacement2D();
+                var placement = new RoomObject();
                 placement.ConfigureForTests(
                     "spawn.test-moving-droid",
                     LevelPlacementKind.EnemySpawn,
@@ -47,11 +47,11 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         public void DuplicatePlacementIdentity_FailsClosed()
         {
             GameObject prefab = new GameObject("moving_droid");
-            RoomContentDefinition2D definition =
-                ScriptableObject.CreateInstance<RoomContentDefinition2D>();
+            RoomContents definition =
+                ScriptableObject.CreateInstance<RoomContents>();
             try
             {
-                var first = new RoomContentPlacement2D();
+                var first = new RoomObject();
                 first.ConfigureForTests(
                     "spawn.duplicate",
                     LevelPlacementKind.EnemySpawn,
@@ -59,7 +59,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     prefab,
                     Vector2.zero,
                     0f);
-                var second = new RoomContentPlacement2D();
+                var second = new RoomObject();
                 second.ConfigureForTests(
                     "spawn.duplicate",
                     LevelPlacementKind.EnemySpawn,

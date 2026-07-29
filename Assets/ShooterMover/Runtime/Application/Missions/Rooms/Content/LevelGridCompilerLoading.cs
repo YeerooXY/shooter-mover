@@ -17,7 +17,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     string doorId = RequireText(value.DoorId, path + ".door_id");
                     if (doors.ContainsKey(doorId))
                     {
-                        throw Error("level-grid-v2-door-id-duplicate", path + ".door_id", "Door stable IDs must be unique across the level: " + doorId);
+                        throw Error("level-level-1-door-id-duplicate", path + ".door_id", "Door stable IDs must be unique across the level: " + doorId);
                     }
                     string side = RequireSide(value.Side, path + ".side");
                     double[] local = RequireFiniteVector(value.CurrentLocalPosition, path + ".current_local_position");

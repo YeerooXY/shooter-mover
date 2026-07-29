@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Hub;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -21,17 +21,17 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 PlayerRouteProfilePayload.Create(
                     StableId.Parse("character.loadout-connect"),
                     StableId.Parse(
-                        WeaponMountPolicy
+                        GunMountPolicy
                             .DefensiveLoadoutProfileId),
                     new StableId[
-                        PlayerRouteProfilePayload.WeaponSlotCount]);
+                        PlayerRouteProfilePayload.GunSlotCount]);
             var runtime = new PlayerLoadoutLive(draft);
-            WeaponMountLoadoutRegistry.Register(
-                runtime.WeaponHoldings,
+            LoadoutRegistry.Register(
+                runtime.GunInventory,
                 runtime.MountLoadoutAuthority);
             GameObject host = new GameObject("Loadout connection test");
-            InventoryLoadoutScreenController controller =
-                host.AddComponent<InventoryLoadoutScreenController>();
+            InventoryMenu controller =
+                host.AddComponent<InventoryMenu>();
             PlayerRouteProfilePayload returned = null;
             PlayerRouteProfilePayload confirmed = null;
             var order = new List<string>();
@@ -54,10 +54,10 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             controller.ConnectCanonicalAuthorities(
                 runtime.Holdings,
                 runtime.CatalogBridge,
-                runtime.WeaponHoldings,
+                runtime.GunInventory,
                 runtime.LoadoutAuthority,
                 runtime.MountLayout,
-                runtime.WeaponCatalog);
+                runtime.GunCatalog);
             InventoryLoadoutScreenResult result =
                 controller.Confirm();
 
@@ -72,7 +72,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 Is.EqualTo(new[] { "confirmed", "returned" }));
             Assert.That(controller.ReturnCount, Is.EqualTo(1));
             Assert.That(controller.CanonicalSnapshot, Is.Not.Null);
-            Assert.That(controller.CanonicalSnapshot.OwnedWeapons.Count, Is.EqualTo(4));
+            Assert.That(controller.CanonicalSnapshot.OwnedGuns.Count, Is.EqualTo(4));
             Assert.That(
                 runtime.MountLoadoutAuthority.ExportSnapshot().Bindings.Count,
                 Is.EqualTo(4));

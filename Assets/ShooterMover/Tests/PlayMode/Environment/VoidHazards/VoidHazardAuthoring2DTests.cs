@@ -10,7 +10,7 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
 {
-    public sealed partial class VoidHazardAuthoring2DTests
+    public sealed partial class VoidHazardTests
     {
         private readonly List<Object> _created = new List<Object>();
         private int _identityOrdinal;
@@ -39,7 +39,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                     "capability.void-hazard"));
             return Track(ObjectFamilyDefinitionAsset.CreateRuntime(
                 "family.void-hazard",
-                "Void hazard",
+                "VoidArea hazard",
                 "variant.default",
                 new[] { capability },
                 new ObjectVariantAuthoring(
@@ -49,10 +49,10 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                         "capability.void-hazard"))));
         }
 
-        private GameplaySceneScope2D CreateScope(string name)
+        private GameplayScene CreateScope(string name)
         {
             GameObject root = Track(new GameObject(name));
-            GameplaySceneScope2D scope = root.AddComponent<GameplaySceneScope2D>();
+            GameplayScene scope = root.AddComponent<GameplayScene>();
             scope.ConfigureForTests(
                 NextId("scope"),
                 "scope.gameplay",
@@ -68,7 +68,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
             return root.AddComponent<VoidHazardTestPorts>();
         }
 
-        private VoidHazardAuthoring2D CreateHazard(
+        private VoidHazard CreateHazard(
             string name,
             Transform parent,
             ObjectFamilyDefinitionAsset family,
@@ -81,7 +81,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
             MonoBehaviour checkpointPort,
             MonoBehaviour presentationPort)
         {
-            VoidHazardAuthoring2D hazard = CreateUnactivatedHazard(
+            VoidHazard hazard = CreateUnactivatedHazard(
                 name,
                 parent,
                 family,
@@ -97,7 +97,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
             return hazard;
         }
 
-        private VoidHazardAuthoring2D CreateUnactivatedHazard(
+        private VoidHazard CreateUnactivatedHazard(
             string name,
             Transform parent,
             ObjectFamilyDefinitionAsset family,
@@ -116,7 +116,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
             root.transform.SetParent(parent);
             BoxCollider2D collider = root.AddComponent<BoxCollider2D>();
             collider.isTrigger = true;
-            PlacedObjectAuthoring2D placed = root.AddComponent<PlacedObjectAuthoring2D>();
+            PlacedObject placed = root.AddComponent<PlacedObject>();
             placed.ConfigureForTests(
                 NextId("placed"),
                 family,
@@ -124,7 +124,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
                 null,
                 "scope.gameplay",
                 System.Array.Empty<CapabilityOverrideAuthoring>());
-            VoidHazardAuthoring2D hazard = root.AddComponent<VoidHazardAuthoring2D>();
+            VoidHazard hazard = root.AddComponent<VoidHazard>();
             hazard.ConfigureForTests(
                 placed,
                 collider,
@@ -141,7 +141,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
             return hazard;
         }
 
-        private VoidHazardTarget2D CreateTarget(
+        private VoidTarget CreateTarget(
             string name,
             VoidHazardTargetCategory category,
             bool supportedProp,
@@ -149,7 +149,7 @@ namespace ShooterMover.Tests.PlayMode.Environment.VoidHazards
         {
             GameObject root = Track(new GameObject(name));
             root.AddComponent<BoxCollider2D>();
-            VoidHazardTarget2D target = root.AddComponent<VoidHazardTarget2D>();
+            VoidTarget target = root.AddComponent<VoidTarget>();
             target.ConfigureForTests(
                 NextId("target"),
                 category,

@@ -34,7 +34,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             catch (Exception exception)
             {
                 Debug.LogWarning(
-                    "Level Grid V2 asset publication committed successfully, but generated "
+                    "Level Level asset publication committed successfully, but generated "
                     + "cleanup failed: "
                     + exception.Message);
             }
@@ -87,12 +87,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static HashSet<string> FindAllReferencedRoomContentAssetPaths()
         {
             var result = new HashSet<string>(StringComparer.Ordinal);
-            string[] guids = AssetDatabase.FindAssets("t:JsonRoomContentDefinition2D");
+            string[] guids = AssetDatabase.FindAssets("t:RoomFile");
             for (int index = 0; index < guids.Length; index++)
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(guids[index]);
-                JsonRoomContentDefinition2D asset =
-                    AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(assetPath);
+                RoomFile asset =
+                    AssetDatabase.LoadAssetAtPath<RoomFile>(assetPath);
                 if (asset == null) continue;
 
                 var serialized = new SerializedObject(asset);
@@ -150,7 +150,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 if (IsFatal(exception)) throw;
                 Debug.LogWarning(
-                    "Level Grid V2 publication failed before commit and could not remove "
+                    "Level Level publication failed before commit and could not remove "
                     + "unreferenced version '"
                     + folderPath
                     + "': "

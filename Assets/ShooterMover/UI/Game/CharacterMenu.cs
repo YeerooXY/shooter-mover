@@ -1,0 +1,600 @@
+using System;
+using System.Collections.Generic;
+using ShooterMover.Application.Characters.Selection;
+using ShooterMover.Application.Flow.Game;
+using ShooterMover.Content.Definitions.Characters.Selection;
+using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Characters.Selection;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace ShooterMover.UI.Game
+{
+    public enum CharacterSelectionStage
+    {
+        CharacterSlots = 1,
+        CharacterCreation = 2,
+    }
+
+    /// <summary>
+    /// Canonical character slot/creation presentation. Character and class identities
+    /// are selected exclusively through CharacterSelectionActions and its existing
+    /// catalog. The only additional persisted field is the user-facing display name.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class CharacterMenu :
+        MonoBehaviour
+    {
+        private const int ProfileSlotCount = 6;
+        private readonly Dictionary<string, Texture2D> textures =
+            new Dictionary<string, Texture2D>(StringComparer.Ordinal);
+
+        private CharacterSelectionActions selection;
+        private IReadOnlyList<FlowProfileRecord> profiles;
+        private Func<int, PlayerRouteProfilePayload, bool> selectExisting;
+        private Func<int, string, CharacterSelectionRouteResult, bool>
+            createCharacter;
+        private Func<int, bool> deleteProfile;
+        private Func<bool> navigateBack;
+        private bool classExplicitlySelected;
+        private bool terminal;
+        private string characterName = string.Empty;
+        private string validationMessage = string.Empty;
+        private int selectedSlotIndex;
+        private int pendingDeleteSlotIndex = -1;
+        private GUIStyle titleStyle;
+        private GUIStyle cardStyle;
+        private GUIStyle selectedStyle;
+        private GUIStyle bodyStyle;
+        private GUIStyle actionStyle;
+
+        public CharacterSelectionStage Stage { get; private set; }
+
+        public string CharacterName { get { return characterName; } }
+
+        public bool ClassExplicitlySelected
+        {
+            get { return classExplicitlySelected; }
+        }
+
+        public bool IsTerminal { get { return terminal; } }
+
+        public int SelectedSlotIndex { get { return selectedSlotIndex; } }
+
+        public int PendingDeleteSlotIndex
+        {
+            get { return pendingDeleteSlotIndex; }
+        }
+
+        public string ValidationMessage { get { return validationMessage; } }
+
+        public CharacterSelectionActions Selection
+        {
+            get { return selection; }
+        }
+
+        public void Configure(
+            PlayerRouteProfilePayload incomingPayload,
+            FlowProfileRecord existingProfile,
+            Func<PlayerRouteProfilePayload, bool> selectExisting,
+            Func<string, CharacterSelectionRouteResult, bool>
+                createCharacter,
+            Func<bool> navigateBack)
+        {
+            Configure(
+                incomingPayload,
+                new FlowProfileRecord[] { existingProfile },
+                (slot, payload) => slot == 0 && selectExisting(payload),
+                (slot, name, result) =>
+                    slot == 0 && createCharacter(name, result),
+                delegate { return false; },
+                navigateBack);
+        }
+
+        public void Configure(
+            PlayerRouteProfilePayload incomingPayload,
+            IReadOnlyList<FlowProfileRecord> profiles,
+            Func<int, PlayerRouteProfilePayload, bool> selectExisting,
+            Func<int, string, CharacterSelectionRouteResult, bool>
+                createCharacter,
+            Func<bool> navigateBack)
+        {
+            Configure(
+                incomingPayload,
+                profiles,
+                selectExisting,
+                createCharacter,
+                delegate { return false; },
+                navigateBack);
+        }
+
+        public void Configure(
+            PlayerRouteProfilePayload incomingPayload,
+            IReadOnlyList<FlowProfileRecord> profiles,
+            Func<int, PlayerRouteProfilePayload, bool> selectExisting,
+            Func<int, string, CharacterSelectionRouteResult, bool>
+                createCharacter,
+            Func<int, bool> deleteProfile,
+            Func<bool> navigateBack)
+        {
+            CharacterSelectionCatalog catalog =
+                BuiltInCharacterSelectionCatalog.Create();
+            selection = new CharacterSelectionActions(
+                catalog,
+                incomingPayload
+                    ?? throw new ArgumentNullException(nameof(incomingPayload)));
+            this.profiles = profiles
+                ?? throw new ArgumentNullException(nameof(profiles));
+            this.selectExisting = selectExisting
+                ?? throw new ArgumentNullException(nameof(selectExisting));
+            this.createCharacter = createCharacter
+                ?? throw new ArgumentNullException(nameof(createCharacter));
+            this.deleteProfile = deleteProfile
+                ?? throw new ArgumentNullException(nameof(deleteProfile));
+            this.navigateBack = navigateBack
+                ?? throw new ArgumentNullException(nameof(navigateBack));
+            selectedSlotIndex = 0;
+            pendingDeleteSlotIndex = -1;
+            Stage = HasAnyProfile()
+                ? CharacterSelectionStage.CharacterSlots
+                : CharacterSelectionStage.CharacterCreation;
+            classExplicitlySelected = false;
+            terminal = false;
+            characterName = string.Empty;
+            validationMessage = string.Empty;
+        }
+
+        private void Update()
+        {
+            if (terminal) return;
+            bool back = Keyboard.current != null
+                && (Keyboard.current.escapeKey.wasPressedThisFrame
+                    || Keyboard.current.backspaceKey.wasPressedThisFrame);
+            back |= Gamepad.current != null
+                && Gamepad.current.buttonEast.wasPressedThisFrame;
+            if (back) Back();
+        }
+
+        private void OnGUI()
+        {
+            if (selection == null) return;
+            EnsureStyles();
+            Rect screen = new Rect(0f, 0f, Screen.width, Screen.height);
+            DrawBackdrop(screen);
+
+            float width = Mathf.Min(1280f, Mathf.Max(420f, Screen.width - 32f));
+            float height = Mathf.Min(760f, Mathf.Max(360f, Screen.height - 32f));
+            Rect panel = new Rect(
+                (Screen.width - width) * 0.5f,
+                (Screen.height - height) * 0.5f,
+                width,
+                height);
+
+            GUILayout.BeginArea(panel);
+            if (Stage == CharacterSelectionStage.CharacterSlots)
+            {
+                DrawSlots();
+            }
+            else
+            {
+                DrawCreation();
+            }
+            GUILayout.EndArea();
+        }
+
+        public bool ChooseExisting()
+        {
+            return ChooseExisting(selectedSlotIndex);
+        }
+
+        public bool ChooseExisting(int slotIndex)
+        {
+            FlowProfileRecord selected = ProfileAt(slotIndex);
+            if (terminal || selected == null) return false;
+
+            selectedSlotIndex = slotIndex;
+            pendingDeleteSlotIndex = -1;
+            validationMessage = string.Empty;
+            if (!selectExisting(slotIndex, selected.Payload)) return false;
+
+            terminal = true;
+            return true;
+        }
+
+        public bool ChooseEmptySlot()
+        {
+            return ChooseEmptySlot(selectedSlotIndex);
+        }
+
+        public bool ChooseEmptySlot(int slotIndex)
+        {
+            if (terminal || !IsValidSlot(slotIndex)) return false;
+            if (ProfileAt(slotIndex) != null) return false;
+
+            selectedSlotIndex = slotIndex;
+            pendingDeleteSlotIndex = -1;
+            Stage = CharacterSelectionStage.CharacterCreation;
+            characterName = string.Empty;
+            classExplicitlySelected = false;
+            validationMessage = string.Empty;
+            return true;
+        }
+
+        public bool RequestDeleteProfile(int slotIndex)
+        {
+            FlowProfileRecord selected = ProfileAt(slotIndex);
+            if (terminal || selected == null) return false;
+
+            selectedSlotIndex = slotIndex;
+            if (pendingDeleteSlotIndex != slotIndex)
+            {
+                pendingDeleteSlotIndex = slotIndex;
+                validationMessage =
+                    "Press CONFIRM DELETE to permanently delete "
+                    + selected.DisplayName
+                    + ".";
+                return false;
+            }
+
+            if (!deleteProfile(slotIndex))
+            {
+                validationMessage =
+                    "Profile deletion could not be completed for slot "
+                    + (slotIndex + 1)
+                    + ".";
+                return false;
+            }
+
+            terminal = true;
+            return true;
+        }
+
+        public void SetCharacterName(string value)
+        {
+            characterName = value ?? string.Empty;
+            validationMessage = string.Empty;
+        }
+
+        public bool SelectClassByIndex(int index)
+        {
+            if (terminal || selection == null) return false;
+            IReadOnlyList<CharacterClassProfileDefinition> classProfiles =
+                selection.Catalog.GetProfiles(
+                    selection.HighlightedCharacterStableId);
+            if (index < 0 || index >= classProfiles.Count) return false;
+            CharacterSelectionOperationResult result =
+                selection.TryHighlightProfile(
+                    classProfiles[index].LoadoutProfileStableId);
+            if (result.Status == CharacterSelectionOperationStatus.Rejected)
+            {
+                validationMessage = result.RejectionCode;
+                return false;
+            }
+
+            classExplicitlySelected = true;
+            validationMessage = string.Empty;
+            return true;
+        }
+
+        public bool ConfirmCreation()
+        {
+            if (terminal) return false;
+            if (string.IsNullOrWhiteSpace(characterName))
+            {
+                validationMessage = "A character name is required.";
+                return false;
+            }
+
+            if (!classExplicitlySelected)
+            {
+                validationMessage = "Choose one class before confirming.";
+                return false;
+            }
+
+            CharacterSelectionRouteResult result = selection.Confirm();
+            if (!createCharacter(
+                selectedSlotIndex,
+                characterName.Trim(),
+                result))
+            {
+                validationMessage =
+                    "Character creation could not be completed for slot "
+                    + (selectedSlotIndex + 1)
+                    + ".";
+                return false;
+            }
+
+            terminal = true;
+            return true;
+        }
+
+        public bool Back()
+        {
+            if (terminal) return false;
+
+            if (pendingDeleteSlotIndex >= 0)
+            {
+                pendingDeleteSlotIndex = -1;
+                validationMessage = string.Empty;
+                return true;
+            }
+
+            if (Stage == CharacterSelectionStage.CharacterCreation
+                && HasAnyProfile())
+            {
+                Stage = CharacterSelectionStage.CharacterSlots;
+                characterName = string.Empty;
+                classExplicitlySelected = false;
+                validationMessage = string.Empty;
+                return true;
+            }
+
+            if (!navigateBack()) return false;
+            terminal = true;
+            return true;
+        }
+
+        private void DrawSlots()
+        {
+            GUILayout.Label("CHARACTER SELECTION", titleStyle);
+            GUILayout.Space(18f);
+            for (int index = 0; index < ProfileSlotCount; index++)
+            {
+                if (index % 3 == 0) GUILayout.BeginHorizontal();
+                FlowProfileRecord slot = ProfileAt(index);
+                GUILayout.BeginVertical(cardStyle, GUILayout.ExpandWidth(true));
+                GUILayout.Label("SLOT " + (index + 1), titleStyle);
+                if (slot == null)
+                {
+                    GUILayout.Label("EMPTY SLOT", bodyStyle);
+                    GUILayout.Label(
+                        "Create a named character and choose one class.",
+                        bodyStyle);
+                    if (GUILayout.Button(
+                        "CREATE CHARACTER",
+                        actionStyle,
+                        GUILayout.Height(54f)))
+                    {
+                        ChooseEmptySlot(index);
+                    }
+                }
+                else
+                {
+                    GUILayout.Label(slot.DisplayName, titleStyle);
+                    GUILayout.Label(
+                        slot.Payload.SelectedCharacterStableId
+                        + "\n"
+                        + slot.Payload.LoadoutProfileStableId,
+                        bodyStyle);
+                    if (GUILayout.Button(
+                        "PLAY THIS CHARACTER",
+                        actionStyle,
+                        GUILayout.Height(54f)))
+                    {
+                        ChooseExisting(index);
+                    }
+
+                    string deleteLabel = pendingDeleteSlotIndex == index
+                        ? "CONFIRM DELETE"
+                        : "DELETE PROFILE";
+                    if (GUILayout.Button(
+                        deleteLabel,
+                        actionStyle,
+                        GUILayout.Height(40f)))
+                    {
+                        RequestDeleteProfile(index);
+                    }
+                }
+                GUILayout.EndVertical();
+                if (index % 3 == 2) GUILayout.EndHorizontal();
+            }
+
+            if (!string.IsNullOrEmpty(validationMessage))
+            {
+                GUILayout.Space(10f);
+                GUILayout.Label(validationMessage, bodyStyle);
+            }
+
+            GUILayout.Space(16f);
+            if (GUILayout.Button("BACK", actionStyle, GUILayout.Height(44f)))
+            {
+                Back();
+            }
+        }
+
+        private FlowProfileRecord SelectedProfile
+        {
+            get { return ProfileAt(selectedSlotIndex); }
+        }
+
+        private FlowProfileRecord ProfileAt(int slotIndex)
+        {
+            return profiles != null
+                && slotIndex >= 0
+                && slotIndex < profiles.Count
+                ? profiles[slotIndex]
+                : null;
+        }
+
+        private bool HasAnyProfile()
+        {
+            if (profiles == null) return false;
+            for (int index = 0; index < profiles.Count; index++)
+            {
+                if (profiles[index] != null) return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsValidSlot(int slotIndex)
+        {
+            return slotIndex >= 0 && slotIndex < ProfileSlotCount;
+        }
+
+        private void DrawCreation()
+        {
+            GUILayout.Label("CHARACTER CREATION", titleStyle);
+            GUILayout.Label("NAME", bodyStyle);
+            characterName = GUILayout.TextField(characterName, 32, GUILayout.Height(42f));
+            GUILayout.Space(14f);
+            GUILayout.Label("CHOOSE ONE CLASS", titleStyle);
+            IReadOnlyList<CharacterClassProfileDefinition> classProfiles =
+                selection.Catalog.GetProfiles(selection.HighlightedCharacterStableId);
+            GUILayout.BeginHorizontal();
+            for (int index = 0; index < classProfiles.Count; index++)
+            {
+                DrawClassCard(classProfiles[index], index);
+                if (index < classProfiles.Count - 1)
+                {
+                    GUILayout.Space(10f);
+                }
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(12f);
+            if (!string.IsNullOrEmpty(validationMessage))
+            {
+                GUILayout.Label(validationMessage, bodyStyle);
+            }
+            GUI.enabled = !terminal;
+            if (GUILayout.Button("CONFIRM CHARACTER", actionStyle, GUILayout.Height(52f)))
+            {
+                ConfirmCreation();
+            }
+            if (GUILayout.Button("BACK", actionStyle, GUILayout.Height(42f)))
+            {
+                Back();
+            }
+            GUI.enabled = true;
+        }
+
+        private void DrawClassCard(
+            CharacterClassProfileDefinition profile,
+            int index)
+        {
+            bool selected = classExplicitlySelected
+                && profile.LoadoutProfileStableId
+                    == selection.HighlightedLoadoutProfileStableId;
+            GUILayout.BeginVertical(
+                selected ? selectedStyle : cardStyle,
+                GUILayout.ExpandWidth(true));
+            Texture2D texture = GetTexture(
+                profile.VisualMetadata.PortraitResourceKey);
+            Rect image = GUILayoutUtility.GetRect(
+                180f,
+                230f,
+                GUILayout.ExpandWidth(true));
+            if (texture != null)
+            {
+                GUI.DrawTexture(image, texture, ScaleMode.ScaleAndCrop, false);
+            }
+            else
+            {
+                GUI.Box(image, GUIContent.none);
+            }
+
+            GUILayout.Label(profile.DisplayName, titleStyle);
+            GUILayout.Label(profile.Description, bodyStyle);
+            if (GUILayout.Button(
+                selected ? "SELECTED" : "SELECT CLASS",
+                actionStyle,
+                GUILayout.Height(42f)))
+            {
+                SelectClassByIndex(index);
+            }
+            GUILayout.EndVertical();
+        }
+
+        private void DrawBackdrop(Rect screen)
+        {
+            if (Stage == CharacterSelectionStage.CharacterCreation)
+            {
+                GUI.Box(screen, GUIContent.none);
+                return;
+            }
+
+            string key = "CharacterSelect/character_choice_screen";
+            Texture2D texture = GetTexture(key);
+            if (texture != null)
+            {
+                GUI.DrawTexture(
+                    screen,
+                    texture,
+                    ScaleMode.ScaleAndCrop,
+                    false);
+            }
+            else
+            {
+                GUI.Box(screen, GUIContent.none);
+            }
+        }
+
+        private Texture2D GetTexture(string resourceKey)
+        {
+            Texture2D cached;
+            if (textures.TryGetValue(resourceKey, out cached)) return cached;
+
+            TextAsset source = Resources.Load<TextAsset>(resourceKey);
+            if (source == null)
+            {
+                textures.Add(resourceKey, null);
+                return null;
+            }
+
+            Texture2D texture = new Texture2D(
+                2,
+                2,
+                TextureFormat.RGBA32,
+                false);
+            if (!ImageConversion.LoadImage(texture, source.bytes, false))
+            {
+                Destroy(texture);
+                texture = null;
+            }
+
+            textures.Add(resourceKey, texture);
+            return texture;
+        }
+
+        private void EnsureStyles()
+        {
+            if (titleStyle != null) return;
+            titleStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 24,
+                fontStyle = FontStyle.Bold,
+                wordWrap = true,
+            };
+            cardStyle = new GUIStyle(GUI.skin.box)
+            {
+                padding = new RectOffset(12, 12, 12, 12),
+            };
+            selectedStyle = new GUIStyle(cardStyle)
+            {
+                border = new RectOffset(5, 5, 5, 5),
+            };
+            bodyStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 14,
+                wordWrap = true,
+            };
+            actionStyle = new GUIStyle(GUI.skin.button)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 17,
+                fontStyle = FontStyle.Bold,
+            };
+        }
+
+        private void OnDestroy()
+        {
+            foreach (KeyValuePair<string, Texture2D> pair in textures)
+            {
+                if (pair.Value != null) Destroy(pair.Value);
+            }
+            textures.Clear();
+        }
+    }
+}

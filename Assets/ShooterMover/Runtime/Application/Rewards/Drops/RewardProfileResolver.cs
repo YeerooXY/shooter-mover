@@ -10,27 +10,27 @@ namespace ShooterMover.Application.Rewards.Drops
     /// <summary>Precedence: source, game mode, mission, difficulty, sorted events, placement.</summary>
     public sealed class RewardProfileResolver
     {
-        public RewardProfileResolution Resolve(StableId declaredProfileReferenceId, RewardSourceProfile sourceDefault, RewardProfileOverride gameModeOverride, RewardProfileOverride missionOverride, RewardProfileOverride difficultyOverride, IEnumerable<RewardProfileOverride> eventOverrides, RewardProfileOverride placementOverride)
+        public RewardProfileResolution Resolve(StableId declaredProfileReferenceId, LootSourceProfile sourceDefault, RewardProfileOverride gameModeOverride, RewardProfileOverride missionOverride, RewardProfileOverride difficultyOverride, IEnumerable<RewardProfileOverride> eventOverrides, RewardProfileOverride placementOverride)
         {
             if (declaredProfileReferenceId == null) throw new ArgumentNullException(nameof(declaredProfileReferenceId)); if (sourceDefault == null) throw new ArgumentNullException(nameof(sourceDefault));
-            RewardSourceProfile current=sourceDefault; var applied=new List<StableId>(); current=Apply(current,gameModeOverride,applied); current=Apply(current,missionOverride,applied); current=Apply(current,difficultyOverride,applied);
+            LootSourceProfile current=sourceDefault; var applied=new List<StableId>(); current=Apply(current,gameModeOverride,applied); current=Apply(current,missionOverride,applied); current=Apply(current,difficultyOverride,applied);
             var events=new List<RewardProfileOverride>(); if(eventOverrides!=null) foreach(RewardProfileOverride value in eventOverrides){ if(value==null) throw new ArgumentException("Event overrides must not contain null entries.",nameof(eventOverrides)); events.Add(value); }
             events.Sort(); for(int index=0;index<events.Count;index++) current=Apply(current,events[index],applied); current=Apply(current,placementOverride,applied);
             return new RewardProfileResolution(declaredProfileReferenceId,sourceDefault,current,applied);
         }
-        private static RewardSourceProfile Apply(RewardSourceProfile inherited,RewardProfileOverride layer,ICollection<StableId> applied)
+        private static LootSourceProfile Apply(LootSourceProfile inherited,RewardProfileOverride layer,ICollection<StableId> applied)
         {
             if(layer==null)return inherited; applied.Add(layer.OverrideStableId);
-            switch(layer.Operation){case RewardProfileOverrideOperation.Replace:return layer.ReplacementProfile;case RewardProfileOverrideOperation.Disable:return RewardSourceProfile.CreateExplicitNoDrop(RewardGenerationFingerprint.DeriveStableId("resolvedrewardprofile",inherited.Fingerprint,layer.Fingerprint,"disabled"));case RewardProfileOverrideOperation.AddGroups:return AddGroups(inherited,layer);case RewardProfileOverrideOperation.Modify:return Modify(inherited,layer);default:throw new InvalidOperationException("Unsupported reward-profile override operation.");}
+            switch(layer.Operation){case RewardProfileOverrideOperation.Replace:return layer.ReplacementProfile;case RewardProfileOverrideOperation.Disable:return LootSourceProfile.CreateExplicitNoDrop(RewardGenerationFingerprint.DeriveStableId("resolvedrewardprofile",inherited.Fingerprint,layer.Fingerprint,"disabled"));case RewardProfileOverrideOperation.AddGroups:return AddGroups(inherited,layer);case RewardProfileOverrideOperation.Modify:return Modify(inherited,layer);default:throw new InvalidOperationException("Unsupported reward-profile override operation.");}
         }
-        private static RewardSourceProfile AddGroups(RewardSourceProfile inherited,RewardProfileOverride layer)
+        private static LootSourceProfile AddGroups(LootSourceProfile inherited,RewardProfileOverride layer)
         {
             var groups=new List<RewardRollGroup>(inherited.Groups); int ordinal=groups.Count;
             for(int index=0;index<layer.AddedGroups.Count;index++){RewardRollGroup authored=layer.AddedGroups[index];groups.Add(authored.With(RewardGenerationFingerprint.DeriveStableId("resolvedrewardgroup",inherited.Fingerprint,layer.Fingerprint,authored.GroupStableId.ToString()),ordinal++,authored.ProbabilityMillionths,authored.BoxPacingMode,authored.Outcomes));}
             StableId tierProfile=inherited.DefaultStrongboxTierSelectionProfileId; for(int index=0;index<layer.AddedGroups.Count;index++) if(layer.AddedGroups[index].ContainsStrongbox&&tierProfile==null) throw new InvalidOperationException("Adding a strongbox group requires an inherited tier-selection profile.");
-            return RewardSourceProfile.Create(RewardGenerationFingerprint.DeriveStableId("resolvedrewardprofile",inherited.Fingerprint,layer.Fingerprint,"add"),tierProfile,groups);
+            return LootSourceProfile.Create(RewardGenerationFingerprint.DeriveStableId("resolvedrewardprofile",inherited.Fingerprint,layer.Fingerprint,"add"),tierProfile,groups);
         }
-        private static RewardSourceProfile Modify(RewardSourceProfile inherited,RewardProfileOverride layer)
+        private static LootSourceProfile Modify(LootSourceProfile inherited,RewardProfileOverride layer)
         {
             if(inherited.ExplicitNoDrop)return inherited; var groups=new List<RewardRollGroup>(inherited.Groups.Count);
             for(int index=0;index<inherited.Groups.Count;index++)
@@ -42,9 +42,9 @@ namespace ShooterMover.Application.Rewards.Drops
                 groups.Add(group.With(RewardGenerationFingerprint.DeriveStableId("resolvedrewardgroup",group.Fingerprint,layer.Fingerprint),group.Ordinal,probability,group.BoxPacingMode,outcomes));
             }
             StableId tierProfile=layer.StrongboxTierSelectionProfileOverrideId??inherited.DefaultStrongboxTierSelectionProfileId;
-            return RewardSourceProfile.Create(RewardGenerationFingerprint.DeriveStableId("resolvedrewardprofile",inherited.Fingerprint,layer.Fingerprint,"modify"),tierProfile,groups);
+            return LootSourceProfile.Create(RewardGenerationFingerprint.DeriveStableId("resolvedrewardprofile",inherited.Fingerprint,layer.Fingerprint,"modify"),tierProfile,groups);
         }
-        private static RewardOutcome ModifyOutcome(RewardSourceProfile inherited,RewardProfileOverride layer,RewardRollGroup group,RewardOutcome outcome)
+        private static RewardOutcome ModifyOutcome(LootSourceProfile inherited,RewardProfileOverride layer,RewardRollGroup group,RewardOutcome outcome)
         {
             if(outcome.IsExplicitNoDrop)return outcome; RewardGrantSpecification grant=outcome.Grant; RewardQuantityRange quantity=ScaleQuantity(grant.Quantity,layer.QuantityMultiplierPermille); StableId content=grant.Kind==RewardGrantKind.Strongbox&&layer.StrongboxTierSelectionProfileOverrideId!=null?layer.StrongboxTierSelectionProfileOverrideId:grant.ContentStableId;
             RewardGrantSpecification modifiedGrant=RewardGrantSpecification.Create(RewardGenerationFingerprint.DeriveStableId("resolvedgrant",grant.Fingerprint,layer.Fingerprint),grant.Kind,content,quantity,grant.ScalingInputs);

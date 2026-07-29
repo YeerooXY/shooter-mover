@@ -304,11 +304,11 @@ namespace ShooterMover.Tests.EditMode.Characters.Selection
             PlayerRouteProfilePayload payload,
             IList<StableId> expected)
         {
-            Assert.That(payload.WeaponSlots.Count, Is.EqualTo(expected.Count));
+            Assert.That(payload.GunSlots.Count, Is.EqualTo(expected.Count));
             for (int index = 0; index < expected.Count; index++)
             {
                 Assert.That(
-                    payload.WeaponSlots[index].EquipmentInstanceStableId,
+                    payload.GunSlots[index].EquipmentInstanceStableId,
                     Is.EqualTo(expected[index]));
             }
         }

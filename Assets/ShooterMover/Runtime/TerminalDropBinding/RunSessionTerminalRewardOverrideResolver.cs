@@ -2,7 +2,7 @@ using System;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Resolves production mode, mission, difficulty, event and placement overrides
@@ -21,8 +21,8 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         public bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             TerminalRewardEnvironment environment,
             TerminalRewardPlacementContext placementContext,
             out TerminalRewardOverrideSet overrides,

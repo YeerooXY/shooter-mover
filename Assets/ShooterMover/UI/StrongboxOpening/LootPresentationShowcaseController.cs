@@ -17,8 +17,8 @@ namespace ShooterMover.UI.StrongboxOpening
         [SerializeField, Min(0.05f)] private float revealIntervalSeconds = 0.24f;
         [SerializeField, Min(1f)] private float fastForwardMultiplier = 6f;
 
-        private readonly List<LootPickupVisual2D> galleryViews =
-            new List<LootPickupVisual2D>();
+        private readonly List<LootVisual> galleryViews =
+            new List<LootVisual>();
         private readonly RunLootTotalsPresentation runTotals =
             new RunLootTotalsPresentation(1250L, 84L, 0L);
         private IReadOnlyList<LootPickupPresentation> gallery;
@@ -35,7 +35,7 @@ namespace ShooterMover.UI.StrongboxOpening
         private bool fastForward;
         private string diagnostic = string.Empty;
         private DevelopmentPickupStateFixture pickupFixture;
-        private LootPickupVisual2D pickupFixtureView;
+        private LootVisual pickupFixtureView;
         private DevelopmentPickupCollectionResult lastPickupResult;
         private GUIStyle titleStyle;
         private GUIStyle headingStyle;

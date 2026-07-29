@@ -6,7 +6,7 @@ using ShooterMover.Domain.Rewards.Drops;
 namespace ShooterMover.Application.Rewards.Drops
 {
     /// <summary>
-    /// Authored contextual override layers before TerminalDropBinding projects them
+    /// Authored contextual override layers before LootDropBinding projects them
     /// into one effective personal reward profile.
     /// </summary>
     public sealed class RewardContextOverrideResolution

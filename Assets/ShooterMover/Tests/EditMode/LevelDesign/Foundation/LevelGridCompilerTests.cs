@@ -19,7 +19,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             LevelGridCompileResult result = Compile(BuildValidSource());
 
             Assert.That(result.IsValid, Is.True, FirstIssue(result));
-            Assert.That(result.LevelId, Is.EqualTo("level.test-grid-v2"));
+            Assert.That(result.LevelId, Is.EqualTo("level.test-level-1"));
             RoomContentImportResult imported = RoomContentJsonImporter.Import(
                 result.Package,
                 BuiltInRoomContentObjectCatalog.Create());
@@ -51,7 +51,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             Dictionary<string, string> source = BuildValidSource();
             source["Rooms/Room_1_0_01/encounter.json"] = "{not-json";
 
-            AssertIssue(source, "level-grid-v2-json-invalid");
+            AssertIssue(source, "level-level-1-json-invalid");
         }
 
         [Test]
@@ -61,7 +61,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             source["Rooms/Room_1_0_01/encounter.json"] =
                 "{\"room\":\"room.single\"}";
 
-            AssertIssue(source, "level-grid-v2-json-invalid");
+            AssertIssue(source, "level-level-1-json-invalid");
         }
 
         [Test]
@@ -77,7 +77,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"match\":{\"door_id\":\"door.typo\"}," +
                 "\"open_when\":\"always\"}]}";
 
-            AssertIssue(source, "level-grid-v2-encounter-door-unknown");
+            AssertIssue(source, "level-level-1-encounter-door-unknown");
         }
 
         [Test]
@@ -89,7 +89,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"room\":\"room.single\"," +
                 "\"enemies\":null}";
 
-            AssertIssue(source, "level-grid-v2-array-required");
+            AssertIssue(source, "level-level-1-array-required");
         }
 
         [Test]
@@ -100,7 +100,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"room_id\":\"room.double\",\"door_id\":\"door-double-west\"",
                 "\"room_id\":\"room.unknown\",\"door_id\":\"door-double-west\"");
 
-            AssertIssue(source, "level-grid-v2-room-reference-unknown");
+            AssertIssue(source, "level-level-1-room-reference-unknown");
         }
 
         [Test]
@@ -111,7 +111,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"room_id\":\"room.single\",\"grid_position\":[1,0]",
                 "\"room_id\":\"room.single\",\"grid_position\":[0,0]");
 
-            AssertIssue(source, "level-grid-v2-coordinate-slot-duplicate");
+            AssertIssue(source, "level-level-1-coordinate-slot-duplicate");
         }
 
         [Test]
@@ -122,7 +122,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"room_id\":\"room.single\",\"grid_position\":[1,0],\"slot\":1",
                 "\"room_id\":\"room.single\",\"grid_position\":[8,3],\"slot\":1");
 
-            AssertIssue(source, "level-grid-v2-coordinate-mismatch");
+            AssertIssue(source, "level-level-1-coordinate-mismatch");
         }
 
         [Test]
@@ -131,7 +131,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             Dictionary<string, string> source = BuildValidSource();
             source["map.json"] = MapWithEndpointReuse();
 
-            AssertIssue(source, "level-grid-v2-endpoint-reused");
+            AssertIssue(source, "level-level-1-endpoint-reused");
         }
 
         [Test]
@@ -140,7 +140,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             Dictionary<string, string> source = BuildValidSource();
             source["map.json"] = MapWithOnlyFirstConnection();
 
-            AssertIssue(source, "level-grid-v2-traversable-door-unresolved");
+            AssertIssue(source, "level-level-1-traversable-door-unresolved");
         }
 
         [Test]
@@ -151,7 +151,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"start_room_id\":\"room.starter\"",
                 "\"start_room_id\":\"room.missing\"");
 
-            AssertIssue(source, "level-grid-v2-start-room-missing");
+            AssertIssue(source, "level-level-1-start-room-missing");
         }
 
         [Test]
@@ -168,7 +168,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     "\"door_id\":\"door-single-east\",\"side\":\"East\",\"current_local_position\":[11,0],\"traversable\":true",
                     "\"door_id\":\"door-single-east\",\"side\":\"East\",\"current_local_position\":[11,0],\"traversable\":false");
 
-            AssertIssue(source, "level-grid-v2-room-inaccessible");
+            AssertIssue(source, "level-level-1-room-inaccessible");
         }
 
         [Test]
@@ -179,7 +179,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"door_id\":\"door-double-exit\"",
                 "\"door_id\":\"door.missing\"");
 
-            AssertIssue(source, "level-grid-v2-final-exit-invalid");
+            AssertIssue(source, "level-level-1-final-exit-invalid");
         }
 
         [Test]
@@ -205,7 +205,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         {
             string root = Path.Combine(
                 Path.GetTempPath(),
-                "shooter-mover-grid-v2-" + Guid.NewGuid().ToString("N"));
+                "shooter-mover-level-1-" + Guid.NewGuid().ToString("N"));
             string roomsRoot = Path.Combine(root, "Rooms");
             string oldFolder = Path.Combine(roomsRoot, "Room_1_0_01");
             GameObject roomObject = new GameObject("Moved Room");
@@ -219,7 +219,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     Path.Combine(oldFolder, "enemies.json"),
                     "preserved-sidecar");
 
-                LevelRoomAuthoring2D room = roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room = roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.moved",
                     new Vector2Int(4, 0),
@@ -254,7 +254,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             GameObject doorObject = new GameObject("Door");
             try
             {
-                LevelRoomAuthoring2D room = roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room = roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.nested",
                     Vector2Int.zero,
@@ -333,7 +333,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             {
                 ["level.json"] = "{" +
                     "\"schema_version\":2," +
-                    "\"level_id\":\"level.test-grid-v2\"," +
+                    "\"level_id\":\"level.test-level-1\"," +
                     "\"start_room_id\":\"room.starter\"," +
                     "\"final_exit\":{\"room_id\":\"room.double\",\"door_id\":\"door-double-exit\"}," +
                     "\"room_ids\":[\"room.starter\",\"room.single\",\"room.double\"]," +
