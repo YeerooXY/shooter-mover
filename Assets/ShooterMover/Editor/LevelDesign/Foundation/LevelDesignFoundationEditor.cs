@@ -318,24 +318,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
-        private static void DrawDoor(
-            DoorConnection door,
-            GizmoType gizmoType)
-        {
-            LevelRoom source = door.SourceRoom;
-            LevelRoom destination = door.DestinationRoom;
-            if (source != null && destination != null)
-            {
-                Gizmos.DrawLine(
-                    source.transform.position,
-                    destination.transform.position);
-            }
-
-            Handles.Label(door.transform.position, door.DoorIdText);
-        }
-
-        [DrawGizmo(
-            GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawVoid(
             VoidArea region,
             GizmoType gizmoType)

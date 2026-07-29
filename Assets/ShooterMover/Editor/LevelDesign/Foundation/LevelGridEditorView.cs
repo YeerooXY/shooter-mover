@@ -22,11 +22,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public LevelRoom Room { get; }
-
         public IReadOnlyList<DoorEndpoint> Doors { get; }
-
         public bool OverlapsAnotherRoom { get; }
-
         public bool HasValidationProblem { get; }
     }
 
@@ -39,15 +36,13 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Array.Empty<DoorLink>(),
                 new Dictionary<DoorEndpoint, DoorLink>());
 
-        private readonly Dictionary<DoorEndpoint, DoorLink>
-            connectionByDoor;
+        private readonly Dictionary<DoorEndpoint, DoorLink> connectionByDoor;
 
         private LevelGridEditorView(
             LevelGridEditorRoomView[] rooms,
             DoorEndpoint[] doors,
             DoorLink[] connections,
-            Dictionary<DoorEndpoint, DoorLink>
-                connectionByDoor)
+            Dictionary<DoorEndpoint, DoorLink> connectionByDoor)
         {
             Rooms = rooms;
             Doors = doors;
@@ -56,9 +51,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public IReadOnlyList<LevelGridEditorRoomView> Rooms { get; }
-
         public IReadOnlyList<DoorEndpoint> Doors { get; }
-
         public IReadOnlyList<DoorLink> Connections { get; }
 
         public static LevelGridEditorView Empty
@@ -71,8 +64,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return door != null && connectionByDoor.ContainsKey(door);
         }
 
-        public DoorLink GetConnection(
-            DoorEndpoint door)
+        public DoorLink GetConnection(DoorEndpoint door)
         {
             if (door == null)
             {
@@ -85,8 +77,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 : null;
         }
 
-        public static LevelGridEditorView Build(
-            LevelDraft root)
+        public static LevelGridEditorView Build(LevelDraft root)
         {
             if (root == null)
             {
@@ -103,13 +94,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Array.Sort(doors, CompareDoors);
             Array.Sort(links, CompareLinks);
 
-            Dictionary<DoorEndpoint, DoorLink>
-                connectionByDoor =
-                    new Dictionary<DoorEndpoint, DoorLink>();
+            var connectionByDoor = new Dictionary<DoorEndpoint, DoorLink>();
             for (int index = 0; index < links.Length; index++)
             {
                 DoorLink link = links[index];
-                if (link.SourceDoor != null && !connectionByDoor.ContainsKey(link.SourceDoor))
+                if (link.SourceDoor != null
+                    && !connectionByDoor.ContainsKey(link.SourceDoor))
                 {
                     connectionByDoor.Add(link.SourceDoor, link);
                 }
@@ -121,9 +111,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             HashSet<LevelRoom> overlapping = FindOverlappingRooms(rooms);
-            HashSet<string> problemIds = new HashSet<string>(StringComparer.Ordinal);
-            HashSet<LevelRoom> problemRooms =
-                new HashSet<LevelRoom>();
+            var problemIds = new HashSet<string>(StringComparer.Ordinal);
+            var problemRooms = new HashSet<LevelRoom>();
 
             IReadOnlyList<LevelGridProblem> gridProblems =
                 root.LastGridValidation.Problems;
@@ -159,25 +148,24 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 AddRelatedRooms(affected, problemRooms);
             }
 
-            List<LevelGridEditorRoomView> roomProjections =
-                new List<LevelGridEditorRoomView>(rooms.Length);
+            var roomViews = new List<LevelGridEditorRoomView>(rooms.Length);
             for (int roomIndex = 0; roomIndex < rooms.Length; roomIndex++)
             {
                 LevelRoom room = rooms[roomIndex];
-                List<DoorEndpoint> ownedDoors =
-                    new List<DoorEndpoint>();
+                var ownedDoors = new List<DoorEndpoint>();
                 bool hasProblem = problemIds.Contains(room.RoomIdText)
                     || problemRooms.Contains(room);
                 for (int doorIndex = 0; doorIndex < doors.Length; doorIndex++)
                 {
-                    if (doors[doorIndex].OwningRoom == room)
+                    if (doors[doorIndex].OwningRoom != room)
                     {
-                        ownedDoors.Add(doors[doorIndex]);
-                        hasProblem |= problemIds.Contains(doors[doorIndex].DoorIdText);
+                        continue;
                     }
+                    ownedDoors.Add(doors[doorIndex]);
+                    hasProblem |= problemIds.Contains(doors[doorIndex].DoorIdText);
                 }
 
-                roomProjections.Add(new LevelGridEditorRoomView(
+                roomViews.Add(new LevelGridEditorRoomView(
                     room,
                     ownedDoors.ToArray(),
                     overlapping.Contains(room),
@@ -185,7 +173,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             return new LevelGridEditorView(
-                roomProjections.ToArray(),
+                roomViews.ToArray(),
                 doors,
                 links,
                 connectionByDoor);
@@ -193,7 +181,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void AddRelatedRooms(
             Component affected,
-            HashSet<LevelRoom> rooms)
+            ISet<LevelRoom> rooms)
         {
             if (affected == null)
             {
@@ -207,8 +195,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            DoorEndpoint endpoint =
-                affected as DoorEndpoint;
+            DoorEndpoint endpoint = affected as DoorEndpoint;
             if (endpoint != null && endpoint.OwningRoom != null)
             {
                 rooms.Add(endpoint.OwningRoom);
@@ -229,60 +216,41 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelObject placement =
-                affected as LevelObject;
-            if (placement != null && placement.Room != null)
+            LevelObject levelObject = affected as LevelObject;
+            if (levelObject != null && levelObject.Room != null)
             {
-                rooms.Add(placement.Room);
+                rooms.Add(levelObject.Room);
                 return;
             }
 
-            VoidArea voidRegion =
-                affected as VoidArea;
-            if (voidRegion != null && voidRegion.Room != null)
+            VoidArea voidArea = affected as VoidArea;
+            if (voidArea != null && voidArea.Room != null)
             {
-                rooms.Add(voidRegion.Room);
+                rooms.Add(voidArea.Room);
                 return;
             }
 
-            DoorConnection legacyDoor =
-                affected as DoorConnection;
-            if (legacyDoor != null)
-            {
-                if (legacyDoor.SourceRoom != null)
-                {
-                    rooms.Add(legacyDoor.SourceRoom);
-                }
-                if (legacyDoor.DestinationRoom != null)
-                {
-                    rooms.Add(legacyDoor.DestinationRoom);
-                }
-                return;
-            }
-
-            LevelRoom parentRoom =
-                affected.GetComponentInParent<LevelRoom>();
+            LevelRoom parentRoom = affected.GetComponentInParent<LevelRoom>();
             if (parentRoom != null)
             {
                 rooms.Add(parentRoom);
             }
         }
 
-        private static HashSet<LevelRoom> FindOverlappingRooms(
-            LevelRoom[] rooms)
+        private static HashSet<LevelRoom> FindOverlappingRooms(LevelRoom[] rooms)
         {
-            HashSet<LevelRoom> result =
-                new HashSet<LevelRoom>();
+            var result = new HashSet<LevelRoom>();
             for (int first = 0; first < rooms.Length; first++)
             {
                 RectInt firstRect = ToGridRect(rooms[first]);
                 for (int second = first + 1; second < rooms.Length; second++)
                 {
-                    if (firstRect.Overlaps(ToGridRect(rooms[second])))
+                    if (!firstRect.Overlaps(ToGridRect(rooms[second])))
                     {
-                        result.Add(rooms[first]);
-                        result.Add(rooms[second]);
+                        continue;
                     }
+                    result.Add(rooms[first]);
+                    result.Add(rooms[second]);
                 }
             }
             return result;
@@ -298,9 +266,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Mathf.Max(1, footprint.y));
         }
 
-        private static int CompareRooms(
-            LevelRoom left,
-            LevelRoom right)
+        private static int CompareRooms(LevelRoom left, LevelRoom right)
         {
             int x = left.GridCoordinate.x.CompareTo(right.GridCoordinate.x);
             if (x != 0)
@@ -318,9 +284,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 : string.CompareOrdinal(left.RoomIdText, right.RoomIdText);
         }
 
-        private static int CompareDoors(
-            DoorEndpoint left,
-            DoorEndpoint right)
+        private static int CompareDoors(DoorEndpoint left, DoorEndpoint right)
         {
             int room = string.CompareOrdinal(
                 left.OwningRoom == null ? string.Empty : left.OwningRoom.RoomIdText,
@@ -330,9 +294,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 : string.CompareOrdinal(left.DoorIdText, right.DoorIdText);
         }
 
-        private static int CompareLinks(
-            DoorLink left,
-            DoorLink right)
+        private static int CompareLinks(DoorLink left, DoorLink right)
         {
             return string.CompareOrdinal(
                 left.ConnectionIdText,
@@ -436,38 +398,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 root,
                 issue.AuthoredId,
                 issue.DiagnosticLocation,
-                delegate(LevelObject placement)
+                delegate(LevelObject levelObject)
                 {
                     return string.Equals(
-                            placement.AuthoredIdText,
+                            levelObject.AuthoredIdText,
                             issue.AuthoredId,
                             StringComparison.Ordinal)
                         || string.Equals(
-                            placement.SocketIdText,
-                            issue.AuthoredId,
-                            StringComparison.Ordinal);
-                });
-            if (exact != null)
-            {
-                return exact;
-            }
-
-            exact = FindExactByType<DoorConnection>(
-                root,
-                issue.AuthoredId,
-                issue.DiagnosticLocation,
-                delegate(DoorConnection door)
-                {
-                    return string.Equals(
-                            door.DoorIdText,
-                            issue.AuthoredId,
-                            StringComparison.Ordinal)
-                        || string.Equals(
-                            door.SourceSocketIdText,
-                            issue.AuthoredId,
-                            StringComparison.Ordinal)
-                        || string.Equals(
-                            door.DestinationSocketIdText,
+                            levelObject.SocketIdText,
                             issue.AuthoredId,
                             StringComparison.Ordinal);
                 });
@@ -480,10 +418,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 root,
                 issue.AuthoredId,
                 issue.DiagnosticLocation,
-                delegate(VoidArea voidRegion)
+                delegate(VoidArea voidArea)
                 {
                     return string.Equals(
-                        voidRegion.VoidRegionIdText,
+                        voidArea.VoidRegionIdText,
                         issue.AuthoredId,
                         StringComparison.Ordinal);
                 });
@@ -498,46 +436,37 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return null;
             }
 
-            LevelRoom[] rooms =
-                root.GetComponentsInChildren<LevelRoom>(true);
-            for (int index = 0; index < rooms.Length; index++)
-            {
-                if (string.Equals(
-                    rooms[index].RoomIdText,
-                    authoredId,
-                    StringComparison.Ordinal))
+            Component found = FindById(
+                root.GetComponentsInChildren<LevelRoom>(true),
+                delegate(LevelRoom room)
                 {
-                    return rooms[index];
-                }
+                    return room.RoomIdText;
+                },
+                authoredId);
+            if (found != null)
+            {
+                return found;
             }
 
-            DoorEndpoint[] doors =
-                root.GetComponentsInChildren<DoorEndpoint>(true);
-            for (int index = 0; index < doors.Length; index++)
-            {
-                if (string.Equals(
-                    doors[index].DoorIdText,
-                    authoredId,
-                    StringComparison.Ordinal))
+            found = FindById(
+                root.GetComponentsInChildren<DoorEndpoint>(true),
+                delegate(DoorEndpoint door)
                 {
-                    return doors[index];
-                }
+                    return door.DoorIdText;
+                },
+                authoredId);
+            if (found != null)
+            {
+                return found;
             }
 
-            DoorLink[] links =
-                root.GetComponentsInChildren<DoorLink>(true);
-            for (int index = 0; index < links.Length; index++)
-            {
-                if (string.Equals(
-                    links[index].ConnectionIdText,
-                    authoredId,
-                    StringComparison.Ordinal))
+            return FindById(
+                root.GetComponentsInChildren<DoorLink>(true),
+                delegate(DoorLink link)
                 {
-                    return links[index];
-                }
-            }
-
-            return null;
+                    return link.ConnectionIdText;
+                },
+                authoredId);
         }
 
         public static Component FindFoundationByStableId(
@@ -553,71 +482,42 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return root;
             }
 
-            LevelRoom[] rooms =
-                root.GetComponentsInChildren<LevelRoom>(true);
-            for (int index = 0; index < rooms.Length; index++)
-            {
-                if (string.Equals(
-                    rooms[index].RoomIdText,
-                    authoredId,
-                    StringComparison.Ordinal))
+            Component found = FindById(
+                root.GetComponentsInChildren<LevelRoom>(true),
+                delegate(LevelRoom room)
                 {
-                    return rooms[index];
-                }
+                    return room.RoomIdText;
+                },
+                authoredId);
+            if (found != null)
+            {
+                return found;
             }
 
-            LevelObject[] placements =
+            LevelObject[] levelObjects =
                 root.GetComponentsInChildren<LevelObject>(true);
-            for (int index = 0; index < placements.Length; index++)
+            for (int index = 0; index < levelObjects.Length; index++)
             {
                 if (string.Equals(
-                        placements[index].AuthoredIdText,
+                        levelObjects[index].AuthoredIdText,
                         authoredId,
                         StringComparison.Ordinal)
                     || string.Equals(
-                        placements[index].SocketIdText,
+                        levelObjects[index].SocketIdText,
                         authoredId,
                         StringComparison.Ordinal))
                 {
-                    return placements[index];
+                    return levelObjects[index];
                 }
             }
 
-            DoorConnection[] legacyDoors =
-                root.GetComponentsInChildren<DoorConnection>(true);
-            for (int index = 0; index < legacyDoors.Length; index++)
-            {
-                if (string.Equals(
-                        legacyDoors[index].DoorIdText,
-                        authoredId,
-                        StringComparison.Ordinal)
-                    || string.Equals(
-                        legacyDoors[index].SourceSocketIdText,
-                        authoredId,
-                        StringComparison.Ordinal)
-                    || string.Equals(
-                        legacyDoors[index].DestinationSocketIdText,
-                        authoredId,
-                        StringComparison.Ordinal))
+            return FindById(
+                root.GetComponentsInChildren<VoidArea>(true),
+                delegate(VoidArea voidArea)
                 {
-                    return legacyDoors[index];
-                }
-            }
-
-            VoidArea[] voids =
-                root.GetComponentsInChildren<VoidArea>(true);
-            for (int index = 0; index < voids.Length; index++)
-            {
-                if (string.Equals(
-                    voids[index].VoidRegionIdText,
-                    authoredId,
-                    StringComparison.Ordinal))
-                {
-                    return voids[index];
-                }
-            }
-
-            return null;
+                    return voidArea.VoidRegionIdText;
+                },
+                authoredId);
         }
 
         public static Component SelectExact(
@@ -627,13 +527,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             Component exact = FindExact(root, problem);
             if (exact == null)
             {
-                exact = FindByStableId(root, problem == null ? null : problem.AuthoredId);
+                exact = FindByStableId(
+                    root,
+                    problem == null ? null : problem.AuthoredId);
             }
-            if (exact != null)
-            {
-                Selection.activeGameObject = exact.gameObject;
-                EditorGUIUtility.PingObject(exact);
-            }
+            Select(exact);
             return exact;
         }
 
@@ -648,11 +546,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     root,
                     issue == null ? null : issue.AuthoredId);
             }
-            if (exact != null)
-            {
-                Selection.activeGameObject = exact.gameObject;
-                EditorGUIUtility.PingObject(exact);
-            }
+            Select(exact);
             return exact;
         }
 
@@ -662,7 +556,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 return string.Empty;
             }
-
             return transform.gameObject.scene.name + ":" + GetHierarchyPath(transform);
         }
 
@@ -691,6 +584,35 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
             }
             return null;
+        }
+
+        private static Component FindById<T>(
+            T[] components,
+            Func<T, string> id,
+            string authoredId)
+            where T : Component
+        {
+            for (int index = 0; index < components.Length; index++)
+            {
+                if (string.Equals(
+                    id(components[index]),
+                    authoredId,
+                    StringComparison.Ordinal))
+                {
+                    return components[index];
+                }
+            }
+            return null;
+        }
+
+        private static void Select(Component exact)
+        {
+            if (exact == null)
+            {
+                return;
+            }
+            Selection.activeGameObject = exact.gameObject;
+            EditorGUIUtility.PingObject(exact);
         }
 
         private static bool LocationMatches(string expected, string actual)

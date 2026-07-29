@@ -277,8 +277,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             GameObject roomObject = new GameObject("Initial Name");
             try
             {
-                LevelRoom room =
-                    roomObject.AddComponent<LevelRoom>();
+                LevelRoom room = roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.stable-authored",
                     Vector2Int.zero,
@@ -311,9 +310,6 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "RoomAnchor.prefab",
                 typeof(LevelRoom));
             AssertPrefabComponent(
-                "ConfiguredDoor.prefab",
-                typeof(DoorConnection));
-            AssertPrefabComponent(
                 "PlayerSpawn.prefab",
                 typeof(LevelObject));
             AssertPrefabComponent(
@@ -334,41 +330,6 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             AssertPrefabComponent(
                 "VoidRegion.prefab",
                 typeof(VoidArea));
-
-            GameObject configuredDoor = AssetDatabase.LoadAssetAtPath<GameObject>(
-                PrefabRoot + "ConfiguredDoor.prefab");
-            Assert.That(configuredDoor, Is.Not.Null);
-            MonoBehaviour foundationAdapter = configuredDoor
-                .GetComponents<MonoBehaviour>()
-                .FirstOrDefault(component => component != null
-                    && component.GetType().FullName
-                    == "ShooterMover.ContentPackages.LevelDesign.Foundation.DoorMarker");
-            Assert.That(
-                foundationAdapter,
-                Is.Not.Null,
-                "Configured door prefab must consume the LEVELDES door package adapter.");
-            SerializedProperty openDoorSprite = new SerializedObject(foundationAdapter)
-                .FindProperty("openDoorSprite");
-            Assert.That(openDoorSprite, Is.Not.Null);
-            Assert.That(
-                openDoorSprite.objectReferenceValue,
-                Is.EqualTo(AssetDatabase.LoadAssetAtPath<Sprite>(
-                    "Assets/ShooterMover/Art/Environment/Doors/UserIntake/door_open.png")),
-                "Configured door prefab must reference the supplied open-door art.");
-            Assert.That(
-                configuredDoor.GetComponents<MonoBehaviour>()
-                    .Any(component => component != null
-                        && component.GetType().FullName
-                        == "ShooterMover.ContentPackages.Environment.Doors.Door"),
-                Is.True,
-                "Configured door prefab must consume DOOR-001.");
-            Assert.That(
-                configuredDoor.GetComponents<MonoBehaviour>()
-                    .Any(component => component != null
-                        && component.GetType().FullName
-                        == "ShooterMover.UnityAdapters.Authoring.PlacedObject"),
-                Is.True,
-                "Configured door prefab must consume OBJ-001.");
         }
 
         [Test]
