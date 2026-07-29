@@ -1,0 +1,93 @@
+name: Fix holdings format helper name
+
+on:
+  push:
+    branches:
+      - agent/fix-holdings-format-name
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-holdings-format-name
+          fetch-depth: 0
+
+      - name: Rename holdings formatting helper and exact calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="0159818e1f87c0f1a14d767d639ac5343f63ebc9"
+          git checkout --detach "$base_sha"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('Assets/ShooterMover')
+          helper = root / 'Runtime/Domain/Holdings/PlayerHoldingsModel.cs'
+
+          text = helper.read_text(encoding='utf-8-sig')
+          old_declaration = 'public static class Holdings'
+          new_declaration = 'public static class HoldingsFormat'
+          count = text.count(old_declaration)
+          if count != 1:
+              raise SystemExit(f'Expected one helper declaration, found {count}.')
+          helper.write_text(
+              text.replace(old_declaration, new_declaration),
+              encoding='utf-8',
+              newline='\n')
+
+          methods = (
+              'AppendToken',
+              'ComputeSha256',
+              'IsCanonicalFingerprint',
+              'DeterministicHash',
+              'CopyAndSort',
+          )
+          call = re.compile(
+              r'(?<![A-Za-z0-9_.])Holdings\.('
+              + '|'.join(methods)
+              + r')\b')
+
+          changed_files = []
+          replacement_count = 0
+          for path in sorted(root.rglob('*.cs')):
+              source = path.read_text(encoding='utf-8-sig')
+              updated, count = call.subn(r'HoldingsFormat.\1', source)
+              if count == 0:
+                  continue
+              path.write_text(updated, encoding='utf-8', newline='\n')
+              changed_files.append(str(path))
+              replacement_count += count
+
+          if replacement_count == 0:
+              raise SystemExit('No holdings helper calls were updated.')
+
+          leftovers = []
+          for path in sorted(root.rglob('*.cs')):
+              source = path.read_text(encoding='utf-8-sig')
+              if call.search(source):
+                  leftovers.append(str(path))
+          if leftovers:
+              raise SystemExit(
+                  'Old holdings helper calls remain:\n' + '\n'.join(leftovers))
+
+          if old_declaration in helper.read_text(encoding='utf-8-sig'):
+              raise SystemExit('Old helper declaration remains.')
+
+          print(f'Updated {replacement_count} calls in {len(changed_files)} files.')
+          for path in changed_files:
+              print(path)
+          PY
+
+          git config user.name "shooter-mover-fix-bot"
+          git config user.email "fix-bot@users.noreply.github.com"
+          git add Assets/ShooterMover
+          git diff --cached --check
+          git commit -m "Fix holdings format helper name"
+          git push origin HEAD:refs/heads/agent/fix-holdings-format-name-result --force
