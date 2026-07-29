@@ -493,7 +493,7 @@ namespace ShooterMover.Contracts.Progression.Experience
             Status == PlayerExperienceImportStatus.Imported;
     }
 
-    public interface IPlayerExperienceState : IProgressionContextProvider
+    public interface IPlayerExperience : IProgressionContextProvider
     {
         PlayerExperienceState CurrentState { get; }
 

@@ -56,13 +56,13 @@ namespace ShooterMover.UI.Skills
     public sealed class SkillsHubDestinationBridge :
         IHubRouteDestinationBridge
     {
-        private readonly IPlayerExperienceState experienceAuthority;
+        private readonly IPlayerExperience experienceAuthority;
         private readonly SkillProgressionState skillAuthority;
         private readonly ISkillsScreenPresenter presenter;
         private readonly ISkillsScreenNavigationPort navigationPort;
 
         public SkillsHubDestinationBridge(
-            IPlayerExperienceState experienceAuthority,
+            IPlayerExperience experienceAuthority,
             SkillProgressionState skillAuthority,
             ISkillsScreenPresenter presenter,
             ISkillsScreenNavigationPort navigationPort)

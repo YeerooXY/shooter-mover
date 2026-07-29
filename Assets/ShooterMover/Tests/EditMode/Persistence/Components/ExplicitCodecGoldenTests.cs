@@ -30,7 +30,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
         public void PlayerExperienceCodecHasAuthoredFieldOrder()
         {
             PlayerExperienceCurve curve = Curve();
-            var authority = new PlayerExperienceState(
+            var authority = new PlayerExperience(
                 curve,
                 Context(1));
             authority.Grant(new PlayerExperienceGrantRequest(

@@ -24,7 +24,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
         {
             GameObject host = new GameObject("SKILLUI-001 controller test");
             SkillsSceneController controller = host.AddComponent<SkillsSceneController>();
-            PlayerExperienceState experience = CreateExperience(4);
+            PlayerExperience experience = CreateExperience(4);
             var skills = new SkillProgressionState(
                 SkillCatalog.CreateDefault(),
                 4);
@@ -85,7 +85,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
         {
             GameObject host = new GameObject("SKILLUI-001 hub adapter test");
             SkillsSceneController controller = host.AddComponent<SkillsSceneController>();
-            PlayerExperienceState experience = CreateExperience(3);
+            PlayerExperience experience = CreateExperience(3);
             var skills = new SkillProgressionState(
                 SkillCatalog.CreateDefault(),
                 3);
@@ -131,14 +131,14 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
             }
         }
 
-        private static PlayerExperienceState CreateExperience(int level)
+        private static PlayerExperience CreateExperience(int level)
         {
             var curve = new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
-            var authority = new PlayerExperienceState(
+            var authority = new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     1,

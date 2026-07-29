@@ -560,18 +560,18 @@ namespace ShooterMover.Combat.HitPolicy
         }
     }
 
-    public interface ICombatHitPolicy
+    public interface ICombatHitRules
     {
         CombatHitPolicyResult Evaluate(CombatHitPolicyInput input);
         IReadOnlyList<CombatHitContact> OrderContacts(
             IEnumerable<CombatHitContact> contacts);
     }
 
-    public sealed class CombatHitPolicy : ICombatHitPolicy
+    public sealed class CombatHitRules : ICombatHitRules
     {
         private readonly CombatHitPolicyRegistry registry;
 
-        public CombatHitPolicy(CombatHitPolicyRegistry registry)
+        public CombatHitRules(CombatHitPolicyRegistry registry)
         {
             this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
         }

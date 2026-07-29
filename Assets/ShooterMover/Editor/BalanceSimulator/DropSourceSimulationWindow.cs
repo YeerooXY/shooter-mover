@@ -84,7 +84,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                 "Production Drop Source Simulator",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Uses RewardSourceCatalog, RewardProfileResolver, RewardOverrideCatalog, ParticipantDropPacingState and StrongboxTierSelectionCatalog. No simulator-owned probability or pity formula is used.",
+                "Uses RewardSourceCatalog, RewardProfileResolver, RewardOverrideCatalog, ParticipantDropPacing and StrongboxTierSelectionCatalog. No simulator-owned probability or pity formula is used.",
                 MessageType.Info);
 
             scroll = EditorGUILayout.BeginScrollView(scroll);

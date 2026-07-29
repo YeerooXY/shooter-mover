@@ -10,9 +10,9 @@ using ShooterMover.GameplayEntities;
 
 namespace ShooterMover.Tests.EditMode.CombatHitPolicy
 {
-    public sealed class CombatHitPolicyTests
+    public sealed class CombatHitRulesTests
     {
-        private readonly CombatHitPolicy policy = new CombatHitPolicy(
+        private readonly CombatHitRules policy = new CombatHitRules(
             CombatHitPolicyRegistry.CreateDefault());
 
         [Test]

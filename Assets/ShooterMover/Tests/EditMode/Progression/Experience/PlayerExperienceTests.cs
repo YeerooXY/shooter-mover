@@ -10,7 +10,7 @@ using ShooterMover.Domain.Progression.Experience;
 
 namespace ShooterMover.Tests.EditMode.Progression.Experience
 {
-    public sealed class PlayerExperienceStateTests
+    public sealed class PlayerExperienceTests
     {
         [Test]
         public void FreshAuthority_StartsAtLevelOneWithOneSkillPoint()
@@ -310,8 +310,8 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience
         public void ExperienceAssemblies_HaveNoUnityEngineDependency()
         {
             AssertNoUnityReference(typeof(PlayerExperienceCurve).Assembly);
-            AssertNoUnityReference(typeof(IPlayerExperienceState).Assembly);
-            AssertNoUnityReference(typeof(PlayerExperienceState).Assembly);
+            AssertNoUnityReference(typeof(IPlayerExperience).Assembly);
+            AssertNoUnityReference(typeof(PlayerExperience).Assembly);
         }
 
         [TestCase(0L, 100L, 50)]
@@ -340,11 +340,11 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
         }
 
-        private static PlayerExperienceState CreateAuthority(
+        private static PlayerExperience CreateAuthority(
             PlayerExperienceCurve curve,
             int regionLevel = 1)
         {
-            return new PlayerExperienceState(
+            return new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     42,

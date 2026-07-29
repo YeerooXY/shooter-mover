@@ -33,7 +33,7 @@ namespace ShooterMover.Application.Flow.Production
             CharacterInstanceSnapshot character,
             PlayerRouteProfilePayload routePayload,
             PlayerLoadoutLive loadoutRuntime,
-            PlayerExperienceState experienceAuthority,
+            PlayerExperience experienceAuthority,
             MoneyWalletActions moneyWallet,
             ScrapWalletActions scrapWallet,
             RankedSkillAllocationState skillAuthority,
@@ -95,7 +95,7 @@ namespace ShooterMover.Application.Flow.Production
             get { return LoadoutRuntime.CurrentRoutePayload; }
         }
         public PlayerLoadoutLive LoadoutRuntime { get; }
-        public PlayerExperienceState ExperienceAuthority { get; }
+        public PlayerExperience ExperienceAuthority { get; }
         public MoneyWalletActions MoneyWallet { get; }
         public ScrapWalletActions ScrapWallet { get; }
         public RankedSkillAllocationState SkillAuthority { get; }
@@ -317,7 +317,7 @@ namespace ShooterMover.Application.Flow.Production
             StableId scrapAuthorityId,
             StableId scrapCurrencyId)
         {
-            var experience = new PlayerExperienceState(
+            var experience = new PlayerExperience(
                 experienceCurve,
                 progressionContext);
             var money = new MoneyWalletActions();

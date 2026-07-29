@@ -13,11 +13,11 @@ namespace ShooterMover.Application.Progression.Experience.EnemyRewards
     /// </summary>
     public sealed class EnemyExperienceRewardActions
     {
-        private readonly IPlayerExperienceState experienceAuthority;
+        private readonly IPlayerExperience experienceAuthority;
         private readonly EnemyExperienceRewardCatalog catalog;
 
         public EnemyExperienceRewardActions(
-            IPlayerExperienceState experienceAuthority,
+            IPlayerExperience experienceAuthority,
             EnemyExperienceRewardCatalog catalog)
         {
             this.experienceAuthority = experienceAuthority

@@ -61,8 +61,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         [Test]
         public void ExactReplayReturnsExactResultAndChangedFingerprintRejects()
         {
-            ParticipantDropPacingState authority =
-                new ParticipantDropPacingState();
+            ParticipantDropPacing authority =
+                new ParticipantDropPacing();
             PersonalRewardGenerationActions service =
                 new PersonalRewardGenerationActions(authority);
             PersonalRewardRollContext original = Context(
@@ -239,8 +239,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         {
             for (ulong seed = 1UL; seed < 1000UL; seed++)
             {
-                ParticipantDropPacingState authority =
-                    new ParticipantDropPacingState();
+                ParticipantDropPacing authority =
+                    new ParticipantDropPacing();
                 PersonalRewardGenerationActions service =
                     new PersonalRewardGenerationActions(authority);
                 PersonalRewardGenerationResult playerA = service.Generate(Context(
@@ -268,8 +268,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         [Test]
         public void ReconnectRestorePreservesPityAndSaturationState()
         {
-            ParticipantDropPacingState uninterruptedAuthority =
-                new ParticipantDropPacingState();
+            ParticipantDropPacing uninterruptedAuthority =
+                new ParticipantDropPacing();
             PersonalRewardGenerationActions uninterrupted =
                 new PersonalRewardGenerationActions(uninterruptedAuthority);
             for (int ordinal = 1; ordinal <= 15; ordinal++)
@@ -289,8 +289,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
                 ParticipantA,
                 out snapshot), Is.True);
 
-            ParticipantDropPacingState restoredAuthority =
-                new ParticipantDropPacingState();
+            ParticipantDropPacing restoredAuthority =
+                new ParticipantDropPacing();
             restoredAuthority.Restore(snapshot);
             PersonalRewardGenerationActions restored =
                 new PersonalRewardGenerationActions(restoredAuthority);
@@ -314,8 +314,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         [Test]
         public void RunMinimumCreatesAtMostTheMissingCount()
         {
-            ParticipantDropPacingState authority =
-                new ParticipantDropPacingState();
+            ParticipantDropPacing authority =
+                new ParticipantDropPacing();
             PersonalRewardGenerationActions service =
                 new PersonalRewardGenerationActions(authority);
             RewardProfileResolution noDrop = Resolution(
@@ -356,7 +356,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
         private static PersonalRewardGenerationActions NewService()
         {
             return new PersonalRewardGenerationActions(
-                new ParticipantDropPacingState());
+                new ParticipantDropPacing());
         }
 
         private static Distribution Simulate(StableId profileId, int samples)
