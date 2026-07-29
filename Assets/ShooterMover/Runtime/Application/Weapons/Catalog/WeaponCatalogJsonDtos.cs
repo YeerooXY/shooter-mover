@@ -50,7 +50,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             public bool FixedStatsPerDefinition;
             [DataMember(Name = "ordinary_mark_gap", IsRequired = true, Order = 1)]
             public string OrdinaryMarkGap;
-            [DataMember(Name = "apex_power_anchors", IsRequired = true, Order = 2)]
+            [DataMember(Name = "apex_power_anchors", EmitDefaultValue = false, Order = 2)]
             public List<int> ApexPowerAnchors;
             [DataMember(Name = "damage_types", IsRequired = true, Order = 3)]
             public List<string> DamageTypes;
@@ -67,13 +67,13 @@ namespace ShooterMover.Application.Weapons.Catalog
         [DataContract]
         private sealed class InputsDto
         {
-            [DataMember(Name = "base_dps", IsRequired = true, Order = 0)]
+            [DataMember(Name = "base_dps", EmitDefaultValue = false, Order = 0)]
             public double BaseDps;
-            [DataMember(Name = "growth_1_30", IsRequired = true, Order = 1)]
+            [DataMember(Name = "growth_1_30", EmitDefaultValue = false, Order = 1)]
             public double Growth1To30;
-            [DataMember(Name = "growth_31_70", IsRequired = true, Order = 2)]
+            [DataMember(Name = "growth_31_70", EmitDefaultValue = false, Order = 2)]
             public double Growth31To70;
-            [DataMember(Name = "growth_71_plus", IsRequired = true, Order = 3)]
+            [DataMember(Name = "growth_71_plus", EmitDefaultValue = false, Order = 3)]
             public double Growth71Plus;
             [DataMember(Name = "rarities", IsRequired = true, Order = 4)]
             public Dictionary<string, RarityDto> Rarities;
@@ -84,7 +84,7 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             [DataMember(Name = "weight", IsRequired = true, Order = 0)]
             public double Weight;
-            [DataMember(Name = "power_bonus", IsRequired = true, Order = 1)]
+            [DataMember(Name = "power_bonus", EmitDefaultValue = false, Order = 1)]
             public int PowerBonus;
             [DataMember(Name = "early_tail", IsRequired = true, Order = 2)]
             public double EarlyTail;
@@ -96,16 +96,16 @@ namespace ShooterMover.Application.Weapons.Catalog
         private sealed class ArchetypeDto
         {
             [DataMember(Name = "description", IsRequired = true, Order = 0)] public string Description;
-            [DataMember(Name = "dps_factor", IsRequired = true, Order = 1)] public double DpsFactor;
+            [DataMember(Name = "dps_factor", EmitDefaultValue = false, Order = 1)] public double DpsFactor;
             [DataMember(Name = "fire_rate", IsRequired = true, Order = 2)] public double FireRate;
             [DataMember(Name = "projectiles", IsRequired = true, Order = 3)] public int Projectiles;
             [DataMember(Name = "burst", IsRequired = true, Order = 4)] public int Burst;
             [DataMember(Name = "spread", IsRequired = true, Order = 5)] public double Spread;
             [DataMember(Name = "speed", IsRequired = true, Order = 6)] public double Speed;
             [DataMember(Name = "range", IsRequired = true, Order = 7)] public double Range;
-            [DataMember(Name = "direct_share", IsRequired = true, Order = 8)] public double DirectShare;
-            [DataMember(Name = "area_share", IsRequired = true, Order = 9)] public double AreaShare;
-            [DataMember(Name = "dot_share", IsRequired = true, Order = 10)] public double DotShare;
+            [DataMember(Name = "direct_share", EmitDefaultValue = false, Order = 8)] public double DirectShare;
+            [DataMember(Name = "area_share", EmitDefaultValue = false, Order = 9)] public double AreaShare;
+            [DataMember(Name = "dot_share", EmitDefaultValue = false, Order = 10)] public double DotShare;
             [DataMember(Name = "radius", IsRequired = true, Order = 11)] public double Radius;
             [DataMember(Name = "dot_duration", IsRequired = true, Order = 12)] public double DotDuration;
             [DataMember(Name = "pool_radius", IsRequired = true, Order = 13)] public double PoolRadius;
@@ -153,7 +153,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             [DataMember(Name = "BuildAffinity", IsRequired = true, Order = 6)] public string BuildAffinity;
             [DataMember(Name = "FirstAppearance", IsRequired = true, Order = 7)] public int FirstAppearance;
             [DataMember(Name = "PeakDropLevel", IsRequired = true, Order = 8)] public int PeakDropLevel;
-            [DataMember(Name = "PowerAnchor", IsRequired = true, Order = 9)] public int PowerAnchor;
+            [DataMember(Name = "PowerAnchor", EmitDefaultValue = false, Order = 9)] public int PowerAnchor;
             [DataMember(Name = "Rarity", IsRequired = true, Order = 10)] public string Rarity;
             [DataMember(Name = "RarityWeight", IsRequired = true, Order = 11)] public double RarityWeight;
             [DataMember(Name = "DefinitionWeightModifier", IsRequired = true, Order = 12)] public double DefinitionWeightModifier;
@@ -163,12 +163,12 @@ namespace ShooterMover.Application.Weapons.Catalog
             [DataMember(Name = "AcquisitionClass", IsRequired = true, Order = 16)] public string AcquisitionClass;
             [DataMember(Name = "TopBoxOnly", IsRequired = true, Order = 17)] public string TopBoxOnly;
             [DataMember(Name = "CraftingRoute", IsRequired = true, Order = 18)] public string CraftingRoute;
-            [DataMember(Name = "ArchetypeDPSFactor", IsRequired = true, Order = 19)] public double ArchetypeDpsFactor;
-            [DataMember(Name = "PowerIndex", IsRequired = true, Order = 20)] public double PowerIndex;
-            [DataMember(Name = "TargetDPS", IsRequired = true, Order = 21)] public double TargetDps;
-            [DataMember(Name = "DirectShare", IsRequired = true, Order = 22)] public double DirectShare;
-            [DataMember(Name = "AreaShare", IsRequired = true, Order = 23)] public double AreaShare;
-            [DataMember(Name = "DoTShare", IsRequired = true, Order = 24)] public double DotShare;
+            [DataMember(Name = "ArchetypeDPSFactor", EmitDefaultValue = false, Order = 19)] public double ArchetypeDpsFactor;
+            [DataMember(Name = "PowerIndex", EmitDefaultValue = false, Order = 20)] public double PowerIndex;
+            [DataMember(Name = "TargetDPS", EmitDefaultValue = false, Order = 21)] public double TargetDps;
+            [DataMember(Name = "DirectShare", EmitDefaultValue = false, Order = 22)] public double DirectShare;
+            [DataMember(Name = "AreaShare", EmitDefaultValue = false, Order = 23)] public double AreaShare;
+            [DataMember(Name = "DoTShare", EmitDefaultValue = false, Order = 24)] public double DotShare;
             [DataMember(Name = "FireRate", IsRequired = true, Order = 25)] public double FireRate;
             [DataMember(Name = "ProjectilesPerTrigger", IsRequired = true, Order = 26)] public int ProjectilesPerTrigger;
             [DataMember(Name = "BurstCount", IsRequired = true, Order = 27)] public int BurstCount;
