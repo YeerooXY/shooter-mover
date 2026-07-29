@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace ShooterMover.Domain.Weapons.Catalog
 {
@@ -82,7 +79,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
             CraftingRoute = craftingRoute ?? string.Empty;
             ArchetypeDpsFactor = archetypeDpsFactor;
             PowerIndex = powerIndex;
-            TargetDps = targetDps;
             DirectShare = directShare;
             AreaShare = areaShare;
             DotShare = dotShare;
@@ -135,7 +131,16 @@ namespace ShooterMover.Domain.Weapons.Catalog
         public string CraftingRoute { get; private set; }
         public double ArchetypeDpsFactor { get; private set; }
         public double PowerIndex { get; private set; }
-        public double TargetDps { get; private set; }
+        public double TargetDps
+        {
+            get
+            {
+                return DamagePerProjectile
+                    * FireRate
+                    * ProjectilesPerTrigger
+                    * BurstCount;
+            }
+        }
         public double DirectShare { get; private set; }
         public double AreaShare { get; private set; }
         public double DotShare { get; private set; }
@@ -295,5 +300,4 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 || (filter == WeaponCatalogContentFilter.PreviewOnly && availability == WeaponCatalogAvailability.PreviewOnly);
         }
     }
-
 }
