@@ -15,8 +15,8 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             GameObject roomObject = new GameObject("RoomObject");
             try
             {
-                LevelRoomAuthoring2D room =
-                    roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room =
+                    roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.stable",
                     new Vector2Int(50, 51),
@@ -43,8 +43,8 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
             GameObject roomObject = new GameObject("RoomObject");
             try
             {
-                LevelRoomAuthoring2D room =
-                    roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room =
+                    roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.immutable-identity",
                     new Vector2Int(2, 3),

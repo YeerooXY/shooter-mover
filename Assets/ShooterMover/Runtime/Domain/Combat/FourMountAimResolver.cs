@@ -68,9 +68,9 @@ namespace ShooterMover.Domain.Combat
         public FourMountAimSolution Resolve(
             AimVector2 sharedAimIntent,
             AimVector2 sharedAimPoint,
-            params WeaponMountOrigin[] mountOrigins)
+            params GunMountOrigin[] mountOrigins)
         {
-            WeaponMountOrigin[] canonicalOrigins = CanonicalizeOrigins(mountOrigins);
+            GunMountOrigin[] canonicalOrigins = CanonicalizeOrigins(mountOrigins);
             AimVector2 geometryCenter = AverageOrigins(canonicalOrigins);
             AimVector2 fallbackDirection = ResolveFallbackDirection(
                 sharedAimIntent,
@@ -89,7 +89,7 @@ namespace ShooterMover.Domain.Combat
                 new SharedAimSolution[FourMountAimSolution.MountCount];
             for (int index = 0; index < FourMountAimSolution.MountCount; index++)
             {
-                WeaponMountOrigin mount = canonicalOrigins[index];
+                GunMountOrigin mount = canonicalOrigins[index];
                 solutions[index] = new SharedAimSolution(
                     mount.StableSlotNumber,
                     mount.Origin,
@@ -105,7 +105,7 @@ namespace ShooterMover.Domain.Combat
             AimVector2 sharedAimPoint,
             AimVector2 geometryCenter,
             AimVector2 fallbackDirection,
-            WeaponMountOrigin[] canonicalOrigins,
+            GunMountOrigin[] canonicalOrigins,
             AimVector2[] convergedDirections)
         {
             AimVector2 centerDirection;
@@ -211,7 +211,7 @@ namespace ShooterMover.Domain.Combat
             return AimVector2.UnitX;
         }
 
-        private static WeaponMountOrigin[] CanonicalizeOrigins(WeaponMountOrigin[] source)
+        private static GunMountOrigin[] CanonicalizeOrigins(GunMountOrigin[] source)
         {
             if (source == null)
             {
@@ -225,13 +225,13 @@ namespace ShooterMover.Domain.Combat
                     nameof(source));
             }
 
-            WeaponMountOrigin[] canonical =
-                new WeaponMountOrigin[FourMountAimSolution.MountCount];
+            GunMountOrigin[] canonical =
+                new GunMountOrigin[FourMountAimSolution.MountCount];
             bool[] occupied = new bool[FourMountAimSolution.MountCount];
 
             for (int index = 0; index < source.Length; index++)
             {
-                WeaponMountOrigin mount = source[index];
+                GunMountOrigin mount = source[index];
                 int stableIndex = mount.StableSlotNumber - 1;
                 if (stableIndex < 0 || stableIndex >= FourMountAimSolution.MountCount)
                 {
@@ -254,7 +254,7 @@ namespace ShooterMover.Domain.Combat
             return canonical;
         }
 
-        private static AimVector2 AverageOrigins(WeaponMountOrigin[] canonicalOrigins)
+        private static AimVector2 AverageOrigins(GunMountOrigin[] canonicalOrigins)
         {
             double[] xValues = new double[FourMountAimSolution.MountCount];
             double[] yValues = new double[FourMountAimSolution.MountCount];

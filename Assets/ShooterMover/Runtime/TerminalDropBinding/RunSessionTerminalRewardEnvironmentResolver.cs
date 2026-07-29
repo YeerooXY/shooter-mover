@@ -1,7 +1,7 @@
 using System;
 using ShooterMover.Application.Runs.Session;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Reads the authored game-mode, event, economy and pacing inputs frozen on the
@@ -20,8 +20,8 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         public bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             out TerminalRewardEnvironment environment,
             out string diagnostic)
         {

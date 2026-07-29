@@ -55,9 +55,9 @@ namespace ShooterMover.Application.Runs.Session
             long authoritativeTick);
     }
 
-    public sealed class RunPlayerLiveSnapshot
+    public sealed class RunPlayerSnapshot
     {
-        public RunPlayerLiveSnapshot(
+        public RunPlayerSnapshot(
             StableId actorInstanceStableId,
             StableId participantStableId,
             long lifecycleGeneration,
@@ -133,10 +133,10 @@ namespace ShooterMover.Application.Runs.Session
 
     public interface IRunPlayerLivePort : IRunLifecycleLivePort
     {
-        RunPlayerLiveSnapshot ExportSnapshot();
+        RunPlayerSnapshot ExportSnapshot();
     }
 
-    public interface IRunWeaponLivePort : IRunLifecycleLivePort
+    public interface IRunGunLivePort : IRunLifecycleLivePort
     {
         IReadOnlyList<StableId> FrozenEquipmentInstanceStableIds { get; }
     }
@@ -177,7 +177,7 @@ namespace ShooterMover.Application.Runs.Session
     {
         public RunSessionLivePorts(
             IRunPlayerLivePort player,
-            IRunWeaponLivePort weapons,
+            IRunGunLivePort guns,
             IRunStatusEffectLivePort statusEffects,
             IRunConditionalFactLivePort conditionalFacts,
             IRunActiveAbilityLivePort activeAbilities,
@@ -185,7 +185,7 @@ namespace ShooterMover.Application.Runs.Session
             IRunMissionResultPort missionResults)
         {
             Player = player ?? throw new ArgumentNullException(nameof(player));
-            Weapons = weapons ?? throw new ArgumentNullException(nameof(weapons));
+            Guns = guns ?? throw new ArgumentNullException(nameof(guns));
             StatusEffects = statusEffects
                 ?? throw new ArgumentNullException(nameof(statusEffects));
             ConditionalFacts = conditionalFacts
@@ -197,7 +197,7 @@ namespace ShooterMover.Application.Runs.Session
                 ?? throw new ArgumentNullException(nameof(missionResults));
 
             long generation = Player.LifecycleGeneration;
-            if (Weapons.LifecycleGeneration != generation
+            if (Guns.LifecycleGeneration != generation
                 || StatusEffects.LifecycleGeneration != generation
                 || ConditionalFacts.LifecycleGeneration != generation
                 || ActiveAbilities.LifecycleGeneration != generation
@@ -209,7 +209,7 @@ namespace ShooterMover.Application.Runs.Session
         }
 
         public IRunPlayerLivePort Player { get; }
-        public IRunWeaponLivePort Weapons { get; }
+        public IRunGunLivePort Guns { get; }
         public IRunStatusEffectLivePort StatusEffects { get; }
         public IRunConditionalFactLivePort ConditionalFacts { get; }
         public IRunActiveAbilityLivePort ActiveAbilities { get; }
@@ -224,7 +224,7 @@ namespace ShooterMover.Application.Runs.Session
                     new List<IRunLifecycleLivePort>
                     {
                         Player,
-                        Weapons,
+                        Guns,
                         StatusEffects,
                         ConditionalFacts,
                         ActiveAbilities,
@@ -268,9 +268,9 @@ namespace ShooterMover.Application.Runs.Session
         {
             get { return EquipmentDefinition.DefinitionId; }
         }
-        public StableId RuntimeWeaponReferenceStableId
+        public StableId RuntimeGunReferenceStableId
         {
-            get { return EquipmentDefinition.RuntimeWeaponReferenceId; }
+            get { return EquipmentDefinition.RuntimeGunReferenceId; }
         }
         public string Fingerprint { get; }
 

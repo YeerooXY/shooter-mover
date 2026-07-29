@@ -15,10 +15,10 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
 {
-    public sealed class DoorController2DTests
+    public sealed class DoorTests
     {
         private static readonly Type ControllerType = Find(
-            "ShooterMover.ContentPackages.Environment.Doors.DoorController2D");
+            "ShooterMover.ContentPackages.Environment.Doors.Door");
         private static readonly Type RequirementType = Find(
             "ShooterMover.ContentPackages.Environment.Doors.DoorConditionRequirement");
         private static readonly Type SnapshotType = Find(
@@ -55,7 +55,7 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
         public IEnumerator ColliderPresentationAndRestart_RestoreAndReevaluate()
         {
             RequirePackageTypes();
-            GameplaySceneScope2D scope = CreateScope();
+            GameplayScene scope = CreateScope();
             Transform container = Track(new GameObject("DoorContainer")).transform;
             container.SetParent(scope.transform);
 
@@ -127,7 +127,7 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
         public IEnumerator RenameAndReparent_PreserveAuthoredIdentityAndRegistration()
         {
             RequirePackageTypes();
-            GameplaySceneScope2D scope = CreateScope();
+            GameplayScene scope = CreateScope();
             Transform firstParent = Track(new GameObject("FirstParent")).transform;
             Transform secondParent = Track(new GameObject("SecondParent")).transform;
             firstParent.SetParent(scope.transform);
@@ -183,7 +183,7 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
         public IEnumerator OneWayTransition_RequiresTypedAuthorizationAndSockets()
         {
             RequirePackageTypes();
-            GameplaySceneScope2D scope = CreateScope();
+            GameplayScene scope = CreateScope();
             Transform container = Track(new GameObject("TransitionContainer")).transform;
             container.SetParent(scope.transform);
             DoorFixture fixture = CreateDoorFixture(
@@ -267,11 +267,11 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
             yield return null;
         }
 
-        private GameplaySceneScope2D CreateScope()
+        private GameplayScene CreateScope()
         {
             GameObject root = Track(new GameObject("GameplayScope"));
-            GameplaySceneScope2D scope =
-                root.AddComponent<GameplaySceneScope2D>();
+            GameplayScene scope =
+                root.AddComponent<GameplayScene>();
             scope.ConfigureForTests(
                 "scope.door-tests",
                 "scope.gameplay",
@@ -298,8 +298,8 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
             closedPresentation.transform.SetParent(root.transform);
             openPresentation.transform.SetParent(root.transform);
 
-            PlacedObjectAuthoring2D placed =
-                root.AddComponent<PlacedObjectAuthoring2D>();
+            PlacedObject placed =
+                root.AddComponent<PlacedObject>();
             placed.ConfigureForTests(
                 placedId,
                 family,
@@ -468,7 +468,7 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
         {
             public DoorFixture(
                 GameObject root,
-                PlacedObjectAuthoring2D placed,
+                PlacedObject placed,
                 Component controller,
                 BoxCollider2D collider,
                 GameObject closedPresentation,
@@ -484,7 +484,7 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
 
             public GameObject Root { get; }
 
-            public PlacedObjectAuthoring2D Placed { get; }
+            public PlacedObject Placed { get; }
 
             public Component Controller { get; }
 

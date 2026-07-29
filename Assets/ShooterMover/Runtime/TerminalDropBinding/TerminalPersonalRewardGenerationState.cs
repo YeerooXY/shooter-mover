@@ -4,7 +4,7 @@ using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Authoritative engine-neutral cutover from one shared terminal event to one
@@ -14,8 +14,8 @@ namespace ShooterMover.TerminalDropBinding
     /// </summary>
     public sealed class TerminalPersonalRewardGenerationState
     {
-        private readonly TerminalDropFactBridgeRegistry adapters;
-        private readonly ITerminalDropRunContextResolver runContexts;
+        private readonly LootDropFactBridgeRegistry adapters;
+        private readonly ILootDropRunContextResolver runContexts;
         private readonly ITerminalRewardParticipantResolver participants;
         private readonly ITerminalRewardEnvironmentResolver environments;
         private readonly ITerminalRewardOverrideResolver overrides;
@@ -24,8 +24,8 @@ namespace ShooterMover.TerminalDropBinding
         private readonly IPersonalRewardDeliveryOutbox deliveryOutbox;
 
         public TerminalPersonalRewardGenerationState(
-            TerminalDropFactBridgeRegistry adapters,
-            ITerminalDropRunContextResolver runContexts,
+            LootDropFactBridgeRegistry adapters,
+            ILootDropRunContextResolver runContexts,
             ITerminalRewardParticipantResolver participants,
             ITerminalRewardEnvironmentResolver environments,
             ITerminalRewardOverrideResolver overrides,
@@ -59,7 +59,7 @@ namespace ShooterMover.TerminalDropBinding
                 throw new ArgumentNullException(nameof(placementContext));
             }
 
-            TerminalDropAdaptationResult adaptation;
+            LootDropAdaptationResult adaptation;
             try
             {
                 adaptation = adapters.Adapt(terminalFact);
@@ -78,7 +78,7 @@ namespace ShooterMover.TerminalDropBinding
                         : adaptation.Diagnostic);
             }
 
-            TerminalDropSourceFact source = adaptation.SourceFact;
+            LootDropSourceFact source = adaptation.SourceFact;
             if (placementContext.TerminalEventStableId
                     != source.TerminalEventStableId
                 || placementContext.PlacementStableId
@@ -87,8 +87,8 @@ namespace ShooterMover.TerminalDropBinding
                 return Reject(source, "terminal-personal-placement-context-mismatch");
             }
 
-            TerminalDropRunGenerationContext runContext;
-            TerminalDropRejectionCode runRejection;
+            LootDropRunGenerationContext runContext;
+            LootDropRejectionCode runRejection;
             string diagnostic;
             if (!runContexts.TryResolve(
                     source.RunStableId,
@@ -120,7 +120,7 @@ namespace ShooterMover.TerminalDropBinding
                         : diagnostic);
             }
 
-            RewardSourceProfile sourceProfile;
+            LootSourceProfile sourceProfile;
             StableId declaredReferenceId;
             if (!TryResolveSourceProfile(
                     source,
@@ -201,18 +201,18 @@ namespace ShooterMover.TerminalDropBinding
                 return new TerminalPersonalRewardBatch(
                     TerminalPersonalRewardBatchStatus.NoEligibleParticipants,
                     source,
-                    Array.Empty<GeneratedTerminalDropResult>(),
+                    Array.Empty<GeneratedLootDropResult>(),
                     "terminal-personal-no-eligible-participants");
             }
 
             var contexts = new List<PersonalRewardRollContext>(eligible.Count);
-            string terminalFingerprint = TerminalDrop.Hash(
+            string terminalFingerprint = LootDrop.Hash(
                 source.Fingerprint + "|" + placementContext.Fingerprint
                 + "|" + runContext.Fingerprint);
             for (int index = 0; index < eligible.Count; index++)
             {
                 TerminalRewardParticipant participant = eligible[index];
-                ulong participantSeed = TerminalDrop.DeriveSeed(
+                ulong participantSeed = LootDrop.DeriveSeed(
                     runContext.RootSeed,
                     terminalFingerprint + "|"
                         + participant.ParticipantStableId + "|"
@@ -271,12 +271,12 @@ namespace ShooterMover.TerminalDropBinding
                 }
             }
 
-            var results = new List<GeneratedTerminalDropResult>(
+            var results = new List<GeneratedLootDropResult>(
                 personalResults.Count);
             bool anyRewards = false;
             for (int index = 0; index < personalResults.Count; index++)
             {
-                GeneratedTerminalDropResult adapted =
+                GeneratedLootDropResult adapted =
                     TerminalPersonalRewardTransportBridge.Adapt(
                         source,
                         personalResults[index]);
@@ -293,14 +293,14 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         private static bool TryResolveSourceProfile(
-            TerminalDropSourceFact source,
+            LootDropSourceFact source,
             out StableId declaredReferenceId,
-            out RewardSourceProfile sourceProfile,
+            out LootSourceProfile sourceProfile,
             out string diagnostic)
         {
             declaredReferenceId = source.DeclaredDropProfileStableId
-                ?? RewardSourceCatalog.ExplicitNoDropId;
-            if (RewardSourceCatalog.TryResolve(
+                ?? LootSourceCatalog.ExplicitNoDropId;
+            if (LootSourceCatalog.TryResolve(
                     declaredReferenceId,
                     out sourceProfile))
             {
@@ -309,10 +309,10 @@ namespace ShooterMover.TerminalDropBinding
             }
 
             StableId migrated;
-            if (RewardSourceCatalog.TryMigrateLegacyProfileId(
+            if (LootSourceCatalog.TryMigrateLegacyProfileId(
                     declaredReferenceId,
                     out migrated)
-                && RewardSourceCatalog.TryResolve(
+                && LootSourceCatalog.TryResolve(
                     migrated,
                     out sourceProfile))
             {
@@ -328,13 +328,13 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         private static TerminalPersonalRewardBatch Reject(
-            TerminalDropSourceFact source,
+            LootDropSourceFact source,
             string diagnostic)
         {
             return new TerminalPersonalRewardBatch(
                 TerminalPersonalRewardBatchStatus.Rejected,
                 source,
-                Array.Empty<GeneratedTerminalDropResult>(),
+                Array.Empty<GeneratedLootDropResult>(),
                 diagnostic);
         }
     }

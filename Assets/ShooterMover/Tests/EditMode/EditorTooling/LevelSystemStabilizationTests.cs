@@ -13,8 +13,8 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
 {
     public sealed class LevelSystemStabilizationTests
     {
-        private LevelDesignSceneAuthoringRoot2D root;
-        private LevelDoorEndpointAuthoring2D configuredFinalExitDoor;
+        private LevelDraft root;
+        private DoorEndpoint configuredFinalExitDoor;
         private string temporaryParent;
         private string outputRoot;
 
@@ -26,7 +26,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             LevelGridPlayableExporter.AfterBackupMoveForTests = null;
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             GameObject rootObject = new GameObject("Level Stabilization Test Root");
-            root = rootObject.AddComponent<LevelDesignSceneAuthoringRoot2D>();
+            root = rootObject.AddComponent<LevelDraft>();
             root.ConfigureForTests("level.stabilization-export-test");
             temporaryParent = Path.Combine(
                 Path.GetTempPath(),
@@ -73,7 +73,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void SceneMutationDuringStaging_AbortsBeforeReplacingPlayableSource()
         {
-            LevelRoomAuthoring2D finalRoom = ConfigurePlayableGraph();
+            LevelRoom finalRoom = ConfigurePlayableGraph();
             LevelGridPlayableExporter.Export(root, outputRoot);
             string previousLevel = File.ReadAllText(Path.Combine(outputRoot, "level.json"));
 
@@ -152,16 +152,16 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         public void ExactFinalExit_IsAllowedUnconnectedAndRejectedBeforeRoomLinkMutation()
         {
             ConfigurePlayableGraph();
-            LevelDoorEndpointAuthoring2D connectedDoor =
+            DoorEndpoint connectedDoor =
                 FindConnectedDoorExcludingFinalExit();
             int initialLinkCount =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true).Length;
+                root.GetComponentsInChildren<DoorLink>(true).Length;
 
             AssertFinalExitConnectionRejected(configuredFinalExitDoor, connectedDoor);
             AssertFinalExitConnectionRejected(connectedDoor, configuredFinalExitDoor);
 
             Assert.That(
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true).Length,
+                root.GetComponentsInChildren<DoorLink>(true).Length,
                 Is.EqualTo(initialLinkCount));
             LevelGridEditorOperations.Validate(
                 root,
@@ -175,7 +175,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             ConfigurePlayableGraph();
             LevelGridPlayableMetadata metadata =
                 root.GetComponent<LevelGridPlayableMetadata>();
-            LevelDoorEndpointAuthoring2D connectedDoor =
+            DoorEndpoint connectedDoor =
                 FindConnectedDoorExcludingFinalExit(metadata.FinalExitRoom);
 
             InvalidOperationException setException =
@@ -207,8 +207,8 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             GameObject rogueObject = new GameObject("Rogue Final Door");
             try
             {
-                LevelDoorEndpointAuthoring2D rogueDoor =
-                    rogueObject.AddComponent<LevelDoorEndpointAuthoring2D>();
+                DoorEndpoint rogueDoor =
+                    rogueObject.AddComponent<DoorEndpoint>();
                 rogueDoor.ConfigureForTests(
                     "door.rogue-final",
                     metadata.FinalExitRoom,
@@ -240,13 +240,13 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void SnapSelected_PlacementChildUsesPlacementGridInsteadOfRoomRedirect()
         {
-            LevelRoomAuthoring2D room = LevelGridEditorOperations.CreateRoom(
+            LevelRoom room = LevelGridEditorOperations.CreateRoom(
                 root,
                 Vector2Int.zero);
             GameObject placementObject = new GameObject("Placement");
             placementObject.transform.SetParent(room.transform, false);
-            LevelPlacementAuthoring2D placement =
-                placementObject.AddComponent<LevelPlacementAuthoring2D>();
+            LevelObject placement =
+                placementObject.AddComponent<LevelObject>();
             placement.ConfigureForTests(
                 "spawn.placement-test",
                 "socket.placement-test",
@@ -290,23 +290,23 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                 + "LevelGridLegacySurfaceGuards.cs");
             string rootAuthoring = ReadProjectFile(
                 "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
-                + "LevelDesignSceneAuthoringRoot2D.cs");
+                + "LevelDraft.cs");
             string roomAuthoring = ReadProjectFile(
                 "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
-                + "LevelRoomAuthoring2D.cs");
+                + "LevelRoom.cs");
             string doorAuthoring = ReadProjectFile(
                 "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
-                + "LevelDoorEndpointAuthoring2D.cs");
+                + "DoorEndpoint.cs");
             string linkAuthoring = ReadProjectFile(
                 "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
-                + "LevelDoorLinkAuthoring2D.cs");
+                + "DoorLink.cs");
             string metadata = ReadProjectFile(
                 "Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/"
                 + "LevelGridPlayableMetadata.cs");
 
             StringAssert.Contains("LevelGridEditorOperations.CreateDoor", creationMenu);
             StringAssert.Contains("LevelGridEditorOperations.TryCreateConnection", creationMenu);
-            StringAssert.DoesNotContain("Undo.AddComponent<LevelDoorLinkAuthoring2D>", creationMenu);
+            StringAssert.DoesNotContain("Undo.AddComponent<DoorLink>", creationMenu);
             StringAssert.DoesNotContain("new GameObject(\"Door Endpoint\")", creationMenu);
 
             StringAssert.Contains("LevelGridEditorOperations.DeleteRoom", compatibilityEditor);
@@ -326,8 +326,8 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             StringAssert.Contains("productionValidationRun", playableEditor);
             StringAssert.DoesNotContain("Legacy/", playableEditor);
             StringAssert.DoesNotContain("Create Three-Room Starter Example", playableEditor);
-            StringAssert.DoesNotContain("Export Grid V2 Draft Folder", playableEditor);
-            StringAssert.DoesNotContain("Publish Grid V2 Validated Authoring Folder", playableEditor);
+            StringAssert.DoesNotContain("Export Level Draft Folder", playableEditor);
+            StringAssert.DoesNotContain("Publish Level Validated Authoring Folder", playableEditor);
 
             StringAssert.Contains("AfterBackupMoveForTests", exporter);
             StringAssert.Contains("TryRestoreBackup", exporter);
@@ -339,7 +339,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             StringAssert.DoesNotContain("[ContextMenu(", doorAuthoring);
             StringAssert.DoesNotContain("[ContextMenu(", linkAuthoring);
             StringAssert.Contains(
-                "finalExitDoor.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root",
+                "finalExitDoor.GetComponentInParent<LevelDraft>() != root",
                 metadata);
 
             StringAssert.Contains("DisableThreeRoomStarter", legacyGuards);
@@ -350,20 +350,20 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             StringAssert.Contains("DisableArbitraryCompilerShortcut", legacyGuards);
         }
 
-        private LevelRoomAuthoring2D ConfigurePlayableGraph()
+        private LevelRoom ConfigurePlayableGraph()
         {
-            LevelRoomAuthoring2D startRoom = LevelGridEditorOperations.CreateRoom(
+            LevelRoom startRoom = LevelGridEditorOperations.CreateRoom(
                 root,
                 Vector2Int.zero);
-            LevelRoomAuthoring2D finalRoom = LevelGridEditorOperations.CreateRoom(
+            LevelRoom finalRoom = LevelGridEditorOperations.CreateRoom(
                 root,
                 Vector2Int.right);
-            LevelDoorEndpointAuthoring2D startDoor =
+            DoorEndpoint startDoor =
                 LevelGridEditorOperations.CreateDoor(
                     startRoom,
                     LevelDoorSide.East,
                     0.5f);
-            LevelDoorEndpointAuthoring2D finalEntryDoor =
+            DoorEndpoint finalEntryDoor =
                 LevelGridEditorOperations.CreateDoor(
                     finalRoom,
                     LevelDoorSide.West,
@@ -373,7 +373,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                 LevelDoorSide.East,
                 0.5f);
 
-            LevelDoorLinkAuthoring2D link;
+            DoorLink link;
             string rejection;
             Assert.That(
                 LevelGridEditorOperations.TryCreateConnection(
@@ -404,11 +404,11 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             return finalRoom;
         }
 
-        private LevelDoorEndpointAuthoring2D FindConnectedDoorExcludingFinalExit(
-            LevelRoomAuthoring2D requiredRoom = null)
+        private DoorEndpoint FindConnectedDoorExcludingFinalExit(
+            LevelRoom requiredRoom = null)
         {
-            LevelDoorEndpointAuthoring2D[] doors =
-                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            DoorEndpoint[] doors =
+                root.GetComponentsInChildren<DoorEndpoint>(true);
             for (int index = 0; index < doors.Length; index++)
             {
                 if (doors[index] != configuredFinalExitDoor
@@ -424,10 +424,10 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         }
 
         private void AssertFinalExitConnectionRejected(
-            LevelDoorEndpointAuthoring2D source,
-            LevelDoorEndpointAuthoring2D destination)
+            DoorEndpoint source,
+            DoorEndpoint destination)
         {
-            LevelDoorLinkAuthoring2D rejectedLink;
+            DoorLink rejectedLink;
             string rejection;
             Assert.That(
                 LevelGridEditorOperations.TryCreateConnection(

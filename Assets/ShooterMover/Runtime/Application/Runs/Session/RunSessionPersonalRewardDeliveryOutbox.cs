@@ -43,7 +43,7 @@ namespace ShooterMover.Application.Runs.Session
             {
                 return false;
             }
-            RunRewardLiveSnapshot snapshot =
+            RunLootSnapshot snapshot =
                 run.ExportRewardRuntimeSnapshot();
             for (int index = 0; index < snapshot.Deliveries.Count; index++)
             {

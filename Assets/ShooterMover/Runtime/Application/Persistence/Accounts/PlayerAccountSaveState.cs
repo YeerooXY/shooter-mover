@@ -36,7 +36,7 @@ namespace ShooterMover.Application.Persistence.Accounts
             int slotIndex,
             StableId expectedCharacterInstanceStableId,
             CharacterInstanceSnapshot character,
-            SaveComponentSnapshot component)
+            SavePartSnapshot component)
         {
             OperationStableId = operationStableId
                 ?? throw new ArgumentNullException(nameof(operationStableId));
@@ -69,7 +69,7 @@ namespace ShooterMover.Application.Persistence.Accounts
 
         public CharacterInstanceSnapshot Character { get; }
 
-        public SaveComponentSnapshot Component { get; }
+        public SavePartSnapshot Component { get; }
 
         public string Fingerprint { get; }
 
@@ -97,7 +97,7 @@ namespace ShooterMover.Application.Persistence.Accounts
             long expectedAccountRevision,
             int slotIndex,
             StableId expectedCharacterInstanceStableId,
-            SaveComponentSnapshot component)
+            SavePartSnapshot component)
         {
             PlayerAccountSnapshot.ValidateSlotIndex(slotIndex);
             if (expectedCharacterInstanceStableId == null)
@@ -144,7 +144,7 @@ namespace ShooterMover.Application.Persistence.Accounts
         public static PlayerAccountSaveCommand UpsertAccountComponent(
             StableId operationStableId,
             long expectedAccountRevision,
-            SaveComponentSnapshot component)
+            SavePartSnapshot component)
         {
             if (component == null)
             {
@@ -474,7 +474,7 @@ namespace ShooterMover.Application.Persistence.Accounts
         {
             if (command.Component == null)
             {
-                return Reject("account-save-component-missing");
+                return Reject("account-save-part-missing");
             }
             CharacterInstanceSnapshot character =
                 account.CharacterAt(command.SlotIndex);
@@ -520,7 +520,7 @@ namespace ShooterMover.Application.Persistence.Accounts
         {
             if (command.Component == null)
             {
-                return Reject("account-save-component-missing");
+                return Reject("account-save-part-missing");
             }
             account = account.WithAccountComponent(command.Component);
             return Applied();

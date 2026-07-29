@@ -15,7 +15,7 @@ namespace ShooterMover.Application.Rewards.Drops
         internal static PersonalRewardGenerationResult Generate(PersonalRewardRollContext context,ParticipantDropPacingState before)
         {
             if(!context.ParticipantEligible)return Result(PersonalRewardGenerationStatus.Ineligible,context,before,before,Array.Empty<RewardGrant>(),Array.Empty<PersonalRewardDecision>(),false,"participant-ineligible");
-            RewardSourceProfile profile=context.ProfileResolution.EffectiveProfile; if(profile.ExplicitNoDrop)return Result(PersonalRewardGenerationStatus.ExplicitNoDrop,context,before,before,Array.Empty<RewardGrant>(),Array.Empty<PersonalRewardDecision>(),false,string.Empty);
+            LootSourceProfile profile=context.ProfileResolution.EffectiveProfile; if(profile.ExplicitNoDrop)return Result(PersonalRewardGenerationStatus.ExplicitNoDrop,context,before,before,Array.Empty<RewardGrant>(),Array.Empty<PersonalRewardDecision>(),false,string.Empty);
             ParticipantDropPacingState state=before;var grants=new List<RewardGrant>();var decisions=new List<PersonalRewardDecision>();
             for(int groupIndex=0;groupIndex<profile.Groups.Count;groupIndex++)
             {
@@ -49,7 +49,7 @@ namespace ShooterMover.Application.Rewards.Drops
             var boxes=new List<RewardOutcome>();var nonBoxes=new List<RewardOutcome>();for(int index=0;index<group.Outcomes.Count;index++){RewardOutcome outcome=group.Outcomes[index];if(outcome.Grant!=null&&outcome.Grant.Kind==RewardGrantKind.Strongbox)boxes.Add(outcome);else nonBoxes.Add(outcome);}
             bool boxSelected=PersonalRewardGenerationRandom.RollChance(context,group,effectiveBoxProbability,5UL);IReadOnlyList<RewardOutcome> pool=boxSelected?boxes:nonBoxes;return pool.Count==0?null:PersonalRewardGenerationRandom.RollWeighted(context,group,pool,boxSelected?6UL:7UL);
         }
-        private static void AddOutcomeGrants(PersonalRewardRollContext context,RewardSourceProfile profile,RewardRollGroup group,RewardOutcome outcome,ICollection<RewardGrant> output)
+        private static void AddOutcomeGrants(PersonalRewardRollContext context,LootSourceProfile profile,RewardRollGroup group,RewardOutcome outcome,ICollection<RewardGrant> output)
         {
             long quantity=ScaleCurrencyQuantity(context,outcome.Grant.Kind,PersonalRewardGenerationRandom.RollQuantity(context,group,outcome,100UL));
             if(outcome.Grant.Kind==RewardGrantKind.Strongbox){StableId tierProfile=profile.DefaultStrongboxTierSelectionProfileId??outcome.Grant.ContentStableId;for(long unit=0;unit<quantity;unit++)output.Add(PersonalStrongboxRewardGeneration.CreateGrant(context,group,outcome,checked((int)unit),tierProfile));return;}

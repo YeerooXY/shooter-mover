@@ -188,7 +188,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
     /// Concrete BOX-to-GEN equipment resolver. Each reward unit is generated as an
     /// independent slot from the complete eligible candidate set. Candidate
     /// definitions are therefore sampled with replacement: two slots may select
-    /// the same weapon definition, while deterministic instance IDs remain unique.
+    /// the same gun definition, while deterministic instance IDs remain unique.
     /// </summary>
     public sealed class StrongboxEquipmentGenerationResolver : IStrongboxEquipmentPayloadResolver
     {

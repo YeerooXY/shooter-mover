@@ -21,13 +21,13 @@ namespace ShooterMover.Tests.EditMode.Enemies
             EnemyActorCommand first = EnemyActorCommand.Damage(
                 0L,
                 Id("event.damage-first"),
-                Id("weapon.first"),
+                Id("gun.first"),
                 (int)CombatChannel.Kinetic,
                 20d);
             EnemyActorCommand second = EnemyActorCommand.Damage(
                 1L,
                 Id("event.damage-second"),
-                Id("weapon.second"),
+                Id("gun.second"),
                 (int)CombatChannel.Thermal,
                 30d);
 
@@ -57,7 +57,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             EnemyActorCommand lethal = EnemyActorCommand.Damage(
                 0L,
                 Id("event.overkill"),
-                Id("weapon.rocket"),
+                Id("gun.rocket"),
                 (int)CombatChannel.Explosive,
                 150d);
 
@@ -130,7 +130,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             EnemyActorCommand lethal = EnemyActorCommand.Damage(
                 0L,
                 Id("event.exact-zero"),
-                Id("weapon.blaster"),
+                Id("gun.blaster"),
                 (int)CombatChannel.Kinetic,
                 40d);
 
@@ -146,7 +146,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                         EnemyActorCommand.Damage(
                             1L,
                             Id("event.late-hit"),
-                            Id("weapon.blaster"),
+                            Id("gun.blaster"),
                             (int)CombatChannel.Kinetic,
                             10d),
                     });
@@ -388,7 +388,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                     EnemyActorCommand.Damage(
                         0L,
                         Id("event.kill"),
-                        Id("weapon.blaster"),
+                        Id("gun.blaster"),
                         (int)CombatChannel.Kinetic,
                         10d),
                 });

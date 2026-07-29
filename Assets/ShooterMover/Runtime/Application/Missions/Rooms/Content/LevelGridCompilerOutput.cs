@@ -19,7 +19,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 var manifest = new RoomContentManifestDto
                 {
                     Version = 1,
-                    Layout = "layout.grid-v2-" + SanitizeKey(levelId),
+                    Layout = "layout.level-1-" + SanitizeKey(levelId),
                     StartRoom = startRoomId,
                     TerminalRoom = finalRoomId,
                     Rooms = new List<RoomContentDocumentsDto>(),
@@ -28,7 +28,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 for (int i = 0; i < ordered.Count; i++)
                 {
                     RoomSource room = ordered[i];
-                    string prefix = "grid-v2."
+                    string prefix = "level-1."
                         + i.ToString("00", CultureInfo.InvariantCulture)
                         + "."
                         + SanitizeKey(room.Entry.RoomId);
@@ -212,7 +212,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         if (matchingRule >= 0)
                         {
                             throw Error(
-                                "level-grid-v2-encounter-door-rule-ambiguous",
+                                "level-level-1-encounter-door-rule-ambiguous",
                                 room.Root + "encounter.json.door_rules",
                                 "More than one authored encounter rule matches traversable door: "
                                     + door.DoorId);
@@ -242,7 +242,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!authoredMatched[i])
                     {
                         throw Error(
-                            "level-grid-v2-encounter-door-rule-unmatched",
+                            "level-level-1-encounter-door-rule-unmatched",
                             room.Root + "encounter.json.door_rules[" + i + "]",
                             "The authored encounter rule matches no traversable runtime door.");
                     }

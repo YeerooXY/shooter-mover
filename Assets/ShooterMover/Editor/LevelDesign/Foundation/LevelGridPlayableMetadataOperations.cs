@@ -14,7 +14,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public static class LevelGridPlayableMetadataOperations
     {
         public static LevelGridPlayableMetadata Add(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
             LevelGridPlayableMetadata existing =
@@ -32,9 +32,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetStartRoom(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
-            LevelRoomAuthoring2D room)
+            LevelRoom room)
         {
             RequireMetadata(root, metadata);
             RequireOwnedRoomOrNull(root, room, nameof(room));
@@ -46,7 +46,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetPlayerStart(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
             Vector2 localPosition,
             float rotation)
@@ -71,9 +71,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetFinalRoom(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
-            LevelRoomAuthoring2D room)
+            LevelRoom room)
         {
             RequireMetadata(root, metadata);
             RequireOwnedRoomOrNull(root, room, nameof(room));
@@ -86,8 +86,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     SerializedProperty finalRoom = serialized.FindProperty("finalExitRoom");
                     SerializedProperty finalDoor = serialized.FindProperty("finalExitDoor");
                     finalRoom.objectReferenceValue = room;
-                    LevelDoorEndpointAuthoring2D selectedDoor =
-                        finalDoor.objectReferenceValue as LevelDoorEndpointAuthoring2D;
+                    DoorEndpoint selectedDoor =
+                        finalDoor.objectReferenceValue as DoorEndpoint;
                     if (selectedDoor != null && selectedDoor.OwningRoom != room)
                     {
                         finalDoor.objectReferenceValue = null;
@@ -96,9 +96,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetFinalDoor(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
-            LevelDoorEndpointAuthoring2D door)
+            DoorEndpoint door)
         {
             RequireMetadata(root, metadata);
             if (door != null)
@@ -129,9 +129,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void UseDoorAsFinalExit(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
-            LevelDoorEndpointAuthoring2D door)
+            DoorEndpoint door)
         {
             RequireMetadata(root, metadata);
             RequireOwnedDoor(root, door, nameof(door));
@@ -154,7 +154,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static void SetRuntimeDoorObjectId(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
             string runtimeDoorObjectId)
         {
@@ -171,7 +171,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void Apply(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata,
             string undoName,
             Action<SerializedObject> mutation)
@@ -188,7 +188,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void MarkChanged(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             UnityEngine.Object changed)
         {
             if (changed != null) EditorUtility.SetDirty(changed);
@@ -209,7 +209,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void RequireMetadata(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableMetadata metadata)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
@@ -222,12 +222,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void RequireOwnedRoomOrNull(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelRoomAuthoring2D room,
+            LevelDraft root,
+            LevelRoom room,
             string parameterName)
         {
             if (room == null) return;
-            if (room.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root)
+            if (room.GetComponentInParent<LevelDraft>() != root)
             {
                 throw new ArgumentException(
                     "The selected room is not owned by the active level root.",
@@ -236,14 +236,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void RequireOwnedDoor(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door,
+            LevelDraft root,
+            DoorEndpoint door,
             string parameterName)
         {
             if (door == null) throw new ArgumentNullException(parameterName);
             if (door.OwningRoom == null
-                || door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root
-                || door.OwningRoom.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>()
+                || door.GetComponentInParent<LevelDraft>() != root
+                || door.OwningRoom.GetComponentInParent<LevelDraft>()
                     != root)
             {
                 throw new ArgumentException(
@@ -253,8 +253,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void RequireUnconnectedDoor(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+            LevelDraft root,
+            DoorEndpoint door)
         {
             if (LevelGridEditorOperations.IsConnected(root, door))
             {

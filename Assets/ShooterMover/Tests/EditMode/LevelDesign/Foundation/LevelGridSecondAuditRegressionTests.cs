@@ -47,7 +47,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 "\"match\":{\"link_kind\":\"final-exit\"}," +
                 "\"open_when\":\"always\"}]}";
 
-            AssertIssue(source, "level-grid-v2-encounter-door-rule-unmatched");
+            AssertIssue(source, "level-level-1-encounter-door-rule-unmatched");
         }
 
         [Test]
@@ -59,7 +59,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     "\"runtime_bounds\"",
                     "\"player_start\":{\"position\":[0,0],\"rotation\":0},\"runtime_bounds\"");
 
-            AssertIssue(source, "level-grid-v2-player-start-extra");
+            AssertIssue(source, "level-level-1-player-start-extra");
         }
 
         [Test]
@@ -71,7 +71,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     "\"position\":[-9,0]",
                     "\"position\":[100,0]");
 
-            AssertIssue(source, "level-grid-v2-player-start-outside-bounds");
+            AssertIssue(source, "level-level-1-player-start-outside-bounds");
         }
 
         [Test]
@@ -83,7 +83,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     "\"optional_enemy_ids\":[]",
                     "\"optional_enemy_ids\":[\"enemy.missing\"]");
 
-            AssertIssue(source, "level-grid-v2-optional-enemy-unknown");
+            AssertIssue(source, "level-level-1-optional-enemy-unknown");
         }
 
         [Test]
@@ -91,7 +91,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         {
             string root = Path.Combine(
                 Path.GetTempPath(),
-                "shooter-mover-grid-v2-destination-" + Guid.NewGuid().ToString("N"));
+                "shooter-mover-level-1-destination-" + Guid.NewGuid().ToString("N"));
             try
             {
                 Directory.CreateDirectory(root);
@@ -117,7 +117,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         {
             string root = Path.Combine(
                 Path.GetTempPath(),
-                "shooter-mover-grid-v2-vacated-" + Guid.NewGuid().ToString("N"));
+                "shooter-mover-level-1-vacated-" + Guid.NewGuid().ToString("N"));
             string roomsRoot = Path.Combine(root, "Rooms");
             string activeOld = Path.Combine(roomsRoot, "Room_0_0_01");
             string deletedOld = Path.Combine(roomsRoot, "Room_1_0_01");
@@ -139,7 +139,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     Path.Combine(deletedOld, "enemies.json"),
                     "must-not-be-adopted");
 
-                LevelRoomAuthoring2D room = roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room = roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.survivor",
                     new Vector2Int(1, 0),

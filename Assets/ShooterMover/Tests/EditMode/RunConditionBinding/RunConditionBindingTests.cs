@@ -327,9 +327,9 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
                 StableId definitionId = Id("equipment-definition.test-rifle");
                 StableId qualityId = Id("quality.common");
                 EquipmentDefinition definition = EquipmentDefinition.Create(
-                    definitionId, EquipmentCategoryIds.Weapon,
+                    definitionId, EquipmentCategoryIds.Gun,
                     Id("equipment-family.test-rifle"), "Test Rifle",
-                    Id("weapon.test-rifle"), InclusiveIntRange.Create(1, 100),
+                    Id("gun.test-rifle"), InclusiveIntRange.Create(1, 100),
                     1, new[]
                     {
                         EquipmentQualityTier.Create(qualityId, "Common", 1),
@@ -351,7 +351,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
                         {
                             { DerivedStatTargetIds.MaximumHealth, 100m },
                             { DerivedStatTargetIds.MovementSpeed, 5m },
-                            { DerivedStatTargetIds.WeaponCapacity, 4m },
+                            { DerivedStatTargetIds.GunCapacity, 4m },
                             { DerivedStatTargetIds.AbilityCapacity, 0m },
                             { DerivedStatTargetIds.OutgoingDamageMultiplier, 1m },
                         }), null, policy);
@@ -371,7 +371,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
                     new[]
                     {
                         new FrozenRunEquipment(
-                            Id("weapon-slot.slot-1"), equipment, definition),
+                            Id("gun-slot.slot-1"), equipment, definition),
                     }, command.EventModifierContextFingerprint);
             }
         }
@@ -386,7 +386,7 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
             {
                 return new RunSessionNonConditionLivePorts(
                     new PlayerPort(),
-                    new WeaponPort(frozen.Equipment.Select(
+                    new GunPort(frozen.Equipment.Select(
                         item => item.EquipmentInstanceStableId)),
                     new AbilityPort(),
                     new RoomPort(),
@@ -423,9 +423,9 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
         private sealed class PlayerPort : LifecyclePort, IRunPlayerLivePort
         {
             public PlayerPort() : base("fixture-player") { }
-            public RunPlayerLiveSnapshot ExportSnapshot()
+            public RunPlayerSnapshot ExportSnapshot()
             {
-                return new RunPlayerLiveSnapshot(
+                return new RunPlayerSnapshot(
                     Id("actor.a"), Id("participant.a"), Generation,
                     100d, 100d, 0d, 0d, 0L);
             }
@@ -435,11 +435,11 @@ namespace ShooterMover.Tests.EditMode.RunConditionBinding
             }
         }
 
-        private sealed class WeaponPort : LifecyclePort, IRunWeaponLivePort
+        private sealed class GunPort : LifecyclePort, IRunGunLivePort
         {
             private readonly IReadOnlyList<StableId> equipment;
-            public WeaponPort(IEnumerable<StableId> equipment)
-                : base("fixture-weapons")
+            public GunPort(IEnumerable<StableId> equipment)
+                : base("fixture-guns")
             {
                 this.equipment = equipment.ToList().AsReadOnly();
             }

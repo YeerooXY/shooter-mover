@@ -16,10 +16,10 @@ namespace ShooterMover.UnityAdapters.Enemies
         IEnemyAttackEffectPort,
         IEnemyAttackPatternEffectPort
     {
-        private readonly Dictionary<StableId, EnemyAttack2D> attacks =
-            new Dictionary<StableId, EnemyAttack2D>();
-        private readonly Dictionary<StableId, EnemyAttackPresentationView2D> projections =
-            new Dictionary<StableId, EnemyAttackPresentationView2D>();
+        private readonly Dictionary<StableId, EnemyAttack> attacks =
+            new Dictionary<StableId, EnemyAttack>();
+        private readonly Dictionary<StableId, AttackView> projections =
+            new Dictionary<StableId, AttackView>();
         private readonly Dictionary<StableId, string> dispatches =
             new Dictionary<StableId, string>();
         private readonly Dictionary<StableId, string> cancellations =
@@ -27,7 +27,7 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         public int BoundPublisherCount { get { return attacks.Count; } }
 
-        public EnemyAttack2D Bind(RoomEnemyActor2D actor, long revision)
+        public EnemyAttack Bind(Enemy actor, long revision)
         {
             if (actor == null) throw new ArgumentNullException(nameof(actor));
             if (revision <= 0L) throw new ArgumentOutOfRangeException(nameof(revision));
@@ -35,13 +35,13 @@ namespace ShooterMover.UnityAdapters.Enemies
             {
                 throw new InvalidOperationException("enemy-attack-requires-bound-actor");
             }
-            if (!EnemyAttack2D.Supports(actor.Runtime))
+            if (!EnemyAttack.Supports(actor.Runtime))
             {
                 throw new InvalidOperationException("enemy-attack-mechanics-unsupported");
             }
 
-            EnemyAttack2D currentAttack;
-            EnemyAttackPresentationView2D currentProjection;
+            EnemyAttack currentAttack;
+            AttackView currentProjection;
             bool hasAttack = attacks.TryGetValue(actor.ActorStableId, out currentAttack);
             bool hasProjection = projections.TryGetValue(
                 actor.ActorStableId,
@@ -67,11 +67,11 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return currentAttack;
             }
 
-            EnemyAttack2D attack = actor.GetComponent<EnemyAttack2D>()
-                ?? actor.gameObject.AddComponent<EnemyAttack2D>();
-            EnemyAttackPresentationView2D projection = actor.GetComponent<
-                    EnemyAttackPresentationView2D>()
-                ?? actor.gameObject.AddComponent<EnemyAttackPresentationView2D>();
+            EnemyAttack attack = actor.GetComponent<EnemyAttack>()
+                ?? actor.gameObject.AddComponent<EnemyAttack>();
+            AttackView projection = actor.GetComponent<
+                    AttackView>()
+                ?? actor.gameObject.AddComponent<AttackView>();
             attack.Bind(actor, revision);
             projection.Bind(actor, revision);
             RequireCurrentBinding(attack, projection, actor, revision);
@@ -105,8 +105,8 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
 
             StableId sourceId = sequence.Execution.Identity.EntityInstanceId;
-            EnemyAttack2D attack;
-            EnemyAttackPresentationView2D projection;
+            EnemyAttack attack;
+            AttackView projection;
             if (!attacks.TryGetValue(sourceId, out attack)
                 || attack == null
                 || !projections.TryGetValue(sourceId, out projection)
@@ -201,8 +201,8 @@ namespace ShooterMover.UnityAdapters.Enemies
                         EnemyAttackPatternDispatchRejectionCode.ConflictingDuplicate);
             }
 
-            EnemyAttack2D attack;
-            EnemyAttackPresentationView2D projection;
+            EnemyAttack attack;
+            AttackView projection;
             if (!attacks.TryGetValue(cancellation.SourceEntityStableId, out attack)
                 || attack == null
                 || !projections.TryGetValue(
@@ -250,9 +250,9 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         private static void RequireCurrentBinding(
-            EnemyAttack2D attack,
-            EnemyAttackPresentationView2D projection,
-            RoomEnemyActor2D actor,
+            EnemyAttack attack,
+            AttackView projection,
+            Enemy actor,
             long revision)
         {
             if (attack == null

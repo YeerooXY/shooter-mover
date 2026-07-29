@@ -230,8 +230,8 @@ namespace ShooterMover.Application.Runs.Session
         StableId PlayerParticipantStableId { get; }
         long NextCollectedRewardOrder { get; }
 
-        RunSessionRewardCollectionResult RecordCollectedRunReward(
+        RunSessionRewardCollectionResult RecordRewardClaim(
             RunSessionCollectedReward reward);
-        IReadOnlyList<RunSessionCollectedReward> ExportCollectedRunRewards();
+        IReadOnlyList<RunSessionCollectedReward> ExportRewardClaims();
     }
 }

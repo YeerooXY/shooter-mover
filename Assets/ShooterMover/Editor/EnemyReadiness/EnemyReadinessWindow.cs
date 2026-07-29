@@ -18,9 +18,9 @@ namespace ShooterMover.Editor.Enemies
         private const string EnemyCatalogPath =
             "Assets/ShooterMover/Resources/EnemyCatalog/enemy_catalog_v2.json";
         private const string PresentationCatalogPath =
-            "Assets/ShooterMover/Resources/ProductionLevels/Level1PresentationCatalog.asset";
+            "Assets/ShooterMover/Resources/Levels/Level1Art.asset";
         private const string RoomContentPath =
-            "Assets/ShooterMover/Resources/ProductionLevels/Level1RoomContent.asset";
+            "Assets/ShooterMover/Resources/Levels/Level1RoomContent.asset";
 
         private readonly List<ReadinessRow> rows = new List<ReadinessRow>();
         private Vector2 scroll;
@@ -123,10 +123,10 @@ namespace ShooterMover.Editor.Enemies
         private void RefreshCore()
         {
             TextAsset enemyJson = AssetDatabase.LoadAssetAtPath<TextAsset>(EnemyCatalogPath);
-            RoomPresentationCatalog2D presentationCatalog =
-                AssetDatabase.LoadAssetAtPath<RoomPresentationCatalog2D>(PresentationCatalogPath);
-            JsonRoomContentDefinition2D roomContent =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(RoomContentPath);
+            RoomArt presentationCatalog =
+                AssetDatabase.LoadAssetAtPath<RoomArt>(PresentationCatalogPath);
+            RoomFile roomContent =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(RoomContentPath);
             if (enemyJson == null || presentationCatalog == null || roomContent == null)
             {
                 loadFailure = "Required production assets are missing. Enemy catalogue: "
@@ -172,7 +172,7 @@ namespace ShooterMover.Editor.Enemies
 
         private static ReadinessRow BuildRow(
             EnemyDefinition definition,
-            RoomPresentationCatalog2D presentationCatalog,
+            RoomArt presentationCatalog,
             IDictionary<StableId, StableId> roomMappings,
             string roomFailure)
         {
@@ -259,8 +259,8 @@ namespace ShooterMover.Editor.Enemies
                 return false;
             }
 
-            EnemyPresentationBridge2D[] adapters =
-                prefab.GetComponentsInChildren<EnemyPresentationBridge2D>(true);
+            EnemyView[] adapters =
+                prefab.GetComponentsInChildren<EnemyView>(true);
             if (adapters.Length == 0)
             {
                 reason = "No matching presentation adapter is registered.";
@@ -291,8 +291,8 @@ namespace ShooterMover.Editor.Enemies
                 return false;
             }
 
-            EnemyDefeatedPresentationRetirement2D[] providers =
-                prefab.GetComponentsInChildren<EnemyDefeatedPresentationRetirement2D>(true);
+            EnemyDeathView[] providers =
+                prefab.GetComponentsInChildren<EnemyDeathView>(true);
             if (providers.Length == 0)
             {
                 reason = "No defeated-presentation retirement component is configured.";

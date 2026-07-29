@@ -108,7 +108,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         private string seedText = "123456";
         private Vector2 scroll;
         private string diagnostic =
-            "Load weapon_baseline_v01.json, select a level, then click boxes into the comparison queue.";
+            "Load gun_baseline_v01.json, select a level, then click boxes into the comparison queue.";
 
         [MenuItem("Tools/Shooter Mover/Strongbox Level Comparison")]
         public static void Open()
@@ -140,11 +140,11 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(
-                "Load weapon_baseline_v01.json",
+                "Load gun_baseline_v01.json",
                 GUILayout.Width(245f)))
             {
                 string path = EditorUtility.OpenFilePanel(
-                    "Select weapon catalog JSON",
+                    "Select gun catalog JSON",
                     UnityEngine.Application.dataPath,
                     "json");
                 if (!string.IsNullOrEmpty(path))
@@ -279,7 +279,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                     "BOX status",
                     result.OpeningResult.Status.ToString());
                 EditorGUILayout.LabelField(
-                    "Committed weapon",
+                    "Committed gun",
                     result.Prepared.CommittedSourceDefinitionId);
                 EditorGUILayout.LabelField(
                     "Box instance",
@@ -377,8 +377,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                 loadedCatalogName = Path.GetFileName(path);
                 results.Clear();
                 diagnostic = "Loaded " + loadedCatalogName
-                    + " with weapon-catalog fingerprint "
-                    + runtime.WeaponCatalog.Fingerprint + ".";
+                    + " with gun-catalog fingerprint "
+                    + runtime.GunCatalog.Fingerprint + ".";
             }
             catch (Exception exception)
             {

@@ -17,15 +17,15 @@ using UnityEngine;
 
 namespace ShooterMover.Tests.PlayMode.Props
 {
-    public sealed class DestructiblePropRewardBridgeTests
+    public sealed class BreakableRewardBridgeTests
     {
         private static readonly Type RuntimeType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructibleProp2D");
+            "ShooterMover.ContentPackages.Props.Breakables.Breakable");
         private static readonly Type BridgeType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropRewardBridge2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableLoot");
 
         [Test]
-        public void SuccessfulRewardSourceNotification_EmitsExactlyOnce()
+        public void SuccessfulLootSourceNotification_EmitsExactlyOnce()
         {
             GameObject root = new GameObject("Rewarded Prop Scope");
             ObjectFamilyDefinitionAsset family = null;
@@ -35,7 +35,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                 Assert.That(RuntimeType, Is.Not.Null);
                 Assert.That(BridgeType, Is.Not.Null);
 
-                GameplaySceneScope2D scope = root.AddComponent<GameplaySceneScope2D>();
+                GameplayScene scope = root.AddComponent<GameplayScene>();
                 scope.ConfigureForTests(
                     "scope.rewarded-prop",
                     "scope.gameplay",
@@ -49,8 +49,8 @@ namespace ShooterMover.Tests.PlayMode.Props
                 propObject.transform.SetParent(root.transform, false);
                 BoxCollider2D collider = propObject.AddComponent<BoxCollider2D>();
                 SpriteRenderer renderer = propObject.AddComponent<SpriteRenderer>();
-                PlacedObjectAuthoring2D placed =
-                    propObject.AddComponent<PlacedObjectAuthoring2D>();
+                PlacedObject placed =
+                    propObject.AddComponent<PlacedObject>();
                 placed.ConfigureForTests(
                     "placed.rewarded-prop",
                     family,
@@ -62,12 +62,12 @@ namespace ShooterMover.Tests.PlayMode.Props
                 PropRewardRecordingSink sink =
                     new GameObject("Prop Reward Sink").AddComponent<PropRewardRecordingSink>();
                 sink.transform.SetParent(root.transform, false);
-                RewardSourceAuthoring2D source =
-                    propObject.AddComponent<RewardSourceAuthoring2D>();
+                LootSourceSetup source =
+                    propObject.AddComponent<LootSourceSetup>();
                 source.ConfigureForTests(
                     placed,
                     profile,
-                    RewardSourceOverrideAuthoring.MoneyOnly(
+                    LootSourceOverrideAuthoring.MoneyOnly(
                         "reward-override.rewarded-prop",
                         "reward-profile.rewarded-prop-instance",
                         "reward-grant.rewarded-prop-instance",
@@ -203,17 +203,17 @@ namespace ShooterMover.Tests.PlayMode.Props
 
     public sealed class PropRewardRecordingSink :
         MonoBehaviour,
-        IRewardSourceOperationSink
+        ILootSourceOperationSink
     {
         public int SubmissionCount { get; private set; }
-        public RewardSourceResolvedPreview AcceptedPreview { get; private set; }
+        public LootSourceResolvedPreview AcceptedPreview { get; private set; }
 
-        public RewardSourceSubmissionResult Submit(RewardSourceResolvedPreview preview)
+        public LootSourceSubmissionResult Submit(LootSourceResolvedPreview preview)
         {
             SubmissionCount++;
             AcceptedPreview = preview;
-            return new RewardSourceSubmissionResult(
-                RewardSourceSubmissionStatus.Accepted,
+            return new LootSourceSubmissionResult(
+                LootSourceSubmissionStatus.Accepted,
                 "Accepted prop reward source operation.");
         }
     }

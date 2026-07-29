@@ -178,8 +178,8 @@ namespace ShooterMover.Tests.EditMode.Characters.Stats
                     LiveModifierOperation.Flat,
                     5m),
                 new LiveModifierDefinition(
-                    "equipment.weapon-rack",
-                    DerivedStatTargetIds.WeaponCapacity,
+                    "equipment.gun-rack",
+                    DerivedStatTargetIds.GunCapacity,
                     LiveModifierOperation.Flat,
                     100m));
 
@@ -188,7 +188,7 @@ namespace ShooterMover.Tests.EditMode.Characters.Stats
 
             Assert.That(result.MaximumHealth, Is.EqualTo(1m));
             Assert.That(result.CriticalChance, Is.EqualTo(1m));
-            Assert.That(result.WeaponCapacity, Is.EqualTo(64));
+            Assert.That(result.GunCapacity, Is.EqualTo(64));
         }
 
         [Test]
@@ -200,7 +200,7 @@ namespace ShooterMover.Tests.EditMode.Characters.Stats
                 "skill-fingerprint",
                 new LiveModifierDefinition(
                     "skill.invalid-capacity",
-                    DerivedStatTargetIds.WeaponCapacity,
+                    DerivedStatTargetIds.GunCapacity,
                     LiveModifierOperation.Flat,
                     0.5m));
 

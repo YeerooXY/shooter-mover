@@ -19,17 +19,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private const float MaxZoom = 2.25f;
         private const float DoorRadius = 7f;
         private const string RootPreferenceKey =
-            "ShooterMover.LevelGridEditorV2.ActiveRoot";
+            "ShooterMover.LevelGridEditor.ActiveRoot";
         private const string MenuPrefix = "Tools/Shooter Mover/Level Design/";
 
-        private readonly Dictionary<LevelRoomAuthoring2D, Rect> roomRects =
-            new Dictionary<LevelRoomAuthoring2D, Rect>();
-        private readonly Dictionary<LevelDoorEndpointAuthoring2D, Rect> doorRects =
-            new Dictionary<LevelDoorEndpointAuthoring2D, Rect>();
-        private readonly Dictionary<LevelDoorLinkAuthoring2D, LineVisual> linkLines =
-            new Dictionary<LevelDoorLinkAuthoring2D, LineVisual>();
+        private readonly Dictionary<LevelRoom, Rect> roomRects =
+            new Dictionary<LevelRoom, Rect>();
+        private readonly Dictionary<DoorEndpoint, Rect> doorRects =
+            new Dictionary<DoorEndpoint, Rect>();
+        private readonly Dictionary<DoorLink, LineVisual> linkLines =
+            new Dictionary<DoorLink, LineVisual>();
 
-        [SerializeField] private LevelDesignSceneAuthoringRoot2D activeRoot;
+        [SerializeField] private LevelDraft activeRoot;
         [SerializeField] private Vector2 pan = Vector2.zero;
         [SerializeField] private float zoom = 1f;
         [SerializeField] private UnityEngine.Object selectedAuthoringObject;
@@ -41,10 +41,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private bool panning;
         private Vector2 panStartMouse;
         private Vector2 panStartValue;
-        private LevelRoomAuthoring2D draggedRoom;
+        private LevelRoom draggedRoom;
         private Vector2 dragGridOffset;
         private Vector2Int dragPreviewCoordinate;
-        private LevelDoorEndpointAuthoring2D connectionDragSource;
+        private DoorEndpoint connectionDragSource;
         private Vector2 connectionDragMouse;
         private LevelGridProblem selectedProblem;
         private Vector2 problemsScroll;
@@ -57,7 +57,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         // Retained for the legacy no-op queued-refresh callback in the state partial.
         private bool validationQueued;
 
-        public LevelDesignSceneAuthoringRoot2D ActiveRoot
+        public LevelDraft ActiveRoot
         {
             get { return activeRoot; }
         }
@@ -85,7 +85,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             window.Repaint();
         }
 
-        public void SetActiveRootForTests(LevelDesignSceneAuthoringRoot2D root)
+        public void SetActiveRootForTests(LevelDraft root)
         {
             SetActiveRoot(root);
         }
@@ -168,10 +168,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 ShowRootMenu();
             }
 
-            LevelDesignSceneAuthoringRoot2D chosen =
-                (LevelDesignSceneAuthoringRoot2D)EditorGUILayout.ObjectField(
+            LevelDraft chosen =
+                (LevelDraft)EditorGUILayout.ObjectField(
                     activeRoot,
-                    typeof(LevelDesignSceneAuthoringRoot2D),
+                    typeof(LevelDraft),
                     true,
                     GUILayout.MinWidth(130f),
                     GUILayout.MaxWidth(360f));
@@ -190,7 +190,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Vector2 createPosition = canvasRect.Contains(lastCanvasMouse)
                     ? lastCanvasMouse
                     : canvasRect.center;
-                LevelRoomAuthoring2D created = LevelGridEditorOperations.CreateRoom(
+                LevelRoom created = LevelGridEditorOperations.CreateRoom(
                     activeRoot,
                     ScreenToNearestGrid(createPosition));
                 SetSelectedAuthoringObject(created);

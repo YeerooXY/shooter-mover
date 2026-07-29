@@ -69,7 +69,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 string json;
                 if (!source.TryGet(path, out json))
                 {
-                    throw Error("level-grid-v2-document-missing", diagnosticPath, "Missing required Level Grid V2 document: " + path);
+                    throw Error("level-level-1-document-missing", diagnosticPath, "Missing required Level Level document: " + path);
                 }
                 return Deserialize<T>(json, diagnosticPath);
             }
@@ -78,7 +78,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             {
                 if (string.IsNullOrWhiteSpace(json))
                 {
-                    throw Error("level-grid-v2-json-empty", path, "JSON content is required.");
+                    throw Error("level-level-1-json-empty", path, "JSON content is required.");
                 }
                 try
                 {
@@ -88,7 +88,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
                     {
                         T value = serializer.ReadObject(stream) as T;
-                        if (value == null) throw Error("level-grid-v2-json-root-invalid", path, "JSON root must be an object.");
+                        if (value == null) throw Error("level-level-1-json-root-invalid", path, "JSON root must be an object.");
                         return value;
                     }
                 }
@@ -101,7 +101,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     {
                         throw;
                     }
-                    throw Error("level-grid-v2-json-invalid", path, "Malformed Level Grid V2 JSON: " + exception.Message);
+                    throw Error("level-level-1-json-invalid", path, "Malformed Level Level JSON: " + exception.Message);
                 }
             }
 
@@ -119,24 +119,24 @@ namespace ShooterMover.Application.Missions.Rooms.Content
 
             private void RequireVersion(int value, string path)
             {
-                if (value != CurrentVersion) throw Error("level-grid-v2-version-unsupported", path, "Expected schema version 2 but received " + value + ".");
+                if (value != CurrentVersion) throw Error("level-level-1-version-unsupported", path, "Expected schema version 2 but received " + value + ".");
             }
 
             private static T Require<T>(T value, string path) where T : class
             {
-                if (value == null) throw Error("level-grid-v2-value-required", path, "A value is required.");
+                if (value == null) throw Error("level-level-1-value-required", path, "A value is required.");
                 return value;
             }
 
             private static List<T> RequireList<T>(List<T> value, string path)
             {
-                if (value == null) throw Error("level-grid-v2-array-required", path, "An array is required. Use [] when empty.");
+                if (value == null) throw Error("level-level-1-array-required", path, "An array is required. Use [] when empty.");
                 return value;
             }
 
             private static string RequireText(string value, string path)
             {
-                if (string.IsNullOrWhiteSpace(value)) throw Error("level-grid-v2-value-required", path, "A non-empty value is required.");
+                if (string.IsNullOrWhiteSpace(value)) throw Error("level-level-1-value-required", path, "A non-empty value is required.");
                 return value.Trim();
             }
 
@@ -145,7 +145,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 string folder = RequireText(value, path);
                 if (folder.Contains("/") || folder.Contains("\\") || folder.Contains(".."))
                 {
-                    throw Error("level-grid-v2-folder-invalid", path, "Room folder must be one safe folder name.");
+                    throw Error("level-level-1-folder-invalid", path, "Room folder must be one safe folder name.");
                 }
                 return folder;
             }
@@ -158,14 +158,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     && !string.Equals(side, "South", StringComparison.OrdinalIgnoreCase)
                     && !string.Equals(side, "West", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw Error("level-grid-v2-door-side-invalid", path, "Door side must be North, East, South, or West.");
+                    throw Error("level-level-1-door-side-invalid", path, "Door side must be North, East, South, or West.");
                 }
                 return char.ToUpperInvariant(side[0]) + side.Substring(1).ToLowerInvariant();
             }
 
             private static int[] RequireVector(int[] value, string path)
             {
-                if (value == null || value.Length != 2) throw Error("level-grid-v2-vector-invalid", path, "A vector must contain exactly two values.");
+                if (value == null || value.Length != 2) throw Error("level-level-1-vector-invalid", path, "A vector must contain exactly two values.");
                 return value;
             }
 
@@ -173,7 +173,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             {
                 if (value == null || value.Length != 2 || !IsFinite(value[0]) || !IsFinite(value[1]))
                 {
-                    throw Error("level-grid-v2-vector-invalid", path, "A vector must contain exactly two finite values.");
+                    throw Error("level-level-1-vector-invalid", path, "A vector must contain exactly two finite values.");
                 }
                 return value;
             }
@@ -185,7 +185,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 actual = RequireVector(actual, path);
                 if (expected[0] != actual[0] || expected[1] != actual[1])
                 {
-                    throw Error("level-grid-v2-coordinate-mismatch", path, "Room index and room sidecar coordinates differ.");
+                    throw Error("level-level-1-coordinate-mismatch", path, "Room index and room sidecar coordinates differ.");
                 }
             }
 
@@ -193,7 +193,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             {
                 if (!string.Equals(expected, RequireText(actual, path), StringComparison.Ordinal))
                 {
-                    throw Error("level-grid-v2-identity-mismatch", path, "Expected " + expected + " but received " + actual + ".");
+                    throw Error("level-level-1-identity-mismatch", path, "Expected " + expected + " but received " + actual + ".");
                 }
             }
 

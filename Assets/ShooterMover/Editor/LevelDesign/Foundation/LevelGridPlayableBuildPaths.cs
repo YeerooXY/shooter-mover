@@ -15,8 +15,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     /// </summary>
     public sealed class LevelGridPlayableBuildPaths
     {
-        public const string TrackedCombatLoopLevelId =
-            "level.authored-json-combat-loop-test";
+        public const string Level1Id =
+            "level.level-1";
         public const string LevelSelectionScenePath =
             "Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity";
         public const string CatalogueSourcePath =
@@ -29,14 +29,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string generatedAssetFolder,
             string compiledAssetPath,
             string resourcePath,
-            bool trackedCombatLoop)
+            bool level1)
         {
             LevelId = levelId;
             SourcePackagePath = sourcePackagePath;
             GeneratedAssetFolder = generatedAssetFolder;
             CompiledAssetPath = compiledAssetPath;
             ResourcePath = resourcePath;
-            IsTrackedCombatLoop = trackedCombatLoop;
+            IsLevel1 = level1;
         }
 
         public string LevelId { get; }
@@ -44,7 +44,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         public string GeneratedAssetFolder { get; }
         public string CompiledAssetPath { get; }
         public string ResourcePath { get; }
-        public bool IsTrackedCombatLoop { get; }
+        public bool IsLevel1 { get; }
 
         public string SourcePackageAbsolutePath
         {
@@ -57,7 +57,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static LevelGridPlayableBuildPaths Resolve(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
             return Resolve(root.LevelIdText);
@@ -68,15 +68,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string normalized = RequireLevelId(levelId);
             if (string.Equals(
                 normalized,
-                TrackedCombatLoopLevelId,
+                Level1Id,
                 StringComparison.Ordinal))
             {
                 return new LevelGridPlayableBuildPaths(
                     normalized,
-                    LevelGridAssetCompiler.TrackedCombatLoopSource,
-                    LevelGridAssetCompiler.TrackedCombatLoopGenerated,
-                    LevelGridAssetCompiler.TrackedCombatLoopResource,
-                    "ProductionLevels/CombatLoopTestRoomContent",
+                    LevelGridAssetCompiler.Level1Source,
+                    LevelGridAssetCompiler.Level1Generated,
+                    LevelGridAssetCompiler.Level1Resource,
+                    "Levels/Level1RoomContent",
                     true);
             }
 
@@ -84,14 +84,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string assetStem = BuildAssetStem(normalized) + "_" + ShortHash(normalized);
             return new LevelGridPlayableBuildPaths(
                 normalized,
-                "Assets/ShooterMover/Content/Definitions/Missions/Rooms/GridV2/Published/"
+                "Assets/ShooterMover/Content/Definitions/Missions/Rooms/Levels/Published/"
                     + token,
-                "Assets/ShooterMover/Content/Generated/Missions/Rooms/GridV2/"
+                "Assets/ShooterMover/Content/Generated/Missions/Rooms/Levels/"
                     + token,
-                "Assets/ShooterMover/Resources/ProductionLevels/"
+                "Assets/ShooterMover/Resources/Levels/"
                     + assetStem
                     + "RoomContent.asset",
-                "ProductionLevels/" + assetStem + "RoomContent",
+                "Levels/" + assetStem + "RoomContent",
                 false);
         }
 
@@ -109,14 +109,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string compiledAbsolute = ToAbsoluteProjectPath(CompiledAssetPath);
             if (!File.Exists(compiledAbsolute)) return;
 
-            JsonRoomContentDefinition2D existing =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(
+            RoomFile existing =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(
                     CompiledAssetPath);
             if (existing == null)
             {
                 throw new InvalidOperationException(
                     "The configured compiled destination exists but is not a "
-                    + nameof(JsonRoomContentDefinition2D)
+                    + nameof(RoomFile)
                     + ": "
                     + CompiledAssetPath);
             }
@@ -202,7 +202,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             string[] entries = Directory.GetFileSystemEntries(absoluteFolder);
-            if (entries.Length == 0 || IsTrackedCombatLoop)
+            if (entries.Length == 0 || IsLevel1)
             {
                 // The tracked sample predates ownership markers and is bound by an exact known ID.
                 return;

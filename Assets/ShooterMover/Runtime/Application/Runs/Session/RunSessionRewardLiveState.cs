@@ -226,7 +226,7 @@ namespace ShooterMover.Application.Runs.Session
             }
         }
 
-        public RunRewardLiveSnapshot ExportRewardRuntimeSnapshot()
+        public RunLootSnapshot ExportRewardRuntimeSnapshot()
         {
             lock (rewardRuntimeGate)
             {
@@ -266,7 +266,7 @@ namespace ShooterMover.Application.Runs.Session
                     }
                 }
                 deliveries.Sort();
-                return new RunRewardLiveSnapshot(
+                return new RunLootSnapshot(
                     RunStableId,
                     checked((int)LifecycleGeneration),
                     rewardEnvironment,
@@ -277,7 +277,7 @@ namespace ShooterMover.Application.Runs.Session
         }
 
         public void RestoreRewardRuntimeSnapshot(
-            RunRewardLiveSnapshot snapshot)
+            RunLootSnapshot snapshot)
         {
             if (snapshot == null)
             {
@@ -368,7 +368,7 @@ namespace ShooterMover.Application.Runs.Session
 
         private void EnsurePrimaryRewardParticipant()
         {
-            RunPlayerLiveSnapshot player =
+            RunPlayerSnapshot player =
                 RuntimePorts.Player.ExportSnapshot();
             if (player == null || player.ParticipantStableId == null)
             {

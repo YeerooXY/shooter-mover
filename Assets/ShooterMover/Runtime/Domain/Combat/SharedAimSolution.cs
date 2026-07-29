@@ -87,9 +87,9 @@ namespace ShooterMover.Domain.Combat
     /// numbers intentionally match the accepted MountOne-through-MountFour order
     /// without introducing a Domain-to-Contracts assembly dependency.
     /// </summary>
-    public readonly struct WeaponMountOrigin : IEquatable<WeaponMountOrigin>
+    public readonly struct GunMountOrigin : IEquatable<GunMountOrigin>
     {
-        public WeaponMountOrigin(int stableSlotNumber, AimVector2 origin)
+        public GunMountOrigin(int stableSlotNumber, AimVector2 origin)
         {
             if (stableSlotNumber < 1 || stableSlotNumber > FourMountAimSolution.MountCount)
             {
@@ -107,14 +107,14 @@ namespace ShooterMover.Domain.Combat
 
         public AimVector2 Origin { get; }
 
-        public bool Equals(WeaponMountOrigin other)
+        public bool Equals(GunMountOrigin other)
         {
             return StableSlotNumber == other.StableSlotNumber && Origin.Equals(other.Origin);
         }
 
         public override bool Equals(object obj)
         {
-            return obj is WeaponMountOrigin other && Equals(other);
+            return obj is GunMountOrigin other && Equals(other);
         }
 
         public override int GetHashCode()
@@ -125,12 +125,12 @@ namespace ShooterMover.Domain.Combat
             }
         }
 
-        public static bool operator ==(WeaponMountOrigin left, WeaponMountOrigin right)
+        public static bool operator ==(GunMountOrigin left, GunMountOrigin right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(WeaponMountOrigin left, WeaponMountOrigin right)
+        public static bool operator !=(GunMountOrigin left, GunMountOrigin right)
         {
             return !left.Equals(right);
         }
@@ -182,7 +182,7 @@ namespace ShooterMover.Domain.Combat
     /// </summary>
     public sealed class FourMountAimSolution
     {
-        public const int MountCount = WeaponLiveProfile.SupportedMountCount;
+        public const int MountCount = GunLiveProfile.SupportedMountCount;
 
         private readonly SharedAimSolution[] solutions;
 

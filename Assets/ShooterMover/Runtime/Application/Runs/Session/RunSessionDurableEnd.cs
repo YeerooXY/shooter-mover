@@ -122,20 +122,20 @@ namespace ShooterMover.Application.Runs.Session
 
     public sealed partial class RunSessionAggregate
     {
-        private RunSessionEndResult pendingDurableEndCandidateV1;
-        private StableId pendingDurableEndOperationStableIdV1;
-        private string pendingDurableEndCommandFingerprintV1 = string.Empty;
-        private RunSessionDurableEndState durableEndStateV1 =
+        private RunSessionEndResult pendingDurableEndCandidate;
+        private StableId pendingDurableEndOperationStableId;
+        private string pendingDurableEndCommandFingerprint = string.Empty;
+        private RunSessionDurableEndState durableEndState =
             RunSessionDurableEndState.None;
-        private string durableEndDiagnosticV1 = string.Empty;
+        private string durableEndDiagnostic = string.Empty;
 
         public RunSessionDurableEndState DurableEndState
         {
             get
             {
-                return pendingDurableEndCandidateV1 == null
+                return pendingDurableEndCandidate == null
                     ? RunSessionDurableEndState.None
-                    : durableEndStateV1;
+                    : durableEndState;
             }
         }
 
@@ -146,12 +146,12 @@ namespace ShooterMover.Application.Runs.Session
         /// </summary>
         public RunSessionEndResult PendingDurableEndCandidate
         {
-            get { return pendingDurableEndCandidateV1; }
+            get { return pendingDurableEndCandidate; }
         }
 
         public string DurableEndDiagnostic
         {
-            get { return durableEndDiagnosticV1; }
+            get { return durableEndDiagnostic; }
         }
 
         /// <summary>
@@ -194,13 +194,13 @@ namespace ShooterMover.Application.Runs.Session
                     "run-end-operation-conflict");
             }
 
-            RunSessionEndResult candidate = pendingDurableEndCandidateV1;
+            RunSessionEndResult candidate = pendingDurableEndCandidate;
             if (candidate != null)
             {
-                if (pendingDurableEndOperationStableIdV1
+                if (pendingDurableEndOperationStableId
                         != command.OperationStableId
                     || !string.Equals(
-                        pendingDurableEndCommandFingerprintV1,
+                        pendingDurableEndCommandFingerprint,
                         command.Fingerprint,
                         StringComparison.Ordinal))
                 {
@@ -210,7 +210,7 @@ namespace ShooterMover.Application.Runs.Session
                         candidate.Receipt,
                         "run-end-pending-durable-operation-conflict");
                 }
-                if (durableEndStateV1
+                if (durableEndState
                     == RunSessionDurableEndState
                         .TerminalPreparationFailure)
                 {
@@ -218,20 +218,20 @@ namespace ShooterMover.Application.Runs.Session
                         RunSessionEndStatus.Rejected,
                         command,
                         candidate.Receipt,
-                        string.IsNullOrWhiteSpace(durableEndDiagnosticV1)
+                        string.IsNullOrWhiteSpace(durableEndDiagnostic)
                             ? "run-end-terminal-preparation-failure"
-                            : durableEndDiagnosticV1);
+                            : durableEndDiagnostic);
                 }
-                if (durableEndStateV1
+                if (durableEndState
                     == RunSessionDurableEndState.DurableStateUncertain)
                 {
                     return new RunSessionEndResult(
                         RunSessionEndStatus.Rejected,
                         command,
                         candidate.Receipt,
-                        string.IsNullOrWhiteSpace(durableEndDiagnosticV1)
+                        string.IsNullOrWhiteSpace(durableEndDiagnostic)
                             ? "run-end-durable-state-uncertain"
-                            : durableEndDiagnosticV1);
+                            : durableEndDiagnostic);
                 }
             }
             else
@@ -305,14 +305,14 @@ namespace ShooterMover.Application.Runs.Session
                     command,
                     candidateReceipt,
                     string.Empty);
-                pendingDurableEndCandidateV1 = candidate;
-                pendingDurableEndOperationStableIdV1 =
+                pendingDurableEndCandidate = candidate;
+                pendingDurableEndOperationStableId =
                     command.OperationStableId;
-                pendingDurableEndCommandFingerprintV1 =
+                pendingDurableEndCommandFingerprint =
                     command.Fingerprint;
-                durableEndStateV1 =
+                durableEndState =
                     RunSessionDurableEndState.PendingExactRetry;
-                durableEndDiagnosticV1 = string.Empty;
+                durableEndDiagnostic = string.Empty;
             }
 
             RunSessionDurableAcceptanceResult durable;
@@ -322,82 +322,82 @@ namespace ShooterMover.Application.Runs.Session
             }
             catch (Exception exception)
             {
-                durableEndStateV1 =
+                durableEndState =
                     RunSessionDurableEndState.DurableStateUncertain;
-                durableEndDiagnosticV1 =
+                durableEndDiagnostic =
                     "run-end-durable-acceptance-threw:"
                     + exception.GetType().Name;
                 return new RunSessionEndResult(
                     RunSessionEndStatus.Rejected,
                     command,
                     candidate.Receipt,
-                    durableEndDiagnosticV1);
+                    durableEndDiagnostic);
             }
 
             if (durable == null)
             {
-                durableEndStateV1 =
+                durableEndState =
                     RunSessionDurableEndState.DurableStateUncertain;
-                durableEndDiagnosticV1 =
+                durableEndDiagnostic =
                     "run-end-durable-acceptance-result-null";
                 return new RunSessionEndResult(
                     RunSessionEndStatus.Rejected,
                     command,
                     candidate.Receipt,
-                    durableEndDiagnosticV1);
+                    durableEndDiagnostic);
             }
 
             if (durable.Status
                 == RunSessionDurableAcceptanceStatus
                     .DurableStateUncertain)
             {
-                durableEndStateV1 =
+                durableEndState =
                     RunSessionDurableEndState.DurableStateUncertain;
-                durableEndDiagnosticV1 = durable.RejectionCode;
+                durableEndDiagnostic = durable.RejectionCode;
                 return new RunSessionEndResult(
                     RunSessionEndStatus.Rejected,
                     command,
                     candidate.Receipt,
-                    durableEndDiagnosticV1);
+                    durableEndDiagnostic);
             }
 
             if (durable.Status
                 == RunSessionDurableAcceptanceStatus
                     .TerminalPreparationFailure)
             {
-                durableEndStateV1 =
+                durableEndState =
                     RunSessionDurableEndState
                         .TerminalPreparationFailure;
-                durableEndDiagnosticV1 = durable.RejectionCode;
+                durableEndDiagnostic = durable.RejectionCode;
                 return new RunSessionEndResult(
                     RunSessionEndStatus.Rejected,
                     command,
                     candidate.Receipt,
-                    durableEndDiagnosticV1);
+                    durableEndDiagnostic);
             }
 
             if (durable.Status
                 == RunSessionDurableAcceptanceStatus
                     .RetryableBeforeDurability)
             {
-                durableEndStateV1 =
+                durableEndState =
                     RunSessionDurableEndState.PendingExactRetry;
-                durableEndDiagnosticV1 = durable.RejectionCode;
+                durableEndDiagnostic = durable.RejectionCode;
                 return new RunSessionEndResult(
                     RunSessionEndStatus.Rejected,
                     command,
                     candidate.Receipt,
-                    durableEndDiagnosticV1);
+                    durableEndDiagnostic);
             }
 
             authoritativeTick = command.AuthoritativeTick;
             lifecycleState = RunSessionLifecycleState.Ended;
             terminalReceipt = candidate.Receipt;
-            pendingDurableEndCandidateV1 = null;
-            pendingDurableEndOperationStableIdV1 = null;
-            pendingDurableEndCommandFingerprintV1 = string.Empty;
-            durableEndStateV1 = RunSessionDurableEndState.None;
-            durableEndDiagnosticV1 = string.Empty;
+            pendingDurableEndCandidate = null;
+            pendingDurableEndOperationStableId = null;
+            pendingDurableEndCommandFingerprint = string.Empty;
+            durableEndState = RunSessionDurableEndState.None;
+            durableEndDiagnostic = string.Empty;
             endReplay.Add(
                 command.OperationStableId,
                 new EndReplayRecord(command.Fingerprint, candidate));

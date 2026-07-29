@@ -27,7 +27,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     oldFolder + ".meta",
                     "fileFormatVersion: 2\nguid: survivor-folder-guid\n");
 
-                LevelRoomAuthoring2D room = roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room = roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.moved",
                     new Vector2Int(4, 0),
@@ -79,7 +79,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                     deletedOld + ".meta",
                     "fileFormatVersion: 2\nguid: deleted-folder-guid\n");
 
-                LevelRoomAuthoring2D room = roomObject.AddComponent<LevelRoomAuthoring2D>();
+                LevelRoom room = roomObject.AddComponent<LevelRoom>();
                 room.ConfigureForTests(
                     "room.survivor",
                     new Vector2Int(1, 0),
@@ -109,7 +109,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
         {
             return Path.Combine(
                 Path.GetTempPath(),
-                "shooter-mover-grid-v2-" + suffix + "-" + Guid.NewGuid().ToString("N"));
+                "shooter-mover-level-1-" + suffix + "-" + Guid.NewGuid().ToString("N"));
         }
 
         private static void DeleteRoot(string root)

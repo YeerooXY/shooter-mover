@@ -7,7 +7,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
     public sealed class ArmorAugmentCompatibilityTests
     {
         [Test]
-        public void ArmorTargetedAugment_IsValidWithoutWeaponRuntimeReference()
+        public void ArmorTargetedAugment_IsValidWithoutGunRuntimeReference()
         {
             StableId armorFamily = StableId.Parse("equipment-family.heavy-armor");
             StableId protectiveTag = StableId.Parse("equipment-tag.protective");
@@ -43,7 +43,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 new[] { armorAugment });
 
             Assert.That(catalogResult.IsValid, Is.True);
-            Assert.That(armor.RuntimeWeaponReferenceId, Is.Null);
+            Assert.That(armor.RuntimeGunReferenceId, Is.Null);
 
             EquipmentInstance instance = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.armor-compatible"),

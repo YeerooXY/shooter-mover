@@ -14,7 +14,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
     /// </summary>
     public sealed class StrongboxPowerBudgetPolicy : IEquatable<StrongboxPowerBudgetPolicy>
     {
-        public const int MaximumLevelDeviationV1 = 12;
+        public const int MaximumLevelDeviation = 12;
         private const int FixedPointScale = 1000;
         private const int NormalSampleCount = 12;
         private const ulong UniformSampleExclusiveUpperBound = 2000001UL;
@@ -63,7 +63,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
 
             canonicalText = "schema=strongbox-power-budget-policy-v1"
                 + "\ntier_level_bonus=" + TierLevelBonus.ToString(CultureInfo.InvariantCulture)
-                + "\nmaximum_level_deviation=" + MaximumLevelDeviationV1.ToString(CultureInfo.InvariantCulture)
+                + "\nmaximum_level_deviation=" + MaximumLevelDeviation.ToString(CultureInfo.InvariantCulture)
                 + "\nitem_level_standard_deviation_milli=" + ItemLevelStandardDeviationMilli.ToString(CultureInfo.InvariantCulture)
                 + "\nminimum_augment_slots=" + MinimumAugmentSlots.ToString(CultureInfo.InvariantCulture)
                 + "\nmaximum_augment_slots=" + MaximumAugmentSlots.ToString(CultureInfo.InvariantCulture)
@@ -105,8 +105,8 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             }
 
             int meanItemLevel = Math.Max(1, checked(playerLevel + TierLevelBonus));
-            int minimumItemLevel = Math.Max(1, meanItemLevel - MaximumLevelDeviationV1);
-            int maximumItemLevel = checked(meanItemLevel + MaximumLevelDeviationV1);
+            int minimumItemLevel = Math.Max(1, meanItemLevel - MaximumLevelDeviation);
+            int maximumItemLevel = checked(meanItemLevel + MaximumLevelDeviation);
 
             DeterministicRandom itemLevelStream = DeterministicRandom.CreateSubstream(
                 rootSeed,
@@ -119,7 +119,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                 checked(itemLevelNormalFixed * ItemLevelStandardDeviationMilli),
                 ApproximateNormalDivisor);
             int itemLevelOffset = RoundFixedToInt(itemOffsetMilli);
-            itemLevelOffset = Clamp(itemLevelOffset, -MaximumLevelDeviationV1, MaximumLevelDeviationV1);
+            itemLevelOffset = Clamp(itemLevelOffset, -MaximumLevelDeviation, MaximumLevelDeviation);
             int targetItemLevel = Clamp(
                 checked(meanItemLevel + itemLevelOffset),
                 minimumItemLevel,
@@ -233,14 +233,14 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
         {
             int clampedDifference = Clamp(
                 differenceFromMean,
-                -MaximumLevelDeviationV1,
-                MaximumLevelDeviationV1);
+                -MaximumLevelDeviation,
+                MaximumLevelDeviation);
             long slotSpanMilli = checked(
                 (long)(effectiveMaximumAugmentSlots - MinimumAugmentSlots) * FixedPointScale);
-            long positionFromOverLevelExtreme = MaximumLevelDeviationV1 - clampedDifference;
+            long positionFromOverLevelExtreme = MaximumLevelDeviation - clampedDifference;
             long interpolated = DivideRounded(
                 checked(slotSpanMilli * positionFromOverLevelExtreme),
-                2L * MaximumLevelDeviationV1);
+                2L * MaximumLevelDeviation);
             return checked((long)MinimumAugmentSlots * FixedPointScale + interpolated);
         }
 
@@ -323,7 +323,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             }
 
             if (differenceFromMean != targetItemLevel - meanItemLevel
-                || Math.Abs(differenceFromMean) > StrongboxPowerBudgetPolicy.MaximumLevelDeviationV1)
+                || Math.Abs(differenceFromMean) > StrongboxPowerBudgetPolicy.MaximumLevelDeviation)
             {
                 throw new ArgumentException(
                     "Strongbox item-level difference must match the target and remain within the V1 bound.",

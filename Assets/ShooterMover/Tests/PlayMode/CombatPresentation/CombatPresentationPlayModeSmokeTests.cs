@@ -24,10 +24,10 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
             {
                 float retainedLifetime;
                 int retainedFrameCount;
-                ICombatDeathVfxFactory2D retainedFactory = BuildRetainedFactory(
+                IDeathEffectsFactory retainedFactory = BuildRetainedFactory(
                     out retainedLifetime,
                     out retainedFrameCount);
-                CombatDeathVfxPool2D pool = owner.AddComponent<CombatDeathVfxPool2D>();
+                DeathEffects pool = owner.AddComponent<DeathEffects>();
                 pool.Configure(retainedFactory, 4);
 
                 ordinary.AddComponent<BoxCollider2D>().size = Vector2.one;
@@ -35,35 +35,35 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                 large.transform.localScale = new Vector3(2f, 2f, 1f);
                 third.AddComponent<BoxCollider2D>().size = Vector2.one;
 
-                FakeEnemyState2D ordinaryAuthority =
-                    ordinary.AddComponent<FakeEnemyState2D>();
-                FakeEnemyState2D largeAuthority =
-                    large.AddComponent<FakeEnemyState2D>();
-                FakeEnemyState2D thirdAuthority =
-                    third.AddComponent<FakeEnemyState2D>();
+                FakeEnemyState ordinaryAuthority =
+                    ordinary.AddComponent<FakeEnemyState>();
+                FakeEnemyState largeAuthority =
+                    large.AddComponent<FakeEnemyState>();
+                FakeEnemyState thirdAuthority =
+                    third.AddComponent<FakeEnemyState>();
                 ordinaryAuthority.Configure("ordinary", 100d);
                 largeAuthority.Configure("large", 200d);
                 thirdAuthority.Configure("third", 150d);
 
-                CombatEnemyPresentationRegistration2D ordinaryRegistration =
-                    CombatEnemyPresentationRegistration2D.Attach(
+                EnemyViewRegistration ordinaryRegistration =
+                    EnemyViewRegistration.Attach(
                         ordinary,
                         ordinaryAuthority,
                         pool,
                         Vector3.up);
-                CombatEnemyPresentationRegistration2D largeRegistration =
-                    CombatEnemyPresentationRegistration2D.Attach(
+                EnemyViewRegistration largeRegistration =
+                    EnemyViewRegistration.Attach(
                         large,
                         largeAuthority,
                         pool,
                         Vector3.up);
-                CombatEnemyPresentationRegistration2D thirdRegistration =
-                    CombatEnemyPresentationRegistration2D.Attach(
+                EnemyViewRegistration thirdRegistration =
+                    EnemyViewRegistration.Attach(
                         third,
                         thirdAuthority,
                         pool,
                         Vector3.up);
-                var ordinaryRuntime = new CombatPresentationEnemyActorState2D(
+                var ordinaryRuntime = new EnemyViewState(
                     ordinaryAuthority,
                     ordinaryRegistration);
 
@@ -112,9 +112,9 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                         100d));
                 Assert.That(pool.TotalSpawnCount, Is.EqualTo(1));
 
-                float ordinaryBounds = EnemyPresentationBounds2D.MeasureLargestDimension(
+                float ordinaryBounds = EnemyBounds.MeasureLargestDimension(
                     ordinary.transform);
-                float largeBounds = EnemyPresentationBounds2D.MeasureLargestDimension(
+                float largeBounds = EnemyBounds.MeasureLargestDimension(
                     large.transform);
                 var scalePolicy = new EnemyDeathVfxScaleConfiguration();
                 Assert.That(largeBounds, Is.GreaterThan(ordinaryBounds));
@@ -125,14 +125,14 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                 if (retainedFrameCount == 0)
                 {
                     Assert.That(
-                        owner.GetComponentInChildren<FallbackRingCombatDeathVfxInstance2D>(true),
+                        owner.GetComponentInChildren<RingDeathEffects>(true),
                         Is.Not.Null,
                         "The retained asset currently has no frames, so the explicit fallback should play.");
                 }
                 else
                 {
                     Assert.That(
-                        owner.GetComponentInChildren<SpriteAnimationCombatDeathVfxInstance2D>(true),
+                        owner.GetComponentInChildren<SpriteDeathEffects>(true),
                         Is.Not.Null);
                 }
 
@@ -154,7 +154,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
             }
         }
 
-        private static ICombatDeathVfxFactory2D BuildRetainedFactory(
+        private static IDeathEffectsFactory BuildRetainedFactory(
             out float lifetime,
             out int frameCount)
         {
@@ -195,7 +195,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
 
             lifetime = frameCount > 0
                 ? Mathf.Max(0.01f, frameCount * secondsPerFrame)
-                : FallbackRingCombatDeathVfxFactory2D.DefaultLifetimeSeconds;
+                : RingDeathEffectsFactory.DefaultLifetimeSeconds;
             var definition = new SpriteAnimationCombatDeathVfxDefinition(
                 "retained.asset:" + animationObject.name,
                 frames,
@@ -204,9 +204,9 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                 visualScale,
                 sortingOrder,
                 useUnscaledTime);
-            return new SpriteAnimationCombatDeathVfxFactory2D(
+            return new SpriteDeathEffectsFactory(
                 definition,
-                new FallbackRingCombatDeathVfxFactory2D());
+                new RingDeathEffectsFactory());
         }
 
         private static StableId Id(string namespaceName, string value)
@@ -214,9 +214,9 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
             return StableId.Create(namespaceName, value);
         }
 
-        public sealed class FakeEnemyState2D :
+        public sealed class FakeEnemyState :
             MonoBehaviour,
-            IEnemyActor2DState,
+            IEnemyState,
             ICombatPresentationLifecycleSource
         {
             private StableId actorId;

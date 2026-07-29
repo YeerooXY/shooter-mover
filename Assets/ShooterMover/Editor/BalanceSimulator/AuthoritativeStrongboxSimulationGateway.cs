@@ -25,7 +25,7 @@ namespace ShooterMover.Editor.BalanceSimulator
     {
         private const int OpeningChunkSize = 256;
 
-        private readonly string weaponCatalogJson;
+        private readonly string gunCatalogJson;
         private readonly ReadOnlyCollection<StrongboxEquipmentMetadata> definitions;
         private readonly Dictionary<StableId, StrongboxEquipmentMetadata> metadataById;
 
@@ -37,20 +37,20 @@ namespace ShooterMover.Editor.BalanceSimulator
         private string chunkScenarioIdentity = string.Empty;
 
         public AuthoritativeStrongboxSimulationGateway(
-            string weaponCatalogJson,
+            string gunCatalogJson,
             StrongboxFingerprints fingerprints,
             IEnumerable<StrongboxEquipmentMetadata> equipmentDefinitions)
         {
-            if (string.IsNullOrWhiteSpace(weaponCatalogJson))
+            if (string.IsNullOrWhiteSpace(gunCatalogJson))
             {
                 throw new ArgumentException(
-                    "Production weapon catalog JSON is required.",
-                    nameof(weaponCatalogJson));
+                    "Production gun catalog JSON is required.",
+                    nameof(gunCatalogJson));
             }
             Fingerprints = fingerprints
                 ?? throw new ArgumentNullException(nameof(fingerprints));
 
-            this.weaponCatalogJson = weaponCatalogJson;
+            this.gunCatalogJson = gunCatalogJson;
             var copied = new List<StrongboxEquipmentMetadata>();
             metadataById = new Dictionary<StableId, StrongboxEquipmentMetadata>();
             foreach (StrongboxEquipmentMetadata metadata in
@@ -273,7 +273,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 scenario.SampleCount - requestedStart));
             AuthoritativeStrongboxSimulatorLive runtime;
             if (!AuthoritativeStrongboxSimulatorLive.TryCreate(
-                    weaponCatalogJson,
+                    gunCatalogJson,
                     out runtime,
                     out diagnostic)
                 || runtime == null)

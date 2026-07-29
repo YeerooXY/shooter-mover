@@ -273,11 +273,11 @@ namespace ShooterMover.Application.Characters.Selection
             }
 
             var equipmentInstanceIds = new List<StableId>(
-                incomingPayload.WeaponSlots.Count);
-            for (int index = 0; index < incomingPayload.WeaponSlots.Count; index++)
+                incomingPayload.GunSlots.Count);
+            for (int index = 0; index < incomingPayload.GunSlots.Count; index++)
             {
                 equipmentInstanceIds.Add(
-                    incomingPayload.WeaponSlots[index].EquipmentInstanceStableId);
+                    incomingPayload.GunSlots[index].EquipmentInstanceStableId);
             }
 
             PlayerRouteProfilePayload selectedPayload =

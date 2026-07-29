@@ -128,24 +128,18 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         public const string PlayableLevelScenePath =
             "Assets/ShooterMover/Scenes/Gameplay/PlayableLevel.unity";
         public static readonly StableId FirstLevelStableId =
-            StableId.Parse("level.authored-json-1");
-
-        // The stable identity is retained for the separate compiled combat-loop lane.
-        // It must not enter the production selection or resolution catalogue until its
-        // exact room-content Resource and gameplay composition are present together.
-        public static readonly StableId AuthoredCombatLoopTestLevelStableId =
-            StableId.Parse("level.authored-json-combat-loop-test");
+            StableId.Parse("level.level-1");
 
         private static readonly PlayableLevelDefinition[] Entries =
         {
             new PlayableLevelDefinition(
                 FirstLevelStableId,
                 "LEVEL 1",
-                "Traverse the first authored two-room JSON level.",
+                "Clear three connected rooms and reach the final exit.",
                 PlayableLevelScenePath,
-                "ProductionLevels/Level1RoomContent",
-                "ProductionLevels/Level1EnemyCatalog",
-                StableId.Parse("presentation.player-production-default"),
+                "Levels/Level1RoomContent",
+                "Levels/Level1EnemyCatalog",
+                StableId.Parse("presentation.player-default"),
                 new LevelRecommendation(1, 1, 1, "STANDARD"),
                 10),
         };

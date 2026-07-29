@@ -21,7 +21,7 @@
       { "definition_kind": "environment", "count": 0 },
       { "definition_kind": "room", "count": 0 },
       { "definition_kind": "shared-module", "count": 0 },
-      { "definition_kind": "weapon", "count": 0 }
+      { "definition_kind": "gun", "count": 0 }
     ]
   },
   "entries": [  ]

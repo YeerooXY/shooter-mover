@@ -6,15 +6,15 @@ using UnityEngine;
 
 namespace ShooterMover.Editor.LevelDesign.Foundation
 {
-    [CustomEditor(typeof(LevelDesignSceneAuthoringRoot2D))]
-    public sealed class LevelDesignSceneAuthoringRoot2DEditor : UnityEditor.Editor
+    [CustomEditor(typeof(LevelDraft))]
+    public sealed class LevelDraftEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
 
-            LevelDesignSceneAuthoringRoot2D root =
-                (LevelDesignSceneAuthoringRoot2D)target;
+            LevelDraft root =
+                (LevelDraft)target;
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
                 "Canonical Level Grid workflow",
@@ -74,7 +74,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         internal static void LogResult(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelDesignValidationResult result)
         {
             if (result.IsValid)
@@ -101,7 +101,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         internal static void LogGridResult(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridValidationResult result)
         {
             if (result.Problems.Count == 0)
@@ -128,7 +128,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void Validate(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridValidationPurpose purpose)
         {
             LevelGridEditorOperations.Validate(root, purpose);
@@ -145,12 +145,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             priority = 200)]
         private static void ValidateSelected()
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            LevelDraft root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
                     "Level Design Validation",
-                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "Select an object below a LevelDraft.",
                     "OK");
                 return;
             }
@@ -158,8 +158,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             LevelGridEditorOperations.Validate(
                 root,
                 LevelGridValidationPurpose.Draft);
-            LevelDesignSceneAuthoringRoot2DEditor.LogResult(root, root.LastValidation);
-            LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
+            LevelDraftEditor.LogResult(root, root.LastValidation);
+            LevelDraftEditor.LogGridResult(
                 root,
                 root.LastGridValidation);
             LevelGridEditorWindow.OpenForRoot(root);
@@ -170,15 +170,15 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             priority = 201)]
         private static void ValidateOpenFoundations()
         {
-            LevelDesignSceneAuthoringRoot2D[] roots =
-                UnityEngine.Object.FindObjectsByType<LevelDesignSceneAuthoringRoot2D>(
+            LevelDraft[] roots =
+                UnityEngine.Object.FindObjectsByType<LevelDraft>(
                     FindObjectsInactive.Include,
                     FindObjectsSortMode.None);
             if (roots.Length == 0)
             {
                 EditorUtility.DisplayDialog(
                     "Level Design Validation",
-                    "No LevelDesignSceneAuthoringRoot2D exists in the open scenes.",
+                    "No LevelDraft exists in the open scenes.",
                     "OK");
                 return;
             }
@@ -194,10 +194,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 errors += roots[index].LastGridValidation.ErrorCount;
                 warnings += roots[index].LastValidation.WarningCount;
                 warnings += roots[index].LastGridValidation.WarningCount;
-                LevelDesignSceneAuthoringRoot2DEditor.LogResult(
+                LevelDraftEditor.LogResult(
                     roots[index],
                     roots[index].LastValidation);
-                LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
+                LevelDraftEditor.LogGridResult(
                     roots[index],
                     roots[index].LastGridValidation);
             }
@@ -226,21 +226,21 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDoorEndpointAuthoring2D door =
-                selected.GetComponent<LevelDoorEndpointAuthoring2D>();
-            LevelRoomAuthoring2D room =
-                selected.GetComponentInParent<LevelRoomAuthoring2D>();
+            DoorEndpoint door =
+                selected.GetComponent<DoorEndpoint>();
+            LevelRoom room =
+                selected.GetComponentInParent<LevelRoom>();
             Component gridObject = door != null ? (Component)door : room;
             if (gridObject != null)
             {
-                LevelDesignSceneAuthoringRoot2D root =
+                LevelDraft root =
                     LevelGridEditorOperations.ResolveRoot(gridObject);
                 if (root != null)
                 {
                     LevelGridEditorWindow.OpenForRoot(root);
                     EditorUtility.DisplayDialog(
                         "Use Canonical Level Grid Commands",
-                        "Room and Grid V2 door placement is owned by the Level Grid editor. "
+                        "Room and Level door placement is owned by the Level Grid editor. "
                             + "Use Move, Reflow or Keep there so validation, Undo and freshness "
                             + "remain consistent.",
                         "OK");
@@ -256,8 +256,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return false;
             }
 
-            LevelPlacementAuthoring2D placement =
-                selected.GetComponent<LevelPlacementAuthoring2D>();
+            LevelObject placement =
+                selected.GetComponent<LevelObject>();
             if (placement == null)
             {
                 return false;
@@ -271,12 +271,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return true;
         }
 
-        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
+        private static LevelDraft ResolveSelectedRoot()
         {
             GameObject selected = Selection.activeGameObject;
             return selected == null
                 ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : selected.GetComponentInParent<LevelDraft>();
         }
     }
 
@@ -285,7 +285,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawRoom(
-            LevelRoomAuthoring2D room,
+            LevelRoom room,
             GizmoType gizmoType)
         {
             Collider2D bounds = room.RoomBounds;
@@ -305,7 +305,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawPlacement(
-            LevelPlacementAuthoring2D placement,
+            LevelObject placement,
             GizmoType gizmoType)
         {
             float radius = HandleUtility.GetHandleSize(
@@ -319,11 +319,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawDoor(
-            LevelDoorConnectionAuthoring2D door,
+            DoorConnection door,
             GizmoType gizmoType)
         {
-            LevelRoomAuthoring2D source = door.SourceRoom;
-            LevelRoomAuthoring2D destination = door.DestinationRoom;
+            LevelRoom source = door.SourceRoom;
+            LevelRoom destination = door.DestinationRoom;
             if (source != null && destination != null)
             {
                 Gizmos.DrawLine(
@@ -337,7 +337,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         [DrawGizmo(
             GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         private static void DrawVoid(
-            LevelVoidRegionAuthoring2D region,
+            VoidArea region,
             GizmoType gizmoType)
         {
             if (region.RegionCollider == null)

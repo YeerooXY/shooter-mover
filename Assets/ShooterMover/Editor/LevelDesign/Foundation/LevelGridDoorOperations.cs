@@ -18,25 +18,25 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         /// Compatibility entry retained for existing callers. It no longer mutates authoring state;
         /// validation and Build must report required reflow rather than silently editing the scene.
         /// </summary>
-        internal static int ReflowAll(LevelDesignSceneAuthoringRoot2D root)
+        internal static int ReflowAll(LevelDraft root)
         {
             return CountDoorsNeedingReflow(root);
         }
 
         internal static int CountDoorsNeedingReflow(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null)
             {
                 return 0;
             }
 
-            LevelDoorEndpointAuthoring2D[] doors =
-                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            DoorEndpoint[] doors =
+                root.GetComponentsInChildren<DoorEndpoint>(true);
             int count = 0;
             for (int index = 0; index < doors.Length; index++)
             {
-                LevelDoorEndpointAuthoring2D door = doors[index];
+                DoorEndpoint door = doors[index];
                 LevelDoorSide expected;
                 if (!TryResolveExpectedSide(root, door, out expected))
                 {
@@ -55,8 +55,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         internal static bool ReflowDoor(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+            LevelDraft root,
+            DoorEndpoint door)
         {
             LevelDoorSide expected;
             if (!TryResolveExpectedSide(root, door, out expected))
@@ -80,7 +80,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         /// inspector, context action or live-validation callback calls this method directly.
         /// </summary>
         internal static int DeleteDoorUndoable(
-            LevelDoorEndpointAuthoring2D door,
+            DoorEndpoint door,
             bool openProblemsWindow = true)
         {
             if (door == null)
@@ -88,14 +88,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return 0;
             }
 
-            LevelDesignSceneAuthoringRoot2D root =
-                door.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+            LevelDraft root =
+                door.GetComponentInParent<LevelDraft>();
             if (root == null)
             {
                 return 0;
             }
 
-            List<LevelDoorLinkAuthoring2D> attached =
+            List<DoorLink> attached =
                 FindAttachedConnections(root, door);
 
             Undo.IncrementCurrentGroup();
@@ -130,18 +130,18 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return attached.Count;
         }
 
-        internal static List<LevelDoorLinkAuthoring2D> FindAttachedConnections(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door)
+        internal static List<DoorLink> FindAttachedConnections(
+            LevelDraft root,
+            DoorEndpoint door)
         {
-            var attached = new List<LevelDoorLinkAuthoring2D>();
+            var attached = new List<DoorLink>();
             if (root == null || door == null)
             {
                 return attached;
             }
 
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            DoorLink[] links =
+                root.GetComponentsInChildren<DoorLink>(true);
             for (int index = 0; index < links.Length; index++)
             {
                 if (links[index].SourceDoor == door
@@ -154,8 +154,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool TryResolveExpectedSide(
-            LevelDesignSceneAuthoringRoot2D root,
-            LevelDoorEndpointAuthoring2D door,
+            LevelDraft root,
+            DoorEndpoint door,
             out LevelDoorSide expected)
         {
             expected = LevelDoorSide.North;
@@ -168,12 +168,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return false;
             }
 
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            DoorLink[] links =
+                root.GetComponentsInChildren<DoorLink>(true);
             for (int index = 0; index < links.Length; index++)
             {
-                LevelDoorLinkAuthoring2D link = links[index];
-                LevelRoomAuthoring2D otherRoom = null;
+                DoorLink link = links[index];
+                LevelRoom otherRoom = null;
                 if (link.SourceDoor == door)
                 {
                     otherRoom = link.DestinationRoom;
@@ -198,7 +198,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static Vector3 ResolveTargetPosition(
-            LevelDoorEndpointAuthoring2D door,
+            DoorEndpoint door,
             LevelDoorSide expected)
         {
             if (door.Side == expected)
@@ -211,7 +211,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             return door.transform.localPosition;
         }
 
-        private static void DestroyConnectionWithUndo(LevelDoorLinkAuthoring2D link)
+        private static void DestroyConnectionWithUndo(DoorLink link)
         {
             if (link == null)
             {

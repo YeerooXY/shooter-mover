@@ -5,7 +5,7 @@ using ShooterMover.Combat.HitPolicy;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Props;
-using ShooterMover.Domain.Weapons.Execution;
+using ShooterMover.Domain.Guns.Execution;
 using ShooterMover.GameplayEntities;
 
 namespace ShooterMover.Tests.EditMode.CombatHitPolicy
@@ -495,21 +495,21 @@ namespace ShooterMover.Tests.EditMode.CombatHitPolicy
         }
 
         [Test]
-        public void WeaponEffectAdapter_PreservesSourceGenerationAndPierce()
+        public void GunEffectAdapter_PreservesSourceGenerationAndPierce()
         {
-            WeaponEffectIdentity identity = new WeaponEffectIdentity(
-                new WeaponActorInstanceId(Id("actor", "player-a")),
+            GunEffectIdentity identity = new GunEffectIdentity(
+                new GunActorInstanceId(Id("actor", "player-a")),
                 new RunParticipantId(Id("participant", "player-a")),
                 new EquipmentInstanceId(Id("equipment-instance", "blaster-a")),
-                new WeaponDefinitionId("weapon.blaster-machine-gun"),
+                new GunDefinitionId("gun.blaster-machine-gun"),
                 new FireOperationId(Id("fire-operation", "fire-a")),
                 new LifecycleGeneration(6L),
                 12L,
                 new ProjectileOrdinal(0));
             DirectProjectileEffect projectile = new DirectProjectileEffect(
                 identity,
-                new WeaponVector2(0d, 0d),
-                new WeaponVector2(1d, 0d),
+                new GunVector2(0d, 0d),
+                new GunVector2(1d, 0d),
                 20d,
                 15d,
                 10d,
@@ -518,7 +518,7 @@ namespace ShooterMover.Tests.EditMode.CombatHitPolicy
                 "kinetic");
 
             CombatEffectSnapshot adapted =
-                WeaponEffectHitPolicyBridge.Create(
+                GunEffectHitPolicyBridge.Create(
                     projectile,
                     CombatHitPolicyIds.PlayerNormal,
                     CombatWorldBlockerBehavior.Terminate,
@@ -526,7 +526,7 @@ namespace ShooterMover.Tests.EditMode.CombatHitPolicy
                     false,
                     1);
             CombatEffectSnapshot replay =
-                WeaponEffectHitPolicyBridge.Create(
+                GunEffectHitPolicyBridge.Create(
                     projectile,
                     CombatHitPolicyIds.PlayerNormal,
                     CombatWorldBlockerBehavior.Terminate,

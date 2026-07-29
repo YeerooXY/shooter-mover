@@ -37,7 +37,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         private bool authorityDiagnosticsExpanded;
         private bool cardDiagnosticsExpanded;
         private string diagnostic =
-            "Load weapon_baseline_v01.json, click boxes into the queue, then open them through the real authorities.";
+            "Load gun_baseline_v01.json, click boxes into the queue, then open them through the real authorities.";
 
         [MenuItem("Tools/Shooter Mover/Authoritative Strongbox Wiring")]
         public static void Open()
@@ -52,7 +52,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 "Authoritative Strongbox Wiring",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Exact owned box -> BOX -> GEN -> RAP -> MON/SCR/INV -> exact box consumption. Fresh equipment is empty; the compact card resolves real weapon statistics through the equipment definition.",
+                "Exact owned box -> BOX -> GEN -> RAP -> MON/SCR/INV -> exact box consumption. Fresh equipment is empty; the compact card resolves real gun statistics through the equipment definition.",
                 MessageType.Info);
             EditorGUILayout.HelpBox(
                 "Keep/Sell remains only in the separate decision-preview opener until an exactly-once equipment disposition authority exists.",
@@ -85,11 +85,11 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(
-                    "Load weapon_baseline_v01.json",
+                    "Load gun_baseline_v01.json",
                     GUILayout.Width(245f)))
             {
                 string path = EditorUtility.OpenFilePanel(
-                    "Select weapon catalog JSON",
+                    "Select gun catalog JSON",
                     UnityEngine.Application.dataPath,
                     "json");
                 if (!string.IsNullOrEmpty(path))
@@ -108,10 +108,10 @@ namespace ShooterMover.Editor.BalanceSimulator
             if (runtime != null)
             {
                 EditorGUILayout.LabelField(
-                    "Live weapons: "
-                    + runtime.WeaponCatalog.GetDefinitions(
-                        ShooterMover.Domain.Weapons.Catalog
-                            .WeaponCatalogContentFilter.LiveOnly).Count
+                    "Live guns: "
+                    + runtime.GunCatalog.GetDefinitions(
+                        ShooterMover.Domain.Guns.Catalog
+                            .GunCatalogContentFilter.LiveOnly).Count
                     + " | Money: "
                     + runtime.MoneyBalance.ToString(
                         CultureInfo.InvariantCulture)
@@ -255,7 +255,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                     "Authority binding tier ID",
                     box.Context.TierStableId.ToString());
                 EditorGUILayout.LabelField(
-                    "Committed weapon definition",
+                    "Committed gun definition",
                     box.CommittedSourceDefinitionId);
                 EditorGUILayout.LabelField(
                     "Root seed",
@@ -376,10 +376,10 @@ namespace ShooterMover.Editor.BalanceSimulator
                         MessageType.Error);
                     continue;
                 }
-                WeaponLootCardEditorDrawer.Draw(
+                GunLootCardEditorDrawer.Draw(
                     item,
                     runtime.EquipmentCatalog,
-                    runtime.WeaponCatalog,
+                    runtime.GunCatalog,
                     ref cardDiagnosticsExpanded);
             }
 
@@ -495,8 +495,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                 page = Page.Queue;
                 diagnostic = "Loaded "
                     + Path.GetFileName(path)
-                    + " with weapon-catalog fingerprint "
-                    + runtime.WeaponCatalog.Fingerprint
+                    + " with gun-catalog fingerprint "
+                    + runtime.GunCatalog.Fingerprint
                     + ".";
             }
             catch (Exception exception)
@@ -517,7 +517,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             if (string.IsNullOrEmpty(loadedCatalogJson))
             {
                 diagnostic =
-                    "Reload weapon_baseline_v01.json before preparing the batch.";
+                    "Reload gun_baseline_v01.json before preparing the batch.";
                 return;
             }
 

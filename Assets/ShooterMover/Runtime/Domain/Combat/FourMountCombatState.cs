@@ -4,19 +4,19 @@ using System.Globalization;
 namespace ShooterMover.Domain.Combat
 {
     /// <summary>
-    /// Immutable state for exactly four independently simulated weapon mounts.
+    /// Immutable state for exactly four independently simulated gun mounts.
     /// Stable index zero through three corresponds to authored mount slot one through four.
     /// </summary>
     public sealed class FourMountCombatState
     {
-        public const int MountCount = WeaponLiveProfile.SupportedMountCount;
+        public const int MountCount = GunLiveProfile.SupportedMountCount;
 
-        private readonly WeaponMountState[] mountStates;
-        private readonly WeaponPowerBankState[] powerBankStates;
+        private readonly GunMountState[] mountStates;
+        private readonly GunPowerBankState[] powerBankStates;
 
         public FourMountCombatState(
-            WeaponMountState[] mountStates,
-            WeaponPowerBankState[] powerBankStates)
+            GunMountState[] mountStates,
+            GunPowerBankState[] powerBankStates)
         {
             if (mountStates == null)
             {
@@ -33,8 +33,8 @@ namespace ShooterMover.Domain.Combat
                 throw new ArgumentException("Exactly four mount states and four power banks are required.");
             }
 
-            this.mountStates = new WeaponMountState[MountCount];
-            this.powerBankStates = new WeaponPowerBankState[MountCount];
+            this.mountStates = new GunMountState[MountCount];
+            this.powerBankStates = new GunPowerBankState[MountCount];
             for (int index = 0; index < MountCount; index++)
             {
                 this.mountStates[index] = mountStates[index]
@@ -45,7 +45,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         public static FourMountCombatState Initial(
-            WeaponLiveProfile[] profiles,
+            GunLiveProfile[] profiles,
             double[] initialPowerUnits)
         {
             ValidateFour(profiles, nameof(profiles));
@@ -54,24 +54,24 @@ namespace ShooterMover.Domain.Combat
                 throw new ArgumentException("Exactly four initial power values are required.", nameof(initialPowerUnits));
             }
 
-            WeaponMountState[] mounts = new WeaponMountState[MountCount];
-            WeaponPowerBankState[] banks = new WeaponPowerBankState[MountCount];
+            GunMountState[] mounts = new GunMountState[MountCount];
+            GunPowerBankState[] banks = new GunPowerBankState[MountCount];
             for (int index = 0; index < MountCount; index++)
             {
-                mounts[index] = WeaponMountState.Initial(profiles[index]);
-                banks[index] = WeaponPowerBankState.FromProfile(profiles[index], initialPowerUnits[index]);
+                mounts[index] = GunMountState.Initial(profiles[index]);
+                banks[index] = GunPowerBankState.FromProfile(profiles[index], initialPowerUnits[index]);
             }
 
             return new FourMountCombatState(mounts, banks);
         }
 
-        public WeaponMountState GetMountByStableIndex(int stableIndex)
+        public GunMountState GetMountByStableIndex(int stableIndex)
         {
             ValidateIndex(stableIndex);
             return mountStates[stableIndex];
         }
 
-        public WeaponPowerBankState GetPowerBankByStableIndex(int stableIndex)
+        public GunPowerBankState GetPowerBankByStableIndex(int stableIndex)
         {
             ValidateIndex(stableIndex);
             return powerBankStates[stableIndex];

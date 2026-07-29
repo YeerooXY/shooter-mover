@@ -21,9 +21,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
             ContentDefinitionDescriptor module = Descriptor(
                 "module.automatic-projectile",
                 ContentDefinitionKind.SharedModule);
-            ContentDefinitionDescriptor weapon = Descriptor(
-                "weapon.blaster-machine-gun",
-                ContentDefinitionKind.Weapon,
+            ContentDefinitionDescriptor gun = Descriptor(
+                "gun.blaster-machine-gun",
+                ContentDefinitionKind.Gun,
                 Ref("module.automatic-projectile", ContentDefinitionKind.SharedModule));
             ContentDefinitionDescriptor enemyZeta = Descriptor(
                 "enemy.zeta",
@@ -38,11 +38,11 @@ namespace ShooterMover.Tests.EditMode.Contracts
 
             GeneratedMachineRegistry first = GeneratedMachineRegistry.Create(
                 7,
-                new[] { weapon, enemyZeta, room, module, enemyAlpha },
+                new[] { gun, enemyZeta, room, module, enemyAlpha },
                 ContentValidationMode.Release);
             GeneratedMachineRegistry second = GeneratedMachineRegistry.Create(
                 7,
-                new[] { enemyAlpha, module, room, enemyZeta, weapon },
+                new[] { enemyAlpha, module, room, enemyZeta, gun },
                 ContentValidationMode.Release);
 
             CollectionAssert.AreEqual(
@@ -61,7 +61,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                     "enemy.zeta",
                     "room.factory-alpha",
                     "module.automatic-projectile",
-                    "weapon.blaster-machine-gun"
+                    "gun.blaster-machine-gun"
                 }));
         }
 
@@ -164,9 +164,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 "module.arc-conduction",
                 ContentDefinitionKind.SharedModule,
                 true);
-            ContentDefinitionDescriptor weapon = Descriptor(
-                "weapon.arc-gun",
-                ContentDefinitionKind.Weapon,
+            ContentDefinitionDescriptor gun = Descriptor(
+                "gun.arc-gun",
+                ContentDefinitionKind.Gun,
                 true,
                 Ref("module.arc-conduction", ContentDefinitionKind.SharedModule));
             ContentDefinitionDescriptor enemy = Descriptor(
@@ -175,11 +175,11 @@ namespace ShooterMover.Tests.EditMode.Contracts
 
             GeneratedMachineRegistry firstRegistry = GeneratedMachineRegistry.Create(
                 2,
-                new[] { weapon, enemy, module },
+                new[] { gun, enemy, module },
                 ContentValidationMode.Prototype);
             GeneratedMachineRegistry secondRegistry = GeneratedMachineRegistry.Create(
                 2,
-                new[] { module, weapon, enemy },
+                new[] { module, gun, enemy },
                 ContentValidationMode.Prototype);
             GeneratedRegistryReviewSnapshot first =
                 GeneratedRegistryReviewSnapshot.Create(firstRegistry);
@@ -201,7 +201,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                     ContentDefinitionKind.Environment,
                     ContentDefinitionKind.Room,
                     ContentDefinitionKind.SharedModule,
-                    ContentDefinitionKind.Weapon
+                    ContentDefinitionKind.Gun
                 }));
             Assert.That(first.ToCanonicalJson(), Does.Contain("\"mode\": \"prototype\""));
             Assert.That(first.ToCanonicalJson(), Does.Contain("\"prototype_only_count\": 2"));
@@ -299,7 +299,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 GeneratedRegistryReviewSnapshot.SchemaId,
                 "snapshot_fingerprint",
                 "kind_counts");
-            Assert.That(machine, Does.Not.Contain("weapon.blaster-machine-gun"));
+            Assert.That(machine, Does.Not.Contain("gun.blaster-machine-gun"));
             Assert.That(review, Does.Not.Contain("enemy.pursuer-drone"));
         }
 

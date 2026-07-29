@@ -207,13 +207,13 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
             int normalMaximumSlots,
             int absoluteMaximumSlots)
         {
-            if (authoredSlotCount <= StrongboxHybridLootPolicy.AuthoredNormalWeaponSlots)
+            if (authoredSlotCount <= StrongboxHybridLootPolicy.AuthoredNormalGunSlots)
             {
                 return Math.Min(authoredSlotCount, normalMaximumSlots);
             }
 
             int overcapSteps =
-                authoredSlotCount - StrongboxHybridLootPolicy.AuthoredNormalWeaponSlots;
+                authoredSlotCount - StrongboxHybridLootPolicy.AuthoredNormalGunSlots;
             return Math.Min(
                 checked(normalMaximumSlots + overcapSteps),
                 absoluteMaximumSlots);

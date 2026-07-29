@@ -38,7 +38,7 @@ namespace ShooterMover.Application.Runs.Session
             get { return checked(CurrentLifecycleCollectionCount() + 1L); }
         }
 
-        public RunSessionRewardCollectionResult RecordCollectedRunReward(
+        public RunSessionRewardCollectionResult RecordRewardClaim(
             RunSessionCollectedReward reward)
         {
             if (reward == null)
@@ -83,7 +83,7 @@ namespace ShooterMover.Application.Runs.Session
                         "run-session-collected-reward-operation-conflict");
             }
 
-            RunPlayerLiveSnapshot player = ExportPlayerSnapshot();
+            RunPlayerSnapshot player = ExportPlayerSnapshot();
             if (reward.CollectorEntityStableId != player.ActorInstanceStableId
                 || reward.CollectorParticipantStableId != player.ParticipantStableId
                 || reward.AttributedParticipantStableId != player.ParticipantStableId)
@@ -152,7 +152,7 @@ namespace ShooterMover.Application.Runs.Session
                 string.Empty);
         }
 
-        public IReadOnlyList<RunSessionCollectedReward> ExportCollectedRunRewards()
+        public IReadOnlyList<RunSessionCollectedReward> ExportRewardClaims()
         {
             var copy = new List<RunSessionCollectedReward>();
             foreach (RunSessionCollectedReward reward in
@@ -191,9 +191,9 @@ namespace ShooterMover.Application.Runs.Session
             return count;
         }
 
-        private RunPlayerLiveSnapshot ExportPlayerSnapshot()
+        private RunPlayerSnapshot ExportPlayerSnapshot()
         {
-            RunPlayerLiveSnapshot snapshot =
+            RunPlayerSnapshot snapshot =
                 RuntimePorts.Player.ExportSnapshot();
             if (snapshot == null)
             {

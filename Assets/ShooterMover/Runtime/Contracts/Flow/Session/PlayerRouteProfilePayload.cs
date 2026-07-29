@@ -32,13 +32,13 @@ namespace ShooterMover.Contracts.Flow.Session
         MalformedCharacterIdentity = 8,
         MissingLoadoutProfileIdentity = 9,
         MalformedLoadoutProfileIdentity = 10,
-        MissingWeaponSlots = 11,
-        WeaponSlotCountMismatch = 12,
-        NullWeaponSlot = 13,
-        MissingWeaponSlotIdentity = 14,
-        MalformedWeaponSlotIdentity = 15,
-        DuplicateWeaponSlotIdentity = 16,
-        UnexpectedWeaponSlotIdentity = 17,
+        MissingGunSlots = 11,
+        GunSlotCountMismatch = 12,
+        NullGunSlot = 13,
+        MissingGunSlotIdentity = 14,
+        MalformedGunSlotIdentity = 15,
+        DuplicateGunSlotIdentity = 16,
+        UnexpectedGunSlotIdentity = 17,
         MissingEquipmentInstanceIdentity = 18,
         MalformedEquipmentInstanceIdentity = 19,
         DuplicateEquipmentInstanceIdentity = 20,
@@ -51,41 +51,41 @@ namespace ShooterMover.Contracts.Flow.Session
     /// position is intentionally unbound. Route payloads describe navigation and bindings;
     /// they never imply inventory ownership.
     /// </summary>
-    public sealed class PlayerRouteWeaponSlotEnvelope
+    public sealed class PlayerRouteGunSlotEnvelope
     {
-        public PlayerRouteWeaponSlotEnvelope(
-            string weaponSlotStableId,
+        public PlayerRouteGunSlotEnvelope(
+            string gunSlotStableId,
             string equipmentInstanceStableId)
         {
-            WeaponSlotStableId = weaponSlotStableId;
+            GunSlotStableId = gunSlotStableId;
             EquipmentInstanceStableId = equipmentInstanceStableId;
         }
 
-        public string WeaponSlotStableId { get; }
+        public string GunSlotStableId { get; }
         public string EquipmentInstanceStableId { get; }
     }
 
     public sealed class PlayerRouteProfileEnvelope
     {
-        private readonly ReadOnlyCollection<PlayerRouteWeaponSlotEnvelope>
-            weaponSlots;
+        private readonly ReadOnlyCollection<PlayerRouteGunSlotEnvelope>
+            gunSlots;
 
         public PlayerRouteProfileEnvelope(
             int schemaVersion,
             string contractStableId,
             string selectedCharacterStableId,
             string loadoutProfileStableId,
-            IEnumerable<PlayerRouteWeaponSlotEnvelope> weaponSlots,
+            IEnumerable<PlayerRouteGunSlotEnvelope> gunSlots,
             string fingerprint)
         {
             SchemaVersion = schemaVersion;
             ContractStableId = contractStableId;
             SelectedCharacterStableId = selectedCharacterStableId;
             LoadoutProfileStableId = loadoutProfileStableId;
-            this.weaponSlots = weaponSlots == null
+            this.gunSlots = gunSlots == null
                 ? null
-                : new ReadOnlyCollection<PlayerRouteWeaponSlotEnvelope>(
-                    new List<PlayerRouteWeaponSlotEnvelope>(weaponSlots));
+                : new ReadOnlyCollection<PlayerRouteGunSlotEnvelope>(
+                    new List<PlayerRouteGunSlotEnvelope>(gunSlots));
             Fingerprint = fingerprint;
         }
 
@@ -93,43 +93,43 @@ namespace ShooterMover.Contracts.Flow.Session
         public string ContractStableId { get; }
         public string SelectedCharacterStableId { get; }
         public string LoadoutProfileStableId { get; }
-        public IReadOnlyList<PlayerRouteWeaponSlotEnvelope> WeaponSlots
+        public IReadOnlyList<PlayerRouteGunSlotEnvelope> GunSlots
         {
-            get { return weaponSlots; }
+            get { return gunSlots; }
         }
         public string Fingerprint { get; }
     }
 
-    public sealed class PlayerRouteWeaponSlot :
-        IEquatable<PlayerRouteWeaponSlot>
+    public sealed class PlayerRouteGunSlot :
+        IEquatable<PlayerRouteGunSlot>
     {
-        internal PlayerRouteWeaponSlot(
-            StableId weaponSlotStableId,
+        internal PlayerRouteGunSlot(
+            StableId gunSlotStableId,
             StableId equipmentInstanceStableId)
         {
-            WeaponSlotStableId = weaponSlotStableId
-                ?? throw new ArgumentNullException(nameof(weaponSlotStableId));
+            GunSlotStableId = gunSlotStableId
+                ?? throw new ArgumentNullException(nameof(gunSlotStableId));
             EquipmentInstanceStableId = equipmentInstanceStableId;
         }
 
-        public StableId WeaponSlotStableId { get; }
+        public StableId GunSlotStableId { get; }
         public StableId EquipmentInstanceStableId { get; }
         public bool IsBound
         {
             get { return EquipmentInstanceStableId != null; }
         }
 
-        public bool Equals(PlayerRouteWeaponSlot other)
+        public bool Equals(PlayerRouteGunSlot other)
         {
             return !ReferenceEquals(other, null)
-                && WeaponSlotStableId == other.WeaponSlotStableId
+                && GunSlotStableId == other.GunSlotStableId
                 && EquipmentInstanceStableId
                     == other.EquipmentInstanceStableId;
         }
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as PlayerRouteWeaponSlot);
+            return Equals(obj as PlayerRouteGunSlot);
         }
 
         public override int GetHashCode()
@@ -140,7 +140,7 @@ namespace ShooterMover.Contracts.Flow.Session
 
         public string ToCanonicalString()
         {
-            return WeaponSlotStableId
+            return GunSlotStableId
                 + "|"
                 + (EquipmentInstanceStableId == null
                     ? "unbound"
@@ -197,28 +197,28 @@ namespace ShooterMover.Contracts.Flow.Session
         IEquatable<PlayerRouteProfilePayload>
     {
         public const int CurrentSchemaVersion = 1;
-        public const int WeaponSlotCount = 4;
+        public const int GunSlotCount = 4;
         public const string CurrentContractStableIdText =
             "route-profile.player-v1";
 
         private static readonly ReadOnlyCollection<StableId>
-            expectedWeaponSlotIds =
+            expectedGunSlotIds =
                 new ReadOnlyCollection<StableId>(new List<StableId>
                 {
-                    StableId.Parse("weapon-slot.slot-1"),
-                    StableId.Parse("weapon-slot.slot-2"),
-                    StableId.Parse("weapon-slot.slot-3"),
-                    StableId.Parse("weapon-slot.slot-4"),
+                    StableId.Parse("gun-slot.slot-1"),
+                    StableId.Parse("gun-slot.slot-2"),
+                    StableId.Parse("gun-slot.slot-3"),
+                    StableId.Parse("gun-slot.slot-4"),
                 });
 
-        private readonly ReadOnlyCollection<PlayerRouteWeaponSlot>
-            weaponSlots;
+        private readonly ReadOnlyCollection<PlayerRouteGunSlot>
+            gunSlots;
         private readonly string canonicalText;
 
         private PlayerRouteProfilePayload(
             StableId selectedCharacterStableId,
             StableId loadoutProfileStableId,
-            IEnumerable<PlayerRouteWeaponSlot> weaponSlots)
+            IEnumerable<PlayerRouteGunSlot> gunSlots)
         {
             SchemaVersion = CurrentSchemaVersion;
             ContractStableId = StableId.Parse(CurrentContractStableIdText);
@@ -228,18 +228,18 @@ namespace ShooterMover.Contracts.Flow.Session
             LoadoutProfileStableId = loadoutProfileStableId
                 ?? throw new ArgumentNullException(
                     nameof(loadoutProfileStableId));
-            this.weaponSlots =
-                new ReadOnlyCollection<PlayerRouteWeaponSlot>(
-                    new List<PlayerRouteWeaponSlot>(
-                        weaponSlots
+            this.gunSlots =
+                new ReadOnlyCollection<PlayerRouteGunSlot>(
+                    new List<PlayerRouteGunSlot>(
+                        gunSlots
                         ?? throw new ArgumentNullException(
-                            nameof(weaponSlots))));
+                            nameof(gunSlots))));
             canonicalText = BuildCanonicalText(
                 SchemaVersion,
                 ContractStableId,
                 SelectedCharacterStableId,
                 LoadoutProfileStableId,
-                this.weaponSlots);
+                this.gunSlots);
             Fingerprint = ComputeFingerprint(canonicalText);
         }
 
@@ -247,14 +247,14 @@ namespace ShooterMover.Contracts.Flow.Session
         public StableId ContractStableId { get; }
         public StableId SelectedCharacterStableId { get; }
         public StableId LoadoutProfileStableId { get; }
-        public IReadOnlyList<PlayerRouteWeaponSlot> WeaponSlots
+        public IReadOnlyList<PlayerRouteGunSlot> GunSlots
         {
-            get { return weaponSlots; }
+            get { return gunSlots; }
         }
         public string Fingerprint { get; }
-        public static IReadOnlyList<StableId> ExpectedWeaponSlotIds
+        public static IReadOnlyList<StableId> ExpectedGunSlotIds
         {
-            get { return expectedWeaponSlotIds; }
+            get { return expectedGunSlotIds; }
         }
 
         public static PlayerRouteProfilePayload Create(
@@ -280,16 +280,16 @@ namespace ShooterMover.Contracts.Flow.Session
 
             var instances = new List<StableId>(
                 orderedEquipmentInstanceStableIds);
-            if (instances.Count != WeaponSlotCount)
+            if (instances.Count != GunSlotCount)
             {
                 throw new ArgumentException(
-                    "Exactly four ordered weapon-position bindings are required.",
+                    "Exactly four ordered gun-position bindings are required.",
                     nameof(orderedEquipmentInstanceStableIds));
             }
 
             var seenInstances = new HashSet<StableId>();
-            var slots = new List<PlayerRouteWeaponSlot>(WeaponSlotCount);
-            for (int index = 0; index < WeaponSlotCount; index++)
+            var slots = new List<PlayerRouteGunSlot>(GunSlotCount);
+            for (int index = 0; index < GunSlotCount; index++)
             {
                 StableId instanceStableId = instances[index];
                 if (instanceStableId != null
@@ -299,8 +299,8 @@ namespace ShooterMover.Contracts.Flow.Session
                         "Bound equipment-instance identities must be unique.",
                         nameof(orderedEquipmentInstanceStableIds));
                 }
-                slots.Add(new PlayerRouteWeaponSlot(
-                    expectedWeaponSlotIds[index],
+                slots.Add(new PlayerRouteGunSlot(
+                    expectedGunSlotIds[index],
                     instanceStableId));
             }
 
@@ -384,66 +384,66 @@ namespace ShooterMover.Contracts.Flow.Session
                 return identityFailure;
             }
 
-            if (envelope.WeaponSlots == null)
+            if (envelope.GunSlots == null)
             {
                 return Reject(
-                    PlayerRouteProfileValidationStatus.MissingWeaponSlots,
+                    PlayerRouteProfileValidationStatus.MissingGunSlots,
                     "route-profile-slots-missing");
             }
-            if (envelope.WeaponSlots.Count != WeaponSlotCount)
+            if (envelope.GunSlots.Count != GunSlotCount)
             {
                 return Reject(
                     PlayerRouteProfileValidationStatus
-                        .WeaponSlotCountMismatch,
+                        .GunSlotCountMismatch,
                     "route-profile-slot-count-mismatch");
             }
 
-            var parsedSlots = new List<PlayerRouteWeaponSlot>(
-                WeaponSlotCount);
+            var parsedSlots = new List<PlayerRouteGunSlot>(
+                GunSlotCount);
             var seenSlotIds = new HashSet<StableId>();
             var seenInstanceIds = new HashSet<StableId>();
             for (int index = 0;
-                 index < envelope.WeaponSlots.Count;
+                 index < envelope.GunSlots.Count;
                  index++)
             {
-                PlayerRouteWeaponSlotEnvelope slot =
-                    envelope.WeaponSlots[index];
+                PlayerRouteGunSlotEnvelope slot =
+                    envelope.GunSlots[index];
                 if (slot == null)
                 {
                     return Reject(
-                        PlayerRouteProfileValidationStatus.NullWeaponSlot,
+                        PlayerRouteProfileValidationStatus.NullGunSlot,
                         "route-profile-slot-null");
                 }
-                if (string.IsNullOrWhiteSpace(slot.WeaponSlotStableId))
+                if (string.IsNullOrWhiteSpace(slot.GunSlotStableId))
                 {
                     return Reject(
                         PlayerRouteProfileValidationStatus
-                            .MissingWeaponSlotIdentity,
+                            .MissingGunSlotIdentity,
                         "route-profile-slot-id-missing");
                 }
 
                 StableId slotStableId;
                 if (!StableId.TryParse(
-                        slot.WeaponSlotStableId,
+                        slot.GunSlotStableId,
                         out slotStableId))
                 {
                     return Reject(
                         PlayerRouteProfileValidationStatus
-                            .MalformedWeaponSlotIdentity,
+                            .MalformedGunSlotIdentity,
                         "route-profile-slot-id-malformed");
                 }
                 if (!seenSlotIds.Add(slotStableId))
                 {
                     return Reject(
                         PlayerRouteProfileValidationStatus
-                            .DuplicateWeaponSlotIdentity,
+                            .DuplicateGunSlotIdentity,
                         "route-profile-slot-id-duplicate");
                 }
-                if (slotStableId != expectedWeaponSlotIds[index])
+                if (slotStableId != expectedGunSlotIds[index])
                 {
                     return Reject(
                         PlayerRouteProfileValidationStatus
-                            .UnexpectedWeaponSlotIdentity,
+                            .UnexpectedGunSlotIdentity,
                         "route-profile-slot-order-or-id-mismatch");
                 }
 
@@ -476,7 +476,7 @@ namespace ShooterMover.Contracts.Flow.Session
                     }
                 }
 
-                parsedSlots.Add(new PlayerRouteWeaponSlot(
+                parsedSlots.Add(new PlayerRouteGunSlot(
                     slotStableId,
                     equipmentInstanceStableId));
             }
@@ -506,15 +506,15 @@ namespace ShooterMover.Contracts.Flow.Session
 
         public PlayerRouteProfileEnvelope ToEnvelope()
         {
-            var slots = new List<PlayerRouteWeaponSlotEnvelope>(
-                weaponSlots.Count);
-            for (int index = 0; index < weaponSlots.Count; index++)
+            var slots = new List<PlayerRouteGunSlotEnvelope>(
+                gunSlots.Count);
+            for (int index = 0; index < gunSlots.Count; index++)
             {
-                slots.Add(new PlayerRouteWeaponSlotEnvelope(
-                    weaponSlots[index].WeaponSlotStableId.ToString(),
-                    weaponSlots[index].EquipmentInstanceStableId == null
+                slots.Add(new PlayerRouteGunSlotEnvelope(
+                    gunSlots[index].GunSlotStableId.ToString(),
+                    gunSlots[index].EquipmentInstanceStableId == null
                         ? null
-                        : weaponSlots[index]
+                        : gunSlots[index]
                             .EquipmentInstanceStableId
                             .ToString()));
             }
@@ -530,11 +530,11 @@ namespace ShooterMover.Contracts.Flow.Session
 
         public PlayerRouteProfilePayload Copy()
         {
-            var instances = new List<StableId>(weaponSlots.Count);
-            for (int index = 0; index < weaponSlots.Count; index++)
+            var instances = new List<StableId>(gunSlots.Count);
+            for (int index = 0; index < gunSlots.Count; index++)
             {
                 StableId source =
-                    weaponSlots[index].EquipmentInstanceStableId;
+                    gunSlots[index].EquipmentInstanceStableId;
                 instances.Add(source == null
                     ? null
                     : StableId.Parse(source.ToString()));
@@ -633,7 +633,7 @@ namespace ShooterMover.Contracts.Flow.Session
             StableId contractStableId,
             StableId selectedCharacterStableId,
             StableId loadoutProfileStableId,
-            IReadOnlyList<PlayerRouteWeaponSlot> slots)
+            IReadOnlyList<PlayerRouteGunSlot> slots)
         {
             var builder = new StringBuilder();
             builder.Append("schema=")

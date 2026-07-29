@@ -370,10 +370,10 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 StableId qualityId = Id("quality.common");
                 EquipmentDefinition definition = EquipmentDefinition.Create(
                     definitionId,
-                    EquipmentCategoryIds.Weapon,
+                    EquipmentCategoryIds.Gun,
                     Id("equipment-family.durable-end-rifle"),
                     "Durable End Rifle",
-                    Id("weapon.durable-end-rifle"),
+                    Id("gun.durable-end-rifle"),
                     InclusiveIntRange.Create(1, 100),
                     2,
                     new[]
@@ -409,7 +409,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     {
                         { DerivedStatTargetIds.MaximumHealth, 100m },
                         { DerivedStatTargetIds.MovementSpeed, 5m },
-                        { DerivedStatTargetIds.WeaponCapacity, 4m },
+                        { DerivedStatTargetIds.GunCapacity, 4m },
                         { DerivedStatTargetIds.AbilityCapacity, 0m },
                     });
                 var characterInput = new DerivedCharacterStatInput(
@@ -448,7 +448,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     new[]
                     {
                         new FrozenRunEquipment(
-                            Id("weapon-slot.slot-1"),
+                            Id("gun-slot.slot-1"),
                             equipment,
                             definition),
                     },
@@ -476,7 +476,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                     Id("participant." + character.CharacterInstanceStableId.Value),
                     1L,
                     Decimal.ToDouble(frozen.CombatProfile.MaximumHealth));
-                Weapons = new FakeWeaponPort(
+                Guns = new FakeGunPort(
                     1L,
                     frozen.Equipment.Select(
                         item => item.EquipmentInstanceStableId));
@@ -487,7 +487,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 MissionResults = new FakeMissionResultPort(runStableId);
                 Ports = new RunSessionLivePorts(
                     Player,
-                    Weapons,
+                    Guns,
                     StatusEffects,
                     ConditionalFacts,
                     ActiveAbilities,
@@ -496,7 +496,7 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
 
             public FakePlayerPort Player { get; }
-            public FakeWeaponPort Weapons { get; }
+            public FakeGunPort Guns { get; }
             public FakeStatusEffectPort StatusEffects { get; }
             public FakeConditionalPort ConditionalFacts { get; }
             public FakeAbilityPort ActiveAbilities { get; }
@@ -594,9 +594,9 @@ namespace ShooterMover.Tests.EditMode.RunSessions
                 acceptedSequence++;
             }
 
-            public RunPlayerLiveSnapshot ExportSnapshot()
+            public RunPlayerSnapshot ExportSnapshot()
             {
-                return new RunPlayerLiveSnapshot(
+                return new RunPlayerSnapshot(
                     actorId,
                     participantId,
                     Generation,
@@ -638,15 +638,15 @@ namespace ShooterMover.Tests.EditMode.RunSessions
             }
         }
 
-        private sealed class FakeWeaponPort : FakeLifecyclePort,
-            IRunWeaponLivePort
+        private sealed class FakeGunPort : FakeLifecyclePort,
+            IRunGunLivePort
         {
             private readonly IReadOnlyList<StableId> equipmentIds;
 
-            public FakeWeaponPort(
+            public FakeGunPort(
                 long generation,
                 IEnumerable<StableId> equipmentIds)
-                : base("weapon-runtime", generation)
+                : base("gun-runtime", generation)
             {
                 this.equipmentIds = equipmentIds.ToList().AsReadOnly();
             }

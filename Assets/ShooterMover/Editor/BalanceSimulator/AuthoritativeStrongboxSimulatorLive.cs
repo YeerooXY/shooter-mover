@@ -20,7 +20,7 @@ using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Application;
 using ShooterMover.Domain.Rewards.Strongboxes;
-using ShooterMover.Domain.Weapons.Catalog;
+using ShooterMover.Domain.Guns.Catalog;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
@@ -150,9 +150,9 @@ namespace ShooterMover.Editor.BalanceSimulator
                     augmentSignatures));
         }
 
-        public WeaponCatalog WeaponCatalog
+        public GunCatalog GunCatalog
         {
-            get { return contentRuntime.WeaponCatalog; }
+            get { return contentRuntime.GunCatalog; }
         }
         public EquipmentCatalog EquipmentCatalog
         {
@@ -171,14 +171,14 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         public static bool TryCreate(
-            string weaponCatalogJson,
+            string gunCatalogJson,
             out AuthoritativeStrongboxSimulatorLive runtime,
             out string diagnostic)
         {
             runtime = null;
             LootboxSimulatorLive content;
             if (!LootboxSimulatorLive.TryCreate(
-                    weaponCatalogJson,
+                    gunCatalogJson,
                     out content,
                     out diagnostic))
             {
@@ -273,7 +273,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             var equipmentResolver =
                 new StrongboxHybridEquipmentGenerationResolver(
                     EquipmentCatalog,
-                    WeaponCatalog,
+                    GunCatalog,
                     augmentSignatures);
             opening = new StrongboxOpeningActions(
                 definitionCatalog,

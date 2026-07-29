@@ -16,7 +16,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         public void TryExecuteAttack_DispatchesOneAtomicTimedBurstAndOuterReplayDoesNotRedeliver()
         {
             var ports = new RecordingPatternPorts();
-            EnemyPlacementLiveInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
+            EnemyInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
             EnemyPerceptionSnapshot perception = Perception();
             EnemyPlacementDecision decision = runtime.Evaluate(perception);
             StableId operation = Id("enemy-operation", "live-burst");
@@ -61,7 +61,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         public void CancelAttackPatterns_NotifiesAtomicSchedulerAndSuppressesPendingBurstEmissions()
         {
             var ports = new RecordingPatternPorts();
-            EnemyPlacementLiveInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
+            EnemyInstance runtime = Runtime(BurstDefinition(), ports.Bundle);
             EnemyPerceptionSnapshot perception = Perception();
             EnemyPlacementDecision decision = runtime.Evaluate(perception);
 
@@ -104,7 +104,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         {
             var support = new RecordingPatternPorts();
             var legacy = new RecordingLegacyAttackPort();
-            EnemyPlacementLiveInstance burstRuntime = Runtime(
+            EnemyInstance burstRuntime = Runtime(
                 BurstDefinition(),
                 support.WithAttackEffects(legacy));
             EnemyPerceptionSnapshot burstPerception = Perception();
@@ -126,7 +126,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
 
             var immediateSupport = new RecordingPatternPorts();
             var immediateLegacy = new RecordingLegacyAttackPort();
-            EnemyPlacementLiveInstance immediateRuntime = Runtime(
+            EnemyInstance immediateRuntime = Runtime(
                 ImmediateSingleDefinition(),
                 immediateSupport.WithAttackEffects(immediateLegacy));
             EnemyPerceptionSnapshot immediatePerception = Perception();
@@ -207,14 +207,14 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Array.Empty<StableId>());
         }
 
-        private static EnemyPlacementLiveInstance Runtime(
+        private static EnemyInstance Runtime(
             EnemyDefinition definition,
             EnemyLiveDownstreamPorts ports)
         {
             return Factory(definition, ports).Create(Request()).Runtime;
         }
 
-        private static EnemyPlacementLiveFactory Factory(
+        private static EnemyFactory Factory(
             EnemyDefinition definition,
             EnemyLiveDownstreamPorts ports)
         {
@@ -223,13 +223,13 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 RoomContentObjectKind.Enemy,
                 definition.DefinitionId,
                 definition.PresentationId);
-            return new EnemyPlacementLiveFactory(
+            return new EnemyFactory(
                 new RoomContentObjectCatalog(new[] { roomObject }),
                 new EnemyCatalog(
                     2,
                     Id("enemy-catalog", "live-pattern-integration"),
                     new[] { definition }),
-                BuiltInEnemyLivePolicyRegistry.Create(),
+                BuiltInEnemyRules.Create(),
                 new DeterministicEnemyLiveIdentityDeriver(),
                 new EnemyDifficultyLiveRegistration(
                     new EnemyDifficultyScalingConfiguration(

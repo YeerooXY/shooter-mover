@@ -186,7 +186,7 @@ namespace ShooterMover.Domain.Props
             for (int index = 0; index < definition.Capabilities.Count; index++)
             {
                 PropCapability capability = definition.Capabilities[index];
-                PropCapabilityValidatorV1 validator;
+                PropCapabilityValidator validator;
                 if (!registry.TryGet(capability.CapabilityId, out validator))
                 {
                     diagnostics.Add(

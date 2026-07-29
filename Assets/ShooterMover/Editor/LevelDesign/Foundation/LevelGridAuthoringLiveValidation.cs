@@ -15,8 +15,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     [InitializeOnLoad]
     public static class LevelGridAuthoringLiveValidation
     {
-        private static readonly HashSet<LevelDesignSceneAuthoringRoot2D> PendingRoots =
-            new HashSet<LevelDesignSceneAuthoringRoot2D>();
+        private static readonly HashSet<LevelDraft> PendingRoots =
+            new HashSet<LevelDraft>();
         private static readonly Dictionary<int, int> HierarchySignatureByRoot =
             new Dictionary<int, int>();
         private static bool refreshScheduled;
@@ -30,7 +30,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         internal static void ValidateNow(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridValidationPurpose purpose,
             bool reflow = false,
             bool notifyWindows = true)
@@ -52,7 +52,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         internal static void MarkSynchronouslyValidated(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null)
             {
@@ -66,7 +66,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static UndoPropertyModification[] OnPostprocessModifications(
             UndoPropertyModification[] modifications)
         {
-            var capturedFixedDoors = new HashSet<LevelDoorEndpointAuthoring2D>();
+            var capturedFixedDoors = new HashSet<DoorEndpoint>();
             for (int index = 0; index < modifications.Length; index++)
             {
                 UndoPropertyModification modification = modifications[index];
@@ -82,8 +82,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 if (movedTransform != null
                     && IsPositionModification(modification.currentValue.propertyPath))
                 {
-                    LevelDoorEndpointAuthoring2D fixedDoor =
-                        movedTransform.GetComponent<LevelDoorEndpointAuthoring2D>();
+                    DoorEndpoint fixedDoor =
+                        movedTransform.GetComponent<DoorEndpoint>();
                     if (fixedDoor != null
                         && fixedDoor.PlacementMode == LevelDoorPlacementMode.Fixed
                         && capturedFixedDoors.Add(fixedDoor))
@@ -94,9 +94,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     }
                 }
 
-                LevelDesignSceneAuthoringRoot2D root = gameObject == null
+                LevelDraft root = gameObject == null
                     ? null
-                    : gameObject.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                    : gameObject.GetComponentInParent<LevelDraft>();
                 QueueRoot(root);
             }
 
@@ -120,11 +120,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void QueueAllLoadedRoots(bool force)
         {
-            LevelDesignSceneAuthoringRoot2D[] roots =
-                Resources.FindObjectsOfTypeAll<LevelDesignSceneAuthoringRoot2D>();
+            LevelDraft[] roots =
+                Resources.FindObjectsOfTypeAll<LevelDraft>();
             for (int index = 0; index < roots.Length; index++)
             {
-                LevelDesignSceneAuthoringRoot2D root = roots[index];
+                LevelDraft root = roots[index];
                 if (!IsSceneRoot(root))
                 {
                     continue;
@@ -138,7 +138,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private static void QueueRoot(LevelDesignSceneAuthoringRoot2D root)
+        private static void QueueRoot(LevelDraft root)
         {
             if (!IsSceneRoot(root))
             {
@@ -164,14 +164,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         {
             EditorApplication.delayCall -= RefreshPendingRoots;
             refreshScheduled = false;
-            LevelDesignSceneAuthoringRoot2D[] roots =
-                new LevelDesignSceneAuthoringRoot2D[PendingRoots.Count];
+            LevelDraft[] roots =
+                new LevelDraft[PendingRoots.Count];
             PendingRoots.CopyTo(roots);
             PendingRoots.Clear();
 
             for (int index = 0; index < roots.Length; index++)
             {
-                LevelDesignSceneAuthoringRoot2D root = roots[index];
+                LevelDraft root = roots[index];
                 if (!IsSceneRoot(root))
                 {
                     continue;
@@ -207,7 +207,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void CaptureFixedDoorPositionWithUndo(
-            LevelDoorEndpointAuthoring2D door)
+            DoorEndpoint door)
         {
             if (door == null
                 || door.PlacementMode != LevelDoorPlacementMode.Fixed)
@@ -221,7 +221,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static bool HasHierarchyChanged(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             int rootId = root.GetInstanceID();
             int current = ComputeHierarchySignature(root);
@@ -236,7 +236,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void UpdateHierarchySignature(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (!IsSceneRoot(root))
             {
@@ -247,7 +247,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static int ComputeHierarchySignature(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             Component[] components = root.GetComponentsInChildren<Component>(true);
             Array.Sort(
@@ -277,7 +277,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private static bool IsSceneRoot(LevelDesignSceneAuthoringRoot2D root)
+        private static bool IsSceneRoot(LevelDraft root)
         {
             return root != null
                 && root.gameObject.scene.IsValid()

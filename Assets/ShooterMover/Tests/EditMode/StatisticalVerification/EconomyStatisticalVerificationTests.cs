@@ -361,9 +361,9 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         {
             return new CraftingRecipe(
                 1,
-                Id("stat.recipe.weapon"),
-                Id("stat.craft.weapon"),
-                Id("stat.discovery.weapon"),
+                Id("stat.recipe.gun"),
+                Id("stat.craft.gun"),
+                Id("stat.discovery.gun"),
                 50,
                 50,
                 5,
@@ -388,18 +388,18 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         private static EquipmentCatalog BuildCraftingCatalog()
         {
             EquipmentQualityTier common = EquipmentQualityTier.Create(CommonQualityId, "Common", 1);
-            EquipmentDefinition weapon = EquipmentDefinition.Create(
-                Id("stat.craft.weapon"),
-                EquipmentCategoryIds.Weapon,
-                Id("stat.craft.weapon-family"),
-                "Stat Craft Weapon",
-                Id("weapon.craft-weapon-runtime"),
+            EquipmentDefinition gun = EquipmentDefinition.Create(
+                Id("stat.craft.gun"),
+                EquipmentCategoryIds.Gun,
+                Id("stat.craft.gun-family"),
+                "Stat Craft Gun",
+                Id("gun.craft-gun-runtime"),
                 InclusiveIntRange.Create(1, 100),
                 0,
                 new[] { common },
                 Array.Empty<StableId>());
             EquipmentCatalogBuildResult build = EquipmentCatalog.Build(
-                new[] { weapon },
+                new[] { gun },
                 Array.Empty<AugmentDefinition>());
             Assert.That(build.IsValid, Is.True);
             return build.Catalog;
@@ -518,7 +518,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                     amount,
                     ScrapIdentity.RewardGrantReason,
                     new ScrapProvenance(
-                        ScrapIdentity.RewardSourceKind,
+                        ScrapIdentity.LootSourceKind,
                         Id("stat.scrap.initial.reward-operation"),
                         Id("stat.player"))));
             Assert.That(result.ChangedState, Is.True);

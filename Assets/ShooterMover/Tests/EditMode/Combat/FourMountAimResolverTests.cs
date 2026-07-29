@@ -22,10 +22,10 @@ namespace ShooterMover.Tests.EditMode.Combat
                 target,
                 StandardOrigins());
 
-            Assert.That(result.Count, Is.EqualTo(WeaponMountContractRules.MountCount));
+            Assert.That(result.Count, Is.EqualTo(GunMountContractRules.MountCount));
             Assert.That(
                 FourMountAimSolution.MountCount,
-                Is.EqualTo(WeaponLiveProfile.SupportedMountCount));
+                Is.EqualTo(GunLiveProfile.SupportedMountCount));
             for (int index = 0; index < result.Count; index++)
             {
                 SharedAimSolution solution = result.GetByStableIndex(index);
@@ -104,12 +104,12 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void Resolve_MirroredOrigins_ProducesMirroredConvergedDirections()
         {
-            WeaponMountOrigin[] origins =
+            GunMountOrigin[] origins =
             {
-                Origin(WeaponMountSlot.MountOne, -2d, 1d),
-                Origin(WeaponMountSlot.MountTwo, 2d, 1d),
-                Origin(WeaponMountSlot.MountThree, -2d, -1d),
-                Origin(WeaponMountSlot.MountFour, 2d, -1d),
+                Origin(GunMountSlot.MountOne, -2d, 1d),
+                Origin(GunMountSlot.MountTwo, 2d, 1d),
+                Origin(GunMountSlot.MountThree, -2d, -1d),
+                Origin(GunMountSlot.MountFour, 2d, -1d),
             };
 
             FourMountAimSolution result = new FourMountAimResolver().Resolve(
@@ -117,10 +117,10 @@ namespace ShooterMover.Tests.EditMode.Combat
                 new AimVector2(0d, 100d),
                 origins);
 
-            SharedAimSolution one = result.GetByStableSlotNumber((int)WeaponMountSlot.MountOne);
-            SharedAimSolution two = result.GetByStableSlotNumber((int)WeaponMountSlot.MountTwo);
-            SharedAimSolution three = result.GetByStableSlotNumber((int)WeaponMountSlot.MountThree);
-            SharedAimSolution four = result.GetByStableSlotNumber((int)WeaponMountSlot.MountFour);
+            SharedAimSolution one = result.GetByStableSlotNumber((int)GunMountSlot.MountOne);
+            SharedAimSolution two = result.GetByStableSlotNumber((int)GunMountSlot.MountTwo);
+            SharedAimSolution three = result.GetByStableSlotNumber((int)GunMountSlot.MountThree);
+            SharedAimSolution four = result.GetByStableSlotNumber((int)GunMountSlot.MountFour);
 
             Assert.That(one.UsedFallbackDirection, Is.False);
             Assert.That(two.UsedFallbackDirection, Is.False);
@@ -135,12 +135,12 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void Resolve_CanonicalizesStableContractSlotOrderAndCopiesInputs()
         {
-            WeaponMountOrigin[] shuffled =
+            GunMountOrigin[] shuffled =
             {
-                Origin(WeaponMountSlot.MountFour, 4d, -1d),
-                Origin(WeaponMountSlot.MountTwo, 2d, 1d),
-                Origin(WeaponMountSlot.MountOne, 1d, 1d),
-                Origin(WeaponMountSlot.MountThree, 3d, -1d),
+                Origin(GunMountSlot.MountFour, 4d, -1d),
+                Origin(GunMountSlot.MountTwo, 2d, 1d),
+                Origin(GunMountSlot.MountOne, 1d, 1d),
+                Origin(GunMountSlot.MountThree, 3d, -1d),
             };
 
             FourMountAimSolution result = new FourMountAimResolver().Resolve(
@@ -150,17 +150,17 @@ namespace ShooterMover.Tests.EditMode.Combat
 
             for (int index = 0; index < result.Count; index++)
             {
-                WeaponMountSlot expectedSlot = WeaponMountContractRules.GetSlotAtHudIndex(index);
+                GunMountSlot expectedSlot = GunMountContractRules.GetSlotAtHudIndex(index);
                 Assert.That(result.GetByStableIndex(index).StableSlotNumber, Is.EqualTo((int)expectedSlot));
             }
 
             AimVector2 preservedMountTwoOrigin = result
-                .GetByStableSlotNumber((int)WeaponMountSlot.MountTwo)
+                .GetByStableSlotNumber((int)GunMountSlot.MountTwo)
                 .Origin;
-            shuffled[1] = Origin(WeaponMountSlot.MountTwo, 999d, 999d);
+            shuffled[1] = Origin(GunMountSlot.MountTwo, 999d, 999d);
 
             Assert.That(
-                result.GetByStableSlotNumber((int)WeaponMountSlot.MountTwo).Origin,
+                result.GetByStableSlotNumber((int)GunMountSlot.MountTwo).Origin,
                 Is.EqualTo(preservedMountTwoOrigin));
         }
 
@@ -170,10 +170,10 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountAimResolver resolver = new FourMountAimResolver();
             AimVector2 target = new AimVector2(100d, 30d);
             AimVector2 aim = ContractAim(1f, 0.3f);
-            WeaponMountOrigin[] baselineOrigins = StandardOrigins();
+            GunMountOrigin[] baselineOrigins = StandardOrigins();
 
             FourMountAimSolution baseline = resolver.Resolve(aim, target, baselineOrigins);
-            baselineOrigins[0] = Origin(WeaponMountSlot.MountOne, -10d, 4d);
+            baselineOrigins[0] = Origin(GunMountSlot.MountOne, -10d, 4d);
             FourMountAimSolution changed = resolver.Resolve(aim, target, baselineOrigins);
 
             for (int slotNumber = 2; slotNumber <= FourMountAimSolution.MountCount; slotNumber++)
@@ -189,12 +189,12 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void Resolve_ZeroIntentAndCoincidentOrigins_UsesDeterministicUnitXFallback()
         {
-            WeaponMountOrigin[] coincident =
+            GunMountOrigin[] coincident =
             {
-                Origin(WeaponMountSlot.MountOne, 5d, 5d),
-                Origin(WeaponMountSlot.MountTwo, 5d, 5d),
-                Origin(WeaponMountSlot.MountThree, 5d, 5d),
-                Origin(WeaponMountSlot.MountFour, 5d, 5d),
+                Origin(GunMountSlot.MountOne, 5d, 5d),
+                Origin(GunMountSlot.MountTwo, 5d, 5d),
+                Origin(GunMountSlot.MountThree, 5d, 5d),
+                Origin(GunMountSlot.MountFour, 5d, 5d),
             };
             AimVector2 coincidentPoint = new AimVector2(5d, 5d);
 
@@ -211,12 +211,12 @@ namespace ShooterMover.Tests.EditMode.Combat
         {
             const double originScale = 1e300d;
             const double offset = 1e290d;
-            WeaponMountOrigin[] origins =
+            GunMountOrigin[] origins =
             {
-                Origin(WeaponMountSlot.MountOne, originScale - offset, offset),
-                Origin(WeaponMountSlot.MountTwo, originScale + offset, offset),
-                Origin(WeaponMountSlot.MountThree, originScale - offset, -offset),
-                Origin(WeaponMountSlot.MountFour, originScale + offset, -offset),
+                Origin(GunMountSlot.MountOne, originScale - offset, offset),
+                Origin(GunMountSlot.MountTwo, originScale + offset, offset),
+                Origin(GunMountSlot.MountThree, originScale - offset, -offset),
+                Origin(GunMountSlot.MountFour, originScale + offset, -offset),
             };
 
             FourMountAimSolution result = new FourMountAimResolver().Resolve(
@@ -246,18 +246,18 @@ namespace ShooterMover.Tests.EditMode.Combat
                 () => resolver.Resolve(
                     ContractAim(1f, 0f),
                     new AimVector2(10d, 0d),
-                    Origin(WeaponMountSlot.MountOne, 0d, 0d),
-                    Origin(WeaponMountSlot.MountOne, 1d, 0d),
-                    Origin(WeaponMountSlot.MountThree, 2d, 0d),
-                    Origin(WeaponMountSlot.MountFour, 3d, 0d)));
+                    Origin(GunMountSlot.MountOne, 0d, 0d),
+                    Origin(GunMountSlot.MountOne, 1d, 0d),
+                    Origin(GunMountSlot.MountThree, 2d, 0d),
+                    Origin(GunMountSlot.MountFour, 3d, 0d)));
             Assert.Throws<ArgumentException>(
                 () => resolver.Resolve(
                     ContractAim(1f, 0f),
                     new AimVector2(10d, 0d),
-                    default(WeaponMountOrigin),
-                    Origin(WeaponMountSlot.MountTwo, 1d, 0d),
-                    Origin(WeaponMountSlot.MountThree, 2d, 0d),
-                    Origin(WeaponMountSlot.MountFour, 3d, 0d)));
+                    default(GunMountOrigin),
+                    Origin(GunMountSlot.MountTwo, 1d, 0d),
+                    Origin(GunMountSlot.MountThree, 2d, 0d),
+                    Origin(GunMountSlot.MountFour, 3d, 0d)));
         }
 
         [Test]
@@ -277,7 +277,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             Type[] immutableTypes =
             {
                 typeof(AimVector2),
-                typeof(WeaponMountOrigin),
+                typeof(GunMountOrigin),
                 typeof(SharedAimSolution),
                 typeof(FourMountAimSolution),
                 typeof(FourMountAimResolver),
@@ -301,23 +301,23 @@ namespace ShooterMover.Tests.EditMode.Combat
                 Is.False);
         }
 
-        private static WeaponMountOrigin[] StandardOrigins()
+        private static GunMountOrigin[] StandardOrigins()
         {
             return new[]
             {
-                Origin(WeaponMountSlot.MountOne, -1d, 1d),
-                Origin(WeaponMountSlot.MountTwo, 1d, 1d),
-                Origin(WeaponMountSlot.MountThree, -1d, -1d),
-                Origin(WeaponMountSlot.MountFour, 1d, -1d),
+                Origin(GunMountSlot.MountOne, -1d, 1d),
+                Origin(GunMountSlot.MountTwo, 1d, 1d),
+                Origin(GunMountSlot.MountThree, -1d, -1d),
+                Origin(GunMountSlot.MountFour, 1d, -1d),
             };
         }
 
-        private static WeaponMountOrigin Origin(
-            WeaponMountSlot slot,
+        private static GunMountOrigin Origin(
+            GunMountSlot slot,
             double x,
             double y)
         {
-            return new WeaponMountOrigin((int)slot, new AimVector2(x, y));
+            return new GunMountOrigin((int)slot, new AimVector2(x, y));
         }
 
         private static AimVector2 ContractAim(float x, float y)

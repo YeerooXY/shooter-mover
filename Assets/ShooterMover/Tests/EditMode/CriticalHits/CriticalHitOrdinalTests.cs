@@ -176,7 +176,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 CombatChannel.Kinetic,
                 profile,
                 new CriticalHitEffectFacts(
-                    Id("effect-definition", "weapon-shotgun"),
+                    Id("effect-definition", "gun-shotgun"),
                     CriticalHitPolicyIds.Normal,
                     Id("equipment-instance", "shotgun-a")),
                 hit);

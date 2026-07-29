@@ -481,7 +481,7 @@ namespace ShooterMover.Contracts.Content
             ContentDefinitionKind.Environment,
             ContentDefinitionKind.Room,
             ContentDefinitionKind.SharedModule,
-            ContentDefinitionKind.Weapon
+            ContentDefinitionKind.Gun
         };
 
         public static ContentValidationMode RequireKnownMode(ContentValidationMode mode)

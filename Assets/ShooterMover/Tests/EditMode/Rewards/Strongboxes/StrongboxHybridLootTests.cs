@@ -218,7 +218,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
-        public void TierEightMapsFullWeaponOutcomeToFullTwoSlotGear()
+        public void TierEightMapsFullGunOutcomeToFullTwoSlotGear()
         {
             StrongboxHybridLootPolicy policy =
                 StrongboxHybridLootCatalog.GetByTierNumber(8);

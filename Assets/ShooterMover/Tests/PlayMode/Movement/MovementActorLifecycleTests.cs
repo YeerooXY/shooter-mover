@@ -231,7 +231,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             fixture.Contact.BeginFixedStep(1L);
             Assert.That(
                 fixture.Contact.TryProcessContact(wall, Vector2.right, 1d),
-                Is.EqualTo(MovementContact2DProcessResult.WallReflected));
+                Is.EqualTo(MovementContactProcessResult.WallReflected));
             Assert.That(fixture.Lifecycle.Actor.CurrentVelocityX, Is.GreaterThan(0d));
             Assert.That(fixture.Body.linearVelocity.x, Is.GreaterThan(0f));
 
@@ -239,7 +239,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             fixture.Contact.BeginFixedStep(2L);
             Assert.That(
                 fixture.Contact.TryProcessContact(wall, Vector2.right, 2d),
-                Is.EqualTo(MovementContact2DProcessResult.AuthorityUnavailable));
+                Is.EqualTo(MovementContactProcessResult.AuthorityUnavailable));
             AssertBodyZero(fixture.Body);
 
             QueueKeyboard(keyboard);
@@ -251,7 +251,7 @@ namespace ShooterMover.Tests.PlayMode.Movement
             fixture.Contact.BeginFixedStep(3L);
             Assert.That(
                 fixture.Contact.TryProcessContact(wall, Vector2.right, 3d),
-                Is.EqualTo(MovementContact2DProcessResult.WallReflected));
+                Is.EqualTo(MovementContactProcessResult.WallReflected));
             Assert.That(
                 fixture.Body.linearVelocity.x,
                 Is.EqualTo((float)fixture.Lifecycle.Actor.CurrentVelocityX)
@@ -272,10 +272,10 @@ namespace ShooterMover.Tests.PlayMode.Movement
 
             Rigidbody2D body = gameObject.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
-            PlayerMovementIntentBridge input =
-                gameObject.AddComponent<PlayerMovementIntentBridge>();
-            MovementContact2DBridge contact =
-                gameObject.AddComponent<MovementContact2DBridge>();
+            PlayerControls input =
+                gameObject.AddComponent<PlayerControls>();
+            MovementContact contact =
+                gameObject.AddComponent<MovementContact>();
             MovementActorLifecycle lifecycle =
                 gameObject.AddComponent<MovementActorLifecycle>();
             MovementThrusterTuningProfile tuning = BuildTuning();
@@ -362,9 +362,9 @@ namespace ShooterMover.Tests.PlayMode.Movement
             public Fixture(
                 GameObject gameObject,
                 Rigidbody2D body,
-                PlayerMovementIntentBridge input,
+                PlayerControls input,
                 InputActionAsset inputActions,
-                MovementContact2DBridge contact,
+                MovementContact contact,
                 MovementActorLifecycle lifecycle,
                 MovementThrusterTuningProfile tuning)
             {
@@ -381,11 +381,11 @@ namespace ShooterMover.Tests.PlayMode.Movement
 
             public Rigidbody2D Body { get; }
 
-            public PlayerMovementIntentBridge Input { get; }
+            public PlayerControls Input { get; }
 
             public InputActionAsset InputActions { get; }
 
-            public MovementContact2DBridge Contact { get; }
+            public MovementContact Contact { get; }
 
             public MovementActorLifecycle Lifecycle { get; }
 
@@ -395,11 +395,11 @@ namespace ShooterMover.Tests.PlayMode.Movement
 
     public sealed class MovementActorLifecycleWallContract :
         MonoBehaviour,
-        IMovementContact2DContract
+        IMovementContact
     {
-        public bool TryDescribeMovementContact(out MovementContact2DDescriptor descriptor)
+        public bool TryDescribeMovementContact(out MovementContactDescriptor descriptor)
         {
-            descriptor = MovementContact2DDescriptor.Wall();
+            descriptor = MovementContactDescriptor.Wall();
             return true;
         }
     }

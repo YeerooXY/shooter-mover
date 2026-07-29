@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 612e3acb4ed444a785773f6db49ed26f, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.ProductionFlow::ShooterMover.UI.ProductionFlow.ResultsController
+  m_EditorClassIdentifier: ShooterMover.UI.Game::ShooterMover.UI.Game.Results
   resultsBackgroundAsset: {fileID: 4900000, guid: 8ed90f5a36d9439ea176bb3e6e015991, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

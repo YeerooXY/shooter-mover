@@ -38,7 +38,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (enemy.Level <= 0)
                     {
                         throw Error(
-                            "level-grid-v2-enemy-level-invalid",
+                            "level-level-1-enemy-level-invalid",
                             path + ".level",
                             "Enemy level must be positive.");
                     }
@@ -86,7 +86,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!ids.Add(id))
                     {
                         throw Error(
-                            "level-grid-v2-placement-id-duplicate",
+                            "level-level-1-placement-id-duplicate",
                             path + ".id",
                             "Duplicate placement ID: " + id);
                     }
@@ -100,7 +100,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!ids.Add(id))
                     {
                         throw Error(
-                            "level-grid-v2-placement-id-duplicate",
+                            "level-level-1-placement-id-duplicate",
                             path + ".id",
                             "Duplicate placement ID: " + id);
                     }
@@ -116,7 +116,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     && !string.Equals(completion, "always", StringComparison.Ordinal))
                 {
                     throw Error(
-                        "level-grid-v2-completion-unsupported",
+                        "level-level-1-completion-unsupported",
                         room.Root + "encounter.json.completion",
                         "Completion must be all-enemies or always.");
                 }
@@ -152,14 +152,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!seen.Add(id))
                     {
                         throw Error(
-                            "level-grid-v2-optional-enemy-duplicate",
+                            "level-level-1-optional-enemy-duplicate",
                             path,
                             "Optional enemy ID is duplicated: " + id);
                     }
                     if (!enemyIds.Contains(id))
                     {
                         throw Error(
-                            "level-grid-v2-optional-enemy-unknown",
+                            "level-level-1-optional-enemy-unknown",
                             path,
                             "Optional enemy ID does not exist in this room: " + id);
                     }
@@ -183,7 +183,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!hasDoor && !hasExitType && !hasLinkKind)
                     {
                         throw Error(
-                            "level-grid-v2-door-rule-selector-empty",
+                            "level-level-1-door-rule-selector-empty",
                             path + ".match",
                             "A door rule must select by door_id, exit_type, or link_kind.");
                     }
@@ -206,7 +206,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         if (!found)
                         {
                             throw Error(
-                                "level-grid-v2-encounter-door-unknown",
+                                "level-level-1-encounter-door-unknown",
                                 path + ".match.door_id",
                                 "Encounter rule references a door not owned by this room: "
                                     + doorId);
@@ -214,7 +214,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         if (!directDoorRules.Add(doorId))
                         {
                             throw Error(
-                                "level-grid-v2-encounter-door-rule-duplicate",
+                                "level-level-1-encounter-door-rule-duplicate",
                                 path + ".match.door_id",
                                 "More than one explicit encounter rule references door: "
                                     + doorId);
@@ -229,7 +229,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                             && !string.Equals(exitType, "return", StringComparison.Ordinal))
                         {
                             throw Error(
-                                "level-grid-v2-door-rule-exit-type-invalid",
+                                "level-level-1-door-rule-exit-type-invalid",
                                 path + ".match.exit_type",
                                 "Door-rule exit_type must be progression or return.");
                         }
@@ -242,7 +242,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                             && !string.Equals(linkKind, "final-exit", StringComparison.Ordinal))
                         {
                             throw Error(
-                                "level-grid-v2-door-rule-link-kind-invalid",
+                                "level-level-1-door-rule-link-kind-invalid",
                                 path + ".match.link_kind",
                                 "Door-rule link_kind must be room or final-exit.");
                         }
@@ -255,7 +255,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         && !string.Equals(openWhen, "always", StringComparison.Ordinal))
                     {
                         throw Error(
-                            "level-grid-v2-door-rule-gate-invalid",
+                            "level-level-1-door-rule-gate-invalid",
                             path + ".open_when",
                             "Door-rule open_when must be room-complete, room-entered, or always.");
                     }
@@ -282,7 +282,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 if (!IsFinite(value))
                 {
                     throw Error(
-                        "level-grid-v2-number-invalid",
+                        "level-level-1-number-invalid",
                         path,
                         "A finite numeric value is required.");
                 }
@@ -299,14 +299,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!listed.Add(id))
                     {
                         throw Error(
-                            "level-grid-v2-room-id-duplicate",
+                            "level-level-1-room-id-duplicate",
                             "$.level.room_ids",
                             "Duplicate room ID: " + id);
                     }
                     if (!rooms.ContainsKey(id))
                     {
                         throw Error(
-                            "level-grid-v2-room-index-missing",
+                            "level-level-1-room-index-missing",
                             "$.level.room_ids[" + i + "]",
                             "Unknown indexed room: " + id);
                     }
@@ -314,7 +314,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 if (listed.Count != rooms.Count)
                 {
                     throw Error(
-                        "level-grid-v2-room-index-incomplete",
+                        "level-level-1-room-index-incomplete",
                         "$.level.room_ids",
                         "room_ids must contain every indexed room exactly once.");
                 }
@@ -333,14 +333,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!rooms.TryGetValue(roomId, out room))
                     {
                         throw Error(
-                            "level-grid-v2-map-room-unknown",
+                            "level-level-1-map-room-unknown",
                             path + ".room_id",
                             "Unknown room: " + roomId);
                     }
                     if (!nodeIds.Add(roomId))
                     {
                         throw Error(
-                            "level-grid-v2-map-room-duplicate",
+                            "level-level-1-map-room-duplicate",
                             path + ".room_id",
                             "Duplicate map node: " + roomId);
                     }
@@ -351,7 +351,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (node.Slot != room.Entry.Slot)
                     {
                         throw Error(
-                            "level-grid-v2-map-slot-mismatch",
+                            "level-level-1-map-slot-mismatch",
                             path + ".slot",
                             "Map node slot must match the authoritative room index.");
                     }
@@ -359,7 +359,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 if (nodeIds.Count != rooms.Count)
                 {
                     throw Error(
-                        "level-grid-v2-map-incomplete",
+                        "level-level-1-map-incomplete",
                         "$.map.nodes",
                         "Map nodes must contain every room exactly once.");
                 }
@@ -381,7 +381,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!connectionIds.Add(id))
                     {
                         throw Error(
-                            "level-grid-v2-connection-id-duplicate",
+                            "level-level-1-connection-id-duplicate",
                             path + ".connection_id",
                             "Duplicate connection stable ID: " + id);
                     }
@@ -391,7 +391,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         StringComparison.OrdinalIgnoreCase))
                     {
                         throw Error(
-                            "level-grid-v2-travel-policy-unsupported",
+                            "level-level-1-travel-policy-unsupported",
                             path + ".travel_policy",
                             "The playable V2 compiler currently requires Bidirectional connections.");
                     }
@@ -400,14 +400,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!from.Dto.Traversable || !to.Dto.Traversable)
                     {
                         throw Error(
-                            "level-grid-v2-connection-door-nontraversable",
+                            "level-level-1-connection-door-nontraversable",
                             path,
                             "Every endpoint in a playable room connection must be traversable.");
                     }
                     if (ReferenceEquals(from.Room, to.Room))
                     {
                         throw Error(
-                            "level-grid-v2-self-connection",
+                            "level-level-1-self-connection",
                             path,
                             "A connection must join different rooms.");
                     }
@@ -429,7 +429,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 if (!rooms.TryGetValue(roomId, out room))
                 {
                     throw Error(
-                        "level-grid-v2-room-reference-unknown",
+                        "level-level-1-room-reference-unknown",
                         path + ".room_id",
                         "Unknown room: " + roomId);
                 }
@@ -438,7 +438,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     || !ReferenceEquals(door.Room, room))
                 {
                     throw Error(
-                        "level-grid-v2-door-reference-unknown",
+                        "level-level-1-door-reference-unknown",
                         path + ".door_id",
                         "Unknown door endpoint: " + roomId + " + " + doorId);
                 }
@@ -454,7 +454,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 if (connectionByEndpoint.ContainsKey(key))
                 {
                     throw Error(
-                        "level-grid-v2-endpoint-reused",
+                        "level-level-1-endpoint-reused",
                         path,
                         "A door endpoint may be used by only one connection: " + key);
                 }
@@ -470,7 +470,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 if (!rooms.TryGetValue(startRoomId, out start))
                 {
                     throw Error(
-                        "level-grid-v2-start-room-missing",
+                        "level-level-1-start-room-missing",
                         "$.level.start_room_id",
                         "Unknown start room: " + startRoomId);
                 }
@@ -484,14 +484,14 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (isStart && room.Room.PlayerStart == null)
                     {
                         throw Error(
-                            "level-grid-v2-player-start-missing",
+                            "level-level-1-player-start-missing",
                             room.Root + "room.json.player_start",
                             "The start room requires one deterministic player_start.");
                     }
                     if (!isStart && room.Room.PlayerStart != null)
                     {
                         throw Error(
-                            "level-grid-v2-player-start-extra",
+                            "level-level-1-player-start-extra",
                             room.Root + "room.json.player_start",
                             "Only the authoritative start room may define player_start.");
                     }
@@ -511,7 +511,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     || startPosition[1] < minY || startPosition[1] > maxY)
                 {
                     throw Error(
-                        "level-grid-v2-player-start-outside-bounds",
+                        "level-level-1-player-start-outside-bounds",
                         start.Root + "room.json.player_start.position",
                         "The deterministic player start must lie inside the start-room bounds.");
                 }
@@ -523,21 +523,21 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     || !ReferenceEquals(finalDoor.Room, finalRoom))
                 {
                     throw Error(
-                        "level-grid-v2-final-exit-invalid",
+                        "level-level-1-final-exit-invalid",
                         "$.level.final_exit",
                         "Final exit must reference an existing room ID + door ID endpoint.");
                 }
                 if (!finalDoor.Dto.Traversable)
                 {
                     throw Error(
-                        "level-grid-v2-final-exit-invalid",
+                        "level-level-1-final-exit-invalid",
                         "$.level.final_exit",
                         "Final exit endpoint must be traversable.");
                 }
                 if (finalDoor.Connection != null)
                 {
                     throw Error(
-                        "level-grid-v2-final-exit-connected",
+                        "level-level-1-final-exit-connected",
                         "$.level.final_exit",
                         "Final exit endpoint cannot also participate in a room connection.");
                 }
@@ -561,7 +561,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     if (!final && door.Connection == null)
                     {
                         throw Error(
-                            "level-grid-v2-traversable-door-unresolved",
+                            "level-level-1-traversable-door-unresolved",
                             door.Room.Root + "doors.json",
                             "Traversable door is neither connected nor the final exit: "
                                 + door.DoorId);
@@ -596,7 +596,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         if (!reached.Contains(roomId))
                         {
                             throw Error(
-                                "level-grid-v2-room-inaccessible",
+                                "level-level-1-room-inaccessible",
                                 "$.map.connections",
                                 "Required room is inaccessible from the start room: "
                                     + roomId);

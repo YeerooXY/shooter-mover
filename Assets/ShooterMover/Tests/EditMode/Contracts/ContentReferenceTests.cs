@@ -18,7 +18,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             ContentDefinitionKind[] acceptedKinds =
             {
-                ContentDefinitionKind.Weapon,
+                ContentDefinitionKind.Gun,
                 ContentDefinitionKind.Enemy,
                 ContentDefinitionKind.Room,
                 ContentDefinitionKind.Encounter,
@@ -44,7 +44,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void ContentReference_RejectsUnknownKindsAndNonCanonicalVersions()
         {
-            StableId definitionId = StableId.Parse("weapon.blaster-machine-gun");
+            StableId definitionId = StableId.Parse("gun.blaster-machine-gun");
 
             Assert.Throws<ArgumentOutOfRangeException>(
                 () => ContentReference.Create(
@@ -54,21 +54,21 @@ namespace ShooterMover.Tests.EditMode.Contracts
             Assert.Throws<ArgumentOutOfRangeException>(
                 () => ContentReference.Create(
                     definitionId,
-                    ContentDefinitionKind.Weapon,
+                    ContentDefinitionKind.Gun,
                     0));
             Assert.Throws<FormatException>(
                 () => ContentReference.ParseCanonical(
-                    "definition_id=weapon.blaster-machine-gun\n"
-                    + "expected_kind=weapon\n"
+                    "definition_id=gun.blaster-machine-gun\n"
+                    + "expected_kind=gun\n"
                     + "expected_version=01"));
             Assert.Throws<FormatException>(
                 () => ContentReference.ParseCanonical(
-                    "expected_kind=weapon\n"
-                    + "definition_id=weapon.blaster-machine-gun\n"
+                    "expected_kind=gun\n"
+                    + "definition_id=gun.blaster-machine-gun\n"
                     + "expected_version=1"));
             Assert.Throws<FormatException>(
                 () => ContentReference.ParseCanonical(
-                    "definition_id=weapon.blaster-machine-gun\n"
+                    "definition_id=gun.blaster-machine-gun\n"
                     + "expected_kind=projectile\n"
                     + "expected_version=1"));
         }
@@ -78,7 +78,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             List<ContentReference> source = new List<ContentReference>
             {
-                Ref("weapon.shotgun", ContentDefinitionKind.Weapon),
+                Ref("gun.shotgun", ContentDefinitionKind.Gun),
                 Ref("enemy.pursuer-drone", ContentDefinitionKind.Enemy)
             };
 
@@ -94,7 +94,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 Is.EqualTo(StableId.Parse("enemy.pursuer-drone")));
             Assert.That(
                 descriptor.References[1].DefinitionId,
-                Is.EqualTo(StableId.Parse("weapon.shotgun")));
+                Is.EqualTo(StableId.Parse("gun.shotgun")));
             Assert.That(descriptor.ToCanonicalString(), Does.Contain("reference_count=2"));
             Assert.That(
                 descriptor.ToCanonicalString(),
@@ -104,9 +104,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Descriptor_EquivalentReferenceSetsHaveIdenticalIdentity()
         {
-            ContentReference weapon = Ref(
-                "weapon.blaster-machine-gun",
-                ContentDefinitionKind.Weapon);
+            ContentReference gun = Ref(
+                "gun.blaster-machine-gun",
+                ContentDefinitionKind.Gun);
             ContentReference enemy = Ref(
                 "enemy.pursuer-drone",
                 ContentDefinitionKind.Enemy);
@@ -114,11 +114,11 @@ namespace ShooterMover.Tests.EditMode.Contracts
             ContentDefinitionDescriptor first = Descriptor(
                 "encounter.baseline",
                 ContentDefinitionKind.Encounter,
-                new[] { weapon, enemy });
+                new[] { gun, enemy });
             ContentDefinitionDescriptor second = Descriptor(
                 "encounter.baseline",
                 ContentDefinitionKind.Encounter,
-                new[] { enemy, weapon });
+                new[] { enemy, gun });
 
             Assert.That(first, Is.EqualTo(second));
             Assert.That(first.GetHashCode(), Is.EqualTo(second.GetHashCode()));
@@ -131,13 +131,13 @@ namespace ShooterMover.Tests.EditMode.Contracts
             ContentDefinitionDescriptor module = Descriptor(
                 "module.automatic-projectile",
                 ContentDefinitionKind.SharedModule);
-            ContentDefinitionDescriptor weapon = Descriptor(
-                "weapon.blaster-machine-gun",
-                ContentDefinitionKind.Weapon,
+            ContentDefinitionDescriptor gun = Descriptor(
+                "gun.blaster-machine-gun",
+                ContentDefinitionKind.Gun,
                 Ref("module.automatic-projectile", ContentDefinitionKind.SharedModule));
 
             ContentValidationResult result = ContentValidationResult.Validate(
-                new[] { weapon, module },
+                new[] { gun, module },
                 ContentValidationMode.Release);
 
             Assert.That(result.IsValid, Is.True);
@@ -146,20 +146,20 @@ namespace ShooterMover.Tests.EditMode.Contracts
             ContentDefinitionDescriptor resolved;
             Assert.That(
                 result.TryResolve(
-                    Ref("weapon.blaster-machine-gun", ContentDefinitionKind.Weapon),
+                    Ref("gun.blaster-machine-gun", ContentDefinitionKind.Gun),
                     out resolved),
                 Is.True);
-            Assert.That(resolved, Is.SameAs(weapon));
+            Assert.That(resolved, Is.SameAs(gun));
             Assert.That(
                 result.TryResolve(
-                    Ref("weapon.blaster-machine-gun", ContentDefinitionKind.Enemy),
+                    Ref("gun.blaster-machine-gun", ContentDefinitionKind.Enemy),
                     out resolved),
                 Is.False);
             Assert.That(
                 result.TryResolve(
                     ContentReference.Create(
-                        StableId.Parse("weapon.blaster-machine-gun"),
-                        ContentDefinitionKind.Weapon,
+                        StableId.Parse("gun.blaster-machine-gun"),
+                        ContentDefinitionKind.Gun,
                         2),
                     out resolved),
                 Is.False);
@@ -169,16 +169,16 @@ namespace ShooterMover.Tests.EditMode.Contracts
         public void Validation_ReportsMissingWrongKindAndUnsupportedVersionSeparately()
         {
             ContentDefinitionDescriptor target = Descriptor(
-                "weapon.target",
-                ContentDefinitionKind.Weapon);
+                "gun.target",
+                ContentDefinitionKind.Gun);
             ContentDefinitionDescriptor source = Descriptor(
                 "encounter.references",
                 ContentDefinitionKind.Encounter,
                 Ref("enemy.missing", ContentDefinitionKind.Enemy),
-                Ref("weapon.target", ContentDefinitionKind.Enemy),
+                Ref("gun.target", ContentDefinitionKind.Enemy),
                 ContentReference.Create(
-                    StableId.Parse("weapon.target"),
-                    ContentDefinitionKind.Weapon,
+                    StableId.Parse("gun.target"),
+                    ContentDefinitionKind.Gun,
                     2));
 
             ContentValidationResult result = ContentValidationResult.Validate(
@@ -267,10 +267,10 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Validation_ReportsProvenanceTombstoneAndPrototypeErrorsSeparately()
         {
-            StableId definitionId = StableId.Parse("weapon.prototype-only");
+            StableId definitionId = StableId.Parse("gun.prototype-only");
             ContentDefinitionDescriptor descriptor = ContentDefinitionDescriptor.Create(
                 definitionId,
-                ContentDefinitionKind.Weapon,
+                ContentDefinitionKind.Gun,
                 1,
                 null,
                 true,
@@ -293,8 +293,8 @@ namespace ShooterMover.Tests.EditMode.Contracts
         public void PrototypeMode_AllowsExplicitPrototypeDefinitions()
         {
             ContentDefinitionDescriptor descriptor = ContentDefinitionDescriptor.Create(
-                StableId.Parse("weapon.prototype-only"),
-                ContentDefinitionKind.Weapon,
+                StableId.Parse("gun.prototype-only"),
+                ContentDefinitionKind.Gun,
                 1,
                 ProvenanceId,
                 true,
@@ -334,8 +334,8 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             StableId tombstoned = StableId.Parse("enemy.tombstoned");
             ContentDefinitionDescriptor wrongTarget = Descriptor(
-                "weapon.target",
-                ContentDefinitionKind.Weapon);
+                "gun.target",
+                ContentDefinitionKind.Gun);
             ContentDefinitionDescriptor source = ContentDefinitionDescriptor.Create(
                 StableId.Parse("encounter.source"),
                 ContentDefinitionKind.Encounter,
@@ -346,10 +346,10 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 {
                     Ref("enemy.missing", ContentDefinitionKind.Enemy),
                     Ref("enemy.tombstoned", ContentDefinitionKind.Enemy),
-                    Ref("weapon.target", ContentDefinitionKind.Enemy),
+                    Ref("gun.target", ContentDefinitionKind.Enemy),
                     ContentReference.Create(
-                        StableId.Parse("weapon.target"),
-                        ContentDefinitionKind.Weapon,
+                        StableId.Parse("gun.target"),
+                        ContentDefinitionKind.Gun,
                         2)
                 });
             ContentDefinitionDescriptor duplicateOne = Descriptor(
@@ -399,7 +399,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
             ContentValidationResult result = ContentValidationResult.Validate(
                 new[]
                 {
-                    Descriptor("weapon.immutable", ContentDefinitionKind.Weapon)
+                    Descriptor("gun.immutable", ContentDefinitionKind.Gun)
                 },
                 ContentValidationMode.Release);
 

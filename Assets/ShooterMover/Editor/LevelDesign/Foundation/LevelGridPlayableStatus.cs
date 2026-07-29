@@ -50,7 +50,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         public bool CompiledCurrent { get; internal set; }
         public bool Registered { get; internal set; }
         public bool PlayReady { get; internal set; }
-        public JsonRoomContentDefinition2D CompiledAsset { get; internal set; }
+        public RoomFile CompiledAsset { get; internal set; }
         public PlayableLevelDefinition CatalogueEntry { get; internal set; }
         public string PublishedVersionId { get; internal set; } = string.Empty;
     }
@@ -58,7 +58,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
     public static class LevelGridPlayableStatusEvaluator
     {
         public static LevelGridPlayableStatus Evaluate(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null)
             {
@@ -105,7 +105,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void EvaluateAuthoring(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableStatus status)
         {
             bool productionPurpose = root.LastGridValidation.Purpose
@@ -117,14 +117,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 ? LevelGridPlayableStatusKind.Valid
                 : LevelGridPlayableStatusKind.Invalid;
             status.AuthoringDetail = status.AuthoringValid
-                ? "Foundation and Grid V2 ProductionPublish validation pass."
+                ? "Foundation and Level ProductionPublish validation pass."
                 : !productionPurpose
                     ? "Run Validate Playable to execute the production validation gate."
-                    : "Foundation or Grid V2 production validation has errors.";
+                    : "Foundation or Level production validation has errors.";
         }
 
         private static void EvaluateMetadata(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableStatus status)
         {
             LevelGridPlayableMetadata metadata =
@@ -150,7 +150,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void EvaluateExport(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             LevelGridPlayableStatus status)
         {
             string absolute = status.Paths.SourcePackageAbsolutePath;
@@ -254,8 +254,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             try
             {
                 status.Paths.ValidateDestinationOwnership();
-                JsonRoomContentDefinition2D asset =
-                    AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(assetPath);
+                RoomFile asset =
+                    AssetDatabase.LoadAssetAtPath<RoomFile>(assetPath);
                 if (asset == null)
                 {
                     throw new InvalidOperationException(
@@ -335,7 +335,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             status.CatalogueDetail = "Exact stable ID and Resource path are registered.";
         }
 
-        private static string ManifestPath(JsonRoomContentDefinition2D asset)
+        private static string ManifestPath(RoomFile asset)
         {
             var serialized = new SerializedObject(asset);
             SerializedProperty manifest = serialized.FindProperty("manifest");

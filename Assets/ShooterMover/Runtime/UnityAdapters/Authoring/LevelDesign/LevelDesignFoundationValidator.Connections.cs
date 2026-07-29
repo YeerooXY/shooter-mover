@@ -220,7 +220,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         LevelDesignValidationCode.InvalidVoidRegion,
                         string.Empty,
                         "voids[" + index + "]",
-                        "Void record is missing.");
+                        "VoidArea record is missing.");
                     continue;
                 }
 
@@ -232,7 +232,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         LevelDesignValidationCode.InvalidAuthoredIdentity,
                         region.AuthoredId,
                         region.DiagnosticLocation,
-                        "Void identity must be a canonical StableId.");
+                        "VoidArea identity must be a canonical StableId.");
                 }
 
                 if (string.IsNullOrEmpty(region.RoomId)
@@ -244,7 +244,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         LevelDesignValidationCode.MissingRoomReference,
                         region.AuthoredId,
                         region.DiagnosticLocation,
-                        "Void region must reference a room in this authored foundation.");
+                        "VoidArea region must reference a room in this authored foundation.");
                 }
 
                 if (!region.HasCollider
@@ -257,7 +257,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         LevelDesignValidationCode.InvalidVoidRegion,
                         region.AuthoredId,
                         region.DiagnosticLocation,
-                        "Void region requires an explicit non-empty Collider2D.");
+                        "VoidArea region requires an explicit non-empty Collider2D.");
                 }
                 else if (!region.ColliderIsTrigger)
                 {
@@ -267,7 +267,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                         LevelDesignValidationCode.InvalidVoidRegion,
                         region.AuthoredId,
                         region.DiagnosticLocation,
-                        "Void region collider must be configured as a trigger.");
+                        "VoidArea region collider must be configured as a trigger.");
                 }
             }
         }

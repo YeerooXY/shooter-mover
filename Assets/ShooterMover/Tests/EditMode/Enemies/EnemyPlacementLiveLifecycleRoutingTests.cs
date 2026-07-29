@@ -9,7 +9,7 @@ using ShooterMover.GameplayEntities.Enemies;
 
 namespace ShooterMover.Tests.EditMode.Enemies
 {
-    public sealed class EnemyPlacementLiveFactoryTestsLifecycleRouting
+    public sealed class EnemyFactoryTestsLifecycleRouting
     {
         [Test]
         public void ProjectileObservedAgainstPreviousPlayerGeneration_RejectsAtDamagePort()
@@ -65,7 +65,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Name = name;
                 Ports = new LifecycleAwarePorts(currentPlayerGeneration);
                 EnemyDefinition definition = Definition(name);
-                var factory = new EnemyPlacementLiveFactory(
+                var factory = new EnemyFactory(
                     new RoomContentObjectCatalog(new[]
                     {
                         new RoomContentObjectDefinition(
@@ -78,7 +78,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                         1,
                         Id("enemy-catalog", name + "-v1"),
                         new[] { definition }),
-                    BuiltInEnemyLivePolicyRegistry.Create(),
+                    BuiltInEnemyRules.Create(),
                     new DeterministicEnemyLiveIdentityDeriver(),
                     new EnemyDifficultyLiveRegistration(
                         new EnemyDifficultyScalingConfiguration(
@@ -115,7 +115,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
 
             public string Name { get; }
             public LifecycleAwarePorts Ports { get; }
-            public EnemyPlacementLiveInstance Runtime { get; }
+            public EnemyInstance Runtime { get; }
 
             public EnemyAttackExecutionRequest Execute(long tick)
             {

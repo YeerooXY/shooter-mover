@@ -18,7 +18,7 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
         public const int DefinitionWeightScale = 1000000;
         public const int RarityMultiplierScale = 1000;
         public const int BlendScale = 1000;
-        public const int AuthoredNormalWeaponSlots = 3;
+        public const int AuthoredNormalGunSlots = 3;
         public const int NormalMaximumAugmentLevel = 10;
 
         private readonly ReadOnlyCollection<StrongboxDistanceWeight>

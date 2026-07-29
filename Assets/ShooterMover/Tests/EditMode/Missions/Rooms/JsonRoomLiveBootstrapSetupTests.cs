@@ -17,16 +17,16 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             owner.SetActive(false);
             try
             {
-                JsonRoomLiveBootstrap2D bootstrap =
-                    owner.AddComponent<JsonRoomLiveBootstrap2D>();
-                RoomLiveSetup2D rooms =
-                    owner.AddComponent<RoomLiveSetup2D>();
-                JsonRoomContentDefinition2D content =
-                    Resources.Load<JsonRoomContentDefinition2D>(
-                        "ProductionLevels/Level1RoomContent");
-                RoomPresentationCatalog2D presentations =
-                    Resources.Load<RoomPresentationCatalog2D>(
-                        "ProductionLevels/Level1PresentationCatalog");
+                RoomLoader bootstrap =
+                    owner.AddComponent<RoomLoader>();
+                LevelRooms rooms =
+                    owner.AddComponent<LevelRooms>();
+                RoomFile content =
+                    Resources.Load<RoomFile>(
+                        "Levels/Level1RoomContent");
+                RoomArt presentations =
+                    Resources.Load<RoomArt>(
+                        "Levels/Level1Art");
                 Assert.That(content, Is.Not.Null);
                 Assert.That(presentations, Is.Not.Null);
 
@@ -78,16 +78,16 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             owner.SetActive(false);
             try
             {
-                JsonRoomLiveBootstrap2D bootstrap =
-                    owner.AddComponent<JsonRoomLiveBootstrap2D>();
-                RoomLiveSetup2D rooms =
-                    owner.AddComponent<RoomLiveSetup2D>();
-                JsonRoomContentDefinition2D content =
-                    Resources.Load<JsonRoomContentDefinition2D>(
-                        "ProductionLevels/Level1RoomContent");
-                RoomPresentationCatalog2D presentations =
-                    Resources.Load<RoomPresentationCatalog2D>(
-                        "ProductionLevels/Level1PresentationCatalog");
+                RoomLoader bootstrap =
+                    owner.AddComponent<RoomLoader>();
+                LevelRooms rooms =
+                    owner.AddComponent<LevelRooms>();
+                RoomFile content =
+                    Resources.Load<RoomFile>(
+                        "Levels/Level1RoomContent");
+                RoomArt presentations =
+                    Resources.Load<RoomArt>(
+                        "Levels/Level1Art");
                 Assert.That(content, Is.Not.Null);
                 Assert.That(presentations, Is.Not.Null);
 

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
@@ -274,20 +274,20 @@ namespace ShooterMover.Application.Runs.Session
                 return RunSessionStartMaterial.Reject(
                     "run-runtime-port-composition-null");
             }
-            IReadOnlyList<StableId> frozenWeaponIds = frozenEquipment
+            IReadOnlyList<StableId> frozenGunIds = frozenEquipment
                 .Where(item => item.EquipmentDefinition.CategoryId
-                    == EquipmentCategoryIds.Weapon)
+                    == EquipmentCategoryIds.Gun)
                 .Select(item => item.EquipmentInstanceStableId)
                 .OrderBy(id => id)
                 .ToList();
-            if (ports.Weapons.FrozenEquipmentInstanceStableIds.Count
-                    != frozenWeaponIds.Count
-                || !ports.Weapons.FrozenEquipmentInstanceStableIds
+            if (ports.Guns.FrozenEquipmentInstanceStableIds.Count
+                    != frozenGunIds.Count
+                || !ports.Guns.FrozenEquipmentInstanceStableIds
                     .OrderBy(id => id)
-                    .SequenceEqual(frozenWeaponIds))
+                    .SequenceEqual(frozenGunIds))
             {
                 return RunSessionStartMaterial.Reject(
-                    "run-weapon-port-frozen-equipment-mismatch");
+                    "run-gun-port-frozen-equipment-mismatch");
             }
 
             return RunSessionStartMaterial.Accept(frozenInputs, ports);
@@ -305,7 +305,7 @@ namespace ShooterMover.Application.Runs.Session
             frozenEquipment = new List<FrozenRunEquipment>();
             rejectionCode = string.Empty;
             var routeEquipment = new List<StableId>(
-                PlayerRouteProfilePayload.WeaponSlotCount);
+                PlayerRouteProfilePayload.GunSlotCount);
 
             for (int index = 0;
                 index < InventoryLoadoutSlots.All.Count;
@@ -315,7 +315,7 @@ namespace ShooterMover.Application.Runs.Session
                     InventoryLoadoutSlots.All[index];
                 InventoryLoadoutSlotBinding binding =
                     loadout.GetBinding(descriptor.SlotStableId);
-                if (descriptor.Kind == InventoryLoadoutSlotKind.Weapon)
+                if (descriptor.Kind == InventoryLoadoutSlotKind.Gun)
                 {
                     routeEquipment.Add(binding.EquipmentInstanceStableId);
                 }
@@ -344,11 +344,11 @@ namespace ShooterMover.Application.Runs.Session
                         + instance.DefinitionId;
                     return false;
                 }
-                if (descriptor.Kind == InventoryLoadoutSlotKind.Weapon
-                    && definition.RuntimeWeaponReferenceId == null)
+                if (descriptor.Kind == InventoryLoadoutSlotKind.Gun
+                    && definition.RuntimeGunReferenceId == null)
                 {
                     rejectionCode =
-                        "run-equipped-weapon-runtime-unresolved:"
+                        "run-equipped-gun-runtime-unresolved:"
                         + instance.InstanceId;
                     return false;
                 }
@@ -359,9 +359,9 @@ namespace ShooterMover.Application.Runs.Session
             }
 
             if (routeEquipment.Count
-                != PlayerRouteProfilePayload.WeaponSlotCount)
+                != PlayerRouteProfilePayload.GunSlotCount)
             {
-                rejectionCode = "run-loadout-weapon-slot-count-invalid";
+                rejectionCode = "run-loadout-gun-slot-count-invalid";
                 return false;
             }
             try

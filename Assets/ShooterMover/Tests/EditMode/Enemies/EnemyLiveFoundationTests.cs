@@ -247,7 +247,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
         }
 
         [Test]
-        public void WeaponlessPounce_EmitsGenericIntentAndDoesNotRetargetAfterCommitment()
+        public void GunlessPounce_EmitsGenericIntentAndDoesNotRetargetAfterCommitment()
         {
             EnemyDecisionEvaluation evaluation = Evaluate(
                 new[] { Target("original", 3d, true, true, true) }, "pounce");

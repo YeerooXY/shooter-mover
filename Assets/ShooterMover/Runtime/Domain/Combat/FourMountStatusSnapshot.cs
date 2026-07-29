@@ -19,20 +19,20 @@ namespace ShooterMover.Domain.Combat
     }
 
     /// <summary>
-    /// Detached immutable read model for one stable weapon-mount slot.
+    /// Detached immutable read model for one stable gun-mount slot.
     /// </summary>
     public sealed class FourMountSlotStatusSnapshot
     {
         public FourMountSlotStatusSnapshot(
             int stableSlotNumber,
             bool isEquipped,
-            StableId weaponId,
-            WeaponMountPhase? phase,
+            StableId gunId,
+            GunMountPhase? phase,
             bool isReady,
             double cadenceRemainingSeconds,
             int burstShotsRemaining,
             double recoveryRemainingSeconds,
-            WeaponCycleMode cycleMode,
+            GunCycleMode cycleMode,
             double cycleCurrent,
             double cycleMaximum,
             bool hasPowerBank,
@@ -40,7 +40,7 @@ namespace ShooterMover.Domain.Combat
             double powerCapacityUnits,
             bool canAffordEmpoweredFire,
             FourMountFireMode fireMode,
-            WeaponMountFaultKind? faultKind,
+            GunMountFaultKind? faultKind,
             string faultDetail)
         {
             if (stableSlotNumber < 1 || stableSlotNumber > FourMountStatusSnapshot.SlotCount)
@@ -66,7 +66,7 @@ namespace ShooterMover.Domain.Combat
                     "Burst shots remaining cannot be negative.");
             }
 
-            if (!Enum.IsDefined(typeof(WeaponCycleMode), cycleMode))
+            if (!Enum.IsDefined(typeof(GunCycleMode), cycleMode))
             {
                 throw new ArgumentOutOfRangeException(nameof(cycleMode), cycleMode, "Unknown cycle mode.");
             }
@@ -87,7 +87,7 @@ namespace ShooterMover.Domain.Combat
             if (!isEquipped)
             {
                 ValidateUnequipped(
-                    weaponId,
+                    gunId,
                     phase,
                     isReady,
                     cadenceRemainingSeconds,
@@ -106,11 +106,11 @@ namespace ShooterMover.Domain.Combat
             }
             else
             {
-                if (weaponId == null)
+                if (gunId == null)
                 {
                     throw new ArgumentNullException(
-                        nameof(weaponId),
-                        "An equipped status slot requires a stable weapon identity.");
+                        nameof(gunId),
+                        "An equipped status slot requires a stable gun identity.");
                 }
 
                 if (!phase.HasValue)
@@ -120,12 +120,12 @@ namespace ShooterMover.Domain.Combat
                         "An equipped status slot requires an operational phase.");
                 }
 
-                if (!Enum.IsDefined(typeof(WeaponMountPhase), phase.Value))
+                if (!Enum.IsDefined(typeof(GunMountPhase), phase.Value))
                 {
-                    throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown weapon-mount phase.");
+                    throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown gun-mount phase.");
                 }
 
-                if (isReady != (phase.Value == WeaponMountPhase.Ready))
+                if (isReady != (phase.Value == GunMountPhase.Ready))
                 {
                     throw new ArgumentException(
                         "Readiness must agree with the authoritative mount phase.",
@@ -135,7 +135,7 @@ namespace ShooterMover.Domain.Combat
 
             StableSlotNumber = stableSlotNumber;
             IsEquipped = isEquipped;
-            WeaponId = weaponId;
+            GunId = gunId;
             Phase = phase;
             IsReady = isReady;
             CadenceRemainingSeconds = cadenceRemainingSeconds;
@@ -159,9 +159,9 @@ namespace ShooterMover.Domain.Combat
 
         public bool IsEquipped { get; }
 
-        public StableId WeaponId { get; }
+        public StableId GunId { get; }
 
-        public WeaponMountPhase? Phase { get; }
+        public GunMountPhase? Phase { get; }
 
         public bool IsReady { get; }
 
@@ -171,13 +171,13 @@ namespace ShooterMover.Domain.Combat
 
         public double RecoveryRemainingSeconds { get; }
 
-        public WeaponCycleMode CycleMode { get; }
+        public GunCycleMode CycleMode { get; }
 
         public double CycleCurrent { get; }
 
         public double CycleMaximum { get; }
 
-        public double CycleLevel => CycleMode == WeaponCycleMode.None ? 0d : CycleCurrent / CycleMaximum;
+        public double CycleLevel => CycleMode == GunCycleMode.None ? 0d : CycleCurrent / CycleMaximum;
 
         public bool HasPowerBank { get; }
 
@@ -193,7 +193,7 @@ namespace ShooterMover.Domain.Combat
 
         public bool IsFallback => FireMode == FourMountFireMode.NormalFallbackPowerUnavailable;
 
-        public WeaponMountFaultKind? FaultKind { get; }
+        public GunMountFaultKind? FaultKind { get; }
 
         public string FaultDetail { get; }
 
@@ -210,7 +210,7 @@ namespace ShooterMover.Domain.Combat
                 0d,
                 0,
                 0d,
-                WeaponCycleMode.None,
+                GunCycleMode.None,
                 0d,
                 0d,
                 false,
@@ -226,10 +226,10 @@ namespace ShooterMover.Domain.Combat
         {
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "S{0}[equipped={1};weapon={2};ready={3};phase={4};cadence={5:R};burst={6};recovery={7:R};resource={8}:{9:R}/{10:R};power={11:R}/{12:R};can_empower={13};mode={14};fallback={15};fault={16}]",
+                "S{0}[equipped={1};gun={2};ready={3};phase={4};cadence={5:R};burst={6};recovery={7:R};resource={8}:{9:R}/{10:R};power={11:R}/{12:R};can_empower={13};mode={14};fallback={15};fault={16}]",
                 StableSlotNumber,
                 IsEquipped ? "true" : "false",
-                WeaponId == null ? "none" : WeaponId.ToString(),
+                GunId == null ? "none" : GunId.ToString(),
                 IsReady ? "true" : "false",
                 Phase.HasValue ? Phase.Value.ToString() : "Unequipped",
                 CadenceRemainingSeconds,
@@ -252,11 +252,11 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static void ValidateResource(
-            WeaponCycleMode cycleMode,
+            GunCycleMode cycleMode,
             double cycleCurrent,
             double cycleMaximum)
         {
-            if (cycleMode == WeaponCycleMode.None)
+            if (cycleMode == GunCycleMode.None)
             {
                 if (cycleCurrent != 0d || cycleMaximum != 0d)
                 {
@@ -319,14 +319,14 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static void ValidateFault(
-            WeaponMountPhase? phase,
+            GunMountPhase? phase,
             FourMountFireMode fireMode,
-            WeaponMountFaultKind? faultKind,
+            GunMountFaultKind? faultKind,
             string faultDetail)
         {
             if (faultKind.HasValue)
             {
-                if (!Enum.IsDefined(typeof(WeaponMountFaultKind), faultKind.Value))
+                if (!Enum.IsDefined(typeof(GunMountFaultKind), faultKind.Value))
                 {
                     throw new ArgumentOutOfRangeException(nameof(faultKind), faultKind, "Unknown fault kind.");
                 }
@@ -338,7 +338,7 @@ namespace ShooterMover.Domain.Combat
                         nameof(faultDetail));
                 }
 
-                if (!phase.HasValue || phase.Value != WeaponMountPhase.Faulted)
+                if (!phase.HasValue || phase.Value != GunMountPhase.Faulted)
                 {
                     throw new ArgumentException(
                         "Fault data requires the authoritative Faulted phase.",
@@ -361,7 +361,7 @@ namespace ShooterMover.Domain.Combat
                         nameof(faultDetail));
                 }
 
-                if (phase.HasValue && phase.Value == WeaponMountPhase.Faulted)
+                if (phase.HasValue && phase.Value == GunMountPhase.Faulted)
                 {
                     throw new ArgumentException(
                         "The Faulted phase requires fault data.",
@@ -378,13 +378,13 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static void ValidateUnequipped(
-            StableId weaponId,
-            WeaponMountPhase? phase,
+            StableId gunId,
+            GunMountPhase? phase,
             bool isReady,
             double cadenceRemainingSeconds,
             int burstShotsRemaining,
             double recoveryRemainingSeconds,
-            WeaponCycleMode cycleMode,
+            GunCycleMode cycleMode,
             double cycleCurrent,
             double cycleMaximum,
             bool hasPowerBank,
@@ -392,16 +392,16 @@ namespace ShooterMover.Domain.Combat
             double powerCapacityUnits,
             bool canAffordEmpoweredFire,
             FourMountFireMode fireMode,
-            WeaponMountFaultKind? faultKind,
+            GunMountFaultKind? faultKind,
             string faultDetail)
         {
-            if (weaponId != null
+            if (gunId != null
                 || phase.HasValue
                 || isReady
                 || cadenceRemainingSeconds != 0d
                 || burstShotsRemaining != 0
                 || recoveryRemainingSeconds != 0d
-                || cycleMode != WeaponCycleMode.None
+                || cycleMode != GunCycleMode.None
                 || cycleCurrent != 0d
                 || cycleMaximum != 0d
                 || hasPowerBank
@@ -434,7 +434,7 @@ namespace ShooterMover.Domain.Combat
     /// </summary>
     public sealed class FourMountStatusSnapshot
     {
-        public const int SlotCount = WeaponLiveProfile.SupportedMountCount;
+        public const int SlotCount = GunLiveProfile.SupportedMountCount;
 
         private readonly FourMountSlotStatusSnapshot[] slots;
 

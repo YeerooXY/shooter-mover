@@ -353,7 +353,7 @@ namespace ShooterMover.Application.Rewards.Application
                 command.Quantity,
                 ScrapIdentity.RewardGrantReason,
                 new ScrapProvenance(
-                    ScrapIdentity.RewardSourceKind,
+                    ScrapIdentity.LootSourceKind,
                     command.SourceOperationStableId,
                     command.ClaimantStableId),
                 command.ExpectedSequence);

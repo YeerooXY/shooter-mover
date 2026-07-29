@@ -1,0 +1,33 @@
+{
+  "name": "ShooterMover.UI.Game",
+  "rootNamespace": "ShooterMover.UI.Game",
+  "references": [
+    "ShooterMover.Application",
+    "ShooterMover.Content.Definitions",
+    "ShooterMover.Contracts",
+    "ShooterMover.Domain",
+    "ShooterMover.GameplayEntities",
+    "ShooterMover.EnemyRuntimeComposition",
+    "ShooterMover.PlayerRuntime",
+    "ShooterMover.TerminalDropBinding",
+    "ShooterMover.UnityAdapters",
+    "ShooterMover.UI.Hub",
+    "ShooterMover.UI.InventoryLoadout",
+    "ShooterMover.UI.Skills",
+    "ShooterMover.UI.Shop",
+    "ShooterMover.UI.Crafting",
+    "ShooterMover.UI.PlaySelection",
+    "ShooterMover.UI.LevelSelection",
+    "ShooterMover.UI.StrongboxOpening",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

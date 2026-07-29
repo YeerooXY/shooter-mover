@@ -97,7 +97,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
             EnemyDefinition definition = LegacyTimedPounceDefinition();
             var support = new RecordingPatternPorts();
             var legacy = new RecordingLegacyAttackPort();
-            EnemyPlacementLiveInstance runtime = LegacyRuntime(
+            EnemyInstance runtime = LegacyRuntime(
                 definition,
                 support.WithAttackEffects(legacy));
             EnemyPerceptionSnapshot perception = Perception();
@@ -125,7 +125,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 Is.True);
         }
 
-        private static EnemyPlacementLiveInstance LegacyRuntime(
+        private static EnemyInstance LegacyRuntime(
             EnemyDefinition definition,
             EnemyLiveDownstreamPorts ports)
         {
@@ -134,13 +134,13 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 RoomContentObjectKind.Enemy,
                 definition.DefinitionId,
                 definition.PresentationId);
-            var factory = new EnemyPlacementLiveFactory(
+            var factory = new EnemyFactory(
                 new RoomContentObjectCatalog(new[] { roomObject }),
                 new EnemyCatalog(
                     1,
                     Id("enemy-catalog", "legacy-cutover"),
                     new[] { definition }),
-                BuiltInEnemyLivePolicyRegistry.Create(),
+                BuiltInEnemyRules.Create(),
                 new DeterministicEnemyLiveIdentityDeriver(),
                 new EnemyDifficultyLiveRegistration(
                     new EnemyDifficultyScalingConfiguration(

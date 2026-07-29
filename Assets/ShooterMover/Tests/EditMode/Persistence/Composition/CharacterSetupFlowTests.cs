@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -27,7 +27,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             Assert.That(composition.Select(0).Succeeded, Is.True);
             FakeGraph alpha = (FakeGraph)composition.ActiveRuntime;
-            alpha.State(KnownSaveComponentDefinitions.MoneyWallet()).Value =
+            alpha.State(GameSaveParts.MoneyWallet()).Value =
                 "alpha-money-mutated";
             Assert.That(
                 composition.PersistActive(Id("operation.save-alpha")).Succeeded,
@@ -37,9 +37,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Assert.That(alpha.IsDisposed, Is.True);
             FakeGraph bravo = (FakeGraph)composition.ActiveRuntime;
             Assert.That(
-                bravo.State(KnownSaveComponentDefinitions.MoneyWallet()).Value,
+                bravo.State(GameSaveParts.MoneyWallet()).Value,
                 Is.EqualTo("bravo-money"));
-            bravo.State(KnownSaveComponentDefinitions.PlayerExperience()).Value =
+            bravo.State(GameSaveParts.PlayerExperience()).Value =
                 "bravo-xp-mutated";
             Assert.That(
                 composition.PersistActive(Id("operation.save-bravo")).Succeeded,
@@ -50,28 +50,28 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 new PlayerAccountSaveState(authority.Current),
                 factory,
                 Saved,
-                snapshot => SaveComponentValidationResult.Accept());
+                snapshot => SavePartValidationResult.Accept());
 
             Assert.That(restarted.Select(0).Succeeded, Is.True);
             FakeGraph restoredAlpha = (FakeGraph)restarted.ActiveRuntime;
             Assert.That(
                 restoredAlpha.State(
-                    KnownSaveComponentDefinitions.MoneyWallet()).Value,
+                    GameSaveParts.MoneyWallet()).Value,
                 Is.EqualTo("alpha-money-mutated"));
             Assert.That(
                 restoredAlpha.State(
-                    KnownSaveComponentDefinitions.PlayerExperience()).Value,
+                    GameSaveParts.PlayerExperience()).Value,
                 Is.EqualTo("alpha-xp"));
 
             Assert.That(restarted.Select(1).Succeeded, Is.True);
             FakeGraph restoredBravo = (FakeGraph)restarted.ActiveRuntime;
             Assert.That(
                 restoredBravo.State(
-                    KnownSaveComponentDefinitions.MoneyWallet()).Value,
+                    GameSaveParts.MoneyWallet()).Value,
                 Is.EqualTo("bravo-money"));
             Assert.That(
                 restoredBravo.State(
-                    KnownSaveComponentDefinitions.PlayerExperience()).Value,
+                    GameSaveParts.PlayerExperience()).Value,
                 Is.EqualTo("bravo-xp-mutated"));
         }
 
@@ -89,7 +89,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             Assert.That(result.Succeeded, Is.True, result.Diagnostic);
             FakeGraph graph = (FakeGraph)composition.ActiveRuntime;
-            foreach (SaveComponentDefinition definition in Definitions())
+            foreach (SavePartDefinition definition in Definitions())
             {
                 Assert.That(
                     graph.State(definition).Value,
@@ -124,7 +124,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             CharacterInstanceSnapshot valid = Character(0, "valid");
             CharacterInstanceSnapshot corrupt = ReplaceComponent(
                 Character(1, "corrupt"),
-                KnownSaveComponentDefinitions.PlayerExperience(),
+                GameSaveParts.PlayerExperience(),
                 "corrupt-payload");
             FakeGraphFactory factory;
             PlayerAccountSaveState authority;
@@ -167,10 +167,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     PlayerAccountStoreStatus.IoFailure,
                     "simulated-write-failure",
                     null),
-                snapshot => SaveComponentValidationResult.Accept());
+                snapshot => SavePartValidationResult.Accept());
             Assert.That(composition.Select(0).Succeeded, Is.True);
             ((FakeGraph)composition.ActiveRuntime)
-                .State(KnownSaveComponentDefinitions.ScrapWallet()).Value =
+                .State(GameSaveParts.ScrapWallet()).Value =
                     "unsaved-scrap";
 
             CharacterSetupResult result = composition.PersistActive(
@@ -189,7 +189,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             var authority = new PlayerAccountSaveState(
                 PlayerAccountSnapshot.Empty(accountId));
             var factory = new FakeGraphFactory();
-            var migration = new LegacyCharacterProfileMigration(
+            var migration = new SaveMigration(
                 authority,
                 factory,
                 Saved);
@@ -199,10 +199,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Legacy(4, "Pilot B", "custom", "healer"),
             };
 
-            LegacyCharacterProfileMigrationResult first =
+            SaveMigrationResult first =
                 migration.Migrate(profiles);
             PlayerAccountSnapshot afterFirst = authority.Current;
-            LegacyCharacterProfileMigrationResult second =
+            SaveMigrationResult second =
                 migration.Migrate(profiles);
 
             Assert.That(
@@ -226,7 +226,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Is.EqualTo(Definitions().Count));
             Assert.That(
                 afterFirst.CharacterAt(0).CharacterInstanceStableId,
-                Is.EqualTo(LegacyCharacterProfileMigration.ExactCharacterId(
+                Is.EqualTo(SaveMigration.ExactCharacterId(
                     accountId,
                     profiles[0])));
             Assert.That(factory.Created.All(item => item.IsDisposed), Is.True);
@@ -244,14 +244,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Id("character.frontier"),
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayload.WeaponSlotCount]);
+                        PlayerRouteProfilePayload.GunSlotCount]);
             ICharacterLiveGraph starter = factory.CreateStarter(
                 2,
                 characterId,
                 classId,
                 "Real Pilot",
                 draftRoute);
-            IReadOnlyList<SaveComponentSnapshot> components =
+            IReadOnlyList<SavePartSnapshot> components =
                 PlayerAccountRestoreFlow.ExportComponents(
                     starter.SaveAdapters);
             starter.Dispose();
@@ -299,7 +299,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 authority,
                 factory,
                 Saved,
-                snapshot => SaveComponentValidationResult.Accept());
+                snapshot => SavePartValidationResult.Accept());
         }
 
         private static PlayerAccountStoreResult Saved(
@@ -345,7 +345,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     0L,
                     null),
                 states);
-            IReadOnlyList<SaveComponentSnapshot> components =
+            IReadOnlyList<SavePartSnapshot> components =
                 PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             graph.Dispose();
@@ -360,15 +360,15 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
         private static CharacterInstanceSnapshot ReplaceComponent(
             CharacterInstanceSnapshot character,
-            SaveComponentDefinition definition,
+            SavePartDefinition definition,
             string payload)
         {
-            Dictionary<StableId, SaveComponentSnapshot> components =
+            Dictionary<StableId, SavePartSnapshot> components =
                 character.Components.Values.ToDictionary(
                     item => item.ComponentStableId,
                     item => item);
             components[definition.ComponentStableId] =
-                new SaveComponentSnapshot(
+                new SavePartSnapshot(
                     definition.ComponentStableId,
                     definition.SchemaVersion,
                     definition.ContentVersion,
@@ -397,21 +397,21 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 "starter-" + slotIndex);
         }
 
-        private static IReadOnlyList<SaveComponentDefinition> Definitions()
+        private static IReadOnlyList<SavePartDefinition> Definitions()
         {
             return new[]
             {
-                KnownSaveComponentDefinitions.PlayerExperience(),
-                KnownSaveComponentDefinitions.PlayerHoldings(),
-                KnownSaveComponentDefinitions.MoneyWallet(),
-                KnownSaveComponentDefinitions.ScrapWallet(),
-                KnownSaveComponentDefinitions.RankedSkillAllocation(),
-                KnownSaveComponentDefinitions.ExactInstanceLoadout(),
-                KnownSaveComponentDefinitions.StrongboxState(),
+                GameSaveParts.PlayerExperience(),
+                GameSaveParts.PlayerHoldings(),
+                GameSaveParts.MoneyWallet(),
+                GameSaveParts.ScrapWallet(),
+                GameSaveParts.RankedSkillAllocation(),
+                GameSaveParts.ExactInstanceLoadout(),
+                GameSaveParts.StrongboxState(),
             };
         }
 
-        private static string Suffix(SaveComponentDefinition definition)
+        private static string Suffix(SavePartDefinition definition)
         {
             string value = definition.ComponentStableId.ToString();
             int separator = value.IndexOf('.');
@@ -484,7 +484,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             private FakeGraph(
                 CharacterInstanceSnapshot character,
                 Dictionary<StableId, MutableState> states,
-                IReadOnlyList<ISaveComponentBridge> adapters)
+                IReadOnlyList<ISavePart> adapters)
             {
                 Character = character;
                 this.states = states;
@@ -493,7 +493,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             public CharacterInstanceSnapshot Character { get; private set; }
 
-            public IReadOnlyList<ISaveComponentBridge> SaveAdapters { get; }
+            public IReadOnlyList<ISavePart> SaveAdapters { get; }
 
             public bool IsDisposed { get; private set; }
 
@@ -501,13 +501,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 CharacterInstanceSnapshot character,
                 Dictionary<StableId, MutableState> states)
             {
-                var adapters = new List<ISaveComponentBridge>();
-                foreach (SaveComponentDefinition definition in Definitions())
+                var adapters = new List<ISavePart>();
+                foreach (SavePartDefinition definition in Definitions())
                 {
                     MutableState state = states[definition.ComponentStableId];
                     var codec = new TestCodec();
                     adapters.Add(
-                        new StateSnapshotSaveComponentBridge<TestSnapshot>(
+                        new SnapshotSavePart<TestSnapshot>(
                             definition,
                             codec,
                             () => new TestSnapshot(state.Value),
@@ -519,17 +519,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                                     "corrupt-payload",
                                     StringComparison.Ordinal))
                                 {
-                                    return SaveComponentApplyResult.Rejected(
+                                    return SavePartApplyResult.Rejected(
                                         "test-component-corrupt");
                                 }
                                 state.Value = snapshot.Value;
-                                return SaveComponentApplyResult.Applied();
+                                return SavePartApplyResult.Applied();
                             }));
                 }
                 return new FakeGraph(character, states, adapters);
             }
 
-            public MutableState State(SaveComponentDefinition definition)
+            public MutableState State(SavePartDefinition definition)
             {
                 return states[definition.ComponentStableId];
             }
@@ -566,7 +566,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         private sealed class TestCodec :
-            ISaveComponentPayloadCodec<TestSnapshot>
+            ISavePartFormat<TestSnapshot>
         {
             public string ContractId
             {
@@ -597,13 +597,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 return true;
             }
 
-            public SaveComponentValidationResult Validate(
+            public SavePartValidationResult Validate(
                 TestSnapshot snapshot)
             {
                 return snapshot == null || snapshot.Value == null
-                    ? SaveComponentValidationResult.Reject(
+                    ? SavePartValidationResult.Reject(
                         "test-component-null")
-                    : SaveComponentValidationResult.Accept();
+                    : SavePartValidationResult.Accept();
             }
         }
     }

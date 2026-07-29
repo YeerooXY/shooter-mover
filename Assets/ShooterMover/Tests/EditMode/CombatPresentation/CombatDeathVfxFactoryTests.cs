@@ -38,17 +38,17 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     new Vector2(1.5f, 0.75f),
                     77,
                     false);
-                var factory = new SpriteAnimationCombatDeathVfxFactory2D(
+                var factory = new SpriteDeathEffectsFactory(
                     definition,
                     fallback);
-                CombatDeathVfxPool2D pool = root.AddComponent<CombatDeathVfxPool2D>();
+                DeathEffects pool = root.AddComponent<DeathEffects>();
                 pool.Configure(factory, 2);
 
-                ICombatDeathVfxInstance2D instance = pool.Spawn(
+                IDeathEffects instance = pool.Spawn(
                     new Vector3(3f, 4f, 0f),
                     2f);
-                SpriteAnimationCombatDeathVfxInstance2D animation =
-                    instance as SpriteAnimationCombatDeathVfxInstance2D;
+                SpriteDeathEffects animation =
+                    instance as SpriteDeathEffects;
                 Assert.That(animation, Is.Not.Null);
                 Assert.That(fallback.CreateCount, Is.EqualTo(0));
                 Assert.That(pool.SourcePresentationId, Is.EqualTo("retained.test-animation"));
@@ -68,7 +68,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             }
         }
 
-        private sealed class CountingFallbackFactory : ICombatDeathVfxFactory2D
+        private sealed class CountingFallbackFactory : IDeathEffectsFactory
         {
             public string SourcePresentationId
             {
@@ -77,7 +77,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
 
             public int CreateCount { get; private set; }
 
-            public ICombatDeathVfxInstance2D Create(Transform parent, int ordinal)
+            public IDeathEffects Create(Transform parent, int ordinal)
             {
                 CreateCount++;
                 return null;

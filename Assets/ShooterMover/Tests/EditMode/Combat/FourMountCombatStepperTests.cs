@@ -8,7 +8,7 @@ namespace ShooterMover.Tests.EditMode.Combat
 {
     public sealed class FourMountCombatStepperTests
     {
-        private static readonly StableId ModuleId = StableId.Parse("weapon-module.cb006-empty");
+        private static readonly StableId ModuleId = StableId.Parse("gun-module.cb006-empty");
 
         [Test]
         public void Step_SimultaneousFireUsesStableFourSlotOrder()
@@ -55,10 +55,10 @@ namespace ShooterMover.Tests.EditMode.Combat
                 fixture.State,
                 fixture.Input(0L, 0d, true, true));
 
-            Assert.That(result.GetLaneByStableIndex(0).PowerDecision.Kind, Is.EqualTo(WeaponPowerFireDecisionKind.EmpoweredFired));
-            Assert.That(result.GetLaneByStableIndex(1).PowerDecision.Kind, Is.EqualTo(WeaponPowerFireDecisionKind.NormalFallbackPowerUnavailable));
-            Assert.That(result.GetLaneByStableIndex(2).PowerDecision.Kind, Is.EqualTo(WeaponPowerFireDecisionKind.EmpoweredFired));
-            Assert.That(result.GetLaneByStableIndex(3).PowerDecision.Kind, Is.EqualTo(WeaponPowerFireDecisionKind.NormalFallbackPowerUnavailable));
+            Assert.That(result.GetLaneByStableIndex(0).PowerDecision.Kind, Is.EqualTo(GunPowerFireDecisionKind.EmpoweredFired));
+            Assert.That(result.GetLaneByStableIndex(1).PowerDecision.Kind, Is.EqualTo(GunPowerFireDecisionKind.NormalFallbackPowerUnavailable));
+            Assert.That(result.GetLaneByStableIndex(2).PowerDecision.Kind, Is.EqualTo(GunPowerFireDecisionKind.EmpoweredFired));
+            Assert.That(result.GetLaneByStableIndex(3).PowerDecision.Kind, Is.EqualTo(GunPowerFireDecisionKind.NormalFallbackPowerUnavailable));
             Assert.That(result.State.GetPowerBankByStableIndex(0).AvailableUnits, Is.EqualTo(5d));
             Assert.That(result.State.GetPowerBankByStableIndex(1).AvailableUnits, Is.EqualTo(0d));
             Assert.That(result.State.GetPowerBankByStableIndex(2).AvailableUnits, Is.EqualTo(0d));
@@ -130,21 +130,21 @@ namespace ShooterMover.Tests.EditMode.Combat
             double[] initialPower,
             bool configuredPower = false)
         {
-            WeaponLiveProfile[] profiles = new WeaponLiveProfile[FourMountCombatState.MountCount];
-            StableId[] weaponIds = new StableId[FourMountCombatState.MountCount];
+            GunLiveProfile[] profiles = new GunLiveProfile[FourMountCombatState.MountCount];
+            StableId[] gunIds = new StableId[FourMountCombatState.MountCount];
             StableId[] mountIds = new StableId[FourMountCombatState.MountCount];
-            WeaponMountOrigin[] origins = new WeaponMountOrigin[FourMountCombatState.MountCount];
+            GunMountOrigin[] origins = new GunMountOrigin[FourMountCombatState.MountCount];
 
             for (int index = 0; index < profiles.Length; index++)
             {
-                profiles[index] = WeaponLiveProfile.Create(
-                    WeaponLiveProfile.CurrentProfileVersion,
-                    StableId.Parse("weapon-profile.cb006-slot-" + (index + 1)),
+                profiles[index] = GunLiveProfile.Create(
+                    GunLiveProfile.CurrentProfileVersion,
+                    StableId.Parse("gun-profile.cb006-slot-" + (index + 1)),
                     cadences[index],
                     1,
                     0d,
                     0d,
-                    WeaponCycleMode.None,
+                    GunCycleMode.None,
                     0d,
                     0d,
                     0d,
@@ -156,16 +156,16 @@ namespace ShooterMover.Tests.EditMode.Combat
                     new[] { ModuleId },
                     new[] { ModuleId },
                     index);
-                weaponIds[index] = StableId.Parse("weapon.cb006-slot-" + (index + 1));
+                gunIds[index] = StableId.Parse("gun.cb006-slot-" + (index + 1));
                 mountIds[index] = StableId.Parse("mount.cb006-slot-" + (index + 1));
-                origins[index] = new WeaponMountOrigin(index + 1, new AimVector2(index - 1.5d, 0d));
+                origins[index] = new GunMountOrigin(index + 1, new AimVector2(index - 1.5d, 0d));
             }
 
-            WeaponBehaviorPipeline pipeline = new WeaponBehaviorPipeline(
-                new IWeaponBehaviorModule[] { new EmptyModule() });
+            GunBehaviorPipeline pipeline = new GunBehaviorPipeline(
+                new IGunBehaviorModule[] { new EmptyModule() });
             return new Fixture(
                 profiles,
-                weaponIds,
+                gunIds,
                 mountIds,
                 origins,
                 FourMountCombatState.Initial(profiles, initialPower),
@@ -175,25 +175,25 @@ namespace ShooterMover.Tests.EditMode.Combat
         private sealed class Fixture
         {
             public Fixture(
-                WeaponLiveProfile[] profiles,
-                StableId[] weaponIds,
+                GunLiveProfile[] profiles,
+                StableId[] gunIds,
                 StableId[] mountIds,
-                WeaponMountOrigin[] origins,
+                GunMountOrigin[] origins,
                 FourMountCombatState state,
                 FourMountCombatStepper stepper)
             {
                 Profiles = profiles;
-                WeaponIds = weaponIds;
+                GunIds = gunIds;
                 MountIds = mountIds;
                 Origins = origins;
                 State = state;
                 Stepper = stepper;
             }
 
-            public WeaponLiveProfile[] Profiles { get; }
-            public StableId[] WeaponIds { get; }
+            public GunLiveProfile[] Profiles { get; }
+            public StableId[] GunIds { get; }
             public StableId[] MountIds { get; }
-            public WeaponMountOrigin[] Origins { get; }
+            public GunMountOrigin[] Origins { get; }
             public FourMountCombatState State { get; set; }
             public FourMountCombatStepper Stepper { get; }
 
@@ -212,20 +212,20 @@ namespace ShooterMover.Tests.EditMode.Combat
                     AimVector2.UnitX,
                     new AimVector2(20d, 0d),
                     Profiles,
-                    WeaponIds,
+                    GunIds,
                     MountIds,
                     Origins,
                     faults);
             }
         }
 
-        private sealed class EmptyModule : IWeaponBehaviorModule
+        private sealed class EmptyModule : IGunBehaviorModule
         {
             public StableId ModuleId => FourMountCombatStepperTests.ModuleId;
 
-            public WeaponBehaviorModulePlan BuildExecutionPlan(WeaponBehaviorInput input)
+            public GunBehaviorModulePlan BuildExecutionPlan(GunBehaviorInput input)
             {
-                return new WeaponBehaviorModulePlan(ModuleId);
+                return new GunBehaviorModulePlan(ModuleId);
             }
         }
     }

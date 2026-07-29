@@ -30,8 +30,8 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             destinationAssetPath = assetRoot + "/Resources/RoomContent.asset";
             sourceRoot = Path.Combine(
                 Path.GetTempPath(),
-                "shooter-mover-grid-v2-publication-" + Guid.NewGuid().ToString("N"));
-            CopyDirectory(ProjectPath(LevelGridAssetCompiler.TrackedCombatLoopSource), sourceRoot);
+                "shooter-mover-level-1-publication-" + Guid.NewGuid().ToString("N"));
+            CopyDirectory(ProjectPath(LevelGridAssetCompiler.Level1Source), sourceRoot);
         }
 
         [TearDown]
@@ -60,7 +60,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void FailureBeforeAuthoritativeSwitch_PreservesPreviousPlayableAsset()
         {
-            JsonRoomContentDefinition2D baseline = PublishBaseline();
+            RoomFile baseline = PublishBaseline();
             byte[] previousBytes = File.ReadAllBytes(ProjectPath(destinationAssetPath));
             string previousManifest = ManifestPath(baseline);
             ChangeCompiledContent();
@@ -76,8 +76,8 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             CollectionAssert.AreEqual(
                 previousBytes,
                 File.ReadAllBytes(ProjectPath(destinationAssetPath)));
-            JsonRoomContentDefinition2D restored =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(destinationAssetPath);
+            RoomFile restored =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(destinationAssetPath);
             AssertValid(restored);
             Assert.That(ManifestPath(restored), Is.EqualTo(previousManifest));
         }
@@ -85,7 +85,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void FailureAfterAuthoritativeFileReplacement_RollsBackPreviousPlayableAsset()
         {
-            JsonRoomContentDefinition2D baseline = PublishBaseline();
+            RoomFile baseline = PublishBaseline();
             byte[] previousBytes = File.ReadAllBytes(ProjectPath(destinationAssetPath));
             string previousManifest = ManifestPath(baseline);
             ChangeCompiledContent();
@@ -101,8 +101,8 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             CollectionAssert.AreEqual(
                 previousBytes,
                 File.ReadAllBytes(ProjectPath(destinationAssetPath)));
-            JsonRoomContentDefinition2D restored =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(destinationAssetPath);
+            RoomFile restored =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(destinationAssetPath);
             AssertValid(restored);
             Assert.That(ManifestPath(restored), Is.EqualTo(previousManifest));
         }
@@ -110,12 +110,12 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void SuccessfulPublish_SwitchesVersionThenRemovesUnreferencedOldVersion()
         {
-            JsonRoomContentDefinition2D baseline = PublishBaseline();
+            RoomFile baseline = PublishBaseline();
             string previousManifest = ManifestPath(baseline);
             string previousVersionFolder = AssetFolder(previousManifest);
             ChangeCompiledContent();
 
-            JsonRoomContentDefinition2D published = LevelGridAssetCompiler.CompileToAsset(
+            RoomFile published = LevelGridAssetCompiler.CompileToAsset(
                 sourceRoot,
                 generatedRoot,
                 destinationAssetPath);
@@ -130,7 +130,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void Cleanup_RetainsOldVersionReferencedByAnotherRuntimeAsset()
         {
-            JsonRoomContentDefinition2D baseline = PublishBaseline();
+            RoomFile baseline = PublishBaseline();
             string previousManifest = ManifestPath(baseline);
             string previousVersionFolder = AssetFolder(previousManifest);
             string retainedAssetPath = assetRoot + "/Resources/RetainedRoomContent.asset";
@@ -140,12 +140,12 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
             AssetDatabase.ImportAsset(
                 retainedAssetPath,
                 ImportAssetOptions.ForceSynchronousImport);
-            JsonRoomContentDefinition2D retained =
-                AssetDatabase.LoadAssetAtPath<JsonRoomContentDefinition2D>(retainedAssetPath);
+            RoomFile retained =
+                AssetDatabase.LoadAssetAtPath<RoomFile>(retainedAssetPath);
             AssertValid(retained);
             ChangeCompiledContent();
 
-            JsonRoomContentDefinition2D published = LevelGridAssetCompiler.CompileToAsset(
+            RoomFile published = LevelGridAssetCompiler.CompileToAsset(
                 sourceRoot,
                 generatedRoot,
                 destinationAssetPath);
@@ -159,14 +159,14 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         [Test]
         public void CleanupFailure_DoesNotTurnCommittedPublishIntoReportedFailure()
         {
-            JsonRoomContentDefinition2D baseline = PublishBaseline();
+            RoomFile baseline = PublishBaseline();
             string previousManifest = ManifestPath(baseline);
             ChangeCompiledContent();
             LogAssert.Expect(
                 LogType.Warning,
                 new Regex("publication committed successfully, but generated cleanup failed"));
 
-            JsonRoomContentDefinition2D published =
+            RoomFile published =
                 LevelGridAssetCompiler.CompileToAssetForTests(
                     sourceRoot,
                     generatedRoot,
@@ -200,9 +200,9 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                 Is.Not.Null);
         }
 
-        private JsonRoomContentDefinition2D PublishBaseline()
+        private RoomFile PublishBaseline()
         {
-            JsonRoomContentDefinition2D asset = LevelGridAssetCompiler.CompileToAsset(
+            RoomFile asset = LevelGridAssetCompiler.CompileToAsset(
                 sourceRoot,
                 generatedRoot,
                 destinationAssetPath);
@@ -224,7 +224,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                 content.Replace("SINGLE CONTACT", "SINGLE CONTACT REVISED"));
         }
 
-        private static void AssertValid(JsonRoomContentDefinition2D asset)
+        private static void AssertValid(RoomFile asset)
         {
             Assert.That(asset, Is.Not.Null);
             RoomContentImportResult imported = asset.Import(
@@ -239,7 +239,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
                         + ": " + imported.Issues[0].Message);
         }
 
-        private static string ManifestPath(JsonRoomContentDefinition2D asset)
+        private static string ManifestPath(RoomFile asset)
         {
             var serialized = new SerializedObject(asset);
             SerializedProperty manifest = serialized.FindProperty("manifest");
@@ -319,7 +319,7 @@ namespace ShooterMover.Tests.EditorTooling.LevelDesign.Foundation
         private sealed class InjectedPublicationFailureException : Exception
         {
             public InjectedPublicationFailureException(LevelGridAssetCompilerPublishStep step)
-                : base("Injected Level Grid V2 publication failure at " + step + ".")
+                : base("Injected Level Level publication failure at " + step + ".")
             {
             }
         }

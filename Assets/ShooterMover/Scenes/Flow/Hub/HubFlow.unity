@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 41689490f8c0485fac73ce93b497d833, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.Hub::ShooterMover.UI.Hub.HubFlowController
+  m_EditorClassIdentifier: ShooterMover.UI.Hub::ShooterMover.UI.Hub.Hub
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

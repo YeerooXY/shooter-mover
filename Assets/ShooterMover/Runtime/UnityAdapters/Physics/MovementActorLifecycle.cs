@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 namespace ShooterMover.UnityAdapters.Physics
 {
     /// <summary>
-    /// Explicit Unity lifecycle owner for one <see cref="MovementActor2D"/>.
+    /// Explicit Unity lifecycle owner for one <see cref="Mover"/>.
     /// Construction, start, restart, stop, and disposal are deliberate API calls;
     /// OnDisable and OnDestroy only enforce cleanup and never auto-start an actor.
     /// </summary>
@@ -15,11 +15,11 @@ namespace ShooterMover.UnityAdapters.Physics
     public sealed class MovementActorLifecycle : MonoBehaviour
     {
         private Rigidbody2D body;
-        private PlayerMovementIntentBridge inputAdapter;
+        private PlayerControls inputAdapter;
         private InputActionAsset inputActions;
-        private MovementContact2DBridge contactAdapter;
+        private MovementContact contactAdapter;
         private MovementThrusterTuningProfile tuning;
-        private MovementActor2D actor;
+        private Mover actor;
         private bool isDisposed;
 
         public bool IsConstructed
@@ -37,7 +37,7 @@ namespace ShooterMover.UnityAdapters.Physics
             get { return isDisposed; }
         }
 
-        public MovementActor2D Actor
+        public Mover Actor
         {
             get { return actor; }
         }
@@ -48,9 +48,9 @@ namespace ShooterMover.UnityAdapters.Physics
         /// </summary>
         public bool Construct(
             Rigidbody2D body,
-            PlayerMovementIntentBridge inputAdapter,
+            PlayerControls inputAdapter,
             InputActionAsset inputActions,
-            MovementContact2DBridge contactAdapter,
+            MovementContact contactAdapter,
             MovementThrusterTuningProfile tuning)
         {
             ThrowIfDisposed();
@@ -76,7 +76,7 @@ namespace ShooterMover.UnityAdapters.Physics
             this.inputActions = inputActions;
             this.contactAdapter = contactAdapter;
             this.tuning = tuning;
-            actor = new MovementActor2D(
+            actor = new Mover(
                 body,
                 inputAdapter,
                 inputActions,
@@ -172,9 +172,9 @@ namespace ShooterMover.UnityAdapters.Physics
 
         private void ValidateDependencies(
             Rigidbody2D body,
-            PlayerMovementIntentBridge inputAdapter,
+            PlayerControls inputAdapter,
             InputActionAsset inputActions,
-            MovementContact2DBridge contactAdapter,
+            MovementContact contactAdapter,
             MovementThrusterTuningProfile tuning)
         {
             if (body == null)

@@ -19,27 +19,27 @@ namespace ShooterMover.Tests.EditMode.Equipment
             EquipmentQualityTier.Create(StableId.Parse("quality.mythic"), "Mythic", 7);
         private static readonly StableId EnergyTag = StableId.Parse("equipment-tag.energy");
         private static readonly StableId ExplosiveTag = StableId.Parse("equipment-tag.explosive");
-        private static readonly StableId WeaponFamily = StableId.Parse("equipment-family.energy-rifle");
+        private static readonly StableId GunFamily = StableId.Parse("equipment-family.energy-rifle");
         private static readonly StableId ArmorFamily = StableId.Parse("equipment-family.heavy-armor");
 
         [Test]
-        public void ExistingFiveWeaponIds_AreReferencedWithoutRuntimeBehaviorDuplication()
+        public void ExistingFiveGunIds_AreReferencedWithoutRuntimeBehaviorDuplication()
         {
-            string[] weaponIds =
+            string[] gunIds =
             {
-                "weapon.blaster-machine-gun",
-                "weapon.shotgun",
-                "weapon.rocket-launcher",
-                "weapon.arc-gun",
-                "weapon.ricochet-gun",
+                "gun.blaster-machine-gun",
+                "gun.shotgun",
+                "gun.rocket-launcher",
+                "gun.arc-gun",
+                "gun.ricochet-gun",
             };
 
             List<EquipmentDefinition> definitions = new List<EquipmentDefinition>();
-            for (int index = 0; index < weaponIds.Length; index++)
+            for (int index = 0; index < gunIds.Length; index++)
             {
-                StableId runtimeId = StableId.Parse(weaponIds[index]);
-                definitions.Add(CreateWeapon(
-                    "equipment.stage1-weapon-" + index,
+                StableId runtimeId = StableId.Parse(gunIds[index]);
+                definitions.Add(CreateGun(
+                    "equipment.stage1-gun-" + index,
                     runtimeId,
                     index,
                     new[] { EnergyTag }));
@@ -52,9 +52,9 @@ namespace ShooterMover.Tests.EditMode.Equipment
             Assert.That(result.IsValid, Is.True, CanonicalIssues(result.Issues));
             Assert.That(result.Catalog.EquipmentDefinitions, Has.Count.EqualTo(5));
             CollectionAssert.AreEquivalent(
-                weaponIds,
+                gunIds,
                 result.Catalog.EquipmentDefinitions
-                    .Select(value => value.RuntimeWeaponReferenceId.ToString())
+                    .Select(value => value.RuntimeGunReferenceId.ToString())
                     .ToArray());
             Assert.That(
                 typeof(EquipmentDefinition).GetProperties()
@@ -63,7 +63,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
                         || property.Name.IndexOf("Projectile", StringComparison.OrdinalIgnoreCase) >= 0
                         || property.Name.IndexOf("Mount", StringComparison.OrdinalIgnoreCase) >= 0),
                 Is.False,
-                "Equipment metadata must not duplicate weapon-package behavior.");
+                "Equipment metadata must not duplicate gun-package behavior.");
         }
 
         [Test]
@@ -92,22 +92,22 @@ namespace ShooterMover.Tests.EditMode.Equipment
             Assert.That(result.Catalog.FindEquipmentDefinition(oneSlot.DefinitionId).MaximumAugmentSlots, Is.EqualTo(1));
             Assert.That(result.Catalog.FindEquipmentDefinition(manySlots.DefinitionId).MaximumAugmentSlots, Is.EqualTo(12));
             Assert.That(result.Catalog.FindEquipmentDefinition(futureCategory.DefinitionId), Is.Not.Null);
-            Assert.That(armor.RuntimeWeaponReferenceId, Is.Null);
+            Assert.That(armor.RuntimeGunReferenceId, Is.Null);
         }
 
         [Test]
         public void ConfiguredMaximaBeyondThreeTiersAndTenLevels_AreAccepted()
         {
-            EquipmentDefinition weapon = CreateWeapon(
-                "equipment.high-range-weapon",
-                StableId.Parse("weapon.arc-gun"),
+            EquipmentDefinition gun = CreateGun(
+                "equipment.high-range-gun",
+                StableId.Parse("gun.arc-gun"),
                 8,
                 new[] { EnergyTag });
             AugmentDefinition augment = CreateAugment(
                 "augment.high-range",
                 AugmentDuplicatePolicy.AllowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
-                new[] { WeaponFamily },
+                new[] { EquipmentCategoryIds.Gun },
+                new[] { GunFamily },
                 new[] { EnergyTag },
                 new StableId[0],
                 new StableId[0],
@@ -115,10 +115,10 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 9,
                 1,
                 40);
-            EquipmentCatalog catalog = BuildCatalog(new[] { weapon }, new[] { augment });
+            EquipmentCatalog catalog = BuildCatalog(new[] { gun }, new[] { augment });
             EquipmentInstance instance = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.high-range"),
-                weapon.DefinitionId,
+                gun.DefinitionId,
                 220,
                 Mythic.QualityId,
                 new[]
@@ -141,22 +141,22 @@ namespace ShooterMover.Tests.EditMode.Equipment
         [Test]
         public void CategoryFamilyRequiredAndExcludedTagCompatibility_RejectsDeterministically()
         {
-            EquipmentDefinition cleanWeapon = CreateWeapon(
+            EquipmentDefinition cleanGun = CreateGun(
                 "equipment.clean-energy",
-                StableId.Parse("weapon.blaster-machine-gun"),
+                StableId.Parse("gun.blaster-machine-gun"),
                 3,
                 new[] { EnergyTag });
-            EquipmentDefinition explosiveWeapon = CreateWeapon(
+            EquipmentDefinition explosiveGun = CreateGun(
                 "equipment.explosive-energy",
-                StableId.Parse("weapon.rocket-launcher"),
+                StableId.Parse("gun.rocket-launcher"),
                 3,
                 new[] { EnergyTag, ExplosiveTag });
             EquipmentDefinition armor = CreateArmor("equipment.compatibility-armor", 3);
             AugmentDefinition augment = CreateAugment(
                 "augment.energy-focus",
                 AugmentDuplicatePolicy.DisallowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
-                new[] { WeaponFamily },
+                new[] { EquipmentCategoryIds.Gun },
+                new[] { GunFamily },
                 new[] { EnergyTag },
                 new[] { ExplosiveTag },
                 new StableId[0],
@@ -165,7 +165,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 1,
                 20);
             EquipmentCatalog catalog = BuildCatalog(
-                new[] { cleanWeapon, explosiveWeapon, armor },
+                new[] { cleanGun, explosiveGun, armor },
                 new[] { augment });
             AugmentInstance installed = AugmentInstance.Create(
                 StableId.Parse("augment-instance.compatibility"),
@@ -183,7 +183,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
             EquipmentValidationResult explosiveResult = catalog.ValidateInstance(
                 EquipmentInstance.Create(
                     StableId.Parse("equipment-instance.compatibility-explosive"),
-                    explosiveWeapon.DefinitionId,
+                    explosiveGun.DefinitionId,
                     10,
                     Common.QualityId,
                     new[] { installed }));
@@ -197,16 +197,16 @@ namespace ShooterMover.Tests.EditMode.Equipment
         [Test]
         public void DuplicatePolicyAndExclusionGroups_RejectImpossiblePairs()
         {
-            EquipmentDefinition weapon = CreateWeapon(
+            EquipmentDefinition gun = CreateGun(
                 "equipment.duplicate-policy",
-                StableId.Parse("weapon.shotgun"),
+                StableId.Parse("gun.shotgun"),
                 4,
                 new[] { EnergyTag });
             StableId exclusion = StableId.Parse("augment-exclusion.damage-channel");
             AugmentDefinition first = CreateAugment(
                 "augment.damage-alpha",
                 AugmentDuplicatePolicy.DisallowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -218,7 +218,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
             AugmentDefinition second = CreateAugment(
                 "augment.damage-beta",
                 AugmentDuplicatePolicy.AllowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -227,10 +227,10 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 4,
                 1,
                 12);
-            EquipmentCatalog catalog = BuildCatalog(new[] { weapon }, new[] { first, second });
+            EquipmentCatalog catalog = BuildCatalog(new[] { gun }, new[] { first, second });
             EquipmentInstance instance = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.duplicate-policy"),
-                weapon.DefinitionId,
+                gun.DefinitionId,
                 25,
                 Common.QualityId,
                 new[]
@@ -249,20 +249,20 @@ namespace ShooterMover.Tests.EditMode.Equipment
         [Test]
         public void CanonicalCatalogAndInstanceFingerprints_AreStableAcrossInputOrder()
         {
-            EquipmentDefinition weaponA = CreateWeapon(
+            EquipmentDefinition gunA = CreateGun(
                 "equipment.canonical-a",
-                StableId.Parse("weapon.arc-gun"),
+                StableId.Parse("gun.arc-gun"),
                 3,
                 new[] { ExplosiveTag, EnergyTag });
-            EquipmentDefinition weaponB = CreateWeapon(
+            EquipmentDefinition gunB = CreateGun(
                 "equipment.canonical-b",
-                StableId.Parse("weapon.ricochet-gun"),
+                StableId.Parse("gun.ricochet-gun"),
                 3,
                 new[] { EnergyTag });
             AugmentDefinition augmentA = CreateAugment(
                 "augment.canonical-a",
                 AugmentDuplicatePolicy.AllowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -274,7 +274,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
             AugmentDefinition augmentB = CreateAugment(
                 "augment.canonical-b",
                 AugmentDuplicatePolicy.AllowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -285,10 +285,10 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 30);
 
             EquipmentCatalog firstCatalog = BuildCatalog(
-                new[] { weaponB, weaponA },
+                new[] { gunB, gunA },
                 new[] { augmentB, augmentA });
             EquipmentCatalog secondCatalog = BuildCatalog(
-                new[] { weaponA, weaponB },
+                new[] { gunA, gunB },
                 new[] { augmentA, augmentB });
             AugmentInstance firstAugment = AugmentInstance.Create(
                 StableId.Parse("augment-instance.canonical-a"), augmentA.DefinitionId, 2, 7);
@@ -296,13 +296,13 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 StableId.Parse("augment-instance.canonical-b"), augmentB.DefinitionId, 3, 9);
             EquipmentInstance firstInstance = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.canonical"),
-                weaponA.DefinitionId,
+                gunA.DefinitionId,
                 100,
                 Mythic.QualityId,
                 new[] { secondAugment, firstAugment });
             EquipmentInstance secondInstance = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.canonical"),
-                weaponA.DefinitionId,
+                gunA.DefinitionId,
                 100,
                 Mythic.QualityId,
                 new[] { firstAugment, secondAugment });
@@ -318,15 +318,15 @@ namespace ShooterMover.Tests.EditMode.Equipment
         [Test]
         public void ImmutableAugmentReplacement_LeavesOriginalInstanceUntouched()
         {
-            EquipmentDefinition weapon = CreateWeapon(
+            EquipmentDefinition gun = CreateGun(
                 "equipment.immutable-replacement",
-                StableId.Parse("weapon.blaster-machine-gun"),
+                StableId.Parse("gun.blaster-machine-gun"),
                 2,
                 new[] { EnergyTag });
             AugmentDefinition augment = CreateAugment(
                 "augment.immutable-replacement",
                 AugmentDuplicatePolicy.DisallowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -335,7 +335,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 5,
                 1,
                 25);
-            EquipmentCatalog catalog = BuildCatalog(new[] { weapon }, new[] { augment });
+            EquipmentCatalog catalog = BuildCatalog(new[] { gun }, new[] { augment });
             AugmentInstance originalAugment = AugmentInstance.Create(
                 StableId.Parse("augment-instance.immutable-replacement"),
                 augment.DefinitionId,
@@ -343,7 +343,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 5);
             EquipmentInstance original = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.immutable-replacement"),
-                weapon.DefinitionId,
+                gun.DefinitionId,
                 50,
                 Common.QualityId,
                 new[] { originalAugment });
@@ -421,21 +421,21 @@ namespace ShooterMover.Tests.EditMode.Equipment
             AssertIssue(result, EquipmentModelIssueCode.DuplicateEquipmentDefinitionId);
             AssertIssue(result, EquipmentModelIssueCode.DuplicateAugmentDefinitionId);
             StableId malformed;
-            Assert.That(StableId.TryParse("weapon.bad_id", out malformed), Is.False);
+            Assert.That(StableId.TryParse("gun.bad_id", out malformed), Is.False);
         }
 
         [Test]
         public void ImpossibleSlotContents_RejectInCanonicalOrder()
         {
-            EquipmentDefinition weapon = CreateWeapon(
+            EquipmentDefinition gun = CreateGun(
                 "equipment.impossible-slots",
-                StableId.Parse("weapon.shotgun"),
+                StableId.Parse("gun.shotgun"),
                 1,
                 new[] { EnergyTag });
             AugmentDefinition augment = CreateAugment(
                 "augment.impossible-slots",
                 AugmentDuplicatePolicy.AllowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -444,7 +444,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 2,
                 1,
                 3);
-            EquipmentCatalog catalog = BuildCatalog(new[] { weapon }, new[] { augment });
+            EquipmentCatalog catalog = BuildCatalog(new[] { gun }, new[] { augment });
             StableId duplicateInstanceId = StableId.Parse("augment-instance.duplicate-slot");
             AugmentInstance known = AugmentInstance.Create(
                 duplicateInstanceId,
@@ -458,13 +458,13 @@ namespace ShooterMover.Tests.EditMode.Equipment
                 1);
             EquipmentInstance first = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.impossible-slots"),
-                weapon.DefinitionId,
+                gun.DefinitionId,
                 20,
                 Common.QualityId,
                 new[] { unknown, known });
             EquipmentInstance second = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.impossible-slots"),
-                weapon.DefinitionId,
+                gun.DefinitionId,
                 20,
                 Common.QualityId,
                 new[] { known, unknown });
@@ -486,10 +486,10 @@ namespace ShooterMover.Tests.EditMode.Equipment
         public void CatalogRejectsImpossibleCompatibilityBeforeGeneration()
         {
             EquipmentDefinition armor = CreateArmor("equipment.only-armor", 2);
-            AugmentDefinition weaponOnly = CreateAugment(
-                "augment.weapon-only-without-weapon",
+            AugmentDefinition gunOnly = CreateAugment(
+                "augment.gun-only-without-gun",
                 AugmentDuplicatePolicy.AllowSameDefinition,
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 new StableId[0],
                 new StableId[0],
                 new StableId[0],
@@ -501,7 +501,7 @@ namespace ShooterMover.Tests.EditMode.Equipment
 
             EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
                 new[] { armor },
-                new[] { weaponOnly });
+                new[] { gunOnly });
 
             Assert.That(result.IsValid, Is.False);
             AssertIssue(result, EquipmentModelIssueCode.ImpossibleAugmentCompatibility);
@@ -516,18 +516,18 @@ namespace ShooterMover.Tests.EditMode.Equipment
             return result.Catalog;
         }
 
-        private static EquipmentDefinition CreateWeapon(
+        private static EquipmentDefinition CreateGun(
             string definitionId,
-            StableId runtimeWeaponId,
+            StableId runtimeGunId,
             int maximumSlots,
             IEnumerable<StableId> tags)
         {
             return EquipmentDefinition.Create(
                 StableId.Parse(definitionId),
-                EquipmentCategoryIds.Weapon,
-                WeaponFamily,
+                EquipmentCategoryIds.Gun,
+                GunFamily,
                 definitionId,
-                runtimeWeaponId,
+                runtimeGunId,
                 InclusiveIntRange.Create(1, 300),
                 maximumSlots,
                 new[] { Mythic, Common },

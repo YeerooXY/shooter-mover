@@ -30,7 +30,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         public const string FileName = "level-grid.playable.provenance";
 
         public static void Write(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string absolutePackageRoot)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
@@ -97,7 +97,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         public static string ComputeSceneFingerprint(
-            LevelDesignSceneAuthoringRoot2D root)
+            LevelDraft root)
         {
             if (root == null) return string.Empty;
             var canonical = new StringBuilder(4096);
@@ -105,12 +105,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 CultureInfo.InvariantCulture));
             Append(canonical, "level", root.LevelIdText);
 
-            LevelRoomAuthoring2D[] rooms =
-                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelRoom[] rooms =
+                root.GetComponentsInChildren<LevelRoom>(true);
             Array.Sort(rooms, CompareRooms);
             for (int index = 0; index < rooms.Length; index++)
             {
-                LevelRoomAuthoring2D room = rooms[index];
+                LevelRoom room = rooms[index];
                 Append(canonical, "room.id", room.RoomIdText);
                 Append(canonical, "room.display", room.DisplayName);
                 Append(canonical, "room.grid", Vector(room.GridCoordinate));
@@ -135,12 +135,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 }
             }
 
-            LevelDoorEndpointAuthoring2D[] doors =
-                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            DoorEndpoint[] doors =
+                root.GetComponentsInChildren<DoorEndpoint>(true);
             Array.Sort(doors, CompareDoors);
             for (int index = 0; index < doors.Length; index++)
             {
-                LevelDoorEndpointAuthoring2D door = doors[index];
+                DoorEndpoint door = doors[index];
                 Append(canonical, "door.id", door.DoorIdText);
                 Append(canonical, "door.room", door.OwningRoom == null
                     ? string.Empty
@@ -154,12 +154,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 Append(canonical, "door.auto-face", door.AutoFaceConnection ? "1" : "0");
             }
 
-            LevelDoorLinkAuthoring2D[] links =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            DoorLink[] links =
+                root.GetComponentsInChildren<DoorLink>(true);
             Array.Sort(links, CompareLinks);
             for (int index = 0; index < links.Length; index++)
             {
-                LevelDoorLinkAuthoring2D link = links[index];
+                DoorLink link = links[index];
                 Append(canonical, "link.id", link.ConnectionIdText);
                 Append(canonical, "link.source-room", Id(link.SourceRoom));
                 Append(canonical, "link.source-door", Id(link.SourceDoor));
@@ -238,33 +238,33 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 + latestTicks.ToString(CultureInfo.InvariantCulture);
         }
 
-        private static int CompareRooms(LevelRoomAuthoring2D left, LevelRoomAuthoring2D right)
+        private static int CompareRooms(LevelRoom left, LevelRoom right)
         {
             return string.CompareOrdinal(Id(left), Id(right));
         }
 
         private static int CompareDoors(
-            LevelDoorEndpointAuthoring2D left,
-            LevelDoorEndpointAuthoring2D right)
+            DoorEndpoint left,
+            DoorEndpoint right)
         {
             return string.CompareOrdinal(Id(left), Id(right));
         }
 
         private static int CompareLinks(
-            LevelDoorLinkAuthoring2D left,
-            LevelDoorLinkAuthoring2D right)
+            DoorLink left,
+            DoorLink right)
         {
             string leftId = left == null ? string.Empty : left.ConnectionIdText;
             string rightId = right == null ? string.Empty : right.ConnectionIdText;
             return string.CompareOrdinal(leftId, rightId);
         }
 
-        private static string Id(LevelRoomAuthoring2D room)
+        private static string Id(LevelRoom room)
         {
             return room == null ? string.Empty : room.RoomIdText ?? string.Empty;
         }
 
-        private static string Id(LevelDoorEndpointAuthoring2D door)
+        private static string Id(DoorEndpoint door)
         {
             return door == null ? string.Empty : door.DoorIdText ?? string.Empty;
         }

@@ -131,7 +131,7 @@ namespace ShooterMover.UI.StrongboxOpening
             }
         }
 
-        private LootPickupVisual2D CreateVisual(
+        private LootVisual CreateVisual(
             LootPickupPresentation pickup,
             Vector3 position,
             string objectName)
@@ -139,8 +139,8 @@ namespace ShooterMover.UI.StrongboxOpening
             GameObject instance = new GameObject(objectName);
             instance.transform.SetParent(transform, false);
             instance.transform.position = position;
-            LootPickupVisual2D visual =
-                instance.AddComponent<LootPickupVisual2D>();
+            LootVisual visual =
+                instance.AddComponent<LootVisual>();
             visual.Bind(pickup);
             return visual;
         }

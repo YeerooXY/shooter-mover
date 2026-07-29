@@ -10,7 +10,7 @@ namespace ShooterMover.Domain.Equipment
 {
     public static class EquipmentCategoryIds
     {
-        public static readonly StableId Weapon = StableId.Parse("equipment-category.weapon");
+        public static readonly StableId Gun = StableId.Parse("equipment-category.gun");
         public static readonly StableId Armor = StableId.Parse("equipment-category.armor");
     }
 
@@ -284,7 +284,7 @@ namespace ShooterMover.Domain.Equipment
             StableId categoryId,
             StableId familyId,
             string displayName,
-            StableId runtimeWeaponReferenceId,
+            StableId runtimeGunReferenceId,
             InclusiveIntRange itemLevelRange,
             int maximumAugmentSlots,
             IEnumerable<EquipmentQualityTier> qualityTiers,
@@ -294,7 +294,7 @@ namespace ShooterMover.Domain.Equipment
             CategoryId = categoryId;
             FamilyId = familyId;
             DisplayName = displayName;
-            RuntimeWeaponReferenceId = runtimeWeaponReferenceId;
+            RuntimeGunReferenceId = runtimeGunReferenceId;
             ItemLevelRange = itemLevelRange;
             MaximumAugmentSlots = maximumAugmentSlots;
             this.qualityTiers = CopyAndSort(qualityTiers, CompareQualityTiers);
@@ -306,7 +306,7 @@ namespace ShooterMover.Domain.Equipment
         public StableId CategoryId { get; }
         public StableId FamilyId { get; }
         public string DisplayName { get; }
-        public StableId RuntimeWeaponReferenceId { get; }
+        public StableId RuntimeGunReferenceId { get; }
         public InclusiveIntRange ItemLevelRange { get; }
         public int MaximumAugmentSlots { get; }
         public IReadOnlyList<EquipmentQualityTier> QualityTiers { get { return qualityTiers; } }
@@ -317,7 +317,7 @@ namespace ShooterMover.Domain.Equipment
             StableId categoryId,
             StableId familyId,
             string displayName,
-            StableId runtimeWeaponReferenceId,
+            StableId runtimeGunReferenceId,
             InclusiveIntRange itemLevelRange,
             int maximumAugmentSlots,
             IEnumerable<EquipmentQualityTier> qualityTiers,
@@ -328,7 +328,7 @@ namespace ShooterMover.Domain.Equipment
                 categoryId,
                 familyId,
                 displayName,
-                runtimeWeaponReferenceId,
+                runtimeGunReferenceId,
                 itemLevelRange,
                 maximumAugmentSlots,
                 qualityTiers,
@@ -397,7 +397,7 @@ namespace ShooterMover.Domain.Equipment
             Append(builder, "category_id", CategoryId);
             Append(builder, "family_id", FamilyId);
             builder.Append("display_name=").Append(DisplayName ?? "null").Append('\n');
-            Append(builder, "runtime_weapon_reference_id", RuntimeWeaponReferenceId);
+            Append(builder, "runtime_gun_reference_id", RuntimeGunReferenceId);
             builder.Append("item_level_range=")
                 .Append(ItemLevelRange == null ? "null" : ItemLevelRange.ToCanonicalString())
                 .Append('\n');
@@ -1168,17 +1168,17 @@ namespace ShooterMover.Domain.Equipment
 
         private static void ValidateRuntimeReference(EquipmentDefinition definition, ICollection<EquipmentModelIssue> issues)
         {
-            if (Equals(definition.CategoryId, EquipmentCategoryIds.Weapon))
+            if (Equals(definition.CategoryId, EquipmentCategoryIds.Gun))
             {
-                if (definition.RuntimeWeaponReferenceId == null
-                    || !string.Equals(definition.RuntimeWeaponReferenceId.Namespace, "weapon", StringComparison.Ordinal))
+                if (definition.RuntimeGunReferenceId == null
+                    || !string.Equals(definition.RuntimeGunReferenceId.Namespace, "gun", StringComparison.Ordinal))
                 {
-                    issues.Add(new EquipmentModelIssue(EquipmentModelIssueCode.InvalidRuntimeReference, definition.DefinitionId, "weapon category requires weapon.* reference"));
+                    issues.Add(new EquipmentModelIssue(EquipmentModelIssueCode.InvalidRuntimeReference, definition.DefinitionId, "gun category requires gun.* reference"));
                 }
             }
-            else if (definition.RuntimeWeaponReferenceId != null)
+            else if (definition.RuntimeGunReferenceId != null)
             {
-                issues.Add(new EquipmentModelIssue(EquipmentModelIssueCode.InvalidRuntimeReference, definition.DefinitionId, "non-weapon equipment cannot carry a weapon runtime reference"));
+                issues.Add(new EquipmentModelIssue(EquipmentModelIssueCode.InvalidRuntimeReference, definition.DefinitionId, "non-gun equipment cannot carry a gun runtime reference"));
             }
         }
 

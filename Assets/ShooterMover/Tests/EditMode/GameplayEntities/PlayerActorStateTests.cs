@@ -378,7 +378,7 @@ namespace ShooterMover.Tests.EditMode.GameplayEntities
                 "Scene",
                 "Navigation",
                 "HUD",
-                "Weapon",
+                "Gun",
                 "Enemy",
             };
 

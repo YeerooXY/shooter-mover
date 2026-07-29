@@ -8,20 +8,20 @@ using UnityEngine;
 
 namespace ShooterMover.Tests.EditMode.Props
 {
-    public sealed class DestructiblePropDefinitionTests
+    public sealed class BreakableDefinitionTests
     {
         private static readonly Type ValuesType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDefinitionValues");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableDefinitionValues");
         private static readonly Type OverridesType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropValueOverrides");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableValueOverrides");
         private static readonly Type VariantType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropVariantDefinition");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableVariantDefinition");
         private static readonly Type FamilyType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropFamilyDefinitionAsset");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableFamilyDefinitionAsset");
         private static readonly Type ShapeType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropColliderShape2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableColliderShape");
         private static readonly Type CollisionPolicyType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestroyedCollisionPolicy");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableDestroyedCollisionPolicy");
 
         [Test]
         public void FamilyVariantAndInstanceValues_ResolveInRequiredOrder()

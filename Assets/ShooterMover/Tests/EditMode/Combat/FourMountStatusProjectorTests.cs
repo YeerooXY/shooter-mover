@@ -10,7 +10,7 @@ namespace ShooterMover.Tests.EditMode.Combat
 {
     public sealed class FourMountStatusProjectorTests
     {
-        private static readonly StableId ModuleId = StableId.Parse("weapon-module.cb010-status");
+        private static readonly StableId ModuleId = StableId.Parse("gun-module.cb010-status");
 
         [Test]
         public void MixedState_ExposesStableOrderReadinessResourcesRecoveryAndPower()
@@ -21,7 +21,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot snapshot = projector.Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
 
             Assert.That(snapshot.Count, Is.EqualTo(4));
             for (int stableIndex = 0; stableIndex < snapshot.Count; stableIndex++)
@@ -32,24 +32,24 @@ namespace ShooterMover.Tests.EditMode.Combat
             }
 
             FourMountSlotStatusSnapshot heat = snapshot.GetByStableIndex(0);
-            Assert.That(heat.CycleMode, Is.EqualTo(WeaponCycleMode.Heat));
+            Assert.That(heat.CycleMode, Is.EqualTo(GunCycleMode.Heat));
             Assert.That(heat.CycleCurrent, Is.EqualTo(4d));
             Assert.That(heat.CycleMaximum, Is.EqualTo(10d));
             Assert.That(heat.PowerLevel, Is.EqualTo(0.8d).Within(0.000000001d));
 
             FourMountSlotStatusSnapshot charge = snapshot.GetByStableIndex(1);
-            Assert.That(charge.CycleMode, Is.EqualTo(WeaponCycleMode.Charge));
+            Assert.That(charge.CycleMode, Is.EqualTo(GunCycleMode.Charge));
             Assert.That(charge.CycleCurrent, Is.Zero);
             Assert.That(charge.CycleMaximum, Is.EqualTo(0.5d));
             Assert.That(charge.IsReady, Is.False);
 
             FourMountSlotStatusSnapshot recovering = snapshot.GetByStableIndex(2);
-            Assert.That(recovering.Phase, Is.EqualTo(WeaponMountPhase.Recovering));
+            Assert.That(recovering.Phase, Is.EqualTo(GunMountPhase.Recovering));
             Assert.That(recovering.RecoveryRemainingSeconds, Is.EqualTo(0.5d));
 
             FourMountSlotStatusSnapshot ready = snapshot.GetByStableIndex(3);
             Assert.That(ready.IsReady, Is.True);
-            Assert.That(ready.Phase, Is.EqualTo(WeaponMountPhase.Ready));
+            Assert.That(ready.Phase, Is.EqualTo(GunMountPhase.Ready));
             Assert.That(ready.HasPowerBank, Is.False);
 
             TestContext.WriteLine("MIXED FOUR-MOUNT STATUS\n" + snapshot.ToTraceString());
@@ -62,7 +62,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot projected = new FourMountStatusProjector().Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
 
             FourMountStatusSnapshot reordered = new FourMountStatusSnapshot(
                 projected.GetByStableIndex(3),
@@ -84,36 +84,36 @@ namespace ShooterMover.Tests.EditMode.Combat
         public void AcceptedHudContract_ProjectsCanonicalRowsWithoutFabricatingFireResults()
         {
             Fixture fixture = CreateMixedFixture();
-            ContractPresentation.WeaponHudState hud =
+            ContractPresentation.GunHudState hud =
                 new FourMountStatusProjector().ProjectAcceptedHudState(
                     fixture.State,
                     fixture.Profiles,
-                    fixture.WeaponIds);
+                    fixture.GunIds);
 
-            Assert.That(hud.Count, Is.EqualTo(ContractCombat.WeaponMountContractRules.MountCount));
+            Assert.That(hud.Count, Is.EqualTo(ContractCombat.GunMountContractRules.MountCount));
             for (int stableIndex = 0; stableIndex < hud.Count; stableIndex++)
             {
-                ContractPresentation.WeaponHudSlotState row = hud.GetByHudIndex(stableIndex);
+                ContractPresentation.GunHudSlotState row = hud.GetByHudIndex(stableIndex);
                 Assert.That(
                     row.Slot,
-                    Is.EqualTo(ContractCombat.WeaponMountContractRules.GetSlotAtHudIndex(stableIndex)));
+                    Is.EqualTo(ContractCombat.GunMountContractRules.GetSlotAtHudIndex(stableIndex)));
                 Assert.That(row.LatestFireResult, Is.Null);
             }
 
             Assert.That(
                 hud.GetByHudIndex(0).CycleResource.Kind,
-                Is.EqualTo(ContractCombat.WeaponCycleResourceKind.Heat));
+                Is.EqualTo(ContractCombat.GunCycleResourceKind.Heat));
             Assert.That(hud.GetByHudIndex(0).CycleResource.Current, Is.EqualTo(4d));
             Assert.That(hud.GetByHudIndex(0).PowerBank.AvailableUnits, Is.EqualTo(8d));
             Assert.That(
                 hud.GetByHudIndex(1).Readiness,
-                Is.EqualTo(ContractCombat.WeaponMountReadiness.Charging));
+                Is.EqualTo(ContractCombat.GunMountReadiness.Charging));
             Assert.That(
                 hud.GetByHudIndex(2).Readiness,
-                Is.EqualTo(ContractCombat.WeaponMountReadiness.Recovering));
+                Is.EqualTo(ContractCombat.GunMountReadiness.Recovering));
             Assert.That(
                 hud.GetByHudIndex(3).Readiness,
-                Is.EqualTo(ContractCombat.WeaponMountReadiness.Ready));
+                Is.EqualTo(ContractCombat.GunMountReadiness.Ready));
         }
 
         [Test]
@@ -128,7 +128,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot snapshot = new FourMountStatusProjector().Project(
                 result.State,
                 fixture.Profiles,
-                fixture.WeaponIds,
+                fixture.GunIds,
                 result);
 
             for (int stableIndex = 0; stableIndex < snapshot.Count; stableIndex++)
@@ -154,7 +154,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot snapshot = new FourMountStatusProjector().Project(
                 result.State,
                 fixture.Profiles,
-                fixture.WeaponIds,
+                fixture.GunIds,
                 result);
 
             Assert.That(snapshot.GetByStableIndex(0).FireMode, Is.EqualTo(FourMountFireMode.Empowered));
@@ -185,14 +185,14 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot snapshot = new FourMountStatusProjector().Project(
                 result.State,
                 fixture.Profiles,
-                fixture.WeaponIds,
+                fixture.GunIds,
                 result);
 
             FourMountSlotStatusSnapshot faulted = snapshot.GetByStableIndex(1);
             Assert.That(faulted.IsFaulted, Is.True);
-            Assert.That(faulted.Phase, Is.EqualTo(WeaponMountPhase.Faulted));
+            Assert.That(faulted.Phase, Is.EqualTo(GunMountPhase.Faulted));
             Assert.That(faulted.FireMode, Is.EqualTo(FourMountFireMode.Faulted));
-            Assert.That(faulted.FaultKind, Is.EqualTo(WeaponMountFaultKind.ExternalFault));
+            Assert.That(faulted.FaultKind, Is.EqualTo(GunMountFaultKind.ExternalFault));
             Assert.That(faulted.FaultDetail, Is.EqualTo("synthetic mount bus fault"));
             Assert.That(faulted.HasPowerBank, Is.True);
             Assert.That(faulted.PowerAvailableUnits, Is.EqualTo(10d));
@@ -214,24 +214,24 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot snapshot = projector.Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
             string projectedBefore = snapshot.ToTraceString();
 
             fixture.Profiles[0] = fixture.Profiles[3];
-            fixture.WeaponIds[0] = StableId.Parse("weapon.cb010-array-replaced");
+            fixture.GunIds[0] = StableId.Parse("gun.cb010-array-replaced");
 
             Assert.That(fixture.State.ToTraceString(), Is.EqualTo(sourceBefore));
             Assert.That(snapshot.ToTraceString(), Is.EqualTo(projectedBefore));
             Assert.That(
-                snapshot.GetByStableIndex(0).WeaponId,
-                Is.EqualTo(StableId.Parse("weapon.cb010-mixed-slot-1")));
+                snapshot.GetByStableIndex(0).GunId,
+                Is.EqualTo(StableId.Parse("gun.cb010-mixed-slot-1")));
         }
 
         [Test]
         public void MissingSlot_FailsVisiblyInsteadOfFabricatingState()
         {
             Fixture fixture = CreateMixedFixture();
-            WeaponLiveProfile[] onlyThreeProfiles =
+            GunLiveProfile[] onlyThreeProfiles =
             {
                 fixture.Profiles[0],
                 fixture.Profiles[1],
@@ -242,7 +242,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 new FourMountStatusProjector().Project(
                     fixture.State,
                     onlyThreeProfiles,
-                    fixture.WeaponIds));
+                    fixture.GunIds));
 
             Assert.That(exception.Message, Does.Contain("Exactly four"));
         }
@@ -254,7 +254,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot projected = new FourMountStatusProjector().Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
 
             Assert.Throws<ArgumentException>(() => new FourMountStatusSnapshot(
                 projected.GetByStableIndex(0),
@@ -277,11 +277,11 @@ namespace ShooterMover.Tests.EditMode.Combat
             FourMountStatusSnapshot first = projector.Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
             FourMountStatusSnapshot second = projector.Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
 
             Assert.That(second, Is.Not.SameAs(first));
             Assert.That(second.GetByStableIndex(0), Is.Not.SameAs(first.GetByStableIndex(0)));
@@ -293,12 +293,12 @@ namespace ShooterMover.Tests.EditMode.Combat
         {
             Fixture fixture = CreateMixedFixture();
             fixture.Profiles[3] = null;
-            fixture.WeaponIds[3] = null;
+            fixture.GunIds[3] = null;
 
             FourMountStatusSnapshot snapshot = new FourMountStatusProjector().Project(
                 fixture.State,
                 fixture.Profiles,
-                fixture.WeaponIds);
+                fixture.GunIds);
 
             FourMountSlotStatusSnapshot unequipped = snapshot.GetByStableIndex(3);
             Assert.That(unequipped.StableSlotNumber, Is.EqualTo(4));
@@ -311,11 +311,11 @@ namespace ShooterMover.Tests.EditMode.Combat
 
         private static Fixture CreateMixedFixture()
         {
-            WeaponLiveProfile[] profiles =
+            GunLiveProfile[] profiles =
             {
                 BuildProfile(
                     "mixed-slot-1",
-                    cycleMode: WeaponCycleMode.Heat,
+                    cycleMode: GunCycleMode.Heat,
                     heatCapacityUnits: 10d,
                     heatPerShotUnits: 4d,
                     heatRecoveryUnitsPerSecond: 2d,
@@ -323,7 +323,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                     hasPowerBank: true),
                 BuildProfile(
                     "mixed-slot-2",
-                    cycleMode: WeaponCycleMode.Charge,
+                    cycleMode: GunCycleMode.Charge,
                     chargeSeconds: 0.5d,
                     hasPowerBank: true),
                 BuildProfile(
@@ -333,54 +333,54 @@ namespace ShooterMover.Tests.EditMode.Combat
                 BuildProfile("mixed-slot-4"),
             };
 
-            WeaponMountState[] mounts =
+            GunMountState[] mounts =
             {
-                WeaponMountStepper.Step(
+                GunMountStepper.Step(
                     profiles[0],
-                    WeaponMountState.Initial(profiles[0]),
+                    GunMountState.Initial(profiles[0]),
                     0d,
                     true).State,
-                WeaponMountStepper.Step(
+                GunMountStepper.Step(
                     profiles[1],
-                    WeaponMountState.Initial(profiles[1]),
+                    GunMountState.Initial(profiles[1]),
                     0d,
                     true).State,
-                WeaponMountStepper.Step(
+                GunMountStepper.Step(
                     profiles[2],
-                    WeaponMountState.Initial(profiles[2]),
+                    GunMountState.Initial(profiles[2]),
                     0d,
                     true).State,
-                WeaponMountState.Initial(profiles[3]),
+                GunMountState.Initial(profiles[3]),
             };
 
-            WeaponPowerBankState[] banks =
+            GunPowerBankState[] banks =
             {
-                WeaponPowerBankState.FromProfile(profiles[0], 8d),
-                WeaponPowerBankState.FromProfile(profiles[1], 4d),
-                WeaponPowerBankState.FromProfile(profiles[2], 0d),
-                WeaponPowerBankState.None,
+                GunPowerBankState.FromProfile(profiles[0], 8d),
+                GunPowerBankState.FromProfile(profiles[1], 4d),
+                GunPowerBankState.FromProfile(profiles[2], 0d),
+                GunPowerBankState.None,
             };
 
-            StableId[] weaponIds =
+            StableId[] gunIds =
             {
-                StableId.Parse("weapon.cb010-mixed-slot-1"),
-                StableId.Parse("weapon.cb010-mixed-slot-2"),
-                StableId.Parse("weapon.cb010-mixed-slot-3"),
-                StableId.Parse("weapon.cb010-mixed-slot-4"),
+                StableId.Parse("gun.cb010-mixed-slot-1"),
+                StableId.Parse("gun.cb010-mixed-slot-2"),
+                StableId.Parse("gun.cb010-mixed-slot-3"),
+                StableId.Parse("gun.cb010-mixed-slot-4"),
             };
 
             return new Fixture(
                 profiles,
-                weaponIds,
+                gunIds,
                 new FourMountCombatState(mounts, banks));
         }
 
         private static FlowFixture CreateCoordinatorFixture(double[] initialPower)
         {
-            WeaponLiveProfile[] profiles = new WeaponLiveProfile[FourMountCombatState.MountCount];
-            StableId[] weaponIds = new StableId[FourMountCombatState.MountCount];
+            GunLiveProfile[] profiles = new GunLiveProfile[FourMountCombatState.MountCount];
+            StableId[] gunIds = new StableId[FourMountCombatState.MountCount];
             StableId[] mountIds = new StableId[FourMountCombatState.MountCount];
-            WeaponMountOrigin[] origins = new WeaponMountOrigin[FourMountCombatState.MountCount];
+            GunMountOrigin[] origins = new GunMountOrigin[FourMountCombatState.MountCount];
 
             for (int stableIndex = 0; stableIndex < FourMountCombatState.MountCount; stableIndex++)
             {
@@ -388,31 +388,31 @@ namespace ShooterMover.Tests.EditMode.Combat
                     "coordinator-slot-" + (stableIndex + 1),
                     hasPowerBank: true,
                     presentationPriority: stableIndex);
-                weaponIds[stableIndex] = StableId.Parse(
-                    "weapon.cb010-coordinator-slot-" + (stableIndex + 1));
+                gunIds[stableIndex] = StableId.Parse(
+                    "gun.cb010-coordinator-slot-" + (stableIndex + 1));
                 mountIds[stableIndex] = StableId.Parse(
                     "mount.cb010-coordinator-slot-" + (stableIndex + 1));
-                origins[stableIndex] = new WeaponMountOrigin(
+                origins[stableIndex] = new GunMountOrigin(
                     stableIndex + 1,
                     new AimVector2(stableIndex, 0d));
             }
 
-            WeaponBehaviorPipeline pipeline = new WeaponBehaviorPipeline(
-                new IWeaponBehaviorModule[] { new EmptyModule() });
+            GunBehaviorPipeline pipeline = new GunBehaviorPipeline(
+                new IGunBehaviorModule[] { new EmptyModule() });
             return new FlowFixture(
                 profiles,
-                weaponIds,
+                gunIds,
                 mountIds,
                 origins,
                 FourMountCombatState.Initial(profiles, initialPower),
                 new FourMountCombatStepper(new FourMountAimResolver(), pipeline));
         }
 
-        private static WeaponLiveProfile BuildProfile(
+        private static GunLiveProfile BuildProfile(
             string suffix,
             double cadenceSeconds = 0.2d,
             double recoverySeconds = 0d,
-            WeaponCycleMode cycleMode = WeaponCycleMode.None,
+            GunCycleMode cycleMode = GunCycleMode.None,
             double heatCapacityUnits = 0d,
             double heatPerShotUnits = 0d,
             double heatRecoveryUnitsPerSecond = 0d,
@@ -420,9 +420,9 @@ namespace ShooterMover.Tests.EditMode.Combat
             bool hasPowerBank = false,
             int presentationPriority = 0)
         {
-            return WeaponLiveProfile.Create(
-                WeaponLiveProfile.CurrentProfileVersion,
-                StableId.Parse("weapon-profile.cb010-" + suffix),
+            return GunLiveProfile.Create(
+                GunLiveProfile.CurrentProfileVersion,
+                StableId.Parse("gun-profile.cb010-" + suffix),
                 cadenceSeconds,
                 1,
                 0d,
@@ -444,18 +444,18 @@ namespace ShooterMover.Tests.EditMode.Combat
         private sealed class Fixture
         {
             public Fixture(
-                WeaponLiveProfile[] profiles,
-                StableId[] weaponIds,
+                GunLiveProfile[] profiles,
+                StableId[] gunIds,
                 FourMountCombatState state)
             {
                 Profiles = profiles;
-                WeaponIds = weaponIds;
+                GunIds = gunIds;
                 State = state;
             }
 
-            public WeaponLiveProfile[] Profiles { get; }
+            public GunLiveProfile[] Profiles { get; }
 
-            public StableId[] WeaponIds { get; }
+            public StableId[] GunIds { get; }
 
             public FourMountCombatState State { get; }
         }
@@ -465,28 +465,28 @@ namespace ShooterMover.Tests.EditMode.Combat
             private long simulationStep;
 
             public FlowFixture(
-                WeaponLiveProfile[] profiles,
-                StableId[] weaponIds,
+                GunLiveProfile[] profiles,
+                StableId[] gunIds,
                 StableId[] mountIds,
-                WeaponMountOrigin[] origins,
+                GunMountOrigin[] origins,
                 FourMountCombatState state,
                 FourMountCombatStepper stepper)
             {
                 Profiles = profiles;
-                WeaponIds = weaponIds;
+                GunIds = gunIds;
                 MountIds = mountIds;
                 Origins = origins;
                 State = state;
                 Stepper = stepper;
             }
 
-            public WeaponLiveProfile[] Profiles { get; }
+            public GunLiveProfile[] Profiles { get; }
 
-            public StableId[] WeaponIds { get; }
+            public StableId[] GunIds { get; }
 
             public StableId[] MountIds { get; }
 
-            public WeaponMountOrigin[] Origins { get; }
+            public GunMountOrigin[] Origins { get; }
 
             public FourMountCombatState State { get; private set; }
 
@@ -505,7 +505,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                     AimVector2.UnitX,
                     new AimVector2(20d, 0d),
                     Profiles,
-                    WeaponIds,
+                    GunIds,
                     MountIds,
                     Origins,
                     externalFaultDetails);
@@ -515,13 +515,13 @@ namespace ShooterMover.Tests.EditMode.Combat
             }
         }
 
-        private sealed class EmptyModule : IWeaponBehaviorModule
+        private sealed class EmptyModule : IGunBehaviorModule
         {
             public StableId ModuleId => FourMountStatusProjectorTests.ModuleId;
 
-            public WeaponBehaviorModulePlan BuildExecutionPlan(WeaponBehaviorInput input)
+            public GunBehaviorModulePlan BuildExecutionPlan(GunBehaviorInput input)
             {
-                return new WeaponBehaviorModulePlan(ModuleId);
+                return new GunBehaviorModulePlan(ModuleId);
             }
         }
     }

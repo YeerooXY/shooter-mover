@@ -178,7 +178,7 @@ namespace ShooterMover.Tests.EditMode.Flow.PlaySelection
                 envelope.ContractStableId,
                 envelope.SelectedCharacterStableId,
                 envelope.LoadoutProfileStableId,
-                envelope.WeaponSlots,
+                envelope.GunSlots,
                 "tampered");
             PlayerRouteProfileValidationResult importResult =
                 PlayerRouteProfilePayload.TryImport(tampered);

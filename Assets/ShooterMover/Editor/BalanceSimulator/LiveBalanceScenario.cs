@@ -28,8 +28,8 @@ namespace ShooterMover.Editor.BalanceSimulator
         private static readonly StableId QualityCommon = Id("quality.common");
         private static readonly StableId QualityRare = Id("quality.rare");
         private static readonly StableId QualityExceptional = Id("quality.exceptional");
-        private static readonly StableId WeaponPulse = Id("equipment.weapon-pulse");
-        private static readonly StableId WeaponScatter = Id("equipment.weapon-scatter");
+        private static readonly StableId GunPulse = Id("equipment.gun-pulse");
+        private static readonly StableId GunScatter = Id("equipment.gun-scatter");
         private static readonly StableId ArmorReactive = Id("equipment.armor-reactive");
         private static readonly StableId AugmentPower = Id("augment.power");
         private static readonly StableId AugmentGuard = Id("augment.guard");
@@ -152,7 +152,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             RewardGrant grant = RewardGrant.Create(
                 Id("grant.balance-strongbox-equipment"),
                 RewardGrantKind.EquipmentReference,
-                WeaponPulse,
+                GunPulse,
                 2L);
 
             IReadOnlyList<EquipmentInstance> generated;
@@ -375,9 +375,9 @@ namespace ShooterMover.Editor.BalanceSimulator
                 Id(id),
                 new[]
                 {
-                    Candidate(WeaponPulse, 1L, 1.0),
+                    Candidate(GunPulse, 1L, 1.0),
                     Candidate(ArmorReactive, 8L, 1.0),
-                    Candidate(WeaponScatter, 18L, 1.0),
+                    Candidate(GunScatter, 18L, 1.0),
                 },
                 new[]
                 {
@@ -401,7 +401,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             return EquipmentGenerationPolicy.Create(
                 Id("balance-policy.strongbox"),
-                new[] { Candidate(WeaponPulse, 0L, 1.0) },
+                new[] { Candidate(GunPulse, 0L, 1.0) },
                 new[]
                 {
                     EquipmentQualityCandidate.Create(QualityCommon, 0L, 8UL),
@@ -442,9 +442,9 @@ namespace ShooterMover.Editor.BalanceSimulator
         {
             return new CraftingRecipe(
                 1,
-                Id("recipe.weapon-scatter"),
-                WeaponScatter,
-                Id("source.natural.weapon-scatter"),
+                Id("recipe.gun-scatter"),
+                GunScatter,
+                Id("source.natural.gun-scatter"),
                 18,
                 18,
                 4,
@@ -464,7 +464,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 10,
                 new[] { new CraftingWeightedDefinition(AugmentPower, 1UL) },
                 new CraftingGeneratorPolicy(
-                    Id("crafting-generator.weapon-scatter"),
+                    Id("crafting-generator.gun-scatter"),
                     DeterministicRandom.AlgorithmVersion1,
                     new SoftActivationCurveParameters(0.08, 12L, 8L),
                     new ObsolescenceCurveParameters(30L, 20.0, 0.15)));
@@ -475,7 +475,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             RewardGrantSpecification equipment = RewardGrantSpecification.CreateFixed(
                 Id("grant.balance-strongbox-equipment-spec"),
                 RewardGrantKind.EquipmentReference,
-                WeaponPulse,
+                GunPulse,
                 2L);
             RewardProfile profile = RewardProfile.Create(
                 Id("profile.balance-strongbox"),
@@ -517,21 +517,21 @@ namespace ShooterMover.Editor.BalanceSimulator
             EquipmentQualityTier rare = EquipmentQualityTier.Create(QualityRare, "Rare", 2);
             EquipmentQualityTier exceptional = EquipmentQualityTier.Create(QualityExceptional, "Exceptional", 3);
             EquipmentDefinition pulse = EquipmentDefinition.Create(
-                WeaponPulse,
-                EquipmentCategoryIds.Weapon,
+                GunPulse,
+                EquipmentCategoryIds.Gun,
                 Id("equipment-family.pulse"),
-                "Pulse Weapon",
-                Id("weapon.runtime.pulse"),
+                "Pulse Gun",
+                Id("gun.runtime.pulse"),
                 InclusiveIntRange.Create(1, 100),
                 3,
                 new[] { common, rare, exceptional },
                 Array.Empty<StableId>());
             EquipmentDefinition scatter = EquipmentDefinition.Create(
-                WeaponScatter,
-                EquipmentCategoryIds.Weapon,
+                GunScatter,
+                EquipmentCategoryIds.Gun,
                 Id("equipment-family.scatter"),
-                "Scatter Weapon",
-                Id("weapon.runtime.scatter"),
+                "Scatter Gun",
+                Id("gun.runtime.scatter"),
                 InclusiveIntRange.Create(1, 100),
                 2,
                 new[] { common, rare, exceptional },

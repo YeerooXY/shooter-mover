@@ -56,7 +56,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             {
                 StrongboxItemLevelRoll roll = policy.RollItemLevel(50, 987654321UL, 1, ordinal);
                 Assert.That(Math.Abs(roll.TargetItemLevel - roll.MeanItemLevel),
-                    Is.LessThanOrEqualTo(StrongboxPowerBudgetPolicy.MaximumLevelDeviationV1));
+                    Is.LessThanOrEqualTo(StrongboxPowerBudgetPolicy.MaximumLevelDeviation));
             }
         }
 
@@ -103,15 +103,15 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         public void IndependentSlotsMayProduceSameDefinitionWithUniqueInstances()
         {
             StableId tierId = Id("strongbox.tier-duplicate-test");
-            StableId weaponId = Id("equipment.weapon-only-candidate");
+            StableId gunId = Id("equipment.gun-only-candidate");
             StrongboxPowerBudgetPolicy powerBudget = Policy(5, 1000, 0, 0, 0);
-            EquipmentCatalog catalog = BuildSingleWeaponCatalog(weaponId);
+            EquipmentCatalog catalog = BuildSingleGunCatalog(gunId);
             EquipmentGenerationPolicy equipmentPolicy = EquipmentGenerationPolicy.Create(
                 Id("generation-policy.duplicate-test"),
                 new[]
                 {
                     EquipmentGenerationCandidate.Create(
-                        weaponId,
+                        gunId,
                         25,
                         100,
                         0,
@@ -132,7 +132,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             StrongboxDefinition strongboxDefinition = CreateStrongboxDefinition(
                 tierId,
                 equipmentPolicy.PolicyId,
-                weaponId,
+                gunId,
                 2L);
             StrongboxEquipmentGenerationDefinitionCatalog provider =
                 new StrongboxEquipmentGenerationDefinitionCatalog(
@@ -166,7 +166,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             RewardGrant grant = RewardGrant.Create(
                 Id("grant.equipment-two"),
                 RewardGrantKind.EquipmentReference,
-                weaponId,
+                gunId,
                 2L);
 
             IReadOnlyList<EquipmentInstance> equipment;
@@ -183,8 +183,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             Assert.That(context.ProgressionContext.CharacterLevel, Is.EqualTo(20));
             Assert.That(powerBudget.TierLevelBonus, Is.EqualTo(5));
             Assert.That(equipment, Has.Count.EqualTo(2));
-            Assert.That(equipment[0].DefinitionId, Is.EqualTo(weaponId));
-            Assert.That(equipment[1].DefinitionId, Is.EqualTo(weaponId));
+            Assert.That(equipment[0].DefinitionId, Is.EqualTo(gunId));
+            Assert.That(equipment[1].DefinitionId, Is.EqualTo(gunId));
             Assert.That(equipment[1].InstanceId, Is.Not.EqualTo(equipment[0].InstanceId));
         }
 
@@ -254,28 +254,28 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                 Id("scaling.exceptional"));
         }
 
-        private static EquipmentCatalog BuildSingleWeaponCatalog(StableId weaponId)
+        private static EquipmentCatalog BuildSingleGunCatalog(StableId gunId)
         {
             EquipmentQualityTier common = EquipmentQualityTier.Create(
                 Id("quality.common"),
                 "Common",
                 1);
-            EquipmentDefinition weapon = EquipmentDefinition.Create(
-                weaponId,
-                EquipmentCategoryIds.Weapon,
-                Id("equipment-family.weapon-only-candidate"),
-                "Weapon Candidate",
-                Id("weapon.runtime-reference"),
+            EquipmentDefinition gun = EquipmentDefinition.Create(
+                gunId,
+                EquipmentCategoryIds.Gun,
+                Id("equipment-family.gun-only-candidate"),
+                "Gun Candidate",
+                Id("gun.runtime-reference"),
                 InclusiveIntRange.Create(1, 100),
                 0,
                 new[] { common },
                 Array.Empty<StableId>());
             EquipmentCatalogBuildResult build = EquipmentCatalog.Build(
-                new[] { weapon },
+                new[] { gun },
                 Array.Empty<AugmentDefinition>());
             if (!build.IsValid)
             {
-                throw new InvalidOperationException("Single-weapon test catalog is invalid.");
+                throw new InvalidOperationException("Single-gun test catalog is invalid.");
             }
 
             return build.Catalog;

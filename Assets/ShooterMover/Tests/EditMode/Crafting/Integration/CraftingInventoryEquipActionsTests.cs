@@ -30,10 +30,10 @@ namespace ShooterMover.Tests.EditMode.Crafting.Integration
             Id("equipment.alpha");
         private static readonly StableId EquipmentBeta =
             Id("equipment.beta");
-        private static readonly StableId WeaponSlotOne =
-            Id("loadout-slot.weapon-1");
-        private static readonly StableId WeaponSlotTwo =
-            Id("loadout-slot.weapon-2");
+        private static readonly StableId GunSlotOne =
+            Id("loadout-slot.gun-1");
+        private static readonly StableId GunSlotTwo =
+            Id("loadout-slot.gun-2");
 
         [Test]
         public void SuccessSpendsScrapInsertsOneInstanceAndEquipsThatInstance()
@@ -219,9 +219,9 @@ namespace ShooterMover.Tests.EditMode.Crafting.Integration
         {
             var fixture = new Fixture();
             CraftAndEquipCommand first = fixture.Command(
-                slotId: WeaponSlotOne);
+                slotId: GunSlotOne);
             CraftAndEquipCommand conflict = fixture.Command(
-                slotId: WeaponSlotTwo);
+                slotId: GunSlotTwo);
 
             CraftingInventoryEquipResult applied =
                 fixture.Integration.CraftAndEquip(first);
@@ -495,7 +495,7 @@ namespace ShooterMover.Tests.EditMode.Crafting.Integration
                     rootSeed);
                 return new CraftAndEquipCommand(
                     LastCraftCommand,
-                    slotId ?? WeaponSlotOne,
+                    slotId ?? GunSlotOne,
                     expectedLoadoutSequence);
             }
         }
@@ -757,10 +757,10 @@ namespace ShooterMover.Tests.EditMode.Crafting.Integration
             EquipmentDefinition alpha =
                 EquipmentDefinition.Create(
                     EquipmentAlpha,
-                    EquipmentCategoryIds.Weapon,
+                    EquipmentCategoryIds.Gun,
                     Id("equipment-family.alpha"),
                     "Alpha",
-                    Id("weapon.alpha"),
+                    Id("gun.alpha"),
                     InclusiveIntRange.Create(1, 100),
                     0,
                     qualities,
@@ -768,10 +768,10 @@ namespace ShooterMover.Tests.EditMode.Crafting.Integration
             EquipmentDefinition beta =
                 EquipmentDefinition.Create(
                     EquipmentBeta,
-                    EquipmentCategoryIds.Weapon,
+                    EquipmentCategoryIds.Gun,
                     Id("equipment-family.beta"),
                     "Beta",
-                    Id("weapon.beta"),
+                    Id("gun.beta"),
                     InclusiveIntRange.Create(1, 100),
                     0,
                     qualities,
@@ -803,7 +803,7 @@ namespace ShooterMover.Tests.EditMode.Crafting.Integration
                     amount,
                     ScrapIdentity.RewardGrantReason,
                     new ScrapProvenance(
-                        ScrapIdentity.RewardSourceKind,
+                        ScrapIdentity.LootSourceKind,
                         Id("reward-op.initial"),
                         Id("player.test"))));
             Assert.That(result.ChangedState, Is.True);

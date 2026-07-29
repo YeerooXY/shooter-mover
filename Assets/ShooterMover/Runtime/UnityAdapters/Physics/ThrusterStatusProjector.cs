@@ -54,7 +54,7 @@ namespace ShooterMover.UnityAdapters.Physics
     public static class ThrusterStatusProjector
     {
         public static ThrusterStatusSnapshot Project(
-            MovementActor2D actor,
+            Mover actor,
             MovementThrusterTuningProfile tuning)
         {
             if (actor == null)
@@ -293,7 +293,7 @@ namespace ShooterMover.UnityAdapters.Physics
         private sealed class MovementActorThrusterStatusSource : IThrusterStatusSource
         {
             public MovementActorThrusterStatusSource(
-                MovementActor2D actor,
+                Mover actor,
                 MovementThrusterTuningProfile suppliedTuning)
             {
                 IsActive = actor.IsActive;

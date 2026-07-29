@@ -46,7 +46,7 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
         {
             StableId runId = Id("run", "dev-physical");
             PlayerRouteProfilePayload route = Route("dev-physical");
-            GameplaySceneScope2D scope = CreateScope(runId);
+            GameplayScene scope = CreateScope(runId);
             PlayerHoldingsActions holdings = new PlayerHoldingsActions(
                 Id("authority", "holdings"),
                 9999L,
@@ -66,8 +66,8 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                 holdingsChild);
 
             GameObject authorityObject = Track(new GameObject("RAP"));
-            RewardPickupApplicationState2D pickupAuthority =
-                authorityObject.AddComponent<RewardPickupApplicationState2D>();
+            LootPickupState pickupAuthority =
+                authorityObject.AddComponent<LootPickupState>();
             pickupAuthority.ConfigureRuntime(
                 rap,
                 money.AuthorityStableId,
@@ -76,8 +76,8 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
 
             GameObject factoryObject = Track(new GameObject("Factory"));
             factoryObject.transform.SetParent(scope.transform);
-            RewardPickupDropFactory2D factory =
-                factoryObject.AddComponent<RewardPickupDropFactory2D>();
+            LootSpawner factory =
+                factoryObject.AddComponent<LootSpawner>();
             factory.ConfigureRuntime(
                 new RewardGenerationActions(),
                 ProgressionContext.Create(
@@ -104,8 +104,8 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                         delegate { return openings; }));
 
             GameObject bridgeObject = Track(new GameObject("Bridge"));
-            RunDebugRewardBridge2D bridge =
-                bridgeObject.AddComponent<RunDebugRewardBridge2D>();
+            RunDebugRewards bridge =
+                bridgeObject.AddComponent<RunDebugRewards>();
             MissionResultsSession routed = null;
             bridge.ConfigureRuntime(
                 runId,
@@ -146,7 +146,7 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                 bridge.Spawn(conflictingRequest).Status,
                 Is.EqualTo(RunDebugSpawnBatchStatus.ConflictingDuplicate));
 
-            RewardPickup2D first = FindPickup(
+            LootPickup first = FindPickup(
                 factory,
                 spawned.Snapshot.Boxes[0].PickupStableId);
             Assert.That(first, Is.Not.Null);
@@ -176,18 +176,18 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
             yield return null;
         }
 
-        private RewardPickup2D FindPickup(
-            RewardPickupDropFactory2D factory,
+        private LootPickup FindPickup(
+            LootSpawner factory,
             StableId pickupStableId)
         {
-            RewardPickup2D pickup;
+            LootPickup pickup;
             return factory.TryGetPickup(pickupStableId, out pickup) ? pickup : null;
         }
 
-        private GameplaySceneScope2D CreateScope(StableId runId)
+        private GameplayScene CreateScope(StableId runId)
         {
             GameObject root = Track(new GameObject("Scope"));
-            GameplaySceneScope2D scope = root.AddComponent<GameplaySceneScope2D>();
+            GameplayScene scope = root.AddComponent<GameplayScene>();
             scope.ConfigureForTests(
                 "scope.dev-run-debug",
                 "scope.gameplay",

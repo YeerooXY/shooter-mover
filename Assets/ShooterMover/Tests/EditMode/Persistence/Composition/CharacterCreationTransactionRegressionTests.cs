@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using ShooterMover.Application.Flow.Production;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Persistence.Accounts;
-using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -54,8 +54,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 73L);
             Assert.That(alphaGraph.MoneyWallet.Balance, Is.EqualTo(73L));
 
-            LegacyCharacterProfileMigrationResult attempted =
-                new LegacyCharacterProfileMigration(
+            SaveMigrationResult attempted =
+                new SaveMigration(
                     authority,
                     factory,
                     save).Migrate(new[]
@@ -100,7 +100,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Id("character." + suffix),
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayload.WeaponSlotCount]);
+                        PlayerRouteProfilePayload.GunSlotCount]);
             return new LegacyCharacterProfile(
                 slotIndex,
                 suffix,
@@ -123,7 +123,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 profile.ClassDefinitionStableId,
                 suffix,
                 profile.LegacyContext);
-            IReadOnlyList<SaveComponentSnapshot> components =
+            IReadOnlyList<SavePartSnapshot> components =
                 PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             graph.Dispose();

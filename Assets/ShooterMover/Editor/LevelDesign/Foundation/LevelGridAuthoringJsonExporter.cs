@@ -14,7 +14,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private static readonly UTF8Encoding Utf8WithoutBom = new UTF8Encoding(false);
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Export Grid V2 Draft Folder...",
+            "Tools/Shooter Mover/Level Design/Export Level Draft Folder...",
             priority = 250)]
         private static void ExportDraft()
         {
@@ -22,7 +22,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Publish Grid V2 Validated Authoring Folder...",
+            "Tools/Shooter Mover/Level Design/Publish Level Validated Authoring Folder...",
             priority = 251)]
         private static void PublishProduction()
         {
@@ -31,12 +31,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void ExportSelected(LevelGridValidationPurpose purpose)
         {
-            LevelDesignSceneAuthoringRoot2D root = ResolveSelectedRoot();
+            LevelDraft root = ResolveSelectedRoot();
             if (root == null)
             {
                 EditorUtility.DisplayDialog(
                     "Level Grid Export",
-                    "Select an object below a LevelDesignSceneAuthoringRoot2D.",
+                    "Select an object below a LevelDraft.",
                     "OK");
                 return;
             }
@@ -64,11 +64,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     root);
                 if (foundationValidation != null)
                 {
-                    LevelDesignSceneAuthoringRoot2DEditor.LogResult(
+                    LevelDraftEditor.LogResult(
                         root,
                         foundationValidation);
                 }
-                LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
+                LevelDraftEditor.LogGridResult(
                     root,
                     gridValidation);
                 LevelGridProblemsWindow.Open(root);
@@ -77,8 +77,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             string outputRoot = EditorUtility.OpenFolderPanel(
                 purpose == LevelGridValidationPurpose.ProductionPublish
-                    ? "Publish Validated Level Grid V2 Authoring Folder"
-                    : "Export Level Grid V2 Draft",
+                    ? "Publish Validated Level Level Authoring Folder"
+                    : "Export Level Level Draft",
                 UnityEngine.Application.dataPath,
                 (root.LevelIdText ?? "level").Replace('.', '_'));
             if (string.IsNullOrEmpty(outputRoot))
@@ -93,7 +93,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             catch (Exception exception)
             {
                 Debug.LogError(
-                    "Level Grid V2 export failed. The destination was rolled back when "
+                    "Level Level export failed. The destination was rolled back when "
                         + "possible, and any retained backup was left beside it. "
                         + exception.Message,
                     root);
@@ -113,7 +113,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void ExportTransaction(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string outputRoot,
             LevelGridValidationPurpose purpose)
         {
@@ -191,7 +191,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (!File.Exists(levelPath))
             {
                 throw new InvalidOperationException(
-                    "The selected folder is not empty and has no Level Grid V2 level.json. "
+                    "The selected folder is not empty and has no Level Level level.json. "
                     + "Choose an empty or previously exported dedicated level folder.");
             }
 
@@ -205,20 +205,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void WriteLevelFolder(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string outputRoot,
             LevelGridValidationPurpose purpose)
         {
-            LevelRoomAuthoring2D[] rooms =
-                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelRoom[] rooms =
+                root.GetComponentsInChildren<LevelRoom>(true);
             Array.Sort(rooms, CompareRooms);
 
-            LevelDoorEndpointAuthoring2D[] doors =
-                root.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true);
+            DoorEndpoint[] doors =
+                root.GetComponentsInChildren<DoorEndpoint>(true);
             Array.Sort(doors, CompareDoors);
 
-            LevelDoorLinkAuthoring2D[] connections =
-                root.GetComponentsInChildren<LevelDoorLinkAuthoring2D>(true);
+            DoorLink[] connections =
+                root.GetComponentsInChildren<DoorLink>(true);
             Array.Sort(connections, CompareConnections);
 
             Dictionary<string, string> roomFolders = PrepareRoomFolders(
@@ -230,7 +230,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             AuthoredRoomIndexDto[] roomIndex = new AuthoredRoomIndexDto[rooms.Length];
             for (int index = 0; index < rooms.Length; index++)
             {
-                LevelRoomAuthoring2D room = rooms[index];
+                LevelRoom room = rooms[index];
                 roomIds[index] = room.RoomIdText;
                 nodes[index] = new AuthoredMapNodeDto
                 {
@@ -261,7 +261,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 new MapConnectionDto[connections.Length];
             for (int index = 0; index < connections.Length; index++)
             {
-                LevelDoorLinkAuthoring2D connection = connections[index];
+                DoorLink connection = connections[index];
                 mapConnections[index] = new MapConnectionDto
                 {
                     connection_id = connection.ConnectionIdText,
@@ -307,20 +307,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static Dictionary<string, string> PrepareRoomFolders(
-            LevelRoomAuthoring2D[] rooms,
+            LevelRoom[] rooms,
             string roomsRoot)
         {
             Directory.CreateDirectory(roomsRoot);
             Dictionary<string, string> existingByRoomId =
                 ScanExistingRoomFolders(roomsRoot);
-            Dictionary<string, LevelRoomAuthoring2D> activeByRoomId =
-                new Dictionary<string, LevelRoomAuthoring2D>(StringComparer.Ordinal);
+            Dictionary<string, LevelRoom> activeByRoomId =
+                new Dictionary<string, LevelRoom>(StringComparer.Ordinal);
             HashSet<string> desiredNames = new HashSet<string>(
                 StringComparer.OrdinalIgnoreCase);
 
             for (int index = 0; index < rooms.Length; index++)
             {
-                LevelRoomAuthoring2D room = rooms[index];
+                LevelRoom room = rooms[index];
                 if (string.IsNullOrWhiteSpace(room.RoomIdText)
                     || activeByRoomId.ContainsKey(room.RoomIdText))
                 {
@@ -340,7 +340,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             Dictionary<string, string> temporaryByRoomId =
                 new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, LevelRoomAuthoring2D> pair in activeByRoomId)
+            foreach (KeyValuePair<string, LevelRoom> pair in activeByRoomId)
             {
                 string existingPath;
                 if (!existingByRoomId.TryGetValue(pair.Key, out existingPath))
@@ -357,7 +357,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             Dictionary<string, string> result =
                 new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, LevelRoomAuthoring2D> pair in activeByRoomId)
+            foreach (KeyValuePair<string, LevelRoom> pair in activeByRoomId)
             {
                 string desiredPath = Path.Combine(
                     roomsRoot,
@@ -417,8 +417,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void WriteRoomFolder(
-            LevelRoomAuthoring2D room,
-            LevelDoorEndpointAuthoring2D[] allDoors,
+            LevelRoom room,
+            DoorEndpoint[] allDoors,
             string roomRoot)
         {
             WriteJson(
@@ -456,7 +456,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             int targetIndex = 0;
             for (int index = 0; index < allDoors.Length; index++)
             {
-                LevelDoorEndpointAuthoring2D door = allDoors[index];
+                DoorEndpoint door = allDoors[index];
                 if (door.OwningRoom != room)
                 {
                     continue;
@@ -540,7 +540,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static void ValidateStagedPackage(
-            LevelDesignSceneAuthoringRoot2D root,
+            LevelDraft root,
             string stageRoot)
         {
             LevelIdentityDto levelIdentity = ReadLevelIdentity(
@@ -556,11 +556,11 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             string roomsRoot = Path.Combine(stageRoot, "Rooms");
             Dictionary<string, string> existing = ScanExistingRoomFolders(roomsRoot);
-            LevelRoomAuthoring2D[] rooms =
-                root.GetComponentsInChildren<LevelRoomAuthoring2D>(true);
+            LevelRoom[] rooms =
+                root.GetComponentsInChildren<LevelRoom>(true);
             for (int index = 0; index < rooms.Length; index++)
             {
-                LevelRoomAuthoring2D room = rooms[index];
+                LevelRoom room = rooms[index];
                 string path;
                 if (!existing.TryGetValue(room.RoomIdText, out path))
                 {
@@ -616,7 +616,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private static string BuildRoomFolderName(LevelRoomAuthoring2D room)
+        private static string BuildRoomFolderName(LevelRoom room)
         {
             return "Room_" + room.GridCoordinate.x + "_" + room.GridCoordinate.y
                 + "_" + room.FolderSlot.ToString("00");
@@ -675,8 +675,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static AuthoredEndpointDto BuildEndpoint(
-            LevelRoomAuthoring2D room,
-            LevelDoorEndpointAuthoring2D door)
+            LevelRoom room,
+            DoorEndpoint door)
         {
             return new AuthoredEndpointDto
             {
@@ -731,8 +731,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static int CompareRooms(
-            LevelRoomAuthoring2D left,
-            LevelRoomAuthoring2D right)
+            LevelRoom left,
+            LevelRoom right)
         {
             int x = left.GridCoordinate.x.CompareTo(right.GridCoordinate.x);
             if (x != 0) return x;
@@ -744,8 +744,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static int CompareDoors(
-            LevelDoorEndpointAuthoring2D left,
-            LevelDoorEndpointAuthoring2D right)
+            DoorEndpoint left,
+            DoorEndpoint right)
         {
             int room = string.CompareOrdinal(
                 left.OwningRoom == null ? string.Empty : left.OwningRoom.RoomIdText,
@@ -756,20 +756,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         private static int CompareConnections(
-            LevelDoorLinkAuthoring2D left,
-            LevelDoorLinkAuthoring2D right)
+            DoorLink left,
+            DoorLink right)
         {
             return string.CompareOrdinal(
                 left.ConnectionIdText,
                 right.ConnectionIdText);
         }
 
-        private static LevelDesignSceneAuthoringRoot2D ResolveSelectedRoot()
+        private static LevelDraft ResolveSelectedRoot()
         {
             GameObject selected = Selection.activeGameObject;
             return selected == null
                 ? null
-                : selected.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>();
+                : selected.GetComponentInParent<LevelDraft>();
         }
 
         [Serializable]

@@ -22,8 +22,8 @@ namespace ShooterMover.Tests.EditMode.Holdings
         {
             var validator = new RecordingEquipmentValidator();
             PlayerHoldingsActions service = CreateService(validator);
-            EquipmentInstance weapon = Equipment(
-                "equipment-instance.weapon-001",
+            EquipmentInstance gun = Equipment(
+                "equipment-instance.gun-001",
                 "equipment-definition.blaster",
                 "quality.common");
             EquipmentInstance armor = Equipment(
@@ -31,13 +31,13 @@ namespace ShooterMover.Tests.EditMode.Holdings
                 "equipment-definition.armor-shell",
                 "quality.rare");
 
-            PlayerHoldingsMutationResult weaponAdd = service.Apply(
+            PlayerHoldingsMutationResult gunAdd = service.Apply(
                 PlayerHoldingsCommand.AddEquipment(
-                    Id("transaction.weapon-add"),
+                    Id("transaction.gun-add"),
                     Id("operation.reward-001"),
                     AuthorityId,
-                    weapon,
-                    Provenance("grant.weapon", "source.enemy"),
+                    gun,
+                    Provenance("grant.gun", "source.enemy"),
                     0L));
             PlayerHoldingsMutationResult armorAdd = service.Apply(
                 PlayerHoldingsCommand.AddEquipment(
@@ -57,16 +57,16 @@ namespace ShooterMover.Tests.EditMode.Holdings
                     Provenance("grant.box", "source.boss"),
                     2L));
 
-            Assert.That(weaponAdd.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
+            Assert.That(gunAdd.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             Assert.That(armorAdd.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             Assert.That(boxAdd.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             Assert.That(validator.CallCount, Is.EqualTo(2));
             Assert.That(service.Sequence, Is.EqualTo(3L));
 
             UniqueHoldingSnapshot holding;
-            Assert.That(service.TryGetUnique(weapon.InstanceId, out holding), Is.True);
-            Assert.That(holding.EquipmentInstance, Is.EqualTo(weapon));
-            Assert.That(holding.Provenance.GrantStableId, Is.EqualTo(Id("grant.weapon")));
+            Assert.That(service.TryGetUnique(gun.InstanceId, out holding), Is.True);
+            Assert.That(holding.EquipmentInstance, Is.EqualTo(gun));
+            Assert.That(holding.Provenance.GrantStableId, Is.EqualTo(Id("grant.gun")));
             Assert.That(service.TryGetUnique(armor.InstanceId, out holding), Is.True);
             Assert.That(holding.EquipmentInstance, Is.EqualTo(armor));
             Assert.That(service.TryGetUnique(Id("strongbox-instance.box-001"), out holding), Is.True);
@@ -74,12 +74,12 @@ namespace ShooterMover.Tests.EditMode.Holdings
 
             Assert.That(service.Apply(
                 PlayerHoldingsCommand.RemoveEquipment(
-                    Id("transaction.weapon-remove"),
+                    Id("transaction.gun-remove"),
                     Id("operation.shop-sale"),
                     AuthorityId,
-                    weapon.DefinitionId,
-                    weapon.InstanceId,
-                    Provenance("grant.weapon", "source.shop"),
+                    gun.DefinitionId,
+                    gun.InstanceId,
+                    Provenance("grant.gun", "source.shop"),
                     3L)).Status,
                 Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             Assert.That(service.Apply(
@@ -92,7 +92,7 @@ namespace ShooterMover.Tests.EditMode.Holdings
                     Provenance("grant.box", "source.box-open"),
                     4L)).Status,
                 Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
-            Assert.That(service.TryGetUnique(weapon.InstanceId, out holding), Is.False);
+            Assert.That(service.TryGetUnique(gun.InstanceId, out holding), Is.False);
             Assert.That(service.TryGetUnique(Id("strongbox-instance.box-001"), out holding), Is.False);
             Assert.That(service.TryGetUnique(armor.InstanceId, out holding), Is.True);
         }

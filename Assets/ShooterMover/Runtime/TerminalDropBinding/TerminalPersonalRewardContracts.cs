@@ -6,7 +6,7 @@ using System.Text;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>Exact room/placement identity supplied by the terminal-fact owner.</summary>
     public sealed class TerminalRewardPlacementContext
@@ -238,8 +238,8 @@ namespace ShooterMover.TerminalDropBinding
     public interface ITerminalRewardParticipantResolver
     {
         bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             TerminalRewardPlacementContext placementContext,
             out IReadOnlyList<TerminalRewardParticipant> participants,
             out TerminalRewardEligibilityPolicy eligibilityPolicy,
@@ -249,8 +249,8 @@ namespace ShooterMover.TerminalDropBinding
     public interface ITerminalRewardEnvironmentResolver
     {
         bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             out TerminalRewardEnvironment environment,
             out string diagnostic);
     }
@@ -258,8 +258,8 @@ namespace ShooterMover.TerminalDropBinding
     public interface ITerminalRewardOverrideResolver
     {
         bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             TerminalRewardEnvironment environment,
             TerminalRewardPlacementContext placementContext,
             out TerminalRewardOverrideSet overrides,
@@ -276,12 +276,12 @@ namespace ShooterMover.TerminalDropBinding
 
     public sealed class TerminalPersonalRewardBatch
     {
-        private readonly ReadOnlyCollection<GeneratedTerminalDropResult> results;
+        private readonly ReadOnlyCollection<GeneratedLootDropResult> results;
 
         public TerminalPersonalRewardBatch(
             TerminalPersonalRewardBatchStatus status,
-            TerminalDropSourceFact source,
-            IEnumerable<GeneratedTerminalDropResult> results,
+            LootDropSourceFact source,
+            IEnumerable<GeneratedLootDropResult> results,
             string diagnostic)
         {
             if (!Enum.IsDefined(typeof(TerminalPersonalRewardBatchStatus), status))
@@ -290,10 +290,10 @@ namespace ShooterMover.TerminalDropBinding
             }
             Status = status;
             Source = source;
-            var copy = new List<GeneratedTerminalDropResult>();
+            var copy = new List<GeneratedLootDropResult>();
             if (results != null)
             {
-                foreach (GeneratedTerminalDropResult result in results)
+                foreach (GeneratedLootDropResult result in results)
                 {
                     if (result == null)
                     {
@@ -305,8 +305,8 @@ namespace ShooterMover.TerminalDropBinding
                 }
             }
             copy.Sort(delegate(
-                GeneratedTerminalDropResult left,
-                GeneratedTerminalDropResult right)
+                GeneratedLootDropResult left,
+                GeneratedLootDropResult right)
             {
                 StableId leftId = left.SourceFact == null
                     ? null
@@ -318,13 +318,13 @@ namespace ShooterMover.TerminalDropBinding
                 return rightId == null ? 1 : leftId.CompareTo(rightId);
             });
             this.results =
-                new ReadOnlyCollection<GeneratedTerminalDropResult>(copy);
+                new ReadOnlyCollection<GeneratedLootDropResult>(copy);
             Diagnostic = diagnostic ?? string.Empty;
         }
 
         public TerminalPersonalRewardBatchStatus Status { get; }
-        public TerminalDropSourceFact Source { get; }
-        public IReadOnlyList<GeneratedTerminalDropResult> Results
+        public LootDropSourceFact Source { get; }
+        public IReadOnlyList<GeneratedLootDropResult> Results
         {
             get { return results; }
         }

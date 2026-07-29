@@ -28,7 +28,7 @@ namespace ShooterMover.Combat.CriticalHits
     }
 
     /// <summary>
-    /// Immutable critical rules authored by a weapon, attack, or effect definition.
+    /// Immutable critical rules authored by a gun, attack, or effect definition.
     /// Geometry is intentionally absent: execution facts select the policy.
     /// </summary>
     public sealed class CriticalHitPolicyDefinition
@@ -234,7 +234,7 @@ namespace ShooterMover.Combat.CriticalHits
     }
 
     /// <summary>
-    /// Immutable execution facts projected from the concrete weapon/attack/effect
+    /// Immutable execution facts projected from the concrete gun/attack/effect
     /// definition. EquipmentInstanceId is optional for non-equipment attacks.
     /// </summary>
     public sealed class CriticalHitEffectFacts

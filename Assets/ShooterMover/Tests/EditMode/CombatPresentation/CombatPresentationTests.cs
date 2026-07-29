@@ -47,8 +47,8 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     100d,
                     100d,
                     CombatHealthPresentationState.Alive));
-                CombatHealthBarPresenter2D presenter =
-                    root.AddComponent<CombatHealthBarPresenter2D>();
+                HealthBar presenter =
+                    root.AddComponent<HealthBar>();
                 presenter.Configure(actor, source, Vector3.up);
 
                 source.Current = Snapshot(
@@ -130,23 +130,23 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             try
             {
                 var factory = new RecordingFactory();
-                CombatDeathVfxPool2D pool = poolRoot.AddComponent<CombatDeathVfxPool2D>();
+                DeathEffects pool = poolRoot.AddComponent<DeathEffects>();
                 pool.Configure(factory, 4);
-                var authorities = new FakeEnemyState2D[enemies.Length];
-                var registrations = new CombatEnemyPresentationRegistration2D[enemies.Length];
-                var decorated = new CombatPresentationEnemyActorState2D[enemies.Length];
+                var authorities = new FakeEnemyState[enemies.Length];
+                var registrations = new EnemyViewRegistration[enemies.Length];
+                var decorated = new EnemyViewState[enemies.Length];
 
                 for (int index = 0; index < enemies.Length; index++)
                 {
                     enemies[index].AddComponent<BoxCollider2D>();
-                    authorities[index] = enemies[index].AddComponent<FakeEnemyState2D>();
+                    authorities[index] = enemies[index].AddComponent<FakeEnemyState>();
                     authorities[index].Configure("generic-" + index, 100d + (index * 50d));
-                    registrations[index] = CombatEnemyPresentationRegistration2D.Attach(
+                    registrations[index] = EnemyViewRegistration.Attach(
                         enemies[index],
                         authorities[index],
                         pool,
                         Vector3.up);
-                    decorated[index] = new CombatPresentationEnemyActorState2D(
+                    decorated[index] = new EnemyViewState(
                         authorities[index],
                         registrations[index]);
                 }
@@ -226,14 +226,14 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     100d,
                     100d,
                     CombatHealthPresentationState.Alive));
-                CombatHealthBarPresenter2D healthBar =
-                    enemyRoot.AddComponent<CombatHealthBarPresenter2D>();
+                HealthBar healthBar =
+                    enemyRoot.AddComponent<HealthBar>();
                 healthBar.Configure(actor, source, Vector3.up);
 
-                CombatDeathVfxPool2D pool = poolRoot.AddComponent<CombatDeathVfxPool2D>();
+                DeathEffects pool = poolRoot.AddComponent<DeathEffects>();
                 pool.Configure(new RecordingFactory(), 3);
-                EnemyDeathVfxPresenter2D presenter =
-                    enemyRoot.AddComponent<EnemyDeathVfxPresenter2D>();
+                EnemyDeathEffects presenter =
+                    enemyRoot.AddComponent<EnemyDeathEffects>();
                 presenter.Configure(actor, 1L, healthBar, pool);
 
                 EnemyDeathFact death = CreateDeathFact(actor, 1L, "canonical-death-one");
@@ -294,10 +294,10 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             try
             {
                 var factory = new RecordingFactory();
-                CombatDeathVfxPool2D pool = root.AddComponent<CombatDeathVfxPool2D>();
+                DeathEffects pool = root.AddComponent<DeathEffects>();
                 pool.Configure(factory, 2);
-                ICombatDeathVfxInstance2D first = pool.Spawn(Vector3.zero, 1f);
-                ICombatDeathVfxInstance2D second = pool.Spawn(Vector3.one, 2f);
+                IDeathEffects first = pool.Spawn(Vector3.zero, 1f);
+                IDeathEffects second = pool.Spawn(Vector3.one, 2f);
 
                 Assert.That(factory.CreateCount, Is.EqualTo(2));
                 Assert.That(pool.SourcePresentationId, Is.EqualTo("test.recording-factory"));
@@ -387,9 +387,9 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             }
         }
 
-        public sealed class FakeEnemyState2D :
+        public sealed class FakeEnemyState :
             MonoBehaviour,
-            IEnemyActor2DState,
+            IEnemyState,
             ICombatPresentationLifecycleSource
         {
             private StableId actorId;
@@ -444,7 +444,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             }
         }
 
-        private sealed class RecordingFactory : ICombatDeathVfxFactory2D
+        private sealed class RecordingFactory : IDeathEffectsFactory
         {
             public string SourcePresentationId
             {
@@ -453,7 +453,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
 
             public int CreateCount { get; private set; }
 
-            public ICombatDeathVfxInstance2D Create(Transform parent, int ordinal)
+            public IDeathEffects Create(Transform parent, int ordinal)
             {
                 CreateCount++;
                 GameObject root = new GameObject("recording-vfx-" + ordinal);
@@ -468,7 +468,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             }
         }
 
-        public sealed class RecordingInstance : MonoBehaviour, ICombatDeathVfxInstance2D
+        public sealed class RecordingInstance : MonoBehaviour, IDeathEffects
         {
             public bool IsActive { get; private set; }
             public GameObject Root { get { return gameObject; } }

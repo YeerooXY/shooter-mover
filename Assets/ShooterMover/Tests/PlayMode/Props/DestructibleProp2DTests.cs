@@ -15,20 +15,20 @@ namespace ShooterMover.Tests.PlayMode.Props
     /// Package scripts live in predefined Assembly-CSharp, so the PlayMode asmdef reaches
     /// the actual MonoBehaviour through reflection.
     /// </summary>
-    public sealed class DestructibleProp2DTests
+    public sealed class BreakableTests
     {
         private static readonly Type ComponentType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructibleProp2D");
+            "ShooterMover.ContentPackages.Props.Breakables.Breakable");
         private static readonly Type AnimationType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestructionAnimation");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableAnimation");
         private static readonly Type AnimationPlayerType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDestructionPlayer2D");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableEffects");
 
         [Test]
         public void LethalDamage_DisablesBlockingColliderAndPresentationExactlyOnce()
         {
-            GameObject obstacle = new GameObject("DestructiblePropObstacle");
-            GameObject visual = new GameObject("DestructiblePropVisual");
+            GameObject obstacle = new GameObject("BreakableObstacle");
+            GameObject visual = new GameObject("BreakableVisual");
             try
             {
                 BoxCollider2D collider = obstacle.AddComponent<BoxCollider2D>();
@@ -84,8 +84,8 @@ namespace ShooterMover.Tests.PlayMode.Props
         [Test]
         public void Restart_RestoresHealthColliderAndPresentationState()
         {
-            GameObject obstacle = new GameObject("DestructiblePropObstacle");
-            GameObject visual = new GameObject("DestructiblePropVisual");
+            GameObject obstacle = new GameObject("BreakableObstacle");
+            GameObject visual = new GameObject("BreakableVisual");
             try
             {
                 BoxCollider2D collider = obstacle.AddComponent<BoxCollider2D>();
@@ -138,8 +138,8 @@ namespace ShooterMover.Tests.PlayMode.Props
         [UnityTest]
         public IEnumerator ConfiguredDestructionAnimation_PlaysAndRestartClearsIt()
         {
-            GameObject obstacle = new GameObject("AnimatedDestructiblePropObstacle");
-            GameObject visual = new GameObject("AnimatedDestructiblePropVisual");
+            GameObject obstacle = new GameObject("AnimatedBreakableObstacle");
+            GameObject visual = new GameObject("AnimatedBreakableVisual");
             Texture2D firstTexture = null;
             Texture2D secondTexture = null;
             try

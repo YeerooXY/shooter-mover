@@ -8,18 +8,18 @@ using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Domain.Props
 {
-    public delegate void PropCapabilityValidatorV1(
+    public delegate void PropCapabilityValidator(
         PropCapability capability,
         IList<string> diagnostics);
 
     public sealed class PropCapabilityRegistry
     {
-        private readonly Dictionary<StableId, PropCapabilityValidatorV1> _validators =
-            new Dictionary<StableId, PropCapabilityValidatorV1>();
+        private readonly Dictionary<StableId, PropCapabilityValidator> _validators =
+            new Dictionary<StableId, PropCapabilityValidator>();
 
         public void Register(
             StableId capabilityId,
-            PropCapabilityValidatorV1 validator)
+            PropCapabilityValidator validator)
         {
             if (capabilityId == null)
             {
@@ -42,7 +42,7 @@ namespace ShooterMover.Domain.Props
 
         public bool TryGet(
             StableId capabilityId,
-            out PropCapabilityValidatorV1 validator)
+            out PropCapabilityValidator validator)
         {
             if (capabilityId == null)
             {
@@ -116,7 +116,7 @@ namespace ShooterMover.Domain.Props
                 if (hasHealth)
                 {
                     diagnostics.Add(
-                        "Indestructible props cannot declare maximum health.");
+                        "Inbreakables cannot declare maximum health.");
                 }
 
                 RequireOnly(capability, diagnostics, "mode");

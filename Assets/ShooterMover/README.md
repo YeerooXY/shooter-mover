@@ -29,7 +29,7 @@ The following machine-readable markers are consumed by
 <!-- layout-root path="Assets/ShooterMover/Content/Definitions/" creation="tracked-or-create-by-owning-task" -->
 <!-- layout-root path="Assets/ShooterMover/Content/SharedModules/" creation="create-by-owning-task" -->
 <!-- layout-root path="Assets/ShooterMover/ContentPackages/" creation="create-by-owning-task" -->
-<!-- layout-root path="Assets/ShooterMover/ContentPackages/Weapons/" creation="create-by-owning-task" -->
+<!-- layout-root path="Assets/ShooterMover/ContentPackages/Guns/" creation="create-by-owning-task" -->
 <!-- layout-root path="Assets/ShooterMover/ContentPackages/Enemies/" creation="create-by-owning-task" -->
 <!-- layout-root path="Assets/ShooterMover/ContentPackages/Rooms/" creation="create-by-owning-task" -->
 <!-- layout-root path="Assets/ShooterMover/ContentPackages/Encounters/" creation="create-by-owning-task" -->

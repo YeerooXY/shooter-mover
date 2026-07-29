@@ -8,9 +8,9 @@ using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.EnemyRuntimeComposition;
-using ShooterMover.TerminalDropBinding;
+using ShooterMover.LootDropBinding;
 
-namespace ShooterMover.Tests.EditMode.TerminalDropBinding
+namespace ShooterMover.Tests.EditMode.LootDropBinding
 {
     public sealed class EnemyTerminalSourceContextBridgeTests
     {
@@ -33,31 +33,31 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private sealed class RunContextResolver : ITerminalDropRunContextResolver
+        private sealed class RunContextResolver : ILootDropRunContextResolver
         {
             public bool TryResolve(
                 StableId runStableId,
                 long expectedLifecycleGeneration,
-                out TerminalDropRunGenerationContext context,
-                out TerminalDropRejectionCode rejectionCode,
+                out LootDropRunGenerationContext context,
+                out LootDropRejectionCode rejectionCode,
                 out string diagnostic)
             {
                 if (expectedLifecycleGeneration != 1L)
                 {
                     context = null;
-                    rejectionCode = TerminalDropRejectionCode.WrongRunLifecycle;
+                    rejectionCode = LootDropRejectionCode.WrongRunLifecycle;
                     diagnostic = "expected-run-generation-one";
                     return false;
                 }
 
-                context = new TerminalDropRunGenerationContext(
+                context = new LootDropRunGenerationContext(
                     runStableId,
                     1L,
                     42UL,
                     1,
                     ProgressionContext.Create(5, 2, Id("difficulty", "normal"), 1),
                     "enemy-context-event-fixture");
-                rejectionCode = TerminalDropRejectionCode.None;
+                rejectionCode = LootDropRejectionCode.None;
                 diagnostic = string.Empty;
                 return true;
             }
@@ -117,21 +117,21 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 },
                 Array.Empty<IndependentRewardRoll>(),
                 Array.Empty<ExclusiveRewardGroup>());
-            ITerminalDropFactBridge adapter =
-                new ContextResolvedEnemyDeathTerminalDropFactBridge(
+            ILootDropFactBridge adapter =
+                new ContextResolvedEnemyDeathLootDropFactBridge(
                     catalog,
                     new EnemyContextResolver());
-            TerminalDropGenerationState authority =
-                new TerminalDropGenerationState(
-                    new TerminalDropFactBridgeRegistry(new[] { adapter }),
+            LootDropGenerationState authority =
+                new LootDropGenerationState(
+                    new LootDropFactBridgeRegistry(new[] { adapter }),
                     new RunContextResolver(),
                     new RewardProfileCatalogResolver(new[] { profile }),
                     new ExistingRewardGenerationExecutor(
                         new RewardGenerationActions()));
 
-            GeneratedTerminalDropResult result = authority.Generate(death);
+            GeneratedLootDropResult result = authority.Generate(death);
 
-            Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatus.Accepted));
+            Assert.That(result.Status, Is.EqualTo(LootDropBindingStatus.Accepted));
             Assert.That(result.SourceFact.RunLifecycleGeneration, Is.EqualTo(1L));
             Assert.That(result.SourceFact.SourceLifecycleGeneration, Is.EqualTo(2L));
             Assert.That(result.GeneratedRewards.Count, Is.EqualTo(1));
@@ -140,17 +140,17 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void CatalogOnlyEnemyProjector_IsInternalAndCannotActAsCompleteAdapter()
         {
-            Type assemblyProjector = typeof(ContextResolvedEnemyDeathTerminalDropFactBridge)
+            Type assemblyProjector = typeof(ContextResolvedEnemyDeathLootDropFactBridge)
                 .Assembly.GetType(
-                    "ShooterMover.TerminalDropBinding.EnemyDeathTerminalDropDefinitionProjector",
+                    "ShooterMover.LootDropBinding.EnemyDeathLootDropDefinitionProjector",
                     true);
-            Type unsafeRawAdapter = typeof(ContextResolvedEnemyDeathTerminalDropFactBridge)
+            Type unsafeRawAdapter = typeof(ContextResolvedEnemyDeathLootDropFactBridge)
                 .Assembly.GetType(
-                    "ShooterMover.TerminalDropBinding.EnemyDeathTerminalDropFactBridge",
+                    "ShooterMover.LootDropBinding.EnemyDeathLootDropFactBridge",
                     false);
 
             Assert.That(assemblyProjector.IsPublic, Is.False);
-            Assert.That(typeof(ITerminalDropFactBridge).IsAssignableFrom(assemblyProjector), Is.False);
+            Assert.That(typeof(ILootDropFactBridge).IsAssignableFrom(assemblyProjector), Is.False);
             Assert.That(unsafeRawAdapter, Is.Null);
         }
 

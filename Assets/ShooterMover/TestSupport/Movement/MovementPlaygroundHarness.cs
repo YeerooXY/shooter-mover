@@ -23,7 +23,7 @@ namespace ShooterMover.TestSupport.Movement
     [DisallowMultipleComponent]
     public sealed class MovementPlaygroundHarness :
         MonoBehaviour,
-        IMovementContact2DContract
+        IMovementContact
     {
         public const string SceneName = "MovementPlayground";
         public const string ScenePath =
@@ -39,10 +39,10 @@ namespace ShooterMover.TestSupport.Movement
         private Rigidbody2D playerBody;
 
         [SerializeField]
-        private PlayerMovementIntentBridge inputAdapter;
+        private PlayerControls inputAdapter;
 
         [SerializeField]
-        private MovementContact2DBridge contactAdapter;
+        private MovementContact contactAdapter;
 
         [SerializeField]
         private MovementActorLifecycle movementLifecycle;
@@ -263,7 +263,7 @@ namespace ShooterMover.TestSupport.Movement
             DestroyPlaceholderPresentation();
         }
 
-        public bool TryDescribeMovementContact(out MovementContact2DDescriptor descriptor)
+        public bool TryDescribeMovementContact(out MovementContactDescriptor descriptor)
         {
             if (role != MovementPlaygroundHarnessRole.WallContract)
             {
@@ -271,7 +271,7 @@ namespace ShooterMover.TestSupport.Movement
                 return false;
             }
 
-            descriptor = MovementContact2DDescriptor.Wall();
+            descriptor = MovementContactDescriptor.Wall();
             return true;
         }
 
@@ -319,7 +319,7 @@ namespace ShooterMover.TestSupport.Movement
                 return;
             }
 
-            MovementActor2D actor = movementLifecycle.Actor;
+            Mover actor = movementLifecycle.Actor;
             thrusterRenderer.enabled = actor != null
                 && actor.IsActive
                 && actor.CurrentPhase != ThrusterBurstPhase.Ready;

@@ -3,7 +3,7 @@ using ShooterMover.Domain.Common;
 namespace ShooterMover.Domain.Rewards.Strongboxes
 {
     /// <summary>
-    /// Canonical weapon-definition rarity identities. These are deliberately
+    /// Canonical gun-definition rarity identities. These are deliberately
     /// separate from equipment quality identities such as Common/Rare/Exceptional.
     /// </summary>
     public static class StrongboxDefinitionRarityIds

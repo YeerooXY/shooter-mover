@@ -123,7 +123,7 @@ namespace ShooterMover.Tests.EditMode.Shops
                     Candidate("equipment.armor-energy-a"),
                     Candidate("equipment.armor-energy-b"),
                     Candidate("equipment.armor-forbidden"),
-                    Candidate("equipment.weapon-energy"),
+                    Candidate("equipment.gun-energy"),
                 },
                 new[]
                 {
@@ -219,18 +219,18 @@ namespace ShooterMover.Tests.EditMode.Shops
                 0,
                 new[] { common, rare },
                 new[] { energy, forbidden });
-            EquipmentDefinition weapon = EquipmentDefinition.Create(
-                Id("equipment.weapon-energy"),
-                EquipmentCategoryIds.Weapon,
-                Id("equipment-family.weapon-energy"),
-                "Weapon Energy",
-                Id("weapon.shop-test"),
+            EquipmentDefinition gun = EquipmentDefinition.Create(
+                Id("equipment.gun-energy"),
+                EquipmentCategoryIds.Gun,
+                Id("equipment-family.gun-energy"),
+                "Gun Energy",
+                Id("gun.shop-test"),
                 InclusiveIntRange.Create(1, 20),
                 0,
                 new[] { common, rare },
                 new[] { energy });
             EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
-                new[] { weapon, forbiddenArmor, armorB, armorA },
+                new[] { gun, forbiddenArmor, armorB, armorA },
                 Array.Empty<AugmentDefinition>());
             if (!result.IsValid)
             {

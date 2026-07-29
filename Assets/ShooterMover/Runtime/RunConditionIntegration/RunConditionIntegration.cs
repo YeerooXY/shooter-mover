@@ -82,7 +82,7 @@ namespace ShooterMover.RunConditionIntegration
             {
                 throw new ArgumentNullException(nameof(playerRuntime));
             }
-            RunPlayerLiveSnapshot player = playerRuntime.ExportSnapshot();
+            RunPlayerSnapshot player = playerRuntime.ExportSnapshot();
             if (player == null)
             {
                 throw new InvalidOperationException(
@@ -118,13 +118,13 @@ namespace ShooterMover.RunConditionIntegration
     {
         public RunSessionNonConditionLivePorts(
             IRunPlayerLivePort player,
-            IRunWeaponLivePort weapons,
+            IRunGunLivePort guns,
             IRunActiveAbilityLivePort activeAbilities,
             IRunRoomLivePort rooms,
             IRunMissionResultPort missionResults)
         {
             Player = player ?? throw new ArgumentNullException(nameof(player));
-            Weapons = weapons ?? throw new ArgumentNullException(nameof(weapons));
+            Guns = guns ?? throw new ArgumentNullException(nameof(guns));
             ActiveAbilities = activeAbilities
                 ?? throw new ArgumentNullException(nameof(activeAbilities));
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
@@ -132,7 +132,7 @@ namespace ShooterMover.RunConditionIntegration
                 ?? throw new ArgumentNullException(nameof(missionResults));
             long generation = Player.LifecycleGeneration;
             if (generation <= 0L
-                || Weapons.LifecycleGeneration != generation
+                || Guns.LifecycleGeneration != generation
                 || ActiveAbilities.LifecycleGeneration != generation
                 || Rooms.LifecycleGeneration != generation)
             {
@@ -142,7 +142,7 @@ namespace ShooterMover.RunConditionIntegration
         }
 
         public IRunPlayerLivePort Player { get; }
-        public IRunWeaponLivePort Weapons { get; }
+        public IRunGunLivePort Guns { get; }
         public IRunActiveAbilityLivePort ActiveAbilities { get; }
         public IRunRoomLivePort Rooms { get; }
         public IRunMissionResultPort MissionResults { get; }
@@ -232,7 +232,7 @@ namespace ShooterMover.RunConditionIntegration
                 new ConditionOwnedStatusEffectRunPort(conditionPort);
             return new RunSessionLivePorts(
                 basePorts.Player,
-                basePorts.Weapons,
+                basePorts.Guns,
                 statusProjection,
                 conditionPort,
                 basePorts.ActiveAbilities,

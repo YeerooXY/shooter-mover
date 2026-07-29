@@ -7,8 +7,8 @@ using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Rewards.Strongboxes;
-using ShooterMover.Domain.Weapons.Catalog;
-using ShooterMover.Domain.Weapons.Execution;
+using ShooterMover.Domain.Guns.Catalog;
+using ShooterMover.Domain.Guns.Execution;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
@@ -20,7 +20,7 @@ namespace ShooterMover.Editor.BalanceSimulator
     public static class AuthoritativeStrongboxSimulationGatewayFactory
     {
         public static bool TryCreate(
-            string weaponCatalogJson,
+            string gunCatalogJson,
             out AuthoritativeStrongboxSimulationGateway gateway,
             out string diagnostic)
         {
@@ -28,7 +28,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             diagnostic = string.Empty;
             LootboxSimulatorLive runtime;
             if (!LootboxSimulatorLive.TryCreate(
-                    weaponCatalogJson,
+                    gunCatalogJson,
                     out runtime,
                     out diagnostic)
                 || runtime == null)
@@ -42,11 +42,11 @@ namespace ShooterMover.Editor.BalanceSimulator
             try
             {
                 IReadOnlyList<StrongboxEquipmentMetadata> metadata =
-                    BuildMetadata(runtime.EquipmentCatalog, runtime.WeaponCatalog);
+                    BuildMetadata(runtime.EquipmentCatalog, runtime.GunCatalog);
                 StrongboxFingerprints fingerprints =
-                    BuildFingerprints(weaponCatalogJson, metadata);
+                    BuildFingerprints(gunCatalogJson, metadata);
                 gateway = new AuthoritativeStrongboxSimulationGateway(
-                    weaponCatalogJson,
+                    gunCatalogJson,
                     fingerprints,
                     metadata);
                 return true;
@@ -62,44 +62,44 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private static IReadOnlyList<StrongboxEquipmentMetadata> BuildMetadata(
             EquipmentCatalog equipmentCatalog,
-            WeaponCatalog weaponCatalog)
+            GunCatalog gunCatalog)
         {
             var values = new List<StrongboxEquipmentMetadata>();
             for (int index = 0; index < equipmentCatalog.EquipmentDefinitions.Count; index++)
             {
                 EquipmentDefinition equipment = equipmentCatalog.EquipmentDefinitions[index];
                 if (equipment == null
-                    || equipment.CategoryId != EquipmentCategoryIds.Weapon
-                    || equipment.RuntimeWeaponReferenceId == null)
+                    || equipment.CategoryId != EquipmentCategoryIds.Gun
+                    || equipment.RuntimeGunReferenceId == null)
                     continue;
 
-                WeaponDefinitionData weapon;
-                if (!TryResolveWeapon(weaponCatalog, equipment, out weapon)
-                    || weapon == null
-                    || weapon.Availability != WeaponCatalogAvailability.Live)
+                GunDefinitionData gun;
+                if (!TryResolveGun(gunCatalog, equipment, out gun)
+                    || gun == null
+                    || gun.Availability != GunCatalogAvailability.Live)
                     continue;
 
                 StableId rarityId;
-                if (!TryResolveRarity(weapon.Rarity, out rarityId))
+                if (!TryResolveRarity(gun.Rarity, out rarityId))
                     throw new InvalidOperationException(
-                        "Live strongbox weapon has unsupported rarity: "
-                        + weapon.DefinitionId + " / " + weapon.Rarity);
+                        "Live strongbox gun has unsupported rarity: "
+                        + gun.DefinitionId + " / " + gun.Rarity);
 
                 values.Add(new StrongboxEquipmentMetadata(
                     equipment.DefinitionId,
-                    weapon.DisplayName,
+                    gun.DisplayName,
                     equipment.CategoryId,
-                    Strongbox.DeriveId("weaponfamily", weapon.FamilyId),
+                    Strongbox.DeriveId("gunfamily", gun.FamilyId),
                     null,
                     Array.Empty<StableId>(),
                     rarityId,
-                    Math.Max(1, weapon.FirstAppearance),
-                    Math.Max(1, weapon.PeakDropLevel),
-                    weapon.FinalBaseWeight,
+                    Math.Max(1, gun.FirstAppearance),
+                    Math.Max(1, gun.PeakDropLevel),
+                    gun.FinalBaseWeight,
                     true,
-                    weapon.TopBoxOnly,
-                    StrongboxHybridLootPolicy.AuthoredNormalWeaponSlots,
-                    StrongboxHybridLootPolicy.AuthoredNormalWeaponSlots + 1,
+                    gun.TopBoxOnly,
+                    StrongboxHybridLootPolicy.AuthoredNormalGunSlots,
+                    StrongboxHybridLootPolicy.AuthoredNormalGunSlots + 1,
                     StrongboxHybridLootPolicy.NormalMaximumAugmentLevel,
                     ResolveAbsoluteMaximumAugmentLevel()));
             }
@@ -115,11 +115,11 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         private static StrongboxFingerprints BuildFingerprints(
-            string weaponCatalogJson,
+            string gunCatalogJson,
             IReadOnlyList<StrongboxEquipmentMetadata> metadata)
         {
             string equipmentCatalog = Strongbox.Fingerprint(
-                "strongbox-simulation-equipment-catalog-v1|" + weaponCatalogJson);
+                "strongbox-simulation-equipment-catalog-v1|" + gunCatalogJson);
             var projection = new StringBuilder(
                 "strongbox-simulation-equipment-projection-v2");
             for (int index = 0; index < metadata.Count; index++)
@@ -189,32 +189,32 @@ namespace ShooterMover.Editor.BalanceSimulator
             return maximum;
         }
 
-        private static bool TryResolveWeapon(
-            WeaponCatalog weaponCatalog,
+        private static bool TryResolveGun(
+            GunCatalog gunCatalog,
             EquipmentDefinition equipment,
-            out WeaponDefinitionData weapon)
+            out GunDefinitionData gun)
         {
-            string reference = WeaponDefinitionId.FromRuntimeReference(
-                equipment.RuntimeWeaponReferenceId).Value;
-            if (weaponCatalog.TryGetDefinition(reference, out weapon) && weapon != null)
+            string reference = GunDefinitionId.FromRuntimeReference(
+                equipment.RuntimeGunReferenceId).Value;
+            if (gunCatalog.TryGetDefinition(reference, out gun) && gun != null)
                 return true;
 
-            IReadOnlyList<WeaponDefinitionData> live =
-                weaponCatalog.GetDefinitions(WeaponCatalogContentFilter.LiveOnly);
+            IReadOnlyList<GunDefinitionData> live =
+                gunCatalog.GetDefinitions(GunCatalogContentFilter.LiveOnly);
             for (int index = 0; index < live.Count; index++)
             {
-                WeaponDefinitionData candidate = live[index];
+                GunDefinitionData candidate = live[index];
                 StableId raw;
                 if ((StableId.TryParse(candidate.DefinitionId, out raw)
-                        && raw == equipment.RuntimeWeaponReferenceId)
-                    || Strongbox.DeriveId("weapon", candidate.DefinitionId)
-                        == equipment.RuntimeWeaponReferenceId)
+                        && raw == equipment.RuntimeGunReferenceId)
+                    || Strongbox.DeriveId("gun", candidate.DefinitionId)
+                        == equipment.RuntimeGunReferenceId)
                 {
-                    weapon = candidate;
+                    gun = candidate;
                     return true;
                 }
             }
-            weapon = null;
+            gun = null;
             return false;
         }
 

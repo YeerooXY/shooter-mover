@@ -100,7 +100,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(
-                "Grid V2 · " + problem.Code,
+                "Level · " + problem.Code,
                 EditorStyles.boldLabel,
                 GUILayout.MinWidth(150f));
             GUILayout.FlexibleSpace();
@@ -108,17 +108,17 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 if (GUILayout.Button("Reflow", GUILayout.Width(58f)))
                 {
-                    LevelDoorEndpointAuthoring2D door =
+                    DoorEndpoint door =
                         LevelGridEditorProblemLocator.FindExact(activeRoot, problem)
-                            as LevelDoorEndpointAuthoring2D;
+                            as DoorEndpoint;
                     LevelGridEditorOperations.ReflowDoor(door);
                     RequestRefresh(false);
                 }
                 if (GUILayout.Button("Keep Placement", GUILayout.Width(96f)))
                 {
-                    LevelDoorEndpointAuthoring2D door =
+                    DoorEndpoint door =
                         LevelGridEditorProblemLocator.FindExact(activeRoot, problem)
-                            as LevelDoorEndpointAuthoring2D;
+                            as DoorEndpoint;
                     LevelGridEditorOperations.KeepDoorPlacement(door);
                     RequestRefresh(false);
                 }
@@ -159,21 +159,21 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             {
                 DrawProblemInspector(selectedProblem);
             }
-            else if (selectedAuthoringObject is LevelDoorEndpointAuthoring2D)
+            else if (selectedAuthoringObject is DoorEndpoint)
             {
-                DrawDoorInspector((LevelDoorEndpointAuthoring2D)selectedAuthoringObject);
+                DrawDoorInspector((DoorEndpoint)selectedAuthoringObject);
             }
-            else if (selectedAuthoringObject is LevelDoorLinkAuthoring2D)
+            else if (selectedAuthoringObject is DoorLink)
             {
-                DrawConnectionInspector((LevelDoorLinkAuthoring2D)selectedAuthoringObject);
+                DrawConnectionInspector((DoorLink)selectedAuthoringObject);
             }
-            else if (selectedAuthoringObject is LevelRoomAuthoring2D)
+            else if (selectedAuthoringObject is LevelRoom)
             {
-                DrawRoomInspector((LevelRoomAuthoring2D)selectedAuthoringObject);
+                DrawRoomInspector((LevelRoom)selectedAuthoringObject);
             }
-            else if (selectedAuthoringObject is LevelDesignSceneAuthoringRoot2D)
+            else if (selectedAuthoringObject is LevelDraft)
             {
-                DrawRootInspector((LevelDesignSceneAuthoringRoot2D)selectedAuthoringObject);
+                DrawRootInspector((LevelDraft)selectedAuthoringObject);
             }
             else if (selectedAuthoringObject is Component)
             {
@@ -190,19 +190,19 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             GUILayout.EndArea();
         }
 
-        private void DrawRootInspector(LevelDesignSceneAuthoringRoot2D root)
+        private void DrawRootInspector(LevelDraft root)
         {
             EditorGUILayout.LabelField("Level root", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Stable level ID", root.LevelIdText);
             EditorGUILayout.ObjectField(
                 "Scene object",
                 root,
-                typeof(LevelDesignSceneAuthoringRoot2D),
+                typeof(LevelDraft),
                 true);
             DrawRevealButtons(root);
         }
 
-        private void DrawRoomInspector(LevelRoomAuthoring2D room)
+        private void DrawRoomInspector(LevelRoom room)
         {
             EditorGUILayout.LabelField("Room", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Stable room ID", room.RoomIdText);
@@ -250,7 +250,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             EditorGUILayout.LabelField(
                 "Door count",
-                room.GetComponentsInChildren<LevelDoorEndpointAuthoring2D>(true)
+                room.GetComponentsInChildren<DoorEndpoint>(true)
                     .Length.ToString());
             DrawRevealButtons(room);
             if (GUILayout.Button("Delete Room"))
@@ -260,7 +260,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private void DrawDoorInspector(LevelDoorEndpointAuthoring2D door)
+        private void DrawDoorInspector(DoorEndpoint door)
         {
             EditorGUILayout.LabelField("Door endpoint", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Stable door ID", door.DoorIdText);
@@ -268,7 +268,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.ObjectField(
                 "Owning room",
                 door.OwningRoom,
-                typeof(LevelRoomAuthoring2D),
+                typeof(LevelRoom),
                 true);
             EditorGUI.EndDisabledGroup();
 
@@ -331,7 +331,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
         }
 
-        private void DrawConnectionInspector(LevelDoorLinkAuthoring2D connection)
+        private void DrawConnectionInspector(DoorLink connection)
         {
             EditorGUILayout.LabelField("Connection", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Connection ID", connection.ConnectionIdText);
@@ -339,22 +339,22 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             EditorGUILayout.ObjectField(
                 "Source room",
                 connection.SourceRoom,
-                typeof(LevelRoomAuthoring2D),
+                typeof(LevelRoom),
                 true);
             EditorGUILayout.ObjectField(
                 "Source door",
                 connection.SourceDoor,
-                typeof(LevelDoorEndpointAuthoring2D),
+                typeof(DoorEndpoint),
                 true);
             EditorGUILayout.ObjectField(
                 "Destination room",
                 connection.DestinationRoom,
-                typeof(LevelRoomAuthoring2D),
+                typeof(LevelRoom),
                 true);
             EditorGUILayout.ObjectField(
                 "Destination door",
                 connection.DestinationDoor,
-                typeof(LevelDoorEndpointAuthoring2D),
+                typeof(DoorEndpoint),
                 true);
             EditorGUI.EndDisabledGroup();
 
@@ -380,7 +380,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void DrawProblemInspector(LevelGridProblem problem)
         {
-            EditorGUILayout.LabelField("Grid V2 validation problem", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Level validation problem", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Code", problem.Code.ToString());
             EditorGUILayout.LabelField("Severity", problem.Severity.ToString());
             EditorGUILayout.LabelField("Stable ID", problem.AuthoredId);
@@ -547,20 +547,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private void DeleteSelection()
         {
-            if (selectedAuthoringObject is LevelDoorEndpointAuthoring2D)
+            if (selectedAuthoringObject is DoorEndpoint)
             {
                 LevelGridEditorOperations.DeleteDoor(
-                    (LevelDoorEndpointAuthoring2D)selectedAuthoringObject);
+                    (DoorEndpoint)selectedAuthoringObject);
             }
-            else if (selectedAuthoringObject is LevelDoorLinkAuthoring2D)
+            else if (selectedAuthoringObject is DoorLink)
             {
                 LevelGridEditorOperations.DeleteConnection(
-                    (LevelDoorLinkAuthoring2D)selectedAuthoringObject);
+                    (DoorLink)selectedAuthoringObject);
             }
-            else if (selectedAuthoringObject is LevelRoomAuthoring2D)
+            else if (selectedAuthoringObject is LevelRoom)
             {
                 LevelGridEditorOperations.DeleteRoom(
-                    (LevelRoomAuthoring2D)selectedAuthoringObject,
+                    (LevelRoom)selectedAuthoringObject,
                     true);
             }
             else

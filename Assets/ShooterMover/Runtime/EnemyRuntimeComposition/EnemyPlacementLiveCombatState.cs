@@ -12,7 +12,7 @@ using ShooterMover.GameplayEntities.Enemies;
 
 namespace ShooterMover.EnemyRuntimeComposition
 {
-    public sealed partial class EnemyPlacementLiveInstance
+    public sealed partial class EnemyInstance
     {
         public EnemyAttackExecutionResult TryExecuteAttack(
             EnemyPlacementDecision decision,

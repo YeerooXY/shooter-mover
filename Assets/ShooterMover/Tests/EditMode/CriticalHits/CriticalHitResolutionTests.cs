@@ -38,7 +38,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 profile,
                 hit,
                 CriticalHitPolicyIds.Normal,
-                "weapon-blaster",
+                "gun-blaster",
                 "blaster-instance-a");
             CriticalHitResolutionCommand secondCommand = Command(
                 "operation-a",
@@ -52,7 +52,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     "effect-a",
                     CombatEffectGeometryKind.Projectile),
                 CriticalHitPolicyIds.Normal,
-                "weapon-blaster",
+                "gun-blaster",
                 "blaster-instance-a");
 
             CriticalHitResolutionResult first =
@@ -105,7 +105,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     profileA,
                     hit,
                     CriticalHitPolicyIds.Normal,
-                    "weapon-blaster",
+                    "gun-blaster",
                     "equipment-a"));
 
             var variants = new[]
@@ -123,7 +123,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         1m),
                     hit,
                     CriticalHitPolicyIds.Normal,
-                    "weapon-blaster",
+                    "gun-blaster",
                     "equipment-a"),
                 Command(
                     "operation-domain",
@@ -133,7 +133,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     profileA,
                     hit,
                     CriticalHitPolicyIds.Normal,
-                    "weapon-blaster",
+                    "gun-blaster",
                     "equipment-b"),
                 Command(
                     "operation-domain",
@@ -143,7 +143,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     profileA,
                     hit,
                     CriticalHitPolicyIds.Normal,
-                    "weapon-shotgun",
+                    "gun-shotgun",
                     "equipment-a"),
             };
 
@@ -179,7 +179,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 profile,
                 hit,
                 CriticalHitPolicyIds.Normal,
-                "weapon-blaster",
+                "gun-blaster",
                 "equipment-a");
             var authority = new CriticalHitResolutionState();
 
@@ -193,7 +193,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     profile,
                     hit,
                     CriticalHitPolicyIds.Normal,
-                    "weapon-blaster",
+                    "gun-blaster",
                     "equipment-a"));
             CriticalHitResolutionResult conflict = authority.Resolve(
                 Command(
@@ -204,7 +204,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                     profile,
                     hit,
                     CriticalHitPolicyIds.CannotCrit,
-                    "weapon-blaster",
+                    "gun-blaster",
                     "equipment-a"));
 
             Assert.That(applied.Status, Is.EqualTo(
@@ -243,7 +243,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         "normal-effect",
                         CombatEffectGeometryKind.Projectile),
                     CriticalHitPolicyIds.Normal,
-                    "weapon-blaster",
+                    "gun-blaster",
                     "equipment-a"));
 
             Assert.That(result.ResolvedDamage.IsCritical, Is.True);
@@ -346,7 +346,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         "modified-chance-effect",
                         CombatEffectGeometryKind.Projectile),
                     CriticalHitPolicyIds.ModifiedChance,
-                    "weapon-modified-chance",
+                    "gun-modified-chance",
                     "equipment-a"));
 
             Assert.That(result.ResolvedDamage.IsCritical, Is.False);
@@ -375,7 +375,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         "modified-multiplier-effect",
                         CombatEffectGeometryKind.Explosion),
                     CriticalHitPolicyIds.ModifiedMultiplier,
-                    "weapon-modified-multiplier",
+                    "gun-modified-multiplier",
                     "equipment-a"));
 
             Assert.That(result.ResolvedDamage.IsCritical, Is.True);
@@ -579,7 +579,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                 profile,
                 hit,
                 CriticalHitPolicyIds.Normal,
-                "weapon-chain",
+                "gun-chain",
                 "equipment-chain-a");
             CriticalHitResolutionResult applied = authority.Resolve(command);
             CriticalHitResolutionResult duplicate = authority.Resolve(command);
@@ -631,7 +631,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         "effect-unknown-policy",
                         CombatEffectGeometryKind.Projectile),
                     Id("critical-hit-policy", "missing-v1"),
-                    "weapon-unknown",
+                    "gun-unknown",
                     "equipment-a"));
 
             Assert.That(result.Status, Is.EqualTo(
@@ -670,7 +670,7 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
                         1m),
                     denied,
                     CriticalHitPolicyIds.Normal,
-                    "weapon-friendly",
+                    "gun-friendly",
                     "equipment-a"));
 
             Assert.That(result.Status, Is.EqualTo(

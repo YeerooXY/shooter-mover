@@ -175,7 +175,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         bool TryRead(out CombatHealthBarSnapshot snapshot);
     }
 
-    public delegate bool TryReadEnemyActorStateV1(out EnemyActorState state);
+    public delegate bool TryReadEnemyActorState(out EnemyActorState state);
 
     public sealed class PlayerHudCombatHealthSnapshotSource : ICombatHealthBarSnapshotSource
     {
@@ -216,13 +216,13 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
     {
         private readonly StableId boundEntityStableId;
         private readonly Func<long> readLifecycleGeneration;
-        private readonly TryReadEnemyActorStateV1 readState;
+        private readonly TryReadEnemyActorState readState;
         private readonly CombatPresentationAnchorFacts anchorFacts;
 
         public EnemyActorCombatHealthSnapshotSource(
             StableId boundEntityStableId,
             Func<long> readLifecycleGeneration,
-            TryReadEnemyActorStateV1 readState,
+            TryReadEnemyActorState readState,
             CombatPresentationAnchorFacts anchorFacts = null)
         {
             this.boundEntityStableId = boundEntityStableId

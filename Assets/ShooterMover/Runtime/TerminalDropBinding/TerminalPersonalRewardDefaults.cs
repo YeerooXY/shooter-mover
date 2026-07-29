@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     internal sealed class AttributedTerminalRewardParticipantResolver :
         ITerminalRewardParticipantResolver
     {
         public bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             TerminalRewardPlacementContext placementContext,
             out IReadOnlyList<TerminalRewardParticipant> participants,
             out TerminalRewardEligibilityPolicy eligibilityPolicy,
@@ -56,8 +56,8 @@ namespace ShooterMover.TerminalDropBinding
             StableId.Parse("game-mode.campaign");
 
         public bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             out TerminalRewardEnvironment environment,
             out string diagnostic)
         {
@@ -84,8 +84,8 @@ namespace ShooterMover.TerminalDropBinding
         ITerminalRewardOverrideResolver
     {
         public bool TryResolve(
-            TerminalDropSourceFact source,
-            TerminalDropRunGenerationContext runContext,
+            LootDropSourceFact source,
+            LootDropRunGenerationContext runContext,
             TerminalRewardEnvironment environment,
             TerminalRewardPlacementContext placementContext,
             out TerminalRewardOverrideSet overrides,

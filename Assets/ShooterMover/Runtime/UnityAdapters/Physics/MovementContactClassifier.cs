@@ -9,13 +9,13 @@ namespace ShooterMover.UnityAdapters.Physics
     /// Engine-facing classification of one contacted 2D collider.
     /// Unity tags, layers, names, and hierarchy conventions are deliberately not used.
     /// </summary>
-    public enum MovementContact2DKind
+    public enum MovementContactKind
     {
         Wall = 1,
         Enemy = 2,
     }
 
-    public enum MovementContact2DClassificationResult
+    public enum MovementContactClassificationResult
     {
         Classified = 1,
         MissingCollider = 2,
@@ -28,19 +28,19 @@ namespace ShooterMover.UnityAdapters.Physics
     /// Immutable explicit contact description supplied by a contacted Unity component.
     /// Enemy descriptions carry the accepted CS-004 weight message; wall descriptions do not.
     /// </summary>
-    public sealed class MovementContact2DDescriptor
+    public sealed class MovementContactDescriptor
     {
-        private MovementContact2DDescriptor(
-            MovementContact2DKind kind,
+        private MovementContactDescriptor(
+            MovementContactKind kind,
             StableId enemyId,
             WeightMessage weightMessage)
         {
-            if (!Enum.IsDefined(typeof(MovementContact2DKind), kind))
+            if (!Enum.IsDefined(typeof(MovementContactKind), kind))
             {
                 throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown movement contact kind.");
             }
 
-            if (kind == MovementContact2DKind.Wall)
+            if (kind == MovementContactKind.Wall)
             {
                 if (enemyId != null || weightMessage != null)
                 {
@@ -79,23 +79,23 @@ namespace ShooterMover.UnityAdapters.Physics
             WeightMessage = weightMessage;
         }
 
-        public MovementContact2DKind Kind { get; }
+        public MovementContactKind Kind { get; }
 
         public StableId EnemyId { get; }
 
         public WeightMessage WeightMessage { get; }
 
-        public static MovementContact2DDescriptor Wall()
+        public static MovementContactDescriptor Wall()
         {
-            return new MovementContact2DDescriptor(MovementContact2DKind.Wall, null, null);
+            return new MovementContactDescriptor(MovementContactKind.Wall, null, null);
         }
 
-        public static MovementContact2DDescriptor Enemy(
+        public static MovementContactDescriptor Enemy(
             StableId enemyId,
             WeightMessage weightMessage)
         {
-            return new MovementContact2DDescriptor(
-                MovementContact2DKind.Enemy,
+            return new MovementContactDescriptor(
+                MovementContactKind.Enemy,
                 enemyId,
                 weightMessage);
         }
@@ -105,28 +105,28 @@ namespace ShooterMover.UnityAdapters.Physics
     /// Explicit component contract consumed by <see cref="MovementContactClassifier"/>.
     /// Implementations are projections only and must not perform movement, damage, or enemy behavior.
     /// </summary>
-    public interface IMovementContact2DContract
+    public interface IMovementContact
     {
-        bool TryDescribeMovementContact(out MovementContact2DDescriptor descriptor);
+        bool TryDescribeMovementContact(out MovementContactDescriptor descriptor);
     }
 
     public static class MovementContactClassifier
     {
-        public static MovementContact2DClassificationResult Classify(
+        public static MovementContactClassificationResult Classify(
             Collider2D collider,
-            out MovementContact2DDescriptor descriptor)
+            out MovementContactDescriptor descriptor)
         {
             descriptor = null;
             if (collider == null)
             {
-                return MovementContact2DClassificationResult.MissingCollider;
+                return MovementContactClassificationResult.MissingCollider;
             }
 
             MonoBehaviour[] behaviours = collider.GetComponents<MonoBehaviour>();
-            IMovementContact2DContract contract = null;
+            IMovementContact contract = null;
             for (int index = 0; index < behaviours.Length; index++)
             {
-                IMovementContact2DContract candidate = behaviours[index] as IMovementContact2DContract;
+                IMovementContact candidate = behaviours[index] as IMovementContact;
                 if (candidate == null)
                 {
                     continue;
@@ -134,7 +134,7 @@ namespace ShooterMover.UnityAdapters.Physics
 
                 if (contract != null)
                 {
-                    return MovementContact2DClassificationResult.AmbiguousContract;
+                    return MovementContactClassificationResult.AmbiguousContract;
                 }
 
                 contract = candidate;
@@ -142,27 +142,27 @@ namespace ShooterMover.UnityAdapters.Physics
 
             if (contract == null)
             {
-                return MovementContact2DClassificationResult.MissingContract;
+                return MovementContactClassificationResult.MissingContract;
             }
 
             try
             {
-                MovementContact2DDescriptor described;
+                MovementContactDescriptor described;
                 if (!contract.TryDescribeMovementContact(out described) || described == null)
                 {
-                    return MovementContact2DClassificationResult.InvalidContract;
+                    return MovementContactClassificationResult.InvalidContract;
                 }
 
                 descriptor = described;
-                return MovementContact2DClassificationResult.Classified;
+                return MovementContactClassificationResult.Classified;
             }
             catch (ArgumentException)
             {
-                return MovementContact2DClassificationResult.InvalidContract;
+                return MovementContactClassificationResult.InvalidContract;
             }
             catch (InvalidOperationException)
             {
-                return MovementContact2DClassificationResult.InvalidContract;
+                return MovementContactClassificationResult.InvalidContract;
             }
         }
     }

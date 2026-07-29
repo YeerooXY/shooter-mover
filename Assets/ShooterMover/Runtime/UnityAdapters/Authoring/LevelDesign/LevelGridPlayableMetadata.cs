@@ -10,18 +10,18 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     [DisallowMultipleComponent]
     public sealed class LevelGridPlayableMetadata : MonoBehaviour
     {
-        [SerializeField] private LevelRoomAuthoring2D startRoom;
+        [SerializeField] private LevelRoom startRoom;
         [SerializeField] private Vector2 playerStartLocalPosition = new Vector2(-9f, 0f);
         [SerializeField] private float playerStartRotation;
-        [SerializeField] private LevelRoomAuthoring2D finalExitRoom;
-        [SerializeField] private LevelDoorEndpointAuthoring2D finalExitDoor;
+        [SerializeField] private LevelRoom finalExitRoom;
+        [SerializeField] private DoorEndpoint finalExitDoor;
         [SerializeField] private string runtimeDoorObjectId = "door.room-standard";
 
-        public LevelRoomAuthoring2D StartRoom { get { return startRoom; } }
+        public LevelRoom StartRoom { get { return startRoom; } }
         public Vector2 PlayerStartLocalPosition { get { return playerStartLocalPosition; } }
         public float PlayerStartRotation { get { return playerStartRotation; } }
-        public LevelRoomAuthoring2D FinalExitRoom { get { return finalExitRoom; } }
-        public LevelDoorEndpointAuthoring2D FinalExitDoor { get { return finalExitDoor; } }
+        public LevelRoom FinalExitRoom { get { return finalExitRoom; } }
+        public DoorEndpoint FinalExitDoor { get { return finalExitDoor; } }
         public string RuntimeDoorObjectId
         {
             get
@@ -32,48 +32,48 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
         }
 
-        public void ValidateForPlayableExport(LevelDesignSceneAuthoringRoot2D root)
+        public void ValidateForPlayableExport(LevelDraft root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
-            if (startRoom == null || startRoom.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root)
+            if (startRoom == null || startRoom.GetComponentInParent<LevelDraft>() != root)
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 metadata requires a start room owned by this level root.");
+                    "Playable Level metadata requires a start room owned by this level root.");
             }
             if (finalExitRoom == null
-                || finalExitRoom.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root)
+                || finalExitRoom.GetComponentInParent<LevelDraft>() != root)
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 metadata requires a final-exit room owned by this level root.");
+                    "Playable Level metadata requires a final-exit room owned by this level root.");
             }
             if (finalExitDoor == null
                 || finalExitDoor.OwningRoom != finalExitRoom
-                || finalExitDoor.GetComponentInParent<LevelDesignSceneAuthoringRoot2D>() != root)
+                || finalExitDoor.GetComponentInParent<LevelDraft>() != root)
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 final exit must reference an exact door owned by the final-exit room and this level root.");
+                    "Playable Level final exit must reference an exact door owned by the final-exit room and this level root.");
             }
             if (!finalExitDoor.Traversable)
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 final-exit door must be traversable.");
+                    "Playable Level final-exit door must be traversable.");
             }
             if (string.IsNullOrWhiteSpace(RuntimeDoorObjectId))
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 metadata requires a runtime door object ID.");
+                    "Playable Level metadata requires a runtime door object ID.");
             }
             if (!IsFinite(playerStartLocalPosition.x)
                 || !IsFinite(playerStartLocalPosition.y)
                 || !IsFinite(playerStartRotation))
             {
                 throw new InvalidOperationException(
-                    "Playable Grid V2 player arrival values must be finite.");
+                    "Playable Level player arrival values must be finite.");
             }
         }
 
         public static Vector2 ResolveDoorLocalPosition(
-            LevelRoomAuthoring2D owningRoom,
+            LevelRoom owningRoom,
             Transform doorTransform)
         {
             if (owningRoom == null) throw new ArgumentNullException(nameof(owningRoom));
@@ -83,11 +83,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         }
 
         public void ConfigureForTests(
-            LevelRoomAuthoring2D configuredStartRoom,
+            LevelRoom configuredStartRoom,
             Vector2 configuredPlayerStartLocalPosition,
             float configuredPlayerStartRotation,
-            LevelRoomAuthoring2D configuredFinalExitRoom,
-            LevelDoorEndpointAuthoring2D configuredFinalExitDoor,
+            LevelRoom configuredFinalExitRoom,
+            DoorEndpoint configuredFinalExitDoor,
             string configuredRuntimeDoorObjectId = "door.room-standard")
         {
             startRoom = configuredStartRoom;

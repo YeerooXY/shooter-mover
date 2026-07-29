@@ -123,9 +123,9 @@ namespace ShooterMover.Application.Shops.Presentation
 
         private static string CategoryLabel(StableId categoryStableId)
         {
-            if (categoryStableId == EquipmentCategoryIds.Weapon)
+            if (categoryStableId == EquipmentCategoryIds.Gun)
             {
-                return "WEAPON";
+                return "GUN";
             }
 
             if (categoryStableId == EquipmentCategoryIds.Armor)

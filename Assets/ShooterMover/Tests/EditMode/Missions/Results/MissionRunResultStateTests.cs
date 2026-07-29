@@ -179,7 +179,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Results
         }
 
         [Test]
-        public void DuplicateWeaponDefinitionsRemainSeparateEquipmentInstancesOutsideResults()
+        public void DuplicateGunDefinitionsRemainSeparateEquipmentInstancesOutsideResults()
         {
             FakeExistingStatePort port = new FakeExistingStatePort();
             MissionRunResultState authority = new MissionRunResultState(port);

@@ -92,7 +92,7 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         {
             return EquipmentInstance.Create(
                 CraftingFormat.DeriveStableId("craftitem", command.CraftTransactionStableId.ToString()),
-                StableId.Parse("weapon.shared"), 7, StableId.Parse("quality.standard"),
+                StableId.Parse("gun.shared"), 7, StableId.Parse("quality.standard"),
                 Array.Empty<AugmentInstance>());
         }
     }

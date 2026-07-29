@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 378dd9e3e6e54f05b9bbb8a123a224e9, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.ProductionFlow::ShooterMover.UI.ProductionFlow.CharacterSelectionController
+  m_EditorClassIdentifier: ShooterMover.UI.Game::ShooterMover.UI.Game.CharacterMenu
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

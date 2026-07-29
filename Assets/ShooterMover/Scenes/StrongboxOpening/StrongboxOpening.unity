@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6e8f7d8229f545b08157a8aa32c28e02, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.StrongboxOpening::ShooterMover.UI.StrongboxOpening.StrongboxOpeningController
+  m_EditorClassIdentifier: ShooterMover.UI.StrongboxOpening::ShooterMover.UI.StrongboxOpening.StrongboxOpening
   tierStableId: strongbox-tier.preview
   tierLabel: REFERENCE STRONGBOX
   deterministicTestSeed: 424242

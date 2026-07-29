@@ -20,7 +20,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
     {
         private const ulong EquipmentSimulationSeed = 0x535441542D303031UL;
         private static readonly StableId TierId = Id("stat.strongbox.tier");
-        private static readonly StableId EquipmentPoolId = Id("stat.pool.weapons");
+        private static readonly StableId EquipmentPoolId = Id("stat.pool.guns");
         private static readonly StableId ScrapCurrencyId = Id("currency.scrap");
         private static readonly StableId CommonQualityId = Id("quality.common");
         private static readonly StableId RareQualityId = Id("quality.rare");
@@ -118,7 +118,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 new[]
                 {
                     EquipmentGenerationCandidate.Create(
-                        Id("stat.weapon.soft-level"),
+                        Id("stat.gun.soft-level"),
                         0,
                         100,
                         0,
@@ -161,8 +161,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
 
                 Assert.That(lower.Status, Is.EqualTo(RewardGenerationStatus.Generated));
                 Assert.That(higher.Status, Is.EqualTo(RewardGenerationStatus.Generated));
-                Assert.That(lower.Equipment.DefinitionId, Is.EqualTo(Id("stat.weapon.soft-level")));
-                Assert.That(higher.Equipment.DefinitionId, Is.EqualTo(Id("stat.weapon.soft-level")));
+                Assert.That(lower.Equipment.DefinitionId, Is.EqualTo(Id("stat.gun.soft-level")));
+                Assert.That(higher.Equipment.DefinitionId, Is.EqualTo(Id("stat.gun.soft-level")));
                 Assert.That(lower.Equipment.ItemLevel, Is.InRange(50, 60));
                 Assert.That(higher.Equipment.ItemLevel, Is.InRange(50, 60));
             }
@@ -303,7 +303,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                     0UL);
                 StrongboxEquipmentRollPlan plan = policy.RollAugmentSlots(
                     level,
-                    Id("stat.weapon.alpha"),
+                    Id("stat.gun.alpha"),
                     4,
                     seed,
                     DeterministicRandom.AlgorithmVersion1);
@@ -336,8 +336,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 Id("stat.policy.strongbox-equipment"),
                 new[]
                 {
-                    EquipmentCandidate("stat.weapon.alpha"),
-                    EquipmentCandidate("stat.weapon.beta")
+                    EquipmentCandidate("stat.gun.alpha"),
+                    EquipmentCandidate("stat.gun.beta")
                 },
                 new[]
                 {
@@ -409,27 +409,27 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             EquipmentQualityTier common = EquipmentQualityTier.Create(CommonQualityId, "Common", 1);
             EquipmentQualityTier rare = EquipmentQualityTier.Create(RareQualityId, "Rare", 2);
             EquipmentDefinition alpha = EquipmentDefinition.Create(
-                Id("stat.weapon.alpha"),
-                EquipmentCategoryIds.Weapon,
-                Id("stat.weapon-family.alpha"),
-                "Stat Weapon Alpha",
-                Id("weapon.runtime-alpha"),
+                Id("stat.gun.alpha"),
+                EquipmentCategoryIds.Gun,
+                Id("stat.gun-family.alpha"),
+                "Stat Gun Alpha",
+                Id("gun.runtime-alpha"),
                 InclusiveIntRange.Create(1, 100),
                 4,
                 new[] { common, rare },
                 Array.Empty<StableId>());
             EquipmentDefinition beta = EquipmentDefinition.Create(
-                Id("stat.weapon.beta"),
-                EquipmentCategoryIds.Weapon,
-                Id("stat.weapon-family.beta"),
-                "Stat Weapon Beta",
-                Id("weapon.runtime-beta"),
+                Id("stat.gun.beta"),
+                EquipmentCategoryIds.Gun,
+                Id("stat.gun-family.beta"),
+                "Stat Gun Beta",
+                Id("gun.runtime-beta"),
                 InclusiveIntRange.Create(1, 100),
                 4,
                 new[] { common, rare },
                 Array.Empty<StableId>());
             AugmentCompatibility compatibility = AugmentCompatibility.Create(
-                new[] { EquipmentCategoryIds.Weapon },
+                new[] { EquipmentCategoryIds.Gun },
                 Array.Empty<StableId>(),
                 Array.Empty<StableId>(),
                 Array.Empty<StableId>());
@@ -449,18 +449,18 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         private static EquipmentCatalog BuildSoftRequirementCatalog()
         {
             EquipmentQualityTier common = EquipmentQualityTier.Create(CommonQualityId, "Common", 1);
-            EquipmentDefinition weapon = EquipmentDefinition.Create(
-                Id("stat.weapon.soft-level"),
-                EquipmentCategoryIds.Weapon,
-                Id("stat.weapon-family.soft-level"),
-                "Soft Level Weapon",
-                Id("weapon.runtime-soft-level"),
+            EquipmentDefinition gun = EquipmentDefinition.Create(
+                Id("stat.gun.soft-level"),
+                EquipmentCategoryIds.Gun,
+                Id("stat.gun-family.soft-level"),
+                "Soft Level Gun",
+                Id("gun.runtime-soft-level"),
                 InclusiveIntRange.Create(1, 100),
                 0,
                 new[] { common },
                 Array.Empty<StableId>());
             EquipmentCatalogBuildResult build = EquipmentCatalog.Build(
-                new[] { weapon },
+                new[] { gun },
                 Array.Empty<AugmentDefinition>());
             Assert.That(build.IsValid, Is.True);
             return build.Catalog;

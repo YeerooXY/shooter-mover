@@ -12,12 +12,12 @@ namespace ShooterMover.Tests.EditMode.Props
     /// Content-package scripts compile into predefined Assembly-CSharp, so this fixture
     /// exercises the real authority through reflection from the EditMode test asmdef.
     /// </summary>
-    public sealed class DestructiblePropStateTests
+    public sealed class BreakableStateTests
     {
         private static readonly Type AuthorityType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.DestructiblePropDamage");
+            "ShooterMover.ContentPackages.Props.Breakables.BreakableDamage");
         private static readonly Type IntegrationType = Find(
-            "ShooterMover.ContentPackages.Props.DestructibleProps.Stage1DestructiblePropIntegration");
+            "ShooterMover.ContentPackages.Props.Breakables.Stage1BreakableIntegration");
 
         [Test]
         public void Stage1Authoring_UsesDifferentPositiveCrateAndExplosiveHealth()

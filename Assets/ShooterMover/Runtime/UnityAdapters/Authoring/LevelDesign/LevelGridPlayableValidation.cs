@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 {
     /// <summary>
-    /// Applies the one playable-graph rule that is not expressible by generic Grid V2 topology:
+    /// Applies the one playable-graph rule that is not expressible by generic Level topology:
     /// the exact configured final-exit endpoint remains traversable at runtime but is intentionally
     /// not required to connect to another authored room. It may not serve both roles.
     /// </summary>

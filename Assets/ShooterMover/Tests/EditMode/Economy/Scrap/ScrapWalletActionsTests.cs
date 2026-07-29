@@ -101,7 +101,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Scrap
                 4L,
                 ScrapIdentity.StrongboxOpeningReason,
                 new ScrapProvenance(
-                    ScrapIdentity.RewardSourceKind,
+                    ScrapIdentity.LootSourceKind,
                     Id("operation.strongbox-open-001"),
                     Id("strongbox.box-001"))));
 
@@ -201,7 +201,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Scrap
             source.Apply(SalvageGrant(
                 "transaction.salvage-001",
                 3L,
-                "equipment-instance.weapon-001"));
+                "equipment-instance.gun-001"));
             ScrapSnapshot snapshot = source.ExportSnapshot();
 
             ScrapWalletActions restored = CreateWallet();
@@ -300,7 +300,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Scrap
                 amount,
                 ScrapIdentity.RewardGrantReason,
                 new ScrapProvenance(
-                    ScrapIdentity.RewardSourceKind,
+                    ScrapIdentity.LootSourceKind,
                     operationId,
                     Id("commitment.reward-001")),
                 expectedSequence);
@@ -323,7 +323,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Scrap
                 new ScrapProvenance(
                     ScrapIdentity.CraftingSourceKind,
                     operationId,
-                    Id("recipe.weapon-001")),
+                    Id("recipe.gun-001")),
                 expectedSequence);
         }
 

@@ -6,7 +6,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Drops;
 using ShooterMover.Domain.Rewards.Generation;
 
-namespace ShooterMover.TerminalDropBinding
+namespace ShooterMover.LootDropBinding
 {
     /// <summary>
     /// Mission-completion authority for the configured minimum strongbox count. It
@@ -20,7 +20,7 @@ namespace ShooterMover.TerminalDropBinding
         private static readonly StableId CompletionDefinitionId =
             StableId.Parse("reward-source.run-completion-minimum");
 
-        private readonly ITerminalDropRunContextResolver runContexts;
+        private readonly ILootDropRunContextResolver runContexts;
         private readonly ITerminalRewardParticipantResolver participants;
         private readonly ITerminalRewardEnvironmentResolver environments;
         private readonly RewardProfileResolver profileResolver;
@@ -28,7 +28,7 @@ namespace ShooterMover.TerminalDropBinding
         private readonly IPersonalRewardDeliveryOutbox deliveryOutbox;
 
         public TerminalRunMinimumGenerationState(
-            ITerminalDropRunContextResolver runContexts,
+            ILootDropRunContextResolver runContexts,
             ITerminalRewardParticipantResolver participants,
             ITerminalRewardEnvironmentResolver environments,
             RewardProfileResolver profileResolver,
@@ -67,8 +67,8 @@ namespace ShooterMover.TerminalDropBinding
                 throw new ArgumentNullException(nameof(placementContext));
             }
 
-            TerminalDropRunGenerationContext runContext;
-            TerminalDropRejectionCode rejection;
+            LootDropRunGenerationContext runContext;
+            LootDropRejectionCode rejection;
             string diagnostic;
             if (!runContexts.TryResolve(
                     runStableId,
@@ -99,12 +99,12 @@ namespace ShooterMover.TerminalDropBinding
                     "runminimumsource",
                     runStableId.ToString(),
                     generationText);
-            string sourceContextFingerprint = TerminalDrop.Hash(
+            string sourceContextFingerprint = LootDrop.Hash(
                 runContext.Fingerprint
                 + "|"
                 + placementContext.Fingerprint
                 + "|run-minimum");
-            TerminalDropSourceFact source = new TerminalDropSourceFact(
+            LootDropSourceFact source = new LootDropSourceFact(
                 CompletionFactKindId,
                 terminalEventId,
                 null,
@@ -117,11 +117,11 @@ namespace ShooterMover.TerminalDropBinding
                 null,
                 null,
                 null,
-                RewardSourceCatalog.ExplicitNoDropId,
+                LootSourceCatalog.ExplicitNoDropId,
                 sourceContextFingerprint,
-                TerminalDrop.Hash(
+                LootDrop.Hash(
                     CompletionDefinitionId.ToString()),
-                TerminalDrop.Hash(
+                LootDrop.Hash(
                     terminalEventId + "|" + sourceContextFingerprint));
 
             TerminalRewardEnvironment environment;
@@ -158,18 +158,18 @@ namespace ShooterMover.TerminalDropBinding
                         : diagnostic);
             }
 
-            RewardSourceProfile emptyProfile =
-                RewardSourceCatalog.Get(
-                    RewardSourceCatalog.ExplicitNoDropId);
+            LootSourceProfile emptyProfile =
+                LootSourceCatalog.Get(
+                    LootSourceCatalog.ExplicitNoDropId);
             RewardProfileResolution resolution = profileResolver.Resolve(
-                RewardSourceCatalog.ExplicitNoDropId,
+                LootSourceCatalog.ExplicitNoDropId,
                 emptyProfile,
                 null,
                 null,
                 null,
                 Array.Empty<RewardProfileOverride>(),
                 null);
-            string completionFingerprint = TerminalDrop.Hash(
+            string completionFingerprint = LootDrop.Hash(
                 source.Fingerprint
                 + "|"
                 + placementContext.Fingerprint
@@ -186,7 +186,7 @@ namespace ShooterMover.TerminalDropBinding
                 {
                     continue;
                 }
-                ulong seed = TerminalDrop.DeriveSeed(
+                ulong seed = LootDrop.DeriveSeed(
                     runContext.RootSeed,
                     completionFingerprint
                         + "|"
@@ -221,7 +221,7 @@ namespace ShooterMover.TerminalDropBinding
                 return new TerminalPersonalRewardBatch(
                     TerminalPersonalRewardBatchStatus.NoEligibleParticipants,
                     source,
-                    Array.Empty<GeneratedTerminalDropResult>(),
+                    Array.Empty<GeneratedLootDropResult>(),
                     "run-minimum-no-eligible-participants");
             }
 
@@ -244,12 +244,12 @@ namespace ShooterMover.TerminalDropBinding
                 }
             }
 
-            var results = new List<GeneratedTerminalDropResult>(
+            var results = new List<GeneratedLootDropResult>(
                 personalResults.Count);
             bool anyRewards = false;
             for (int index = 0; index < personalResults.Count; index++)
             {
-                GeneratedTerminalDropResult adapted =
+                GeneratedLootDropResult adapted =
                     TerminalPersonalRewardTransportBridge.Adapt(
                         source,
                         personalResults[index]);
@@ -266,13 +266,13 @@ namespace ShooterMover.TerminalDropBinding
         }
 
         private static TerminalPersonalRewardBatch Reject(
-            TerminalDropSourceFact source,
+            LootDropSourceFact source,
             string diagnostic)
         {
             return new TerminalPersonalRewardBatch(
                 TerminalPersonalRewardBatchStatus.Rejected,
                 source,
-                Array.Empty<GeneratedTerminalDropResult>(),
+                Array.Empty<GeneratedLootDropResult>(),
                 diagnostic);
         }
     }

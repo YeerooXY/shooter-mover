@@ -701,7 +701,7 @@ namespace ShooterMover.Application.Runs.Session
 
         public RunHudSnapshot ExportHudSnapshot()
         {
-            RunPlayerLiveSnapshot player =
+            RunPlayerSnapshot player =
                 RuntimePorts.Player.ExportSnapshot();
             MissionRunPayload runPayload;
             long strongboxCount = RuntimePorts.MissionResults.TryGetRun(

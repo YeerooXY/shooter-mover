@@ -19,7 +19,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Export Grid V2 Draft Folder...",
+            "Tools/Shooter Mover/Level Design/Export Level Draft Folder...",
             true)]
         private static bool DisablePhaseOneDraftExport()
         {
@@ -27,7 +27,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Publish Grid V2 Validated Authoring Folder...",
+            "Tools/Shooter Mover/Level Design/Publish Level Validated Authoring Folder...",
             true)]
         private static bool DisablePhaseOneValidatedExport()
         {
@@ -35,7 +35,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Export Compiler-Ready Grid V2 Package...",
+            "Tools/Shooter Mover/Level Design/Export Compiler-Ready Level Package...",
             true)]
         private static bool DisableArbitraryPlayableExport()
         {
@@ -43,7 +43,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Compile Tracked Combat Loop Grid V2",
+            "Tools/Shooter Mover/Level Design/Compile Tracked Combat Loop Level",
             true)]
         private static bool DisableTrackedCompilerShortcut()
         {
@@ -51,7 +51,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         }
 
         [MenuItem(
-            "Tools/Shooter Mover/Level Design/Compile Grid V2 Folder...",
+            "Tools/Shooter Mover/Level Design/Compile Level Folder...",
             true)]
         private static bool DisableArbitraryCompilerShortcut()
         {

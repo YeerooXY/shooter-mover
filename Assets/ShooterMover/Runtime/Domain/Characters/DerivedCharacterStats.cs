@@ -38,14 +38,14 @@ namespace ShooterMover.Domain.Characters.Stats
         public const string ContactDamage = "combat.contact-damage";
         public const string KnockbackMultiplier =
             "combat.knockback-multiplier";
-        public const string WeaponCapacity = "loadout.weapon-capacity";
+        public const string GunCapacity = "loadout.gun-capacity";
         public const string AbilityCapacity = "loadout.ability-capacity";
-        public const string WeaponDamageMultiplier =
-            "weapon.damage-multiplier";
-        public const string WeaponFireRateMultiplier =
-            "weapon.fire-rate-multiplier";
-        public const string WeaponReloadSpeedMultiplier =
-            "weapon.reload-speed-multiplier";
+        public const string GunDamageMultiplier =
+            "gun.damage-multiplier";
+        public const string GunFireRateMultiplier =
+            "gun.fire-rate-multiplier";
+        public const string GunReloadSpeedMultiplier =
+            "gun.reload-speed-multiplier";
         public const string RewardMultiplier = "rewards.reward-multiplier";
         public const string DropMultiplier = "rewards.drop-multiplier";
         public const string StrongboxDropWeight =
@@ -302,14 +302,14 @@ namespace ShooterMover.Domain.Characters.Stats
                         0m,
                         1000000m),
                     Multiplier(DerivedStatTargetIds.KnockbackMultiplier),
-                    Capacity(DerivedStatTargetIds.WeaponCapacity),
+                    Capacity(DerivedStatTargetIds.GunCapacity),
                     Capacity(DerivedStatTargetIds.AbilityCapacity),
                     Multiplier(
-                        DerivedStatTargetIds.WeaponDamageMultiplier),
+                        DerivedStatTargetIds.GunDamageMultiplier),
                     Multiplier(
-                        DerivedStatTargetIds.WeaponFireRateMultiplier),
+                        DerivedStatTargetIds.GunFireRateMultiplier),
                     Multiplier(
-                        DerivedStatTargetIds.WeaponReloadSpeedMultiplier),
+                        DerivedStatTargetIds.GunReloadSpeedMultiplier),
                     Multiplier(DerivedStatTargetIds.RewardMultiplier),
                     Multiplier(DerivedStatTargetIds.DropMultiplier),
                     Multiplier(DerivedStatTargetIds.StrongboxDropWeight),
@@ -802,8 +802,8 @@ namespace ShooterMover.Domain.Characters.Stats
         public decimal CriticalMultiplier => GetValue(
             DerivedStatTargetIds.CriticalMultiplier);
 
-        public int WeaponCapacity => Decimal.ToInt32(GetValue(
-            DerivedStatTargetIds.WeaponCapacity));
+        public int GunCapacity => Decimal.ToInt32(GetValue(
+            DerivedStatTargetIds.GunCapacity));
 
         public int AbilityCapacity => Decimal.ToInt32(GetValue(
             DerivedStatTargetIds.AbilityCapacity));
@@ -948,8 +948,8 @@ namespace ShooterMover.Domain.Characters.Stats
         public decimal CriticalMultiplier => GetValue(
             DerivedStatTargetIds.CriticalMultiplier);
 
-        public int WeaponCapacity => Decimal.ToInt32(GetValue(
-            DerivedStatTargetIds.WeaponCapacity));
+        public int GunCapacity => Decimal.ToInt32(GetValue(
+            DerivedStatTargetIds.GunCapacity));
 
         public int AbilityCapacity => Decimal.ToInt32(GetValue(
             DerivedStatTargetIds.AbilityCapacity));

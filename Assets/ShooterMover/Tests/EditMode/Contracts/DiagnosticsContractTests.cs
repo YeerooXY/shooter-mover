@@ -377,7 +377,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 invalid,
                 new HumanFunEvidence(
                     HumanFunEvidenceOutcome.Negative,
-                    Id("observation.weapon-readability-poor")));
+                    Id("observation.gun-readability-poor")));
 
             Assert.That(positive.TechnicalValidity, Is.EqualTo(negative.TechnicalValidity));
             Assert.That(positive.TechnicalValidity.IsTechnicallyValid, Is.False);
