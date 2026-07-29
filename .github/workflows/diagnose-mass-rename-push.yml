@@ -1,0 +1,71 @@
+name: Diagnose mass rename push
+
+on:
+  push:
+    branches:
+      - agent/remove-legacy-names-everywhere
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/remove-legacy-names-everywhere
+          fetch-depth: 0
+
+      - name: Build, push, and record result
+        shell: bash
+        run: |
+          set -euo pipefail
+          start_sha="$(git rev-parse HEAD)"
+          awk '
+            /python3 - <<'"'"'PY'"'"'/ { capture=1; next }
+            capture && /^          PY$/ { capture=0; exit }
+            capture { sub(/^          /, ""); print }
+          ' .github/workflows/remove-legacy-type-names.yml > /tmp/rename.py
+
+          python3 /tmp/rename.py
+          rm -f .github/workflows/remove-legacy-type-names.yml
+          rm -f .github/workflows/publish-mass-rename.yml
+          rm -f .github/workflows/diagnose-mass-rename-push.yml
+          rm -f docs/audits/.run-full-rename
+          rm -f docs/audits/.run-publisher
+          rm -f docs/audits/REPOSITORY_NAMING_REMOVAL_AUDIT.md
+          rm -f docs/audits/CLEAR_GAME_NAMING_PLAN.md
+          rm -f docs/audits/REPOSITORY_RENAME_DIAGNOSTIC.md
+          rm -f docs/audits/REPOSITORY_RENAME_FAILURE.md
+          rm -f docs/audits/MASS_RENAME_COMMIT_DIAGNOSTIC.md
+
+          git config user.name "shooter-mover-naming-bot"
+          git config user.email "naming-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Remove warning-style type names everywhere"
+          result_sha="$(git rev-parse HEAD)"
+
+          set +e
+          git push origin HEAD:refs/heads/agent/remove-legacy-names-result --force > /tmp/push.log 2>&1
+          push_status=$?
+          set -e
+
+          git reset --hard "$start_sha"
+          {
+            echo "# Mass Rename Push Diagnostic"
+            echo
+            echo "- Result commit: \`$result_sha\`"
+            echo "- Push status: **$push_status**"
+            echo
+            echo '```text'
+            cat /tmp/push.log
+            echo '```'
+          } > docs/audits/MASS_RENAME_PUSH_DIAGNOSTIC.md
+
+          rm .github/workflows/diagnose-mass-rename-push.yml
+          git add -A
+          git diff --check
+          git commit -m "Record mass rename push diagnostic"
+          git push origin HEAD:agent/remove-legacy-names-everywhere
