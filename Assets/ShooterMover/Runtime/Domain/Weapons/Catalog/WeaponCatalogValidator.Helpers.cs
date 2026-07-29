@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 
 namespace ShooterMover.Domain.Weapons.Catalog
@@ -33,24 +32,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
                     WeaponCatalogIssueCode.FamilyMarkMismatch,
                     path,
                     "Rarity must be empty for an unplanned mark."));
-            }
-        }
-
-        private static void ValidateShareTotal(
-            double direct,
-            double area,
-            double dot,
-            string path,
-            List<WeaponCatalogIssue> issues)
-        {
-            double total = direct + area + dot;
-            if (!NearlyEqual(total, 1.0))
-            {
-                issues.Add(new WeaponCatalogIssue(
-                    WeaponCatalogIssueCode.ShareTotalMismatch,
-                    path,
-                    "Direct, area and DoT shares must total 1.0; actual "
-                        + total.ToString("R", CultureInfo.InvariantCulture) + "."));
             }
         }
 
@@ -235,14 +216,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
             if (value < 0)
             {
                 Range(path, "Value must be non-negative.", issues);
-            }
-        }
-
-        private static void Share(double value, string path, List<WeaponCatalogIssue> issues)
-        {
-            if (!IsFinite(value) || value < 0.0 || value > 1.0)
-            {
-                Range(path, "Share must be between 0 and 1 inclusive.", issues);
             }
         }
 
