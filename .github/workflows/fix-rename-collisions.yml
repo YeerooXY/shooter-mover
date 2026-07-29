@@ -1,0 +1,350 @@
+name: Fix rename collisions
+
+on:
+  push:
+    branches:
+      - agent/fix-rename-collisions
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-rename-collisions
+          fetch-depth: 0
+
+      - name: Restore distinct game names
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_sha="1bfa11714feb42b10e1da69edbd4ebb87f937d07"
+          old_sha="650bb9f2a68f7bd9d21e594dfb57292d0b7af82e"
+          git checkout --detach "$current_sha"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import collections
+          import re
+          import subprocess
+
+          OLD_SHA = "650bb9f2a68f7bd9d21e594dfb57292d0b7af82e"
+          ROOT = Path("Assets/ShooterMover")
+
+          # Old name -> (mechanical mass-rename result, clear final name)
+          targets = {
+              "PlayerExperienceAuthorityV1": ("PlayerExperienceState", "PlayerExperience"),
+              "IPlayerExperienceAuthorityV1": ("IPlayerExperienceState", "IPlayerExperience"),
+              "PlayerExperienceAuthorityTests": ("PlayerExperienceStateTests", "PlayerExperienceTests"),
+              "ParticipantDropPacingAuthorityV1": ("ParticipantDropPacingState", "ParticipantDropPacing"),
+              "ParticipantDropPacingAuthorityV1Tests": ("ParticipantDropPacingStateTests", "ParticipantDropPacingTests"),
+              "RoomRuntimeAuthorityV1": ("RoomOccupancyState", "RoomOccupancy"),
+              "IRoomRuntimeAuthorityV1": ("IRoomLiveState", "IRoomOccupancy"),
+              "RoomRuntimeProjectionV1": ("RoomLiveView", "RoomOccupancySnapshot"),
+              "RoomRuntimeOperationResultV1": ("RoomLiveOperationResult", "RoomOccupancyResult"),
+              "RoomRuntimeOperationStatusV1": ("RoomLiveOperationStatus", "RoomOccupancyStatus"),
+              "RestartRoomRuntimeCommandV1": ("RestartRoomLiveCommand", "RestartRoomOccupancyCommand"),
+              "RoomRuntimeAuthorityTests": ("RoomOccupancyStateTests", "RoomOccupancyTests"),
+              "CombatHitPolicyV1": ("CombatHitPolicy", "CombatHitRules"),
+              "ICombatHitPolicyV1": ("ICombatHitPolicy", "ICombatHitRules"),
+              "CombatHitPolicyV1Tests": ("CombatHitPolicyTests", "CombatHitRulesTests"),
+          }
+
+          identifier = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+          declaration = re.compile(
+              r"\b(?P<kind>class|interface|struct|enum|record)\s+"
+              r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
+          namespace_re = re.compile(r"\bnamespace\s+([A-Za-z_][A-Za-z0-9_.]*)")
+          camel = re.compile(r"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+")
+          version = re.compile(r"V\d+(?=[A-Z_]|$)")
+          word_replacements = {
+              "Production": "",
+              "Canonical": "",
+              "Composition": "Setup",
+              "Projection": "View",
+              "Authority": "State",
+              "Adapter": "Bridge",
+              "Runtime": "Live",
+              "Service": "Actions",
+              "Coordinator": "Flow",
+          }
+          custom = {
+              "ProductionWeaponInventoryStateV1": "LegacyWeaponInventory",
+              "ProductionWeaponInventoryStateV2": "WeaponInventory",
+              "ProductionWeaponMountBindingV1": "WeaponMountViewBinding",
+              "WeaponMountBindingV2": "WeaponMountBinding",
+              "ProductionWeaponOnboardingV1": "LegacyWeaponSetup",
+              "ProductionWeaponOnboardingV2": "WeaponOnboarding",
+              "RoomLiveRuntimeAuthorityV1": "RoomFlowState",
+              "RoomRuntimeAuthorityV1": "RoomOccupancyState",
+              "V1DecorDto": "RoomContentDecorDto",
+              "V1DoorDto": "RoomContentDoorDto",
+              "V1DoorLinkDto": "RoomContentDoorLinkDto",
+              "V1EncounterDto": "RoomContentEncounterDto",
+              "V1EnemiesDto": "RoomContentEnemiesDto",
+              "V1ManifestDto": "RoomContentManifestDto",
+              "V1PropsDto": "RoomContentPropsDto",
+              "V1RoomDocumentsDto": "RoomContentDocumentsDto",
+              "V1RoomLayoutDto": "RoomContentLayoutDto",
+              "V1SpawnDto": "RoomContentSpawnDto",
+              "CollectedRunRewardPreparedTransferAuthorityV1": "CollectedRunRewardPreparedTransferStore",
+              "CollectedRunRewardPreparedTransferStateV1": "CollectedRunRewardPreparedTransferState",
+              "ICollectedRunEquipmentPayloadSourceV2": "ICollectedRunWeaponPayloadSource",
+              "DestructiblePropAuthority": "DestructiblePropDamage",
+              "StatusEffectCommandCanonicalV1": "StatusEffectCommand",
+              "StatusEffectCommandV1": "LegacyStatusEffectCommand",
+              "StatusEffectAuthoritySnapshotV1": "StatusEffectLedgerSnapshot",
+              "StatusEffectStateSnapshotV1": "StatusEffectStateSnapshot",
+              "DoorDtoV2": "AuthoredDoorDto",
+              "DoorsDtoV2": "AuthoredDoorsDto",
+              "EndpointDtoV2": "AuthoredEndpointDto",
+              "LevelDtoV2": "AuthoredLevelDto",
+              "MapDtoV2": "AuthoredMapDto",
+              "MapNodeDtoV2": "AuthoredMapNodeDto",
+              "RoomDtoV2": "AuthoredRoomDto",
+              "RoomIndexDtoV2": "AuthoredRoomIndexDto",
+              "RoomLiveRuntimeAuthorityTests": "RoomFlowStateTests",
+              "RoomRuntimeAuthorityTests": "RoomOccupancyStateTests",
+          }
+
+          def git_text(ref, path):
+              result = subprocess.run(
+                  ["git", "show", f"{ref}:{path}"],
+                  check=False,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.DEVNULL)
+              if result.returncode != 0:
+                  return None
+              return result.stdout.decode("utf-8-sig")
+
+          def old_paths():
+              output = subprocess.check_output(
+                  ["git", "ls-tree", "-r", "--name-only", OLD_SHA, "Assets/ShooterMover"],
+                  text=True)
+              return [line for line in output.splitlines() if line.endswith(".cs")]
+
+          old_source = {}
+          declared_names = set()
+          for path in old_paths():
+              text = git_text(OLD_SHA, path)
+              if text is None:
+                  continue
+              old_source[path] = text
+              for match in declaration.finditer(text):
+                  declared_names.add(match.group("name"))
+
+          def words(name):
+              return camel.findall(version.sub("", name))
+
+          def clean(name):
+              if name in custom:
+                  return custom[name]
+              output = []
+              for word in words(name):
+                  mapped = word_replacements.get(word, word)
+                  if not mapped:
+                      continue
+                  if output and output[-1] == mapped:
+                      continue
+                  output.append(mapped)
+              return "".join(output)
+
+          mass_mapping = {
+              old: clean(old)
+              for old in declared_names
+              if clean(old) != old
+          }
+
+          def mass_transform(text):
+              return identifier.sub(
+                  lambda match: mass_mapping.get(match.group(0), match.group(0)),
+                  text)
+
+          current_content = collections.defaultdict(list)
+          for path in sorted(ROOT.rglob("*.cs")):
+              current_content[path.read_text(encoding="utf-8-sig")].append(str(path))
+
+          rename_map = {}
+          diff = subprocess.check_output(
+              ["git", "diff", "--name-status", "-M20%", OLD_SHA, "HEAD", "--", "Assets/ShooterMover"],
+              text=True)
+          for line in diff.splitlines():
+              parts = line.split("\t")
+              if parts and parts[0].startswith("R") and len(parts) == 3:
+                  rename_map[parts[1]] = parts[2]
+
+          explicit_old_to_current = {
+              "Assets/ShooterMover/Runtime/Application/Progression/Experience/PlayerExperienceAuthorityV1.cs":
+                  "Assets/ShooterMover/Runtime/Application/Progression/Experience/PlayerExperienceState.cs",
+              "Assets/ShooterMover/Runtime/Application/Rewards/Drops/ParticipantDropPacingAuthorityV1.cs":
+                  "Assets/ShooterMover/Runtime/Application/Rewards/Drops/ParticipantDropPacingState.cs",
+              "Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomRuntimeAuthorityV1.cs":
+                  "Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomOccupancyState.cs",
+              "Assets/ShooterMover/Runtime/CombatHitPolicy/CombatHitPolicyV1.cs":
+                  "Assets/ShooterMover/Runtime/CombatHitPolicy/CombatHitPolicy.cs",
+              "Assets/ShooterMover/Tests/EditMode/Progression/Experience/PlayerExperienceAuthorityTests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/Progression/Experience/PlayerExperienceStateTests.cs",
+              "Assets/ShooterMover/Tests/EditMode/Missions/Rooms/RoomRuntimeAuthorityTests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/Missions/Rooms/RoomOccupancyStateTests.cs",
+              "Assets/ShooterMover/Tests/EditMode/CombatHitPolicy/CombatHitPolicyV1Tests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/CombatHitPolicy/CombatHitPolicyTests.cs",
+          }
+
+          def resolve_current_path(old_path, old_text):
+              direct = Path(old_path)
+              if direct.exists():
+                  return old_path
+              explicit = explicit_old_to_current.get(old_path)
+              if explicit and Path(explicit).exists():
+                  return explicit
+              renamed = rename_map.get(old_path)
+              if renamed and Path(renamed).exists():
+                  return renamed
+              expected = mass_transform(old_text)
+              candidates = current_content.get(expected, [])
+              if len(candidates) == 1:
+                  return candidates[0]
+              raise SystemExit(
+                  f"Could not resolve current file for {old_path}; candidates={candidates}")
+
+          touched = set()
+          occurrences = collections.Counter()
+          for old_path, old_text in old_source.items():
+              if not any(identifier.search(old_text) and re.search(rf"\b{re.escape(name)}\b", old_text)
+                         for name in targets):
+                  continue
+              current_path = resolve_current_path(old_path, old_text)
+              path = Path(current_path)
+              current_text = path.read_text(encoding="utf-8-sig")
+              old_lines = old_text.splitlines(keepends=True)
+              current_lines = current_text.splitlines(keepends=True)
+              if len(old_lines) != len(current_lines):
+                  raise SystemExit(
+                      f"Line count changed for {old_path} -> {current_path}: "
+                      f"{len(old_lines)} vs {len(current_lines)}")
+
+              output_lines = []
+              changed = False
+              for line_number, (old_line, current_line) in enumerate(
+                      zip(old_lines, current_lines), start=1):
+                  old_parts = re.split(r"(\b[A-Za-z_][A-Za-z0-9_]*\b)", old_line)
+                  current_parts = re.split(r"(\b[A-Za-z_][A-Za-z0-9_]*\b)", current_line)
+                  if len(old_parts) != len(current_parts):
+                      raise SystemExit(
+                          f"Token structure changed at {old_path}:{line_number}")
+                  for index in range(1, len(old_parts), 2):
+                      old_token = old_parts[index]
+                      if old_token not in targets:
+                          continue
+                      mechanical, desired = targets[old_token]
+                      current_token = current_parts[index]
+                      if current_token not in (mechanical, desired):
+                          raise SystemExit(
+                              f"Unexpected token at {current_path}:{line_number}: "
+                              f"old={old_token}, current={current_token}, expected={mechanical}")
+                      if current_token != desired:
+                          current_parts[index] = desired
+                          changed = True
+                          occurrences[old_token] += 1
+                  output_lines.append("".join(current_parts))
+
+              if changed:
+                  path.write_text("".join(output_lines), encoding="utf-8", newline="\n")
+                  touched.add(current_path)
+
+          missing = [name for name in targets if occurrences[name] == 0
+                     and name not in {
+                         "ParticipantDropPacingAuthorityV1Tests",
+                     }]
+          if missing:
+              raise SystemExit("No guided replacements for: " + ", ".join(missing))
+
+          file_moves = {
+              "Assets/ShooterMover/Runtime/Application/Progression/Experience/PlayerExperienceState.cs":
+                  "Assets/ShooterMover/Runtime/Application/Progression/Experience/PlayerExperience.cs",
+              "Assets/ShooterMover/Runtime/Application/Rewards/Drops/ParticipantDropPacingState.cs":
+                  "Assets/ShooterMover/Runtime/Application/Rewards/Drops/ParticipantDropPacing.cs",
+              "Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomOccupancyState.cs":
+                  "Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomOccupancy.cs",
+              "Assets/ShooterMover/Runtime/CombatHitPolicy/CombatHitPolicy.cs":
+                  "Assets/ShooterMover/Runtime/CombatHitPolicy/CombatHitRules.cs",
+              "Assets/ShooterMover/Tests/EditMode/Progression/Experience/PlayerExperienceStateTests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/Progression/Experience/PlayerExperienceTests.cs",
+              "Assets/ShooterMover/Tests/EditMode/Missions/Rooms/RoomOccupancyStateTests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/Missions/Rooms/RoomOccupancyTests.cs",
+              "Assets/ShooterMover/Tests/EditMode/CombatHitPolicy/CombatHitPolicyTests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/CombatHitPolicy/CombatHitRulesTests.cs",
+              "Assets/ShooterMover/Tests/EditMode/Rewards/Drops/ParticipantDropPacingStateTests.cs":
+                  "Assets/ShooterMover/Tests/EditMode/Rewards/Drops/ParticipantDropPacingTests.cs",
+          }
+          for source, target in file_moves.items():
+              source_path = Path(source)
+              if not source_path.exists():
+                  continue
+              target_path = Path(target)
+              if target_path.exists():
+                  raise SystemExit(f"Move target already exists: {target}")
+              subprocess.run(["git", "mv", source, target], check=True)
+              meta_source = Path(source + ".meta")
+              if meta_source.exists():
+                  subprocess.run(
+                      ["git", "mv", str(meta_source), target + ".meta"],
+                      check=True)
+
+          found = collections.defaultdict(list)
+          for path in sorted(ROOT.rglob("*.cs")):
+              text = path.read_text(encoding="utf-8-sig")
+              namespace_match = namespace_re.search(text)
+              namespace = namespace_match.group(1) if namespace_match else "<global>"
+              for match in declaration.finditer(text):
+                  found[(namespace, match.group("name"))].append(str(path))
+
+          expected = {
+              ("ShooterMover.Application.Progression.Experience", "PlayerExperience"),
+              ("ShooterMover.Contracts.Progression.Experience", "IPlayerExperience"),
+              ("ShooterMover.Domain.Progression.Experience", "PlayerExperienceState"),
+              ("ShooterMover.Application.Rewards.Drops", "ParticipantDropPacing"),
+              ("ShooterMover.Domain.Rewards.Drops", "ParticipantDropPacingState"),
+              ("ShooterMover.Application.Missions.Rooms", "RoomOccupancy"),
+              ("ShooterMover.Contracts.Missions.Rooms", "IRoomOccupancy"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RoomOccupancySnapshot"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RoomOccupancyResult"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RoomOccupancyStatus"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RestartRoomOccupancyCommand"),
+              ("ShooterMover.Combat.HitPolicy", "CombatHitRules"),
+              ("ShooterMover.Combat.HitPolicy", "ICombatHitRules"),
+          }
+          for key in sorted(expected):
+              if len(found.get(key, [])) != 1:
+                  raise SystemExit(f"Expected exactly one declaration for {key}: {found.get(key)}")
+
+          forbidden = {
+              ("ShooterMover.Application.Progression.Experience", "PlayerExperienceState"),
+              ("ShooterMover.Application.Rewards.Drops", "ParticipantDropPacingState"),
+              ("ShooterMover.Application.Missions.Rooms", "RoomOccupancyState"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RoomLiveView"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RoomLiveOperationResult"),
+              ("ShooterMover.Contracts.Missions.Rooms", "RoomLiveOperationStatus"),
+              ("ShooterMover.Combat.HitPolicy", "CombatHitPolicy"),
+          }
+          leftovers = {key: found[key] for key in forbidden if found.get(key)}
+          if leftovers:
+              raise SystemExit("Collision declarations remain: " + repr(leftovers))
+
+          print(f"Updated {sum(occurrences.values())} guided type references in {len(touched)} files.")
+          for old_name in sorted(occurrences):
+              print(f"{old_name}: {occurrences[old_name]}")
+          PY
+
+          git config user.name "shooter-mover-fix-bot"
+          git config user.email "fix-bot@users.noreply.github.com"
+          git add Assets/ShooterMover
+          git diff --cached --check
+          git commit -m "Restore distinct game names"
+          git push origin HEAD:refs/heads/agent/fix-rename-collisions-result --force
