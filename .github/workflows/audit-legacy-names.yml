@@ -1,0 +1,136 @@
+name: Audit legacy names
+
+on:
+  push:
+    branches:
+      - agent/remove-legacy-names-everywhere
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/remove-legacy-names-everywhere
+          fetch-depth: 0
+
+      - name: Build naming report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import collections
+          import re
+
+          root = Path('Assets/ShooterMover')
+          warning = {
+              'Production', 'Canonical', 'Composition', 'Projection',
+              'Authority', 'Adapter', 'Runtime', 'Service', 'Coordinator'
+          }
+          declaration = re.compile(
+              r'\b(?P<kind>class|interface|struct|enum|record)\s+'
+              r'(?P<name>[A-Za-z_][A-Za-z0-9_]*)')
+          version = re.compile(r'V\d+$')
+          camel = re.compile(
+              r'[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+')
+
+          def words(name):
+              return camel.findall(name)
+
+          def candidate(name):
+              base = version.sub('', name)
+              parts = [part for part in words(base) if part not in warning]
+              return ''.join(parts)
+
+          rows = []
+          all_names = collections.defaultdict(list)
+          for path in sorted(root.rglob('*.cs')):
+              text = path.read_text(encoding='utf-8-sig')
+              for match in declaration.finditer(text):
+                  name = match.group('name')
+                  all_names[name].append(str(path))
+                  bad_words = [part for part in words(version.sub('', name)) if part in warning]
+                  has_version = bool(version.search(name))
+                  if bad_words or has_version:
+                      rows.append({
+                          'kind': match.group('kind'),
+                          'name': name,
+                          'candidate': candidate(name),
+                          'path': str(path),
+                          'bad': ', '.join(bad_words),
+                          'version': 'yes' if has_version else 'no',
+                      })
+
+          candidate_groups = collections.defaultdict(list)
+          for row in rows:
+              candidate_groups[row['candidate']].append(row)
+
+          collisions = {}
+          for new_name, group in candidate_groups.items():
+              sources = {row['name'] for row in group}
+              existing = set(all_names.get(new_name, []))
+              if len(sources) > 1 or existing or not new_name:
+                  collisions[new_name] = (group, existing)
+
+          filename_rows = []
+          for path in sorted(root.rglob('*')):
+              if not path.is_file() or path.suffix not in {'.cs', '.meta'}:
+                  continue
+              stem = path.name[:-8] if path.name.endswith('.cs.meta') else path.stem
+              bad_words = [part for part in words(version.sub('', stem)) if part in warning]
+              has_version = bool(version.search(stem))
+              if bad_words or has_version:
+                  filename_rows.append((str(path), candidate(stem)))
+
+          report = []
+          report.append('# Repository Naming Removal Audit')
+          report.append('')
+          report.append(f'- Types requiring rename: **{len(rows)}**')
+          report.append(f'- Files carrying warning names or version suffixes: **{len(filename_rows)}**')
+          report.append(f'- Candidate collision groups: **{len(collisions)}**')
+          report.append('')
+          report.append('## Collision groups requiring a deliberate name')
+          report.append('')
+          if not collisions:
+              report.append('None.')
+          else:
+              for new_name, (group, existing) in sorted(collisions.items()):
+                  report.append(f'### `{new_name or "<empty>"}`')
+                  for row in group:
+                      report.append(f'- `{row["name"]}` — `{row["path"]}`')
+                  for path in sorted(existing):
+                      report.append(f'- existing `{new_name}` — `{path}`')
+                  report.append('')
+
+          report.append('## Proposed type renames')
+          report.append('')
+          report.append('| Current | Proposed | Kind | Warning words | Version | File |')
+          report.append('|---|---|---|---|---|---|')
+          for row in rows:
+              report.append(
+                  f'| `{row["name"]}` | `{row["candidate"]}` | '
+                  f'{row["kind"]} | {row["bad"] or "—"} | '
+                  f'{row["version"]} | `{row["path"]}` |')
+
+          report.append('')
+          report.append('## Files requiring matching moves')
+          report.append('')
+          for path, new_stem in filename_rows:
+              report.append(f'- `{path}` → `{new_stem}`')
+
+          out = Path('docs/audits/REPOSITORY_NAMING_REMOVAL_AUDIT.md')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text('\n'.join(report) + '\n', encoding='utf-8')
+          PY
+
+          git config user.name "shooter-mover-naming-bot"
+          git config user.email "naming-bot@users.noreply.github.com"
+          rm .github/workflows/audit-legacy-names.yml
+          git add -A
+          git diff --check
+          git commit -m "Audit repository naming removal"
+          git push origin HEAD:agent/remove-legacy-names-everywhere
