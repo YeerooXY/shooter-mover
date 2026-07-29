@@ -26,7 +26,7 @@ namespace ShooterMover.Application.Weapons.Catalog
         private enum ProvisionalWeaponTestProfile
         {
             Rattler = 1,
-            Ironwake = 2,
+            Sweeper = 2,
             Voltspike = 3,
             Prismata = 4,
             Crownfall = 5,
@@ -84,11 +84,11 @@ namespace ShooterMover.Application.Weapons.Catalog
                     ProvisionalWeaponTestProfile.Rattler,
                     false),
                 BuildFamily(
-                    "ironwake",
-                    "Ironwake",
+                    "sweeper",
+                    "Sweeper",
                     "common",
                     new[] { 60, 80, 100 },
-                    ProvisionalWeaponTestProfile.Ironwake,
+                    ProvisionalWeaponTestProfile.Sweeper,
                     true),
                 BuildFamily(
                     "voltspike",
@@ -227,8 +227,8 @@ namespace ShooterMover.Application.Weapons.Catalog
             {
                 case ProvisionalWeaponTestProfile.Rattler:
                     return RattlerProfile(mark);
-                case ProvisionalWeaponTestProfile.Ironwake:
-                    return IronwakeProfile(mark);
+                case ProvisionalWeaponTestProfile.Sweeper:
+                    return SweeperProfile(mark);
                 case ProvisionalWeaponTestProfile.Voltspike:
                     return VoltspikeProfile(mark);
                 case ProvisionalWeaponTestProfile.Prismata:
@@ -280,41 +280,22 @@ namespace ShooterMover.Application.Weapons.Catalog
                 "normal-physical");
         }
 
-        private static ProvisionalCombatProfile IronwakeProfile(int mark)
+        private static ProvisionalCombatProfile SweeperProfile(int mark)
         {
-            int pellets;
-            double spread;
-            double range;
-            switch (mark)
+            if (mark < 1 || mark > 3)
             {
-                case 1:
-                    pellets = 6;
-                    spread = 24d;
-                    range = 16d;
-                    break;
-                case 2:
-                    pellets = 8;
-                    spread = 28d;
-                    range = 18d;
-                    break;
-                case 3:
-                    pellets = 10;
-                    spread = 32d;
-                    range = 20d;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mark));
+                throw new ArgumentOutOfRangeException(nameof(mark));
             }
 
             return TravellingProfile(
-                WeaponFireSettings.SemiAutomatic(1d),
-                WeaponShotPattern.Canonical(pellets, spread),
-                4d / pellets,
+                WeaponFireSettings.Automatic(2d),
+                WeaponShotPattern.Canonical(3, 24d),
+                1d,
                 WeaponDamageCategory.Physical,
                 null,
                 1,
                 6d,
-                range,
+                16d,
                 WeaponDeliveryType.Normal,
                 28d,
                 0.12d,
@@ -589,7 +570,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             {
                 case ProvisionalWeaponTestProfile.Rattler:
                     return StableId.Create("weapon-category", "normal-firearm");
-                case ProvisionalWeaponTestProfile.Ironwake:
+                case ProvisionalWeaponTestProfile.Sweeper:
                     return StableId.Create("weapon-category", "shotgun");
                 case ProvisionalWeaponTestProfile.Voltspike:
                     return StableId.Create(
