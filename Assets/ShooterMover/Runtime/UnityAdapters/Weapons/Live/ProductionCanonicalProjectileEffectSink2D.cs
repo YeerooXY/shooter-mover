@@ -10,10 +10,6 @@ using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
-    /// <summary>
-    /// Immutable scene projection of the exact source identity already accepted by the firing
-    /// composition. It is diagnostic/presentation state only and never selects or mutates a weapon.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class CanonicalProjectileSourceIdentity2D : MonoBehaviour
     {
@@ -63,16 +59,28 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         }
     }
 
-    /// <summary>
-    /// Generic scene effect sink for canonical launch batches. The first production slice supports
-    /// one unguided Normal projectile per scheduler emission and rejects every unsupported mechanic
-    /// without reconstructing weapon data or fabricating a substitute launch.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class ProductionCanonicalProjectileEffectSink2D :
         MonoBehaviour,
         IInventoryWeaponEffectBatchSink
     {
+        private sealed class BoundGunSource
+        {
+            internal BoundGunSource(
+                StableId mountStableId,
+                EquipmentInstanceId equipmentInstanceId,
+                WeaponDefinitionId weaponDefinitionId)
+            {
+                MountStableId = mountStableId;
+                EquipmentInstanceId = equipmentInstanceId;
+                WeaponDefinitionId = weaponDefinitionId;
+            }
+
+            internal StableId MountStableId { get; }
+            internal EquipmentInstanceId EquipmentInstanceId { get; }
+            internal WeaponDefinitionId WeaponDefinitionId { get; }
+        }
+
         private const int ReceiptCapacity =
             WeaponFiringScheduler.DefaultReplayRetentionCapacity;
 
@@ -81,12 +89,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private readonly Queue<string> acceptedOrder = new Queue<string>();
         private readonly HashSet<ProductionCanonicalNormalProjectile2D> active =
             new HashSet<ProductionCanonicalNormalProjectile2D>();
+        private readonly Dictionary<string, BoundGunSource> gunSources =
+            new Dictionary<string, BoundGunSource>(StringComparer.Ordinal);
         private WeaponActorInstanceId sourceActorId;
         private RunParticipantId sourceParticipantId;
         private LifecycleGeneration sourceLifecycle;
-        private StableId sourceMountStableId;
-        private EquipmentInstanceId sourceEquipmentInstanceId;
-        private WeaponDefinitionId sourceWeaponDefinitionId;
+        private StableId firstSourceMountStableId;
         private Texture2D texture;
         private Sprite sprite;
         private bool sourceBound;
@@ -94,9 +102,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public int AcceptedBatchCount { get { return accepted.Count; } }
         public int ActiveProjectileCount { get { return active.Count; } }
+        public int BoundSourceCount { get { return gunSources.Count; } }
         public bool IsSourceBound { get { return sourceBound; } }
         public RunParticipantId SourceParticipantId { get { return sourceParticipantId; } }
-        public StableId SourceMountStableId { get { return sourceMountStableId; } }
+        public StableId SourceMountStableId { get { return firstSourceMountStableId; } }
         public bool IsRetired { get { return retired; } }
 
         public bool TryBindSource(
@@ -150,25 +159,54 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 return false;
             }
+
             if (sourceBound)
             {
-                return sourceActorId.Equals(actorId)
-                    && (sourceParticipantId == null
-                        || participantId == null
-                        || sourceParticipantId.Equals(participantId))
-                    && sourceLifecycle.Equals(lifecycle)
-                    && sourceMountStableId == mountStableId
-                    && sourceEquipmentInstanceId.Equals(equipmentInstanceId)
-                    && sourceWeaponDefinitionId.Equals(weaponDefinitionId);
+                if (!sourceActorId.Equals(actorId)
+                    || !sourceLifecycle.Equals(lifecycle)
+                    || (sourceParticipantId != null
+                        && participantId != null
+                        && !sourceParticipantId.Equals(participantId)))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                sourceActorId = actorId;
+                sourceLifecycle = lifecycle;
+                firstSourceMountStableId = mountStableId;
+                sourceBound = true;
             }
 
-            sourceActorId = actorId;
-            sourceParticipantId = participantId;
-            sourceLifecycle = lifecycle;
-            sourceMountStableId = mountStableId;
-            sourceEquipmentInstanceId = equipmentInstanceId;
-            sourceWeaponDefinitionId = weaponDefinitionId;
-            sourceBound = true;
+            if (sourceParticipantId == null && participantId != null)
+            {
+                sourceParticipantId = participantId;
+            }
+
+            string key = SourceKey(equipmentInstanceId);
+            BoundGunSource existing;
+            if (gunSources.TryGetValue(key, out existing))
+            {
+                return existing.MountStableId == mountStableId
+                    && existing.EquipmentInstanceId.Equals(equipmentInstanceId)
+                    && existing.WeaponDefinitionId.Equals(weaponDefinitionId);
+            }
+
+            foreach (BoundGunSource source in gunSources.Values)
+            {
+                if (source.MountStableId == mountStableId)
+                {
+                    return false;
+                }
+            }
+
+            gunSources.Add(
+                key,
+                new BoundGunSource(
+                    mountStableId,
+                    equipmentInstanceId,
+                    weaponDefinitionId));
             return true;
         }
 
@@ -180,7 +218,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-sink-retired");
             }
-            if (!sourceBound)
+            if (!sourceBound || gunSources.Count == 0)
             {
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-source-unbound");
@@ -195,11 +233,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-batch-single-effect-required");
             }
-            if (!MatchesBoundSource(batch.Identity))
+
+            BoundGunSource gunSource;
+            if (!TryResolveBoundSource(batch.Identity, out gunSource))
             {
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-source-identity-mismatch");
             }
+
             string key = batch.Identity.ToCanonicalString();
             string retainedFingerprint;
             if (accepted.TryGetValue(key, out retainedFingerprint))
@@ -254,9 +295,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         sourceActorId,
                         sourceParticipantId ?? batch.Identity.ParticipantId,
                         sourceLifecycle,
-                        sourceMountStableId,
-                        sourceEquipmentInstanceId,
-                        sourceWeaponDefinitionId))
+                        gunSource.MountStableId,
+                        gunSource.EquipmentInstanceId,
+                        gunSource.WeaponDefinitionId))
                 {
                     throw new InvalidOperationException(
                         "canonical-projectile-source-projection-rejected");
@@ -321,15 +362,35 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
         }
 
-        private bool MatchesBoundSource(WeaponEffectIdentity identity)
+        private bool TryResolveBoundSource(
+            WeaponEffectIdentity identity,
+            out BoundGunSource resolved)
         {
-            return identity != null
-                && sourceActorId.Equals(identity.ActorId)
-                && (sourceParticipantId == null
-                    || sourceParticipantId.Equals(identity.ParticipantId))
-                && sourceLifecycle.Equals(identity.LifecycleGeneration)
-                && sourceEquipmentInstanceId.Equals(identity.EquipmentInstanceId)
-                && sourceWeaponDefinitionId.Equals(identity.WeaponDefinitionId);
+            resolved = null;
+            if (identity == null
+                || identity.EquipmentInstanceId == null
+                || identity.WeaponDefinitionId == null
+                || !sourceActorId.Equals(identity.ActorId)
+                || (sourceParticipantId != null
+                    && !sourceParticipantId.Equals(identity.ParticipantId))
+                || !sourceLifecycle.Equals(identity.LifecycleGeneration)
+                || !gunSources.TryGetValue(
+                    SourceKey(identity.EquipmentInstanceId),
+                    out resolved)
+                || !resolved.EquipmentInstanceId.Equals(
+                    identity.EquipmentInstanceId)
+                || !resolved.WeaponDefinitionId.Equals(
+                    identity.WeaponDefinitionId))
+            {
+                resolved = null;
+                return false;
+            }
+            return true;
+        }
+
+        private static string SourceKey(EquipmentInstanceId equipmentInstanceId)
+        {
+            return equipmentInstanceId.Value.ToString();
         }
 
         private void RetainAccepted(string key, string fingerprint)
@@ -442,6 +503,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             accepted.Clear();
             acceptedOrder.Clear();
             active.Clear();
+            gunSources.Clear();
             if (sprite != null) Destroy(sprite);
             if (texture != null) Destroy(texture);
         }

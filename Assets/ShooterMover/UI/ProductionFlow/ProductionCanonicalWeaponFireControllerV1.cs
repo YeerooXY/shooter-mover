@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using ShooterMover.Application.Flow.Production;
 using ShooterMover.Application.Weapons.Catalog;
@@ -21,23 +22,49 @@ namespace ShooterMover.UI.ProductionFlow
         IWeaponBlueprintMappingPolicyResolver,
         ICanonicalWeaponBlueprintResolver
     {
-        private readonly WeaponDefinitionId definitionId;
-        private readonly WeaponBlueprint blueprint;
+        private readonly Dictionary<string, WeaponBlueprint> blueprints =
+            new Dictionary<string, WeaponBlueprint>(StringComparer.Ordinal);
 
         internal BoundCanonicalWeaponBlueprintResolverV1(
-            WeaponDefinitionId exactDefinitionId,
-            WeaponBlueprint exactBlueprint)
+            IEnumerable<ProductionWeaponMarkV1> equippedMarks)
         {
-            definitionId = exactDefinitionId
-                ?? throw new ArgumentNullException(nameof(exactDefinitionId));
-            blueprint = exactBlueprint
-                ?? throw new ArgumentNullException(nameof(exactBlueprint));
-            if (blueprint.IsTransitionalCatalogProjection
-                || !blueprint.DefinitionId.Equals(definitionId))
+            if (equippedMarks == null)
+            {
+                throw new ArgumentNullException(nameof(equippedMarks));
+            }
+
+            foreach (ProductionWeaponMarkV1 mark in equippedMarks)
+            {
+                if (mark == null
+                    || mark.Blueprint == null
+                    || mark.Blueprint.IsTransitionalCatalogProjection
+                    || mark.Blueprint.DefinitionId == null)
+                {
+                    throw new ArgumentException(
+                        "Every equipped gun requires an exact canonical blueprint.",
+                        nameof(equippedMarks));
+                }
+
+                string definitionId = mark.Blueprint.DefinitionId.Value;
+                WeaponBlueprint existing;
+                if (blueprints.TryGetValue(definitionId, out existing))
+                {
+                    if (!ReferenceEquals(existing, mark.Blueprint))
+                    {
+                        throw new ArgumentException(
+                            "One gun definition cannot resolve to conflicting blueprints.",
+                            nameof(equippedMarks));
+                    }
+                    continue;
+                }
+                blueprints.Add(definitionId, mark.Blueprint);
+            }
+
+            if (blueprints.Count == 0)
             {
                 throw new ArgumentException(
-                    "The bound blueprint must be the exact canonical definition.",
-                    nameof(exactBlueprint));
+                    "At least one equipped gun blueprint is required.",
+                    nameof(equippedMarks));
             }
         }
 
@@ -53,9 +80,9 @@ namespace ShooterMover.UI.ProductionFlow
             WeaponDefinitionId requested,
             out WeaponBlueprint resolved)
         {
-            bool matches = requested != null && requested.Equals(definitionId);
-            resolved = matches ? blueprint : null;
-            return matches;
+            resolved = null;
+            return requested != null
+                && blueprints.TryGetValue(requested.Value, out resolved);
         }
     }
 
@@ -126,6 +153,24 @@ namespace ShooterMover.UI.ProductionFlow
             }
             return hash.ToString("x16", CultureInfo.InvariantCulture);
         }
+    }
+
+    internal sealed class ProductionEquippedGunV1
+    {
+        internal ProductionEquippedGunV1(
+            ProductionWeaponMountPositionV1 mount,
+            WeaponEquipmentInstance exactInstance,
+            ProductionWeaponMarkV1 mark)
+        {
+            Mount = mount ?? throw new ArgumentNullException(nameof(mount));
+            ExactInstance = exactInstance
+                ?? throw new ArgumentNullException(nameof(exactInstance));
+            Mark = mark ?? throw new ArgumentNullException(nameof(mark));
+        }
+
+        internal ProductionWeaponMountPositionV1 Mount { get; }
+        internal WeaponEquipmentInstance ExactInstance { get; }
+        internal ProductionWeaponMarkV1 Mark { get; }
     }
 
     [DisallowMultipleComponent]
@@ -300,7 +345,8 @@ namespace ShooterMover.UI.ProductionFlow
         private ProductionCanonicalWeaponActorStateV1 actorState;
         private InventoryWeaponRuntimeComposition runtime;
         private ProductionCanonicalProjectileEffectSink2D effectSink;
-        private ProductionWeaponMountPositionV1 mountPosition;
+        private IReadOnlyList<ProductionEquippedGunV1> equippedGuns =
+            Array.Empty<ProductionEquippedGunV1>();
         private Vector2 aimDirection = Vector2.right;
         private bool triggerHeld;
         private bool bound;
@@ -308,6 +354,7 @@ namespace ShooterMover.UI.ProductionFlow
         private string lastDiagnostic = string.Empty;
 
         public bool IsBound { get { return bound; } }
+        public int EquippedGunCount { get { return equippedGuns.Count; } }
         public StableId CharacterInstanceId
         {
             get { return source == null ? null : source.CharacterInstanceId; }
@@ -322,7 +369,12 @@ namespace ShooterMover.UI.ProductionFlow
         }
         public StableId MountStableId
         {
-            get { return mountPosition == null ? null : mountPosition.MountStableId; }
+            get
+            {
+                return equippedGuns.Count == 0
+                    ? null
+                    : equippedGuns[0].Mount.MountStableId;
+            }
         }
 
         internal static void ResetLifecycleCounter()
@@ -358,34 +410,33 @@ namespace ShooterMover.UI.ProductionFlow
                 || profile == null
                 || configuredGraph.IsDisposed
                 || configuredGraph.Character.CharacterInstanceStableId
-                    != configuredSource.CharacterInstanceId
-                || configuredSource.ExactInstance.InstanceId
-                    != configuredSource.ExactWeaponInstanceId
-                || !configuredSource.ExactInstance.WeaponDefinitionId.Value.Equals(
-                    configuredSource.WeaponDefinitionId,
-                    StringComparison.Ordinal)
-                || !configuredSource.ResolvedMark.Blueprint.DefinitionId.Equals(
-                    configuredSource.ExactInstance.WeaponDefinitionId))
+                    != configuredSource.CharacterInstanceId)
             {
                 return false;
             }
 
-            ProductionWeaponMountPositionV1 exactMount;
-            if (!TryResolveExactFirstActiveMount(
-                    configuredGraph.LoadoutRuntime,
-                    configuredSource.ExactWeaponInstanceId,
-                    out exactMount))
-            {
-                return false;
-            }
-
-            EquipmentInstance liveEquipment;
+            List<ProductionEquippedGunV1> resolvedGuns;
             string rejectionCode;
-            if (!configuredSource.TryResolveLiveEquipment(
-                    out liveEquipment,
+            if (!TryResolveEquippedGuns(
+                    configuredGraph.LoadoutRuntime,
+                    out resolvedGuns,
                     out rejectionCode)
-                || liveEquipment == null
-                || liveEquipment.InstanceId
+                || resolvedGuns.Count == 0
+                || resolvedGuns[0].ExactInstance.InstanceId
+                    != configuredSource.ExactWeaponInstanceId)
+            {
+                Report(string.IsNullOrWhiteSpace(rejectionCode)
+                    ? "canonical-weapon-fire-equipped-guns-unresolved"
+                    : rejectionCode);
+                return false;
+            }
+
+            EquipmentInstance firstLiveEquipment;
+            if (!configuredSource.TryResolveLiveEquipment(
+                    out firstLiveEquipment,
+                    out rejectionCode)
+                || firstLiveEquipment == null
+                || firstLiveEquipment.InstanceId
                     != configuredSource.ExactWeaponInstanceId)
             {
                 Report("canonical-weapon-fire-live-equipment-unresolved:"
@@ -399,30 +450,37 @@ namespace ShooterMover.UI.ProductionFlow
             bool sinkAdded = false;
             try
             {
-                var exactDefinition = new WeaponDefinitionId(
-                    configuredSource.WeaponDefinitionId);
-                var exactEquipmentInstanceId = new EquipmentInstanceId(
-                    configuredSource.ExactWeaponInstanceId);
                 var exactLookup = new CanonicalWeaponEquipmentProjectionLookupV2(
                     configuredGraph.LoadoutRuntime.WeaponHoldings,
                     configuredGraph.LoadoutRuntime.EquipmentCatalog,
                     configuredGraph.LoadoutRuntime.Holdings);
-                EquipmentInstance exactProjection;
-                if (!exactLookup.TryResolve(
-                        exactEquipmentInstanceId,
-                        out exactProjection)
-                    || exactProjection == null
-                    || exactProjection.InstanceId
-                        != configuredSource.ExactWeaponInstanceId
-                    || exactProjection.DefinitionId != liveEquipment.DefinitionId)
+                var marks = new List<ProductionWeaponMarkV1>(resolvedGuns.Count);
+                var mounts = new List<InventoryWeaponMountedRuntimeV1>(
+                    resolvedGuns.Count);
+
+                for (int index = 0; index < resolvedGuns.Count; index++)
                 {
-                    throw new InvalidOperationException(
-                        "canonical-weapon-fire-exact-projection-rejected");
+                    ProductionEquippedGunV1 gun = resolvedGuns[index];
+                    var equipmentId = new EquipmentInstanceId(
+                        gun.ExactInstance.InstanceId);
+                    EquipmentInstance exactProjection;
+                    if (!exactLookup.TryResolve(equipmentId, out exactProjection)
+                        || exactProjection == null
+                        || exactProjection.InstanceId
+                            != gun.ExactInstance.InstanceId)
+                    {
+                        throw new InvalidOperationException(
+                            "canonical-weapon-fire-exact-projection-rejected:"
+                            + gun.ExactInstance.InstanceId);
+                    }
+                    marks.Add(gun.Mark);
+                    mounts.Add(new InventoryWeaponMountedRuntimeV1(
+                        gun.Mount.MountStableId,
+                        equipmentId,
+                        gun.Mount.LateralOffset));
                 }
 
-                var resolver = new BoundCanonicalWeaponBlueprintResolverV1(
-                    exactDefinition,
-                    configuredSource.ResolvedMark.Blueprint);
+                var resolver = new BoundCanonicalWeaponBlueprintResolverV1(marks);
                 long lifecycle = checked(++nextLifecycleGeneration);
                 stagedActor = new ProductionCanonicalWeaponActorStateV1(
                     configuredSource.CharacterInstanceId,
@@ -438,15 +496,21 @@ namespace ShooterMover.UI.ProductionFlow
                 stagedSink = gameObject.AddComponent<
                     ProductionCanonicalProjectileEffectSink2D>();
                 sinkAdded = true;
-                if (!stagedSink.TryBindSource(
-                        stagedActor.ActorId,
-                        stagedActor.Lifecycle,
-                        exactMount.MountStableId,
-                        exactEquipmentInstanceId,
-                        exactDefinition))
+
+                for (int index = 0; index < resolvedGuns.Count; index++)
                 {
-                    throw new InvalidOperationException(
-                        "canonical-weapon-fire-effect-sink-source-rejected");
+                    ProductionEquippedGunV1 gun = resolvedGuns[index];
+                    if (!stagedSink.TryBindSource(
+                            stagedActor.ActorId,
+                            stagedActor.Lifecycle,
+                            gun.Mount.MountStableId,
+                            new EquipmentInstanceId(gun.ExactInstance.InstanceId),
+                            gun.ExactInstance.WeaponDefinitionId))
+                    {
+                        throw new InvalidOperationException(
+                            "canonical-weapon-fire-effect-sink-source-rejected:"
+                            + gun.ExactInstance.InstanceId);
+                    }
                 }
 
                 int ticksPerSecond = Math.Max(
@@ -463,13 +527,7 @@ namespace ShooterMover.UI.ProductionFlow
                     new UnaugmentedWeaponModifierSetResolver());
                 stagedRuntime = new InventoryWeaponRuntimeComposition(
                     stagedActor,
-                    new[]
-                    {
-                        new InventoryWeaponMountedRuntimeV1(
-                            exactMount.MountStableId,
-                            exactEquipmentInstanceId,
-                            exactMount.LateralOffset),
-                    },
+                    mounts,
                     adapter);
 
                 graph = configuredGraph;
@@ -478,7 +536,7 @@ namespace ShooterMover.UI.ProductionFlow
                 actorState = stagedActor;
                 runtime = stagedRuntime;
                 effectSink = stagedSink;
-                mountPosition = exactMount;
+                equippedGuns = resolvedGuns.AsReadOnly();
                 bound = true;
                 return true;
             }
@@ -530,7 +588,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             simulationTick = checked(simulationTick + 1L);
-            Vector2 origin = ResolveOrigin();
+            Vector2 origin = ResolveBaseOrigin();
             var operationId = new FireOperationId(
                 StableId.Create(
                     "fire-operation",
@@ -552,7 +610,6 @@ namespace ShooterMover.UI.ProductionFlow
                 weaponOrigin,
                 weaponAim);
             ReportResult(input);
-            ReportResult(runtime.Advance(simulationTick));
         }
 
         private bool HasCurrentExactAuthority(out string rejectionCode)
@@ -581,28 +638,39 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            WeaponEquipmentInstance held = graph.LoadoutRuntime.WeaponHoldings.Find(
-                source.ExactWeaponInstanceId);
-            if (held == null
-                || held.InstanceId != source.ExactWeaponInstanceId
-                || !held.WeaponDefinitionId.Value.Equals(
-                    source.WeaponDefinitionId,
-                    StringComparison.Ordinal))
+            List<ProductionEquippedGunV1> currentGuns;
+            if (!TryResolveEquippedGuns(
+                    currentGraph.LoadoutRuntime,
+                    out currentGuns,
+                    out rejectionCode))
             {
-                rejectionCode = "canonical-weapon-fire-exact-ownership-stale";
                 return false;
             }
-
-            ProductionWeaponMountPositionV1 currentMount;
-            if (!TryResolveExactFirstActiveMount(
-                    graph.LoadoutRuntime,
-                    source.ExactWeaponInstanceId,
-                    out currentMount)
-                || currentMount == null
-                || mountPosition == null
-                || currentMount.MountStableId != mountPosition.MountStableId)
+            if (currentGuns.Count != equippedGuns.Count)
             {
-                rejectionCode = "canonical-weapon-fire-exact-mount-stale";
+                rejectionCode = "canonical-weapon-fire-equipped-gun-count-stale";
+                return false;
+            }
+            for (int index = 0; index < equippedGuns.Count; index++)
+            {
+                ProductionEquippedGunV1 expected = equippedGuns[index];
+                ProductionEquippedGunV1 current = currentGuns[index];
+                if (expected.Mount.MountStableId != current.Mount.MountStableId
+                    || expected.ExactInstance.InstanceId
+                        != current.ExactInstance.InstanceId
+                    || !expected.ExactInstance.WeaponDefinitionId.Equals(
+                        current.ExactInstance.WeaponDefinitionId))
+                {
+                    rejectionCode =
+                        "canonical-weapon-fire-equipped-gun-binding-stale";
+                    return false;
+                }
+            }
+            if (currentGuns.Count == 0
+                || currentGuns[0].ExactInstance.InstanceId
+                    != source.ExactWeaponInstanceId)
+            {
+                rejectionCode = "canonical-weapon-fire-player-source-gun-stale";
                 return false;
             }
 
@@ -622,38 +690,97 @@ namespace ShooterMover.UI.ProductionFlow
             return true;
         }
 
-        private Vector2 ResolveOrigin()
-        {
-            Vector2 perpendicular = new Vector2(
-                -aimDirection.y,
-                aimDirection.x);
-            return (Vector2)transform.position
-                + (aimDirection * 0.55f)
-                + (perpendicular * (float)mountPosition.LateralOffset);
-        }
-
-        private static bool TryResolveExactFirstActiveMount(
+        private static bool TryResolveEquippedGuns(
             ProductionPlayerLoadoutRuntimeV1 loadout,
-            StableId exactInstanceId,
-            out ProductionWeaponMountPositionV1 resolved)
+            out List<ProductionEquippedGunV1> resolved,
+            out string rejectionCode)
         {
-            resolved = null;
-            if (loadout == null || exactInstanceId == null) return false;
+            resolved = new List<ProductionEquippedGunV1>();
+            rejectionCode = string.Empty;
+            if (loadout == null
+                || loadout.MountLayout == null
+                || loadout.MountLoadoutAuthority == null
+                || loadout.WeaponHoldings == null)
+            {
+                rejectionCode = "canonical-weapon-fire-loadout-unresolved";
+                return false;
+            }
+
             WeaponMountLoadoutSnapshotV2 snapshot =
                 loadout.MountLoadoutAuthority.ExportSnapshot();
+            if (snapshot == null)
+            {
+                rejectionCode = "canonical-weapon-fire-mount-snapshot-unresolved";
+                return false;
+            }
+
+            var equipmentIds = new HashSet<StableId>();
             for (int index = 0; index < loadout.MountLayout.Positions.Count; index++)
             {
                 ProductionWeaponMountPositionV1 position =
                     loadout.MountLayout.Positions[index];
-                if (!position.IsActive) continue;
+                if (position == null || !position.IsActive)
+                {
+                    continue;
+                }
+
                 WeaponMountBindingV2 binding = snapshot.Find(
                     position.MountStableId);
-                if (binding == null || binding.InstanceId == null) continue;
-                if (binding.InstanceId != exactInstanceId) return false;
-                resolved = position;
-                return true;
+                if (binding == null || binding.InstanceId == null)
+                {
+                    continue;
+                }
+                if (!equipmentIds.Add(binding.InstanceId))
+                {
+                    rejectionCode =
+                        "canonical-weapon-fire-equipped-gun-duplicated";
+                    return false;
+                }
+
+                WeaponEquipmentInstance exact = loadout.WeaponHoldings.Find(
+                    binding.InstanceId);
+                if (exact == null
+                    || exact.InstanceId != binding.InstanceId
+                    || exact.WeaponDefinitionId == null)
+                {
+                    rejectionCode =
+                        "canonical-weapon-fire-equipped-gun-unowned:"
+                        + binding.InstanceId;
+                    return false;
+                }
+
+                ProductionWeaponMarkV1 mark;
+                if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+                        exact.WeaponDefinitionId.Value,
+                        out mark)
+                    || mark == null
+                    || mark.Blueprint == null
+                    || !mark.Blueprint.DefinitionId.Equals(
+                        exact.WeaponDefinitionId))
+                {
+                    rejectionCode =
+                        "canonical-weapon-fire-equipped-definition-unresolved:"
+                        + exact.WeaponDefinitionId.Value;
+                    return false;
+                }
+
+                resolved.Add(new ProductionEquippedGunV1(
+                    position,
+                    exact,
+                    mark));
             }
-            return false;
+
+            if (resolved.Count == 0)
+            {
+                rejectionCode = "canonical-weapon-fire-no-active-equipped-guns";
+                return false;
+            }
+            return true;
+        }
+
+        private Vector2 ResolveBaseOrigin()
+        {
+            return (Vector2)transform.position + (aimDirection * 0.55f);
         }
 
         private void ReportResult(InventoryWeaponExecutionResult result)
@@ -724,7 +851,7 @@ namespace ShooterMover.UI.ProductionFlow
             runtime = null;
             actorState = null;
             effectSink = null;
-            mountPosition = null;
+            equippedGuns = Array.Empty<ProductionEquippedGunV1>();
             gameplayCamera = null;
             source = null;
             graph = null;
