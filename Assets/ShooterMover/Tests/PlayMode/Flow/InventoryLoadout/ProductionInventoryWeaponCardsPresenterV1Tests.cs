@@ -10,7 +10,7 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
 {
-    public sealed class ProductionInventoryWeaponCardsPresenterV1Tests
+    public sealed class InventoryWeaponCardsTests
     {
         [Test]
         public void RattlerCardProjectsConfirmedCanonicalStatsAndTemporaryArt()
@@ -80,8 +80,8 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             controller.Present(
                 HubRouteV1.Inventory,
                 runtime.CurrentRoutePayload);
-            ProductionInventoryWeaponCardsPresenterV1 presenter =
-                host.AddComponent<ProductionInventoryWeaponCardsPresenterV1>();
+            InventoryWeaponCards presenter =
+                host.AddComponent<InventoryWeaponCards>();
 
             Assert.That(
                 presenter.BindForTests(controller, runtime),

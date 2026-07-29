@@ -76,8 +76,8 @@ namespace ShooterMover.UI.ProductionFlow
 
         private static void Install()
         {
-            ProductionFlowCoordinatorV1 flow =
-                FindFirstObjectByType<ProductionFlowCoordinatorV1>(
+            GameFlow flow =
+                FindFirstObjectByType<GameFlow>(
                     FindObjectsInactive.Include);
             if (flow != null
                 && flow.GetComponent<
@@ -96,7 +96,7 @@ namespace ShooterMover.UI.ProductionFlow
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 ignoredProfile;
             CharacterCompositionCoordinatorV1 composition;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out ignoredProfile,
                     out composition)

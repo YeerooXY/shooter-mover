@@ -15,11 +15,11 @@ namespace ShooterMover.UI.ProductionFlow
     /// </summary>
     [DefaultExecutionOrder(-31900)]
     [DisallowMultipleComponent]
-    public sealed class ProductionHubLoadoutCompositionV1 : MonoBehaviour
+    public sealed class InventoryLoadoutFlow : MonoBehaviour
     {
-        private static ProductionHubLoadoutCompositionV1 instance;
+        private static InventoryLoadoutFlow instance;
 
-        private ProductionFlowCoordinatorV1 coordinator;
+        private GameFlow coordinator;
         private ProductionFlowProfileRecordV1 currentProfile;
         private ProductionPlayerLoadoutRuntimeV1 runtime;
         private InventoryLoadoutScreenControllerV1 boundController;
@@ -94,21 +94,21 @@ namespace ShooterMover.UI.ProductionFlow
 
         private static void EnsureInstalled()
         {
-            ProductionFlowCoordinatorV1 flow =
+            GameFlow flow =
                 UnityEngine.Object.FindFirstObjectByType<
-                    ProductionFlowCoordinatorV1>(
+                    GameFlow>(
                     FindObjectsInactive.Include);
             if (flow == null)
             {
                 return;
             }
 
-            ProductionHubLoadoutCompositionV1 existing =
-                flow.GetComponent<ProductionHubLoadoutCompositionV1>();
+            InventoryLoadoutFlow existing =
+                flow.GetComponent<InventoryLoadoutFlow>();
             if (existing == null)
             {
                 existing = flow.gameObject
-                    .AddComponent<ProductionHubLoadoutCompositionV1>();
+                    .AddComponent<InventoryLoadoutFlow>();
             }
             instance = existing;
         }
@@ -121,7 +121,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
             instance = this;
-            coordinator = GetComponent<ProductionFlowCoordinatorV1>();
+            coordinator = GetComponent<GameFlow>();
         }
 
         private void Update()
@@ -136,7 +136,7 @@ namespace ShooterMover.UI.ProductionFlow
         {
             if (coordinator == null)
             {
-                coordinator = GetComponent<ProductionFlowCoordinatorV1>();
+                coordinator = GetComponent<GameFlow>();
                 if (coordinator == null)
                 {
                     Clear();
@@ -148,7 +148,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                 out graph,
                 out profile))
             {
@@ -180,7 +180,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             CharacterCompositionResultV1 saved =
-                ProductionCharacterAccountCompositionV1.PersistCurrent(
+                CharacterAccount.PersistCurrent(
                     "inventory-loadout-confirmed",
                     confirmedPayload.Fingerprint);
             if (saved == null || !saved.Succeeded)
@@ -196,7 +196,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
-            if (ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (CharacterAccount.TryResolveCurrent(
                 out graph,
                 out profile))
             {

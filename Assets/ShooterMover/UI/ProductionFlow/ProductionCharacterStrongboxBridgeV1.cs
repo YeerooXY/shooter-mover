@@ -35,9 +35,9 @@ namespace ShooterMover.UI.ProductionFlow
 
         private static void EnsureInstalled()
         {
-            ProductionFlowCoordinatorV1 flow =
+            GameFlow flow =
                 UnityEngine.Object.FindFirstObjectByType<
-                    ProductionFlowCoordinatorV1>(
+                    GameFlow>(
                     FindObjectsInactive.Include);
             if (flow == null)
             {
@@ -72,7 +72,7 @@ namespace ShooterMover.UI.ProductionFlow
         {
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                 out graph,
                 out profile)
                 || graph == null
@@ -100,7 +100,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             CharacterCompositionResultV1 result =
-                ProductionCharacterAccountCompositionV1.PersistCurrent(
+                CharacterAccount.PersistCurrent(
                     "strongbox-opening-confirmed",
                     strongboxSnapshotFingerprint);
             if (result == null || !result.Succeeded)
@@ -123,7 +123,7 @@ namespace ShooterMover.UI.ProductionFlow
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
             CharacterCompositionCoordinatorV1 composition;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out profile,
                     out composition)
