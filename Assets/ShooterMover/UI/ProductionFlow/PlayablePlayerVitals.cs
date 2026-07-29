@@ -237,6 +237,8 @@ namespace ShooterMover.UI.ProductionFlow
     [DisallowMultipleComponent]
     public sealed class PlayablePlayerVitalsInstaller : MonoBehaviour
     {
+        private bool bindingComplete;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntimeHook()
         {
@@ -297,11 +299,23 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void Start()
         {
+            TryBindPlayerVitals();
+        }
+
+        private void Update()
+        {
+            if (!bindingComplete)
+            {
+                TryBindPlayerVitals();
+            }
+        }
+
+        private void TryBindPlayerVitals()
+        {
             PlayablePlayerMarker2D marker = GetComponentInChildren<
                 PlayablePlayerMarker2D>(true);
             if (marker == null)
             {
-                Debug.LogError("playable-player-vitals-player-missing", this);
                 return;
             }
 
@@ -310,7 +324,6 @@ namespace ShooterMover.UI.ProductionFlow
                 PlayableTopDownMovement2D>();
             if (body == null || movement == null)
             {
-                Debug.LogError("playable-player-vitals-movement-binding-missing", marker);
                 return;
             }
 
@@ -324,6 +337,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 vitals.Bind(marker, body, movement);
             }
+            bindingComplete = vitals.IsBound;
         }
     }
 

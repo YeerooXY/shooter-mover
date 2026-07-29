@@ -140,8 +140,11 @@ namespace ShooterMover.UnityAdapters.Enemies
             pendingPlayerDiagnostic = "enemy-attack-player-missing";
             stopped = false;
             lastDiagnostic = null;
-            body.linearVelocity = Vector2.zero;
-            body.angularVelocity = 0f;
+            if (CanWriteBodyMotion())
+            {
+                body.linearVelocity = Vector2.zero;
+                body.angularVelocity = 0f;
+            }
             body.simulated = true;
             enabled = true;
         }
@@ -312,7 +315,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
             if (!EnsurePlayerBinding())
             {
-                if (body != null)
+                if (CanWriteBodyMotion())
                 {
                     body.linearVelocity = Vector2.zero;
                 }
@@ -441,13 +444,13 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
 
             Vector2 velocity = ToUnity(movement.DesiredVelocity);
-            if (translationLocked || HasTelegraph())
+            if (CanWriteBodyMotion() && (translationLocked || HasTelegraph()))
             {
                 // An authored stationary body never translates. A committed dangerous wind-up is
                 // also a hard translation hold for mobile bodies.
                 body.linearVelocity = Vector2.zero;
             }
-            else
+            else if (CanWriteBodyMotion())
             {
                 float acceleration =
                     (float)(runtime.Movement.Configuration.Acceleration
@@ -475,10 +478,16 @@ namespace ShooterMover.UnityAdapters.Enemies
                 maximumTurn);
             float radians = nextAngle * Mathf.Deg2Rad;
             facing = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
-            if (!translationLocked)
+            if (!translationLocked && CanWriteBodyMotion())
             {
                 body.MoveRotation(nextAngle);
             }
+        }
+
+        private bool CanWriteBodyMotion()
+        {
+            return body != null
+                && body.bodyType != RigidbodyType2D.Static;
         }
 
         private void SpawnDue()
@@ -1018,7 +1027,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 }
             }
 
-            if (body != null)
+            if (CanWriteBodyMotion())
             {
                 body.linearVelocity = Vector2.zero;
                 body.angularVelocity = 0f;

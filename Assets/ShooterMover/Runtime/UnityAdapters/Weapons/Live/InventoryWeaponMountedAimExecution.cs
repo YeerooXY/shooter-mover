@@ -12,7 +12,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     /// </summary>
     public static class InventoryWeaponMountedAimExecution
     {
-        public const double LiveMountOffsetScale = 0.5d;
+        // Keep the four muzzle origins close to the player silhouette while retaining
+        // distinct physical mount identities and deterministic per-mount aim.
+        public const double LiveMountOffsetScale = 0.3d;
 
         public static InventoryWeaponExecutionResult TryFireAtTarget(
             this InventoryWeaponLiveSetup runtime,

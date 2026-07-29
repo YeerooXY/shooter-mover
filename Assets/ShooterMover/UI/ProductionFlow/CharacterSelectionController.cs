@@ -436,35 +436,28 @@ namespace ShooterMover.UI.ProductionFlow
         {
             GUILayout.Label("CHARACTER CREATION", titleStyle);
             GUILayout.Label("NAME", bodyStyle);
-            characterName = GUILayout.TextField(
-                characterName,
-                32,
-                GUILayout.Height(42f));
+            characterName = GUILayout.TextField(characterName, 32, GUILayout.Height(42f));
             GUILayout.Space(14f);
             GUILayout.Label("CHOOSE ONE CLASS", titleStyle);
-
             IReadOnlyList<CharacterClassProfileDefinition> classProfiles =
-                selection.Catalog.GetProfiles(
-                    selection.HighlightedCharacterStableId);
+                selection.Catalog.GetProfiles(selection.HighlightedCharacterStableId);
             GUILayout.BeginHorizontal();
             for (int index = 0; index < classProfiles.Count; index++)
             {
                 DrawClassCard(classProfiles[index], index);
-                if (index + 1 < classProfiles.Count) GUILayout.Space(10f);
+                if (index < classProfiles.Count - 1)
+                {
+                    GUILayout.Space(10f);
+                }
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(12f);
-
             if (!string.IsNullOrEmpty(validationMessage))
             {
                 GUILayout.Label(validationMessage, bodyStyle);
             }
-
             GUI.enabled = !terminal;
-            if (GUILayout.Button(
-                "CONFIRM CHARACTER",
-                actionStyle,
-                GUILayout.Height(52f)))
+            if (GUILayout.Button("CONFIRM CHARACTER", actionStyle, GUILayout.Height(52f)))
             {
                 ConfirmCreation();
             }
@@ -514,10 +507,13 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void DrawBackdrop(Rect screen)
         {
-            string key = Stage
-                    == CharacterSelectionStage.CharacterSlots
-                ? "CharacterSelect/character_choice_screen"
-                : "CharacterSelect/character_creation_choice_screen";
+            if (Stage == CharacterSelectionStage.CharacterCreation)
+            {
+                GUI.Box(screen, GUIContent.none);
+                return;
+            }
+
+            string key = "CharacterSelect/character_choice_screen";
             Texture2D texture = GetTexture(key);
             if (texture != null)
             {
