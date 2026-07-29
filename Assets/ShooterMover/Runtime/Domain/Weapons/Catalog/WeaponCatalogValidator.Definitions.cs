@@ -107,14 +107,9 @@ namespace ShooterMover.Domain.Weapons.Catalog
 
                 Positive(value.FirstAppearance, path + ".FirstAppearance", issues);
                 Positive(value.PeakDropLevel, path + ".PeakDropLevel", issues);
-                Positive(value.PowerAnchor, path + ".PowerAnchor", issues);
                 if (value.PeakDropLevel < value.FirstAppearance)
                 {
                     Range(path + ".PeakDropLevel", "Peak drop level cannot precede first appearance.", issues);
-                }
-                if (value.PowerAnchor < value.PeakDropLevel)
-                {
-                    Range(path + ".PowerAnchor", "Power anchor cannot precede peak drop level.", issues);
                 }
 
                 Positive(value.RarityWeight, path + ".RarityWeight", issues);
