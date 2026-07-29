@@ -1,0 +1,128 @@
+name: Fix crafting format helper name
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'agent/fix-crafting-format-name'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-crafting-format-name
+          fetch-depth: 0
+
+      - name: Rename crafting formatting helper and exact calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="c47c745d2cf5b3f09532ae7e8e0f83e067432219"
+          git checkout --detach "$base_sha"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+
+          root = Path('Assets/ShooterMover')
+          declaration = re.compile(r'\bpublic\s+static\s+class\s+Crafting\b')
+          required_methods = (
+              'Fingerprint',
+              'DeterministicHash',
+              'DeriveStableId',
+          )
+
+          candidates = []
+          for path in sorted(root.rglob('*.cs')):
+              text = path.read_text(encoding='utf-8-sig')
+              if not declaration.search(text):
+                  continue
+              if all(re.search(r'\b' + re.escape(method) + r'\s*\(', text)
+                     for method in required_methods):
+                  candidates.append(path)
+
+          if len(candidates) != 1:
+              raise SystemExit(
+                  'Expected exactly one Crafting helper with all three methods, found: '
+                  + repr([str(path) for path in candidates]))
+
+          helper = candidates[0]
+          text = helper.read_text(encoding='utf-8-sig')
+          updated, declaration_count = declaration.subn(
+              'public static class CraftingFormat',
+              text,
+              count=1)
+          if declaration_count != 1:
+              raise SystemExit('Crafting helper declaration was not renamed exactly once.')
+          helper.write_text(updated, encoding='utf-8', newline='\n')
+
+          call = re.compile(
+              r'(?<![A-Za-z0-9_.])Crafting\.('
+              + '|'.join(required_methods)
+              + r')\b')
+
+          changed_files = []
+          replacement_count = 0
+          method_counts = {method: 0 for method in required_methods}
+          for path in sorted(root.rglob('*.cs')):
+              source = path.read_text(encoding='utf-8-sig')
+
+              def replace(match):
+                  method_counts[match.group(1)] += 1
+                  return 'CraftingFormat.' + match.group(1)
+
+              revised, count = call.subn(replace, source)
+              if count == 0:
+                  continue
+              path.write_text(revised, encoding='utf-8', newline='\n')
+              changed_files.append(path)
+              replacement_count += count
+
+          if replacement_count == 0:
+              raise SystemExit('No Crafting helper calls were updated.')
+
+          leftovers = []
+          for path in sorted(root.rglob('*.cs')):
+              source = path.read_text(encoding='utf-8-sig')
+              if call.search(source):
+                  leftovers.append(str(path))
+          if leftovers:
+              raise SystemExit(
+                  'Old Crafting helper calls remain:\n' + '\n'.join(leftovers))
+
+          helper_text = helper.read_text(encoding='utf-8-sig')
+          if declaration.search(helper_text):
+              raise SystemExit('Old Crafting helper declaration remains.')
+          if helper_text.count('public static class CraftingFormat') != 1:
+              raise SystemExit('CraftingFormat declaration count is not one.')
+
+          if helper.stem == 'Crafting':
+              target = helper.with_name('CraftingFormat.cs')
+              subprocess.run(['git', 'mv', str(helper), str(target)], check=True)
+              meta = Path(str(helper) + '.meta')
+              if meta.exists():
+                  subprocess.run(
+                      ['git', 'mv', str(meta), str(target) + '.meta'],
+                      check=True)
+              helper = target
+
+          print('Helper file: ' + str(helper))
+          print(f'Updated {replacement_count} calls in {len(changed_files)} files.')
+          for method in required_methods:
+              print(f'{method}: {method_counts[method]}')
+          for path in changed_files:
+              print(path)
+          PY
+
+          git config user.name "shooter-mover-fix-bot"
+          git config user.email "fix-bot@users.noreply.github.com"
+          git add -A Assets/ShooterMover
+          git diff --cached --check
+          git commit -m "Fix crafting format helper name"
+          git push origin HEAD:refs/heads/agent/fix-crafting-format-name-result --force
