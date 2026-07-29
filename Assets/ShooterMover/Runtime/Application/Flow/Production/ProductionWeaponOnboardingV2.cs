@@ -44,6 +44,8 @@ namespace ShooterMover.Application.Flow.Production
     /// </summary>
     public static class ProductionWeaponOnboardingV2
     {
+        public const string SweeperWeaponDefinitionId = "sweeper.mk1";
+
         private static readonly StableId HoldingsAuthorityStableId =
             StableId.Parse("authority.production-player-holdings");
 
@@ -72,11 +74,21 @@ namespace ShooterMover.Application.Flow.Production
                     "The authored starter weapon is missing.");
             }
 
+            ProductionWeaponMarkV1 sweeper;
+            if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+                    SweeperWeaponDefinitionId,
+                    out sweeper)
+                || sweeper == null)
+            {
+                throw new InvalidOperationException(
+                    "The authored Sweeper weapon is missing.");
+            }
+
             ProductionWeaponMountLayoutV1 layout =
                 ProductionWeaponMountPolicyV1.ResolveLayout(
                     classDefinitionStableId);
             var owned = new List<WeaponEquipmentInstance>(
-                layout.ConfigurablePositions.Count);
+                layout.ConfigurablePositions.Count + 1);
             var equippedByMount = new Dictionary<StableId, StableId>();
             var used = new HashSet<StableId>();
             Func<StableId> factory = instanceIdFactory;
@@ -98,6 +110,12 @@ namespace ShooterMover.Application.Flow.Production
                     starter.Blueprint.DefinitionId));
                 equippedByMount.Add(position.MountStableId, instanceId);
             }
+
+            StableId sweeperInstanceId = NextOpaqueId(factory, used);
+            used.Add(sweeperInstanceId);
+            owned.Add(WeaponEquipmentInstance.CreateUnmodified(
+                sweeperInstanceId,
+                sweeper.Blueprint.DefinitionId));
 
             var mountBindings = new List<WeaponMountBindingV2>(
                 layout.PhysicalPositions.Count);
@@ -141,29 +159,41 @@ namespace ShooterMover.Application.Flow.Production
 
             // The V2 weapon authority owns canonical weapon state, but the generic holdings
             // ledger remains the compatibility/receipt projection consumed by the run-start
-            // boundary and older reward paths.  Starter creation must publish the same exact
-            // instances to both projections; otherwise the loadout contains equipped IDs that
-            // the run validator cannot resolve as owned.
-            EquipmentDefinition starterEquipment =
-                ProductionWeaponCatalogProvider.EquipmentCatalog
-                    .FindEquipmentDefinition(starter.EquipmentDefinitionId);
-            if (starterEquipment == null
-                || starterEquipment.QualityTiers == null
-                || starterEquipment.QualityTiers.Count == 0)
-            {
-                throw new InvalidOperationException(
-                    "The authored starter equipment projection is invalid.");
-            }
+            // boundary and older reward paths. Starter creation must publish every exact
+            // canonical instance to both projections without making the receipt ledger authoritative.
             for (int index = 0; index < owned.Count; index++)
             {
                 WeaponEquipmentInstance weapon = owned[index];
+                ProductionWeaponMarkV1 ownedMark;
+                if (!ProductionWeaponCatalogProvider.Current.TryGetMark(
+                        weapon.WeaponDefinitionId.Value,
+                        out ownedMark)
+                    || ownedMark == null)
+                {
+                    throw new InvalidOperationException(
+                        "An authored starter weapon projection is missing: "
+                        + weapon.WeaponDefinitionId.Value);
+                }
+
+                EquipmentDefinition ownedEquipment =
+                    ProductionWeaponCatalogProvider.EquipmentCatalog
+                        .FindEquipmentDefinition(ownedMark.EquipmentDefinitionId);
+                if (ownedEquipment == null
+                    || ownedEquipment.QualityTiers == null
+                    || ownedEquipment.QualityTiers.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        "An authored starter equipment projection is invalid: "
+                        + weapon.WeaponDefinitionId.Value);
+                }
+
                 string token = (index + 1).ToString(
                     System.Globalization.CultureInfo.InvariantCulture);
                 EquipmentInstance receipt = EquipmentInstance.Create(
                     weapon.InstanceId,
-                    starterEquipment.DefinitionId,
-                    starterEquipment.ItemLevelRange.Minimum,
-                    starterEquipment.QualityTiers[0].QualityId,
+                    ownedEquipment.DefinitionId,
+                    ownedEquipment.ItemLevelRange.Minimum,
+                    ownedEquipment.QualityTiers[0].QualityId,
                     Array.Empty<AugmentInstance>());
                 PlayerHoldingsMutationResultV1 result = genericHoldings.Apply(
                     PlayerHoldingsCommandV1.AddEquipment(
