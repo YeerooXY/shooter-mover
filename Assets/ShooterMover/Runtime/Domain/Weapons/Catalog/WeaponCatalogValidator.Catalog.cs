@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 
 namespace ShooterMover.Domain.Weapons.Catalog
@@ -62,24 +61,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 Range("$.rules.max_augments", "Max augments cannot be negative.", issues);
             }
 
-            HashSet<int> anchors = new HashSet<int>();
-            for (int index = 0; index < rules.ApexPowerAnchors.Count; index++)
-            {
-                int value = rules.ApexPowerAnchors[index];
-                string path = "$.rules.apex_power_anchors[" + index.ToString(CultureInfo.InvariantCulture) + "]";
-                if (value < 1)
-                {
-                    Range(path, "Power anchors must be positive.", issues);
-                }
-                if (!anchors.Add(value))
-                {
-                    issues.Add(new WeaponCatalogIssue(
-                        WeaponCatalogIssueCode.DuplicateId,
-                        path,
-                        "Duplicate apex power anchor."));
-                }
-            }
-
             HashSet<string> damageTypes = new HashSet<string>(StringComparer.Ordinal);
             for (int index = 0; index < rules.DamageTypes.Count; index++)
             {
@@ -115,10 +96,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 return;
             }
 
-            Positive(inputs.BaseDps, "$.inputs.base_dps", issues);
-            NonNegative(inputs.Growth1To30, "$.inputs.growth_1_30", issues);
-            NonNegative(inputs.Growth31To70, "$.inputs.growth_31_70", issues);
-            NonNegative(inputs.Growth71Plus, "$.inputs.growth_71_plus", issues);
             if (inputs.Rarities.Count == 0)
             {
                 issues.Add(new WeaponCatalogIssue(
@@ -151,10 +128,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
                         "Dictionary key and rarity identity differ."));
                 }
                 Positive(rarity.Weight, path + ".weight", issues);
-                if (rarity.PowerBonus < 0)
-                {
-                    Range(path + ".power_bonus", "Power bonus cannot be negative.", issues);
-                }
                 NonNegative(rarity.EarlyTail, path + ".early_tail", issues);
                 NonNegative(rarity.LateTail, path + ".late_tail", issues);
             }
@@ -196,17 +169,12 @@ namespace ShooterMover.Domain.Weapons.Catalog
                         "Dictionary key and archetype identity differ."));
                 }
                 RequireText(value.Description, path + ".description", issues);
-                Positive(value.DpsFactor, path + ".dps_factor", issues);
                 Positive(value.FireRate, path + ".fire_rate", issues);
                 Positive(value.Projectiles, path + ".projectiles", issues);
                 Positive(value.Burst, path + ".burst", issues);
                 NonNegative(value.Spread, path + ".spread", issues);
                 Positive(value.Speed, path + ".speed", issues);
                 Positive(value.Range, path + ".range", issues);
-                Share(value.DirectShare, path + ".direct_share", issues);
-                Share(value.AreaShare, path + ".area_share", issues);
-                Share(value.DotShare, path + ".dot_share", issues);
-                ValidateShareTotal(value.DirectShare, value.AreaShare, value.DotShare, path, issues);
                 NonNegative(value.Radius, path + ".radius", issues);
                 NonNegative(value.DotDuration, path + ".dot_duration", issues);
                 NonNegative(value.PoolRadius, path + ".pool_radius", issues);
@@ -291,6 +259,5 @@ namespace ShooterMover.Domain.Weapons.Catalog
 
             return result;
         }
-
     }
 }

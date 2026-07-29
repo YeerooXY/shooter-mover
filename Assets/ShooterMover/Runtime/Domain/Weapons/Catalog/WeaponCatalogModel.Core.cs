@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace ShooterMover.Domain.Weapons.Catalog
 {
@@ -114,27 +111,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
         public double Growth31To70 { get; private set; }
         public double Growth71Plus { get; private set; }
         public IReadOnlyDictionary<string, WeaponRarityInput> Rarities { get { return _rarities; } }
-
-        public double CalculatePowerIndex(int powerAnchor)
-        {
-            if (powerAnchor < 1)
-            {
-                return 0.0;
-            }
-
-            double value = 100.0;
-            for (int level = 2; level <= powerAnchor; level++)
-            {
-                double growth = level <= 30
-                    ? Growth1To30
-                    : level <= 70
-                        ? Growth31To70
-                        : Growth71Plus;
-                value *= 1.0 + growth;
-            }
-
-            return value;
-        }
     }
 
     public sealed class WeaponArchetypeDefinition
@@ -285,5 +261,4 @@ namespace ShooterMover.Domain.Weapons.Catalog
             }
         }
     }
-
 }

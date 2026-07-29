@@ -54,13 +54,6 @@ namespace ShooterMover.Application.Weapons.Catalog
             writer.BeginObject();
             writer.Property("fixed_stats_per_definition", value.FixedStatsPerDefinition);
             writer.Property("ordinary_mark_gap", value.OrdinaryMarkGap);
-            writer.Name("apex_power_anchors");
-            writer.BeginArray();
-            for (int index = 0; index < value.ApexPowerAnchors.Count; index++)
-            {
-                writer.Value(value.ApexPowerAnchors[index]);
-            }
-            writer.EndArray();
             writer.Name("damage_types");
             writer.BeginArray();
             for (int index = 0; index < value.DamageTypes.Count; index++)
@@ -78,10 +71,6 @@ namespace ShooterMover.Application.Weapons.Catalog
         private static void WriteInputs(Writer writer, WeaponCatalogInputs value)
         {
             writer.BeginObject();
-            writer.Property("base_dps", value.BaseDps);
-            writer.Property("growth_1_30", value.Growth1To30);
-            writer.Property("growth_31_70", value.Growth31To70);
-            writer.Property("growth_71_plus", value.Growth71Plus);
             writer.Name("rarities");
             writer.BeginObject();
             List<string> rarityIds = new List<string>(value.Rarities.Keys);
@@ -92,7 +81,6 @@ namespace ShooterMover.Application.Weapons.Catalog
                 writer.Name(rarity.Rarity);
                 writer.BeginObject();
                 writer.Property("weight", rarity.Weight);
-                writer.Property("power_bonus", rarity.PowerBonus);
                 writer.Property("early_tail", rarity.EarlyTail);
                 writer.Property("late_tail", rarity.LateTail);
                 writer.EndObject();
@@ -105,16 +93,12 @@ namespace ShooterMover.Application.Weapons.Catalog
         {
             writer.BeginObject();
             writer.Property("description", value.Description);
-            writer.Property("dps_factor", value.DpsFactor);
             writer.Property("fire_rate", value.FireRate);
             writer.Property("projectiles", value.Projectiles);
             writer.Property("burst", value.Burst);
             writer.Property("spread", value.Spread);
             writer.Property("speed", value.Speed);
             writer.Property("range", value.Range);
-            writer.Property("direct_share", value.DirectShare);
-            writer.Property("area_share", value.AreaShare);
-            writer.Property("dot_share", value.DotShare);
             writer.Property("radius", value.Radius);
             writer.Property("dot_duration", value.DotDuration);
             writer.Property("pool_radius", value.PoolRadius);
@@ -163,7 +147,6 @@ namespace ShooterMover.Application.Weapons.Catalog
             writer.Property("BuildAffinity", value.BuildAffinity);
             writer.Property("FirstAppearance", value.FirstAppearance);
             writer.Property("PeakDropLevel", value.PeakDropLevel);
-            writer.Property("PowerAnchor", value.PowerAnchor);
             writer.Property("Rarity", value.Rarity);
             writer.Property("RarityWeight", value.RarityWeight);
             writer.Property("DefinitionWeightModifier", value.DefinitionWeightModifier);
@@ -173,12 +156,6 @@ namespace ShooterMover.Application.Weapons.Catalog
             writer.Property("AcquisitionClass", value.AcquisitionClass);
             writer.Property("TopBoxOnly", value.TopBoxOnly ? "Yes" : "No");
             writer.Property("CraftingRoute", value.CraftingRoute);
-            writer.Property("ArchetypeDPSFactor", value.ArchetypeDpsFactor);
-            writer.Property("PowerIndex", value.PowerIndex);
-            writer.Property("TargetDPS", value.TargetDps);
-            writer.Property("DirectShare", value.DirectShare);
-            writer.Property("AreaShare", value.AreaShare);
-            writer.Property("DoTShare", value.DotShare);
             writer.Property("FireRate", value.FireRate);
             writer.Property("ProjectilesPerTrigger", value.ProjectilesPerTrigger);
             writer.Property("BurstCount", value.BurstCount);

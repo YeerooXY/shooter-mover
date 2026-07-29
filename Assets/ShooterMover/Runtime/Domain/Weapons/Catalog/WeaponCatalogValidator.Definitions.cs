@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 
 namespace ShooterMover.Domain.Weapons.Catalog
@@ -108,14 +107,9 @@ namespace ShooterMover.Domain.Weapons.Catalog
 
                 Positive(value.FirstAppearance, path + ".FirstAppearance", issues);
                 Positive(value.PeakDropLevel, path + ".PeakDropLevel", issues);
-                Positive(value.PowerAnchor, path + ".PowerAnchor", issues);
                 if (value.PeakDropLevel < value.FirstAppearance)
                 {
                     Range(path + ".PeakDropLevel", "Peak drop level cannot precede first appearance.", issues);
-                }
-                if (value.PowerAnchor < value.PeakDropLevel)
-                {
-                    Range(path + ".PowerAnchor", "Power anchor cannot precede peak drop level.", issues);
                 }
 
                 Positive(value.RarityWeight, path + ".RarityWeight", issues);
@@ -123,13 +117,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 Positive(value.FinalBaseWeight, path + ".FinalBaseWeight", issues);
                 NonNegative(value.EarlyTail, path + ".EarlyTail", issues);
                 NonNegative(value.LateTail, path + ".LateTail", issues);
-                Positive(value.ArchetypeDpsFactor, path + ".ArchetypeDPSFactor", issues);
-                Positive(value.PowerIndex, path + ".PowerIndex", issues);
-                Positive(value.TargetDps, path + ".TargetDPS", issues);
-                Share(value.DirectShare, path + ".DirectShare", issues);
-                Share(value.AreaShare, path + ".AreaShare", issues);
-                Share(value.DotShare, path + ".DoTShare", issues);
-                ValidateShareTotal(value.DirectShare, value.AreaShare, value.DotShare, path, issues);
                 Positive(value.FireRate, path + ".FireRate", issues);
                 Positive(value.ProjectilesPerTrigger, path + ".ProjectilesPerTrigger", issues);
                 Positive(value.BurstCount, path + ".BurstCount", issues);
@@ -174,29 +161,8 @@ namespace ShooterMover.Domain.Weapons.Catalog
                         path + ".FinalBaseWeight",
                         "rarity weight × definition modifier",
                         issues);
-
-                    double expectedPowerIndex = inputs.CalculatePowerIndex(value.PowerAnchor);
-                    CompareNumber(value.PowerIndex, expectedPowerIndex, path + ".PowerIndex", "power curve", issues);
-                    double expectedTargetDps = inputs.BaseDps * expectedPowerIndex * value.ArchetypeDpsFactor / 100.0;
-                    CompareNumber(value.TargetDps, expectedTargetDps, path + ".TargetDPS", "base DPS × power curve × archetype factor", issues);
                 }
-
-                WeaponArchetypeDefinition archetype;
-                if (archetypes.TryGetValue(value.Archetype, out archetype))
-                {
-                    CompareNumber(value.ArchetypeDpsFactor, archetype.DpsFactor, path + ".ArchetypeDPSFactor", "archetype DPS factor", issues);
-                }
-
-                double directDps = value.DamagePerProjectile
-                    * value.FireRate
-                    * value.ProjectilesPerTrigger
-                    * value.BurstCount;
-                double areaDps = value.AreaDamagePerTrigger * value.FireRate;
-                CompareNumber(directDps, value.TargetDps * value.DirectShare, path + ".DamagePerProjectile", "direct DPS share", issues);
-                CompareNumber(areaDps, value.TargetDps * value.AreaShare, path + ".AreaDamagePerTrigger", "area DPS share", issues);
-                CompareNumber(value.DotDps, value.TargetDps * value.DotShare, path + ".DoTDPS", "DoT DPS share", issues);
             }
         }
-
     }
 }
