@@ -879,7 +879,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         private static EnemyCatalog EnemyCatalog(params EnemyDefinition[] definitions)
         {
             return new EnemyCatalog(
-                EnemyCatalog.SupportedSchemaVersion,
+                global::ShooterMover.Domain.Enemies.Catalog.EnemyCatalog.SupportedSchemaVersion,
                 Id("enemy-content", "drop-binding-tests"),
                 definitions);
         }

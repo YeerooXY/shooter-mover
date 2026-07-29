@@ -202,7 +202,7 @@ namespace ShooterMover.UI.Shop
             EnsureInitialized();
             if (session == null || stockEntryStableId == null) return null;
             purchaseInputOrdinal++;
-            StableId inputStableId = Shop.DeriveStableId(
+            StableId inputStableId = global::ShooterMover.Domain.Shops.Shop.DeriveStableId(
                 "shop-screen-input",
                 session.RunStableId.ToString(),
                 session.ShopStableId.ToString(),

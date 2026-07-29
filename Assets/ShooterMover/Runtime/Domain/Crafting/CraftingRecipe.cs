@@ -245,7 +245,7 @@ namespace ShooterMover.Domain.Crafting
             }
 
             DeterministicRandom random = DeterministicRandom.Create(rootSeed, GeneratorPolicy.AlgorithmVersion)
-                .Fork(UnlockDelayPurpose, Crafting.StableOrdinal(RecipeStableId));
+                .Fork(UnlockDelayPurpose, CraftingFormat.StableOrdinal(RecipeStableId));
             int additional;
             random.NextInt32(
                 DelayVariance.MinimumAdditionalLevels,
