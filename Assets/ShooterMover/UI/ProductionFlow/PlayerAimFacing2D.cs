@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -6,6 +5,7 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UI.ProductionFlow
 {
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(Rigidbody2D))]
     public sealed class PlayerAimFacing2D : MonoBehaviour
     {
         private const float SpriteForwardDegrees = 180f;
@@ -15,19 +15,18 @@ namespace ShooterMover.UI.ProductionFlow
         private float desiredRotation;
         private bool hasAim;
 
-        public void Bind(Rigidbody2D configuredBody)
+        private void Awake()
         {
-            if (configuredBody == null)
-            {
-                throw new ArgumentNullException(nameof(configuredBody));
-            }
-            if (body != null && body != configuredBody)
-            {
-                throw new InvalidOperationException(
-                    "player-facing-body-already-bound");
-            }
+            body = GetComponent<Rigidbody2D>();
+        }
 
-            body = configuredBody;
+        private void Start()
+        {
+            if (body == null)
+            {
+                enabled = false;
+                return;
+            }
             body.freezeRotation = false;
             body.angularVelocity = 0f;
         }
