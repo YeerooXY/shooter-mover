@@ -91,7 +91,7 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         private static EquipmentInstance PreviewEquipment(CraftEquipmentCommand command)
         {
             return EquipmentInstance.Create(
-                Crafting.DeriveStableId("craftitem", command.CraftTransactionStableId.ToString()),
+                CraftingFormat.DeriveStableId("craftitem", command.CraftTransactionStableId.ToString()),
                 StableId.Parse("weapon.shared"), 7, StableId.Parse("quality.standard"),
                 Array.Empty<AugmentInstance>());
         }

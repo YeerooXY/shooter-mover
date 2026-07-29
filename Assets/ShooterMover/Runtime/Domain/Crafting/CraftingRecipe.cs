@@ -48,7 +48,7 @@ namespace ShooterMover.Domain.Crafting
         }
 
         public override bool Equals(object obj) { return Equals(obj as CraftingDelayVariance); }
-        public override int GetHashCode() { return Crafting.DeterministicHash(ToCanonicalString()); }
+        public override int GetHashCode() { return CraftingFormat.DeterministicHash(ToCanonicalString()); }
     }
 
     public sealed class CraftingWeightedDefinition : IComparable<CraftingWeightedDefinition>
@@ -211,7 +211,7 @@ namespace ShooterMover.Domain.Crafting
             }
 
             canonicalText = BuildCanonicalText();
-            Fingerprint = Crafting.Fingerprint(canonicalText);
+            Fingerprint = CraftingFormat.Fingerprint(canonicalText);
         }
 
         public int Version { get; }
@@ -266,7 +266,7 @@ namespace ShooterMover.Domain.Crafting
         }
 
         public override bool Equals(object obj) { return Equals(obj as CraftingRecipe); }
-        public override int GetHashCode() { return Crafting.DeterministicHash(canonicalText); }
+        public override int GetHashCode() { return CraftingFormat.DeterministicHash(canonicalText); }
         public string ToCanonicalString() { return canonicalText; }
 
         private string BuildCanonicalText()
@@ -377,7 +377,7 @@ namespace ShooterMover.Domain.Crafting
                 builder.Append("\nrecipe_").Append(index.ToString("D4", CultureInfo.InvariantCulture))
                     .Append("_fingerprint=").Append(copy[index].Fingerprint);
             }
-            Fingerprint = Crafting.Fingerprint(builder.ToString());
+            Fingerprint = CraftingFormat.Fingerprint(builder.ToString());
         }
 
         public IReadOnlyList<CraftingRecipe> Recipes { get { return recipes; } }
@@ -390,7 +390,7 @@ namespace ShooterMover.Domain.Crafting
         }
     }
 
-    public static class Crafting
+    public static class CraftingFormat
     {
         public static string Fingerprint(string canonicalText)
         {

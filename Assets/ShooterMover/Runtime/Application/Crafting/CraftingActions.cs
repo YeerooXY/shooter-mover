@@ -73,7 +73,7 @@ namespace ShooterMover.Application.Crafting
                 + "\nroot_seed=" + RootSeed.ToString(CultureInfo.InvariantCulture)
                 + "\nexpected_scrap_sequence=" + Optional(ExpectedScrapSequence)
                 + "\nexpected_holdings_sequence=" + Optional(ExpectedHoldingsSequence);
-            Fingerprint = Crafting.Fingerprint(canonicalText);
+            Fingerprint = CraftingFormat.Fingerprint(canonicalText);
         }
 
         public StableId CraftTransactionStableId { get; }
@@ -95,7 +95,7 @@ namespace ShooterMover.Application.Crafting
         }
 
         public override bool Equals(object obj) { return Equals(obj as CraftEquipmentCommand); }
-        public override int GetHashCode() { return Crafting.DeterministicHash(canonicalText); }
+        public override int GetHashCode() { return CraftingFormat.DeterministicHash(canonicalText); }
 
         private static void ValidateExpectedSequence(long? value, string parameterName)
         {
@@ -339,7 +339,7 @@ namespace ShooterMover.Application.Crafting
                 commitmentId,
                 sourceOperationId,
                 new[] { scrapGrant, equipmentGrant });
-            string contentFingerprint = Crafting.Fingerprint(
+            string contentFingerprint = CraftingFormat.Fingerprint(
                 "schema=crafting-commit-content-v1"
                 + "\ncommand_fingerprint=" + command.Fingerprint
                 + "\nrecipe_fingerprint=" + recipe.Fingerprint
@@ -691,7 +691,7 @@ namespace ShooterMover.Application.Crafting
             CraftEquipmentCommand command,
             string purpose)
         {
-            return Crafting.DeriveStableId(
+            return CraftingFormat.DeriveStableId(
                 namespaceName,
                 purpose,
                 command.CraftTransactionStableId.ToString());
