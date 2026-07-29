@@ -15,7 +15,7 @@ namespace ShooterMover.UI.ProductionFlow
     /// </summary>
     [DefaultExecutionOrder(12000)]
     [DisallowMultipleComponent]
-    public sealed class ProductionInventoryWeaponCardsPresenterV1 : MonoBehaviour
+    public sealed class InventoryWeaponCards : MonoBehaviour
     {
         [SerializeField] private Texture2D weaponPreviewOverride;
         [SerializeField] private string weaponPreviewResourcePath =
@@ -69,12 +69,12 @@ namespace ShooterMover.UI.ProductionFlow
                     FindObjectsInactive.Include);
             if (target == null) return;
 
-            ProductionInventoryWeaponCardsPresenterV1 presenter =
-                target.GetComponent<ProductionInventoryWeaponCardsPresenterV1>();
+            InventoryWeaponCards presenter =
+                target.GetComponent<InventoryWeaponCards>();
             if (presenter == null)
             {
                 presenter = target.gameObject.AddComponent<
-                    ProductionInventoryWeaponCardsPresenterV1>();
+                    InventoryWeaponCards>();
             }
             presenter.controller = target;
         }
@@ -109,7 +109,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             ProductionPlayerLoadoutRuntimeV1 currentRuntime;
             ProductionFlowProfileRecordV1 profile;
-            return ProductionHubLoadoutCompositionV1.TryResolveCurrent(
+            return InventoryLoadoutFlow.TryResolveCurrent(
                     out currentRuntime,
                     out profile)
                 && currentRuntime != null

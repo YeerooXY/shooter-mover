@@ -91,7 +91,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public static bool Present(
-            ProductionFlowCoordinatorV1 flow,
+            GameFlow flow,
             MissionResultPayloadV1 result,
             ProductionResultsSummaryV1 summary)
         {
@@ -136,9 +136,9 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionFlowCoordinatorV1 flow =
+            GameFlow flow =
                 UnityEngine.Object.FindFirstObjectByType<
-                    ProductionFlowCoordinatorV1>(
+                    GameFlow>(
                     FindObjectsInactive.Include);
             if (flow == null || flow.Transitions == null)
             {

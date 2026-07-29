@@ -159,7 +159,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out profile)
                 || graph == null
@@ -168,7 +168,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 FailAndReturn(
                     "playable-level-character-context-missing:"
-                        + ProductionCharacterAccountCompositionV1
+                        + CharacterAccount
                             .CurrentDiagnostic);
                 return;
             }
@@ -603,8 +603,8 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            ProductionFlowCoordinatorV1 flow = FindFirstObjectByType<
-                ProductionFlowCoordinatorV1>(FindObjectsInactive.Include);
+            GameFlow flow = FindFirstObjectByType<
+                GameFlow>(FindObjectsInactive.Include);
             if (flow == null
                 || flow.Transitions == null
                 || !flow.Transitions.TryReturnToHub(characterGraph.RoutePayload))
@@ -628,11 +628,11 @@ namespace ShooterMover.UI.ProductionFlow
         {
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
-            ProductionFlowCoordinatorV1 flow = FindFirstObjectByType<
-                ProductionFlowCoordinatorV1>(FindObjectsInactive.Include);
+            GameFlow flow = FindFirstObjectByType<
+                GameFlow>(FindObjectsInactive.Include);
             if (flow != null
                 && flow.Transitions != null
-                && ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                && CharacterAccount.TryResolveCurrent(
                     out graph,
                     out profile)
                 && graph != null

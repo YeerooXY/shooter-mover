@@ -403,7 +403,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             ProductionCharacterRuntimeGraphV1 configuredGraph;
             ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out configuredGraph,
                     out profile)
                 || configuredGraph == null
@@ -617,7 +617,7 @@ namespace ShooterMover.UI.ProductionFlow
             rejectionCode = string.Empty;
             ProductionCharacterRuntimeGraphV1 currentGraph;
             ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out currentGraph,
                     out profile)
                 || currentGraph == null

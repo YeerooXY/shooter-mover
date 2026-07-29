@@ -20,7 +20,7 @@ namespace ShooterMover.UI.ProductionFlow
     /// Account-backed profile lifecycle used by Character Select. PlayerPrefs may supply
     /// the one-time migration input and thereafter receives only account projections.
     /// </summary>
-    public interface IProductionCharacterProfileLifecycleV1
+    public interface ICharacterProfiles
     {
         bool TryExportProfiles(
             out IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
@@ -46,18 +46,18 @@ namespace ShooterMover.UI.ProductionFlow
     /// </summary>
     [DefaultExecutionOrder(-31950)]
     [DisallowMultipleComponent]
-    public sealed class ProductionCharacterAccountCompositionV1 :
+    public sealed class CharacterAccount :
         MonoBehaviour,
-        IProductionCharacterProfileLifecycleV1
+        ICharacterProfiles
     {
         private const string AccountFileName = "player-account-v1.save";
         private const string TemporarySuffix = ".tmp";
         private const string BackupSuffix = ".bak";
         private static readonly StableId AccountStableId =
             StableId.Parse("account.production-player-v1");
-        private static ProductionCharacterAccountCompositionV1 instance;
+        private static CharacterAccount instance;
 
-        private ProductionFlowCoordinatorV1 flow;
+        private GameFlow flow;
         private PlayerPrefsProductionFlowProfileStoreV1 legacyStore;
         private AtomicPlayerAccountStoreV1 accountStore;
         private PlayerAccountSaveAuthorityV1 accountAuthority;
@@ -167,22 +167,22 @@ namespace ShooterMover.UI.ProductionFlow
 
         private static void EnsureInstalled()
         {
-            ProductionFlowCoordinatorV1 coordinator =
+            GameFlow coordinator =
                 UnityEngine.Object.FindFirstObjectByType<
-                    ProductionFlowCoordinatorV1>(
+                    GameFlow>(
                     FindObjectsInactive.Include);
             if (coordinator == null)
             {
                 return;
             }
 
-            ProductionCharacterAccountCompositionV1 existing =
+            CharacterAccount existing =
                 coordinator.GetComponent<
-                    ProductionCharacterAccountCompositionV1>();
+                    CharacterAccount>();
             if (existing == null)
             {
                 existing = coordinator.gameObject.AddComponent<
-                    ProductionCharacterAccountCompositionV1>();
+                    CharacterAccount>();
             }
             instance = existing;
         }
@@ -195,7 +195,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
             instance = this;
-            flow = GetComponent<ProductionFlowCoordinatorV1>();
+            flow = GetComponent<GameFlow>();
             try
             {
                 Initialize();

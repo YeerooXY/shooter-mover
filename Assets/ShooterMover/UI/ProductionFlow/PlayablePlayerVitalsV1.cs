@@ -152,7 +152,7 @@ namespace ShooterMover.UI.ProductionFlow
             rejectionCode = string.Empty;
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out profile)
                 || graph == null
@@ -177,9 +177,9 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionFlowCoordinatorV1 flow =
+            GameFlow flow =
                 UnityEngine.Object.FindFirstObjectByType<
-                    ProductionFlowCoordinatorV1>(
+                    GameFlow>(
                     FindObjectsInactive.Include);
             if (flow == null
                 || flow.Transitions == null

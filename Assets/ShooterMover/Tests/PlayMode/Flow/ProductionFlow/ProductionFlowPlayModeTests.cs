@@ -502,7 +502,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.ProductionFlow
 
         private static IEnumerator EnsureCoordinator()
         {
-            if (ProductionFlowCoordinatorV1.HasInstance) yield break;
+            if (GameFlow.HasInstance) yield break;
 
             AsyncOperation load = SceneManager.LoadSceneAsync(
                 ProductionFlowScenePathsV1.Bootstrap,
@@ -512,12 +512,12 @@ namespace ShooterMover.Tests.PlayMode.Flow.ProductionFlow
 
             int remainingFrames = 180;
             while (remainingFrames-- > 0
-                && !ProductionFlowCoordinatorV1.HasInstance)
+                && !GameFlow.HasInstance)
             {
                 yield return null;
             }
 
-            Assert.That(ProductionFlowCoordinatorV1.HasInstance, Is.True);
+            Assert.That(GameFlow.HasInstance, Is.True);
         }
 
         private static T FindOne<T>()

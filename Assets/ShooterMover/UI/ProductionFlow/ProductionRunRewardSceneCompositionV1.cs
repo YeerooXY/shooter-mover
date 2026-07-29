@@ -108,7 +108,7 @@ namespace ShooterMover.UI.ProductionFlow
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 profile;
             ShooterMover.Application.Persistence.Composition.CharacterCompositionCoordinatorV1 coordinator;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out profile,
                     out coordinator)

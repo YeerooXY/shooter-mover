@@ -39,10 +39,10 @@ namespace ShooterMover.UI.ProductionFlow
     /// </summary>
     [DefaultExecutionOrder(-32000)]
     [DisallowMultipleComponent]
-    public sealed class ProductionFlowCoordinatorV1 : MonoBehaviour
+    public sealed class GameFlow : MonoBehaviour
     {
         private const int ProfileSlotCount = 6;
-        private static ProductionFlowCoordinatorV1 instance;
+        private static GameFlow instance;
         private static ProductionResultsContextV1 pendingResultsContext;
 
         private PlayerPrefsProductionFlowProfileStoreV1 profileStore;
@@ -57,7 +57,7 @@ namespace ShooterMover.UI.ProductionFlow
         private StableId selectedModeStableId;
         private ProductionResultsContextV1 resultsContext;
         private ProductionStrongboxOpeningBindingV1 strongboxBinding;
-        private IProductionCharacterProfileLifecycleV1 profileLifecycle;
+        private ICharacterProfiles profileLifecycle;
 
         public ProductionSceneTransitionCoordinatorV1 Transitions
         {
@@ -77,7 +77,7 @@ namespace ShooterMover.UI.ProductionFlow
         public static bool HasInstance { get { return instance != null; } }
 
         public bool ConnectCharacterProfileLifecycle(
-            IProductionCharacterProfileLifecycleV1 lifecycle)
+            ICharacterProfiles lifecycle)
         {
             if (lifecycle == null)
             {
@@ -279,7 +279,7 @@ namespace ShooterMover.UI.ProductionFlow
                     controller.ConfigureDisconnected(ReturnToHub);
                     ProductionCharacterRuntimeGraphV1 graph;
                     ProductionFlowProfileRecordV1 authoritativeProfile;
-                    if (ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+                    if (CharacterAccount.TryResolveCurrent(
                             out graph,
                             out authoritativeProfile)
                         && graph != null
@@ -312,7 +312,7 @@ namespace ShooterMover.UI.ProductionFlow
                             transitions.Navigation.Payload);
                         Debug.LogError(
                             "inventory-character-context-unavailable:"
-                                + ProductionCharacterAccountCompositionV1
+                                + CharacterAccount
                                     .CurrentDiagnostic,
                             controller);
                     }
@@ -473,7 +473,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             ProductionPlayerLoadoutRuntimeV1 runtime;
             ProductionFlowProfileRecordV1 profile;
-            return ProductionHubLoadoutCompositionV1.TryGetCurrent(
+            return InventoryLoadoutFlow.TryGetCurrent(
                 out runtime,
                 out profile)
                 ? runtime.WeaponCatalog
@@ -504,7 +504,7 @@ namespace ShooterMover.UI.ProductionFlow
             ProductionCharacterRuntimeGraphV1 graph;
             ProductionFlowProfileRecordV1 authoritativeProfile;
             CharacterCompositionCoordinatorV1 composition;
-            if (!ProductionCharacterAccountCompositionV1.TryResolveCurrent(
+            if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out authoritativeProfile,
                     out composition)
@@ -577,7 +577,7 @@ namespace ShooterMover.UI.ProductionFlow
             ProductionPlayerLoadoutRuntimeV1 runtime;
             ProductionFlowProfileRecordV1 profile;
             if (controller != null
-                && ProductionHubLoadoutCompositionV1.TryGetCurrent(
+                && InventoryLoadoutFlow.TryGetCurrent(
                     out runtime,
                     out profile))
             {
@@ -914,14 +914,14 @@ namespace ShooterMover.UI.ProductionFlow
         private sealed class RankedSkillsPersistenceAdapterV2 :
             IRankedSkillsPersistencePortV2
         {
-            private readonly ProductionFlowCoordinatorV1 owner;
+            private readonly GameFlow owner;
             private readonly CharacterCompositionCoordinatorV1 expectedComposition;
             private readonly ProductionCharacterRuntimeGraphV1 expectedGraph;
             private readonly PlayerRouteProfilePayloadV1 expectedRoute;
             private readonly RankedSkillAllocationAuthorityV2 expectedAuthority;
             private readonly string expectedSkillProfileId;
             public RankedSkillsPersistenceAdapterV2(
-                ProductionFlowCoordinatorV1 owner,
+                GameFlow owner,
                 CharacterCompositionCoordinatorV1 expectedComposition,
                 ProductionCharacterRuntimeGraphV1 expectedGraph,
                 PlayerRouteProfilePayloadV1 expectedRoute,
@@ -951,7 +951,7 @@ namespace ShooterMover.UI.ProductionFlow
                 if (!string.Equals(accepted.Fingerprint, fingerprint, StringComparison.Ordinal))
                     return Reject("skills-v2-persistence-snapshot-mismatch", true);
                 CharacterCompositionResultV1 result =
-                    ProductionCharacterAccountCompositionV1.PersistCurrent(mutationScope, fingerprint);
+                    CharacterAccount.PersistCurrent(mutationScope, fingerprint);
                 if (result == null || !result.Succeeded)
                     return Reject(result == null
                         ? "character-composition-save-result-null"
@@ -1021,10 +1021,10 @@ namespace ShooterMover.UI.ProductionFlow
         private sealed class SkillsNavigationAdapter :
             ISkillsScreenNavigationPortV1
         {
-            private readonly ProductionFlowCoordinatorV1 owner;
+            private readonly GameFlow owner;
 
             public SkillsNavigationAdapter(
-                ProductionFlowCoordinatorV1 owner)
+                GameFlow owner)
             {
                 this.owner = owner;
             }
@@ -1044,10 +1044,10 @@ namespace ShooterMover.UI.ProductionFlow
         private sealed class ShopNavigationAdapter :
             IShopScreenRouteAdapterV1
         {
-            private readonly ProductionFlowCoordinatorV1 owner;
+            private readonly GameFlow owner;
 
             public ShopNavigationAdapter(
-                ProductionFlowCoordinatorV1 owner)
+                GameFlow owner)
             {
                 this.owner = owner;
             }
@@ -1066,11 +1066,11 @@ namespace ShooterMover.UI.ProductionFlow
         private sealed class PlayNavigationAdapter :
             IPlaySelectionRouteAdapterV1
         {
-            private readonly ProductionFlowCoordinatorV1 owner;
+            private readonly GameFlow owner;
             private readonly PlaySelectionControllerV1 controller;
 
             public PlayNavigationAdapter(
-                ProductionFlowCoordinatorV1 owner,
+                GameFlow owner,
                 PlaySelectionControllerV1 controller)
             {
                 this.owner = owner;
@@ -1088,10 +1088,10 @@ namespace ShooterMover.UI.ProductionFlow
         private sealed class LevelNavigationAdapter :
             ILevelSelectionRouteAdapterV1
         {
-            private readonly ProductionFlowCoordinatorV1 owner;
+            private readonly GameFlow owner;
 
             public LevelNavigationAdapter(
-                ProductionFlowCoordinatorV1 owner)
+                GameFlow owner)
             {
                 this.owner = owner;
             }
