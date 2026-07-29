@@ -54,7 +54,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                     Attack("enemy-attack.ranged-projectile", lockedAim,
                         EnemyAttackExecutionKind.Projectile, attackAdapter),
                     Attack("enemy-attack.projectile-area", lockedAim,
-                        EnemyAttackExecutionKind.Area, attackAdapter),
+                        EnemyAttackExecutionKind.Projectile, attackAdapter),
                     Attack("enemy-attack.contact", lockedAim,
                         EnemyAttackExecutionKind.Contact, attackAdapter),
                     Attack("enemy-attack.pounce", lockedAim,

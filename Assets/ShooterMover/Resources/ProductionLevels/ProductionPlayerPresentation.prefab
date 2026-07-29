@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 21200000}
   - component: {fileID: 5000000}
   - component: {fileID: 5800000}
+  - component: {fileID: 11400000}
   m_Layer: 0
   m_Name: ProductionPlayerPresentation
   m_TagString: Untagged
@@ -101,3 +102,15 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.45
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c1c1f6ea3834af6a9658e34394c8d51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

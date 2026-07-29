@@ -226,12 +226,10 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (batch == null
                 || batch.CoreBatch == null
                 || batch.Identity == null
-                || batch.Identity.ParticipantId == null
-                || batch.CoreBatch.EffectCount != 1
-                || batch.CoreBatch.Effects.Count != 1)
+                || batch.Identity.ParticipantId == null)
             {
                 return WeaponEffectBatchSinkResult.Reject(
-                    "canonical-projectile-batch-single-effect-required");
+                    "canonical-projectile-batch-invalid");
             }
 
             BoundGunSource gunSource;
@@ -241,7 +239,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     "canonical-projectile-source-identity-mismatch");
             }
 
-            string key = batch.Identity.ToCanonicalString();
+            string key = FireKey(batch.Identity);
             string retainedFingerprint;
             if (accepted.TryGetValue(key, out retainedFingerprint))
             {
@@ -254,73 +252,86 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         "canonical-projectile-batch-conflicting-duplicate");
             }
 
-            ProjectileLaunchEffect effect =
-                batch.CoreBatch.Effects[0] as ProjectileLaunchEffect;
-            if (effect == null
-                || effect.Identity == null
-                || !string.Equals(
-                    effect.Identity.ToCanonicalString(),
-                    key,
-                    StringComparison.Ordinal))
+            var effects = new List<ProjectileLaunchEffect>(batch.EffectCount);
+            for (int index = 0; index < batch.CoreBatch.Effects.Count; index++)
             {
-                return WeaponEffectBatchSinkResult.Reject(
-                    "canonical-projectile-effect-identity-mismatch");
+                ProjectileLaunchEffect effect =
+                    batch.CoreBatch.Effects[index] as ProjectileLaunchEffect;
+                if (effect == null)
+                {
+                    return WeaponEffectBatchSinkResult.Reject(
+                        "canonical-projectile-launch-required");
+                }
+
+                string rejectionCode;
+                if (!IsSupported(effect, out rejectionCode))
+                {
+                    return WeaponEffectBatchSinkResult.Reject(rejectionCode);
+                }
+                effects.Add(effect);
             }
 
-            string rejectionCode;
-            if (!IsSupported(effect, out rejectionCode))
-            {
-                return WeaponEffectBatchSinkResult.Reject(rejectionCode);
-            }
-
-            GameObject projectileObject = null;
+            var projectileObjects = new List<GameObject>(effects.Count);
+            var projectiles = new List<NormalProjectile2D>(effects.Count);
             try
             {
                 EnsureSprite();
-                projectileObject = new GameObject(
-                    "CanonicalPlayerProjectile_"
-                    + effect.Identity.ShotSequence.ToString(
-                        CultureInfo.InvariantCulture)
-                    + "_" + effect.Identity.ProjectileOrdinal.Value.ToString(
-                        CultureInfo.InvariantCulture));
-                SceneManager.MoveGameObjectToScene(
-                    projectileObject,
-                    gameObject.scene);
-                projectileObject.SetActive(false);
-
-                ProjectileSourceIdentity2D identityProjection =
-                    projectileObject.AddComponent<
-                        ProjectileSourceIdentity2D>();
-                if (!identityProjection.TryBind(
-                        sourceActorId,
-                        sourceParticipantId ?? batch.Identity.ParticipantId,
-                        sourceLifecycle,
-                        gunSource.MountStableId,
-                        gunSource.EquipmentInstanceId,
-                        gunSource.WeaponDefinitionId))
+                for (int index = 0; index < effects.Count; index++)
                 {
-                    throw new InvalidOperationException(
-                        "canonical-projectile-source-projection-rejected");
+                    ProjectileLaunchEffect effect = effects[index];
+                    GameObject projectileObject = new GameObject(
+                        "CanonicalPlayerProjectile_"
+                        + effect.Identity.ShotSequence.ToString(
+                            CultureInfo.InvariantCulture)
+                        + "_" + effect.Identity.ProjectileOrdinal.Value.ToString(
+                            CultureInfo.InvariantCulture));
+                    projectileObjects.Add(projectileObject);
+                    SceneManager.MoveGameObjectToScene(
+                        projectileObject,
+                        gameObject.scene);
+                    projectileObject.SetActive(false);
+
+                    ProjectileSourceIdentity2D identityProjection =
+                        projectileObject.AddComponent<
+                            ProjectileSourceIdentity2D>();
+                    if (!identityProjection.TryBind(
+                            sourceActorId,
+                            sourceParticipantId ?? batch.Identity.ParticipantId,
+                            sourceLifecycle,
+                            gunSource.MountStableId,
+                            gunSource.EquipmentInstanceId,
+                            gunSource.WeaponDefinitionId))
+                    {
+                        throw new InvalidOperationException(
+                            "canonical-projectile-source-projection-rejected");
+                    }
+
+                    NormalProjectile2D projectile =
+                        projectileObject.AddComponent<NormalProjectile2D>();
+                    projectiles.Add(projectile);
+                    if (!projectile.TryConfigure(
+                            effect,
+                            sprite,
+                            transform,
+                            HandleProjectileCompleted))
+                    {
+                        throw new InvalidOperationException(
+                            "canonical-projectile-configuration-rejected");
+                    }
                 }
 
-                NormalProjectile2D projectile =
-                    projectileObject.AddComponent<
-                        NormalProjectile2D>();
-                if (!projectile.TryConfigure(
-                        effect,
-                        sprite,
-                        transform,
-                        HandleProjectileCompleted))
+                for (int index = 0; index < projectiles.Count; index++)
                 {
-                    throw new InvalidOperationException(
-                        "canonical-projectile-configuration-rejected");
+                    active.Add(projectiles[index]);
+                    projectileObjects[index].SetActive(true);
                 }
-                active.Add(projectile);
-                projectileObject.SetActive(true);
-                if (!projectile.BeginEmission())
+                for (int index = 0; index < projectiles.Count; index++)
                 {
-                    throw new InvalidOperationException(
-                        "canonical-projectile-emission-rejected");
+                    if (!projectiles[index].BeginEmission())
+                    {
+                        throw new InvalidOperationException(
+                            "canonical-projectile-emission-rejected");
+                    }
                 }
 
                 RetainAccepted(key, batch.Fingerprint);
@@ -332,15 +343,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
             catch (Exception exception)
             {
-                if (projectileObject != null)
-                {
-                    NormalProjectile2D projectile =
-                        projectileObject.GetComponent<
-                            NormalProjectile2D>();
-                    if (projectile != null) active.Remove(projectile);
-                    projectileObject.SetActive(false);
-                    Destroy(projectileObject);
-                }
+                CleanupStagedProjectiles(projectileObjects, projectiles);
                 if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                 Debug.LogError(
                     "canonical-projectile-batch-staging-failed:"
@@ -388,6 +391,17 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             return true;
         }
 
+        private static string FireKey(WeaponEffectIdentity identity)
+        {
+            return identity.ActorId + "|"
+                + identity.ParticipantId + "|"
+                + identity.EquipmentInstanceId + "|"
+                + identity.WeaponDefinitionId + "|"
+                + identity.FireOperationId + "|"
+                + identity.LifecycleGeneration + "|"
+                + identity.ShotSequence.ToString(CultureInfo.InvariantCulture);
+        }
+
         private static string SourceKey(EquipmentInstanceId equipmentInstanceId)
         {
             return equipmentInstanceId.Value.ToString();
@@ -400,6 +414,24 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             while (acceptedOrder.Count > ReceiptCapacity)
             {
                 accepted.Remove(acceptedOrder.Dequeue());
+            }
+        }
+
+        private void CleanupStagedProjectiles(
+            IList<GameObject> projectileObjects,
+            IList<NormalProjectile2D> projectiles)
+        {
+            for (int index = 0; index < projectiles.Count; index++)
+            {
+                NormalProjectile2D projectile = projectiles[index];
+                if (projectile != null) active.Remove(projectile);
+            }
+            for (int index = 0; index < projectileObjects.Count; index++)
+            {
+                GameObject projectileObject = projectileObjects[index];
+                if (projectileObject == null) continue;
+                projectileObject.SetActive(false);
+                Destroy(projectileObject);
             }
         }
 
