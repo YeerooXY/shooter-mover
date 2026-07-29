@@ -180,7 +180,7 @@ namespace ShooterMover.UI.ProductionFlow
             Func<EnemyTerminalDropFactConsumer> consumerFactory = delegate
             {
                 var personalGeneration = new PersonalRewardGenerationActions(
-                    new ParticipantDropPacingState(
+                    new ParticipantDropPacing(
                         new RunSessionParticipantDropPacingStateStore(run)));
                 var deliveryOutbox =
                     new RunSessionPersonalRewardDeliveryOutbox(run);

@@ -114,7 +114,7 @@ namespace ShooterMover.Application.Missions.Rooms
                     previous);
             }
 
-            RoomLiveOperationResult occupancy =
+            RoomOccupancyResult occupancy =
                 traversal.OccupancyAuthority.ReportTerminal(
                     new ReportRoomOccupantTerminalCommand(
                         RuntimeInstanceStableId,
@@ -123,7 +123,7 @@ namespace ShooterMover.Application.Missions.Rooms
                         roomStableId,
                         occupantInstanceStableId));
             operationJournal.Record(operationStableId, payload);
-            if (occupancy.Status == RoomLiveOperationStatus.Rejected)
+            if (occupancy.Status == RoomOccupancyStatus.Rejected)
             {
                 return Result(
                     RoomLiveOperationStatus.Rejected,
@@ -131,7 +131,7 @@ namespace ShooterMover.Application.Missions.Rooms
                     previous);
             }
 
-            if (occupancy.Status != RoomLiveOperationStatus.Applied)
+            if (occupancy.Status != RoomOccupancyStatus.Applied)
             {
                 RefreshProjection();
                 return Result(RoomLiveOperationStatus.NoChange, string.Empty, previous);
@@ -333,10 +333,10 @@ namespace ShooterMover.Application.Missions.Rooms
                     previous);
             }
 
-            RoomLiveOperationResult occupancy = traversal.Restart(
+            RoomOccupancyResult occupancy = traversal.Restart(
                 InternalOperation(operationStableId, "occupancy-restart"));
             operationJournal.Record(operationStableId, payload);
-            if (occupancy.Status == RoomLiveOperationStatus.Rejected)
+            if (occupancy.Status == RoomOccupancyStatus.Rejected)
             {
                 return Result(
                     RoomLiveOperationStatus.Rejected,
@@ -367,7 +367,7 @@ namespace ShooterMover.Application.Missions.Rooms
                     placement.ClearRole));
             }
 
-            RoomLiveOperationResult result =
+            RoomOccupancyResult result =
                 traversal.OccupancyAuthority.RegisterOccupants(
                     new RegisterRoomOccupantsCommand(
                         RuntimeInstanceStableId,
@@ -376,7 +376,7 @@ namespace ShooterMover.Application.Missions.Rooms
                         traversal.OccupancyAuthority.CurrentProjection.LifecycleGeneration,
                         room.RoomStableId,
                         occupants));
-            if (result.Status != RoomLiveOperationStatus.Applied)
+            if (result.Status != RoomOccupancyStatus.Applied)
             {
                 throw new InvalidOperationException(
                     "Authored room occupancy registration failed: "

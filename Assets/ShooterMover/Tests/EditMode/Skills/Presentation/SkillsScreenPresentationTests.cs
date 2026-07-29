@@ -18,7 +18,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Projection_DisplaysXpTotalsAndAllDefinitionFields()
         {
-            PlayerExperienceState experience = CreateExperience(7);
+            PlayerExperience experience = CreateExperience(7);
             var skills = new SkillProgressionState(
                 SkillCatalog.CreateDefault(),
                 1);
@@ -48,7 +48,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Allocation_UsesRealAuthorityAndDuplicateOperationDoesNotSpendTwice()
         {
-            PlayerExperienceState experience = CreateExperience(4);
+            PlayerExperience experience = CreateExperience(4);
             var skills = new SkillProgressionState(
                 SkillCatalog.CreateDefault(),
                 experience.CurrentState.Level);
@@ -76,7 +76,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Projection_ReportsLockedAvailablePurchasedAndCappedStates()
         {
-            PlayerExperienceState experience = CreateExperience(10);
+            PlayerExperience experience = CreateExperience(10);
             var skills = new SkillProgressionState(
                 SkillCatalog.CreateDefault(),
                 experience.CurrentState.Level);
@@ -129,7 +129,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Allocation_ReportsInsufficientPoints()
         {
-            PlayerExperienceState experience = CreateExperience(1);
+            PlayerExperience experience = CreateExperience(1);
             var session = new SkillsScreenSession(
                 CreateRoute(),
                 experience,
@@ -154,7 +154,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Allocation_ReportsMaxRankWithoutChangingSequence()
         {
-            PlayerExperienceState experience = CreateExperience(10);
+            PlayerExperience experience = CreateExperience(10);
             var session = new SkillsScreenSession(
                 CreateRoute(),
                 experience,
@@ -179,7 +179,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void BackAndRevisit_PreserveExactPayloadAndAuthorityState()
         {
-            PlayerExperienceState experience = CreateExperience(3);
+            PlayerExperience experience = CreateExperience(3);
             var skills = new SkillProgressionState(SkillCatalog.CreateDefault(), 3);
             PlayerRouteProfilePayload route = CreateRoute();
             string originalFingerprint = route.Fingerprint;
@@ -199,14 +199,14 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             Assert.That(revisit.CurrentProjection.AvailableSkillPoints, Is.EqualTo(2));
         }
 
-        private static PlayerExperienceState CreateExperience(int level)
+        private static PlayerExperience CreateExperience(int level)
         {
             var curve = new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
-            var authority = new PlayerExperienceState(
+            var authority = new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     1,

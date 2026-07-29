@@ -19,7 +19,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Projection_UsesXpAwardedPointsAndRankedV2State()
         {
-            PlayerExperienceState experience = CreateExperience(4);
+            PlayerExperience experience = CreateExperience(4);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             RankedSkillAllocationState authority = CreateAuthority(catalog);
             var persistence = new RecordingPersistence();
@@ -48,7 +48,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void AcceptedAllocation_PersistsRefreshesAndRestoresOnRevisit()
         {
-            PlayerExperienceState experience = CreateExperience(3);
+            PlayerExperience experience = CreateExperience(3);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             RankedSkillAllocationState authority = CreateAuthority(catalog);
             var persistence = new RecordingPersistence();
@@ -98,7 +98,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void InvalidPrerequisiteAndCap_AreRejectedWithoutPersistence()
         {
-            PlayerExperienceState experience = CreateExperience(10);
+            PlayerExperience experience = CreateExperience(10);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             RankedSkillAllocationState authority = CreateAuthority(catalog);
             var persistence = new RecordingPersistence();
@@ -133,7 +133,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void RejectedPersistence_RollsBackReceiptAndRetryAppliesOnce()
         {
-            PlayerExperienceState experience = CreateExperience(2);
+            PlayerExperience experience = CreateExperience(2);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             RankedSkillAllocationState authority = CreateAuthority(catalog);
             var persistence = new RecordingPersistence
@@ -164,7 +164,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void ThrowingPersistence_RollsBackAuthoritativeRank()
         {
-            PlayerExperienceState experience = CreateExperience(2);
+            PlayerExperience experience = CreateExperience(2);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             RankedSkillAllocationState authority = CreateAuthority(catalog);
             var persistence = new RecordingPersistence
@@ -189,7 +189,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void UnverifiedCommit_DoesNotRollBackOrRetryInSameSession()
         {
-            PlayerExperienceState experience = CreateExperience(2);
+            PlayerExperience experience = CreateExperience(2);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             RankedSkillAllocationState authority = CreateAuthority(catalog);
             var persistence = new RecordingPersistence
@@ -261,7 +261,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void StaleCatalogVersion_FailsClosedWithoutSession()
         {
-            PlayerExperienceState experience = CreateExperience(2);
+            PlayerExperience experience = CreateExperience(2);
             RankedSkillCatalog catalog = RankedSkillSampleCatalog.Create();
             var authority = new RankedSkillAllocationState(catalog);
             authority.Seed(new RankedSkillAllocationSnapshot(
@@ -290,7 +290,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         }
 
         private static RankedSkillsScreenSession CreateSession(
-            PlayerExperienceState experience,
+            PlayerExperience experience,
             RankedSkillAllocationState authority,
             IRankedSkillsPersistencePort persistence)
         {
@@ -320,14 +320,14 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             return authority;
         }
 
-        private static PlayerExperienceState CreateExperience(int level)
+        private static PlayerExperience CreateExperience(int level)
         {
             var curve = new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
-            var authority = new PlayerExperienceState(
+            var authority = new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     1,

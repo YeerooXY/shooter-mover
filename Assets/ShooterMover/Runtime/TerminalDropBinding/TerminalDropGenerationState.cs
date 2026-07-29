@@ -71,7 +71,7 @@ namespace ShooterMover.TerminalDropBinding
             PersonalRewardGenerationActions generation =
                 personalGenerationService
                 ?? new PersonalRewardGenerationActions(
-                    new ParticipantDropPacingState());
+                    new ParticipantDropPacing());
             personal = new TerminalPersonalRewardGenerationState(
                 adapters,
                 runContexts,

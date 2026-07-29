@@ -34,7 +34,7 @@ namespace ShooterMover.Application.Missions.Rooms
     internal sealed class RoomTraversalFlow
     {
         private readonly StableId runtimeInstanceStableId;
-        private readonly RoomOccupancyState occupancyAuthority;
+        private readonly RoomOccupancy occupancyAuthority;
         private readonly RoomMissionLayout missionLayout;
 
         public RoomTraversalFlow(
@@ -44,13 +44,13 @@ namespace ShooterMover.Application.Missions.Rooms
             this.runtimeInstanceStableId = runtimeInstanceStableId
                 ?? throw new ArgumentNullException(nameof(runtimeInstanceStableId));
             if (definition == null) throw new ArgumentNullException(nameof(definition));
-            occupancyAuthority = new RoomOccupancyState(
+            occupancyAuthority = new RoomOccupancy(
                 runtimeInstanceStableId,
                 definition.RoomGraphDefinition);
             missionLayout = new RoomMissionLayout(definition.RoomGraphDefinition);
         }
 
-        internal RoomOccupancyState OccupancyAuthority
+        internal RoomOccupancy OccupancyAuthority
         {
             get { return occupancyAuthority; }
         }
@@ -92,14 +92,14 @@ namespace ShooterMover.Application.Missions.Rooms
                     null);
             }
 
-            RoomLiveOperationResult activation = occupancyAuthority.ActivateRoom(
+            RoomOccupancyResult activation = occupancyAuthority.ActivateRoom(
                 new ActivateRoomCommand(
                     runtimeInstanceStableId,
                     occupancyOperationStableId,
                     occupancyAuthority.CurrentProjection.LifecycleGeneration,
                     exit.TargetRoomStableId));
-            if (activation.Status != RoomLiveOperationStatus.Applied
-                && activation.Status != RoomLiveOperationStatus.NoChange)
+            if (activation.Status != RoomOccupancyStatus.Applied
+                && activation.Status != RoomOccupancyStatus.NoChange)
             {
                 throw new InvalidOperationException(
                     "Room layout traversal and occupancy activation diverged: "
@@ -113,15 +113,15 @@ namespace ShooterMover.Application.Missions.Rooms
                 exit.TargetSpawnPointStableId);
         }
 
-        public RoomLiveOperationResult Restart(
+        public RoomOccupancyResult Restart(
             StableId occupancyOperationStableId)
         {
-            RoomLiveOperationResult occupancy = occupancyAuthority.Restart(
-                new RestartRoomLiveCommand(
+            RoomOccupancyResult occupancy = occupancyAuthority.Restart(
+                new RestartRoomOccupancyCommand(
                     runtimeInstanceStableId,
                     occupancyOperationStableId,
                     occupancyAuthority.CurrentProjection.LifecycleGeneration));
-            if (occupancy.Status != RoomLiveOperationStatus.Rejected)
+            if (occupancy.Status != RoomOccupancyStatus.Rejected)
             {
                 missionLayout.Restart();
             }

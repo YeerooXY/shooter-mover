@@ -12,8 +12,8 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
 {
     public sealed class CriticalHitOrdinalTests
     {
-        private readonly CombatHitPolicy hitPolicy =
-            new CombatHitPolicy(CombatHitPolicyRegistry.CreateDefault());
+        private readonly CombatHitRules hitPolicy =
+            new CombatHitRules(CombatHitPolicyRegistry.CreateDefault());
 
         [Test]
         public void SameShotAndTarget_DifferentHitOrdinal_ChangesRollDomain()

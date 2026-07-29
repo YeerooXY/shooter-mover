@@ -14,15 +14,15 @@ namespace ShooterMover.Application.Missions.Rooms
     /// lifecycle restart, and immutable exit eligibility projections. It deliberately
     /// does not traverse the graph or decide mission completion.
     /// </summary>
-    public sealed class RoomOccupancyState : IRoomLiveState
+    public sealed class RoomOccupancy : IRoomOccupancy
     {
         private readonly Dictionary<StableId, MutableRoomState> rooms;
         private readonly Dictionary<StableId, string> operationPayloads;
         private long lifecycleGeneration;
         private long sequence;
-        private RoomLiveView currentProjection;
+        private RoomOccupancySnapshot currentProjection;
 
-        public RoomOccupancyState(
+        public RoomOccupancy(
             StableId runtimeInstanceStableId,
             RoomGraphDefinition definition,
             long initialLifecycleGeneration = 1L)
@@ -57,7 +57,7 @@ namespace ShooterMover.Application.Missions.Rooms
 
         public RoomGraphDefinition Definition { get; }
 
-        public RoomLiveView CurrentProjection
+        public RoomOccupancySnapshot CurrentProjection
         {
             get { return currentProjection; }
         }
@@ -67,7 +67,7 @@ namespace ShooterMover.Application.Missions.Rooms
             return currentProjection.GetRoom(roomStableId);
         }
 
-        public RoomLiveOperationResult RegisterOccupants(
+        public RoomOccupancyResult RegisterOccupants(
             RegisterRoomOccupantsCommand command)
         {
             if (command == null)
@@ -89,7 +89,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RejectedResult("room-operation-id-conflict");
             }
 
-            RoomLiveView previous = currentProjection;
+            RoomOccupancySnapshot previous = currentProjection;
             string commonRejection = ValidateCommon(
                 command.RuntimeInstanceStableId,
                 command.LifecycleGeneration);
@@ -98,7 +98,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     commonRejection,
                     previous,
                     null);
@@ -110,7 +110,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-room-unknown",
                     previous,
                     null);
@@ -121,7 +121,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-occupancy-already-registered",
                     previous,
                     null);
@@ -137,7 +137,7 @@ namespace ShooterMover.Application.Missions.Rooms
                     return RecordResult(
                         command.OperationStableId,
                         payload,
-                        RoomLiveOperationStatus.Rejected,
+                        RoomOccupancyStatus.Rejected,
                         "room-runtime-occupant-null",
                         previous,
                         null);
@@ -148,7 +148,7 @@ namespace ShooterMover.Application.Missions.Rooms
                     return RecordResult(
                         command.OperationStableId,
                         payload,
-                        RoomLiveOperationStatus.Rejected,
+                        RoomOccupancyStatus.Rejected,
                         "room-runtime-occupant-entity-duplicate",
                         previous,
                         null);
@@ -173,13 +173,13 @@ namespace ShooterMover.Application.Missions.Rooms
             return RecordResult(
                 command.OperationStableId,
                 payload,
-                RoomLiveOperationStatus.Applied,
+                RoomOccupancyStatus.Applied,
                 string.Empty,
                 previous,
                 transition);
         }
 
-        public RoomLiveOperationResult ActivateRoom(
+        public RoomOccupancyResult ActivateRoom(
             ActivateRoomCommand command)
         {
             if (command == null)
@@ -201,7 +201,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RejectedResult("room-operation-id-conflict");
             }
 
-            RoomLiveView previous = currentProjection;
+            RoomOccupancySnapshot previous = currentProjection;
             string commonRejection = ValidateCommon(
                 command.RuntimeInstanceStableId,
                 command.LifecycleGeneration);
@@ -210,7 +210,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     commonRejection,
                     previous,
                     null);
@@ -222,7 +222,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-room-unknown",
                     previous,
                     null);
@@ -233,7 +233,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-occupancy-not-registered",
                     previous,
                     null);
@@ -244,7 +244,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.NoChange,
+                    RoomOccupancyStatus.NoChange,
                     "room-runtime-room-already-active",
                     previous,
                     null);
@@ -261,13 +261,13 @@ namespace ShooterMover.Application.Missions.Rooms
             return RecordResult(
                 command.OperationStableId,
                 payload,
-                RoomLiveOperationStatus.Applied,
+                RoomOccupancyStatus.Applied,
                 string.Empty,
                 previous,
                 null);
         }
 
-        public RoomLiveOperationResult ReportTerminal(
+        public RoomOccupancyResult ReportTerminal(
             ReportRoomOccupantTerminalCommand command)
         {
             if (command == null)
@@ -289,7 +289,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RejectedResult("room-operation-id-conflict");
             }
 
-            RoomLiveView previous = currentProjection;
+            RoomOccupancySnapshot previous = currentProjection;
             string commonRejection = ValidateCommon(
                 command.RuntimeInstanceStableId,
                 command.LifecycleGeneration);
@@ -298,7 +298,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     commonRejection,
                     previous,
                     null);
@@ -310,7 +310,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-room-unknown",
                     previous,
                     null);
@@ -321,7 +321,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-occupancy-not-registered",
                     previous,
                     null);
@@ -335,7 +335,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-occupant-unknown",
                     previous,
                     null);
@@ -346,7 +346,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.NoChange,
+                    RoomOccupancyStatus.NoChange,
                     "room-runtime-occupant-already-terminal",
                     previous,
                     null);
@@ -368,14 +368,14 @@ namespace ShooterMover.Application.Missions.Rooms
             return RecordResult(
                 command.OperationStableId,
                 payload,
-                RoomLiveOperationStatus.Applied,
+                RoomOccupancyStatus.Applied,
                 string.Empty,
                 previous,
                 transition);
         }
 
-        public RoomLiveOperationResult Restart(
-            RestartRoomLiveCommand command)
+        public RoomOccupancyResult Restart(
+            RestartRoomOccupancyCommand command)
         {
             if (command == null)
             {
@@ -396,7 +396,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RejectedResult("room-operation-id-conflict");
             }
 
-            RoomLiveView previous = currentProjection;
+            RoomOccupancySnapshot previous = currentProjection;
             string commonRejection = ValidateCommon(
                 command.RuntimeInstanceStableId,
                 command.LifecycleGeneration);
@@ -405,7 +405,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     commonRejection,
                     previous,
                     null);
@@ -416,7 +416,7 @@ namespace ShooterMover.Application.Missions.Rooms
                 return RecordResult(
                     command.OperationStableId,
                     payload,
-                    RoomLiveOperationStatus.Rejected,
+                    RoomOccupancyStatus.Rejected,
                     "room-runtime-generation-exhausted",
                     previous,
                     null);
@@ -434,7 +434,7 @@ namespace ShooterMover.Application.Missions.Rooms
             return RecordResult(
                 command.OperationStableId,
                 payload,
-                RoomLiveOperationStatus.Applied,
+                RoomOccupancyStatus.Applied,
                 string.Empty,
                 previous,
                 null);
@@ -472,16 +472,16 @@ namespace ShooterMover.Application.Missions.Rooms
                 : OperationInspection.Conflict;
         }
 
-        private RoomLiveOperationResult RecordResult(
+        private RoomOccupancyResult RecordResult(
             StableId operationStableId,
             string payload,
-            RoomLiveOperationStatus status,
+            RoomOccupancyStatus status,
             string rejectionCode,
-            RoomLiveView previous,
+            RoomOccupancySnapshot previous,
             RoomClearTransition transition)
         {
             operationPayloads.Add(operationStableId, payload);
-            return new RoomLiveOperationResult(
+            return new RoomOccupancyResult(
                 status,
                 rejectionCode,
                 previous,
@@ -489,20 +489,20 @@ namespace ShooterMover.Application.Missions.Rooms
                 transition);
         }
 
-        private RoomLiveOperationResult DuplicateResult()
+        private RoomOccupancyResult DuplicateResult()
         {
-            return new RoomLiveOperationResult(
-                RoomLiveOperationStatus.DuplicateNoChange,
+            return new RoomOccupancyResult(
+                RoomOccupancyStatus.DuplicateNoChange,
                 "room-operation-duplicate",
                 currentProjection,
                 currentProjection,
                 null);
         }
 
-        private RoomLiveOperationResult RejectedResult(string rejectionCode)
+        private RoomOccupancyResult RejectedResult(string rejectionCode)
         {
-            return new RoomLiveOperationResult(
-                RoomLiveOperationStatus.Rejected,
+            return new RoomOccupancyResult(
+                RoomOccupancyStatus.Rejected,
                 rejectionCode,
                 currentProjection,
                 currentProjection,
@@ -553,7 +553,7 @@ namespace ShooterMover.Application.Missions.Rooms
                     projectedExits));
             }
 
-            currentProjection = new RoomLiveView(
+            currentProjection = new RoomOccupancySnapshot(
                 RuntimeInstanceStableId,
                 Definition.LayoutStableId,
                 Definition.Fingerprint,
@@ -626,7 +626,7 @@ namespace ShooterMover.Application.Missions.Rooms
             return builder.ToString();
         }
 
-        private static string BuildRestartPayload(RestartRoomLiveCommand command)
+        private static string BuildRestartPayload(RestartRoomOccupancyCommand command)
         {
             var builder = new StringBuilder();
             AppendCommon(

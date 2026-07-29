@@ -9,21 +9,21 @@ using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Tests.EditMode.Missions.Rooms
 {
-    public sealed class RoomOccupancyStateTests
+    public sealed class RoomOccupancyTests
     {
         [Test]
         public void ZeroOccupants_ClearImmediatelyAndEnableActiveConnectedExit()
         {
-            RoomOccupancyState authority = CreateAuthority("zero");
+            RoomOccupancy authority = CreateAuthority("zero");
 
-            RoomLiveOperationResult result = Register(
+            RoomOccupancyResult result = Register(
                 authority,
                 "register-zero",
                 EntryRoom,
                 Array.Empty<RoomOccupantRegistration>());
 
             RoomOccupancyView room = authority.GetRoomProjection(EntryRoom);
-            Assert.That(result.Status, Is.EqualTo(RoomLiveOperationStatus.Applied));
+            Assert.That(result.Status, Is.EqualTo(RoomOccupancyStatus.Applied));
             Assert.That(result.ClearTransition, Is.Not.Null);
             Assert.That(room.IsActive, Is.True);
             Assert.That(room.IsOccupancyRegistered, Is.True);
@@ -35,7 +35,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void OneRequiredOccupant_BlocksUntilItsIdentityIsTerminal()
         {
-            RoomOccupancyState authority = CreateAuthority("one");
+            RoomOccupancy authority = CreateAuthority("one");
             RoomOccupantRegistration required = Occupant(
                 "required-one",
                 "mobile-droid",
@@ -46,14 +46,14 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             Assert.That(before.IsCleared, Is.False);
             Assert.That(before.IsExitEligible(ForwardExit), Is.False);
 
-            RoomLiveOperationResult terminal = Terminal(
+            RoomOccupancyResult terminal = Terminal(
                 authority,
                 "terminal-one",
                 EntryRoom,
                 required.EntityStableId);
 
             RoomOccupancyView after = authority.GetRoomProjection(EntryRoom);
-            Assert.That(terminal.Status, Is.EqualTo(RoomLiveOperationStatus.Applied));
+            Assert.That(terminal.Status, Is.EqualTo(RoomOccupancyStatus.Applied));
             Assert.That(terminal.ClearTransition, Is.Not.Null);
             Assert.That(after.IsCleared, Is.True);
             Assert.That(after.Occupants[0].IsTerminal, Is.True);
@@ -63,7 +63,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void ManyOccupants_OnlyRequiredEnemyAndObjectiveBlockClear()
         {
-            RoomOccupancyState authority = CreateAuthority("many");
+            RoomOccupancy authority = CreateAuthority("many");
             RoomOccupantRegistration required = Occupant(
                 "required-many",
                 "enemy-type-a",
@@ -104,7 +104,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 authority.GetRoomProjection(EntryRoom).IsCleared,
                 Is.False);
 
-            RoomLiveOperationResult final = Terminal(
+            RoomOccupancyResult final = Terminal(
                 authority,
                 "terminal-objective",
                 EntryRoom,
@@ -118,7 +118,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void DuplicateTerminalNotification_IsIdempotent()
         {
-            RoomOccupancyState authority = CreateAuthority("duplicate");
+            RoomOccupancy authority = CreateAuthority("duplicate");
             RoomOccupantRegistration required = Occupant(
                 "duplicate-target",
                 "shared-definition",
@@ -131,15 +131,15 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 EntryRoom,
                 required.EntityStableId);
 
-            RoomLiveOperationResult first = authority.ReportTerminal(command);
+            RoomOccupancyResult first = authority.ReportTerminal(command);
             long sequenceAfterFirst = authority.CurrentProjection.Sequence;
-            RoomLiveOperationResult duplicate = authority.ReportTerminal(command);
+            RoomOccupancyResult duplicate = authority.ReportTerminal(command);
 
-            Assert.That(first.Status, Is.EqualTo(RoomLiveOperationStatus.Applied));
+            Assert.That(first.Status, Is.EqualTo(RoomOccupancyStatus.Applied));
             Assert.That(first.ClearTransition, Is.Not.Null);
             Assert.That(
                 duplicate.Status,
-                Is.EqualTo(RoomLiveOperationStatus.DuplicateNoChange));
+                Is.EqualTo(RoomOccupancyStatus.DuplicateNoChange));
             Assert.That(duplicate.ClearTransition, Is.Null);
             Assert.That(authority.CurrentProjection.Sequence, Is.EqualTo(sequenceAfterFirst));
             Assert.That(
@@ -150,7 +150,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void ConflictingOperationIdentity_IsRejectedWithoutMutation()
         {
-            RoomOccupancyState authority = CreateAuthority("conflict");
+            RoomOccupancy authority = CreateAuthority("conflict");
             RoomOccupantRegistration firstOccupant = Occupant(
                 "conflict-first",
                 "shared-definition",
@@ -174,7 +174,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 firstOccupant.EntityStableId));
             long beforeConflict = authority.CurrentProjection.Sequence;
 
-            RoomLiveOperationResult conflict = authority.ReportTerminal(
+            RoomOccupancyResult conflict = authority.ReportTerminal(
                 new ReportRoomOccupantTerminalCommand(
                     authority.RuntimeInstanceStableId,
                     operation,
@@ -182,7 +182,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                     EntryRoom,
                     secondOccupant.EntityStableId));
 
-            Assert.That(conflict.Status, Is.EqualTo(RoomLiveOperationStatus.Rejected));
+            Assert.That(conflict.Status, Is.EqualTo(RoomOccupancyStatus.Rejected));
             Assert.That(conflict.RejectionCode, Is.EqualTo("room-operation-id-conflict"));
             Assert.That(authority.CurrentProjection.Sequence, Is.EqualTo(beforeConflict));
             RoomOccupancyView room = authority.GetRoomProjection(EntryRoom);
@@ -194,7 +194,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void LeaveAndReturn_PreservesTerminalOccupantsWithinSameRun()
         {
-            RoomOccupancyState authority = CreateAuthority("retained");
+            RoomOccupancy authority = CreateAuthority("retained");
             RoomOccupantRegistration entryEnemy = Occupant(
                 "retained-entry",
                 "entry-enemy",
@@ -227,7 +227,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void Restart_IncrementsGenerationAndRestoresAuthoredInitialState()
         {
-            RoomOccupancyState authority = CreateAuthority("restart");
+            RoomOccupancy authority = CreateAuthority("restart");
             RoomOccupantRegistration required = Occupant(
                 "restart-required",
                 "restart-definition",
@@ -248,13 +248,13 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 required.EntityStableId);
             Activate(authority, "activate-before-restart", TerminalRoom);
 
-            RoomLiveOperationResult restart = authority.Restart(
-                new RestartRoomLiveCommand(
+            RoomOccupancyResult restart = authority.Restart(
+                new RestartRoomOccupancyCommand(
                     authority.RuntimeInstanceStableId,
                     Operation("restart-runtime"),
                     1L));
 
-            Assert.That(restart.Status, Is.EqualTo(RoomLiveOperationStatus.Applied));
+            Assert.That(restart.Status, Is.EqualTo(RoomOccupancyStatus.Applied));
             Assert.That(authority.CurrentProjection.LifecycleGeneration, Is.EqualTo(2L));
             RoomOccupancyView entry = authority.GetRoomProjection(EntryRoom);
             Assert.That(entry.IsActive, Is.True);
@@ -265,22 +265,22 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             Assert.That(terminal.IsCleared, Is.True);
             Assert.That(terminal.ConnectedExits[0].IsEligible, Is.False);
 
-            RoomLiveOperationResult stale = authority.ReportTerminal(
+            RoomOccupancyResult stale = authority.ReportTerminal(
                 new ReportRoomOccupantTerminalCommand(
                     authority.RuntimeInstanceStableId,
                     Operation("stale-after-restart"),
                     1L,
                     EntryRoom,
                     required.EntityStableId));
-            Assert.That(stale.Status, Is.EqualTo(RoomLiveOperationStatus.Rejected));
+            Assert.That(stale.Status, Is.EqualTo(RoomOccupancyStatus.Rejected));
             Assert.That(stale.RejectionCode, Is.EqualTo("room-runtime-generation-stale"));
         }
 
         [Test]
         public void MultipleRuntimeInstances_DoNotShareOccupantState()
         {
-            RoomOccupancyState first = CreateAuthority("instance-a");
-            RoomOccupancyState second = CreateAuthority("instance-b");
+            RoomOccupancy first = CreateAuthority("instance-a");
+            RoomOccupancy second = CreateAuthority("instance-b");
             RoomOccupantRegistration shared = Occupant(
                 "same-entity-id",
                 "same-definition-id",
@@ -300,7 +300,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void IdenticalDefinitions_WithDistinctEntityIdentitiesRemainIndependent()
         {
-            RoomOccupancyState authority = CreateAuthority("identity");
+            RoomOccupancy authority = CreateAuthority("identity");
             StableId sharedDefinition = Definition("identical-definition");
             RoomOccupantRegistration first = new RoomOccupantRegistration(
                 Entity("identity-first"),
@@ -327,7 +327,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void InactiveRoom_RetainsTerminalFactsButDoesNotEnableItsExit()
         {
-            RoomOccupancyState authority = CreateAuthority("inactive");
+            RoomOccupancy authority = CreateAuthority("inactive");
             RoomOccupantRegistration terminalEnemy = Occupant(
                 "inactive-terminal-enemy",
                 "inactive-definition",
@@ -358,7 +358,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void ExitEligibility_ContainsOnlyGraphConnectedExits()
         {
-            RoomOccupancyState authority = CreateAuthority("exits");
+            RoomOccupancy authority = CreateAuthority("exits");
             Register(
                 authority,
                 "register-exit-entry",
@@ -387,7 +387,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void ClearRole_NotPackageOrHierarchyName_DeterminesParticipation()
         {
-            RoomOccupancyState authority = CreateAuthority("names");
+            RoomOccupancy authority = CreateAuthority("names");
             RoomOccupantRegistration arbitraryRequired =
                 new RoomOccupantRegistration(
                     StableId.Parse("prop.switch-alpha"),
@@ -417,8 +417,8 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void RuntimeAssemblies_HaveNoUnityEngineDependency()
         {
-            AssertNoUnityReference(typeof(IRoomLiveState).Assembly);
-            AssertNoUnityReference(typeof(RoomOccupancyState).Assembly);
+            AssertNoUnityReference(typeof(IRoomOccupancy).Assembly);
+            AssertNoUnityReference(typeof(RoomOccupancy).Assembly);
         }
 
         private static StableId EntryRoom =>
@@ -433,9 +433,9 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         private static StableId ReturnExit =>
             Level1RoomGraphDefinition.ReturnExitStableId;
 
-        private static RoomOccupancyState CreateAuthority(string suffix)
+        private static RoomOccupancy CreateAuthority(string suffix)
         {
-            return new RoomOccupancyState(
+            return new RoomOccupancy(
                 StableId.Create("room-runtime", suffix),
                 Level1RoomGraphDefinition.Create());
         }
@@ -466,8 +466,8 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             return StableId.Create("operation", value);
         }
 
-        private static RoomLiveOperationResult Register(
-            RoomOccupancyState authority,
+        private static RoomOccupancyResult Register(
+            RoomOccupancy authority,
             string operation,
             StableId room,
             params RoomOccupantRegistration[] occupants)
@@ -480,8 +480,8 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 occupants));
         }
 
-        private static RoomLiveOperationResult Terminal(
-            RoomOccupancyState authority,
+        private static RoomOccupancyResult Terminal(
+            RoomOccupancy authority,
             string operation,
             StableId room,
             StableId occupant)
@@ -495,8 +495,8 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                     occupant));
         }
 
-        private static RoomLiveOperationResult Activate(
-            RoomOccupancyState authority,
+        private static RoomOccupancyResult Activate(
+            RoomOccupancy authority,
             string operation,
             StableId room)
         {

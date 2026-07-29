@@ -136,14 +136,14 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
             }
         }
 
-        private static PlayerExperienceState CreateExperience(int level)
+        private static PlayerExperience CreateExperience(int level)
         {
             var curve = new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
-            var authority = new PlayerExperienceState(
+            var authority = new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     1,

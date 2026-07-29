@@ -8,8 +8,8 @@ namespace ShooterMover.Application.Rewards.Drops
     /// <summary>Authoritative per-participant orchestration and exact retry boundary.</summary>
     public sealed class PersonalRewardGenerationActions
     {
-        private readonly ParticipantDropPacingState pacingAuthority;
-        public PersonalRewardGenerationActions(ParticipantDropPacingState pacingAuthority) { this.pacingAuthority = pacingAuthority ?? throw new ArgumentNullException(nameof(pacingAuthority)); }
+        private readonly ParticipantDropPacing pacingAuthority;
+        public PersonalRewardGenerationActions(ParticipantDropPacing pacingAuthority) { this.pacingAuthority = pacingAuthority ?? throw new ArgumentNullException(nameof(pacingAuthority)); }
         public PersonalRewardGenerationResult Generate(PersonalRewardRollContext context) { return pacingAuthority.Execute(context, delegate(ParticipantDropPacingState before) { return PersonalRewardGroupGeneration.Generate(context, before); }); }
         public IReadOnlyList<PersonalRewardGenerationResult> GenerateForParticipants(IEnumerable<PersonalRewardRollContext> participantContexts)
         {

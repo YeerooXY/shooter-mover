@@ -137,7 +137,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             public EnemyAttackPatternHitRouteResult Result { get; }
         }
 
-        private readonly ICombatHitPolicy policy;
+        private readonly ICombatHitRules policy;
         private readonly IEnemyAttackPatternCombatContext context;
         private readonly IEnemyAttackPatternDamageChannelMap channelMap;
         private readonly Dictionary<StableId, CombatHitHistorySnapshot> historyByEffect =
@@ -148,12 +148,12 @@ namespace ShooterMover.UnityAdapters.Enemies
         public EnemyAttackPatternHitRouter(
             IEnemyAttackPatternCombatContext context,
             IEnemyAttackPatternDamageChannelMap channelMap = null,
-            ICombatHitPolicy policy = null)
+            ICombatHitRules policy = null)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
             this.channelMap = channelMap ?? new BuiltInEnemyAttackPatternDamageChannelMap();
             this.policy = policy
-                ?? new CombatHitPolicy(CombatHitPolicyRegistry.CreateDefault());
+                ?? new CombatHitRules(CombatHitPolicyRegistry.CreateDefault());
         }
 
         public EnemyAttackPatternHitRouteResult RouteActorContact(

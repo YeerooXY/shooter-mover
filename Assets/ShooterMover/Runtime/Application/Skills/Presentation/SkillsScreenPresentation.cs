@@ -229,12 +229,12 @@ namespace ShooterMover.Application.Skills.Presentation
     public sealed class SkillsScreenSession
     {
         private readonly PlayerRouteProfilePayload routePayload;
-        private readonly IPlayerExperienceState experienceAuthority;
+        private readonly IPlayerExperience experienceAuthority;
         private readonly SkillProgressionState skillAuthority;
 
         public SkillsScreenSession(
             PlayerRouteProfilePayload routePayload,
-            IPlayerExperienceState experienceAuthority,
+            IPlayerExperience experienceAuthority,
             SkillProgressionState skillAuthority)
         {
             this.routePayload = routePayload

@@ -13,8 +13,8 @@ namespace ShooterMover.Tests.EditMode.CriticalHits
 {
     public sealed class CriticalHitResolutionTests
     {
-        private readonly CombatHitPolicy hitPolicy =
-            new CombatHitPolicy(CombatHitPolicyRegistry.CreateDefault());
+        private readonly CombatHitRules hitPolicy =
+            new CombatHitRules(CombatHitPolicyRegistry.CreateDefault());
 
         [Test]
         public void IdenticalImmutableFacts_ProduceIdenticalResolution()

@@ -36,14 +36,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
         public void PlayerExperienceRealAuthorityRoundTripPreservesReplay()
         {
             PlayerExperienceCurve curve = ConstantCurve();
-            PlayerExperienceState source = ExperienceAuthority(curve);
+            PlayerExperience source = ExperienceAuthority(curve);
             var request = new PlayerExperienceGrantRequest(
                 Id("xp-source.real-roundtrip"),
                 250L);
             Assert.That(source.Grant(request).Status,
                 Is.EqualTo(PlayerExperienceGrantStatus.Applied));
 
-            PlayerExperienceState target = ExperienceAuthority(curve);
+            PlayerExperience target = ExperienceAuthority(curve);
             ISaveComponentBridge sourceAdapter = ExperienceAdapter(source, curve);
             ISaveComponentBridge targetAdapter = ExperienceAdapter(target, curve);
             PlayerAccountSnapshot decoded = FileRoundTrip(sourceAdapter.ExportComponent());
@@ -345,7 +345,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
         public void ExplicitCodecGoldenPayloadsAreStableAndDoNotUseClrTypes()
         {
             PlayerExperienceCurve curve = ConstantCurve();
-            PlayerExperienceState experience = ExperienceAuthority(curve);
+            PlayerExperience experience = ExperienceAuthority(curve);
             experience.Grant(new PlayerExperienceGrantRequest(
                 Id("xp-source.golden"),
                 100L));
@@ -442,7 +442,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
         }
 
         private static ISaveComponentBridge ExperienceAdapter(
-            PlayerExperienceState authority,
+            PlayerExperience authority,
             PlayerExperienceCurve curve)
         {
             return KnownSaveComponentAdapters.PlayerExperience(
@@ -613,10 +613,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Components
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
         }
 
-        private static PlayerExperienceState ExperienceAuthority(
+        private static PlayerExperience ExperienceAuthority(
             PlayerExperienceCurve curve)
         {
-            return new PlayerExperienceState(
+            return new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     1,

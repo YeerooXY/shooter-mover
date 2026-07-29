@@ -94,7 +94,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                 StableId runStableId = StableId.Create(
                     "simulation-run",
                     "drop-source-" + sampleOrdinal);
-                var pacingAuthority = new ParticipantDropPacingState();
+                var pacingAuthority = new ParticipantDropPacing();
                 var generation = new PersonalRewardGenerationActions(
                     pacingAuthority);
 

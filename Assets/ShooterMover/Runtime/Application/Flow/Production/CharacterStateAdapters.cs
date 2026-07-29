@@ -26,7 +26,7 @@ namespace ShooterMover.Application.Flow.Production
     {
         public static List<ISaveComponentBridge> Create(
             PlayerLoadoutLive loadout,
-            PlayerExperienceState experience,
+            PlayerExperience experience,
             PlayerExperienceCurve experienceCurve,
             ProgressionContext progressionContext,
             MoneyWalletActions money,
@@ -96,7 +96,7 @@ namespace ShooterMover.Application.Flow.Production
         }
 
         private static ISaveComponentBridge Experience(
-            PlayerExperienceState authority,
+            PlayerExperience authority,
             PlayerExperienceCurve curve,
             ProgressionContext context)
         {
@@ -104,7 +104,7 @@ namespace ShooterMover.Application.Flow.Production
                 authority.ExportSnapshot,
                 snapshot =>
                 {
-                    var verifier = new PlayerExperienceState(
+                    var verifier = new PlayerExperience(
                         curve,
                         context);
                     PlayerExperienceImportResult result =

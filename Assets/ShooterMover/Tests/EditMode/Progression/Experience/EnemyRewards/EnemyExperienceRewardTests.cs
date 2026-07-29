@@ -54,7 +54,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 new EnemyExperienceRewardBand(1, 100, -1L));
 
-            PlayerExperienceState authority = CreateAuthority();
+            PlayerExperience authority = CreateAuthority();
             var catalog = new EnemyExperienceRewardCatalog(
                 new[]
                 {
@@ -83,7 +83,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void DuplicateAndConflictingDeath_AwardExactlyOnce()
         {
-            PlayerExperienceState authority = CreateAuthority();
+            PlayerExperience authority = CreateAuthority();
             var firstService = new EnemyExperienceRewardActions(
                 authority,
                 CreateCatalog(EnemyExperienceRewardIds.BlasterTurret, 100L));
@@ -130,7 +130,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void DistinctEnemyInstances_GrantIndependentlyForSameDefinition()
         {
-            PlayerExperienceState authority = CreateAuthority();
+            PlayerExperience authority = CreateAuthority();
             var service = new EnemyExperienceRewardActions(
                 authority,
                 CreateCatalog(EnemyExperienceRewardIds.MobileBlasterDroid, 40L));
@@ -165,7 +165,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void AppliedReward_PreservesXpLevelUpFacts()
         {
-            PlayerExperienceState authority = CreateAuthority();
+            PlayerExperience authority = CreateAuthority();
             var service = new EnemyExperienceRewardActions(
                 authority,
                 CreateCatalog(EnemyExperienceRewardIds.RamDroid, 100L));
@@ -192,7 +192,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         public void SnapshotImport_ReplayedDeathProducesNoAdditionalXp()
         {
             PlayerExperienceCurve curve = CreateConstantCurve();
-            PlayerExperienceState original = CreateAuthority(curve);
+            PlayerExperience original = CreateAuthority(curve);
             EnemyExperienceRewardCatalog catalog = CreateCatalog(
                 EnemyExperienceRewardIds.PursuerDrone,
                 45L);
@@ -210,7 +210,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
                 destruction);
             PlayerExperienceSnapshot snapshot = original.ExportSnapshot();
 
-            PlayerExperienceState restored = CreateAuthority(curve);
+            PlayerExperience restored = CreateAuthority(curve);
             Assert.That(
                 restored.TryImport(snapshot).Status,
                 Is.EqualTo(PlayerExperienceImportStatus.Imported));
@@ -231,7 +231,7 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void RetryWithDifferentDeathEvent_ForSameRunAndActorIsDuplicate()
         {
-            PlayerExperienceState authority = CreateAuthority();
+            PlayerExperience authority = CreateAuthority();
             var service = new EnemyExperienceRewardActions(
                 authority,
                 CreateCatalog(EnemyExperienceRewardIds.PursuerDrone, 30L));
@@ -373,15 +373,15 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
             throw new InvalidOperationException("Expected one enemy destruction fact.");
         }
 
-        private static PlayerExperienceState CreateAuthority()
+        private static PlayerExperience CreateAuthority()
         {
             return CreateAuthority(CreateConstantCurve());
         }
 
-        private static PlayerExperienceState CreateAuthority(
+        private static PlayerExperience CreateAuthority(
             PlayerExperienceCurve curve)
         {
-            return new PlayerExperienceState(
+            return new PlayerExperience(
                 curve,
                 ProgressionContext.Create(
                     1,

@@ -12,7 +12,7 @@ namespace ShooterMover.Application.Rewards.Drops
     /// accepted transition. A recreated authority therefore resumes the exact pacing
     /// snapshot instead of resetting pity or saturation.
     /// </summary>
-    public sealed class ParticipantDropPacingState
+    public sealed class ParticipantDropPacing
     {
         private sealed class ReplayRecord
         {
@@ -36,12 +36,12 @@ namespace ShooterMover.Application.Rewards.Drops
             new Dictionary<StableId, ReplayRecord>();
         private readonly IParticipantDropPacingStateStore stateStore;
 
-        public ParticipantDropPacingState()
+        public ParticipantDropPacing()
             : this(null)
         {
         }
 
-        public ParticipantDropPacingState(
+        public ParticipantDropPacing(
             IParticipantDropPacingStateStore stateStore)
         {
             this.stateStore = stateStore;

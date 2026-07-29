@@ -24,7 +24,7 @@ namespace ShooterMover.Application.Skills.Presentation
     {
         private const string MutationScope = "ranked-skills-v2-allocation";
         private readonly PlayerRouteProfilePayload route;
-        private readonly IPlayerExperienceState experience;
+        private readonly IPlayerExperience experience;
         private readonly RankedSkillAllocationState authority;
         private readonly IRankedSkillsPersistencePort persistence;
         private readonly string profileId;
@@ -32,7 +32,7 @@ namespace ShooterMover.Application.Skills.Presentation
         private bool mutationBlocked;
         private string mutationBlockedReason = string.Empty;
         private RankedSkillsScreenSession(
-            PlayerRouteProfilePayload route, IPlayerExperienceState experience,
+            PlayerRouteProfilePayload route, IPlayerExperience experience,
             RankedSkillAllocationState authority, string profileId,
             IRankedSkillsPersistencePort persistence, SkillsScreenView projection)
         {
@@ -42,7 +42,7 @@ namespace ShooterMover.Application.Skills.Presentation
         public SkillsScreenView CurrentProjection => projection;
         public bool MutationBlocked => mutationBlocked;
         public static bool TryCreate(
-            PlayerRouteProfilePayload route, IPlayerExperienceState experience,
+            PlayerRouteProfilePayload route, IPlayerExperience experience,
             RankedSkillAllocationState authority, string profileId,
             IRankedSkillsPersistencePort persistence, out RankedSkillsScreenSession session,
             out string rejectionCode)

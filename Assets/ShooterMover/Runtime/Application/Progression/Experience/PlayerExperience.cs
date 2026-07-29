@@ -12,8 +12,8 @@ namespace ShooterMover.Application.Progression.Experience
     /// source-operation identity and projects the resulting player level into the
     /// existing immutable ProgressionContext.
     /// </summary>
-    public sealed class PlayerExperienceState :
-        IPlayerExperienceState
+    public sealed class PlayerExperience :
+        IPlayerExperience
     {
         private sealed class AppliedGrant
         {
@@ -47,7 +47,7 @@ namespace ShooterMover.Application.Progression.Experience
         private ProgressionContext currentContext;
         private PlayerExperienceSnapshot currentSnapshot;
 
-        public PlayerExperienceState(
+        public PlayerExperience(
             PlayerExperienceCurve curve,
             ProgressionContext initialContext)
         {

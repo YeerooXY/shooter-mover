@@ -24,7 +24,7 @@ namespace ShooterMover.Tests.PlayMode.Progression.Experience.EnemyRewards
                 actorId,
                 EnemyExperienceRewardIds.BlasterTurret,
                 deathId);
-            PlayerExperienceState xpAuthority = CreateExperienceAuthority();
+            PlayerExperience xpAuthority = CreateExperienceAuthority();
             var rewardService = new EnemyExperienceRewardActions(
                 xpAuthority,
                 CreateCatalog(EnemyExperienceRewardIds.BlasterTurret, 35L));
@@ -60,7 +60,7 @@ namespace ShooterMover.Tests.PlayMode.Progression.Experience.EnemyRewards
                 actorId,
                 EnemyExperienceRewardIds.RamDroid,
                 deathId);
-            PlayerExperienceState xpAuthority = CreateExperienceAuthority();
+            PlayerExperience xpAuthority = CreateExperienceAuthority();
             var rewardService = new EnemyExperienceRewardActions(
                 xpAuthority,
                 CreateCatalog(EnemyExperienceRewardIds.RamDroid, 90L));
@@ -105,9 +105,9 @@ namespace ShooterMover.Tests.PlayMode.Progression.Experience.EnemyRewards
                 });
         }
 
-        private static PlayerExperienceState CreateExperienceAuthority()
+        private static PlayerExperience CreateExperienceAuthority()
         {
-            return new PlayerExperienceState(
+            return new PlayerExperience(
                 new PlayerExperienceCurve(
                     100L,
                     100L,

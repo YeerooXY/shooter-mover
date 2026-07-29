@@ -298,7 +298,7 @@ namespace ShooterMover.Application.Missions.Rooms
         public RoomLiveView Build(
             StableId runtimeInstanceStableId,
             AuthorableRoomGraphDefinition definition,
-            RoomOccupancyState occupancyAuthority,
+            RoomOccupancy occupancyAuthority,
             RoomMissionLayout missionLayout,
             RoomRetainedFactStore retainedFacts,
             IReadOnlyDictionary<StableId, RoomCompletionEvaluation> evaluations,

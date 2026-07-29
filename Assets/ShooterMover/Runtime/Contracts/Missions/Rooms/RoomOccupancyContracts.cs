@@ -14,7 +14,7 @@ namespace ShooterMover.Contracts.Missions.Rooms
         NonParticipant = 4,
     }
 
-    public enum RoomLiveOperationStatus
+    public enum RoomOccupancyStatus
     {
         Applied = 1,
         DuplicateNoChange = 2,
@@ -205,11 +205,11 @@ namespace ShooterMover.Contracts.Missions.Rooms
         }
     }
 
-    public sealed class RoomLiveView
+    public sealed class RoomOccupancySnapshot
     {
         private readonly ReadOnlyCollection<RoomOccupancyView> rooms;
 
-        public RoomLiveView(
+        public RoomOccupancySnapshot(
             StableId runtimeInstanceStableId,
             StableId layoutStableId,
             string definitionFingerprint,
@@ -425,9 +425,9 @@ namespace ShooterMover.Contracts.Missions.Rooms
         public StableId OccupantEntityStableId { get; }
     }
 
-    public sealed class RestartRoomLiveCommand
+    public sealed class RestartRoomOccupancyCommand
     {
-        public RestartRoomLiveCommand(
+        public RestartRoomOccupancyCommand(
             StableId runtimeInstanceStableId,
             StableId operationStableId,
             long lifecycleGeneration)
@@ -451,16 +451,16 @@ namespace ShooterMover.Contracts.Missions.Rooms
         public long LifecycleGeneration { get; }
     }
 
-    public sealed class RoomLiveOperationResult
+    public sealed class RoomOccupancyResult
     {
-        public RoomLiveOperationResult(
-            RoomLiveOperationStatus status,
+        public RoomOccupancyResult(
+            RoomOccupancyStatus status,
             string rejectionCode,
-            RoomLiveView previousProjection,
-            RoomLiveView currentProjection,
+            RoomOccupancySnapshot previousProjection,
+            RoomOccupancySnapshot currentProjection,
             RoomClearTransition clearTransition)
         {
-            if (!Enum.IsDefined(typeof(RoomLiveOperationStatus), status))
+            if (!Enum.IsDefined(typeof(RoomOccupancyStatus), status))
             {
                 throw new ArgumentOutOfRangeException(nameof(status));
             }
@@ -474,40 +474,40 @@ namespace ShooterMover.Contracts.Missions.Rooms
             ClearTransition = clearTransition;
         }
 
-        public RoomLiveOperationStatus Status { get; }
+        public RoomOccupancyStatus Status { get; }
 
         public string RejectionCode { get; }
 
-        public RoomLiveView PreviousProjection { get; }
+        public RoomOccupancySnapshot PreviousProjection { get; }
 
-        public RoomLiveView CurrentProjection { get; }
+        public RoomOccupancySnapshot CurrentProjection { get; }
 
         public RoomClearTransition ClearTransition { get; }
 
         public bool Changed
         {
-            get { return Status == RoomLiveOperationStatus.Applied; }
+            get { return Status == RoomOccupancyStatus.Applied; }
         }
     }
 
-    public interface IRoomLiveState
+    public interface IRoomOccupancy
     {
         StableId RuntimeInstanceStableId { get; }
 
         RoomGraphDefinition Definition { get; }
 
-        RoomLiveView CurrentProjection { get; }
+        RoomOccupancySnapshot CurrentProjection { get; }
 
         RoomOccupancyView GetRoomProjection(StableId roomStableId);
 
-        RoomLiveOperationResult RegisterOccupants(
+        RoomOccupancyResult RegisterOccupants(
             RegisterRoomOccupantsCommand command);
 
-        RoomLiveOperationResult ActivateRoom(ActivateRoomCommand command);
+        RoomOccupancyResult ActivateRoom(ActivateRoomCommand command);
 
-        RoomLiveOperationResult ReportTerminal(
+        RoomOccupancyResult ReportTerminal(
             ReportRoomOccupantTerminalCommand command);
 
-        RoomLiveOperationResult Restart(RestartRoomLiveCommand command);
+        RoomOccupancyResult Restart(RestartRoomOccupancyCommand command);
     }
 }

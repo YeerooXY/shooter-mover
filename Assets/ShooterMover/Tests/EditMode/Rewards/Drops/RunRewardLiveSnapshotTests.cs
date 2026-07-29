@@ -53,7 +53,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
                 1);
             PersonalRewardGenerationResult generated =
                 new PersonalRewardGenerationActions(
-                    new ParticipantDropPacingState())
+                    new ParticipantDropPacing())
                     .Generate(context);
             Assert.That(generated.IsSuccess, Is.True);
 
@@ -149,7 +149,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Drops
                 1);
             PersonalRewardGenerationResult generated =
                 new PersonalRewardGenerationActions(
-                    new ParticipantDropPacingState())
+                    new ParticipantDropPacing())
                     .Generate(context);
 
             Assert.Throws<ArgumentException>(delegate
