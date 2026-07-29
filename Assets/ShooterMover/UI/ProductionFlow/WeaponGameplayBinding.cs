@@ -169,21 +169,6 @@ namespace ShooterMover.UI.ProductionFlow
                     Diagnostic = rejectionCode;
                     return;
                 }
-
-                Rigidbody2D body = marker.GetComponent<Rigidbody2D>();
-                if (body == null)
-                {
-                    Diagnostic = "gameplay-player-facing-rigidbody-missing";
-                    return;
-                }
-                PlayerAimFacing2D facing =
-                    marker.GetComponent<PlayerAimFacing2D>()
-                    ?? marker.gameObject.AddComponent<PlayerAimFacing2D>();
-                if (!facing.TryBind(body))
-                {
-                    Diagnostic = "gameplay-player-facing-camera-missing";
-                    return;
-                }
             }
             catch (Exception exception)
             {
