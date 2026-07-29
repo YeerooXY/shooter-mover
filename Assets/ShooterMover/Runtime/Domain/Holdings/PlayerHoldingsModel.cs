@@ -74,16 +74,16 @@ namespace ShooterMover.Domain.Holdings
                 ?? throw new ArgumentNullException(nameof(sourceStableId));
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "grant_stable_id",
                 GrantStableId.ToString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "source_stable_id",
                 SourceStableId.ToString());
             canonicalText = builder.ToString();
-            Fingerprint = Holdings.ComputeSha256(canonicalText);
+            Fingerprint = HoldingsFormat.ComputeSha256(canonicalText);
         }
 
         public StableId GrantStableId { get; }
@@ -122,7 +122,7 @@ namespace ShooterMover.Domain.Holdings
 
         public override int GetHashCode()
         {
-            return Holdings.DeterministicHash(canonicalText);
+            return HoldingsFormat.DeterministicHash(canonicalText);
         }
 
         public override string ToString()
@@ -193,30 +193,30 @@ namespace ShooterMover.Domain.Holdings
             RewardKind = rewardKind;
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "reward_kind",
                 ((int)RewardKind).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "definition_stable_id",
                 DefinitionStableId.ToString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "instance_stable_id",
                 InstanceStableId.ToString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "equipment_instance",
                 EquipmentInstance == null
                     ? "none"
                     : EquipmentInstance.ToCanonicalString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "provenance",
                 Provenance.ToCanonicalString());
             canonicalText = builder.ToString();
-            Fingerprint = Holdings.ComputeSha256(canonicalText);
+            Fingerprint = HoldingsFormat.ComputeSha256(canonicalText);
         }
 
         public RewardGrantKind RewardKind { get; }
@@ -287,7 +287,7 @@ namespace ShooterMover.Domain.Holdings
 
         public override int GetHashCode()
         {
-            return Holdings.DeterministicHash(canonicalText);
+            return HoldingsFormat.DeterministicHash(canonicalText);
         }
 
         public override string ToString()
@@ -333,20 +333,20 @@ namespace ShooterMover.Domain.Holdings
             Quantity = quantity;
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "reward_kind",
                 ((int)RewardKind).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "item_stable_id",
                 ItemStableId.ToString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "quantity",
                 Quantity.ToString(CultureInfo.InvariantCulture));
             canonicalText = builder.ToString();
-            Fingerprint = Holdings.ComputeSha256(canonicalText);
+            Fingerprint = HoldingsFormat.ComputeSha256(canonicalText);
         }
 
         public RewardGrantKind RewardKind { get; }
@@ -402,7 +402,7 @@ namespace ShooterMover.Domain.Holdings
 
         public override int GetHashCode()
         {
-            return Holdings.DeterministicHash(canonicalText);
+            return HoldingsFormat.DeterministicHash(canonicalText);
         }
 
         public override string ToString()
@@ -415,7 +415,7 @@ namespace ShooterMover.Domain.Holdings
     /// Deterministic length-prefixed canonicalization and SHA-256 helpers shared
     /// by the holdings model and public contracts.
     /// </summary>
-    public static class Holdings
+    public static class HoldingsFormat
     {
         private const string FingerprintPrefix = "sha256:";
 
